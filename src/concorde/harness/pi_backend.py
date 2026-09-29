@@ -177,6 +177,8 @@ class PiStream:
         self.final_text = ""
         self.turns = 0
         self.cost = 0.0
+        self.tokens = {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}
+        self.reported = False
 
     def feed(self, line: str) -> list[tuple[str, dict]]:
         try:
@@ -201,9 +203,24 @@ class PiStream:
             if message.get("role") == "assistant":
                 self.stop_reason = message.get("stopReason")
                 self.error_message = message.get("errorMessage")
-                cost = ((message.get("usage") or {}).get("cost") or {}).get("total")
+                used = message.get("usage") or {}
+                cost = (
+                    (used.get("cost") or {}).get("total")
+                    if isinstance(used, dict)
+                    else None
+                )
                 if isinstance(cost, (int, float)):
                     self.cost += cost
+                    self.reported = True
+                for key in self.tokens:
+                    value = used.get(key) if isinstance(used, dict) else None
+                    if (
+                        isinstance(value, int)
+                        and not isinstance(value, bool)
+                        and value >= 0
+                    ):
+                        self.tokens[key] += value
+                        self.reported = True
                 texts = [
                     block.get("text", "")
                     for block in message.get("content") or []
@@ -222,6 +239,18 @@ class PiStream:
             session=self.session,
             result=self.result,
             final_text=self.final_text,
+            usage={
+                "tokens_in": self.tokens["input"] if self.reported else None,
+                "tokens_out": self.tokens["output"] if self.reported else None,
+                "tokens_cache_read": self.tokens["cacheRead"]
+                if self.reported
+                else None,
+                "tokens_cache_write": self.tokens["cacheWrite"]
+                if self.reported
+                else None,
+                "cost_usd": round(self.cost, 6) if self.reported else None,
+                "turns": self.turns,
+            },
             info={
                 "pi": {
                     "stop_reason": self.stop_reason,
@@ -374,7 +403,7 @@ class PiBackend:
             "--session-dir",
             (paths.config / "sessions").as_posix(),
             "--session-id",
-            session or paths.root.name,
+            session or paths.run_id,
         ]
         if request.model:
             command += ["--model", request.model]

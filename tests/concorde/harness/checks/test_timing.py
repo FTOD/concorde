@@ -215,18 +215,19 @@ class ObservationScenarioTests(unittest.TestCase):
 
             link = base / "link"
             link.symlink_to(good)
-            status = base / "project/.concorde/status"
-            status.mkdir(parents=True)
-            runs = base / "project/.concorde/runs/r1"
-            runs.mkdir(parents=True)
+            lifecycle = {
+                name: base / "project/.concorde" / name / "t1"
+                for name in ("tasks", "history", "unbound", "locks")
+            }
+            for folder in lifecycle.values():
+                folder.mkdir(parents=True)
             inside_cwd = Path.cwd().resolve()
             refused = {
                 "relative": "timing",
                 "missing": str(base / "missing"),
                 "symlink": str(link),
                 "non-canonical": str(good / ".." / "timing"),
-                "status": str(status),
-                "runs": str(runs),
+                **{name: str(folder) for name, folder in lifecycle.items()},
                 "working-directory": str(inside_cwd),
             }
             before = {p for p in base.rglob("*")}

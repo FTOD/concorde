@@ -62,14 +62,18 @@ class SettingsError(ValueError):
 
 @dataclass(frozen=True)
 class RunPaths:
-    """The directories of one run (see the run directory layout).
+    """The directories of one worker run: its runtime directory and its run directory.
 
-    ``short_tmp`` replaces ``<run>/tmp`` as ``TMPDIR`` when set: Claude Code's Bash sandbox creates
-    Unix sockets below ``TMPDIR``, whose paths must stay under the kernel's 108-byte limit.
+    ``root`` is the runtime directory, a short private directory under ``/tmp`` that holds what
+    the worker needs only while it runs and is removed when it ends: ``control/``, ``config/`` and
+    the worker's own ``home/``, ``tmp/`` and ``work/``. Its path stays short because Claude Code's
+    Bash sandbox creates Unix sockets below ``TMPDIR``, whose paths must stay under the kernel's
+    108-byte limit. ``trace`` is the run directory, the worker run's trace node, which is kept.
     """
 
     root: Path
-    short_tmp: Path | None = None
+    trace: Path | None = None
+    run_id: str = ""
 
     @property
     def control(self) -> Path:
@@ -85,15 +89,11 @@ class RunPaths:
 
     @property
     def tmp(self) -> Path:
-        return self.short_tmp or self.root / "tmp"
+        return self.root / "tmp"
 
     @property
     def work(self) -> Path:
         return self.root / "work"
-
-    @property
-    def checks(self) -> Path:
-        return self.root / "checks"
 
     def own(self) -> tuple[Path, ...]:
         """The directories the worker itself uses, which no rule may hide."""

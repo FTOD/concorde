@@ -1,20 +1,24 @@
-"""The Task store: task records and decision logs in the primary worktree, and the task commands.
+"""The Task store: each task's folder in the primary worktree, and the task commands.
 
 A task is a branch ``concorde/<id>``, a worktree checked out on it and bound as the workspace
-``<id>``, a record ``.concorde/tasks/<id>.json`` and a decision log
-``.concorde/tasks/<id>.decisions.md``, all owned by the primary worktree. Only this module writes
-records, and nothing below the task level writes them: whether a task is active or delivered is
-derived each time from what the execution core recorded, its runs in the run store and its
-delivery commits on the branch, a delivery counting only when its commit verifies against its
-evidence bundle; ``merging`` is stored while ``concorde task merge`` has put a merge
-into the primary branch that its checks have not decided yet. Every change is one read, a check of
-its preconditions and one atomic write bound to the bytes read; a concurrent change is retried and
-reported as ``record_conflict`` after three attempts.
+``<id>``, and a folder ``.concorde/tasks/<id>/`` of the primary worktree holding its record
+``task.json``, its trace node ``trace.json``, its decision log ``decisions.md``, its task session's
+boundary under ``runtime/``, its sessions' and merge attempts' nodes under ``sessions/`` and
+``merges/``, and the workspace folder ``workspace/`` its runs are traced in. Closing moves the whole
+folder to ``.concorde/history/<key>/``. Only this module writes records and task nodes, and
+nothing below the task level writes them: whether a task is active or delivered is derived each
+time from what the execution core recorded, its runs in its workspace folder and its delivery
+commits on the branch, a delivery counting only when its commit verifies against its evidence
+bundle; ``merging`` is stored while ``concorde task merge`` has put a merge into the primary branch
+that its checks have not decided yet. Every change holds the task's lock
+``.concorde/locks/tasks/<id>.lock`` and is one read, a check of its preconditions and one atomic
+write bound to the bytes read.
 """
 
 from __future__ import annotations
 
-import fcntl
+import contextlib
+import shutil
 import json
 import os
 import re
@@ -27,9 +31,95 @@ from pathlib import Path
 
 from ..delivery.bundle import delivery_commits, delivery_mismatches
 from ..execution import binding as workspace_binding
-from ..execution.runs import RunError, lock_holder, workspace_lock, workspace_runs
+from ..execution.runs import (
+    RunError,
+    Store,
+    lock_holder,
+    workspace_lock,
+    workspace_runs,
+)
+from ..spec.typed_data import register
+from ..tracing import layout, locks, retention
+from ..tracing import node as trace
+from ..tracing.node import Node, concorde_commit, protocol_version
 
 TASK_ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,47}$")
+HISTORY_KEY = re.compile(r"^[a-z0-9][a-z0-9-]{0,47}(\.[0-9]+)?$")
+RECORD = "task.json"
+DECISIONS = "decisions.md"
+_TEXT = {"type": "string", "minLength": 1}
+# An object of any fields, such as an error link: Spec typed data admits unknown fields only
+# through a schema-valued ``additionalProperties``.
+_OBJECT = {"type": "object", "additionalProperties": {}}
+# contract.tasks.task-trace, version 1
+TASK_TRACE = "concorde-task-trace"
+register(
+    TASK_TRACE,
+    1,
+    {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["goal", "worktree", "transitions", "escalations", "closing"],
+        "properties": {
+            "goal": _TEXT,
+            "worktree": _TEXT,
+            "transitions": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["state", "at"],
+                    "properties": {
+                        "state": {"enum": ["open", "merging", "closed", "failed"]},
+                        "at": _TEXT,
+                    },
+                },
+            },
+            "escalations": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["number", "at", "by", "error"],
+                    "properties": {
+                        "number": {"type": "integer", "minimum": 1},
+                        "at": _TEXT,
+                        "by": {"enum": ["main-agent", "task-session"]},
+                        "error": _OBJECT,
+                    },
+                },
+            },
+            "closing": {
+                "anyOf": [
+                    {"type": "null"},
+                    {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": [
+                            "outcome",
+                            "note",
+                            "errors",
+                            "primary_commit",
+                            "worktree_removed",
+                            "history",
+                        ],
+                        "properties": {
+                            "outcome": {"enum": ["merged", "completed", "failed"]},
+                            "note": {"anyOf": [{"type": "null"}, _TEXT]},
+                            "errors": {"type": "array", "items": _OBJECT},
+                            "primary_commit": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$",
+                            },
+                            "worktree_removed": {"type": "boolean"},
+                            "history": _TEXT,
+                        },
+                    },
+                ]
+            },
+        },
+    },
+)
 # The stages of a task's life. Only open, merging, closed and failed are stored; active and
 # delivered are derived from the workspace's runs and delivery commits whenever a task is read.
 STATES = ("open", "active", "delivered", "merging", "closed", "failed")
@@ -98,16 +188,70 @@ def require_primary(path: Path) -> Path:
     return top
 
 
+def concorde(primary: Path) -> Path:
+    return layout.concorde_of(primary)
+
+
 def tasks_directory(primary: Path) -> Path:
-    return primary / ".concorde/tasks"
+    return layout.tasks_folder(concorde(primary))
+
+
+def task_folder(primary: Path, task_id: str) -> Path:
+    """The folder of a current task."""
+    return layout.task_folder(concorde(primary), task_id)
+
+
+def history_folder(primary: Path, key: str) -> Path:
+    return layout.history_folder(concorde(primary)) / key
+
+
+def found_folder(primary: Path, task_id: str) -> Path | None:
+    """The folder of ``task_id``: the current task's, else the latest of that name in the
+    history (a history key names one exactly); None when there is none."""
+    current = task_folder(primary, task_id)
+    if (current / RECORD).is_file():
+        return current
+    history = layout.history_folder(concorde(primary))
+    if HISTORY_KEY.match(task_id or "") and (history / task_id / RECORD).is_file():
+        if "." in task_id or not (history / f"{task_id}.2").exists():
+            return history / task_id
+    if TASK_ID.match(task_id or "") and history.is_dir():
+        numbered = sorted(
+            (
+                int(item.name.rsplit(".", 1)[1])
+                for item in history.glob(f"{task_id}.*")
+                if item.name.rsplit(".", 1)[1].isdigit() and (item / RECORD).is_file()
+            ),
+            reverse=True,
+        )
+        if numbered:
+            return history / f"{task_id}.{numbered[0]}"
+    return None
 
 
 def record_path(primary: Path, task_id: str) -> Path:
-    return tasks_directory(primary) / f"{task_id}.json"
+    return task_folder(primary, task_id) / RECORD
 
 
 def decision_log_path(primary: Path, task_id: str) -> Path:
-    return tasks_directory(primary) / f"{task_id}.decisions.md"
+    """The decision log of a task: in its current folder, or once closed in the history."""
+    folder = task_folder(primary, task_id)
+    if not folder.exists():
+        found = found_folder(primary, task_id)
+        if found is not None:
+            return found / DECISIONS
+    return folder / DECISIONS
+
+
+def workspace_store(primary: Path, task_id: str, folder: Path | None = None) -> Store:
+    """The run store of a task's workspace: its folder's ``workspace/``, locks under the primary
+    worktree's ``.concorde``."""
+    folder = folder or task_folder(primary, task_id)
+    return Store(concorde(primary), layout.workspace_folder(folder))
+
+
+def task_lock_path(primary: Path, task_id: str) -> Path:
+    return layout.lock_file(concorde(primary), "task", task_id)
 
 
 def unwritten_decision_log(primary: Path, record: dict) -> str | None:
@@ -130,7 +274,7 @@ def unwritten_decision_log(primary: Path, record: dict) -> str | None:
 def _unknown(primary: Path, task_id: str) -> TaskError:
     directory = tasks_directory(primary)
     known = (
-        sorted(path.stem for path in directory.glob("*.json"))
+        sorted(path.parent.name for path in directory.glob(f"*/{RECORD}"))
         if directory.is_dir()
         else []
     )
@@ -141,9 +285,74 @@ def _unknown(primary: Path, task_id: str) -> TaskError:
 
 
 def load_task(primary: Path, task_id: str) -> dict:
+    """The record of a current task; ``unknown_task`` for any other."""
     path = record_path(primary, task_id)
     if not TASK_ID.match(task_id or "") or not path.is_file():
         raise _unknown(primary, task_id)
+    return _read_record(path)
+
+
+def closed_in_history(primary: Path, task_id: str) -> dict | None:
+    """The record of the latest task of that name in the history when no current task has it;
+    None otherwise."""
+    if not TASK_ID.match(task_id or "") or record_path(primary, task_id).is_file():
+        return None
+    folder = found_folder(primary, task_id)
+    return None if folder is None else _read_record(folder / RECORD)
+
+
+def load_unended(primary: Path, task_id: str, purpose: str) -> dict:
+    """The record of a current task that is neither closed nor failed; ``task_closed`` for a task
+    that ended, still current or moved to the history, saying ``purpose``; ``unknown_task``
+    when there is none."""
+    try:
+        record = load_task(primary, task_id)
+    except TaskError as error:
+        record = (
+            closed_in_history(primary, task_id)
+            if error.code == "unknown_task"
+            else None
+        )
+        if record is None:
+            raise
+    if record["state"] in ENDED:
+        raise TaskError(
+            "task_closed", f"task {task_id} is {record['state']}; {purpose}"
+        )
+    return record
+
+
+def refuse_closed(primary: Path, task_id: str) -> dict:
+    """The record of a current task, for ``close`` and ``merge``; ``invalid_transition`` for a
+    task whose close moved it to the history, ``unknown_task`` when there is none."""
+    try:
+        return load_task(primary, task_id)
+    except TaskError as error:
+        ended = (
+            closed_in_history(primary, task_id)
+            if error.code == "unknown_task"
+            else None
+        )
+        if ended is None:
+            raise
+        raise TaskError(
+            "invalid_transition",
+            f"task {task_id} is already {ended['state']}, with outcome "
+            f"{(ended.get('closed') or {}).get('outcome')}, and its folder is in the history "
+            f"({found_folder(primary, task_id)}), which is never changed",
+        ) from None
+
+
+def load_any(primary: Path, task_id: str) -> tuple[dict, Path]:
+    """The record and folder of a current task or, when there is none, of the task in the
+    history; ``unknown_task`` when neither exists."""
+    folder = found_folder(primary, task_id)
+    if folder is None:
+        raise _unknown(primary, task_id)
+    return _read_record(folder / RECORD), folder
+
+
+def _read_record(path: Path) -> dict:
     try:
         return json.loads(path.read_text())
     except (OSError, ValueError) as error:
@@ -153,33 +362,25 @@ def load_task(primary: Path, task_id: str) -> dict:
 
 
 @contextmanager
-def _locked(primary: Path):
-    directory = tasks_directory(primary)
-    directory.mkdir(parents=True, exist_ok=True)
-    with (directory / ".lock").open("a+b") as stream:
-        fcntl.flock(stream.fileno(), fcntl.LOCK_EX)
-        try:
-            yield
-        finally:
-            fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+def task_locked(primary: Path, task_id: str):
+    """Hold the task's lock: every change of its record and trace is made while holding it."""
+    with locks.hold(
+        task_lock_path(primary, task_id), f"change of task {task_id}", wait=None
+    ):
+        yield
 
 
 def merge_lock_path(primary: Path) -> Path:
-    return tasks_directory(primary) / "merge.lock"
+    return layout.lock_file(concorde(primary), "merge")
 
 
 def _holder(path: Path) -> str:
     """The holder a live lock names, as text for a refusal."""
     try:
-        holder = json.loads(path.read_text() or "null")
-    except (OSError, ValueError) as error:
+        text = path.read_text()
+    except OSError as error:
         return f"a holder whose entry in {path} cannot be read ({error})"
-    if not isinstance(holder, dict):
-        return f"a holder that has not written its entry in {path} yet"
-    return (
-        f"`concorde task {holder.get('command')}` of task {holder.get('task')} "
-        f"(process {holder.get('pid')}, holding it since {holder.get('since')})"
-    )
+    return locks.describe(text)
 
 
 @contextmanager
@@ -189,61 +390,24 @@ def merge_lock(primary: Path, command: str, task_id: str, wait: float = MERGE_WA
     The lock is a ``flock`` of this process, so the kernel releases it however the process
     ends. While holding it, the process names itself in the lock file for waiters that give up.
     """
-    directory = tasks_directory(primary)
-    directory.mkdir(parents=True, exist_ok=True)
     path = merge_lock_path(primary)
-    started = time.monotonic()
-    descriptor = os.open(path, os.O_RDWR | os.O_CREAT, 0o644)
-    with os.fdopen(descriptor, "r+") as stream:
-        while True:
-            try:
-                fcntl.flock(stream.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-                break
-            except BlockingIOError:
-                if time.monotonic() - started >= wait:
-                    raise TaskError(
-                        "merge_busy",
-                        f"`concorde task {command}` of task {task_id} waited {wait:g} s for "
-                        f"the merge lock {path} of the primary worktree {primary}, which "
-                        f"is still held by {_holder(path)}; one merge, open or close runs at "
-                        "a time",
-                    ) from None
-                time.sleep(LOCK_POLL)
-        waited = round(time.monotonic() - started, 3)
-        try:
-            stream.seek(0)
-            stream.truncate()
-            stream.write(
-                json.dumps(
-                    {
-                        "command": command,
-                        "task": task_id,
-                        "pid": os.getpid(),
-                        "since": now(),
-                    }
-                )
-            )
-            stream.flush()
+    try:
+        with locks.hold(
+            path, f"`concorde task {command}` of task {task_id}", wait=wait
+        ) as waited:
             yield waited
-        finally:
-            stream.seek(0)
-            stream.truncate()
-            stream.flush()
-            fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+    except locks.LockBusy as busy:
+        raise TaskError(
+            "merge_busy",
+            f"`concorde task {command}` of task {task_id} waited {wait:g} s for "
+            f"the merge lock {path} of the primary worktree {primary}, which "
+            f"is still held by {busy.holder}; one merge, open or close runs at a time",
+        ) from None
 
 
 def merge_lock_held(primary: Path) -> bool:
     """Whether a live process holds the merge lock now; never called while holding it."""
-    path = merge_lock_path(primary)
-    if not path.exists():
-        return False
-    with path.open("rb") as stream:
-        try:
-            fcntl.flock(stream.fileno(), fcntl.LOCK_SH | fcntl.LOCK_NB)
-        except BlockingIOError:
-            return True
-        fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
-    return False
+    return locks.held(merge_lock_path(primary))
 
 
 @contextmanager
@@ -263,7 +427,7 @@ def task_workspace_locked(
     try:
         stack.enter_context(
             workspace_lock(
-                primary / ".concorde",
+                workspace_store(primary, task_id),
                 task_id,
                 f"`concorde task {command}` of task {task_id}",
                 wait=wait,
@@ -297,20 +461,23 @@ def _serialize(record: dict) -> bytes:
     return (json.dumps(record, indent=2) + "\n").encode()
 
 
-def update(primary: Path, task_id: str, change) -> dict:
-    """Apply ``change(record) -> record`` bound to the bytes read; retry concurrent changes.
+def update(primary: Path, task_id: str, change, *, locked: bool = False) -> dict:
+    """Apply ``change(record) -> record`` bound to the bytes read, holding the task's lock.
 
-    A retry reads the record again and calls ``change`` again, so the preconditions it checks
-    hold for the record it writes.
+    ``locked`` says the caller already holds the task's lock. A change made meanwhile by a
+    process that did not take the lock is detected and ``change`` is applied again to what is
+    there, so the preconditions it checks hold for the record it writes.
     """
     path = record_path(primary, task_id)
-    for _ in range(ATTEMPTS):
-        if not TASK_ID.match(task_id or "") or not path.is_file():
-            raise _unknown(primary, task_id)
-        before = path.read_bytes()
-        record = change(json.loads(before))
-        record["updated_at"] = now()
-        with _locked(primary):
+    if not TASK_ID.match(task_id or "") or not path.is_file():
+        raise _unknown(primary, task_id)
+    with contextlib.nullcontext() if locked else task_locked(primary, task_id):
+        for _ in range(ATTEMPTS):
+            if not path.is_file():
+                raise _unknown(primary, task_id)
+            before = path.read_bytes()
+            record = change(json.loads(before))
+            record["updated_at"] = now()
             if path.read_bytes() != before:
                 continue
             try:
@@ -320,28 +487,96 @@ def update(primary: Path, task_id: str, change) -> dict:
                     "record_unwritable",
                     f"the task record {path} cannot be written: {error}",
                 ) from error
-        return record
+            return record
     raise TaskError(
         "record_conflict", f"task {task_id} changed concurrently {ATTEMPTS} times"
     )
 
 
-def _records(primary: Path) -> list[dict]:
-    """Every task record as stored, in file-name order."""
-    directory = tasks_directory(primary)
+def _records(primary: Path, *, history: bool = False) -> list[dict]:
+    """Every current task's record as stored, and with ``history`` every closed task's, in
+    folder-name order."""
+    parents = [tasks_directory(primary)]
+    if history:
+        parents.append(layout.history_folder(concorde(primary)))
     records = []
-    for path in sorted(directory.glob("*.json")) if directory.is_dir() else []:
-        try:
-            records.append(json.loads(path.read_text()))
-        except (OSError, ValueError) as error:
-            raise TaskError(
-                "record_unreadable", f"the task record {path} cannot be read: {error}"
-            ) from error
+    for parent in parents:
+        for path in sorted(parent.glob(f"*/{RECORD}")) if parent.is_dir() else []:
+            try:
+                records.append(json.loads(path.read_text()))
+            except (OSError, ValueError) as error:
+                raise TaskError(
+                    "record_unreadable",
+                    f"the task record {path} cannot be read: {error}",
+                ) from error
     return records
 
 
+# --- the task's trace ------------------------------------------------------------------------
+
+
+def task_node(primary: Path, task_id: str, folder: Path | None = None) -> dict | None:
+    """The task's own trace node as recorded, or None."""
+    return trace.read(folder or task_folder(primary, task_id))
+
+
+def _node_of(folder: Path) -> dict:
+    record = trace.read(folder)
+    if record is None:
+        raise TaskError(
+            "record_unreadable",
+            f"the trace node {folder / layout.TRACE} of the task cannot be read",
+        )
+    return record
+
+
+def _task_content(record: dict) -> dict:
+    return dict(record["content"]["data"])
+
+
+def change_trace(
+    primary: Path, task_id: str, change, folder: Path | None = None
+) -> dict:
+    """Apply ``change(content) -> content`` to the task node's content; the caller holds the
+    task's lock. Returns the node written."""
+    folder = folder or task_folder(primary, task_id)
+    record = _node_of(folder)
+    record["content"] = {
+        "type_id": TASK_TRACE,
+        "schema_version": 1,
+        "data": change(_task_content(record)),
+    }
+    try:
+        trace.write(folder, record)
+    except OSError as error:
+        raise TaskError(
+            "record_unwritable",
+            f"the trace node {folder / layout.TRACE} of task {task_id} cannot be written: "
+            f"{error}",
+        ) from error
+    return record
+
+
+def _transition(primary: Path, task_id: str, state: str) -> None:
+    def change(content):
+        content["transitions"] = [
+            *content["transitions"],
+            {"state": state, "at": now()},
+        ]
+        return content
+
+    change_trace(primary, task_id, change)
+
+
+def escalations(primary: Path, task_id: str, folder: Path | None = None) -> list[dict]:
+    """The task's escalations, numbered from 1, from its trace."""
+    record = task_node(primary, task_id, folder)
+    return list(_task_content(record)["escalations"]) if record else []
+
+
 def unfinished_merge(primary: Path) -> dict | None:
-    """The record of the task stored as ``merging``, or None; merges run one at a time."""
+    """The record of the current task stored as ``merging``, or None; merges run one at a
+    time."""
     for record in _records(primary):
         if record["state"] == "merging":
             return record
@@ -431,7 +666,10 @@ def begin_merge(primary: Path, task_id: str, merging: dict) -> dict:
         record["merging"] = merging
         return record
 
-    return update(primary, task_id, change)
+    with task_locked(primary, task_id):
+        written = update(primary, task_id, change, locked=True)
+        _transition(primary, task_id, "merging")
+    return written
 
 
 def merged_at(primary: Path, task_id: str, after: str) -> dict:
@@ -452,7 +690,10 @@ def end_merge(primary: Path, task_id: str) -> dict:
         record["merging"] = None
         return record
 
-    return update(primary, task_id, change)
+    with task_locked(primary, task_id):
+        written = update(primary, task_id, change, locked=True)
+        _transition(primary, task_id, "open")
+    return written
 
 
 def _ignored_inside(primary: Path, worktree: Path) -> None:
@@ -473,47 +714,214 @@ def _ignored_inside(primary: Path, worktree: Path) -> None:
         )
 
 
-def record_session(primary: Path, task_id: str, session: dict) -> dict:
-    """Append a started task session to the record of an open, active or delivered task."""
+# --- task sessions and their rounds, as nodes of the task's trace ------------------------------
 
-    def change(record):
-        if record["state"] in ENDED:
+SESSION_TRACE = "concorde-session-trace"
+ROUND_TRACE = "concorde-round-trace"
+_NULLABLE = {"anyOf": [{"type": "null"}, _TEXT]}
+# contract.task-session.session-trace, version 1
+register(
+    SESSION_TRACE,
+    1,
+    {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["program", "name", "main", "model", "reported_id"],
+        "properties": {
+            "program": {"enum": ["claude", "pi"]},
+            "name": _TEXT,
+            "main": _NULLABLE,
+            "model": _NULLABLE,
+            "reported_id": _NULLABLE,
+        },
+    },
+)
+# contract.task-session.round-trace, version 1
+register(
+    ROUND_TRACE,
+    1,
+    {
+        "type": "object",
+        "additionalProperties": False,
+        "required": [
+            "round",
+            "prompt",
+            "answer",
+            "outcome",
+            "supervisor_pid",
+            "report",
+        ],
+        "properties": {
+            "round": {"type": "integer", "minimum": 1},
+            "prompt": {"enum": ["task", "answer"]},
+            "answer": {"anyOf": [{"type": "null"}, {"type": "string"}]},
+            "outcome": {
+                "enum": ["running", "delivered", "escalated", "failed", "stopped"]
+            },
+            "supervisor_pid": {"type": "integer"},
+            "report": {"anyOf": [{"type": "null"}, _OBJECT]},
+        },
+    },
+)
+# How a round's outcome ends its node.
+ROUND_STATUS = {
+    "delivered": "ok",
+    "escalated": "blocked",
+    "failed": "failed",
+    "stopped": "failed",
+}
+ROUND_FILES = {
+    "prompt": "prompt.md",
+    "events": "events.jsonl",
+    "stderr": "stderr.log",
+    "supervisor": "supervisor.log",
+}
+
+
+def sessions_folder(primary: Path, task_id: str, folder: Path | None = None) -> Path:
+    return (folder or task_folder(primary, task_id)) / "sessions"
+
+
+def session_folder(primary: Path, task_id: str, session_id: str) -> Path:
+    return sessions_folder(primary, task_id) / session_id
+
+
+def round_folder(primary: Path, task_id: str, session_id: str, number: int) -> Path:
+    return layout.round_folder(session_folder(primary, task_id, session_id), number)
+
+
+def _round_entry(folder: Path, record: dict) -> dict:
+    data = record["content"]["data"]
+    entry = {
+        "round": data["round"],
+        "prompt": data["prompt"],
+        "status": data["outcome"],
+        "supervisor_pid": data["supervisor_pid"],
+        "started_at": record["started_at"],
+        "ended_at": record["ended_at"],
+        "report": data["report"],
+        "error": record["error"],
+        "usage": record["usage"],
+        # The round's files; its prompt file is ``prompt_file``, since ``prompt`` says whether
+        # the prompt was the task or an answer.
+        "prompt_file": (folder / ROUND_FILES["prompt"]).as_posix(),
+        "events": (folder / ROUND_FILES["events"]).as_posix(),
+        "stderr": (folder / ROUND_FILES["stderr"]).as_posix(),
+        "supervisor_log": (folder / ROUND_FILES["supervisor"]).as_posix(),
+    }
+    if data.get("answer") is not None:
+        entry["answer"] = data["answer"]
+    return entry
+
+
+def sessions(primary: Path, task_id: str, folder: Path | None = None) -> list[dict]:
+    """The task's sessions in the order they started, each with its rounds, from its trace."""
+    found = []
+    parent = sessions_folder(primary, task_id, folder)
+    for item in sorted(parent.iterdir()) if parent.is_dir() else []:
+        record = trace.read(item)
+        if record is None or record.get("kind") != "session":
+            continue
+        data = record["content"]["data"]
+        entry = {
+            "program": data["program"],
+            "id": record["id"],
+            "name": data["name"],
+            "main": data["main"],
+            "model": data["model"],
+            "started_at": record["started_at"],
+            "directory": item.as_posix(),
+        }
+        if data["program"] == "claude":
+            entry["reported_id"] = data["reported_id"]
+        else:
+            rounds = []
+            for child in (
+                sorted(
+                    (layout.round_folder(item, 1).parent).glob("*"),
+                    key=lambda path: int(path.name) if path.name.isdigit() else 0,
+                )
+                if (item / "rounds").is_dir()
+                else []
+            ):
+                node = trace.read(child)
+                if node is not None and node.get("kind") == "round":
+                    rounds.append(_round_entry(child, node))
+            entry["rounds"] = rounds
+        found.append(entry)
+    found.sort(key=lambda item: (item["started_at"], item["id"]))
+    return found
+
+
+def _current_open(primary: Path, task_id: str) -> dict:
+    """The record of a current task that has not ended; ``task_closed`` otherwise."""
+    return load_unended(primary, task_id, "a session works only in an open task")
+
+
+def record_session(primary: Path, task_id: str, session: dict) -> dict:
+    """Record a started task session as a node of the task's trace, for a task that has not
+    ended. ``session`` names its program, identity, name, main session and model, and for
+    Claude Code the identity Claude Code reported."""
+    # Checked before taking the lock too, so no lock file is made again for a closed task.
+    _current_open(primary, task_id)
+    with task_locked(primary, task_id):
+        record = _current_open(primary, task_id)
+        folder = session_folder(primary, task_id, session["id"])
+        node = Node(
+            folder,
+            session["id"],
+            "session",
+            content_type=SESSION_TRACE,
+            metadata={
+                "task": task_id,
+                "program": session["program"],
+                "model": session.get("model"),
+            },
+            content={
+                "program": session["program"],
+                "name": session["name"],
+                "main": session.get("main"),
+                "model": session.get("model"),
+                "reported_id": session.get("reported_id"),
+            },
+            started_at=session.get("started_at"),
+        )
+        # Concorde never observes when a session ends.
+        node.record["status"] = "unknown"
+        if session["program"] == "pi":
+            node.keep("progress", layout.PROGRESS)
+        node.start()
+        if node.failure is not None:
             raise TaskError(
-                "task_closed",
-                f"task {task_id} is {record['state']}; a session works only in an open task",
+                "record_unwritable",
+                f"the session node {folder} of task {task_id} cannot be written: {node.failure}",
             )
-        record.setdefault("sessions", []).append(session)
         return record
 
-    return update(primary, task_id, change)
 
-
-def _pi_session(record: dict, session_id: str) -> dict:
-    for item in record.get("sessions") or []:
+def _pi_session(primary: Path, task_id: str, session_id: str) -> dict:
+    for item in sessions(primary, task_id):
         if item.get("program") == "pi" and item.get("id") == session_id:
             return item
     raise TaskError(
         "no_session",
-        f"task {record['id']} has no pi task session {session_id}",
+        f"task {task_id} has no pi task session {session_id}",
     )
 
 
 def begin_round(primary: Path, task_id: str, session_id: str, entry: dict) -> dict:
-    """Append a running round to a pi task session of an unended task whose rounds have all
-    ended.
+    """Write a running round's node under a pi task session of an unended task whose rounds
+    have all ended.
 
-    The task's state is checked inside the transaction, so a close stored between the caller's
+    The task's state is checked while holding its lock, so a close stored between the caller's
     own check and this write refuses the round.
     """
-
-    def change(record):
-        if record["state"] in ENDED:
-            raise TaskError(
-                "task_closed",
-                f"task {task_id} is {record['state']}; a round of a task session begins only "
-                "in an open task",
-            )
-        found = _pi_session(record, session_id)
+    purpose = "a round of a task session begins only in an open task"
+    # Checked before taking the lock too, so no lock file is made again for a closed task.
+    load_unended(primary, task_id, purpose)
+    with task_locked(primary, task_id):
+        record = load_unended(primary, task_id, purpose)
+        found = _pi_session(primary, task_id, session_id)
         running = [item for item in found["rounds"] if item["status"] == "running"]
         if running:
             raise TaskError(
@@ -521,30 +929,92 @@ def begin_round(primary: Path, task_id: str, session_id: str, entry: dict) -> di
                 f"round {running[-1]['round']} of the task session of {task_id} is still "
                 f"running (supervisor process {running[-1]['supervisor_pid']})",
             )
-        found["rounds"].append(entry)
+        folder = round_folder(primary, task_id, session_id, entry["round"])
+        node = Node(
+            folder,
+            str(entry["round"]),
+            "round",
+            content_type=ROUND_TRACE,
+            metadata={"program": "pi", "model": found.get("model")},
+            content={
+                "round": entry["round"],
+                "prompt": entry["prompt"],
+                "answer": entry.get("answer"),
+                "outcome": "running",
+                "supervisor_pid": int(entry["supervisor_pid"]),
+                "report": None,
+            },
+            started_at=entry.get("started_at"),
+        )
+        for identity, name in ROUND_FILES.items():
+            node.keep(identity, name)
+        node.start()
+        if node.failure is not None:
+            raise TaskError(
+                "record_unwritable",
+                f"the round node {folder} of task {task_id} cannot be written: {node.failure}",
+            )
         return record
-
-    return update(primary, task_id, change)
 
 
 def finish_round(
     primary: Path, task_id: str, session_id: str, number: int, fields: dict
 ) -> dict:
-    """Set the outcome of a running round of a pi task session, also of a closed task."""
+    """End the node of a running round of a pi task session, whatever the task's state.
 
-    def change(record):
-        found = _pi_session(record, session_id)
-        for item in found["rounds"]:
-            if item["round"] == number and item["status"] == "running":
-                item.update(fields)
-                item["ended_at"] = now()
-                return record
-        raise TaskError(
-            "session_idle",
-            f"round {number} of the task session {session_id} of {task_id} is not running",
+    ``fields`` holds the round's ``status`` (delivered, escalated, failed or stopped) and may
+    hold its ``report``, ``error`` and ``usage``.
+    """
+    with task_locked(primary, task_id):
+        folder = round_folder(primary, task_id, session_id, number)
+        record = trace.read(folder)
+        if record is None:
+            if not task_folder(primary, task_id).is_dir():
+                raise _unknown(primary, task_id)
+            raise TaskError(
+                "no_session", f"task {task_id} has no pi task session {session_id}"
+            )
+        data = record["content"]["data"]
+        if data["outcome"] != "running":
+            raise TaskError(
+                "session_idle",
+                f"round {number} of the task session {session_id} of {task_id} is not running",
+            )
+        status = fields["status"]
+        data = {
+            **data,
+            "outcome": status,
+            "report": fields.get("report", data["report"]),
+        }
+        ended = now()
+        used = trace.usage(
+            **{
+                key: value
+                for key, value in (fields.get("usage") or {}).items()
+                if key in trace.USAGE_FIELDS
+            }
         )
-
-    return update(primary, task_id, change)
+        if used["duration_seconds"] is None:
+            used["duration_seconds"] = trace.seconds_between(
+                record["started_at"], ended
+            )
+        record.update(
+            ended_at=ended,
+            status=ROUND_STATUS[status],
+            outcome=status,
+            error=fields.get("error")
+            if ROUND_STATUS[status] in ("blocked", "failed")
+            else None,
+            usage=used,
+            content={"type_id": ROUND_TRACE, "schema_version": 1, "data": data},
+            artifacts=[
+                trace.artifact(folder, identity, name)
+                for identity, name in ROUND_FILES.items()
+                if (folder / name).exists()
+            ],
+        )
+        trace.write(folder, record)
+        return record
 
 
 def _registry(root: Path) -> set[str]:
@@ -586,6 +1056,7 @@ def open_task(
     Holds the merge lock, so the task is never based on a merge that may still be undone.
     """
     primary = require_primary(primary)
+    _prune(primary)
     with merge_lock(primary, "open", task_id, wait):
         unfinished = unfinished_merge(primary)
         if unfinished is not None:
@@ -617,10 +1088,10 @@ def _open_task(
             "invalid_input",
             "a task needs a goal and distinct Modules: " + "; ".join(problems),
         )
-    if record_path(primary, task_id).exists():
+    if task_folder(primary, task_id).exists():
         raise TaskError(
             "task_exists",
-            f"task {task_id} already exists ({record_path(primary, task_id)}); choose another "
+            f"task {task_id} already exists ({task_folder(primary, task_id)}); choose another "
             "identity or close it first",
         )
     branch = f"concorde/{task_id}"
@@ -668,21 +1139,26 @@ def _open_task(
             f"git worktree add -b {branch} {worktree} {base_commit} exited "
             f"{created.returncode}: {created.stderr.strip()}",
         )
+    folder = task_folder(primary, task_id)
+    workspace = layout.workspace_folder(folder)
     try:
+        workspace.mkdir(parents=True)
         workspace_binding.write(
             worktree,
             {
-                "schema_version": 1,
+                "schema_version": 2,
                 "workspace": task_id,
                 "root": os.path.realpath(worktree),
                 "branch": branch,
                 "base_commit": base_commit,
                 "goal": goal,
                 "modules": list(modules),
-                "records": os.path.realpath(primary / ".concorde"),
+                "traces": os.path.realpath(workspace),
+                "concorde": os.path.realpath(concorde(primary)),
             },
         )
     except (OSError, ValueError) as error:
+        shutil.rmtree(folder, ignore_errors=True)
         raise TaskError(
             "binding_failed",
             f"the workspace binding {workspace_binding.BINDING} of the new worktree {worktree} "
@@ -692,6 +1168,7 @@ def _open_task(
         ) from error
     stamp = now()
     record = {
+        "schema_version": 2,
         "id": task_id,
         "goal": goal,
         "modules": list(modules),
@@ -701,17 +1178,48 @@ def _open_task(
         "state": "open",
         "created_at": stamp,
         "updated_at": stamp,
-        "escalations": [],
-        "sessions": [],
         "merging": None,
         "closed": None,
     }
-    with _locked(primary):
+    with task_locked(primary, task_id):
+        node = Node(
+            folder,
+            task_id,
+            "task",
+            content_type=TASK_TRACE,
+            metadata={
+                "task": task_id,
+                "modules": list(modules),
+                "branch": branch,
+                "base_commit": base_commit,
+                "concorde_commit": concorde_commit(),
+                "protocol_version": protocol_version(primary),
+            },
+            content={
+                "goal": goal,
+                "worktree": os.path.realpath(worktree),
+                "transitions": [{"state": "open", "at": stamp}],
+                "escalations": [],
+                "closing": None,
+            },
+        )
+        node.keep("record", RECORD)
+        node.keep("decision-log", DECISIONS)
+        node.start()
         _write(record_path(primary, task_id), _serialize(record))
-        log = decision_log_path(primary, task_id)
+        log = folder / DECISIONS
         if not log.exists():
             log.write_text(f"# Decision log: {task_id}\n\nGoal: {goal}\n")
     return record
+
+
+def _prune(primary: Path) -> None:
+    """Tracing's retention, at the start of every open and close; a Tracing configuration it
+    cannot read refuses the command."""
+    try:
+        retention.prune(concorde(primary))
+    except retention.ConfigError as error:
+        raise TaskError("config_invalid", str(error)) from error
 
 
 def deliveries(primary: Path, record: dict) -> list[dict]:
@@ -752,15 +1260,16 @@ def derived_state(primary: Path, record: dict, runs: list[dict] | None = None) -
     ):
         return "delivered"
     if runs is None:
-        runs = workspace_runs(primary / ".concorde", record["id"])
+        runs = workspace_runs(workspace_store(primary, record["id"]), record["id"])
     if runs or (head and head != record["base_commit"]) or _dirty(worktree):
         return "active"
     return "open"
 
 
 def list_tasks(primary: Path, state: str | None = None) -> list[dict]:
-    """Every task record with its derived state, oldest first; ``state`` filters on it."""
-    records = _records(primary)
+    """Every current and closed task record with its derived state, oldest first; ``state``
+    filters on it."""
+    records = _records(primary, history=True)
     records.sort(key=lambda item: (item["created_at"], item["id"]))
     for record in records:
         record["state"] = derived_state(primary, record)
@@ -769,17 +1278,23 @@ def list_tasks(primary: Path, state: str | None = None) -> list[dict]:
 
 def show_task(primary: Path, task_id: str) -> dict:
     """The record with its derived state, the workspace's runs and delivery commits, each with
-    how it disagrees with its bundle, who holds the workspace lock, and the decision log's
-    path."""
-    record = load_task(primary, task_id)
-    runs = workspace_runs(primary / ".concorde", task_id)
+    how it disagrees with its bundle, the sessions with their rounds and the escalations from
+    the task's trace, who holds the workspace lock, and the paths of the decision log and of the
+    task's folder, current or in the history."""
+    record, folder = load_any(primary, task_id)
+    store = workspace_store(primary, record["id"], folder)
+    runs = workspace_runs(store, record["id"])
     record["state"] = derived_state(primary, record, runs)
+    current = folder == task_folder(primary, record["id"])
     return {
         "record": record,
         "runs": runs,
         "deliveries": [verified(primary, item) for item in deliveries(primary, record)],
-        "busy": lock_holder(primary / ".concorde", task_id),
-        "decision_log": decision_log_path(primary, task_id).as_posix(),
+        "sessions": sessions(primary, record["id"], folder),
+        "escalations": escalations(primary, record["id"], folder),
+        "busy": lock_holder(store, record["id"]) if current else None,
+        "decision_log": (folder / DECISIONS).as_posix(),
+        "folder": folder.as_posix(),
     }
 
 
@@ -821,8 +1336,8 @@ def _dirty_detail(worktree: Path) -> str:
     return f"{worktree} has {len(lines)} uncommitted change(s): {shown}{more}"
 
 
-def escalate(primary: Path, task_id: str, error: dict) -> dict:
-    """Record an escalated error link in the task record and its decision log.
+def escalate(primary: Path, task_id: str, error: dict) -> int:
+    """Record an escalated error link in the task's trace and its decision log; its number.
 
     A ``task-session`` link escalates to the main agent, a ``main-agent`` link to the developer.
     """
@@ -830,12 +1345,21 @@ def escalate(primary: Path, task_id: str, error: dict) -> dict:
 
     stamp = now()
     receiver = "main agent" if error["level"] == "task-session" else "developer"
+    by = "task-session" if error["level"] == "task-session" else "main-agent"
+    number = 0
+    with task_locked(primary, task_id):
+        load_task(primary, task_id)
 
-    def change(record):
-        record.setdefault("escalations", []).append({"at": stamp, "error": error})
-        return record
+        def change(content):
+            nonlocal number
+            number = len(content["escalations"]) + 1
+            content["escalations"] = [
+                *content["escalations"],
+                {"number": number, "at": stamp, "by": by, "error": error},
+            ]
+            return content
 
-    record = update(primary, task_id, change)
+        change_trace(primary, task_id, change)
     path = decision_log_path(primary, task_id)
     try:
         with path.open("a", encoding="utf-8") as stream:
@@ -844,17 +1368,16 @@ def escalate(primary: Path, task_id: str, error: dict) -> dict:
                 f"```json\n{json.dumps(error, indent=2, ensure_ascii=False)}\n```\n"
             )
     except OSError as failure:
-        number = len(record["escalations"])
         raise TaskError(
             "decision_log_failed",
-            f"the escalation was written to the record of task {task_id} as escalation "
-            f"{number} (`concorde task show {task_id}` prints it under record.escalations), "
+            f"the escalation was written to the trace of task {task_id} as escalation "
+            f"{number} (`concorde task show {task_id}` prints it under escalations), "
             f"but appending it to the decision log {path} failed afterwards: {failure}; "
             "escalating again would record it twice, so once the log is writable append it "
             f"there by hand under the heading `## Escalated to the {receiver}, {stamp}`; the "
             f"escalated chain:\n{render(error)}",
         ) from failure
-    return record
+    return number
 
 
 def mergeable(primary: Path, task_id: str) -> tuple[dict, str]:
@@ -908,7 +1431,10 @@ def close_task(
 
     A merged task must have its latest delivery commit in the primary branch. A completed task
     reached its goal without merging and says how in ``note``. A failed task gives its reason in
-    ``note`` and the error chains that caused it in ``errors``, or none when no error did.
+    ``note`` and the error chains that caused it in ``errors``, or none when no error did. A task
+    closed without a merge first has the runs of its workspace that still run and a running
+    round of its pi task session stopped; the close then waits for its workspace lock, so the
+    task's folder moves to the history only once nothing of it runs.
     """
     primary = require_primary(primary)
     problems = []
@@ -928,7 +1454,10 @@ def close_task(
         problems.append("--force applies only to closing without a merge")
     if problems:
         raise TaskError("invalid_input", "; ".join(problems))
-    load_task(primary, task_id)
+    refuse_closed(primary, task_id)
+    _prune(primary)
+    if outcome != "merged":
+        stop_task(primary, task_id)
     started = time.monotonic()
     with task_workspace_locked(primary, task_id, "close", wait):
         remaining = max(0.0, wait - (time.monotonic() - started))
@@ -941,6 +1470,52 @@ def close_task(
             )
 
 
+def stop_task(primary: Path, task_id: str) -> list[str]:
+    """Stop what still runs for a task: each run of its workspace whose runner holds its run lock
+    and is visible to this process, with ``SIGTERM``, and a running round of its pi task
+    session, as ``session --stop`` does. The runs end with their own results; the close then
+    waits for the workspace lock. What was stopped, described."""
+    import signal
+
+    stopped = []
+    store = workspace_store(primary, task_id)
+    for folder in store.folders():
+        progress = load_progress_of(folder)
+        run_id = (progress or {}).get("run_id") or folder.name
+        lock = store.run_lock(run_id)
+        for pid in locks.holder_pids(lock):
+            try:
+                os.kill(pid, signal.SIGTERM)
+                stopped.append(f"run {run_id} (process {pid})")
+            except OSError:
+                continue
+    running = [
+        item
+        for found in sessions(primary, task_id)
+        if found.get("program") == "pi"
+        for item in found.get("rounds", [])
+        if item["status"] == "running"
+    ]
+    if running:
+        from . import pi_session
+
+        try:
+            pi_session.stop(primary, task_id)
+            stopped.append(f"round {running[-1]['round']} of the pi task session")
+        except TaskError as error:
+            if error.code not in ("session_idle", "no_session"):
+                raise
+    return stopped
+
+
+def load_progress_of(folder: Path) -> dict | None:
+    try:
+        value = json.loads((folder / layout.PROGRESS).read_text())
+    except (OSError, ValueError):
+        return None
+    return value if isinstance(value, dict) else None
+
+
 def close_locked(
     primary: Path,
     task_id: str,
@@ -950,13 +1525,16 @@ def close_locked(
     errors: list[dict] | None = None,
     force: bool = False,
     again: str | None = None,
+    before_move=None,
 ) -> dict:
     """``close_task`` for a caller already holding the merge lock and the workspace lock.
 
-    Removing the worktree, writing the record and appending to the decision log cannot be one
-    transaction, so a refusal after one of them says what this close did and that ``again``
-    (by default the same close) finishes it; the same close of a task whose record is closed
-    but whose decision log lacks its closing appends it.
+    Removing the worktree, writing the record, ending the trace node, appending to the decision
+    log and moving the folder to the history cannot be one transaction, so a refusal after one of
+    them says what this close did and that ``again`` (by default the same close) finishes it; the
+    same close of a task whose record is closed but that is still current finishes the steps it
+    lacks. ``before_move`` runs just before the folder moves, such as a merge ending its
+    attempt's node.
     """
     errors = list(errors or [])
     again = (
@@ -966,14 +1544,16 @@ def close_locked(
     worktree = Path(record["worktree"])
     if record["state"] in ENDED:
         ended = record.get("closed") or {}
-        if ended.get("outcome") == outcome and not _closing_logged(
-            primary, task_id, ended
-        ):
+        if ended.get("outcome") != outcome:
+            raise TaskError(
+                "invalid_transition", f"task {task_id} is already {record['state']}"
+            )
+        if not _closing_logged(primary, task_id, ended):
             _log_closing(primary, task_id, ended)
-            return record
-        raise TaskError(
-            "invalid_transition", f"task {task_id} is already {record['state']}"
-        )
+        if before_move is not None:
+            before_move()
+        _move_to_history(primary, task_id, ended["history"], again)
+        return record
     if outcome == "merged":
         record, head = mergeable(primary, task_id)
         contained = _git(
@@ -1028,23 +1608,28 @@ def close_locked(
 
     stamp = now()
     state = "failed" if outcome == "failed" else "closed"
+    key = layout.history_key(concorde(primary), task_id)
+    closing = {
+        "state": state,
+        "outcome": outcome,
+        "note": note.strip() if note and note.strip() else None,
+        "errors": errors,
+        "at": stamp,
+        "primary_commit": primary_head,
+        "worktree_removed": removed,
+        "history": key,
+    }
 
     def change(record):
         record["state"] = state
         record["merging"] = None
-        record["closed"] = {
-            "state": state,
-            "outcome": outcome,
-            "note": note.strip() if note and note.strip() else None,
-            "errors": errors,
-            "at": stamp,
-            "primary_commit": primary_head,
-            "worktree_removed": removed,
-        }
+        record["closed"] = closing
         return record
 
     try:
-        closed = update(primary, task_id, change)
+        with task_locked(primary, task_id):
+            closed = update(primary, task_id, change, locked=True)
+            _end_task_node(primary, task_id, closing)
     except TaskError as error:
         if not removed:
             raise
@@ -1055,7 +1640,92 @@ def close_locked(
             "finishes the close",
         ) from error
     _log_closing(primary, task_id, closed["closed"])
+    if before_move is not None:
+        before_move()
+    _move_to_history(primary, task_id, key, again)
     return closed
+
+
+def _end_task_node(primary: Path, task_id: str, closing: dict) -> None:
+    """End the task's trace node with how it ended; the caller holds the task's lock."""
+    folder = task_folder(primary, task_id)
+    record = _node_of(folder)
+    content = _task_content(record)
+    content["transitions"] = [
+        *content["transitions"],
+        {"state": closing["state"], "at": closing["at"]},
+    ]
+    content["closing"] = {
+        key: closing[key]
+        for key in (
+            "outcome",
+            "note",
+            "errors",
+            "primary_commit",
+            "worktree_removed",
+            "history",
+        )
+    }
+    status = "failed" if closing["state"] == "failed" else "ok"
+    record.update(
+        ended_at=closing["at"],
+        status=status,
+        outcome=closing["outcome"],
+        error=closing["errors"][0]
+        if status == "failed" and closing["errors"]
+        else None,
+        usage=trace.usage(
+            duration_seconds=trace.seconds_between(record["started_at"], closing["at"])
+        ),
+        content={"type_id": TASK_TRACE, "schema_version": 1, "data": content},
+        artifacts=[
+            trace.artifact(folder, identity, name)
+            for identity, name in (("record", RECORD), ("decision-log", DECISIONS))
+            if (folder / name).exists()
+        ],
+    )
+    try:
+        trace.write(folder, record)
+    except OSError as error:
+        raise TaskError(
+            "record_unwritable",
+            f"the trace node {folder / layout.TRACE} of task {task_id} cannot be written: "
+            f"{error}",
+        ) from error
+
+
+def _move_to_history(primary: Path, task_id: str, key: str, again: str) -> None:
+    """Move the closed task's folder to the history and remove its task, workspace and
+    workflow locks; the caller holds the workspace lock, so no run of the task runs."""
+    folder = task_folder(primary, task_id)
+    target = history_folder(primary, key)
+    base = concorde(primary)
+    with locks.hold(
+        task_lock_path(primary, task_id),
+        f"close of task {task_id}",
+        wait=None,
+        remove=True,
+    ):
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if target.exists():
+                raise OSError(f"{target} already exists")
+            os.rename(folder, target)
+        except OSError as error:
+            raise TaskError(
+                "history_move_failed",
+                f"task {task_id} is closed in its record and its decision log holds the "
+                f"closing, but moving its folder {folder} to the history {target} failed: "
+                f"{error}; the folder stays where it is, and once the cause is fixed, {again} "
+                "moves it",
+            ) from error
+        # The runtime configuration of its task sessions is no trace.
+        shutil.rmtree(target / "runtime", ignore_errors=True)
+    for path in (
+        layout.lock_file(base, "workspace", task_id),
+        layout.lock_file(base, "workflow", task_id),
+    ):
+        path.unlink(missing_ok=True)
 
 
 def _closing_heading(closed: dict) -> str:

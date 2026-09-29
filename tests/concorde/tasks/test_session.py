@@ -11,6 +11,7 @@ from pathlib import Path
 
 from concorde.spec.verification import verifies
 from concorde.tasks import session, store
+from concorde.tracing import node as trace
 from tests.concorde.support.operation_project import OperationProject
 
 
@@ -32,6 +33,28 @@ class TaskSessionTests(unittest.TestCase):
         self.root = self.project.root
         self.project.open_task("t1", goal="Let reports carry a severity.")
         self.worktree = self.project.worktree("t1")
+        self.folder = self.root / ".concorde/tasks/t1"
+
+    def recorded(self, started: dict) -> None:
+        """The task's trace holds ``started`` as its only session, a node of its own."""
+        (found,) = store.sessions(self.root, "t1")
+        fields = ("program", "id", "reported_id", "name", "main", "model", "started_at")
+        self.assertEqual(
+            {key: started[key] for key in fields}, {key: found[key] for key in fields}
+        )
+        folder = self.folder / "sessions" / started["id"]
+        self.assertEqual(str(folder), found["directory"])
+        node = trace.read(folder)
+        self.assertEqual(
+            (started["id"], "session", "unknown"),
+            (node["id"], node["kind"], node["status"]),
+        )
+        self.assertEqual(
+            ("claude", started["name"], started["main"]),
+            tuple(node["content"]["data"][key] for key in ("program", "name", "main")),
+        )
+        # The record keeps no sessions.
+        self.assertNotIn("sessions", store.load_task(self.root, "t1"))
 
     @verifies("scenario.task-session.start")
     def test_start_a_task_session(self):
@@ -39,7 +62,7 @@ class TaskSessionTests(unittest.TestCase):
         started = session.start(
             self.root, "t1", "concorde-7d", run=claude, home=self.project.home
         )
-        directory = self.root / ".concorde/tasks/t1.session"
+        directory = self.folder / "runtime"
         self.assertTrue((directory / "settings.json").is_file())
         self.assertTrue((directory / "write_hook.py").is_file())
         [(command, options)] = claude.calls
@@ -61,7 +84,7 @@ class TaskSessionTests(unittest.TestCase):
             ("33afbc14", "task-t1", "concorde-7d"),
             (started["id"], started["name"], started["main"]),
         )
-        self.assertEqual([started], store.load_task(self.root, "t1")["sessions"])
+        self.recorded(started)
 
     @verifies("scenario.task-session.start")
     def test_a_coloured_start_line_is_recognised(self):
@@ -75,7 +98,7 @@ class TaskSessionTests(unittest.TestCase):
             self.root, "t1", "m", run=claude, home=self.project.home
         )
         self.assertEqual("e3b90936", started["id"])
-        self.assertEqual([started], store.load_task(self.root, "t1")["sessions"])
+        self.recorded(started)
 
     @verifies("scenario.task-session.start")
     def test_a_session_claude_code_did_not_start_is_refused(self):
@@ -88,6 +111,8 @@ class TaskSessionTests(unittest.TestCase):
         self.assertEqual("session_failed", raised.exception.code)
         self.assertIn("Workspace not trusted", str(raised.exception))
         self.assertEqual(before, store.load_task(self.root, "t1"))
+        self.assertEqual([], store.sessions(self.root, "t1"))
+        self.assertFalse((self.folder / "sessions").exists())
 
     @verifies("scenario.task-session.start")
     def test_a_closed_task_starts_no_session(self):
@@ -97,10 +122,13 @@ class TaskSessionTests(unittest.TestCase):
                 self.root, "t1", "m", run=FakeClaude(), home=self.project.home
             )
         self.assertEqual("task_closed", raised.exception.code)
+        # No boundary is written into the task's folder in the history.
+        self.assertFalse((self.root / ".concorde/history/t1/runtime").exists())
+        self.assertFalse(self.folder.exists())
 
     def hook(self, target: Path) -> dict | None:
         """The written hook's decision on an Edit of ``target``: None allows."""
-        hook = self.root / ".concorde/tasks/t1.session/write_hook.py"
+        hook = self.folder / "runtime/write_hook.py"
         decided = subprocess.run(
             [sys.executable, str(hook)],
             input=json.dumps(
@@ -123,7 +151,9 @@ class TaskSessionTests(unittest.TestCase):
         )
         self.assertEqual(str(self.worktree), shown["cwd"])
         self.assertIsNone(self.hook(self.worktree / "src/a/calc.py"))
-        self.assertIsNone(self.hook(self.root / ".concorde/tasks/t1.decisions.md"))
+        self.assertIsNone(self.hook(self.folder / "decisions.md"))
+        # The task's record and trace are Tasks' own: the hook denies them.
+        self.assertIsNotNone(self.hook(self.folder / "task.json"))
         denied = self.hook(self.root / "src/a/calc.py")
         self.assertEqual("deny", denied["hookSpecificOutput"]["permissionDecision"])
         self.assertIn(
@@ -141,15 +171,16 @@ class TaskSessionTests(unittest.TestCase):
                 for path in (
                     self.worktree,
                     self.root / ".git",
-                    self.root / ".concorde/runs",
-                    self.root / ".concorde/tasks",
+                    self.folder,
+                    self.root / ".concorde/locks",
                     home / ".cache",
                     home / ".npm",
                 )
             ),
             sandbox["filesystem"]["allowWrite"],
         )
-        self.assertEqual([], store.load_task(self.root, "t1")["sessions"])
+        # A dry run records no session.
+        self.assertEqual([], store.sessions(self.root, "t1"))
 
 
 if __name__ == "__main__":

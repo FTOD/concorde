@@ -75,11 +75,13 @@ class UnderstandTests(unittest.TestCase):
         )
 
     def fake_round(self, envelope) -> dict:
+        """The tool set the worker was given and its first prompt, the brief its run directory
+        keeps."""
         record = read_record(
             self.project.root / ".concorde", envelope["worker_runs"][-1]
         )
-        work = Path(record["run_directory"]) / "work"
-        return json.loads((work / "fake-round-1.json").read_text())
+        brief = (Path(record["run_directory"]) / "brief.md").read_text()
+        return {"tools": record["tools"], "prompt": brief}
 
     @verifies("scenario.understanding.sufficient")
     def test_a_sufficient_spec_is_confirmed_without_a_plan(self):
@@ -93,8 +95,7 @@ class UnderstandTests(unittest.TestCase):
         # The goal is the host's argument, repeated verbatim.
         self.assertIn("FAKE-PLAN", output["goal"])
         seen = self.fake_round(envelope)
-        tools = seen["argv"][seen["argv"].index("--tools") + 1]
-        self.assertEqual("Read,Glob,Grep", tools)
+        self.assertEqual("Read,Glob,Grep", seen["tools"])
         brief = seen["prompt"]
         readable = brief.split("You may read these paths")[1].split("You may know")[0]
         names = brief.split("You may know that these files exist")[1]

@@ -23,7 +23,9 @@ from tests.concorde.validation.project import (
     ValidationProject,
     evidence_of,
     git,
+    run_folder,
     status_lines,
+    workspace_run,
 )
 
 FIXED = "def add(a, b):\n    return a + b\n"
@@ -69,11 +71,14 @@ class ValidateTests(unittest.TestCase):
             [(c["check"], c["module"], c["status"]) for c in readiness["checks"]],
             [("check.a", "module.a", "passed")],
         )
-        log = self.project.root / readiness["checks"][0]["log"]
-        self.assertTrue(log.is_file())
-        saved = (
-            self.project.root / ".concorde/runs" / envelope["run_id"] / "readiness.json"
-        )
+        # The run's node lies in the task's workspace folder; each check is a check node below
+        # it, whose log the readiness names relative to the run's node.
+        folder = workspace_run(self.project.root, envelope)
+        self.assertEqual("checks/check.a/output.log", readiness["checks"][0]["log"])
+        self.assertTrue((folder / readiness["checks"][0]["log"]).is_file())
+        check_node = json.loads((folder / "checks/check.a/trace.json").read_text())
+        self.assertEqual("check", check_node["kind"])
+        saved = folder / "readiness.json"
         self.assertEqual(json.loads(saved.read_text()), readiness)
         self.assertEqual(snapshot(self.worktree), before)
         # An execution command of the bound workspace launches no worker.
@@ -336,7 +341,8 @@ class ValidateTests(unittest.TestCase):
             [item["ref"] for item in evidence_of(envelope, "readiness")][-1],
             "inputs_changed",
         )
-        run_dir = self.project.root / ".concorde/runs" / envelope["run_id"]
+        run_dir = workspace_run(self.project.root, envelope)
+        self.assertTrue((run_dir / "trace.json").is_file())
         self.assertFalse((run_dir / "readiness.json").exists())
         self.assertEqual([], envelope["error"]["causes"])
 
@@ -371,7 +377,8 @@ class ValidateTests(unittest.TestCase):
         self.assertEqual((status, envelope["status"]), (1, "failed"))
         self.assertEqual(evidence_of(envelope, "git")[0]["ref"], "wrong_branch")
         self.assertEqual(evidence_of(envelope, "check"), [])
-        run_dir = self.project.root / ".concorde/runs" / envelope["run_id"]
+        run_dir = workspace_run(self.project.root, envelope)
+        self.assertTrue((run_dir / "trace.json").is_file())
         self.assertFalse((run_dir / "checks").exists())
 
     @verifies("scenario.validation.sandbox-unavailable")
@@ -410,11 +417,13 @@ class BindingTests(unittest.TestCase):
         self.assertEqual((None, None), (envelope["workspace"], envelope["output"]))
         self.assertEqual(["refused", "binding_required"], codes(envelope["error"]))
         self.assertEqual("scope", envelope["error"]["unhandled"]["reason"])
-        self.assertTrue(
-            (
-                project.root / ".concorde/runs" / envelope["run_id"] / "result.json"
-            ).is_file()
+        # A run whose binding was refused is kept with the unbound runs of the worktree it
+        # started in.
+        folder = run_folder(envelope)
+        self.assertEqual(
+            project.root / ".concorde/unbound" / envelope["run_id"], folder
         )
+        self.assertTrue((folder / "result.json").is_file())
 
     def test_a_broken_binding_is_refused(self):
         project = ValidationProject(self)

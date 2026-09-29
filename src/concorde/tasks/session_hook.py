@@ -2,8 +2,8 @@
 
 ``concorde task session`` copies this file next to the session's settings with the task's paths
 embedded in ``ALLOWED`` and registers it for Edit and Write. It reads the hook input on standard
-input and prints nothing for a path inside the task worktree or the task's decision log, so the
-permission mode decides as usual; for any other path it prints a ``deny`` decision whose reason
+input and prints nothing for a path inside the task worktree or the task's decision log while the
+task's folder exists, so the permission mode decides as usual; for any other path it prints a ``deny`` decision whose reason
 tells the session why. Any failure denies.
 """
 
@@ -29,6 +29,12 @@ def decide(data: dict, allowed: dict) -> str | None:
     if resolved == worktree or resolved.startswith(worktree + "/"):
         return None
     if resolved in allowed["files"]:
+        if not os.path.isdir(parent):
+            # The task was closed: its folder moved to the history, which nothing changes.
+            return (
+                f"{target} is the decision log of task {allowed['task']}, which is closed: its "
+                "folder moved to the history, which is never changed"
+            )
         return None
     return (
         f"{target} is outside the worktree of task {allowed['task']} ({worktree}); a task "

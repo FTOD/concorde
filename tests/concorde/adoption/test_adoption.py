@@ -59,15 +59,13 @@ class AdoptionTests(AdoptionCase):
             self.project.root / ".concorde", envelope["worker_runs"][-1]
         )
         self.assertEqual("code-to-spec", record["task_type"])
-        frozen = json.loads(
-            (Path(record["run_directory"]) / "control/grant.json").read_text()
-        )
+        frozen = json.loads((Path(record["run_directory"]) / "grant.json").read_text())
         levels = {entry["path"]: entry["level"] for entry in frozen["entries"]}
         self.assertNotIn("rw", levels.values())
         self.assertEqual("ro", levels["src/"])
         self.assertEqual("ro", levels["specs/project/module.md"])
-        fake = self.fake_round(envelope)
-        tools = fake["argv"][fake["argv"].index("--tools") + 1]
+        fake = self.worker_round(envelope)
+        tools = fake["tools"]
         self.assertEqual("Read,Glob,Grep", tools)
         self.assertIn("src/checkout/api.py", fake["prompt"])
         self.assertRegex(fake["prompt"], r"\d+\s+src/inventory/stock\.py")
@@ -89,7 +87,7 @@ class AdoptionTests(AdoptionCase):
         status, envelope = self.survey()
         self.assertEqual(0, status, envelope)
         inventory = (
-            self.fake_round(envelope)["prompt"]
+            self.worker_round(envelope)["prompt"]
             .split("with their size in lines:", 1)[1]
             .split("```\n\n", 1)[0]
         )
@@ -106,9 +104,10 @@ class AdoptionTests(AdoptionCase):
         status, envelope = self.survey(task=False)
         self.assertEqual(0, status, envelope)
         self.assertIsNone(envelope["workspace"])
-        self.assertEqual(
-            [], list((self.project.root / ".concorde/tasks").glob("*.json"))
-        )
+        # No task is opened: the unbound run's node lies in the worktree's own unbound folder.
+        self.assertEqual([], list((self.project.root / ".concorde/tasks").glob("*")))
+        folder = self.project.root / ".concorde/unbound" / envelope["run_id"]
+        self.assertTrue((folder / "result.json").is_file())
 
     @verifies("scenario.adoption.survey-checks")
     def test_proposed_checks_take_the_configurations_form(self):
@@ -126,7 +125,7 @@ class AdoptionTests(AdoptionCase):
         _, envelope = self.survey(outside)
         self.assertEqual("inconsistent_proposal", envelope["error"]["code"])
         self.assertIn("'../elsewhere'", envelope["error"]["detail"])
-        prompt = self.fake_round(envelope)["prompt"]
+        prompt = self.worker_round(envelope)["prompt"]
         self.assertIn('["{python}", "-m", "pytest", "tests"]', prompt)
 
     @verifies("scenario.adoption.survey-inconsistent")
@@ -175,7 +174,7 @@ class AdoptionTests(AdoptionCase):
         self.assertIn(
             "module.db", [child["id"] for child in envelope["output"]["children"]]
         )
-        self.assertIn(first["run_id"], self.fake_round(envelope)["prompt"])
+        self.assertIn(first["run_id"], self.worker_round(envelope)["prompt"])
         # An answer the proposal ignores fails the run.
         status, envelope = self.survey(PROPOSAL, "--answers", answers)
         self.assertEqual("failed", envelope["status"])
@@ -336,7 +335,7 @@ class AdoptionTests(AdoptionCase):
         entry = self.worktree / "specs/project/checkout/module.md"
         entry.write_text(entry.read_text().replace("## Design", "## Drawing"))
         _, envelope = self.describe([{}])
-        prompt = self.fake_round(envelope)["prompt"]
+        prompt = self.worker_round(envelope)["prompt"]
         self.assertIn("Structural errors already in the documents you describe", prompt)
         self.assertIn(
             "specs/project/checkout/module.md",
@@ -497,8 +496,8 @@ class AdoptionTests(AdoptionCase):
             self.project.root / ".concorde", envelope["worker_runs"][-1]
         )
         self.assertEqual("code-to-spec", record["task_type"])
-        fake = self.fake_round(envelope)
-        tools = fake["argv"][fake["argv"].index("--tools") + 1]
+        fake = self.worker_round(envelope)
+        tools = fake["tools"]
         self.assertIn("Edit", tools)
         self.assertNotIn("Bash", tools)
         self.assertIn("Describing the code you read", fake["prompt"])

@@ -404,9 +404,9 @@ command, never your primary checkout's, because only the task branch knows the S
 task changes.
 
 Each Operation is one `concorde run` command and each deterministic step one execution command, all
-run inside the task worktree. Each prints one JSON result, also saved as
-`.concorde/runs/<run-id>/result.json` of your primary checkout, and one task's worktree runs one of
-them at a time.
+run inside the task worktree. Each prints one JSON result, also saved in the task's folder of your
+primary checkout, `.concorde/tasks/<task>/workspace/runs/<run-id>/result.json`, and one task's
+worktree runs one of them at a time.
 
 ```bash
 concorde run understand  --goal "how should retries be limited?" --plan
@@ -456,7 +456,8 @@ concorde task merge retry
 This merges the task branch, runs `concorde spec-validation` on the result (or the commands you name with
 `--check`, for example a build before validating), and closes the task. Closing removes the
 worktree and keeps the record. If a check fails, the merge is undone and the primary branch is left
-as it was; the output of the checks is in `.concorde/tasks/retry.merge.log`. A merge conflict is
+as it was; the output of each check is kept with the merge attempt, in
+`.concorde/tasks/retry/merges/<n>/checks/`. A merge conflict is
 not resolved in your primary checkout either: the merge is aborted, and the main agent has the
 task session merge your primary branch into the task branch, resolve the conflict and deliver
 again, the only merge a task session makes.
@@ -554,8 +555,39 @@ concorde task escalate retry --run <run-id> --code spec_decision \
   --option "3 retries" --option "5 retries" --recommendation "3 retries"
 ```
 
-The chain is recorded in the task record and the decision log and printed for you, so you see the
-full path from where the error started to the question you are asked.
+The chain is recorded in the task's trace and the decision log and printed for you, so you see
+the full path from where the error started to the question you are asked.
+
+### Traces
+
+Every level of the work leaves a record in one shape: the task, its task sessions and their rounds,
+its merges, its workflow and steps, each run, each check and each worker run with its rounds, each
+nested inside the level that started it. Together they are the task's trace, which you read with:
+
+```bash
+concorde trace show retry --format tree
+```
+
+It prints each part with its status, how long it took and, rolled up over everything below it, the
+tokens, cost and turns the models used, so you see at once which run or worker round made a task
+slow or expensive. `concorde trace show <run-id>` shows one run, `concorde trace list --history
+--unbound` lists the current tasks, the closed ones and the runs without a task, and without
+`--format tree` every command prints JSON for your own analysis.
+
+While a task is open, everything about it lives in one folder, `.concorde/tasks/<task>/`. Closing
+the task moves that folder to `.concorde/history/<task>/`, where it stays as it was. Runs without a
+task are kept seven days after they end; `concorde trace prune` removes what has expired, which
+`task open` and `task close` also do. To keep them longer, or to remove closed tasks after some
+days, write `.concorde/tracing.json`:
+
+```json
+{
+  "schema_version": 1,
+  "retention": { "unbound_days": 30, "history_days": 180 }
+}
+```
+
+The evidence bundle each delivery commits stays in Git whatever is removed.
 
 ## What workers can and cannot do
 
@@ -580,8 +612,10 @@ five kinds:
 - **capability context**: the tools the worker may use and the result it must return;
 - **task context**: the brief with the task, its constraints and the artifacts of earlier steps.
 
-The same grant is compiled into each backend's own mechanism. A Claude Code worker
-runs in its own run directory under `.concorde/runs/` with:
+The same grant is compiled into each backend's own mechanism. A worker's configuration, the copies
+of the credentials it needs and its working directories live in a private directory under `/tmp`
+that is removed when the worker ends; what it was given and did, its grant, brief, transcript and
+rounds, is kept in its run's folder. A Claude Code worker runs with:
 
 - deny rules for the file tools, which Claude Code also applies to its Bash sandbox;
 - a hook that lets Edit and Write touch only the writable paths;
@@ -677,21 +711,24 @@ Neither user documents nor custom docs may contain a registered Spec document.
 
 ## Where things live
 
-| Path                                       | What it holds                                                                |
-| ------------------------------------------ | ---------------------------------------------------------------------------- |
-| `specs/`                                   | Your Specs: each Module's documents and their `.md.json` metadata.           |
-| `.concorde/config.json`                    | The Protocol binding and your project's interpreter.                         |
-| `.concorde/checks/`                        | Your checks, one `<module id>.json` file per Module.                         |
-| `.concorde/workers.json`                   | The models and limits of the workers.                                        |
-| `.concorde/specs.json`                     | The registry of Modules.                                                     |
-| `.concorde/protocol/`                      | The installed Spec Protocol.                                                 |
-| `.concorde/bin/concorde`                   | The `concorde` command.                                                      |
-| `.concorde/framework/`, `.concorde/tools/` | The installed runtime and `d2` (ignored by Git).                             |
-| `.concorde/tasks/`                         | Task records and decision logs (ignored by Git).                             |
-| `.concorde/runs/`                          | Each Operation run: its result, logs and worker transcript (ignored by Git). |
-| `.concorde/evidence/`                      | Evidence bundles committed by `delivery`.                                    |
-| `.concorde/issues/`                        | Issue records.                                                               |
-| `.claude/skills/concorde/SKILL.md`         | The main agent's guidance.                                                   |
+| Path                                       | What it holds                                                                           |
+| ------------------------------------------ | --------------------------------------------------------------------------------------- |
+| `specs/`                                   | Your Specs: each Module's documents and their `.md.json` metadata.                      |
+| `.concorde/config.json`                    | The Protocol binding and your project's interpreter.                                    |
+| `.concorde/checks/`                        | Your checks, one `<module id>.json` file per Module.                                    |
+| `.concorde/workers.json`                   | The models and limits of the workers.                                                   |
+| `.concorde/specs.json`                     | The registry of Modules.                                                                |
+| `.concorde/protocol/`                      | The installed Spec Protocol.                                                            |
+| `.concorde/bin/concorde`                   | The `concorde` command.                                                                 |
+| `.concorde/framework/`, `.concorde/tools/` | The installed runtime and `d2` (ignored by Git).                                        |
+| `.concorde/tasks/<task>/`                  | A current task: its record, decision log, sessions, merges and runs (ignored by Git).   |
+| `.concorde/history/`                       | The folders of closed tasks, kept as they were (ignored by Git).                        |
+| `.concorde/unbound/`                       | Runs without a task, such as an `understand` of your primary checkout (ignored by Git). |
+| `.concorde/locks/`                         | Every lock Concorde takes (ignored by Git).                                             |
+| `.concorde/tracing.json`                   | How long unbound runs and closed tasks are kept (optional).                             |
+| `.concorde/evidence/`                      | Evidence bundles committed by `delivery`.                                               |
+| `.concorde/issues/`                        | Issue records.                                                                          |
+| `.claude/skills/concorde/SKILL.md`         | The main agent's guidance.                                                              |
 
 ## Learn more
 

@@ -5,23 +5,23 @@
  * `concorde_run` starts `concorde run <operation>` or `concorde <command>` as a detached process in
  * the task's worktree, whose workspace binding the run reads, and returns at once; every run of the
  * project, whoever started it (this tool, a command run with bash, another session), is found in
- * the run store and followed through its progress files, shown in pi-subagents' FleetView as an
- * external job, and reported back with a message that wakes the main agent when it finishes. Only
- * the runs and rounds this session started with its own tools are its background work, which
- * `bg_wait` and the drain of a `pi -p` session wait for. `/concorde` lists the runs. The extension
- * only launches and observes: the
- * Execution runner, not this extension, runs and records every run. Without pi-subagents it still launches, wakes
- * and lists; only the FleetView entries and `bg_wait` are missing.
+ * the current tasks' workspace folders and `.concorde/unbound/` and followed through its progress
+ * files, shown in pi-subagents' FleetView as an external job, and reported back with a message
+ * that wakes the main agent when it finishes. Only the runs and rounds this session started with
+ * its own tools are its background work, which `bg_wait` and the drain of a `pi -p` session wait
+ * for. `/concorde` lists the runs. The extension only launches and observes: the Execution
+ * runner, not this extension, runs and records every run. Without pi-subagents it still launches,
+ * wakes and lists; only the FleetView entries and `bg_wait` are missing.
  *
  * `concorde_task_session` starts, answers or stops a pi task session through `concorde task
  * session`; each round of a task session is followed the same way, through the progress file its
- * supervisor keeps and the outcome the task record holds, and wakes the main agent when it ends.
- * Inside a task session itself (`CONCORDE_TASK_SESSION` set), which may load this extension as a
- * project resource, it only marks commands as started from pi and stays otherwise inactive.
+ * supervisor keeps and the outcome the round's trace node holds, and wakes the main agent when it
+ * ends. Inside a task session itself (`CONCORDE_TASK_SESSION` set), which may load this extension
+ * as a project resource, it only marks commands as started from pi and stays otherwise inactive.
  */
 
 import { execFile, spawn } from "node:child_process";
-import { existsSync, mkdirSync, openSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { Type } from "typebox";
@@ -32,6 +32,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import {
   alive,
+  chainText,
   concordeCommand,
   discoveredRuns,
   glossaryText,
@@ -44,7 +45,6 @@ import {
   roundOutcome,
   runError,
   runnerAlive,
-  runsDirectory,
   type RunStatus,
   type RunView,
   sessionRounds,
@@ -59,7 +59,6 @@ import {
 
 const SOURCE = "concorde";
 const POLL_MS = 2000;
-const START_WAIT_MS = 15000;
 
 interface Subagents {
   registerExternalRun?: (run: Record<string, unknown>) => unknown;
@@ -198,9 +197,11 @@ export default function (pi: ExtensionAPI) {
   if (process.env.CONCORDE_TASK_SESSION) return;
   const tracked = new Map<string, Tracked>();
   const rounds = new Map<string, TrackedRound>();
-  // The runner processes `concorde_run` is starting: their runs are its to answer until it has
-  // found them.
+  // The runner processes `concorde_run` has started: their runs are its to answer. While a launch
+  // has not been announced yet, no run is discovered, so a run the tool is about to answer is
+  // never reported twice.
   const launching = new Set<number>();
+  let pendingLaunches = 0;
   let root = process.cwd();
   // When the view began following: a run started since then is reported even if it ended
   // between two looks, one finished before it only listed.
@@ -259,7 +260,7 @@ export default function (pi: ExtensionAPI) {
     }
     for (const [id, entry] of rounds) {
       if (entry.status.phase !== "finished") {
-        // The progress file holds only the current round; the record holds every outcome.
+        // The progress file holds only the current round; each round's node holds its outcome.
         const ended = roundOutcome(root, entry.status);
         if (ended)
           entry.status = {
@@ -294,14 +295,15 @@ export default function (pi: ExtensionAPI) {
     // One look at the kernel's lock table serves every run of this refresh.
     const locked = lockedInodes();
     // Runs started elsewhere, by bash or another session, are followed like the tool's own.
-    for (const operation of discoveredRuns(
-      [...operations.values()],
-      new Set(tracked.keys()),
-      since,
-      launching,
-      (run) => runnerAlive(root, run, locked),
-    ))
-      track(operation);
+    if (pendingLaunches === 0)
+      for (const operation of discoveredRuns(
+        [...operations.values()],
+        new Set(tracked.keys()),
+        since,
+        launching,
+        (run) => runnerAlive(root, run, locked),
+      ))
+        track(operation);
     for (const [id, entry] of tracked) {
       const operation = operations.get(id) ?? entry.operation;
       entry.operation = operation;
@@ -458,78 +460,101 @@ export default function (pi: ExtensionAPI) {
           `task ${params.task} has no worktree in ${root}; run concorde task list to see the tasks`,
         );
       const [command, ...prefix] = concordeCommand(worktree);
-      mkdirSync(runsDirectory(root), { recursive: true });
-      const log = join(runsDirectory(root), `launch-${Date.now()}.log`);
-      const output = openSync(log, "a");
-      const child = spawn(
-        command,
-        [
-          ...prefix,
-          ...(COMMANDS.includes(params.operation) ? [] : ["run"]),
-          params.operation,
-          ...(params.arguments ?? []),
-        ],
-        {
+      // `--detach` starts the runner as a process of its own, which writes its output to
+      // `host.out` in the run's own trace node, and prints the announced run once its progress
+      // file exists; a failure before any run exists comes back here directly.
+      const words = [
+        ...prefix,
+        ...(COMMANDS.includes(params.operation) ? [] : ["run"]),
+        params.operation,
+        ...(params.arguments ?? []),
+        "--detach",
+      ];
+      pendingLaunches += 1;
+      const ended = await new Promise<{
+        code: number;
+        stdout: string;
+        stderr: string;
+      }>((resolve) => {
+        const child = spawn(command, words, {
           cwd: worktree,
-          detached: true,
-          stdio: ["ignore", output, output],
+          stdio: ["ignore", "pipe", "pipe"],
           env: { ...process.env, CONCORDE_CLIENT: "pi" },
-        },
-      );
-      let exited: number | null = null;
-      child.on("exit", (code) => (exited = code ?? -1));
-      child.unref();
-      const pid = child.pid;
-      if (pid !== undefined) launching.add(pid);
-      try {
-        const deadline = Date.now() + START_WAIT_MS;
-        while (Date.now() < deadline && !signal?.aborted) {
-          const operation = recordedRuns(root).find(
-            (item) => item.host_pid === child.pid,
-          );
-          if (operation) {
-            // A run that has already finished, such as one refused at once, is answered here and
-            // never reported again.
-            const shown = view(
-              root,
-              operation,
-              workersOf(root, operation),
-              operation.phase === "finished" || runnerAlive(root, operation),
-            );
-            track(operation, shown.finished, true);
-            refresh(ctx);
-            const started = `Started ${params.operation} ${params.task ? `in the worktree of task ${params.task}` : "unbound"} as run ${operation.run_id} (runner process ${child.pid}).`;
-            return {
-              content: [
-                {
-                  type: "text",
-                  text: shown.finished
-                    ? `${started} It has already finished; there is nothing to wait for.\n${resultText(shown, runError(root, operation.run_id))}`
-                    : `${started} You will be woken with its result; its result will be ` +
-                      `${shown.reportPath}.`,
-                },
-              ],
-              details: {
-                runId: operation.run_id,
-                pid: child.pid,
-                finished: shown.finished,
-              },
-            };
-          }
-          if (exited !== null) break;
-          await new Promise((resolve) => setTimeout(resolve, 200));
-        }
-        const text = existsSync(log)
-          ? readFileSync(log, "utf-8").slice(-4000)
-          : "";
-        throw new Error(
-          exited !== null
-            ? `concorde ${params.operation} exited with status ${exited} before its run began: ${text || "(no output)"}`
-            : `concorde ${params.operation} (process ${child.pid}) wrote no progress file within ${START_WAIT_MS / 1000}s; see ${log}`,
+          signal,
+        });
+        let stdout = "";
+        let stderr = "";
+        child.stdout?.on("data", (chunk) => (stdout += chunk));
+        child.stderr?.on("data", (chunk) => (stderr += chunk));
+        child.on("error", (error) =>
+          resolve({ code: -1, stdout, stderr: stderr + String(error) }),
         );
-      } finally {
-        if (pid !== undefined) launching.delete(pid);
+        child.on("close", (code) =>
+          resolve({ code: code ?? -1, stdout, stderr }),
+        );
+      }).finally(() => (pendingLaunches -= 1));
+      let announced: Record<string, unknown> | null = null;
+      try {
+        announced = JSON.parse(ended.stdout);
+      } catch {
+        announced = null;
       }
+      if (
+        ended.code !== 0 ||
+        !announced ||
+        typeof announced.run_id !== "string"
+      ) {
+        const error = announced?.error as Record<string, unknown> | undefined;
+        throw new Error(
+          `concorde ${params.operation} did not start its run (exit status ${ended.code})` +
+            (error
+              ? `:\n${chainText(error)}`
+              : `: ${(ended.stderr || ended.stdout).trim().slice(-4000) || "(no output)"}`),
+        );
+      }
+      const runId = announced.run_id as string;
+      const folder = announced.trace as string;
+      let progress: RunStatus | null = null;
+      try {
+        progress = JSON.parse(
+          readFileSync(join(folder, "status.json"), "utf-8"),
+        );
+      } catch {
+        progress = null;
+      }
+      if (!progress)
+        throw new Error(
+          `concorde ${params.operation} announced run ${runId}, whose progress file ` +
+            `${announced.progress} cannot be read`,
+        );
+      const operation = { ...progress, folder };
+      // A run that has already finished, such as one refused at once, is answered here and
+      // never reported again.
+      const shown = view(
+        root,
+        operation,
+        workersOf(root, operation),
+        operation.phase === "finished" || runnerAlive(root, operation),
+      );
+      track(operation, shown.finished, true);
+      refresh(ctx);
+      const started = `Started ${params.operation} ${params.task ? `in the worktree of task ${params.task}` : "unbound"} as run ${runId} (runner process ${announced.host_pid}).`;
+      return {
+        content: [
+          {
+            type: "text",
+            text: shown.finished
+              ? `${started} It has already finished; there is nothing to wait for.\n${resultText(shown, runError(root, runId))}`
+              : `${started} You will be woken with its result; its result will be ` +
+                `${shown.reportPath}.`,
+          },
+        ],
+        details: {
+          runId,
+          pid: announced.host_pid,
+          finished: shown.finished,
+        },
+      };
     },
   });
 

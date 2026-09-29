@@ -71,9 +71,7 @@
       "entries": [
         "tests/concorde/tracing/"
       ],
-      "pending": [
-        "tests/concorde/tracing/"
-      ]
+      "pending": []
     }
   ],
   "relations": [

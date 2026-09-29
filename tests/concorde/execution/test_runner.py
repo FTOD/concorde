@@ -14,23 +14,25 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from concorde.commands import catalog as commands
 from concorde.errors import ERROR_SCHEMA, LINK_SCHEMA, codes
 from concorde.execution import binding as binding_file
-from concorde.commands import catalog as commands
 from concorde.execution import runs
-from concorde.execution.context import Continue, Provider, command, evidence
 from concorde.execution.checkout import PREFIX
+from concorde.execution.context import Continue, Provider, command, evidence
 from concorde.execution.runner import UsageError, detach, execute, run_main
 from concorde.execution.runs import RESULT_SCHEMA
 from concorde.harness import models, pi_backend
 from concorde.harness.checks import run_checks
+from concorde.harness.runs import read_record
 from concorde.operations import catalog
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
 from concorde.tasks import store
+from concorde.tracing import locks
 from tests.concorde.harness.workers.test_pi import FAKE as FAKE_PI
-from tests.concorde.harness.workers.test_workers import git
 from tests.concorde.harness.workers.test_pi import fake_which
+from tests.concorde.harness.workers.test_workers import git
 from tests.concorde.support.operation_project import OperationProject
 from tests.concorde.support.paths import REPOSITORY_ROOT
 from tests.concorde.support.spec_project import read_checks, write_checks
@@ -165,7 +167,9 @@ def probing_step(ctx):
         ctx.state["probe"]["checks"] = [
             item["status"]
             for item in run_checks(
-                ctx.worktree, modules=["module.a"], log_directory=ctx.run_dir / "checks"
+                ctx.worktree,
+                modules=["module.a"],
+                trace_directory=ctx.run_dir / "checks",
             )
         ]
     if ctx.arguments.merge:
@@ -253,28 +257,58 @@ class RunnerTests(unittest.TestCase):
             client=client,
         )
 
+    def store(self, workspace: str | None = "t1") -> runs.Store:
+        """The run store of ``workspace``'s runs, or of the primary worktree's unbound runs."""
+        if workspace is None:
+            return runs.Store(self.records)
+        return runs.Store(
+            self.records, self.records / "tasks" / workspace / "workspace"
+        )
+
+    def run_folder(self, envelope, concorde: Path | None = None) -> Path:
+        """Where the run's trace node lies: in its workspace's folder, or with the unbound runs
+        of the ``.concorde`` of the worktree it started in."""
+        if envelope["workspace"] is None:
+            return (concorde or self.records) / "unbound" / envelope["run_id"]
+        return (
+            self.records
+            / "tasks"
+            / envelope["workspace"]
+            / "workspace/runs"
+            / envelope["run_id"]
+        )
+
     def worker_record(self, envelope) -> dict:
         [worker] = envelope["worker_runs"]
-        return json.loads((self.records / "runs" / worker / "record.json").read_text())
+        return read_record(self.run_folder(envelope), worker)
+
+    def worker_progress(self, envelope) -> dict:
+        [worker] = envelope["worker_runs"]
+        folder = self.run_folder(envelope) / "workers" / worker
+        return json.loads((folder / "status.json").read_text())
 
     def launched(self, envelope) -> list[str]:
         """The argument list the fake claude received in the first round."""
-        work = Path(self.worker_record(envelope)["run_directory"]) / "work"
+        work = self.project.runtime(self.worker_record(envelope)) / "work"
         return json.loads((work / "fake-round-1.json").read_text())["argv"]
 
-    def saved(self, envelope, records: Path | None = None):
+    def saved(self, envelope, concorde: Path | None = None):
         return json.loads(
-            (
-                (records or self.records) / "runs" / envelope["run_id"] / "result.json"
-            ).read_text()
+            (self.run_folder(envelope, concorde) / "result.json").read_text()
         )
 
     def run_status(self, envelope, workspace: str | None = "t1"):
         """The status the run store lists for the run among the workspace's runs."""
         return {
             run["run_id"]: run["status"]
-            for run in runs.workspace_runs(self.records, workspace)
+            for run in runs.workspace_runs(self.store(workspace), workspace)
         }.get(envelope["run_id"])
+
+    def node(self, envelope, concorde: Path | None = None) -> dict:
+        """The run's trace node record."""
+        return json.loads(
+            (self.run_folder(envelope, concorde) / "trace.json").read_text()
+        )
 
     def binding(self) -> dict:
         return json.loads((self.worktree / binding_file.BINDING).read_text())
@@ -418,14 +452,27 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(head(self.root), envelope["commit"])
         # The reviewer worked in a throwaway checkout of the primary worktree's HEAD, which is
         # gone once the run ended.
-        record = self.worker_record(envelope)
-        checkout = Path(record["worktree"])
+        checkout = Path(self.worker_progress(envelope)["worktree"])
         self.assertNotEqual(self.root, checkout)
         self.assertTrue(checkout.parent.name.startswith(PREFIX), checkout)
         self.assertFalse(checkout.parent.exists())
         self.assertEqual([self.root, self.worktree], worktrees(self.root))
         self.assertEqual(before, store.load_task(self.root, "t1"))
+        # The run's node lies with the unbound runs of the worktree it started in.
         self.assertEqual(envelope, self.saved(envelope))
+        node = self.node(envelope)
+        self.assertEqual(
+            ("run", "ok", None),
+            (node["kind"], node["status"], node["metadata"].get("workspace")),
+        )
+        self.assertEqual(
+            {
+                "kind": "trace",
+                "ref": envelope["run_id"],
+                "detail": self.run_folder(envelope).as_posix(),
+            },
+            envelope["host_evidence"][0],
+        )
         self.assertEqual("ok", self.run_status(envelope, None))
         self.assertIsNone(self.run_status(envelope, "t1"))
         validate(envelope, RESULT_SCHEMA)
@@ -455,10 +502,25 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
         self.assertEqual("t1", envelope["workspace"])
         self.assertEqual(self.binding()["modules"], envelope["modules"])
-        self.assertEqual(str(self.worktree), self.worker_record(envelope)["worktree"])
-        # The run is recorded where the binding says, the primary worktree's .concorde.
+        self.assertEqual(str(self.worktree), self.worker_progress(envelope)["worktree"])
+        # The run is traced where the binding says: runs/<run-id>/ of the task's workspace
+        # folder in the primary worktree's .concorde, its worker run inside it.
+        self.assertEqual(
+            str(self.records / "tasks/t1/workspace"), self.binding()["traces"]
+        )
+        folder = self.records / "tasks/t1/workspace/runs" / envelope["run_id"]
+        self.assertEqual(folder, self.run_folder(envelope))
         self.assertEqual(envelope, self.saved(envelope))
-        self.assertFalse((self.worktree / ".concorde/runs").exists())
+        [worker] = envelope["worker_runs"]
+        self.assertTrue((folder / "workers" / worker / "trace.json").is_file())
+        node = self.node(envelope)
+        self.assertEqual(
+            ("run", envelope["run_id"], "ok", "concorde-run-trace"),
+            (node["kind"], node["id"], node["status"], node["content"]["type_id"]),
+        )
+        self.assertEqual([worker], node["content"]["data"]["worker_runs"])
+        for place in ("tasks", "unbound", "runs"):
+            self.assertFalse((self.worktree / ".concorde" / place).exists(), place)
         self.assertEqual("ok", self.run_status(envelope))
 
     @verifies("scenario.execution.unbound-read-only", "scenario.execution.unbound-run")
@@ -479,8 +541,9 @@ class RunnerTests(unittest.TestCase):
         status, envelope = self.project.run(
             "spec_review", "--modules", "module.a", "--input", bound_run["run_id"]
         )
-        self.assertEqual(
-            (1, "input_not_admissible"), (status, envelope["host_evidence"][-1]["ref"])
+        self.assertEqual(1, status)
+        self.assertIn(
+            "input_not_admissible", [item["ref"] for item in envelope["host_evidence"]]
         )
         self.assertIn("a run of t1, not of no workspace", envelope["error"]["detail"])
 
@@ -545,27 +608,49 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(envelope, self.saved(envelope))
         self.assertEqual("ok", self.run_status(envelope))
         # The run released the workspace lock.
-        self.assertIsNone(runs.lock_holder(self.records, "t1"))
+        self.assertIsNone(runs.lock_holder(self.store(), "t1"))
 
     @verifies("scenario.execution.progress-file", "scenario.execution.run-lock")
     def test_the_progress_file_follows_the_run(self):
         from concorde.execution import runner
 
         # Whether the run lock is held at every progress write, probed as another reader would.
-        held = []
+        # Whether the run's node is already written, and where its lock file lies.
+        held, traced, lock_files = [], [], []
         original = runner._progress
 
         def progress(context, **fields):
-            held.append(runs.runner_alive(context.run_dir))
+            held.append(runs.runner_alive(context.store, context.run_id))
+            traced.append((context.run_dir / "trace.json").is_file())
+            lock_files.append(context.store.run_lock(context.run_id))
             original(context, **fields)
 
         with patch.object(runner, "_progress", side_effect=progress):
             status, envelope = self.implement([{}])
         self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
-        run = self.records / "runs" / envelope["run_id"]
+        run = self.run_folder(envelope)
         self.assertTrue(held and all(held), held)
-        self.assertFalse(runs.runner_alive(run))
-        self.assertEqual("finished", runs.run_state(self.records, envelope["run_id"]))
+        self.assertTrue(all(traced), traced)
+        # The run lock is a file of the primary worktree's locks/, never inside the run's folder,
+        # and it is gone once the runner ended.
+        lock = self.records / "locks/runs" / f"{envelope['run_id']}.lock"
+        self.assertEqual({lock}, set(lock_files))
+        self.assertFalse(lock.exists())
+        self.assertEqual([], list(run.rglob("*.lock")))
+        self.assertFalse(runs.runner_alive(self.store(), envelope["run_id"]))
+        self.assertEqual("finished", runs.run_state(self.store(), envelope["run_id"]))
+        node = self.node(envelope)
+        self.assertEqual(
+            ("ok", 0, envelope["summary"]),
+            (
+                node["status"],
+                node["content"]["data"]["exit_code"],
+                node["content"]["data"]["summary"],
+            ),
+        )
+        self.assertEqual(
+            ["worker_step"], [step["name"] for step in node["content"]["data"]["steps"]]
+        )
         progress = json.loads((run / "status.json").read_text())
         self.assertEqual(
             (
@@ -588,10 +673,7 @@ class RunnerTests(unittest.TestCase):
             ),
         )
         self.assertEqual(os.getpid(), progress["host_pid"])
-        [worker] = envelope["worker_runs"]
-        worker_progress = json.loads(
-            (self.records / "runs" / worker / "status.json").read_text()
-        )
+        worker_progress = self.worker_progress(envelope)
         self.assertEqual(progress["host_pid"], worker_progress["host_pid"])
         self.assertEqual(envelope["run_id"], worker_progress["operation_run_id"])
 
@@ -734,17 +816,23 @@ class RunnerTests(unittest.TestCase):
         validate(error, ERROR_SCHEMA)
         self.assertEqual("blocked", self.run_status(envelope))
         # A command is not an Operation: `concorde run` refuses it before any run exists.
-        before = sorted((self.records / "runs").iterdir())
+        folder = self.records / "tasks/t1/workspace/runs"
+        before = sorted(folder.iterdir())
         with self.assertRaisesRegex(UsageError, "is a command, not an Operation"):
             execute("operation", "delivery", [], cwd=self.worktree)
-        self.assertEqual(before, sorted((self.records / "runs").iterdir()))
+        self.assertEqual(before, sorted(folder.iterdir()))
 
     @verifies("scenario.execution.workspace-busy")
     def test_a_busy_workspace_refuses_a_second_run(self):
-        with runs.workspace_lock(self.records, "t1", "implement run r-other"):
+        with runs.workspace_lock(self.store(), "t1", "implement run r-other"):
+            # The workspace lock is a file of the primary worktree's locks/.
+            lock = self.records / "locks/workspaces/t1.lock"
+            self.assertIn("implement run r-other", lock.read_text())
             status, envelope = self.project.run("task-validation", "--task", "t1")
         self.assertEqual((1, "failed"), (status, envelope["status"]))
-        self.assertEqual("workspace_busy", envelope["host_evidence"][0]["ref"])
+        self.assertIn(
+            "workspace_busy", [item["ref"] for item in envelope["host_evidence"]]
+        )
         error = envelope["error"]
         self.assertEqual(["refused", "workspace_busy"], codes(error))
         self.assertEqual("decision", error["unhandled"]["reason"])
@@ -752,7 +840,7 @@ class RunnerTests(unittest.TestCase):
         self.assertIsNone(envelope["output"])
         # The refusal is recorded like any run, and the lock is free again afterwards.
         self.assertEqual(envelope, self.saved(envelope))
-        self.assertIsNone(runs.lock_holder(self.records, "t1"))
+        self.assertIsNone(runs.lock_holder(self.store(), "t1"))
         # An admitted run writes its result while it still holds the lock, so the next run
         # admitted finds that result written.
         holders = []
@@ -760,7 +848,7 @@ class RunnerTests(unittest.TestCase):
 
         def observed(path, *args, **kwargs):
             if path.name == "result.json":
-                holders.append(runs.lock_holder(self.records, "t1"))
+                holders.append(runs.lock_holder(self.store(), "t1"))
             return write_text(path, *args, **kwargs)
 
         with patch.object(Path, "write_text", observed):
@@ -768,7 +856,7 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
         [holder] = holders
         self.assertIn(envelope["run_id"], holder)
-        self.assertIsNone(runs.lock_holder(self.records, "t1"))
+        self.assertIsNone(runs.lock_holder(self.store(), "t1"))
         status, following = self.project.run("task-validation", "--task", "t1")
         self.assertEqual("ok", following["status"])
         self.assertEqual(envelope, self.saved(envelope))
@@ -778,7 +866,7 @@ class RunnerTests(unittest.TestCase):
         taken, release = threading.Event(), threading.Event()
 
         def hold():
-            with runs.workspace_lock(self.records, "t1", "implement run r-other"):
+            with runs.workspace_lock(self.store(), "t1", "implement run r-other"):
                 taken.set()
                 release.wait(60)
 
@@ -851,6 +939,9 @@ class RunnerTests(unittest.TestCase):
                 self.assertEqual(
                     envelope, self.saved(envelope, self.worktree / ".concorde")
                 )
+                self.assertFalse(
+                    (self.records / "unbound" / envelope["run_id"]).exists()
+                )
         path.write_text(good)
         self.assertEqual(json.loads(good), binding_file.load(self.worktree))
 
@@ -884,7 +975,7 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(["module.a", "module.gone"], self.binding()["modules"])
         [listed] = [
             run
-            for run in runs.workspace_runs(self.records, "t1")
+            for run in runs.workspace_runs(self.store(), "t1")
             if run["run_id"] == envelope["run_id"]
         ]
         self.assertEqual(["module.a"], listed["modules"])
@@ -917,31 +1008,90 @@ class RunnerTests(unittest.TestCase):
             ("command", "task-validation"), (announced["kind"], announced["name"])
         )
         self.assertTrue(Path(announced["progress"]).is_file())
+        folder = self.records / "tasks/t1/workspace/runs" / announced["run_id"]
         self.assertEqual(
-            self.records / "runs" / announced["run_id"] / "result.json",
-            Path(announced["result"]),
+            (folder, folder / "result.json"),
+            (Path(announced["trace"]), Path(announced["result"])),
         )
         envelope = self.wait_for(Path(announced["result"]))
         validate(envelope, RESULT_SCHEMA)
         self.assertEqual(announced["run_id"], envelope["run_id"])
         self.assertEqual("t1", envelope["workspace"])
         self.assertEqual(envelope["status"], self.run_status(envelope))
+        # The detached runner's own output is kept in the run's node.
+        self.assertTrue((folder / "host.out").is_file())
         # A workspace already running something still gets its refusal as the result.
-        with runs.workspace_lock(self.records, "t1", "implement run r-other"):
+        with runs.workspace_lock(self.store(), "t1", "implement run r-other"):
             status, announced = detach(
                 "command", "task-validation", [], cwd=self.worktree
             )
             self.assertEqual(0, status, announced)
             refused = self.wait_for(Path(announced["result"]))
         self.assertEqual("failed", refused["status"])
-        self.assertEqual("workspace_busy", refused["host_evidence"][0]["ref"])
+        self.assertIn(
+            "workspace_busy", [item["ref"] for item in refused["host_evidence"]]
+        )
         with self.assertRaises(UsageError):
             detach("operation", "frobnicate", ["--detach"], cwd=self.worktree)
 
+    @verifies("scenario.tracing.run-lock-lifetime")
+    def test_a_run_lock_exists_only_while_its_runner_runs(self):
+        # The detached run queues behind a workspace lock the test holds, so it runs as long as
+        # the test lets it.
+        taken, release = threading.Event(), threading.Event()
+
+        def hold():
+            with runs.workspace_lock(self.store(), "t1", "implement run r-other"):
+                taken.set()
+                release.wait(60)
+
+        holder = threading.Thread(target=hold)
+        holder.start()
+        self.addCleanup(holder.join)
+        self.addCleanup(release.set)
+        self.assertTrue(taken.wait(10))
+        status, announced = detach(
+            "command", "task-validation", ["--wait", "60"], cwd=self.worktree
+        )
+        self.assertEqual(0, status, announced)
+        run_id = announced["run_id"]
+        lock = self.records / "locks/runs" / f"{run_id}.lock"
+        progress = Path(announced["progress"])
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
+            if json.loads(progress.read_text()).get("step") == "workspace-lock":
+                break
+            time.sleep(0.05)
+        # While the run runs its lock file exists and is held by its runner.
+        self.assertTrue(lock.is_file())
+        self.assertTrue(locks.held(lock))
+        self.assertIn(run_id, locks.holder(lock))
+        self.assertTrue(runs.runner_alive(self.store(), run_id))
+        self.assertEqual("running", runs.run_state(self.store(), run_id))
+        release.set()
+        self.wait_for(Path(announced["result"]))
+        deadline = time.monotonic() + 30
+        while runs.pid_alive(announced["host_pid"]) and time.monotonic() < deadline:
+            time.sleep(0.05)
+        self.assertFalse(runs.pid_alive(announced["host_pid"]))
+        # Once the runner exited its lock file is gone, and no lock ever lay in its folder.
+        self.assertFalse(lock.exists())
+        self.assertFalse(runs.runner_alive(self.store(), run_id))
+        self.assertEqual("finished", runs.run_state(self.store(), run_id))
+        folder = Path(announced["trace"])
+        self.assertEqual(self.records / "tasks/t1/workspace/runs" / run_id, folder)
+        self.assertEqual([], list(folder.rglob("*.lock")))
+
     @verifies("scenario.execution.bad-command")
     def test_a_malformed_command_line_writes_nothing(self):
-        directory = self.records / "runs"
-        before = sorted(directory.iterdir()) if directory.exists() else []
+        def written():
+            return sorted(
+                path
+                for folder in ("tasks/t1/workspace/runs", "unbound", "locks/runs")
+                for path in (self.records / folder).glob("*")
+            )
+
+        before = written()
         with self.assertRaisesRegex(UsageError, "unknown operation 'frobnicate'"):
             self.project.run("frobnicate", "--task", "t1")
         with self.assertRaisesRegex(UsageError, "unrecognized arguments: --bogus"):
@@ -950,8 +1100,7 @@ class RunnerTests(unittest.TestCase):
             outside = self.project.base / "outside"
             outside.mkdir()
             execute("command", "task-validation", [], cwd=outside)
-        after = sorted(directory.iterdir()) if directory.exists() else []
-        self.assertEqual(before, after)
+        self.assertEqual(before, written())
         with patch("sys.stderr") as stderr:
             self.assertEqual(2, run_main("operation", None, []))
             self.assertEqual(2, run_main("operation", "frobnicate", []))
@@ -971,6 +1120,7 @@ class RunnerTests(unittest.TestCase):
             ("component", "RuntimeError: boom"), (cause["level"], cause["detail"])
         )
         trace = [item for item in cause["evidence"] if item["kind"] == "traceback"]
+        self.assertEqual(self.run_folder(envelope), Path(trace[0]["ref"]).parent)
         self.assertTrue(Path(trace[0]["ref"]).is_file())
         self.assertIn("raising_step", Path(trace[0]["ref"]).read_text())
         self.assertEqual("failed", self.run_status(envelope))
@@ -991,7 +1141,7 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual("failed", envelope["status"])
         self.assertIn("cancelled", {item["kind"] for item in envelope["host_evidence"]})
         self.assertEqual(envelope, self.saved(envelope))
-        self.assertIsNone(runs.lock_holder(self.records, "t1"))
+        self.assertIsNone(runs.lock_holder(self.store(), "t1"))
         # The result names the worker run it started, and that run ended too.
         [worker] = envelope["worker_runs"]
         self.assertIn(worker, envelope["error"]["detail"])
@@ -1000,14 +1150,15 @@ class RunnerTests(unittest.TestCase):
             for item in envelope["error"]["evidence"]
             if item["kind"] == "worker-run"
         ]
-        self.assertTrue(named["ref"].endswith(f"{worker}/record.json"))
-        directory = Path(named["ref"]).parent
+        directory = self.run_folder(envelope) / "workers" / worker
+        self.assertEqual((directory / "trace.json").as_posix(), named["ref"])
         progress = json.loads((directory / "status.json").read_text())
         self.assertEqual(
             ("finished", "failed"), (progress["phase"], progress["status"])
         )
-        record = json.loads((directory / "record.json").read_text())
+        record = read_record(self.run_folder(envelope), worker)
         self.assertEqual("interrupted", record["error"]["code"])
+        self.assertEqual("cancelled", self.node(envelope)["outcome"])
         child = int(pid_file.read_text())
         deadline = time.monotonic() + 5
         while time.monotonic() < deadline and Path(f"/proc/{child}").exists():
@@ -1034,7 +1185,9 @@ class RunnerTests(unittest.TestCase):
             "understand", "--task", "t1", "--input", failed["run_id"]
         )
         self.assertEqual("failed", refused["status"])
-        self.assertEqual("input_not_admissible", refused["host_evidence"][0]["ref"])
+        self.assertIn(
+            "input_not_admissible", [item["ref"] for item in refused["host_evidence"]]
+        )
         self.assertIn("ended failed", refused["error"]["detail"])
         # A run of another workspace is not admitted either.
         self.project.open_task("t2")
@@ -1054,7 +1207,7 @@ class RunnerTests(unittest.TestCase):
             "--goal",
             OperationProject.plan([{}]),
         )
-        listed = runs.workspace_runs(self.records, "t1")
+        listed = runs.workspace_runs(self.store(), "t1")
         self.assertEqual(
             [
                 (first["run_id"], "command", "task-validation", "ok"),
@@ -1067,10 +1220,10 @@ class RunnerTests(unittest.TestCase):
         )
         self.assertEqual(
             [unbound["run_id"]],
-            [run["run_id"] for run in runs.workspace_runs(self.records, None)],
+            [run["run_id"] for run in runs.workspace_runs(self.store(None), None)],
         )
-        self.assertEqual("finished", runs.run_state(self.records, first["run_id"]))
-        self.assertEqual("refused", runs.run_state(self.records, None))
+        self.assertEqual("finished", runs.run_state(self.store(), first["run_id"]))
+        self.assertEqual("refused", runs.run_state(self.store(), None))
 
     def test_the_result_schema_is_the_contract(self):
         fence = spec_contract("contract.execution.run-result")
@@ -1081,9 +1234,15 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(binding_file.BINDING_SCHEMA, fence["schema"])
 
     def test_the_error_link_is_the_framework_contract(self):
-        text = (REPOSITORY_ROOT / "specs/concorde/contracts.md").read_text()
-        fence = text.split("```concorde-contract\n", 1)[1].split("```", 1)[0]
-        self.assertEqual(json.loads(fence)["schema"], ERROR_SCHEMA)
+        text = (REPOSITORY_ROOT / "specs/concorde/tracing/contracts.md").read_text()
+        [fence] = [
+            json.loads(block)
+            for block in re.findall(
+                r"```concorde-contract\n(.*?)\n```", text, re.DOTALL
+            )
+            if json.loads(block).get("id") == "contract.tracing.error"
+        ]
+        self.assertEqual(fence["schema"], ERROR_SCHEMA)
         self.assertEqual(RESULT_SCHEMA["$defs"]["error"], LINK_SCHEMA)
 
 
@@ -1123,9 +1282,17 @@ class UnboundCheckoutTests(unittest.TestCase):
             cwd=cwd,
         )
 
+    def run_folder(self, envelope) -> Path:
+        return self.records / "unbound" / envelope["run_id"]
+
     def worker_record(self, envelope) -> dict:
         [worker] = envelope["worker_runs"]
-        return json.loads((self.records / "runs" / worker / "record.json").read_text())
+        return read_record(self.run_folder(envelope), worker)
+
+    def worker_progress(self, envelope) -> dict:
+        [worker] = envelope["worker_runs"]
+        folder = self.run_folder(envelope) / "workers" / worker
+        return json.loads((folder / "status.json").read_text())
 
     @verifies("scenario.execution.unbound-checkout", "scenario.execution.unbound-run")
     def test_an_unbound_run_examines_head_while_its_worktree_changes(self):
@@ -1178,7 +1345,7 @@ class UnboundCheckoutTests(unittest.TestCase):
         # The worker worked and was audited in the checkout, so the commit made meanwhile in
         # the starting worktree left its audit clean; its model came from the examined commit.
         record = self.worker_record(envelope)
-        self.assertEqual(str(checkout), record["worktree"])
+        self.assertEqual(str(checkout), self.worker_progress(envelope)["worktree"])
         self.assertEqual("opus", record["model"])
         self.assertEqual(
             ["clean"], [item["audit"]["verdict"] for item in record["rounds"]]
@@ -1186,13 +1353,14 @@ class UnboundCheckoutTests(unittest.TestCase):
         kinds = {item["kind"]: item for item in envelope["host_evidence"]}
         self.assertEqual(examined, kinds["checkout"]["ref"])
         self.assertEqual(".venv", kinds["environment"]["ref"])
-        # The run is recorded in the starting worktree, and its checkout is gone.
-        self.assertTrue(
-            (self.records / "runs" / envelope["run_id"] / "result.json").exists()
-        )
-        progress = json.loads(
-            (self.records / "runs" / envelope["run_id"] / "status.json").read_text()
-        )
+        # The run is traced with the unbound runs of the starting worktree, the checks it ran
+        # as check nodes inside its node, and its checkout is gone.
+        folder = self.run_folder(envelope)
+        self.assertTrue((folder / "result.json").exists())
+        self.assertTrue((folder / "trace.json").exists())
+        check = json.loads((folder / "checks/check.a/trace.json").read_text())
+        self.assertEqual(("check", "ok"), (check["kind"], check["status"]))
+        progress = json.loads((folder / "status.json").read_text())
         self.assertEqual(
             (str(checkout), examined), (progress["worktree"], progress["commit"])
         )
@@ -1296,7 +1464,7 @@ class UnboundCheckoutTests(unittest.TestCase):
         self.assertIsNone(envelope["commit"])
         self.assertEqual([], envelope["worker_runs"])
         self.assertTrue(
-            (empty / ".concorde/runs" / envelope["run_id"] / "result.json").exists()
+            (empty / ".concorde/unbound" / envelope["run_id"] / "result.json").exists()
         )
 
 
@@ -1312,29 +1480,36 @@ class BindingTests(unittest.TestCase):
         worktree = self.project.worktree("t1")
         record = store.load_task(self.root, "t1")
         value = binding_file.load(worktree)
+        concorde = os.path.realpath(self.root / ".concorde")
         self.assertEqual(
             {
-                "schema_version": 1,
+                "schema_version": 2,
                 "workspace": "t1",
                 "root": os.path.realpath(worktree),
                 "branch": record["branch"],
                 "base_commit": record["base_commit"],
                 "goal": "Fix A.",
                 "modules": ["module.a"],
-                "records": os.path.realpath(self.root / ".concorde"),
+                "traces": os.path.join(concorde, "tasks/t1/workspace"),
+                "concorde": concorde,
             },
             {
                 **value,
                 "root": os.path.realpath(value["root"]),
-                "records": os.path.realpath(value["records"]),
+                "traces": os.path.realpath(value["traces"]),
+                "concorde": os.path.realpath(value["concorde"]),
             },
         )
+        # The workspace folder exists once the task is open.
+        self.assertTrue(Path(value["traces"]).is_dir())
         self.assertIsNone(binding_file.load(self.root))
+        self.assertEqual(Path(value["traces"]), binding_file.traces_of(worktree, value))
         self.assertEqual(
-            Path(value["records"]), binding_file.records_of(worktree, value)
+            Path(value["concorde"]), binding_file.concorde_of(worktree, value)
         )
+        self.assertIsNone(binding_file.traces_of(self.root, None))
         self.assertEqual(
-            self.root / ".concorde", binding_file.records_of(self.root, None)
+            self.root / ".concorde", binding_file.concorde_of(self.root, None)
         )
         # The binding is ignored by Git: opening a task changes nothing a commit would carry.
         self.assertTrue(

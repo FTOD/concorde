@@ -22,6 +22,8 @@ from concorde.execution.runs import workspace_lock
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
 from concorde.tasks import cli, store
+from concorde.tracing import layout
+from concorde.tracing import node as trace
 from tests.concorde.support.operation_project import OperationProject, commit
 from tests.concorde.support.paths import REPOSITORY_ROOT
 from tests.concorde.tasks.deliveries import deliver
@@ -55,9 +57,12 @@ class MergeTests(unittest.TestCase):
     def setUp(self):
         self.project = OperationProject(self)
         self.root = self.project.root
-        # An installed project ignores the task records, and merges need an identity.
+        # An installed project ignores Tracing's folders (the task folders, the history, the
+        # unbound runs and the locks), and merges need an identity.
         gitignore = self.root / ".gitignore"
-        gitignore.write_text(gitignore.read_text() + ".concorde/tasks/\n")
+        gitignore.write_text(
+            gitignore.read_text() + "".join(f"{path}\n" for path in layout.IGNORED)
+        )
         git(self.root, "config", "user.name", "t")
         git(self.root, "config", "user.email", "t@t")
         commit(self.root, "ignore task records")
@@ -87,6 +92,9 @@ class MergeTests(unittest.TestCase):
 
     def head(self):
         return git(self.root, "rev-parse", "HEAD")
+
+    def history(self, key="t1"):
+        return self.root / ".concorde/history" / key
 
     def interrupted(self, then: int = 0):
         """Merge task t1 in a process its check kills; the commits before and after."""
@@ -125,6 +133,7 @@ class MergeTests(unittest.TestCase):
         entry.write_text(json.dumps(metadata, indent=2) + "\n")
         commit(self.root, "bind every tracked file")
         self.project.open_task("t1")
+        worktree = self.project.worktree("t1")
         head = self.deliver()
         before = self.head()
         status, value = self.command("merge", "t1")
@@ -135,7 +144,7 @@ class MergeTests(unittest.TestCase):
             (value["record"]["state"], value["record"]["closed"]["outcome"]),
         )
         self.assertTrue(value["record"]["closed"]["worktree_removed"])
-        self.assertFalse(self.project.worktree("t1").exists())
+        self.assertFalse(worktree.exists())
         merge = value["merge"]
         self.assertEqual((before, head), (merge["before"], merge["after"]))
         self.assertEqual(
@@ -144,8 +153,26 @@ class MergeTests(unittest.TestCase):
         )
         self.assertEqual(0, merge["checks"][0]["exit_code"])
         self.assertGreaterEqual(merge["waited_seconds"], 0)
-        log = (self.root / ".concorde/tasks/t1.merge.log").read_text()
-        self.assertEqual(str(self.root / ".concorde/tasks/t1.merge.log"), merge["log"])
+        # The attempt is a node of the task's trace, which the close moved to the history.
+        attempt = self.history() / "merges/1"
+        self.assertEqual(str(attempt), merge["log"])
+        self.assertFalse((self.root / ".concorde/tasks/t1").exists())
+        node = trace.read(attempt)
+        self.assertEqual(
+            ("merge", "ok", "merged", head),
+            (node["kind"], node["status"], node["outcome"], node["metadata"]["commit"]),
+        )
+        data = node["content"]["data"]
+        self.assertEqual(
+            ("merge", before, head, head),
+            (data["attempt"], data["before"], data["checked"], data["after"]),
+        )
+        check = trace.read(attempt / "checks/1")
+        self.assertEqual(
+            ("merge-check", "ok", 0),
+            (check["kind"], check["status"], check["content"]["data"]["exit_code"]),
+        )
+        log = (attempt / "checks/1/output.log").read_text()
         self.assertIn('"tool":"spec-validation"', log)
         self.assertIn("[exit 0 after", log)
         self.assertEqual("", store.merge_lock_path(self.root).read_text())
@@ -158,15 +185,16 @@ class MergeTests(unittest.TestCase):
         status, value = self.command("merge", "t1", *passing)
         self.assertEqual(0, status, value)
         self.assertEqual("merged", value["record"]["closed"]["outcome"])
-        log = self.root / ".concorde/tasks/t1.decisions.md"
         (warning,) = value["warnings"]
-        self.assertIn(str(log), warning)
+        self.assertIn(str(self.root / ".concorde/tasks/t1/decisions.md"), warning)
         self.assertIn("holds only its heading and goal", warning)
-        # The close still appends how the task ended.
-        self.assertIn("## Closed: merged", log.read_text())
+        # The close still appends how the task ended, and the log moved with the task.
+        self.assertIn(
+            "## Closed: merged", (self.history() / "decisions.md").read_text()
+        )
         # A log with an entry of its own merges without a warning.
         self.project.open_task("t2")
-        with (self.root / ".concorde/tasks/t2.decisions.md").open("a") as stream:
+        with (self.root / ".concorde/tasks/t2/decisions.md").open("a") as stream:
             stream.write(
                 "\n## Decisions\n\n- Kept the old name; nothing depends on it.\n"
             )
@@ -197,9 +225,14 @@ class MergeTests(unittest.TestCase):
             [shlex.split(first), shlex.split(second)],
             [check["argv"] for check in value["merge"]["checks"]],
         )
-        log = (self.root / ".concorde/tasks/t1.merge.log").read_text()
-        self.assertLess(log.index("first check"), log.index("second check"))
-        self.assertNotIn("spec-validation", log)
+        attempt = Path(value["merge"]["log"])
+        first_log, second_log = (
+            (attempt / f"checks/{number}/output.log").read_text() for number in (1, 2)
+        )
+        self.assertIn("first check", first_log)
+        self.assertIn("second check", second_log)
+        self.assertNotIn("spec-validation", first_log + second_log)
+        self.assertFalse((attempt / "checks/3").exists())
 
     @verifies("scenario.tasks.merge-waits", "scenario.tasks.merge-busy")
     def test_a_second_merge_waits_for_the_first(self):
@@ -219,8 +252,7 @@ class MergeTests(unittest.TestCase):
         busy = self.refusal("merge", "t1", "--wait", "0.3", "--check", python("pass"))
         self.assertEqual("merge_busy", busy["code"])
         self.assertIn("`concorde task merge` of task a", busy["detail"])
-        self.assertIn(f"process {os.getpid()}", busy["detail"])
-        self.assertIn("holding it since 20", busy["detail"])
+        self.assertIn(f"process {os.getpid()}, since 20", busy["detail"])
         self.assertEqual("environment", busy["unhandled"]["reason"])
         self.assert_untouched(before)
         threading.Timer(0.5, release.set).start()
@@ -275,7 +307,7 @@ class MergeTests(unittest.TestCase):
         for raised in (opened, closed):
             self.assertEqual("merge_busy", raised.exception.code)
             self.assertIn("`concorde task merge` of task a", str(raised.exception))
-        self.assertFalse((self.root / ".concorde/tasks/t2.json").exists())
+        self.assertFalse((self.root / ".concorde/tasks/t2").exists())
         self.assertNotIn("concorde/t2", git(self.root, "branch", "--list"))
         self.assertEqual(before, store.load_task(self.root, "t1"))
         self.assertTrue(self.project.worktree("t1").exists())
@@ -303,10 +335,20 @@ class MergeTests(unittest.TestCase):
         failing = python("import sys; print('boom'); sys.exit(1)")
         error = self.refusal("merge", "t1", "--check", failing)
         self.assertEqual("check_failed", error["code"])
-        log = self.root / ".concorde/tasks/t1.merge.log"
-        for part in ("exited 1", "boom", str(log), f"back at {before}, clean"):
+        attempt = self.root / ".concorde/tasks/t1/merges/1"
+        for part in ("exited 1", "boom", str(attempt), f"back at {before}, clean"):
             self.assertIn(part, error["detail"])
         self.assert_untouched(before)
+        node = trace.read(attempt)
+        self.assertEqual(
+            ("failed", "check_failed", "check_failed"),
+            (node["status"], node["outcome"], node["error"]["code"]),
+        )
+        check = trace.read(attempt / "checks/1")
+        self.assertEqual(
+            ("failed", 1), (check["status"], check["content"]["data"]["exit_code"])
+        )
+        self.assertIn("boom", (attempt / "checks/1/output.log").read_text())
 
     @verifies("scenario.tasks.merge-check-failed")
     def test_checks_that_leave_changes_undo_the_merge(self):
@@ -375,7 +417,7 @@ class MergeTests(unittest.TestCase):
         self.assertIn("detached HEAD", error["detail"])
         git(self.root, "checkout", "-q", "-")
         self.assert_untouched(before)
-        self.assertFalse((self.root / ".concorde/tasks/t1.merge.log").exists())
+        self.assertFalse((self.root / ".concorde/tasks/t1/merges").exists())
 
     @verifies("scenario.tasks.delivery-unverified")
     def test_a_delivery_commit_that_does_not_verify_is_not_merged(self):
@@ -396,7 +438,7 @@ class MergeTests(unittest.TestCase):
         self.assertEqual("", git(self.root, "status", "--porcelain"))
         self.assertEqual(record, store.load_task(self.root, "t1"))
         self.assertEqual("active", self.state())
-        self.assertFalse((self.root / ".concorde/tasks/t1.merge.log").exists())
+        self.assertFalse((self.root / ".concorde/tasks/t1/merges").exists())
 
     @verifies("scenario.tasks.merge-exact-commit")
     def test_the_merge_merges_the_commit_it_checked(self):
@@ -425,7 +467,9 @@ class MergeTests(unittest.TestCase):
         self.assertNotEqual(
             0,
             subprocess.run(
-                ["git", "merge-base", "--is-ancestor", moved[0], head], cwd=self.root
+                ["git", "merge-base", "--is-ancestor", moved[0], head],
+                cwd=self.root,
+                check=False,
             ).returncode,
         )
         self.assertEqual("merging", self.state())
@@ -438,7 +482,9 @@ class MergeTests(unittest.TestCase):
         held_during_wait = []
 
         def hold():
-            with workspace_lock(self.root / ".concorde", "t1", "run r-1 (delivery)"):
+            with workspace_lock(
+                store.workspace_store(self.root, "t1"), "t1", "run r-1 (delivery)"
+            ):
                 taken.set()
                 release.wait(10)
                 # The merge is waiting now; other tasks' merges could take the merge lock.
@@ -462,7 +508,9 @@ class MergeTests(unittest.TestCase):
         self.project.open_task("t1")
         self.deliver()
         before, record = self.head(), store.load_task(self.root, "t1")
-        with workspace_lock(self.root / ".concorde", "t1", "run r-1 (delivery)"):
+        with workspace_lock(
+            store.workspace_store(self.root, "t1"), "t1", "run r-1 (delivery)"
+        ):
             merged = self.refusal(
                 "merge", "t1", "--wait", "0.3", "--check", python("pass")
             )
@@ -518,8 +566,12 @@ class MergeTests(unittest.TestCase):
         self.assertNotIn(
             "merge_incomplete", json.dumps(self.command("session", "t1", "--stop")[1])
         )
-        self.assertFalse((self.root / ".concorde/tasks/t2.json").exists())
+        self.assertFalse((self.root / ".concorde/tasks/t2").exists())
         self.assertEqual(after, self.head())
+        # The killed merge's attempt node still says it runs; nothing ended it.
+        self.assertEqual(
+            "running", trace.read(self.root / ".concorde/tasks/t1/merges/1")["status"]
+        )
 
     @verifies("scenario.tasks.merge-resume")
     def test_resume_checks_the_merge_again_and_closes(self):
@@ -548,7 +600,25 @@ class MergeTests(unittest.TestCase):
             (before, after), (value["merge"]["before"], value["merge"]["after"])
         )
         self.assertEqual(after, self.head())
-        self.assertIn("resumed the merge", Path(value["merge"]["log"]).read_text())
+        # The killed attempt is ended as interrupted; the resume is an attempt of its own.
+        merges = self.history() / "merges"
+        self.assertEqual(str(merges / "2"), value["merge"]["log"])
+        killed, resumed = trace.read(merges / "1"), trace.read(merges / "2")
+        self.assertEqual(
+            ("failed", "interrupted"), (killed["status"], killed["outcome"])
+        )
+        self.assertEqual(
+            ("resume", "ok", "merged", after),
+            (
+                resumed["content"]["data"]["attempt"],
+                resumed["status"],
+                resumed["outcome"],
+                resumed["content"]["data"]["after"],
+            ),
+        )
+        self.assertEqual(
+            0, trace.read(merges / "2/checks/1")["content"]["data"]["exit_code"]
+        )
 
     @verifies("scenario.tasks.close-rerun")
     def test_a_merge_whose_close_stopped_part_way_is_finished(self):
@@ -557,10 +627,10 @@ class MergeTests(unittest.TestCase):
         worktree = self.project.worktree("t1")
         real = store.update
 
-        def refusing_the_close(primary, task_id, change):
+        def refusing_the_close(primary, task_id, change, *, locked=False):
             if change(store.load_task(primary, task_id))["state"] == "closed":
                 raise store.TaskError("record_conflict", "changed concurrently")
-            return real(primary, task_id, change)
+            return real(primary, task_id, change, locked=locked)
 
         with patch.object(store, "update", refusing_the_close):
             error = self.refusal("merge", "t1", "--check", python("pass"))
@@ -575,9 +645,9 @@ class MergeTests(unittest.TestCase):
         # The merge closes the task but the decision log refuses the closing.
         self.project.open_task("t2")
         self.deliver("t2", "src/a/other.py", "OTHER = 1\n")
-        log = self.root / ".concorde/tasks/t2.decisions.md"
+        log = self.root / ".concorde/tasks/t2/decisions.md"
         log.chmod(0o444)
-        self.addCleanup(log.chmod, 0o644)
+        self.addCleanup(lambda: log.exists() and log.chmod(0o644))
         error = self.refusal("merge", "t2", "--check", python("pass"))
         self.assertEqual("decision_log_failed", error["code"])
         self.assertIn("the task is closed as merged", error["detail"])
@@ -585,10 +655,16 @@ class MergeTests(unittest.TestCase):
         stored = store.load_task(self.root, "t2")
         self.assertEqual(("closed", None), (stored["state"], stored["merging"]))
         log.chmod(0o644)
+        # The folder moves only once the decision log holds the closing.
+        self.assertTrue(log.parent.is_dir())
         status, value = self.command("close", "t2", "--merged")
         self.assertEqual(0, status, value)
-        self.assertEqual(stored, store.load_task(self.root, "t2"))
-        self.assertIn(f"## Closed: merged, {stored['closed']['at']}", log.read_text())
+        self.assertEqual(stored, store.load_any(self.root, "t2")[0])
+        self.assertFalse(log.parent.exists())
+        self.assertIn(
+            f"## Closed: merged, {stored['closed']['at']}",
+            (self.history("t2") / "decisions.md").read_text(),
+        )
 
     @verifies("scenario.tasks.merge-resume-check-failed")
     def test_resume_undoes_a_merge_whose_check_fails(self):

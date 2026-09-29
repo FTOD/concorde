@@ -3,6 +3,11 @@
 The extension around it (``pi_extension.ts``) needs a pi session and is exercised by hand in pi;
 these tests cover what it shows: which worker belongs to which run of an Operation or recorded
 command, the FleetView state of each run, and which ``concorde`` command it starts.
+
+A run is a trace node: ``runs/<run-id>/`` of a current task's workspace folder
+``.concorde/tasks/<task>/workspace/``, ``run/`` of one of its workflow's steps, or
+``.concorde/unbound/<run-id>/``; each worker run is a node ``workers/<worker run>/`` inside it, and
+a runner lives while it holds ``.concorde/locks/runs/<run-id>.lock``.
 """
 
 from __future__ import annotations
@@ -15,24 +20,30 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from concorde.execution.runs import run_lock
+from concorde.execution.runs import Store, run_lock
 from concorde.spec.verification import verifies
+from concorde.tasks.store import ROUND_STATUS, ROUND_TRACE
+from concorde.tracing.node import Node
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 SOURCE = REPOSITORY_ROOT / "src/concorde/main_session/pi_runs.ts"
 PROBE = """
 import {
   recordedRuns, workersOf, view, concordeCommand, alive, taskWorktree, resultText, runError,
-  discoveredRuns, runnerAlive, lockedInodes,
+  discoveredRuns, runnerAlive, lockedInodes, runFolder,
 } from %(source)s;
 const root = %(root)s;
+const given = %(alive)s;
 const out = {};
 for (const run of recordedRuns(root)) {
   const workers = workersOf(root, run);
-  const shown = view(root, run, workers, %(alive)s[run.run_id] ?? true);
+  const hostAlive = given === "lock" ? runnerAlive(root, run) : (given[run.run_id] ?? true);
+  const shown = view(root, run, workers, hostAlive);
   out[run.run_id] = {
     workers: workers.map((worker) => worker.run_id),
     view: shown,
+    folder: run.folder,
+    found: runFolder(root, run.run_id),
     result: resultText(shown, runError(root, run.run_id)),
   };
 }
@@ -102,11 +113,29 @@ class RunViewTests(unittest.TestCase):
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
         self.root = Path(os.path.realpath(directory.name))
-        self.runs = self.root / ".concorde/runs"
+        self.concorde = self.root / ".concorde"
 
-    def status(self, value):
-        (self.runs / value["run_id"]).mkdir(parents=True)
-        (self.runs / value["run_id"] / "status.json").write_text(json.dumps(value))
+    def folder(self, value) -> Path:
+        """Where the runner of the run ``value`` keeps its node: the runs of its task's workspace
+        folder, or the unbound runs of the worktree."""
+        if value["workspace"] is None:
+            return self.concorde / "unbound" / value["run_id"]
+        return (
+            self.concorde
+            / "tasks"
+            / value["workspace"]
+            / "workspace/runs"
+            / value["run_id"]
+        )
+
+    def status(self, value, folder: Path | None = None) -> Path:
+        folder = folder or self.folder(value)
+        folder.mkdir(parents=True)
+        (folder / "status.json").write_text(json.dumps(value))
+        return folder
+
+    def worker(self, run: Path, value) -> Path:
+        return self.status(value, run / "workers" / value["run_id"])
 
     def probe(self, alive=None, discovery=None) -> dict:
         probe = self.root / "probe.mts"
@@ -139,16 +168,35 @@ class RunViewTests(unittest.TestCase):
 
     @verifies("scenario.main-session.pi-run-view")
     def test_a_running_operation_shows_its_worker_progress(self):
-        self.status(operation("r-1"))
-        self.status(worker("w-1"))
+        run = self.status(operation("r-1"))
+        self.worker(run, worker("w-1"))
         # Workers of other runs, even one whose runner recorded the same process identifier in
-        # its own PID namespace.
-        self.status(worker("w-other", operation_run_id="r-other", host_pid=200))
-        self.status(worker("w-same-pid", operation_run_id="r-0"))
+        # its own PID namespace, and even one that names r-1 as its Operation run.
+        other = self.status(operation("r-other", host_pid=200, workspace="t2"))
+        self.worker(other, worker("w-other", host_pid=200))
+        same = self.status(operation("r-0"))
+        self.worker(same, worker("w-same-pid", operation_run_id="r-0"))
+        # A run of a workflow step lies in the step's node of the workspace's workflow.
+        step = self.status(
+            operation(
+                "r-step", name="specify", started_at="2026-09-25T10:00:02.000000Z"
+            ),
+            self.concorde / "tasks/t1/workspace/workflow/steps/1-specify/run",
+        )
+        self.worker(
+            step, worker("w-step", operation_run_id="r-step", task_type="specify")
+        )
         out = self.probe()
-        run = out["r-1"]
-        self.assertEqual(["w-1"], run["workers"])
-        shown = run["view"]
+        self.assertEqual(["w-1"], out["r-1"]["workers"])
+        self.assertEqual(["w-other"], out["r-other"]["workers"])
+        self.assertEqual(["w-same-pid"], out["r-0"]["workers"])
+        self.assertEqual(["w-step"], out["r-step"]["workers"])
+        self.assertEqual(
+            (step.as_posix(), step.as_posix()),
+            (out["r-step"]["folder"], out["r-step"]["found"]),
+        )
+        self.assertNotIn("w-1", out)
+        shown = out["r-1"]["view"]
         self.assertEqual(
             ("running", False, "t1 · implement"),
             (shown["state"], shown["finished"], shown["label"]),
@@ -157,9 +205,8 @@ class RunViewTests(unittest.TestCase):
             "run_implementer · implement worker (pi) round 2 · worker: bash pytest -q",
             shown["currentAction"],
         )
-        self.assertEqual(
-            (self.runs / "r-1/result.json").as_posix(), shown["reportPath"]
-        )
+        self.assertEqual((run / "result.json").as_posix(), shown["reportPath"])
+        self.assertEqual(run.as_posix(), out["r-1"]["found"])
 
     @verifies("scenario.main-session.pi-run-view-command")
     def test_recorded_commands_are_shown_without_a_worker(self):
@@ -182,7 +229,8 @@ class RunViewTests(unittest.TestCase):
                 host_pid=302,
             )
         )
-        self.status(worker("w-1"))
+        implement = self.status(operation("r-1"))
+        self.worker(implement, worker("w-1"))
         out = self.probe()
         self.assertEqual(
             "waiting for the workspace lock held by task-validation run r-command "
@@ -203,7 +251,7 @@ class RunViewTests(unittest.TestCase):
 
     @verifies("scenario.main-session.pi-run-view-unbound")
     def test_unbound_runs_are_shown_without_a_workspace(self):
-        self.status(
+        folder = self.status(
             operation(
                 "r-unbound",
                 name="understand",
@@ -215,15 +263,19 @@ class RunViewTests(unittest.TestCase):
             )
         )
         out = self.probe()
+        self.assertEqual(self.concorde / "unbound/r-unbound", folder)
         self.assertEqual("unbound · understand", out["r-unbound"]["view"]["label"])
         self.assertEqual("completed", out["r-unbound"]["view"]["state"])
+        self.assertEqual(
+            (folder / "result.json").as_posix(), out["r-unbound"]["view"]["reportPath"]
+        )
 
     @verifies("scenario.main-session.pi-run-finished")
     def test_finished_runs_show_their_status(self):
         self.status(
             operation("r-ok", phase="finished", status="ok", summary="Implemented.")
         )
-        self.status(
+        blocked = self.status(
             operation(
                 "r-blocked",
                 phase="finished",
@@ -250,7 +302,7 @@ class RunViewTests(unittest.TestCase):
             states,
         )
         self.assertEqual("ok: Implemented.", out["r-ok"]["view"]["preview"])
-        result_file = (self.runs / "r-blocked/result.json").as_posix()
+        result_file = (blocked / "result.json").as_posix()
         self.assertEqual(
             "Concorde run r-blocked (t1 · implement) finished blocked. blocked: Spec gap.\n"
             + "Read the run result: "
@@ -276,16 +328,17 @@ class RunViewTests(unittest.TestCase):
 
     @verifies("scenario.main-session.pi-run-lost", "scenario.execution.run-lock")
     def test_a_runner_lives_while_it_holds_its_run_lock(self):
+        store = Store(self.concorde)
         # Held by its runner, as a live runner does.
         self.status(operation("r-held", host_pid=2**22 + 12345))
-        self.enterContext(run_lock(self.runs / "r-held"))
+        self.enterContext(run_lock(store, "r-held", "test runner"))
         # Started in a sandbox's PID namespace, where the runner was process 1 or 2: here those
-        # name live, unrelated processes, and nobody holds the run lock.
+        # name live, unrelated processes, and nobody holds the run lock, whose file is gone.
         self.status(operation("r-sandboxed", host_pid=1))
         self.status(operation("r-kthreadd", host_pid=2))
         # Ended properly just after its progress file was read: not taken for a dead run.
-        self.status(operation("r-ended", host_pid=1))
-        (self.runs / "r-ended/result.json").write_text("{}")
+        ended = self.status(operation("r-ended", host_pid=1))
+        (ended / "result.json").write_text("{}")
         out = self.probe()
         self.assertTrue(out["lockTable"])
         self.assertEqual(
@@ -297,6 +350,59 @@ class RunViewTests(unittest.TestCase):
             },
             out["runnerAlive"],
         )
+
+    @verifies(
+        "scenario.main-session.pi-run-lock-file", "scenario.main-session.pi-run-lost"
+    )
+    def test_a_live_run_is_told_by_its_run_lock_file(self):
+        store = Store(self.concorde)
+        lock = self.concorde / "locks/runs/r-held.lock"
+        # A run of a task's workspace whose runner holds its run lock.
+        self.status(operation("r-held", host_pid=2**22 + 12345))
+        held = run_lock(store, "r-held", "test runner")
+        held.__enter__()
+        self.addCleanup(held.__exit__, None, None, None)
+        self.assertTrue(lock.is_file())
+        # A run without a result whose lock file is missing, though its recorded process lives.
+        self.status(operation("r-missing", host_pid=os.getpid()))
+        # A run without a result whose lock file is left behind but held by nobody.
+        self.status(operation("r-unheld", host_pid=os.getpid()))
+        (self.concorde / "locks/runs/r-unheld.lock").write_text("")
+        out = self.probe(alive="lock")
+        self.assertEqual(
+            {"r-held": True, "r-missing": False, "r-unheld": False}, out["runnerAlive"]
+        )
+        self.assertEqual(
+            ("running", False),
+            (out["r-held"]["view"]["state"], out["r-held"]["view"]["finished"]),
+        )
+        for run in ("r-missing", "r-unheld"):
+            self.assertEqual(
+                ("failed", True, "failed"),
+                (
+                    out[run]["view"]["state"],
+                    out[run]["view"]["finished"],
+                    out[run]["view"]["status"],
+                ),
+            )
+            self.assertIn(
+                "the runner ended without finishing the run", out[run]["result"]
+            )
+        # The runner ends without writing a result: its lock file goes with it.
+        held.__exit__(None, None, None)
+        self.assertFalse(lock.exists())
+        out = self.probe(alive="lock")
+        self.assertEqual("failed", out["r-held"]["view"]["state"])
+        # concorde_run starts the run with --detach, whose runner keeps its output in host.out
+        # of the run's node and announces that node; nothing writes a launch log.
+        extension = (SOURCE.parent / "pi_extension.ts").read_text()
+        launch = extension[extension.index('name: "concorde_run"') :]
+        launch = launch[: launch.index("pi.registerTool(")]
+        self.assertIn('"--detach",', launch)
+        self.assertIn("const folder = announced.trace as string;", launch)
+        self.assertIn('stdio: ["ignore", "pipe", "pipe"]', launch)
+        self.assertNotIn("launch-", extension)
+        self.assertNotIn("launch-", SOURCE.read_text())
 
     @verifies("scenario.main-session.pi-run-discovered")
     def test_runs_started_elsewhere_are_followed(self):
@@ -314,11 +420,20 @@ class RunViewTests(unittest.TestCase):
         self.status(
             operation("r-stale", started_at="2026-09-25T09:00:02.000000Z", host_pid=102)
         )
-        # Since the view began: started by bash or another session, one already ended.
+        # Since the view began: started by bash or another session, one already ended, one
+        # unbound.
         self.status(operation("r-bash", host_pid=103))
         self.status(
             operation(
                 "r-quick", phase="finished", status="failed", summary="x", host_pid=104
+            )
+        )
+        self.status(
+            operation(
+                "r-unbound",
+                workspace=None,
+                started_at="2026-09-25T10:00:01.000000Z",
+                host_pid=107,
             )
         )
         # Already followed, or being launched by concorde_run itself.
@@ -332,11 +447,13 @@ class RunViewTests(unittest.TestCase):
                 "dead": [102],
             }
         )
-        self.assertEqual(["r-running", "r-bash", "r-quick"], out["discovered"])
+        self.assertEqual(
+            ["r-running", "r-bash", "r-quick", "r-unbound"], out["discovered"]
+        )
 
     @verifies("scenario.main-session.pi-run-finished")
     def test_the_wake_message_carries_the_error_chain(self):
-        self.status(
+        failed = self.status(
             operation(
                 "r-failed",
                 name="spec_review",
@@ -368,13 +485,13 @@ class RunViewTests(unittest.TestCase):
                 }
             ],
         }
-        (self.runs / "r-failed/result.json").write_text(
+        (failed / "result.json").write_text(
             json.dumps({"status": "failed", "error": chain})
         )
-        self.status(operation("r-ok", phase="finished", status="ok", summary="Done."))
-        (self.runs / "r-ok/result.json").write_text(
-            json.dumps({"status": "ok", "error": None})
+        ok = self.status(
+            operation("r-ok", phase="finished", status="ok", summary="Done.")
         )
+        (ok / "result.json").write_text(json.dumps({"status": "ok", "error": None}))
         out = self.probe()
         text = out["r-failed"]["result"]
         self.assertIn("finished failed. failed: The reviewer failed.", text)
@@ -406,14 +523,14 @@ class RunViewTests(unittest.TestCase):
         )
 
     def tasks(self) -> Path:
-        tasks = self.root / ".concorde/tasks"
-        tasks.mkdir(parents=True)
+        tasks = self.concorde / "tasks"
         worktree = self.root / ".claude/worktrees/t1"
         worktree.mkdir(parents=True)
-        (tasks / "t1.json").write_text(json.dumps({"worktree": worktree.as_posix()}))
-        (tasks / "gone.json").write_text(
-            json.dumps({"worktree": (self.root / "removed").as_posix()})
-        )
+        for task, path in (("t1", worktree), ("gone", self.root / "removed")):
+            (tasks / task).mkdir(parents=True)
+            (tasks / task / "task.json").write_text(
+                json.dumps({"worktree": path.as_posix()})
+            )
         return worktree
 
     @verifies("scenario.main-session.pi-task-worktree")
@@ -473,17 +590,35 @@ def progress(task, **fields):
     return value
 
 
-def recorded(task, round_entry):
-    return {
-        "id": task,
-        "sessions": [
-            {
-                "program": "pi",
-                "id": f"task-{task}-s",
-                "rounds": [{"round": 1, "status": "running", **round_entry}],
-            }
-        ],
-    }
+def recorded(folder: Path, outcome="running", report=None, error=None) -> None:
+    """Write the node ``folder`` of a round of a pi task session as the supervisor and Tasks
+    keep it: running, or ended with ``outcome`` and its report or error."""
+    node = Node(
+        folder,
+        "1",
+        "round",
+        content_type=ROUND_TRACE,
+        metadata={"program": "pi"},
+        content={
+            "round": 1,
+            "prompt": "task",
+            "answer": None,
+            "outcome": "running",
+            "supervisor_pid": 4242,
+            "report": None,
+        },
+    ).start()
+    if outcome != "running":
+        node.finish(
+            ROUND_STATUS[outcome],
+            outcome=outcome,
+            error=error,
+            content={
+                **node.record["content"]["data"],
+                "outcome": outcome,
+                "report": report,
+            },
+        )
 
 
 @unittest.skipUnless(shutil.which("node"), "Node is needed to run pi_runs.ts")
@@ -494,10 +629,13 @@ class TaskSessionViewTests(unittest.TestCase):
         self.root = Path(os.path.realpath(directory.name))
         self.tasks = self.root / ".concorde/tasks"
 
-    def session(self, task, status, record):
-        (self.tasks / f"{task}.session").mkdir(parents=True)
-        (self.tasks / f"{task}.session/status.json").write_text(json.dumps(status))
-        (self.tasks / f"{task}.json").write_text(json.dumps(record))
+    def session(self, task, status, *outcome, **fields):
+        """The session node of ``task``'s pi task session with its progress file, and the node
+        of its first round."""
+        folder = self.tasks / task / "sessions" / status["session_id"]
+        folder.mkdir(parents=True)
+        (folder / "status.json").write_text(json.dumps(status))
+        recorded(folder / "rounds/1", *outcome, **fields)
 
     def probe(self, alive=True) -> dict:
         probe = self.root / "rounds.mts"
@@ -524,7 +662,7 @@ class TaskSessionViewTests(unittest.TestCase):
         "scenario.main-session.pi-task-session-wake",
     )
     def test_rounds_show_their_progress_and_wake_with_the_recorded_outcome(self):
-        self.session("t1", progress("t1"), recorded("t1", {}))
+        self.session("t1", progress("t1"))
         link = {
             "actor": "Tasks pi task-session supervisor (task t2, session task-t2-s, round 1)",
             "code": "session_no_report",
@@ -536,7 +674,8 @@ class TaskSessionViewTests(unittest.TestCase):
         self.session(
             "t2",
             progress("t2", phase="finished", status="failed", summary="pi ended"),
-            recorded("t2", {"status": "failed", "report": None, "error": link}),
+            "failed",
+            error=link,
         )
         report = {
             "status": "escalated",
@@ -548,7 +687,8 @@ class TaskSessionViewTests(unittest.TestCase):
         self.session(
             "t3",
             progress("t3"),
-            recorded("t3", {"status": "escalated", "report": report, "error": None}),
+            "escalated",
+            report=report,
         )
         out = self.probe()
         running = out["t1:task-t1-s:1"]

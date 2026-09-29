@@ -284,12 +284,14 @@ def read_pi_log(path: Path) -> dict:
     }
 
 
-def _alive(directory: Path) -> bool:
-    """Whether the runner of the run in ``directory`` still holds its run lock, a ``flock`` on
-    the run directory; its recorded process identifier is only meaningful in the PID namespace
-    it ran in."""
+def _alive(project: Path, run_id: str) -> bool:
+    """Whether the runner of ``run_id`` still holds its run lock ``locks/runs/<run>.lock``, a
+    ``flock`` it removes as it exits; its recorded process identifier is only meaningful in the
+    PID namespace it ran in."""
     try:
-        descriptor = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
+        descriptor = os.open(
+            records_of(project) / "locks/runs" / f"{run_id}.lock", os.O_RDONLY
+        )
     except OSError:
         return False
     try:
@@ -304,21 +306,41 @@ def _alive(directory: Path) -> bool:
 
 
 def records_of(project: Path) -> Path:
-    """The records directory of ``project``: the one its workspace binding names, or its own
-    ``.concorde`` when it is unbound."""
+    """The ``.concorde`` of ``project`` that holds its tasks, unbound runs and locks: the one its
+    workspace binding names, or its own when it is unbound."""
     try:
         binding = json.loads(
             (project / ".concorde/workspace.json").read_text(encoding="utf-8")
         )
-        return Path(binding["records"])
+        return Path(binding["concorde"])
     except (OSError, ValueError, KeyError, TypeError):
         return project / ".concorde"
 
 
-def runs_of(project: Path) -> Path:
-    """Where the runs started in ``project`` are recorded: the run store of its records
-    directory."""
-    return records_of(project) / "runs"
+def run_folders(project: Path) -> list[Path]:
+    """The folder of every run of the project's current tasks, started directly or by a
+    workflow step, and of its unbound runs (Tracing's layout)."""
+    base = records_of(project)
+    found: list[Path] = []
+    for task in sorted((base / "tasks").glob("*")):
+        workspace = task / "workspace"
+        found += sorted(
+            item for item in (workspace / "runs").glob("r-*") if item.is_dir()
+        )
+        found += sorted(
+            item
+            for item in (workspace / "workflow/steps").glob("*/run")
+            if item.is_dir()
+        )
+    found += sorted(item for item in (base / "unbound").glob("r-*") if item.is_dir())
+    return found
+
+
+def run_folder(project: Path, run_id: str) -> Path:
+    for folder in run_folders(project):
+        if folder.name == run_id or (_state(folder) or {}).get("run_id") == run_id:
+            return folder
+    return records_of(project) / "unbound" / run_id
 
 
 def _state(directory: Path) -> dict | None:
@@ -360,66 +382,81 @@ def round_key(task: str, session: str, number: int) -> str:
     return f"{task}:{session}:{number}"
 
 
-def _task_records(project: Path) -> list[dict]:
+def _json(path: Path) -> dict | None:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def _round_entry(node: dict) -> dict:
+    data = (node.get("content") or {}).get("data") or {}
+    return {
+        "round": data.get("round"),
+        "status": data.get("outcome"),
+        "supervisor_pid": data.get("supervisor_pid"),
+        "started_at": node.get("started_at"),
+        "report": data.get("report"),
+        "error": node.get("error"),
+    }
+
+
+def _pi_rounds(project: Path) -> list[tuple[str, str, dict]]:
+    """Every round of every pi task session of the current tasks: (task, session, round)."""
     found = []
-    for path in sorted((records_of(project) / "tasks").glob("*.json")):
-        try:
-            value = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
+    for session in sorted((records_of(project) / "tasks").glob("*/sessions/*")):
+        node = _json(session / "trace.json") or {}
+        if ((node.get("content") or {}).get("data") or {}).get("program") != "pi":
             continue
-        if isinstance(value, dict) and value.get("id"):
-            found.append(value)
+        for folder in sorted(
+            (session / "rounds").glob("*"),
+            key=lambda p: int(p.name) if p.name.isdigit() else 0,
+        ):
+            round_node = _json(folder / "trace.json")
+            if round_node is not None:
+                found.append(
+                    (session.parent.parent.name, session.name, _round_entry(round_node))
+                )
     return found
 
 
 def _recorded_round(project: Path, item: dict) -> dict | None:
-    """The round ``item`` names, as its task record now holds it."""
-    try:
-        record = json.loads(
-            (records_of(project) / "tasks" / f"{item['task']}.json").read_text(
-                encoding="utf-8"
-            )
-        )
-    except (OSError, ValueError):
-        return None
-    for found in record.get("sessions") or []:
-        if found.get("id") != item["session"]:
-            continue
-        for entry in found.get("rounds") or []:
-            if entry.get("round") == item["number"]:
-                return entry
-    return None
+    """The round ``item`` names, as its node now records it."""
+    node = _json(
+        records_of(project)
+        / "tasks"
+        / item["task"]
+        / "sessions"
+        / item["session"]
+        / "rounds"
+        / str(item["number"])
+        / "trace.json"
+    )
+    return _round_entry(node) if node is not None else None
 
 
 def unsettled_rounds(
     project: Path, since: str, known: set[str] = frozenset()
 ) -> list[dict]:
     """The rounds of pi task sessions begun since ``since`` that are still running: their task
-    record holds them ``running`` and their supervisor lives. ``known`` rounds were reported
+    round's node holds them ``running`` and their supervisor lives. ``known`` rounds were reported
     already."""
     found = []
-    for record in _task_records(project):
-        for found_session in record.get("sessions") or []:
-            if found_session.get("program") != "pi":
-                continue
-            for entry in found_session.get("rounds") or []:
-                key = round_key(
-                    record["id"], found_session.get("id"), entry.get("round")
-                )
-                if key in known or str(entry.get("started_at") or "") < since:
-                    continue
-                if entry.get("status") == "running" and _pid_alive(
-                    entry.get("supervisor_pid")
-                ):
-                    found.append(
-                        {
-                            "round": key,
-                            "task": record["id"],
-                            "session": found_session.get("id"),
-                            "number": entry.get("round"),
-                            "why": "running",
-                        }
-                    )
+    for task, session, entry in _pi_rounds(project):
+        key = round_key(task, session, entry.get("round"))
+        if key in known or str(entry.get("started_at") or "") < since:
+            continue
+        if entry.get("status") == "running" and _pid_alive(entry.get("supervisor_pid")):
+            found.append(
+                {
+                    "round": key,
+                    "task": task,
+                    "session": session,
+                    "number": entry.get("round"),
+                    "why": "running",
+                }
+            )
     return found
 
 
@@ -429,21 +466,22 @@ def unsettled_runs(
     """The runs started since ``since`` that the round left unsettled: still running, or
     cancelled by the end of the round. ``known`` runs were reported already."""
     found = []
-    for directory in sorted(runs_of(project).glob("r-*")):
+    for directory in run_folders(project):
         state = _state(directory)
-        if state is None or directory.name in known:
+        if state is None:
             continue
-        if str(state.get("started_at") or "") < since:
+        run_id = state.get("run_id") or directory.name
+        if run_id in known or str(state.get("started_at") or "") < since:
             continue
         if state.get("phase") != "finished":
-            if _alive(directory):
-                found.append({"run": directory.name, "why": "running"})
+            if _alive(project, run_id):
+                found.append({"run": run_id, "why": "running"})
             continue
         result = _result(directory)
         code = ((result or {}).get("error") or {}).get("code")
         written = (directory / "result.json").stat().st_mtime if result else 0.0
         if code == "cancelled" and abs(written - round_end) <= TURN_END_SECONDS:
-            found.append({"run": directory.name, "why": "stopped_with_turn"})
+            found.append({"run": run_id, "why": "stopped_with_turn"})
     return found
 
 
@@ -455,15 +493,22 @@ def _ended(project: Path, item: dict) -> bool:
         return entry.get("status") != "running" or not _pid_alive(
             entry.get("supervisor_pid")
         )
-    directory = runs_of(project) / item["run"]
+    directory = run_folder(project, item["run"])
     state = _state(directory) or {}
-    return state.get("phase") == "finished" or not _alive(directory)
+    return state.get("phase") == "finished" or not _alive(project, item["run"])
 
 
 def _progress_of(project: Path, item: dict) -> Path:
     if "round" in item:
-        return records_of(project) / "tasks" / f"{item['task']}.session/status.json"
-    return runs_of(project) / item["run"] / "status.json"
+        return (
+            records_of(project)
+            / "tasks"
+            / item["task"]
+            / "sessions"
+            / item["session"]
+            / "status.json"
+        )
+    return run_folder(project, item["run"]) / "status.json"
 
 
 def wait_for(
@@ -505,10 +550,18 @@ def _chain_text(link: dict, depth: int = 0) -> list[str]:
 
 def round_text(project: Path, item: dict) -> str:
     """What the run view tells the main agent when a task-session round ends: the outcome its
-    task record holds."""
+    round's node holds."""
     head = f"Task session of {item['task']}, round {item['number']}"
     entry = _recorded_round(project, item)
-    record = records_of(project) / "tasks" / f"{item['task']}.json"
+    record = (
+        records_of(project)
+        / "tasks"
+        / item["task"]
+        / "sessions"
+        / item["session"]
+        / "rounds"
+        / str(item["number"])
+    )
     if not entry or entry.get("status") == "running":
         return (
             f"{head} ended without recording its outcome (its supervisor is gone). Run "
@@ -538,7 +591,7 @@ def round_text(project: Path, item: dict) -> str:
         lines.append("Error chain:\n" + "\n".join(_chain_text(entry["error"])))
     if entry.get("status") == "stopped":
         lines.append("The round was stopped.")
-    lines.append(f"Task record: {record}")
+    lines.append(f"Round node: {record}")
     return "\n".join(lines)
 
 
@@ -553,7 +606,7 @@ def wake_message(project: Path, runs: list[dict]) -> str:
         if "round" in item:
             lines.append("- " + round_text(project, item).replace("\n", "\n  "))
             continue
-        directory = runs_of(project) / item["run"]
+        directory = run_folder(project, item["run"])
         result = _result(directory) or {}
         state = _state(directory) or {}
         ended = (

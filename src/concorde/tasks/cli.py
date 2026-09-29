@@ -22,7 +22,8 @@ import sys
 from pathlib import Path
 
 from .. import errors
-from ..execution.runs import load_result, run_directory
+from ..execution.runs import load_result, result_path
+from ..tracing import reader
 from ..spec.schema import ContractError, validate
 from . import merge, pi_session, session, store
 
@@ -304,14 +305,19 @@ def _checked(value, source: str) -> dict:
 
 
 def _run_error(primary: Path, task: dict, run_id: str) -> dict:
-    records = primary / ".concorde"
-    result = load_result(records, run_id)
+    workspace = store.workspace_store(primary, task["id"])
+    result = load_result(workspace, run_id)
     if result is None:
-        raise store.TaskError(
-            "unknown_run",
-            f"{run_id} has no readable result at "
-            f"{run_directory(records, run_id) / 'result.json'}",
-        )
+        # A run of another workspace or an unbound one: say whose it is when it can be found.
+        try:
+            folder, _ = reader.locate(run_id, [store.concorde(primary)])
+            result = json.loads((folder / "result.json").read_text())
+        except (reader.ReadError, OSError, ValueError):
+            raise store.TaskError(
+                "unknown_run",
+                f"{run_id} has no readable result in the workspace folder of task "
+                f"{task['id']} ({result_path(workspace, run_id)})",
+            ) from None
     if result.get("workspace") != task["id"]:
         raise store.TaskError(
             "unknown_run",
@@ -338,8 +344,8 @@ def _file_error(path: str) -> dict:
     return _checked(value, f"--error-file {path}")
 
 
-def _escalated_error(task: dict, number: int) -> dict:
-    escalations = task.get("escalations", [])
+def _escalated_error(primary: Path, task: dict, number: int) -> dict:
+    escalations = store.escalations(primary, task["id"])
     if not 1 <= number <= len(escalations):
         raise store.TaskError(
             "unknown_escalation",
@@ -378,7 +384,7 @@ def close(here: Path, arguments) -> dict:
     errors = []
     if outcome == "failed":
         primary = store.primary_of(here)
-        task = store.load_task(primary, arguments.task_id)
+        task = store.refuse_closed(primary, arguments.task_id)
         errors = [_run_error(primary, task, run) for run in arguments.run]
         errors += [_file_error(path) for path in arguments.error_file]
     return store.close_task(
@@ -468,7 +474,9 @@ def escalate(here: Path, arguments) -> dict:
     store.guard_merges(primary, task["id"])
     causes = [_run_error(primary, task, run) for run in arguments.run]
     causes += [_file_error(path) for path in arguments.error_file]
-    causes += [_escalated_error(task, number) for number in arguments.escalation]
+    causes += [
+        _escalated_error(primary, task, number) for number in arguments.escalation
+    ]
     actor = "main agent" if arguments.by == "main-agent" else "task session"
     try:
         link = errors.link(
@@ -486,10 +494,10 @@ def escalate(here: Path, arguments) -> dict:
     except ValueError as error:
         raise store.TaskError("invalid_error", str(error)) from error
     _checked(link, "the escalation")
-    record = store.escalate(primary, task["id"], link)
+    number = store.escalate(primary, task["id"], link)
     return {
         "escalated": link,
-        "number": len(record["escalations"]),
+        "number": number,
         "decision_log": store.decision_log_path(primary, task["id"]).as_posix(),
         "rendered": errors.render(link),
     }

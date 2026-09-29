@@ -1,7 +1,7 @@
 /**
  * The boundary extension of a pi task session.
  *
- * Tasks copies this file into `.concorde/tasks/<task>.session/boundary.ts`, embeds the session's
+ * Tasks copies this file into `.concorde/tasks/<task>/runtime/boundary.ts`, embeds the session's
  * policy in `POLICY` and the sandbox-runtime entry point in the import below, and the supervisor
  * loads it with `-e` on top of the developer's own pi configuration. It intercepts tool calls
  * rather than replacing tools, so the developer's extensions keep theirs: a `write` or `edit`

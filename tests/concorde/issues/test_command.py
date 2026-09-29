@@ -41,6 +41,11 @@ def command():
     return module
 
 
+# Runs of the origin project's task, as Tracing keeps them in its workspace folder.
+RUN = ".concorde/tasks/retry-limit/workspace/runs/r-1"
+OTHER_RUN = ".concorde/tasks/retry-limit/workspace/runs/r-2"
+
+
 class IssueCommandTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
@@ -177,11 +182,12 @@ class IssueCommandTests(unittest.TestCase):
         self.assertEqual((0, {"errors": [], "notes": []}), self.run_command("check"))
 
     def origin_project(self):
-        """Another project with a run directory as evidence, and the origin naming it."""
+        """Another project with a run of its task's workspace as evidence, and the origin naming
+        it."""
         other = tempfile.TemporaryDirectory()
         self.addCleanup(other.cleanup)
         elsewhere = Path(other.name)
-        (elsewhere / ".concorde/runs/r-1").mkdir(parents=True)
+        (elsewhere / RUN).mkdir(parents=True)
         origin = {
             "project": str(elsewhere),
             "head": "a" * 40,
@@ -223,7 +229,7 @@ class IssueCommandTests(unittest.TestCase):
             owner_target_id=None,
             type="bug",
             subtype=None,
-            evidence=[{"path": ".concorde/runs/r-1", "description": "the refused run"}],
+            evidence=[{"path": RUN, "description": "the refused run"}],
             origin=origin,
             error_chain=chain,
         )
@@ -243,17 +249,17 @@ class IssueCommandTests(unittest.TestCase):
     def test_evidence_absent_from_the_origin_project_is_refused(self):
         elsewhere, origin = self.origin_project()
         # The path exists in this project, but the origin project is where it must exist.
-        (self.root / ".concorde/runs/r-2").mkdir(parents=True)
+        (self.root / OTHER_RUN).mkdir(parents=True)
         absent = self.written(
             elsewhere,
             "absent.json",
-            evidence=[{"path": ".concorde/runs/r-2", "description": "x"}],
+            evidence=[{"path": OTHER_RUN, "description": "x"}],
             origin=origin,
         )
         self.assert_refused(
             1,
             "missing_evidence",
-            ["absent.json", ".concorde/runs/r-2", str(elsewhere), "origin project"],
+            ["absent.json", OTHER_RUN, str(elsewhere), "origin project"],
             "report",
             "--file",
             absent,
@@ -265,7 +271,7 @@ class IssueCommandTests(unittest.TestCase):
         broken = self.written(
             elsewhere,
             "broken.json",
-            evidence=[{"path": ".concorde/runs/r-1", "description": "the run"}],
+            evidence=[{"path": RUN, "description": "the run"}],
             origin=origin,
             error_chain={"code": "x"},
         )

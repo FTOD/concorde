@@ -26,7 +26,7 @@ from concorde.distribution.install import InstallError, install, refusal, update
 from concorde.distribution.project_defaults import write_protocol_copy
 from concorde.distribution.tools import platform_key
 from concorde.errors import ERROR_SCHEMA
-from concorde.execution.runs import run_lock
+from concorde.execution.runs import Store, run_lock
 from concorde.spec.repository_base import SpecError
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
@@ -443,7 +443,16 @@ class InstallTests(unittest.TestCase):
         self.assertEqual(1, claude.count("<!-- concorde:start -->"))
         # No glossary is declared before initialization, so nothing is imported yet.
         self.assertNotIn("<!-- concorde:glossary -->", claude)
-        self.assertIn(".concorde/runs/", (project / ".gitignore").read_text())
+        ignored = (project / ".gitignore").read_text().splitlines()
+        # The folders Tracing keeps, and the one where defect reports and session logs stay.
+        for folder in (
+            ".concorde/tasks/",
+            ".concorde/history/",
+            ".concorde/unbound/",
+            ".concorde/locks/",
+            ".concorde/runs/",
+        ):
+            self.assertIn(folder, ignored)
         self.assertIn(".concorde/workspace.json", (project / ".gitignore").read_text())
         self.assertIn(".claude/worktrees/", (project / ".gitignore").read_text())
         self.assertNotIn(".concorde/workers.json", (project / ".gitignore").read_text())
@@ -533,7 +542,9 @@ class InstallTests(unittest.TestCase):
         live = subprocess.Popen(["sleep", "60"])
         self.addCleanup(live.wait)
         self.addCleanup(live.kill)
-        run = project / ".concorde/runs/r-1/status.json"
+        concorde = project / ".concorde"
+        workspace = concorde / "tasks/t1/workspace"
+        run = workspace / "runs/r-1/status.json"
         run.parent.mkdir(parents=True)
         run.write_text(
             json.dumps(
@@ -550,8 +561,10 @@ class InstallTests(unittest.TestCase):
         # Its runner holds the run lock, as a live runner does.
         held = contextlib.ExitStack()
         self.addCleanup(held.close)
-        held.enter_context(run_lock(run.parent))
-        round_ = project / ".concorde/tasks/t2.session/status.json"
+        held.enter_context(
+            run_lock(Store(concorde, workspace), "r-1", "Execution runner")
+        )
+        round_ = concorde / "tasks/t2/sessions/task-t2-s/status.json"
         round_.parent.mkdir(parents=True)
         round_.write_text(
             json.dumps(
@@ -565,20 +578,26 @@ class InstallTests(unittest.TestCase):
             )
         )
         # A finished run, a run whose runner is gone (its process identifier, recorded in a
-        # sandbox's PID namespace, names a live unrelated process here) and the progress file of
-        # the running Operation's own worker do not count as runs of their own.
-        for name, state in (
-            ("r-0", {"kind": "operation", "phase": "finished", "host_pid": live.pid}),
+        # sandbox's PID namespace, names a live unrelated process here, and its lock file was
+        # left behind held by nobody) and the progress file of the running Operation's own
+        # worker do not count as runs of their own.
+        for folder, state in (
             (
-                "r-dead",
+                workspace / "runs/r-0",
+                {"kind": "operation", "phase": "finished", "host_pid": live.pid},
+            ),
+            (
+                concorde / "unbound/r-dead",
                 {"kind": "operation", "phase": "running", "host_pid": 1},
             ),
-            ("w-1", {"phase": "worker", "host_pid": live.pid, "run_id": "w-1"}),
+            (
+                run.parent / "workers/w-1",
+                {"phase": "worker", "host_pid": live.pid, "run_id": "w-1"},
+            ),
         ):
-            (project / f".concorde/runs/{name}").mkdir()
-            (project / f".concorde/runs/{name}/status.json").write_text(
-                json.dumps(state)
-            )
+            folder.mkdir(parents=True)
+            (folder / "status.json").write_text(json.dumps(state))
+        (concorde / "locks/runs/r-dead.lock").write_text("")
         for attempt in (
             lambda: install(
                 project, package, pi_runtime=False, d2=False, dependencies=False
@@ -593,9 +612,12 @@ class InstallTests(unittest.TestCase):
                 "operation run r-1",
                 "implement",
                 "workspace t1",
-                f"runner process {live.pid}",
-                ".concorde/runs/r-1/status.json",
+                f"held by Execution runner (process {os.getpid()}",
+                ".concorde/locks/runs/r-1.lock",
+                ".concorde/tasks/t1/workspace/runs/r-1/status.json",
                 "round 3 of the pi task session of task t2",
+                f"supervisor process {live.pid}",
+                ".concorde/tasks/t2/sessions/task-t2-s/status.json",
             ):
                 self.assertIn(fragment, message)
             self.assertNotIn("r-0", message)

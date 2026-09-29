@@ -61,7 +61,7 @@ def protocol_files(package: Path) -> dict[str, bytes]:
 def project_default_files(package: Path) -> dict[str, bytes]:
     """Concorde-owned defaults a project starts from; the installer seeds them only when absent."""
     return {
-        ISSUES_IGNORE_PATH: b"# Issue records are versioned project data. Host locks live under ../runs/.\n",
+        ISSUES_IGNORE_PATH: b"# Issue records are versioned project data. Host locks live under ../locks/.\n",
     }
 
 

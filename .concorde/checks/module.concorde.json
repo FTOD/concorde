@@ -10,7 +10,6 @@
         "no:cacheprovider",
         "-n",
         "4",
-        "tests/concorde/test_errors.py",
         "tests/concorde/acceptance",
         "tests/concorde/development"
       ],
@@ -27,7 +26,6 @@
         "tests/concorde/development",
         "tests/concorde/distribution",
         "tests/concorde/support",
-        "tests/concorde/test_errors.py",
         "tests/concorde/validation/project.py"
       ]
     }

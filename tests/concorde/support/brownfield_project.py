@@ -29,7 +29,8 @@ FILES = {
     "README.md": "# Shop\n\nA small shop.\n",
     "pyproject.toml": '[project]\nname = "shop"\n\n[tool.pytest.ini_options]\ntestpaths = ["tests"]\n',
     ".gitignore": (
-        ".concorde/runs/\n.concorde/tasks/\n.concorde/workspace.json\n"
+        ".concorde/runs/\n.concorde/tasks/\n.concorde/history/\n.concorde/unbound/\n"
+        ".concorde/locks/\n.concorde/workspace.json\n"
         ".claude/worktrees/\n__pycache__/\n"
     ),
     "src/checkout/api.py": (

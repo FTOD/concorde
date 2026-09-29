@@ -443,13 +443,12 @@ def violated(record: dict) -> bool:
 def change(ctx: RunContext):
     """Steps 2 to 5: run the specify worker, once more after creating the documents it needs;
     stop only when nothing may be observed."""
-    from ..harness.runs import read_record
 
     current = state(ctx)
     outcome = launch(ctx, [])
     if not ctx.worker_runs:
         return outcome  # the grant could not be computed; no worker ran
-    record = read_record(ctx.records, ctx.worker_runs[-1])
+    record = ctx.last_record
     current.records.append(record)
     found = list(outcome.evidence)
     proposals = ((record.get("worker_result") or {}).get("output") or {}).get(
@@ -466,7 +465,7 @@ def change(ctx: RunContext):
         if created:
             current.created = created
             outcome = launch(ctx, created)
-            record = read_record(ctx.records, ctx.worker_runs[-1])
+            record = ctx.last_record
             current.records.append(record)
             found += outcome.evidence
     current.record = record

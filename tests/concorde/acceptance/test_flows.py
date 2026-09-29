@@ -16,6 +16,7 @@ from pathlib import Path
 
 from concorde.distribution.install import install
 from concorde.spec.verification import verifies
+from concorde.tasks import store as task_store
 from tests.concorde.distribution.test_distribution import fake_d2, package_copy
 from tests.concorde.support.operation_project import claude_workers
 from tests.concorde.support.operation_project import OperationProject
@@ -147,7 +148,9 @@ class BrownfieldFlowTests(unittest.TestCase):
         self.assertEqual(0, opened.returncode, opened.stdout)
         # The workflow runs in the task worktree, whose workspace binding names the task.
         worktree = Path(
-            json.loads((project / ".concorde/tasks/adopt.json").read_text())["worktree"]
+            json.loads((project / ".concorde/tasks/adopt/task.json").read_text())[
+                "worktree"
+            ]
         )
         self.assertTrue((worktree / ".concorde/workspace.json").is_file())
 
@@ -294,17 +297,24 @@ class BrownfieldFlowTests(unittest.TestCase):
             ],
             [call["key"] for call in run_value["calls"]],
         )
-        record = json.loads(
-            (project / ".concorde/runs/workflows/adopt/record.json").read_text()
+        # The workflow's node in the task's workspace folder records its steps and reports.
+        workflow = project / ".concorde/tasks/adopt/workspace/workflow"
+        node = json.loads((workflow / "trace.json").read_text())
+        record = node["content"]["data"]
+        self.assertEqual(
+            ("workflow", "brownfield", "adopt"),
+            (node["kind"], record["workflow"], node["metadata"]["workspace"]),
+        )
+        steps = {step["key"]: step for step in record["steps"]}
+        self.assertEqual("task-validation", steps["validate"]["name"])
+        # Each step's run is a node of its own inside the step's node.
+        validate = json.loads(
+            (workflow / steps["validate"]["node"] / "run/trace.json").read_text()
         )
         self.assertEqual(
-            ("brownfield", "adopt"), (record["workflow"], record["workspace"])
+            ("run", steps["validate"]["run_id"]), (validate["kind"], validate["id"])
         )
-        self.assertEqual(
-            "task-validation",
-            {step["key"]: step["name"] for step in record["steps"]}["validate"],
-        )
-        result = json.loads(Path(record["reports"][-1]["path"]).read_text())
+        result = json.loads((workflow / record["reports"][-1]["path"]).read_text())
         self.assertEqual("ok", result["status"], json.dumps(result, indent=2)[:4000])
         self.assertEqual("adopt", result["workspace"])
         self.assertEqual(["d.db-helper"], [item["id"] for item in result["decisions"]])
@@ -457,9 +467,12 @@ class TaskFlowTests(unittest.TestCase):
             {key: worker[key] for key in worker if key != "evidence"},
         )
         self.assertEqual(worker["evidence"], link["evidence"])
-        record = json.loads((self.root / ".concorde/tasks/t1.json").read_text())
-        self.assertEqual(chain, record["escalations"][-1]["error"])
-        log = (self.root / ".concorde/tasks/t1.decisions.md").read_text()
+        # The escalation is kept in the task's trace node, its chain whole.
+        [escalation] = task_store.escalations(self.root, "t1")
+        self.assertEqual((1, chain), (escalation["number"], escalation["error"]))
+        trace = json.loads((self.root / ".concorde/tasks/t1/trace.json").read_text())
+        self.assertEqual([escalation], trace["content"]["data"]["escalations"])
+        log = (self.root / ".concorde/tasks/t1/decisions.md").read_text()
         self.assertIn("does not say whether add rounds", log)
         self.assertIn("does not say whether add rounds", value["rendered"])
 

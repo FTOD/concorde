@@ -8,8 +8,11 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import contextmanager
 from pathlib import Path
+from unittest.mock import patch
 
+from concorde.harness import claude_backend
 from concorde.harness.runs import read_record
 from concorde.harness.settings import denied
 from concorde.implementation.operation import CODE_CHANGE_SCHEMA, TEST_REPORT_SCHEMA
@@ -25,6 +28,35 @@ from tests.concorde.support.operation_project import (
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 FIXED = "def add(a, b):\n    return a + b\n"
+
+
+@contextmanager
+def generated_settings():
+    """The settings Workers generates for each Claude Code worker, which live only in the
+    worker's runtime directory, removed when the worker run ends."""
+    seen: list[dict] = []
+    original = claude_backend.worker_settings
+
+    def spy(*args, **kwargs):
+        value = original(*args, **kwargs)
+        seen.append(value)
+        return value
+
+    with patch.object(claude_backend, "worker_settings", side_effect=spy):
+        yield seen
+
+
+def brief_of(record: dict) -> str:
+    """The worker's first prompt: the brief its run directory keeps."""
+    return (Path(record["run_directory"]) / "brief.md").read_text()
+
+
+def run_node(envelope: dict) -> Path:
+    """The run's own trace node folder, which the first host evidence names."""
+    [node] = [
+        item["detail"] for item in envelope["host_evidence"] if item["kind"] == "trace"
+    ]
+    return Path(node)
 
 
 def status_lines(root: Path) -> str:
@@ -73,19 +105,17 @@ class ImplementTests(unittest.TestCase):
 
     @verifies("scenario.implementation.project-python")
     def test_the_worker_is_told_and_may_run_the_projects_interpreter(self):
-        status, envelope = self.implement([{"writes": {}}])
+        with generated_settings() as generated:
+            status, envelope = self.implement([{"writes": {}}])
         self.assertEqual(0, status, envelope)
         record = self.record(envelope)
-        work = Path(record["run_directory"]) / "work"
-        prompt = json.loads((work / "fake-round-1.json").read_text())["prompt"]
+        prompt = brief_of(record)
         self.assertIn(f"The project's own interpreter is {sys.executable}", prompt)
         # The run's own goal is the task; the workspace's goal is context beside it.
         self.assertIn("## Goal\n\nDo the task.", prompt)
         self.assertIn("## The workspace's goal\n", prompt)
         self.assertIn("Fix A.", prompt.split("## The workspace's goal")[1])
-        settings = json.loads(
-            (Path(record["run_directory"]) / "control/settings.json").read_text()
-        )
+        [settings] = generated
         environment_root = Path(sys.executable).parent.parent.as_posix()
         self.assertIn(
             os.path.realpath(environment_root),
@@ -137,8 +167,14 @@ class ImplementTests(unittest.TestCase):
             ("check.a", "module.a", "passed", 0),
             (check["check"], check["module"], check["outcome"], check["exit_code"]),
         )
-        self.assertTrue(check["log"].startswith(".concorde/runs/"))
-        self.assertTrue((self.root / check["log"]).is_file())
+        # The checks ran in the worker's round: the log is a check node of that round's node,
+        # below the worker run's node, below the run's own node.
+        worker_run = Path(self.record(envelope)["run_directory"])
+        self.assertEqual(run_node(envelope) / "workers", worker_run.parent)
+        self.assertEqual(
+            (worker_run / "rounds/1/checks/check.a/output.log").as_posix(), check["log"]
+        )
+        self.assertTrue(Path(check["log"]).is_file())
         self.assertTrue({"audit", "check", "grant"} <= set(self.kinds(envelope)))
         self.assertEqual(FIXED, (self.worktree / "src/a/calc.py").read_text())
         self.assertIn("M src/a/calc.py", status_lines(self.worktree))
@@ -203,9 +239,7 @@ class ImplementTests(unittest.TestCase):
         record = self.record(envelope)
         self.assertEqual(1, len(record["rounds"]))
         self.assertEqual("", status_lines(self.worktree))
-        grant = json.loads(
-            (Path(record["run_directory"]) / "control/grant.json").read_text()
-        )
+        grant = json.loads((Path(record["run_directory"]) / "grant.json").read_text())
         writable = [item["path"] for item in grant["entries"] if item["level"] == "rw"]
         self.assertEqual(["src/a/", "src/new.py"], writable)
         self.assertFalse(any(path.startswith("specs/") for path in writable))
@@ -291,8 +325,7 @@ class ImplementTests(unittest.TestCase):
             "--input",
             first["run_id"],
         )
-        work = Path(self.record(second)["run_directory"]) / "work"
-        prompt = json.loads((work / "fake-round-1.json").read_text())["prompt"]
+        prompt = brief_of(self.record(second))
         self.assertIn(first["run_id"], prompt)
         self.assertIn("## Task material", prompt)
 
@@ -361,31 +394,36 @@ class TestOperationTests(unittest.TestCase):
             "test", "--task", "t1", "--focus", OperationProject.plan(plan)
         )
 
-    def worker_round(self, envelope) -> dict:
+    def worker_round(self, envelope) -> tuple[dict, str]:
+        """The worker's run record and its first prompt."""
         record = read_record(self.root / ".concorde", envelope["worker_runs"][-1])
-        work = Path(record["run_directory"]) / "work"
-        return record, json.loads((work / "fake-round-1.json").read_text())
+        return record, brief_of(record)
 
     @verifies("scenario.implementation.test-pass")
     def test_passing_checks_are_reported(self):
-        status, envelope = self.run_test([{"result": {"summary": "all green"}}])
+        with generated_settings() as generated:
+            status, envelope = self.run_test([{"result": {"summary": "all green"}}])
         self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
         output = envelope["output"]
         self.assertTrue(output["passed"])
         self.assertEqual(["passed"], [item["outcome"] for item in output["checks"]])
-        self.assertTrue(output["checks"][0]["log"].startswith(".concorde/runs/r-"))
-        self.assertIn(envelope["run_id"], output["checks"][0]["log"])
+        # The host's checks are check nodes below the run's own node.
+        node = run_node(envelope)
+        self.assertEqual(envelope["run_id"], node.name)
+        self.assertEqual(
+            (node / "checks/check.a/output.log").as_posix(), output["checks"][0]["log"]
+        )
+        self.assertTrue(Path(output["checks"][0]["log"]).is_file())
         record, round_one = self.worker_round(envelope)
-        self.assertIn("check.a (module.a): passed", round_one["prompt"])
-        self.assertIn("## Focus\n\nDo the task.", round_one["prompt"])
-        self.assertIn("Fix A.", round_one["prompt"].split("## The workspace's goal")[1])
+        self.assertIn("check.a (module.a): passed", round_one)
+        self.assertIn("## Focus\n\nDo the task.", round_one)
+        self.assertIn("Fix A.", round_one.split("## The workspace's goal")[1])
         self.assertEqual(1, len(record["rounds"]))
         self.assertEqual("", status_lines(self.worktree))
         # The worker may read the log of a check that passed, to see what actually ran.
-        settings = json.loads(
-            (Path(record["run_directory"]) / "control/settings.json").read_text()
-        )
-        checks = Path(os.path.realpath(self.root / output["checks"][0]["log"])).parent
+        # Every check node lies in the run's checks folder, which the worker may read.
+        [settings] = generated
+        checks = Path(os.path.realpath(output["checks"][0]["log"])).parent.parent
         self.assertFalse(denied(settings["permissions"]["deny"], checks))
         self.assertIn(checks.as_posix(), settings["sandbox"]["filesystem"]["allowRead"])
 
@@ -410,8 +448,8 @@ class TestOperationTests(unittest.TestCase):
         self.assertEqual([failure], output["failures"])
         record, round_one = self.worker_round(envelope)
         self.assertEqual("Read,Glob,Grep", record["tools"])
-        self.assertIn("### Log of check.a", round_one["prompt"])
-        self.assertIn("check.a (module.a): failed", round_one["prompt"])
+        self.assertIn("### Log of check.a", round_one)
+        self.assertIn("check.a (module.a): failed", round_one)
 
     @verifies("scenario.implementation.test-change")
     def test_a_change_during_a_test_run_fails_it(self):

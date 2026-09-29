@@ -24,7 +24,9 @@ from tests.concorde.validation.project import (
     ValidationProject,
     evidence_of,
     git,
+    run_folder,
     status_lines,
+    workspace_run,
 )
 
 FIXED = "def add(a, b):\n    return a + b\n"
@@ -54,10 +56,13 @@ class DeliveryTests(unittest.TestCase):
         return self.head()
 
     def saved_readiness(self, envelope: dict) -> dict:
-        path = (
-            self.project.root / ".concorde/runs" / envelope["run_id"] / "readiness.json"
-        )
+        """The readiness the run saved in its trace node, in the task's workspace folder."""
+        path = workspace_run(self.project.root, envelope) / "readiness.json"
         return json.loads(path.read_text())
+
+    def node(self, envelope: dict) -> dict:
+        """The run's trace node."""
+        return json.loads((run_folder(envelope) / "trace.json").read_text())
 
     def index_state(self) -> tuple[str, ...]:
         """The index as Git shows it: status, entries, entry flags and staged content."""
@@ -107,6 +112,8 @@ class DeliveryTests(unittest.TestCase):
         self.assertEqual(measure(self.worktree, self.base)["digest"], digest)
         self.assertEqual(self.project.deliveries(), [])
         self.assertEqual(self.project.state(), "active")
+        relations = {item["relation"] for item in self.node(envelope)["references"]}
+        self.assertFalse({"commit", "bundle"} & relations)
 
     def assert_inert(self, envelope: dict, code: str, deliveries: int = 0):
         self.assertEqual(envelope["status"], "blocked", envelope)
@@ -215,12 +222,16 @@ class DeliveryTests(unittest.TestCase):
             validation["output"]["inputs"]["digest"],
         )
         self.assertTrue(self.saved_readiness(envelope)["ready"])
+        # The delivery run's node leads to what was committed: the commit and the bundle in it.
+        node = self.node(envelope)
+        self.assertEqual(("run", envelope["run_id"]), (node["kind"], node["id"]))
+        references = [(item["relation"], item["target"]) for item in node["references"]]
+        self.assertIn(("commit", commit), references)
+        self.assertIn(("bundle", f"{commit}:.concorde/evidence/t1/1.json"), references)
         self.assertEqual(
             [run["run_id"] for run in bundle["runs"]], [validation["run_id"]]
         )
-        saved = (
-            self.project.root / ".concorde/runs" / validation["run_id"] / "result.json"
-        )
+        saved = workspace_run(self.project.root, validation) / "result.json"
         self.assertEqual(bundle["runs"][0]["result_digest"], sha256(saved.read_bytes()))
         # The delivery commit is the only record of the delivery: the task record is untouched
         # and the task level reads the delivery back from Git.
@@ -543,9 +554,7 @@ class DeliveryTests(unittest.TestCase):
         self.assertEqual(delivered["confirmed"], ["src/new.py"])
         # The run ended after its commit without leaving its result: the commit alone records
         # the delivery.
-        (
-            self.project.root / ".concorde/runs" / first["run_id"] / "result.json"
-        ).unlink()
+        (workspace_run(self.project.root, first) / "result.json").unlink()
         self.assertEqual(self.project.state(), "delivered")
         status, envelope = self.project.deliver()
         self.assertEqual((status, envelope["status"]), (0, "ok"), envelope)

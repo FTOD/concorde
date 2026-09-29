@@ -48,6 +48,23 @@ class RoundOutcome:
     failure: dict | None = None
     exhausted: bool = False
     info: dict = field(default_factory=dict)
+    # What the round consumed as the agent program reported it: the usage fields of a trace node
+    # (tokens_in, tokens_out, tokens_cache_read, tokens_cache_write, cost_usd, turns).
+    usage: dict = field(default_factory=dict)
+
+
+def _count(value) -> int | None:
+    return (
+        value
+        if isinstance(value, int) and not isinstance(value, bool) and value >= 0
+        else None
+    )
+
+
+def _amount(value) -> float | None:
+    if isinstance(value, (int, float)) and not isinstance(value, bool) and value >= 0:
+        return float(value)
+    return None
 
 
 def _tail(data: bytes, size: int = 4000) -> str:
@@ -145,6 +162,17 @@ class ClaudeStream:
                     key: envelope.get(key)
                     for key in ("subtype", "is_error", "num_turns", "total_cost_usd")
                 }
+            }
+            used = (
+                envelope.get("usage") if isinstance(envelope.get("usage"), dict) else {}
+            )
+            concluded.usage = {
+                "tokens_in": _count(used.get("input_tokens")),
+                "tokens_out": _count(used.get("output_tokens")),
+                "tokens_cache_read": _count(used.get("cache_read_input_tokens")),
+                "tokens_cache_write": _count(used.get("cache_creation_input_tokens")),
+                "cost_usd": _amount(envelope.get("total_cost_usd")),
+                "turns": _count(envelope.get("num_turns")),
             }
             concluded.result = envelope.get("structured_output")
             concluded.final_text = str(envelope.get("result") or "").strip()

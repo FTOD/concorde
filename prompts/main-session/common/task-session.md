@@ -58,8 +58,8 @@ primary worktree's `.concorde/workflows/pi/<name>.js` in pi), in the mode the ta
   naming no run or file, so that your link, with its step, its options and your recommendation, is
   the whole chain for the main agent to put to the developer.
 
-Either way, read its report, `.concorde/runs/workflows/<task>/reports/<n>.json` of the primary
-worktree, like a run result: copy its decisions and problems into the decision log, since they were
+Either way, read its report, `.concorde/tasks/<task>/workspace/workflow/reports/<n>.json` of the
+primary worktree, like a run result: copy its decisions and problems into the decision log, since they were
 taken without the developer, and give its decisions in your report to the main agent. Escalate a
 result that is not `ok` and that you cannot repair within the task with `--error-file` naming that
 report. When you repaired the cause of a failed step, start the workflow again with its base key in

@@ -2,8 +2,10 @@
 
 Whoever prepares a workspace (Tasks, for a task worktree) writes ``.concorde/workspace.json`` at
 the workspace's root; every Operation, execution command and workflow started there reads it and
-never writes it. A worktree without the file is unbound: its runs work on that worktree alone,
-record no workspace and may only read.
+never writes it. It names the workspace folder where the workspace's runs are traced and the
+``.concorde`` whose ``locks/`` holds its locks. A worktree without the file is unbound: its runs work
+on that worktree alone, record no workspace, are traced in its own ``.concorde/unbound/`` and may
+only read.
 """
 
 from __future__ import annotations
@@ -23,7 +25,7 @@ MODULE_ID = {
     "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$",
 }
 
-# contract.execution.workspace-binding, version 1
+# contract.execution.workspace-binding, version 2
 BINDING_SCHEMA: dict = {
     "type": "object",
     "additionalProperties": False,
@@ -35,17 +37,19 @@ BINDING_SCHEMA: dict = {
         "base_commit",
         "goal",
         "modules",
-        "records",
+        "traces",
+        "concorde",
     ],
     "properties": {
-        "schema_version": {"const": 1},
+        "schema_version": {"const": 2},
         "workspace": {"type": "string", "pattern": NAME_PATTERN},
         "root": TEXT,
         "branch": TEXT,
         "base_commit": {"type": "string", "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"},
         "goal": TEXT,
         "modules": {"type": "array", "minItems": 1, "items": MODULE_ID},
-        "records": TEXT,
+        "traces": TEXT,
+        "concorde": TEXT,
     },
 }
 
@@ -113,6 +117,19 @@ def load(root: Path) -> dict | None:
             f"the workspace binding {path} names the root {value['root']}, not the worktree "
             f"{root} it lies in; it was copied from another workspace",
         )
+    for field in ("traces", "concorde"):
+        if not os.path.isabs(value[field]):
+            raise BindingError(
+                "binding_invalid",
+                f"the workspace binding {path} names the {field} folder {value[field]}, which "
+                "is not an absolute path",
+            )
+    if not Path(value["traces"]).is_dir():
+        raise BindingError(
+            "binding_invalid",
+            f"the workspace binding {path} names the workspace folder {value['traces']}, which "
+            "does not exist; whoever prepared the workspace removed it, as closing a task does",
+        )
     return value
 
 
@@ -127,10 +144,15 @@ def write(root: Path, value: dict) -> Path:
     return path
 
 
-def records_of(root: Path, bound: dict | None) -> Path:
-    """Where runs and workflows of ``root`` are recorded: the binding's records directory, or
-    the worktree's own ``.concorde`` for an unbound worktree."""
-    return Path(bound["records"]) if bound else root / ".concorde"
+def traces_of(root: Path, bound: dict | None) -> Path | None:
+    """The workspace folder a bound run traces into; None for an unbound worktree."""
+    return Path(bound["traces"]) if bound else None
+
+
+def concorde_of(root: Path, bound: dict | None) -> Path:
+    """The ``.concorde`` whose ``locks/`` holds the run's locks and, unbound, whose
+    ``unbound/`` holds its trace: the binding's, or the worktree's own."""
+    return Path(bound["concorde"]) if bound else root / ".concorde"
 
 
 __all__ = [
@@ -138,8 +160,9 @@ __all__ = [
     "BINDING_SCHEMA",
     "BindingError",
     "load",
+    "concorde_of",
     "path_of",
-    "records_of",
+    "traces_of",
     "toplevel",
     "write",
 ]

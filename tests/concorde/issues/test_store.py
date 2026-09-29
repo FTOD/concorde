@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import errno
+import fcntl
 import os
 import tempfile
 import unittest
 from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeout
 from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch
@@ -174,6 +176,25 @@ class IssueStoreTests(unittest.TestCase):
                 for row in list_issues(self.root)
             )
         )
+
+    @verifies("scenario.issues.store-concurrency")
+    def test_a_write_waits_for_the_worktrees_issue_lock(self):
+        # The one exclusive lock of the worktree lies with every other lock in .concorde/locks/.
+        lock = self.root / ".concorde/locks/issues.lock"
+        lock.parent.mkdir(parents=True)
+        with lock.open("a+b") as held:
+            fcntl.flock(held.fileno(), fcntl.LOCK_EX)
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                waiting = pool.submit(report_issue, self.root, report(), source())
+                with self.assertRaises(FutureTimeout):
+                    waiting.result(timeout=0.3)
+                self.assertEqual({}, self.issue_files())
+                fcntl.flock(held.fileno(), fcntl.LOCK_UN)
+                receipt = waiting.result(timeout=30)
+        self.assertEqual(
+            [receipt["issue_id"]], [row["id"] for row in list_issues(self.root)]
+        )
+        self.assertFalse((self.root / ".concorde/runs").exists())
 
     @verifies("scenario.issues.store-disposition")
     def test_a_closing_disposition_keeps_every_report(self):

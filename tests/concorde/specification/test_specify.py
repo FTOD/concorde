@@ -323,7 +323,7 @@ class SpecifyTests(unittest.TestCase):
         second = read_record(
             self.project.root / ".concorde", envelope["worker_runs"][1]
         )
-        brief = (Path(second["run_directory"]) / "control/brief.md").read_text()
+        brief = (Path(second["run_directory"]) / "brief.md").read_text()
         self.assertIn("Documents the host created for you", brief)
 
     @verifies("scenario.specification.document-refused")
@@ -391,7 +391,7 @@ class SpecifyTests(unittest.TestCase):
         record = read_record(
             self.project.root / ".concorde", envelope["worker_runs"][-1]
         )
-        brief = (Path(record["run_directory"]) / "control/brief.md").read_text()
+        brief = (Path(record["run_directory"]) / "brief.md").read_text()
         self.assertIn(first["run_id"], brief)
         self.assertIn("A answers one question.", brief)
         self.assertIn("The workspace's goal: Fix A.", brief)

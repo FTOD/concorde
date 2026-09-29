@@ -238,20 +238,16 @@ def host_checks(ctx: RunContext) -> list[dict] | Stop:
         return run_checks(
             ctx.worktree,
             modules=checked_modules(SpecRepository(ctx.worktree), ctx.modules),
-            log_directory=ctx.run_dir / "checks",
+            trace_directory=ctx.run_dir / "checks",
         )
     except (SpecError, OSError) as error:
         return ctx.checks_unavailable(error)
 
 
-def check_results(primary: Path, results: list[dict]) -> list[dict]:
+def check_results(results: list[dict]) -> list[dict]:
     shaped = []
     for item in results:
-        log = Path(item["log"])
-        try:
-            log_text = log.relative_to(primary).as_posix()
-        except ValueError:
-            log_text = log.as_posix()
+        log_text = Path(item["log"]).as_posix()
         outcome = OUTCOMES[item["status"]]
         shaped.append(
             {
@@ -419,7 +415,7 @@ def review_step(ctx: RunContext):
             "focus": ctx.arguments.focus or None,
             "reviewed_paths": reviewed,
             "named_only_paths": named,
-            "checks": check_results(ctx.records.parent, results),
+            "checks": check_results(results),
             "summary": (ctx.worker or {}).get("summary") or "reviewed",
             "findings": findings,
             "verdict": "changes_required" if blocking else "clean",

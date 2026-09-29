@@ -19,8 +19,33 @@ from pathlib import Path
 from ..errors import evidence, link
 from ..spec.repository import SpecRepository
 from ..spec.repository_base import SpecError, bound_by
+from ..spec.typed_data import register
+from ..tracing import layout
+from ..tracing.node import Node
 from .check_executor import CHECK_POLICY, CheckSandboxError, execute_check
 from .runs import primary_root
+
+# contract.checks.check-trace, version 1: the content of one check's trace node.
+CHECK_TRACE = "concorde-check-trace"
+register(
+    CHECK_TRACE,
+    1,
+    {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["status", "exit_code", "source_digest", "argv", "selected_tests"],
+        "properties": {
+            "status": {"enum": ["passed", "failed", "timeout", "refused"]},
+            "exit_code": {"anyOf": [{"type": "null"}, {"type": "integer"}]},
+            "source_digest": {"type": "string", "minLength": 1},
+            "argv": {"type": "array", "items": {"type": "string"}},
+            "selected_tests": {
+                "type": "array",
+                "items": {"type": "string", "minLength": 1},
+            },
+        },
+    },
+)
 
 
 class CheckError(SpecError):
@@ -315,7 +340,7 @@ def run_checks(
     *,
     modules=None,
     changed=None,
-    log_directory: Path,
+    trace_directory: Path,
     stage: str = "work",
     kinds: str = "all",
 ) -> list[dict]:
@@ -335,8 +360,8 @@ def run_checks(
     for identity in selected:
         if identity not in repository.modules:
             raise CheckError(f"unregistered Module: {identity}", "unknown_module")
-    log_directory = Path(log_directory)
-    log_directory.mkdir(parents=True, exist_ok=True)
+    trace_directory = Path(trace_directory)
+    trace_directory.mkdir(parents=True, exist_ok=True)
     results = []
     tests: list[str] | None = None
     for check in repository.checks.values():
@@ -368,7 +393,19 @@ def run_checks(
         )
         timeout = _timeout(check)
         before = measured_digest(repository, check, selected, tests)
-        log = log_directory / f"{check['id']}.log"
+        folder = layout.check_folder(trace_directory, check["id"])
+        log = folder / "output.log"
+        chosen = list(tests or ()) if selective else []
+        node = Node(
+            folder,
+            check["id"],
+            "check",
+            content_type=CHECK_TRACE,
+            metadata={"check": check["id"], "module": check["module"]},
+            content=_check_content("passed", None, before, argv, chosen),
+        )
+        node.keep("output", "output.log")
+        node.start()
         try:
             outcome = execute_check(
                 worktree, argv, timeout=timeout, environment=environment(check)
@@ -380,35 +417,67 @@ def run_checks(
                 + (error.stderr or b"")
                 + str(error).encode()
             )
-            raise CheckError(
+            refusal = CheckError(
                 f"check {check['id']} could not run in the read-only boundary: {error}",
                 "check_sandbox_unavailable",
-            ) from error
+            )
+            node.finish(
+                "failed",
+                outcome="refused",
+                error=service_error(refusal),
+                content=_check_content("refused", None, before, argv, chosen),
+            )
+            raise refusal from error
         header = (
             ("selected tests: " + " ".join(tests or ()) + "\n\n").encode()
             if selective
             else b""
         )
         log.write_bytes(header + outcome.stdout + b"\n" + outcome.stderr)
+        status = (
+            "timeout"
+            if outcome.timed_out
+            else ("passed" if outcome.returncode == 0 else "failed")
+        )
+        exit_code = -1 if outcome.timed_out else outcome.returncode
         if measured_digest(SpecRepository(worktree), check, selected) != before:
-            raise CheckError(
+            stale = CheckError(
                 f"the input of check {check['id']} changed while it ran",
                 "stale_evidence",
             )
-        results.append(
-            {
-                "check_id": check["id"],
-                "module": check["module"],
-                "status": "timeout"
-                if outcome.timed_out
-                else ("passed" if outcome.returncode == 0 else "failed"),
-                "exit_code": -1 if outcome.timed_out else outcome.returncode,
-                "source_digest": before,
-                "log": log.as_posix(),
-                "log_digest": "sha256:" + _file_digest(log),
-            }
+            node.finish(
+                "failed",
+                outcome="stale_evidence",
+                error=service_error(stale),
+                content=_check_content(status, exit_code, before, argv, chosen),
+            )
+            raise stale
+        result = {
+            "check_id": check["id"],
+            "module": check["module"],
+            "status": status,
+            "exit_code": exit_code,
+            "source_digest": before,
+            "log": log.as_posix(),
+            "log_digest": "sha256:" + _file_digest(log),
+        }
+        node.finish(
+            "ok" if status == "passed" else "failed",
+            outcome=status,
+            content=_check_content(status, exit_code, before, argv, chosen),
         )
+        results.append(result)
     return results
+
+
+def _check_content(status, exit_code, digest, argv, tests) -> dict:
+    return {
+        "status": status,
+        "exit_code": exit_code,
+        "source_digest": digest,
+        "argv": [str(item) for item in argv],
+        "selected_tests": list(tests),
+    }
 
 
 LOG_TAIL = 3000

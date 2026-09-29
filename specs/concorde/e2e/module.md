@@ -107,7 +107,7 @@ task `--task` (default `adopt`), whose
 every run it starts work on, so neither the workflow's arguments nor any command names the task. It
 prints the [workflow result](../glossary.json#concept.workflow-result) the
 workflow saved last in its [workflow record](../glossary.json#concept.workflow-record),
-under `.concorde/runs/workflows/<task>/` of the project, and logs the session under
+under `.concorde/tasks/<task>/workspace/workflow/` of the project, and logs the session under
 `.concorde/runs/e2e/`:
 
 - A **headless run** (`--via claude`) runs, as a

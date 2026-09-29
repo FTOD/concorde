@@ -23,6 +23,8 @@ from concorde.harness import pi_backend
 from concorde.spec.schema import ContractError, validate
 from concorde.spec.verification import verifies
 from concorde.tasks import cli, pi_session, store
+from concorde.tracing import command as trace_command
+from concorde.tracing import node as trace
 from tests.concorde.support.operation_project import OperationProject
 from tests.concorde.support.paths import REPOSITORY_ROOT
 from tests.concorde.tasks import deliveries
@@ -143,16 +145,16 @@ class PiSessionTests(unittest.TestCase):
 
     def remove_short_tmp(self):
         directory = self.root / ".concorde/tasks"
-        for session in directory.glob("*.session"):
-            shutil.rmtree(pi_session.short_tmp(session), ignore_errors=True)
+        for runtime in directory.glob("*/runtime"):
+            shutil.rmtree(pi_session.short_tmp(runtime), ignore_errors=True)
 
     def stop_rounds(self):
         """Leave no supervisor of a test behind."""
-        for task in store.list_tasks(self.root):
-            found = pi_session.latest(task)
-            busy = pi_session.running(found)
+        for folder in sorted((self.root / ".concorde/tasks").glob("*/task.json")):
+            task = folder.parent.name
+            busy = pi_session.running(self.latest(task))
             if busy:
-                pi_session.stop(self.root, task["id"])
+                pi_session.stop(self.root, task)
                 deadline = time.monotonic() + 5
                 while (
                     pi_session._alive(busy["supervisor_pid"])
@@ -160,6 +162,14 @@ class PiSessionTests(unittest.TestCase):
                 ):
                     time.sleep(0.05)
                 self.assertFalse(pi_session._alive(busy["supervisor_pid"]))
+
+    def latest(self, task: str) -> dict | None:
+        """The task's latest pi session with its rounds, from its trace."""
+        return pi_session.latest(store.sessions(self.root, task))
+
+    def runtime_folder(self, task: str = "t1") -> Path:
+        """The task's ``runtime/``: its task session's boundary, which is no trace."""
+        return self.root / ".concorde/tasks" / task / "runtime"
 
     def open(self, task: str, steps: dict) -> Path:
         self.project.open_task(
@@ -175,7 +185,7 @@ class PiSessionTests(unittest.TestCase):
     def wait(self, task: str, number: int, timeout: float = 30.0) -> dict:
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
-            found = pi_session.latest(store.load_task(self.root, task))
+            found = self.latest(task)
             rounds = found["rounds"] if found else []
             if len(rounds) >= number and rounds[number - 1]["status"] != "running":
                 return rounds[number - 1]
@@ -225,9 +235,10 @@ class PiSessionTests(unittest.TestCase):
         )
         self.escalate("t1")
         started = self.start("t1")
-        directory = self.root / ".concorde/tasks/t1.session"
+        directory = self.runtime_folder()
+        node = self.root / ".concorde/tasks/t1/sessions" / started["id"]
         self.assertEqual(
-            ("pi", "task-t1", "main-7", str(directory), None),
+            ("pi", "task-t1", "main-7", str(node), None),
             (
                 started["program"],
                 started["name"],
@@ -237,12 +248,22 @@ class PiSessionTests(unittest.TestCase):
             ),
         )
         self.assertEqual("running", started["rounds"][0]["status"])
+        recorded = trace.read(node)
+        self.assertEqual(
+            (started["id"], "session", "unknown", "pi"),
+            (
+                recorded["id"],
+                recorded["kind"],
+                recorded["status"],
+                recorded["content"]["data"]["program"],
+            ),
+        )
         ended = self.wait("t1", 1)
         self.assertEqual("escalated", ended["status"], ended)
         self.assertEqual([1], ended["report"]["escalations"])
         self.assertIsNone(ended["error"])
         boundary = (directory / "boundary.ts").read_text()
-        decision_log = os.path.realpath(self.root / ".concorde/tasks/t1.decisions.md")
+        decision_log = os.path.realpath(self.root / ".concorde/tasks/t1/decisions.md")
         self.assertIn(json.dumps(os.path.realpath(worktree)), boundary)
         self.assertIn(json.dumps(decision_log), boundary)
         self.assertIn(json.dumps(str(self.runtime / "dist/index.js")), boundary)
@@ -253,7 +274,7 @@ class PiSessionTests(unittest.TestCase):
         argv = call["argv"]
         self.assertEqual(["-p", "--mode", "json", "--approve", "-e"], argv[:5])
         self.assertEqual(str(directory / "boundary.ts"), argv[5])
-        self.assertEqual(str(directory / "pi"), argv[argv.index("--session-dir") + 1])
+        self.assertEqual(str(node / "pi"), argv[argv.index("--session-dir") + 1])
         self.assertEqual(started["id"], argv[argv.index("--session-id") + 1])
         self.assertNotIn("--model", argv)
         self.assertNotIn("--no-extensions", argv)
@@ -270,13 +291,14 @@ class PiSessionTests(unittest.TestCase):
             ),
         )
         self.assertEqual(str(tmp), call["env"]["CLAUDE_CODE_TMPDIR"])
-        self.assertTrue((self.root / ".concorde/runs").is_dir())
+        # The sandbox makes only existing paths writable, so the locks folder is made first.
+        self.assertTrue((self.root / ".concorde/locks").is_dir())
         self.assertEqual(str(self.log), call["env"]["FAKE_PI_LOG"])
         self.assertIn("You work in rounds", call["prompt"])
         self.assertIn("Let reports carry a severity.", call["prompt"])
         self.assertIn(str(worktree), call["prompt"])
         self.assertIn("`main-7`", call["prompt"])
-        progress = json.loads((directory / "status.json").read_text())
+        progress = json.loads((node / "status.json").read_text())
         self.assertEqual(
             ("task-session", "finished", "escalated", 1),
             (
@@ -288,9 +310,11 @@ class PiSessionTests(unittest.TestCase):
         )
         self.assertEqual("concorde_report", progress["last_action"]["tool"])
         events = Path(ended["events"]).read_text()
+        self.assertEqual(str(node / "rounds/1/events.jsonl"), ended["events"])
         self.assertIn("concorde run implement", events)
         record = store.load_task(self.root, "t1")
         validate(record, contract("")["schema"])
+        self.assertNotIn("sessions", record)
 
     @verifies("scenario.task-session.pi-start")
     def test_a_machine_without_pi_starts_no_session(self):
@@ -354,6 +378,7 @@ class PiSessionTests(unittest.TestCase):
             second,
         )
         self.assertEqual("answer", second["prompt"])
+        self.assertIn("Warnings do not block.", Path(second["prompt_file"]).read_text())
         first, again = self.calls()
         session_id = first["argv"][first["argv"].index("--session-id") + 1]
         self.assertEqual(started["id"], session_id)
@@ -364,6 +389,91 @@ class PiSessionTests(unittest.TestCase):
         self.assertIn("Warnings do not block.", again["prompt"])
         self.assertNotIn("You work in rounds", again["prompt"])
         validate(store.load_task(self.root, "t1"), contract("")["schema"])
+
+    @verifies("scenario.task-session.round-node")
+    def test_a_round_leaves_its_node(self):
+        self.project.open_task("t1", goal="Let reports carry a severity.")
+        delivered = self.deliver("t1")
+        usage = {
+            "input": 1200,
+            "output": 300,
+            "cacheRead": 50,
+            "cacheWrite": 7,
+            "cost": {"total": 0.0425},
+        }
+        steps = {
+            "usage": usage,
+            "report": {
+                "status": "delivered",
+                "summary": "Delivered.",
+                "commit": delivered,
+                "escalations": [],
+                "decisions": [],
+                "open": [],
+            },
+        }
+        real = pi_session.brief
+        with patch.object(
+            pi_session,
+            "brief",
+            lambda *arguments: real(*arguments) + plan(steps) + "\n",
+        ):
+            started = self.start("t1")
+        ended = self.wait("t1", 1)
+        self.assertEqual(("delivered", None), (ended["status"], ended["error"]), ended)
+        folder = Path(started["directory"]) / "rounds/1"
+        self.assertEqual(
+            str(self.root / ".concorde/tasks/t1/sessions" / started["id"] / "rounds/1"),
+            str(folder),
+        )
+        node = trace.read(folder)
+        self.assertEqual(
+            ("1", "round", "ok", "delivered"),
+            (node["id"], node["kind"], node["status"], node["outcome"]),
+        )
+        self.assertEqual(steps["report"], node["content"]["data"]["report"])
+        self.assertEqual("delivered", node["content"]["data"]["outcome"])
+        self.assertEqual(
+            (1200, 300, 50, 7, 0.0425, 1),
+            tuple(
+                node["usage"][key]
+                for key in (
+                    "tokens_in",
+                    "tokens_out",
+                    "tokens_cache_read",
+                    "tokens_cache_write",
+                    "cost_usd",
+                    "turns",
+                )
+            ),
+        )
+        self.assertIsNotNone(node["usage"]["duration_seconds"])
+        files = ("prompt.md", "events.jsonl", "stderr.log", "supervisor.log")
+        for name in files:
+            self.assertTrue((folder / name).is_file(), name)
+        self.assertEqual(
+            sorted(files), sorted(item["path"] for item in node["artifacts"])
+        )
+        # The trace shows the round below its session and rolls its cost up into the task's.
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            status = trace_command.main(["show", "t1"], self.root)
+        self.assertEqual(0, status, output.getvalue())
+        shown = json.loads(output.getvalue())
+        self.assertEqual(("t1", "task"), (shown["id"], shown["kind"]))
+        (session_view,) = [
+            child for child in shown["children"] if child["kind"] == "session"
+        ]
+        self.assertEqual(started["id"], session_view["id"])
+        self.assertEqual(
+            [("1", "round", "ok")],
+            [
+                (child["id"], child["kind"], child["status"])
+                for child in session_view["children"]
+            ],
+        )
+        self.assertEqual(0.0425, shown["rolled_up"]["cost_usd"])
+        self.assertEqual(1200, shown["rolled_up"]["tokens_in"])
 
     @verifies("scenario.task-session.pi-busy")
     def test_one_round_runs_at_a_time(self):
@@ -381,8 +491,9 @@ class PiSessionTests(unittest.TestCase):
             self.assertIn(
                 f"supervisor process {running['supervisor_pid']}", str(raised.exception)
             )
-        self.assertEqual(
-            [started], store.load_task(self.root, "t1")["sessions"], "no round started"
+        self.assertEqual([started], store.sessions(self.root, "t1"), "no round started")
+        self.assertFalse(
+            (Path(started["directory"]) / "rounds/2").exists(), "no round started"
         )
 
     @verifies("scenario.task-session.pi-no-session")
@@ -397,7 +508,8 @@ class PiSessionTests(unittest.TestCase):
                 action()
             self.assertEqual("no_session", raised.exception.code)
             self.assertEqual(before, store.load_task(self.root, "t2"))
-        self.assertEqual([], store.load_task(self.root, "t2")["sessions"])
+        self.assertEqual([], store.sessions(self.root, "t2"))
+        self.assertFalse((self.root / ".concorde/tasks/t2/sessions").exists())
 
     @verifies("scenario.task-session.pi-wait")
     def test_wait_returns_once_the_round_has_ended(self):
@@ -415,7 +527,7 @@ class PiSessionTests(unittest.TestCase):
         self.assertEqual(
             ("failed", "session_no_report"), (ended["status"], ended["error"]["code"])
         )
-        self.assertEqual(value, pi_session.latest(store.load_task(self.root, "t1")))
+        self.assertEqual(value, self.latest("t1"))
         # A task without a pi session has nothing to wait for.
         self.open("t2", {})
         status, value = self.command("session", "t2", "--wait", client="pi")
@@ -446,13 +558,11 @@ class PiSessionTests(unittest.TestCase):
         self.open("t1", {})
         self.start("t1")
         self.wait("t1", 1)
-        before = store.load_task(self.root, "t1")
+        before = store.sessions(self.root, "t1")
         with self.assertRaises(store.TaskError) as raised:
             pi_session.stop(self.root, "t1")
         self.assertEqual("session_idle", raised.exception.code)
-        self.assertEqual(
-            before["sessions"], store.load_task(self.root, "t1")["sessions"]
-        )
+        self.assertEqual(before, store.sessions(self.root, "t1"))
 
     @verifies("scenario.task-session.pi-stop")
     def test_a_pi_that_ignores_sigterm_is_killed_after_the_grace_period(self):
@@ -532,7 +642,7 @@ class PiSessionTests(unittest.TestCase):
     @verifies("scenario.task-session.pi-failed")
     def test_a_round_without_a_report_fails_with_its_evidence(self):
         self.open("t1", {"error": "model overloaded", "stderr": "boom", "exit": 1})
-        self.start("t1")
+        started = self.start("t1")
         ended = self.wait("t1", 1)
         self.assertEqual("failed", ended["status"])
         error = ended["error"]
@@ -549,8 +659,11 @@ class PiSessionTests(unittest.TestCase):
             {ended["events"], ended["stderr"]},
             {item["ref"] for item in error["evidence"]},
         )
-        progress = json.loads(
-            (self.root / ".concorde/tasks/t1.session/status.json").read_text()
+        progress = json.loads((Path(started["directory"]) / "status.json").read_text())
+        node = trace.read(Path(started["directory"]) / "rounds/1")
+        self.assertEqual(
+            ("failed", "failed", error),
+            (node["status"], node["outcome"], node["error"]),
         )
         self.assertEqual(
             ("finished", "failed"), (progress["phase"], progress["status"])
@@ -561,7 +674,6 @@ class PiSessionTests(unittest.TestCase):
         self.open("t1", {})
         gone = subprocess.Popen([sys.executable, "-c", "pass"])
         gone.wait()
-        directory = self.root / ".concorde/tasks/t1.session"
         store.record_session(
             self.root,
             "t1",
@@ -570,14 +682,16 @@ class PiSessionTests(unittest.TestCase):
                 "id": "task-t1-x",
                 "name": "task-t1",
                 "main": None,
-                "directory": str(directory),
                 "model": None,
                 "started_at": store.now(),
-                "rounds": [pi_session._round(1, directory, gone.pid, None)],
             },
         )
-        record = pi_session.settle(self.root, store.load_task(self.root, "t1"))
-        [ended] = pi_session.latest(record)["rounds"]
+        folder = store.round_folder(self.root, "t1", "task-t1-x", 1)
+        store.begin_round(
+            self.root, "t1", "task-t1-x", pi_session._round(1, folder, gone.pid, None)
+        )
+        found = pi_session.settle(self.root, "t1")
+        [ended] = pi_session.latest(found)["rounds"]
         self.assertEqual(
             ("failed", "session_supervisor_lost"),
             (ended["status"], ended["error"]["code"]),
@@ -611,7 +725,7 @@ class PiSessionTests(unittest.TestCase):
         self.assertEqual("client_unknown", value["error"]["code"])
         for name in SESSION_VARIABLES:
             self.assertIn(name, value["error"]["detail"])
-        self.assertEqual([], store.load_task(self.root, "t1")["sessions"])
+        self.assertEqual([], store.sessions(self.root, "t1"))
 
     @verifies("scenario.task-session.claude-no-rounds")
     def test_a_claude_code_session_takes_no_answer_or_stop(self):
@@ -629,7 +743,8 @@ class PiSessionTests(unittest.TestCase):
         worktree = self.open("t1", {})
         shown = self.start("t1", dry_run=True)
         self.assertEqual(str(worktree), shown["cwd"])
-        directory = self.root / ".concorde/tasks/t1.session"
+        directory = self.runtime_folder()
+        self.assertEqual(str(directory / "boundary.ts"), shown["boundary"])
         boundary = Path(shown["boundary"]).read_text()
         value = json.loads(
             boundary.split("const POLICY: SessionPolicy = ", 1)[1].split(";\n", 1)[0]
@@ -641,8 +756,8 @@ class PiSessionTests(unittest.TestCase):
                 for path in (
                     worktree,
                     self.root / ".git",
-                    self.root / ".concorde/runs",
-                    self.root / ".concorde/tasks",
+                    self.root / ".concorde/tasks/t1",
+                    self.root / ".concorde/locks",
                     pi_session.short_tmp(directory),
                     home / ".cache",
                     home / ".npm",
@@ -651,7 +766,7 @@ class PiSessionTests(unittest.TestCase):
             value["sandbox"]["allowWrite"],
         )
         self.assertEqual(pi_session.TOOL_SCHEMA, value["reportSchema"])
-        self.assertEqual([], store.load_task(self.root, "t1")["sessions"])
+        self.assertEqual([], store.sessions(self.root, "t1"))
 
     @verifies("scenario.task-session.pi-report-verified")
     def test_fabricated_escalation_fails_the_supervised_round(self):
@@ -730,17 +845,6 @@ class PiSessionTests(unittest.TestCase):
             "decisions": [],
             "open": [],
         }
-        directory = self.root / ".concorde/tasks/t1.session"
-        rounds = [
-            {
-                **pi_session._round(number, directory, os.getpid(), None),
-                "status": report["status"],
-                "ended_at": store.now(),
-                "report": report,
-                "error": None,
-            }
-            for number, report in ((1, old_escalation), (2, old_report))
-        ]
         store.record_session(
             self.root,
             "t1",
@@ -749,20 +853,47 @@ class PiSessionTests(unittest.TestCase):
                 "id": "historical",
                 "name": "task-t1",
                 "main": None,
-                "directory": str(directory),
                 "model": None,
                 "started_at": store.now(),
-                "rounds": rounds,
             },
         )
-        before = store.load_task(self.root, "t1")
+        for number, report in ((1, old_escalation), (2, old_report)):
+            folder = store.round_folder(self.root, "t1", "historical", number)
+            store.begin_round(
+                self.root,
+                "t1",
+                "historical",
+                pi_session._round(number, folder, os.getpid(), None),
+            )
+            store.finish_round(
+                self.root,
+                "t1",
+                "historical",
+                number,
+                {"status": report["status"], "report": report},
+            )
+        node = self.root / ".concorde/tasks/t1/sessions/historical"
+        files = {
+            path: path.read_bytes()
+            for path in sorted(node.rglob("*"))
+            if path.is_file()
+        }
+        before = store.sessions(self.root, "t1")
         self.assertEqual(
             [old_escalation, old_report],
-            [ended["report"] for ended in before["sessions"][0]["rounds"]],
+            [ended["report"] for ended in before[0]["rounds"]],
         )
-        self.assertEqual(before, pi_session.settle(self.root, before))
-        self.assertEqual(before, store.load_task(self.root, "t1"))
-        validate(before, contract("")["schema"])
+        self.assertEqual(before, pi_session.settle(self.root, "t1"))
+        self.assertEqual(before, store.show_task(self.root, "t1")["sessions"])
+        self.assertEqual(
+            files,
+            {
+                path: path.read_bytes()
+                for path in sorted(node.rglob("*"))
+                if path.is_file()
+            },
+        )
+        validate(store.load_task(self.root, "t1"), contract("")["schema"])
 
     def test_the_report_schema_is_the_contract(self):
         found = contract("## Session report", SESSION_CONTRACTS)
@@ -825,7 +956,7 @@ class BoundaryDecisionTests(unittest.TestCase):
             base = Path(directory)
             worktree = base / "project/.claude/worktrees/t1"
             (worktree / "src").mkdir(parents=True)
-            log = base / "project/.concorde/tasks/t1.decisions.md"
+            log = base / "project/.concorde/tasks/t1/decisions.md"
             log.parent.mkdir(parents=True)
             log.write_text("# Decision log\n")
             code = base / "code"

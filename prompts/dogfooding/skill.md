@@ -66,7 +66,8 @@ else:
 - `owner_target_id`: `null`, since the Concorde repository decides which of its Modules is at
   fault;
 - `evidence`: a list of `{"path": ..., "description": ...}`, each path relative to this project,
-  such as a file under a run directory in `.concorde/runs/`, with what it shows;
+  such as a file of a run's folder under `.concorde/tasks/<task>/workspace/runs/` or
+  `.concorde/unbound/`, with what it shows;
 - `origin`: `{"project": "<this project's absolute path>", "head": "<its HEAD commit>",
   "concorde_commit": "<the receipt's source_commit>", "task": "<task id or null>"}`;
 - `error_chain`: the whole error chain of the failure, unchanged, with your own link on top. In a
@@ -96,7 +97,7 @@ For example, with the error chain shortened:
   "basis": "Case: Concorde implements the boundary wrongly. The Spec binds src/, the grant ...",
   "owner_target_id": null,
   "evidence": [
-    {"path": ".concorde/runs/w-20261001T101500-1a2b3c/control/grant.json",
+    {"path": ".concorde/tasks/fix-retry/workspace/runs/r-20261001T101500-implement-1a2b3c4d/workers/w-20261001T101501-1a2b3c/grant.json",
      "description": "the frozen grant, src/ at rw"}
   ],
   "origin": {"project": "/home/dev/app", "head": "5d41402a...", "concorde_commit": "098eb928...",

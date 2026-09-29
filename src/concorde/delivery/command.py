@@ -625,8 +625,8 @@ def write_bundle(ctx: RunContext):
     since = previous[-1]["readiness_run"] if previous else None
     value = build_bundle(
         ctx.workspace,
-        ctx.records,
-        workspace_runs(ctx.records, ctx.workspace_name),
+        ctx.store,
+        workspace_runs(ctx.store, ctx.workspace_name),
         since=since,
         run_id=ctx.run_id,
         sequence=state.sequence,
@@ -769,6 +769,9 @@ def commit(ctx: RunContext):
             causes=[_git_link("commit", result), *undone.causes],
         )
     state.commit = head_commit(ctx.worktree)
+    # The run's trace node leads to what was committed; the bundle names the runs by identity.
+    ctx.references.append(("commit", state.commit))
+    ctx.references.append(("bundle", f"{state.commit}:{state.bundle}"))
     return Continue(evidence=[evidence("commit", state.commit, f"parent {state.head}")])
 
 

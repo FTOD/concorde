@@ -7,8 +7,12 @@ One runner executes both kinds of run definition in the worktree it is started i
    the binding's Modules; an unbound run, for a definition that allows it, works in a throwaway
    detached checkout of the worktree's ``HEAD``. Check ``--modules`` and ``--input``.
 3. Execute the definition's steps in order.
-4. Remove an unbound run's checkout, compose and check the run result, write ``result.json``,
-   release the lock, print the result.
+4. Remove an unbound run's checkout, compose and check the run result, write ``result.json``
+   and the run's trace node, release the locks, print the result.
+
+Every run is a trace node: ``trace.json`` is written when the run lock is taken and again after the
+result, in ``runs/<run-id>/`` of the binding's workspace folder, in the folder ``--trace-at`` names
+there (a workflow step's), or in ``.concorde/unbound/<run-id>/`` of the worktree for an unbound run.
 
 ``--detach`` starts the same runner as a process of its own and announces the run at once.
 """
@@ -30,15 +34,19 @@ from ..spec.schema import ContractError, validate
 from . import binding as binding_file
 from .checkout import Checkout, open_checkout
 from .context import Continue, Provider, RunContext, Stop, component, evidence
+from ..tracing import layout
+from ..tracing.node import Node, concorde_commit, protocol_version
 from .runs import (
     RESULT_SCHEMA,
     RUN_ID,
+    RUN_TRACE,
     RunError,
+    Store,
     admit_inputs,
     new_run_id,
     now,
-    run_directory,
     run_lock,
+    store_of,
     workspace_lock,
 )
 
@@ -174,6 +182,7 @@ def parse(kind: str, name: str, words) -> tuple[argparse.Namespace, Provider]:
     command.add_argument("--input", action="append", default=[])
     command.add_argument("--detach", action="store_true")
     command.add_argument("--wait", type=float, default=0.0)
+    command.add_argument("--trace-at")
     if chosen.add_arguments:
         chosen.add_arguments(command)
     arguments = command.parse_args(list(words))
@@ -278,7 +287,7 @@ def _resolve(chosen: Provider, context: RunContext, arguments) -> Stop | None:
     if context.modules and chosen.requires_loaded_specs:
         _registered(context.worktree, context.modules)
     context.inputs = admit_inputs(
-        context.records, context.workspace_name, arguments.input
+        context.store, context.workspace_name, arguments.input
     )
     return None
 
@@ -311,6 +320,133 @@ def _refused(chosen: Provider, context: RunContext, refusal) -> Stop:
     )
 
 
+def _node_folder(arguments, store: Store, identity: str, bound: dict | None) -> Path:
+    """The run's trace node folder: ``--trace-at``'s, inside the workspace folder, or the store's."""
+    if not arguments.trace_at:
+        return store.run_folder(identity)
+    if bound is None:
+        raise UsageError(
+            "--trace-at places the run's trace node inside a bound workspace's folder, and this "
+            "worktree has no usable workspace binding"
+        )
+    folder = Path(os.path.realpath(os.path.abspath(arguments.trace_at)))
+    workspace = Path(os.path.realpath(bound["traces"]))
+    if workspace != folder and workspace not in folder.parents:
+        raise UsageError(
+            f"--trace-at {arguments.trace_at} lies outside the workspace folder {workspace} the "
+            "binding names; a run's trace node lies only inside its workspace's"
+        )
+    if (folder / layout.TRACE).exists():
+        raise UsageError(
+            f"--trace-at {arguments.trace_at} already holds a trace node; a run needs a folder "
+            "of its own"
+        )
+    return folder
+
+
+def _argv(words) -> list[str]:
+    """The command line recorded in the run's node: without --detach and --trace-at."""
+    kept, skip = [], False
+    for word in words:
+        if skip:
+            skip = False
+            continue
+        if word == "--detach":
+            continue
+        if word == "--trace-at":
+            skip = True
+            continue
+        if word.startswith("--trace-at="):
+            continue
+        kept.append(word)
+    return kept
+
+
+def _head(worktree: Path) -> str | None:
+    try:
+        found = subprocess.run(
+            ["git", "rev-parse", "--verify", "--quiet", "HEAD"],
+            cwd=worktree,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return None
+    return found.stdout.strip() or None if found.returncode == 0 else None
+
+
+def _start_node(chosen: Provider, context: RunContext, words) -> Node:
+    bound = context.workspace
+    node = Node(
+        context.run_dir,
+        context.run_id,
+        "run",
+        content_type=RUN_TRACE,
+        metadata={
+            "operation" if chosen.kind == "operation" else "command": chosen.name,
+            "workspace": context.workspace_name,
+            "modules": list(bound["modules"]) if bound else [],
+            "base_commit": bound["base_commit"] if bound else None,
+            "commit": _head(context.worktree) if bound else None,
+            "concorde_commit": concorde_commit(),
+            "protocol_version": protocol_version(context.worktree),
+        },
+        content={
+            "kind": chosen.kind,
+            "name": chosen.name,
+            "argv": _argv(words),
+            "exit_code": None,
+            "steps": [],
+            "worker_runs": [],
+            "summary": None,
+        },
+    )
+    for identity, relative in (
+        ("result", layout.RESULT),
+        ("progress", layout.PROGRESS),
+        ("host-output", "host.out"),
+        ("readiness", "readiness.json"),
+    ):
+        node.keep(identity, relative)
+    return node.start()
+
+
+def _node_content(
+    chosen: Provider, context: RunContext, words, exit_code, summary
+) -> dict:
+    return {
+        "kind": chosen.kind,
+        "name": chosen.name,
+        "argv": _argv(words),
+        "exit_code": exit_code,
+        "steps": [dict(step) for step in context.steps],
+        "worker_runs": list(context.worker_runs),
+        "summary": summary,
+    }
+
+
+def _finish_node(
+    chosen: Provider, context: RunContext, node: Node, words, envelope, status
+):
+    cancelled = any(item["kind"] == "cancelled" for item in envelope["host_evidence"])
+    for path in sorted(context.run_dir.glob("traceback-*.txt")):
+        node.keep(path.stem, path.name)
+    for identity in context.inputs:
+        node.refer("input", identity)
+    for relation, target in context.references:
+        node.refer(relation, target)
+    node.finish(
+        envelope["status"],
+        outcome="cancelled" if cancelled else envelope["status"],
+        error=envelope["error"],
+        content=_node_content(chosen, context, words, status, envelope["summary"]),
+        ended_at=envelope["finished_at"],
+        modules=context.modules,
+        commit=context.commit or node.record["metadata"].get("commit"),
+    )
+
+
 def _worktree(here: Path) -> Path:
     try:
         return binding_file.toplevel(here)
@@ -338,16 +474,16 @@ def execute(
         broken = None
     except binding_file.BindingError as error:
         bound, broken = None, error
-    records = binding_file.records_of(root, bound)
+    store = store_of(root, bound)
     if identity is not None and not RUN_ID.match(identity):
         raise UsageError(f"invalid run identity {identity!r}")
     identity = identity or new_run_id(chosen.name)
-    run_dir = run_directory(records, identity)
+    run_dir = _node_folder(arguments, store, identity, bound)
     run_dir.mkdir(parents=True, exist_ok=True)
     started = now()
     context = RunContext(
         name=chosen.name,
-        records=records,
+        store=store,
         workspace=bound,
         worktree=root,
         modules=[],
@@ -360,8 +496,10 @@ def execute(
     stop: Stop | None = None
     checkout: Checkout | None = None
     # Held from before the first progress file until after the result: whoever reads the run
-    # store tells a running run from a dead one by this lock, from any PID namespace.
-    with run_lock(run_dir):
+    # store tells a running run from a dead one by this lock, from any PID namespace. The lock
+    # file is removed as the block ends.
+    with run_lock(store, identity, f"{chosen.name} run {identity}"):
+        node = _start_node(chosen, context, words)
         _progress(context, phase="running", step=None)
         previous = {
             sig: signal.signal(sig, _cancel) for sig in (signal.SIGINT, signal.SIGTERM)
@@ -374,7 +512,7 @@ def execute(
                     if bound is not None:
                         held.enter_context(
                             workspace_lock(
-                                records,
+                                store,
                                 bound["workspace"],
                                 f"{chosen.name} run {identity}",
                                 wait=arguments.wait,
@@ -393,8 +531,9 @@ def execute(
                 except (RunError, binding_file.BindingError) as refusal:
                     stop = _refused(chosen, context, refusal)
                 if stop is None:
-                    stop = _steps(chosen, context)
+                    stop = _steps(chosen, context, node, words)
             except Cancelled as cancelled:
+                _end_step(context, "cancelled")
                 stop = _cancelled(chosen, context, cancelled)
             finally:
                 for sig, handler in previous.items():
@@ -402,6 +541,7 @@ def execute(
             if checkout is not None:
                 context.evidence.extend(checkout.close())
             envelope = _envelope(chosen, context, stop, started)
+            status = 0 if envelope["status"] == "ok" else 1
             # The result is written while the lock is still held, so a run admitted after this one
             # always finds it written. Seeing the result does not mean the lock is free: it is
             # released only when this block ends.
@@ -413,18 +553,18 @@ def execute(
                 status=envelope["status"],
                 summary=envelope["summary"],
             )
-    return (0 if envelope["status"] == "ok" else 1), envelope
+            _finish_node(chosen, context, node, words, envelope, status)
+    return status, envelope
 
 
 def _cancelled(chosen: Provider, context: RunContext, cancelled: Cancelled) -> Stop:
     # Each worker run the Operation started, with the progress file and record it ended.
-    runs = context.run_dir.parent
     workers = [
         evidence(
             "worker-run",
-            (runs / worker / "record.json").as_posix(),
-            f"worker run {worker}, ended by the cancellation "
-            f"(progress {(runs / worker / 'status.json').as_posix()})",
+            (layout.worker_folder(context.run_dir, worker) / layout.TRACE).as_posix(),
+            f"worker run {worker}, ended by the cancellation (progress "
+            f"{(layout.worker_folder(context.run_dir, worker) / layout.PROGRESS).as_posix()})",
         )
         for worker in context.worker_runs
     ]
@@ -481,14 +621,30 @@ def _cancel(signum, frame):
     raise Cancelled(signal.Signals(signum).name)
 
 
-def _steps(chosen: Provider, context: RunContext) -> Stop | None:
+def _end_step(context: RunContext, outcome: str) -> None:
+    """End the step that is running, if one is, with ``outcome``."""
+    if context.steps and context.steps[-1]["ended_at"] is None:
+        context.steps[-1].update(ended_at=now(), outcome=outcome)
+
+
+def _steps(chosen: Provider, context: RunContext, node: Node, words) -> Stop | None:
     for step in chosen.steps:
         _progress(context, step=step.__name__)
+        context.steps.append(
+            {
+                "name": step.__name__,
+                "started_at": now(),
+                "ended_at": None,
+                "outcome": "running",
+            }
+        )
+        node.update(content=_node_content(chosen, context, words, None, None))
         try:
             outcome = step(context)
         except Cancelled:
             raise
         except Exception as error:  # noqa: BLE001 -- a step error is a failed result
+            _end_step(context, "raised")
             return context.exception(
                 f"step {step.__name__}",
                 error,
@@ -497,15 +653,20 @@ def _steps(chosen: Provider, context: RunContext) -> Stop | None:
             )
         context.evidence.extend(outcome.evidence)
         if isinstance(outcome, Continue):
+            _end_step(context, "continue")
             if outcome.output is not None:
                 context.output = outcome.output
             continue
+        _end_step(context, "stop")
         return outcome
     return None
 
 
 def _envelope(chosen: Provider, context: RunContext, stop: Stop | None, started: str):
-    evidence_list = list(context.evidence)
+    evidence_list = [
+        evidence("trace", context.run_id, context.run_dir.as_posix()),
+        *context.evidence,
+    ]
     if stop is not None:
         evidence_list.extend(
             item for item in stop.evidence if item not in evidence_list
@@ -585,17 +746,17 @@ def detach(
     before writing it.
     """
     words = [word for word in words if word != "--detach"]
-    _, chosen = parse(kind, name, words)
+    arguments, chosen = parse(kind, name, words)
     here = Path(os.path.realpath(cwd or Path.cwd()))
     root = _worktree(here)
     try:
         bound = binding_file.load(root)
     except binding_file.BindingError:
         bound = None  # the runner itself refuses the broken binding, with a result
-    records = binding_file.records_of(root, bound)
+    store = store_of(root, bound)
     identity = new_run_id(chosen.name)
-    run_dir = run_directory(records, identity)
-    run_dir.mkdir(parents=True)
+    run_dir = _node_folder(arguments, store, identity, bound)
+    run_dir.mkdir(parents=True, exist_ok=True)
     environment = dict(os.environ, **{RUN_ID_VARIABLE: identity})
     environment["PYTHONPATH"] = os.pathsep.join(
         [str(SOURCE_ROOT)]
@@ -624,6 +785,7 @@ def detach(
         "kind": chosen.kind,
         "name": chosen.name,
         "host_pid": process.pid,
+        "trace": run_dir.as_posix(),
         "progress": progress.as_posix(),
         "result": result.as_posix(),
     }
@@ -670,12 +832,12 @@ def _usage(kind: str, name: str | None) -> str:
 
         return (
             "usage: concorde run <operation> [--modules ids] [--input run-id]... [--detach] "
-            "[--wait seconds]; "
+            "[--wait seconds] [--trace-at folder]; "
             f"operations: {', '.join(CATALOG)}"
         )
     return (
         f"usage: concorde {name} [--modules ids] [--input run-id]... [--detach] "
-        "[--wait seconds]"
+        "[--wait seconds] [--trace-at folder]"
     )
 
 

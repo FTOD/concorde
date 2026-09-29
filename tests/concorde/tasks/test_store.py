@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -15,16 +16,73 @@ from unittest.mock import patch
 from concorde import errors
 from concorde.errors import ERROR_SCHEMA, codes
 from concorde.execution import binding
-from concorde.execution.runs import run_lock, workspace_lock
+from concorde.execution.runs import workspace_lock
 from concorde.harness import models
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
 from concorde.tasks import cli, store
+from concorde.tracing import layout, locks
+from concorde.tracing import node as trace
 from tests.concorde.support.operation_project import OperationProject, commit
 from tests.concorde.support.paths import REPOSITORY_ROOT
 from tests.concorde.tasks.deliveries import deliver, write_run
 
 TASK_CONTRACTS = "specs/concorde/coordination/tasks/contracts.md"
+
+
+# A fake supervisor of a pi round: it records the round stopped on SIGTERM, as the real one does.
+SUPERVISOR = """
+import signal, sys, time
+from pathlib import Path
+from concorde.tasks import store
+primary, task, session, number = Path(sys.argv[1]), sys.argv[2], sys.argv[3], int(sys.argv[4])
+stopped = []
+signal.signal(signal.SIGTERM, lambda *_: stopped.append(True))
+print("ready", flush=True)
+while not stopped:
+    time.sleep(0.02)
+store.finish_round(primary, task, session, number, {"status": "stopped"})
+"""
+# A fake runner of a run of a task's workspace: it holds the workspace lock and the run lock, as
+# a live runner does, and on SIGTERM writes its own result before it releases them.
+RUNNER = """
+import json, signal, sys, time
+from pathlib import Path
+from concorde.tracing import layout, locks
+concorde, task, run_id, folder = Path(sys.argv[1]), sys.argv[2], sys.argv[3], Path(sys.argv[4])
+stopped = []
+signal.signal(signal.SIGTERM, lambda *_: stopped.append(True))
+with locks.hold(layout.lock_file(concorde, "workspace", task), f"implement run {run_id}"):
+    with locks.hold(layout.lock_file(concorde, "run", run_id), "runner", remove=True):
+        print("ready", flush=True)
+        while not stopped:
+            time.sleep(0.02)
+        progress = json.loads((folder / "status.json").read_text())
+        result = {
+            key: progress[key] for key in ("kind", "name", "workspace", "modules", "run_id")
+        }
+        result.update(
+            status="failed",
+            summary="stopped by SIGTERM",
+            output=None,
+            worker=None,
+            worker_runs=[],
+            host_evidence=[],
+            error=None,
+            started_at=progress["started_at"],
+            finished_at=progress["started_at"],
+        )
+        (folder / "result.json").write_text(json.dumps(result))
+"""
+
+
+def snapshot(folder: Path) -> dict:
+    """Every file below ``folder`` with its bytes."""
+    return {
+        path.relative_to(folder).as_posix(): path.read_bytes()
+        for path in sorted(folder.rglob("*"))
+        if path.is_file()
+    }
 
 
 def git(root, *arguments):
@@ -45,10 +103,27 @@ class TaskStoreTests(unittest.TestCase):
         return status, json.loads(output.getvalue()) if output.getvalue() else None
 
     def record(self, task_id="t1"):
-        return store.load_task(self.root, task_id)
+        """The stored record of the task, current or in the history."""
+        return store.load_any(self.root, task_id)[0]
 
     def state(self, task_id="t1"):
         return store.show_task(self.root, task_id)["record"]["state"]
+
+    def folder(self, task_id="t1"):
+        return self.root / ".concorde/tasks" / task_id
+
+    def history(self, key="t1"):
+        return self.root / ".concorde/history" / key
+
+    def escalations(self, task_id="t1"):
+        return store.show_task(self.root, task_id)["escalations"]
+
+    def node(self, task_id="t1"):
+        """The task's own trace node, current or in the history."""
+        return trace.read(store.load_any(self.root, task_id)[1])
+
+    def lock(self, kind, name=None):
+        return layout.lock_file(self.root / ".concorde", kind, name)
 
     @verifies("scenario.tasks.open")
     def test_open_a_task(self):
@@ -62,28 +137,54 @@ class TaskStoreTests(unittest.TestCase):
             "module.a",
         )
         self.assertEqual(0, status, value)
-        self.assertEqual(
-            str(self.root / ".concorde/tasks/severity.decisions.md"),
-            value["decision_log"],
-        )
+        folder = self.folder("severity")
+        self.assertEqual(str(folder / "decisions.md"), value["decision_log"])
         value = value["record"]
         worktree = self.root / ".claude/worktrees/severity"
         self.assertEqual(str(worktree), value["worktree"])
-        self.assertEqual(("open", head), (value["state"], value["base_commit"]))
-        self.assertEqual([], value["sessions"])
+        self.assertEqual(
+            (2, "open", head),
+            (value["schema_version"], value["state"], value["base_commit"]),
+        )
         self.assertNotIn(".claude", git(self.root, "status", "--porcelain"))
         self.assertEqual(head, git(self.root, "rev-parse", "concorde/severity"))
         self.assertEqual("concorde/severity", git(worktree, "branch", "--show-current"))
-        self.assertEqual(
-            value, json.loads((self.root / ".concorde/tasks/severity.json").read_text())
-        )
+        # One folder holds the record, the trace node, the decision log and the workspace folder.
+        self.assertEqual(value, json.loads((folder / "task.json").read_text()))
         self.assertEqual(
             "# Decision log: severity\n\nGoal: let reports carry a severity\n",
-            (self.root / ".concorde/tasks/severity.decisions.md").read_text(),
+            (folder / "decisions.md").read_text(),
         )
-        self.assertNotIn("runs", value)
-        self.assertNotIn("deliveries", value)
-        self.assertNotIn("workflow", value)
+        self.assertTrue((folder / "workspace").is_dir())
+        # The record keeps no history: runs, deliveries, sessions and escalations are elsewhere.
+        for field in ("runs", "deliveries", "workflow", "sessions", "escalations"):
+            self.assertNotIn(field, value)
+        self.assert_contract(value)
+        node = trace.read(folder)
+        self.assertEqual(
+            ("severity", "task", "running", None),
+            (node["id"], node["kind"], node["status"], node["ended_at"]),
+        )
+        self.assertEqual(
+            {
+                "goal": "let reports carry a severity",
+                "worktree": str(worktree),
+                "transitions": [{"state": "open", "at": value["created_at"]}],
+                "escalations": [],
+                "closing": None,
+            },
+            node["content"]["data"],
+        )
+        self.assertEqual(
+            ("severity", ["module.a"], "concorde/severity", head),
+            tuple(
+                node["metadata"][key]
+                for key in ("task", "modules", "branch", "base_commit")
+            ),
+        )
+        # The task's lock lies under .concorde/locks/, apart from the folder it protects.
+        self.assertTrue(self.lock("task", "severity").is_file())
+        self.assertFalse(any(folder.glob("*.lock")))
 
     @verifies("scenario.tasks.open")
     def test_open_binds_the_worktree_as_the_tasks_workspace(self):
@@ -92,14 +193,15 @@ class TaskStoreTests(unittest.TestCase):
         worktree = self.project.worktree("t1")
         self.assertEqual(
             {
-                "schema_version": 1,
+                "schema_version": 2,
                 "workspace": "t1",
                 "root": str(worktree),
                 "branch": "concorde/t1",
                 "base_commit": head,
                 "goal": "Fix A.",
                 "modules": ["module.a", "module.b"],
-                "records": str(self.root / ".concorde"),
+                "traces": os.path.realpath(self.folder() / "workspace"),
+                "concorde": os.path.realpath(self.root / ".concorde"),
             },
             binding.load(worktree),
         )
@@ -181,7 +283,7 @@ class TaskStoreTests(unittest.TestCase):
             ),
         )
         self.assertEqual(before, self.record())
-        self.assertFalse((self.root / ".concorde/tasks/t3.json").exists())
+        self.assertFalse(self.folder("t3").exists())
         self.assertEqual("", git(self.root, "branch", "--list", "concorde/t3"))
 
     @verifies("scenario.tasks.open-not-ignored")
@@ -194,7 +296,7 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual("worktree_not_ignored", value["error"]["code"])
         self.assertIn(".claude/worktrees/t1/", value["error"]["detail"])
         self.assertIn("add .claude/worktrees/ to .gitignore", value["error"]["options"])
-        self.assertFalse((self.root / ".concorde/tasks/t1.json").exists())
+        self.assertFalse(self.folder().exists())
         self.assertFalse((self.root / ".claude/worktrees/t1").exists())
         self.assertEqual("", git(self.root, "branch", "--list", "concorde/t1"))
 
@@ -242,12 +344,20 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual(
             ["grant_decision", "audit_violation", "audit_violation"], codes(link)[:3]
         )
-        self.assertEqual(link, self.record()["escalations"][-1]["error"])
-        log = (self.root / ".concorde/tasks/t1.decisions.md").read_text()
+        (escalation,) = self.escalations()
+        self.assertEqual(
+            (1, "main-agent", link),
+            (escalation["number"], escalation["by"], escalation["error"]),
+        )
+        self.assertEqual(1, value["number"])
+        # The chain is in the task's trace node, not in its record.
+        self.assertEqual([escalation], self.node()["content"]["data"]["escalations"])
+        self.assertNotIn("escalations", self.record())
+        log = self.log()
         self.assertIn("Escalated to the developer", log)
         self.assertIn("Not handled here (decision)", log)
+        self.assertEqual(str(self.folder() / "decisions.md"), value["decision_log"])
         self.assertIn("src/bmod/secret.py", value["rendered"])
-        self.assertEqual(len(self.record()["escalations"]), value["number"])
         self.assert_contract(self.record())
 
     @verifies("scenario.tasks.escalate-decision")
@@ -278,11 +388,19 @@ class TaskStoreTests(unittest.TestCase):
             ("task-session", "workflow_decision", []),
             (link["level"], link["code"], link["causes"]),
         )
+        escalations = self.escalations()
         self.assertEqual(
-            [{"at": self.record()["escalations"][0]["at"], "error": link}],
-            self.record()["escalations"],
+            [
+                {
+                    "number": 1,
+                    "at": escalations[0]["at"],
+                    "by": "task-session",
+                    "error": link,
+                }
+            ],
+            escalations,
         )
-        log = (self.root / ".concorde/tasks/t1.decisions.md").read_text()
+        log = self.log()
         self.assertIn("workflow_decision", log)
         self.assertIn("the no-ask survey split module.a", log)
         self.assert_contract(self.record())
@@ -332,7 +450,7 @@ class TaskStoreTests(unittest.TestCase):
         )
         self.assertEqual((1, "nothing_to_escalate"), (status, value["error"]["code"]))
         self.assertIn(f"{run_id} ended ok without an error", value["error"]["detail"])
-        self.assertEqual([], self.record()["escalations"])
+        self.assertEqual([], self.escalations())
         self.assertEqual(log, self.log())
 
     @verifies("scenario.tasks.session-escalates")
@@ -373,8 +491,7 @@ class TaskStoreTests(unittest.TestCase):
             (session_link["level"], session_link["actor"]),
         )
         self.assertEqual(failed["error"], session_link["causes"][0])
-        log = (self.root / ".concorde/tasks/t1.decisions.md").read_text()
-        self.assertIn("Escalated to the main agent", log)
+        self.assertIn("Escalated to the main agent", self.log())
         status, value = self.command(
             "escalate",
             "t1",
@@ -392,7 +509,11 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual(0, status, value)
         self.assertEqual("main-agent", value["escalated"]["level"])
         self.assertEqual([session_link], value["escalated"]["causes"])
-        self.assertIn("Escalated to the developer", self.project_log())
+        self.assertIn("Escalated to the developer", self.log())
+        self.assertEqual(
+            [("task-session", 1), ("main-agent", 2)],
+            [(item["by"], item["number"]) for item in self.escalations()],
+        )
         status, value = self.command(
             "escalate",
             "t1",
@@ -408,9 +529,6 @@ class TaskStoreTests(unittest.TestCase):
             "x",
         )
         self.assertEqual((1, "unknown_escalation"), (status, value["error"]["code"]))
-
-    def project_log(self):
-        return (self.root / ".concorde/tasks/t1.decisions.md").read_text()
 
     @verifies("scenario.tasks.open-unknown-module")
     def test_an_unknown_module_is_refused(self):
@@ -462,7 +580,13 @@ class TaskStoreTests(unittest.TestCase):
             ([], [], None), (shown["runs"], shown["deliveries"], shown["busy"])
         )
         self.assertEqual(
-            str(self.root / ".concorde/tasks/t1.decisions.md"), shown["decision_log"]
+            (str(self.folder() / "decisions.md"), str(self.folder()), [], []),
+            (
+                shown["decision_log"],
+                shown["folder"],
+                shown["sessions"],
+                shown["escalations"],
+            ),
         )
         _, shown = self.command("show", "t2")
         self.assertEqual(
@@ -482,7 +606,7 @@ class TaskStoreTests(unittest.TestCase):
         write_run(self.root, "r-20260927T000000-understand-00000001", "t2")
         write_run(self.root, "r-20260927T000000-understand-00000002", None)
         self.assertEqual("open", self.state())
-        running = write_run(
+        write_run(
             self.root,
             "r-20260927T000001-implement-00000003",
             "t1",
@@ -490,7 +614,11 @@ class TaskStoreTests(unittest.TestCase):
             status=None,
         )
         # Its runner holds the run lock, as a live runner does.
-        self.enterContext(run_lock(running.parent))
+        self.enterContext(
+            locks.hold(
+                self.lock("run", "r-20260927T000001-implement-00000003"), "test runner"
+            )
+        )
         shown = store.show_task(self.root, "t1")
         self.assertEqual("active", shown["record"]["state"])
         self.assertEqual(
@@ -524,8 +652,9 @@ class TaskStoreTests(unittest.TestCase):
     @verifies("scenario.tasks.busy")
     def test_a_second_concurrent_run_is_refused(self):
         self.project.open_task("t1")
-        records = self.root / ".concorde"
-        with workspace_lock(records, "t1", "implement run r-held"):
+        with workspace_lock(
+            store.workspace_store(self.root, "t1"), "t1", "implement run r-held"
+        ):
             self.assertIn(
                 "implement run r-held", store.show_task(self.root, "t1")["busy"]
             )
@@ -562,49 +691,44 @@ class TaskStoreTests(unittest.TestCase):
     @verifies("scenario.tasks.concurrent-update")
     def test_a_concurrent_change_is_detected(self):
         self.project.open_task("t1")
-        path = self.root / ".concorde/tasks/t1.json"
-        real = store._locked
+        path = self.folder() / "task.json"
         calls = {"n": 0}
 
-        def escalated(record):
-            record["escalations"].append({"at": store.now(), "error": {}})
-            return record
-
-        @contextlib.contextmanager
-        def meddling(primary):
+        def meddled(record):
+            # Another process that does not take the task's lock changes the record between
+            # Tasks' read and its write.
             calls["n"] += 1
             value = json.loads(path.read_text())
             value["goal"] = f"changed by another process {calls['n']}"
             path.write_text(json.dumps(value))
-            with real(primary):
-                yield
+            record["modules"] = [*record["modules"], "module.b"]
+            return record
 
-        with (
-            patch.object(store, "_locked", meddling),
-            self.assertRaises(store.TaskError) as raised,
-        ):
-            store.update(self.root, "t1", escalated)
+        with self.assertRaises(store.TaskError) as raised:
+            store.update(self.root, "t1", meddled)
         self.assertEqual("record_conflict", raised.exception.code)
         self.assertEqual(3, calls["n"])
         self.assertEqual("changed by another process 3", self.record()["goal"])
-        self.assertEqual([], self.record()["escalations"])
-        calls["n"] = 0
-        once = {"done": False}
+        self.assertEqual(["module.a"], self.record()["modules"])
 
-        @contextlib.contextmanager
-        def once_meddling(primary):
-            if not once["done"]:
-                once["done"] = True
+        def meddled_once(record):
+            calls["n"] += 1
+            if calls["n"] == 1:
                 value = json.loads(path.read_text())
                 value["goal"] = "changed once"
                 path.write_text(json.dumps(value))
-            with real(primary):
-                yield
+            record["modules"] = [*record["modules"], "module.b"]
+            return record
 
-        with patch.object(store, "_locked", once_meddling):
-            record = store.update(self.root, "t1", escalated)
-        self.assertEqual("changed once", record["goal"])
-        self.assertEqual(1, len(record["escalations"]))
+        calls["n"] = 0
+        record = store.update(self.root, "t1", meddled_once)
+        # The update was applied again to what the other process wrote.
+        self.assertEqual(2, calls["n"])
+        self.assertEqual(
+            ("changed once", ["module.a", "module.b"]),
+            (record["goal"], record["modules"]),
+        )
+        self.assertEqual(record, self.record())
 
     def deliver(self, task_id="t1"):
         return deliver(self.project.worktree(task_id))
@@ -728,9 +852,44 @@ class TaskStoreTests(unittest.TestCase):
         )
         self.assertEqual(head, value["closed"]["primary_commit"])
         self.assertTrue(value["closed"]["worktree_removed"])
+        self.assertEqual("t1", value["closed"]["history"])
         self.assertFalse(worktree.exists())
         self.assertEqual(head, git(self.root, "rev-parse", "concorde/t1"))
-        self.assertTrue((self.root / ".concorde/tasks/t1.decisions.md").exists())
+        # The whole folder moved to the history, and the task's locks are gone.
+        self.assertFalse(self.folder().exists())
+        history = self.history()
+        self.assertEqual(value, json.loads((history / "task.json").read_text()))
+        self.assertIn("## Closed: merged", (history / "decisions.md").read_text())
+        self.assertTrue((history / "workspace").is_dir())
+        self.assertFalse((history / "runtime").exists())
+        node = trace.read(history)
+        self.assertEqual(
+            ("ok", "merged", value["closed"]["at"]),
+            (node["status"], node["outcome"], node["ended_at"]),
+        )
+        self.assertEqual(
+            ["open", "closed"],
+            [item["state"] for item in node["content"]["data"]["transitions"]],
+        )
+        self.assertEqual("merged", node["content"]["data"]["closing"]["outcome"])
+        for kind in ("task", "workspace", "workflow"):
+            self.assertFalse(self.lock(kind, "t1").exists(), kind)
+        self.assert_contract(self.record())
+        # The history still answers list and show.
+        _, shown = self.command("show", "t1")
+        self.assertEqual(
+            ("closed", str(history), str(history / "decisions.md"), None),
+            (
+                shown["record"]["state"],
+                shown["folder"],
+                shown["decision_log"],
+                shown["busy"],
+            ),
+        )
+        _, listed = self.command("list")
+        self.assertEqual(
+            [("t1", "closed")], [(item["id"], item["state"]) for item in listed]
+        )
 
     @verifies(
         "scenario.tasks.close-submodules", "scenario.tasks.close-submodules-dirty"
@@ -829,7 +988,8 @@ class TaskStoreTests(unittest.TestCase):
         )
         self.assertFalse(worktree.exists())
         self.assertTrue(git(self.root, "branch", "--list", "concorde/t1"))
-        log = (self.root / ".concorde/tasks/t1.decisions.md").read_text()
+        self.assertFalse(self.folder().exists())
+        log = (self.history() / "decisions.md").read_text()
         self.assertIn("## Closed: completed", log)
         self.assertIn("the probe answered", log)
         self.assert_contract(self.record())
@@ -864,10 +1024,22 @@ class TaskStoreTests(unittest.TestCase):
             (value["state"], value["closed"]["outcome"], value["closed"]["note"]),
         )
         self.assertEqual([failed["error"]], value["closed"]["errors"])
-        log = (self.root / ".concorde/tasks/t1.decisions.md").read_text()
+        log = (self.history() / "decisions.md").read_text()
         self.assertIn("## Closed: failed", log)
         self.assertIn(failed["error"]["code"], log)
         self.assert_contract(self.record())
+        # The trace node ends failed with the first error chain that caused the failure.
+        node = self.node()
+        self.assertEqual(
+            ("failed", "failed", failed["error"]),
+            (node["status"], node["outcome"], node["error"]),
+        )
+        # The run that failed moved to the history with the task.
+        self.assertTrue(
+            (
+                self.history() / "workspace/runs" / failed["run_id"] / "result.json"
+            ).is_file()
+        )
 
     @verifies("scenario.tasks.close-failed-no-error")
     def test_a_task_that_failed_for_no_error_closes_without_errors(self):
@@ -886,6 +1058,10 @@ class TaskStoreTests(unittest.TestCase):
             (value["state"], value["closed"]["note"], value["closed"]["errors"]),
         )
         self.assert_contract(self.record())
+        node = self.node()
+        self.assertEqual(
+            ("failed", "failed", None), (node["status"], node["outcome"], node["error"])
+        )
 
     @verifies("scenario.tasks.close-failed-invalid")
     def test_a_failed_close_needs_a_reason_and_one_error_choice(self):
@@ -922,65 +1098,225 @@ class TaskStoreTests(unittest.TestCase):
         # Closing removes the worktree and with it the workspace binding, so no run of the
         # task's workspace can start; a run recorded anyway leaves the task closed.
         self.assertFalse(binding.path_of(worktree).exists())
-        write_run(self.root, "r-20260927T000000-test-00000001", "t1", name="test")
+        write_run(
+            self.root,
+            "r-20260927T000000-test-00000001",
+            "t1",
+            name="test",
+            traces=self.history() / "workspace",
+        )
         self.assertEqual("closed", self.state())
         _, closed = self.command("list", "--state", "closed")
         self.assertEqual(["t1"], [item["id"] for item in closed])
         with self.assertRaises(store.TaskError) as raised:
-            store.record_session(self.root, "t1", {"program": "claude"})
+            store.record_session(self.root, "t1", self.session("t1", "claude"))
         self.assertEqual("task_closed", raised.exception.code)
+        # Refusing it made no lock of the closed task again.
+        self.assertFalse(self.lock("task", "t1").exists())
+
+    @staticmethod
+    def session(task_id, program="pi", session_id="s1"):
+        return {
+            "program": program,
+            "id": session_id,
+            "name": f"task-{task_id}",
+            "main": "main",
+            "model": None,
+        }
+
+    def child(self, code, *argv):
+        """A child process running ``code`` with Concorde importable, once it said it is
+        ready."""
+        process = subprocess.Popen(
+            [sys.executable, "-c", code, *argv],
+            stdout=subprocess.PIPE,
+            text=True,
+            env={**os.environ, "PYTHONPATH": str(REPOSITORY_ROOT / "src")},
+        )
+        self.addCleanup(process.wait, 30)
+        self.addCleanup(process.stdout.close)
+        self.addCleanup(lambda: process.poll() is None and process.kill())
+        self.assertEqual("ready\n", process.stdout.readline())
+        return process
+
+    def supervised_round(self, task_id, number=1, session_id="s1"):
+        """Begin round ``number`` of the task's pi session with a fake supervisor that records
+        the round ``stopped`` when it receives ``SIGTERM``, as the real one does."""
+        supervisor = self.child(
+            SUPERVISOR, str(self.root), task_id, session_id, str(number)
+        )
+        store.begin_round(
+            self.root,
+            task_id,
+            session_id,
+            {"round": number, "prompt": "task", "supervisor_pid": supervisor.pid},
+        )
+        return supervisor
+
+    def rounds(self, task_id, session_id="s1"):
+        (found,) = [
+            item
+            for item in store.show_task(self.root, task_id)["sessions"]
+            if item["id"] == session_id
+        ]
+        return found["rounds"]
 
     @verifies("scenario.tasks.round-closed")
     def test_no_round_begins_in_a_task_closed_meanwhile(self):
         self.project.open_task("t1")
-        store.record_session(
-            self.root, "t1", {"program": "pi", "id": "s1", "rounds": []}
-        )
-        running = {"round": 1, "status": "running", "supervisor_pid": 1}
-        store.begin_round(self.root, "t1", "s1", dict(running))
-        # A round running when the task closes still records its outcome.
-        self.command("close", "t1", "--completed", "--note", "done")
-        record = store.finish_round(self.root, "t1", "s1", 1, {"status": "stopped"})
-        self.assertEqual("stopped", record["sessions"][0]["rounds"][0]["status"])
+        store.record_session(self.root, "t1", self.session("t1"))
+        supervisor = self.supervised_round("t1")
+        # A round running when the task closes still records its outcome: the close stops it.
+        status, value = self.command("close", "t1", "--completed", "--note", "done")
+        self.assertEqual(0, status, value)
+        self.assertEqual(0, supervisor.wait(30))
+        self.assertEqual(["stopped"], [item["status"] for item in self.rounds("t1")])
         with self.assertRaises(store.TaskError) as raised:
-            store.begin_round(self.root, "t1", "s1", dict(running, round=2))
+            store.begin_round(
+                self.root,
+                "t1",
+                "s1",
+                {"round": 2, "prompt": "answer", "supervisor_pid": os.getpid()},
+            )
         self.assertEqual("task_closed", raised.exception.code)
-        # A close stored between the round's first check and its write refuses it on retry.
+        self.assertEqual(1, len(self.rounds("t1")))
+        # A close stored between the round's first check and its write refuses it.
         self.project.open_task("t2")
-        store.record_session(
-            self.root, "t2", {"program": "pi", "id": "s1", "rounds": []}
-        )
-        path = self.root / ".concorde/tasks/t2.json"
-        real_locked, real_session = store._locked, store._pi_session
-        checked = {"n": 0}
+        store.record_session(self.root, "t2", self.session("t2"))
+        path = self.folder("t2") / "task.json"
+        real_locked = store.task_locked
 
         @contextlib.contextmanager
-        def closing(primary):
+        def closing(primary, task_id):
             value = json.loads(path.read_text())
             if value["state"] == "open":
                 value["state"] = "closed"
                 path.write_text(json.dumps(value))
-            with real_locked(primary):
+            with real_locked(primary, task_id):
                 yield
 
-        def counted(record, session_id):
-            checked["n"] += 1
-            return real_session(record, session_id)
-
         with (
-            patch.object(store, "_locked", closing),
-            patch.object(store, "_pi_session", counted),
+            patch.object(store, "task_locked", closing),
             self.assertRaises(store.TaskError) as raised,
         ):
-            store.begin_round(self.root, "t2", "s1", dict(running))
+            store.begin_round(
+                self.root,
+                "t2",
+                "s1",
+                {"round": 1, "prompt": "task", "supervisor_pid": os.getpid()},
+            )
         self.assertEqual("task_closed", raised.exception.code)
-        self.assertEqual(1, checked["n"])
-        self.assertEqual([], self.record("t2")["sessions"][0]["rounds"])
+        self.assertEqual([], self.rounds("t2"))
+        self.assertFalse((self.folder("t2") / "sessions/s1/rounds").exists())
+
+    @verifies("scenario.tasks.close-stops-runs")
+    def test_a_failed_close_stops_what_still_runs_before_the_folder_moves(self):
+        self.project.open_task("t1")
+        run_id = "r-20260927T000000-implement-00000001"
+        folder = write_run(
+            self.root, run_id, "t1", name="implement", status=None
+        ).parent
+        runner = self.child(
+            RUNNER, str(self.root / ".concorde"), "t1", run_id, str(folder)
+        )
+        store.record_session(self.root, "t1", self.session("t1"))
+        supervisor = self.supervised_round("t1")
+        shown = store.show_task(self.root, "t1")
+        self.assertEqual(["running"], [run["status"] for run in shown["runs"]])
+        self.assertIn(run_id, shown["busy"])
+        self.assertEqual(["running"], [item["status"] for item in self.rounds("t1")])
+        status, value = self.command(
+            "close",
+            "t1",
+            "--failed",
+            "--reason",
+            "the direction was wrong",
+            "--no-error",
+        )
+        self.assertEqual(0, status, value)
+        # Both were stopped with SIGTERM and ended on their own.
+        self.assertEqual((0, 0), (runner.wait(30), supervisor.wait(30)))
+        self.assertEqual(
+            ("failed", "failed"), (value["state"], value["closed"]["outcome"])
+        )
+        # Only then did the folder move: the run's own result and the stopped round are in the
+        # history, and nothing was written into the task's former folder afterwards.
+        self.assertFalse(self.folder().exists())
+        result = json.loads(
+            (self.history() / "workspace/runs" / run_id / "result.json").read_text()
+        )
+        self.assertEqual(
+            ("failed", "stopped by SIGTERM"), (result["status"], result["summary"])
+        )
+        shown = store.show_task(self.root, "t1")
+        self.assertEqual(str(self.history()), shown["folder"])
+        self.assertEqual(
+            [(run_id, "failed")],
+            [(run["run_id"], run["status"]) for run in shown["runs"]],
+        )
+        (round_,) = self.rounds("t1")
+        self.assertEqual("stopped", round_["status"])
+        self.assertEqual(
+            "failed",
+            trace.read(self.history() / "sessions/s1/rounds/1")["status"],
+        )
+        for kind in ("task", "workspace", "workflow", "run"):
+            name = run_id if kind == "run" else "t1"
+            self.assertFalse(self.lock(kind, name).exists(), kind)
+
+    @verifies("scenario.tasks.closed-run-refused")
+    def test_a_run_in_the_worktree_of_a_closed_task_is_refused(self):
+        self.project.open_task("t1")
+        worktree = self.project.worktree("t1")
+        bound = binding.path_of(worktree).read_text()
+        status, value = self.command("close", "t1", "--completed", "--note", "done")
+        self.assertEqual(0, status, value)
+        # The worktree is put back by hand, with its binding.
+        git(self.root, "worktree", "add", str(worktree), "concorde/t1")
+        binding.path_of(worktree).parent.mkdir(parents=True, exist_ok=True)
+        binding.path_of(worktree).write_text(bound)
+        before = snapshot(self.history())
+        status, value = self.project.run("task-validation", cwd=worktree)
+        self.assertEqual(1, status, value)
+        self.assertIn("binding_invalid", codes(value["error"]), value["error"])
+        self.assertIn(str(self.folder() / "workspace"), json.dumps(value["error"]))
+        self.assertEqual(before, snapshot(self.history()))
+        self.assertFalse(self.folder().exists())
+
+    @verifies("scenario.tasks.history-key")
+    def test_a_reused_name_gets_its_own_history_folder(self):
+        self.project.open_task("retry")
+        status, value = self.command("close", "retry", "--completed", "--note", "first")
+        self.assertEqual((0, "retry"), (status, value["closed"]["history"]), value)
+        git(self.root, "branch", "-D", "concorde/retry")
+        first = snapshot(self.history("retry"))
+        self.project.open_task("retry")
+        status, value = self.command(
+            "close", "retry", "--completed", "--note", "second"
+        )
+        self.assertEqual((0, "retry.2"), (status, value["closed"]["history"]), value)
+        self.assertEqual(
+            "second",
+            json.loads((self.history("retry.2") / "task.json").read_text())["closed"][
+                "note"
+            ],
+        )
+        self.assertEqual(first, snapshot(self.history("retry")))
+        self.assertFalse(self.folder("retry").exists())
+        # The name shows the latest; each history key shows its own.
+        _, shown = self.command("show", "retry")
+        self.assertEqual(str(self.history("retry.2")), shown["folder"])
+        _, shown = self.command("show", "retry.2")
+        self.assertEqual("second", shown["record"]["closed"]["note"])
+        _, listed = self.command("list")
+        self.assertEqual(
+            ["first", "second"], [item["closed"]["note"] for item in listed]
+        )
 
     def read_only_log(self, task_id="t1"):
-        log = self.root / f".concorde/tasks/{task_id}.decisions.md"
+        log = self.folder(task_id) / "decisions.md"
         log.chmod(0o444)
-        self.addCleanup(log.chmod, 0o644)
+        self.addCleanup(lambda: log.exists() and log.chmod(0o644))
         return log
 
     @verifies("scenario.tasks.close-rerun", "scenario.tasks.close-other-outcome")
@@ -1002,7 +1338,7 @@ class TaskStoreTests(unittest.TestCase):
         self.assertTrue(worktree.exists())
         real = store.update
 
-        def conflicting(primary, task_id, change):
+        def conflicting(primary, task_id, change, *, locked=False):
             raise store.TaskError(
                 "record_conflict", f"task {task_id} changed concurrently"
             )
@@ -1019,6 +1355,7 @@ class TaskStoreTests(unittest.TestCase):
         )
         self.assertFalse(worktree.exists())
         self.assertEqual("open", self.record()["state"])
+        self.assertTrue(self.folder().is_dir())
         self.assertIs(real, store.update)
         status, value = self.command("close", "t1", "--completed", "--note", "done")
         self.assertEqual(0, status, value)
@@ -1026,6 +1363,8 @@ class TaskStoreTests(unittest.TestCase):
             ("closed", False), (value["state"], value["closed"]["worktree_removed"])
         )
         self.assertIn("## Closed: completed", self.log())
+        self.assertFalse(self.folder().exists())
+        self.assertTrue((self.history() / "task.json").is_file())
         # The record is written but the decision log refuses the closing.
         self.project.open_task("t2")
         log = self.read_only_log("t2")
@@ -1042,6 +1381,8 @@ class TaskStoreTests(unittest.TestCase):
         self.assertIn("`concorde task close t2 --failed`", value["error"]["detail"])
         stored = self.record("t2")
         self.assertEqual("failed", stored["state"])
+        # The folder moves only once the closing is in the decision log.
+        self.assertTrue(self.folder("t2").is_dir())
         self.assertEqual(
             (1, "invalid_transition"),
             self.refusal("close", "t2", "--completed", "--note", "other"),
@@ -1052,6 +1393,8 @@ class TaskStoreTests(unittest.TestCase):
         )
         self.assertEqual(0, status, value)
         self.assertEqual(stored, self.record("t2"))
+        self.assertFalse(self.folder("t2").exists())
+        self.assertTrue((self.history("t2") / "task.json").is_file())
         heading = f"## Closed: failed, {stored['closed']['at']}"
         self.assertEqual(1, self.log("t2").splitlines().count(heading))
         self.assertIn("\nno\n", self.log("t2"))
@@ -1067,7 +1410,8 @@ class TaskStoreTests(unittest.TestCase):
         self.assert_contract(self.record("t2"))
 
     def log(self, task_id="t1"):
-        return (self.root / f".concorde/tasks/{task_id}.decisions.md").read_text()
+        """The task's decision log, in its folder or, once closed, in the history."""
+        return store.decision_log_path(self.root, task_id).read_text()
 
     @verifies("scenario.tasks.escalate-log-failed")
     def test_an_escalation_the_log_refused_is_recorded_once(self):
@@ -1108,7 +1452,7 @@ class TaskStoreTests(unittest.TestCase):
         self.assertIn("as escalation 1", detail)
         self.assertIn("would record it twice", detail)
         self.assertIn("the tests of module.a failed", detail)
-        self.assertEqual(1, len(self.record()["escalations"]))
+        self.assertEqual(1, len(self.escalations()))
         self.assertEqual(before, self.log())
         self.assert_contract(self.record())
 

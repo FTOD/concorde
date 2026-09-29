@@ -101,11 +101,12 @@ session's total.
 [runs](../../glossary.json#concept.run) of Operations and
 [execution commands](../../glossary.json#concept.execution-command) started since the session began
 that it has not reported yet ([requirements](requirements.md#req.headless-sessions.wake-once)), in
-the [run store](../../glossary.json#concept.run-store) of the session's worktree: the one its
+the [run store](../../glossary.json#concept.run-store) of the session's project: the workspace
+folders of the current tasks and `.concorde/unbound/` of the `.concorde` its
 [workspace binding](../../glossary.json#concept.workspace-binding) names when the session runs in a
-task worktree, otherwise the worktree's own `.concorde/runs/`. Every run started there since the
-session began counts as the session's, including the runs of the tasks it opened, whose workspace
-bindings name the same records directory; a run another session started in the same project
+task worktree, otherwise of the worktree's own. Every run started there since the session began
+counts as the session's, including the runs of the tasks it opened, whose workspace folders lie in
+the same `.concorde`; a run another session started in the same project
 meanwhile would be taken for this one's too. A run whose
 [run progress file](../../glossary.json#concept.run-progress-file) is not finished and whose runner
 lives is still running; a run whose result has the error code `cancelled` and was written within
@@ -235,22 +236,22 @@ file](../../glossary.json#concept.run-progress-file) and the [run
 result](../../glossary.json#concept.run-result) of every run a session starts, and
 the run store that holds them. The driver relies on the run progress file naming the run's kind,
 name, workspace, phase and start time, on the [run lock](../../glossary.json#concept.run-lock)
-telling whether its runner still lives, on the result carrying the status, summary and error code, and on a workspace binding naming the records directory of its runs, to decide
+telling whether its runner still lives, on the result carrying the status, summary and error code, and on a workspace binding naming the `.concorde` of its runs, to decide
 which runs are unsettled and to write the wake message; it never changes any of them.
 
 <a id="uses-task-sessions"></a>
 
 **Task sessions** provides the [session rounds](../../glossary.json#concept.session-round) of a pi
 task session and their [session reports](../../glossary.json#concept.session-report). The driver
-relies on each round being recorded in its task's task record with its number, its status
-(`running` until its supervisor records the outcome), its supervisor's process, its start time,
-its report and its error, and on the round's status file `status.json` beside the record; it never
-changes either.
+relies on each round being recorded as a [trace node](../../glossary.json#concept.trace-node)
+below its session's with its number, its outcome (`running` until its supervisor records it), its
+supervisor's process, its start time, its report and its error, and on the session's status file
+`status.json` beside the session's node; it never changes either.
 
 <a id="uses-tasks"></a>
 
-**Tasks** provides the [task record](../../glossary.json#concept.task-record), one JSON file per
-task under `tasks/` of the records directory, whose task sessions the driver reads.
+**Tasks** provides the task folders under `tasks/` of the project's `.concorde`, whose task
+sessions and rounds the driver reads.
 
 Claude Code and pi are external: the driver relies on `claude -p` with `--resume`,
 `--append-system-prompt`, `--allowedTools` and `stream-json` output, whose events carry the

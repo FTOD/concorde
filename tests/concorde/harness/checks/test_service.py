@@ -38,7 +38,8 @@ class CheckServiceTests(unittest.TestCase):
     def setUp(self):
         self.project = WorkerProject(self)
         self.root = self.project.root
-        self.logs = Path(tempfile.mkdtemp())
+        # The folder of the trace node the check nodes are written below.
+        self.logs = self.project.base / "checks"
 
     def repository(self):
         return SpecRepository(self.root, REPOSITORY_ROOT)
@@ -54,7 +55,7 @@ class CheckServiceTests(unittest.TestCase):
             affected_modules(self.repository(), ["specs/a/module.md"]),
         )
         [result] = run_checks(
-            self.root, changed=["src/a/calc.py"], log_directory=self.logs
+            self.root, changed=["src/a/calc.py"], trace_directory=self.logs
         )
         self.assertEqual(
             ("check.a", "module.a", "passed", 0),
@@ -65,15 +66,30 @@ class CheckServiceTests(unittest.TestCase):
                 result["exit_code"],
             ),
         )
-        self.assertEqual(self.logs / "check.a.log", Path(result["log"]))
+        self.assertEqual(self.logs / "check.a/output.log", Path(result["log"]))
+        # Each check run is a check node: its trace and its output.
+        node = json.loads((self.logs / "check.a/trace.json").read_text())
+        self.assertEqual(
+            ("check", "check.a", "ok", "passed"),
+            (node["kind"], node["id"], node["status"], node["outcome"]),
+        )
+        self.assertEqual(
+            ("passed", 0, result["source_digest"]),
+            tuple(
+                node["content"]["data"][k]
+                for k in ("status", "exit_code", "source_digest")
+            ),
+        )
         self.assertEqual(
             check_revision(self.repository(), "module.a"), result["source_digest"]
         )
         (self.root / "src/a/flag").write_text("broken")
-        [failed] = run_checks(self.root, modules=["module.a"], log_directory=self.logs)
+        [failed] = run_checks(
+            self.root, modules=["module.a"], trace_directory=self.logs
+        )
         self.assertEqual(("failed", 1), (failed["status"], failed["exit_code"]))
         self.assertEqual(
-            [], run_checks(self.root, modules=["module.b"], log_directory=self.logs)
+            [], run_checks(self.root, modules=["module.b"], trace_directory=self.logs)
         )
 
     def configure(self, **changes) -> None:
@@ -100,7 +116,7 @@ class CheckServiceTests(unittest.TestCase):
         self.change_check(argv=["{python}", "-c", probe], env={"MARK": "yes"})
         self.configure(python="env/bin/python")
         with self.assertRaises(SpecError) as raised:
-            run_checks(self.root, modules=["module.a"], log_directory=self.logs)
+            run_checks(self.root, modules=["module.a"], trace_directory=self.logs)
         self.assertEqual("project_python_missing", raised.exception.code)
         self.assertIn(str(self.root / "env/bin/python"), str(raised.exception))
         interpreter = self.root / "env/bin/python"
@@ -109,15 +125,17 @@ class CheckServiceTests(unittest.TestCase):
             f'#!/bin/sh\necho "project interpreter"\nexec {sys.executable} "$@"\n'
         )
         interpreter.chmod(0o755)
-        [result] = run_checks(self.root, modules=["module.a"], log_directory=self.logs)
+        [result] = run_checks(
+            self.root, modules=["module.a"], trace_directory=self.logs
+        )
         self.assertEqual("passed", result["status"])
-        log = (self.logs / "check.a.log").read_text()
+        log = (self.logs / "check.a/output.log").read_text()
         self.assertIn("project interpreter", log)
         # The check's own env, and nothing of Concorde's runtime on the path.
         self.assertIn("mark=yes pythonpath=None", log)
         self.change_check(env={"not a name": "x"})
         with self.assertRaises(SpecError) as raised:
-            run_checks(self.root, modules=["module.a"], log_directory=self.logs)
+            run_checks(self.root, modules=["module.a"], trace_directory=self.logs)
         self.assertEqual("invalid_check", raised.exception.code)
 
     @verifies("scenario.checks.transport-environment")
@@ -240,7 +258,7 @@ from concorde.harness.checks import run_checks
 os.environ['CONCORDE_RUN_ID'] = 'runtime-pollution'
 os.environ['NODE_OPTIONS'] = '--runtime-pollution'
 [result] = run_checks(Path.cwd(), modules=['module.a'],
-                      log_directory=Path(os.environ['CONCORDE_CHECK_TMPDIR'])/'nested-logs')
+                      trace_directory=Path(os.environ['CONCORDE_CHECK_TMPDIR'])/'nested-trace')
 print(Path(result['log']).read_text())
 assert result['status'] == 'passed', result
 """
@@ -342,13 +360,15 @@ assert result['status'] == 'passed', result
         write_checks(self.root, checks)
         # No test verifies a scenario of B: the selective check is skipped.
         self.assertEqual(
-            [], run_checks(self.root, modules=["module.b"], log_directory=self.logs)
+            [], run_checks(self.root, modules=["module.b"], trace_directory=self.logs)
         )
-        [result] = run_checks(self.root, modules=["module.a"], log_directory=self.logs)
+        [result] = run_checks(
+            self.root, modules=["module.a"], trace_directory=self.logs
+        )
         self.assertEqual(
             ("check.a.selected", "passed"), (result["check_id"], result["status"])
         )
-        log = (self.logs / "check.a.selected.log").read_text()
+        log = (self.logs / "check.a.selected/output.log").read_text()
         self.assertIn("selected tests: src/a/test_answer.py::test_answer", log)
         self.assertIn("['src/a/test_answer.py::test_answer']", log)
         # Its measured digest names the selection: other Modules or a changed test file are
@@ -360,7 +380,7 @@ assert result['status'] == 'passed', result
         self.assertEqual(alone, result["source_digest"])
         self.assertNotEqual(check_revision(self.repository(), "module.b"), alone)
         [both] = run_checks(
-            self.root, modules=["module.a", "module.b"], log_directory=self.logs
+            self.root, modules=["module.a", "module.b"], trace_directory=self.logs
         )
         self.assertEqual(
             measured_digest(self.repository(), check, ["module.b", "module.a"]),
@@ -376,7 +396,7 @@ assert result['status'] == 'passed', result
         results = run_checks(
             self.root,
             modules=["module.a"],
-            log_directory=self.logs,
+            trace_directory=self.logs,
             stage="readiness",
         )
         self.assertEqual(
@@ -387,10 +407,14 @@ assert result['status'] == 'passed', result
     def test_a_check_cannot_change_the_worktree(self):
         check = self.root / "checks/a_check.py"
         check.write_text("open('src/a/calc.py', 'w').write('changed')\n")
-        [result] = run_checks(self.root, modules=["module.a"], log_directory=self.logs)
+        [result] = run_checks(
+            self.root, modules=["module.a"], trace_directory=self.logs
+        )
         self.assertEqual("failed", result["status"])
         self.assertIn("def add", (self.root / "src/a/calc.py").read_text())
-        self.assertIn("Read-only file system", (self.logs / "check.a.log").read_text())
+        self.assertIn(
+            "Read-only file system", (self.logs / "check.a/output.log").read_text()
+        )
 
     @verifies("scenario.checks.service-stale")
     def test_input_changed_during_the_run_is_stale(self):
@@ -405,7 +429,7 @@ assert result['status'] == 'passed', result
 
         with patch.object(checks, "execute_check", changing):
             with self.assertRaises(SpecError) as raised:
-                run_checks(self.root, modules=["module.a"], log_directory=self.logs)
+                run_checks(self.root, modules=["module.a"], trace_directory=self.logs)
         self.assertEqual("stale_evidence", raised.exception.code)
         error = service_error(raised.exception)
         validate(error, ERROR_SCHEMA)
@@ -430,9 +454,11 @@ assert result['status'] == 'passed', result
 
         with patch.object(checks, "execute_check", refused):
             with self.assertRaises(SpecError) as raised:
-                run_checks(self.root, modules=["module.a"], log_directory=self.logs)
+                run_checks(self.root, modules=["module.a"], trace_directory=self.logs)
         self.assertEqual("check_sandbox_unavailable", raised.exception.code)
-        self.assertIn("why", (self.logs / "check.a.log").read_text())
+        self.assertIn("why", (self.logs / "check.a/output.log").read_text())
+        node = json.loads((self.logs / "check.a/trace.json").read_text())
+        self.assertEqual(("failed", "refused"), (node["status"], node["outcome"]))
         error = service_error(raised.exception)
         self.assertEqual(
             ("check_sandbox_unavailable", "environment"),
@@ -443,9 +469,9 @@ assert result['status'] == 'passed', result
     def test_a_missing_input_stops_before_any_command(self):
         self.change_check(inputs=["checks/missing.py"])
         with self.assertRaises(SpecError) as raised:
-            run_checks(self.root, modules=["module.a"], log_directory=self.logs)
+            run_checks(self.root, modules=["module.a"], trace_directory=self.logs)
         self.assertIn("checks/missing.py", str(raised.exception))
-        self.assertFalse((self.logs / "check.a.log").exists())
+        self.assertFalse((self.logs / "check.a").exists())
         # A wrong configuration is input only its sender can correct.
         error = service_error(raised.exception)
         self.assertEqual(

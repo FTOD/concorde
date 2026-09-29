@@ -3,13 +3,16 @@
  * project's run store (Operations and execution commands) and their workers, pair them, and
  * describe each run for pi-subagents' FleetView; and the same for the rounds of pi task sessions.
  *
- * A run's `status.json` is written by the Execution runner; each worker run an Operation launches
- * writes its own `status.json` naming the Operation run in `operation_run_id`, which is how a
- * worker is found for its run. Whether a runner still lives is read from its run lock, an
- * exclusive `flock` on the run directory, never from `host_pid`, which is only meaningful in the
- * PID namespace the runner ran in. A task session's round is described by the `status.json` its supervisor keeps under
- * `.concorde/tasks/<task>.session/`, and its outcome by the task record. This module imports only
- * Node's own modules so the host's tests can run it under Node.
+ * A run is a trace node: `runs/<run-id>/` of a current task's workspace folder, `run/` of one of
+ * its workflow's steps, or `.concorde/unbound/<run-id>/`. Its `status.json` is written by the
+ * Execution runner; each worker run it launches is a node `workers/<worker run>/` inside it, with
+ * its own `status.json`. Whether a runner still lives is read from its run lock
+ * `.concorde/locks/runs/<run-id>.lock`, which exists and is held with `flock` exactly while the
+ * runner runs, never from `host_pid`, which is only meaningful in the PID namespace the runner ran
+ * in. A task session's round is described by the `status.json` its supervisor keeps in the
+ * session's node `.concorde/tasks/<task>/sessions/<session>/`, and its outcome by the round's node
+ * `rounds/<n>/`. This module imports only Node's own modules so the host's tests can run it under
+ * Node.
  */
 
 import { execFileSync } from "node:child_process";
@@ -36,6 +39,8 @@ export interface RunStatus {
   host_pid: number;
   started_at: string;
   updated_at: string;
+  /** The run's trace node folder, where the view found its progress file. */
+  folder: string;
 }
 
 export interface WorkerStatus {
@@ -158,18 +163,37 @@ export function glossaryText(root: string): string | null {
   }
 }
 
-export function runsDirectory(root: string): string {
-  return join(root, ".concorde", "runs");
+function entries(directory: string): string[] {
+  try {
+    return readdirSync(directory).sort();
+  } catch {
+    return [];
+  }
 }
 
-function statuses(root: string): Record<string, unknown>[] {
-  const directory = runsDirectory(root);
-  if (!existsSync(directory)) return [];
-  const found: Record<string, unknown>[] = [];
-  for (const name of readdirSync(directory)) {
-    const value = readJson(join(directory, name, "status.json"));
-    if (value) found.push(value);
+/** The locks directory of the project, where every run lock lies. */
+export function locksDirectory(root: string): string {
+  return join(root, ".concorde", "locks");
+}
+
+/**
+ * The folder of every run of the project's current tasks and of its unbound runs: `runs/*` and
+ * `workflow/steps/*\/run` of each task's workspace folder, and `.concorde/unbound/*`.
+ */
+export function runFolders(root: string): string[] {
+  const base = join(root, ".concorde");
+  const found: string[] = [];
+  for (const task of entries(join(base, "tasks"))) {
+    const workspace = join(base, "tasks", task, "workspace");
+    for (const run of entries(join(workspace, "runs")))
+      found.push(join(workspace, "runs", run));
+    for (const step of entries(join(workspace, "workflow", "steps"))) {
+      const run = join(workspace, "workflow", "steps", step, "run");
+      if (existsSync(run)) found.push(run);
+    }
   }
+  for (const run of entries(join(base, "unbound")))
+    found.push(join(base, "unbound", run));
   return found;
 }
 
@@ -179,9 +203,22 @@ function isRun(value: Record<string, unknown>): boolean {
 
 /** Every run of an Operation or execution command with a progress file, oldest first. */
 export function recordedRuns(root: string): RunStatus[] {
-  return (statuses(root).filter(isRun) as unknown as RunStatus[]).sort((a, b) =>
-    a.started_at.localeCompare(b.started_at),
-  );
+  const found: RunStatus[] = [];
+  for (const folder of runFolders(root)) {
+    const value = readJson(join(folder, "status.json"));
+    if (value && isRun(value))
+      found.push({ ...(value as unknown as RunStatus), folder });
+  }
+  return found.sort((a, b) => a.started_at.localeCompare(b.started_at));
+}
+
+/** The folder of the run `runId`, or null when the project holds none. */
+export function runFolder(root: string, runId: string): string | null {
+  for (const folder of runFolders(root)) {
+    if (folder.endsWith(`/${runId}`)) return folder;
+    if (readJson(join(folder, "status.json"))?.run_id === runId) return folder;
+  }
+  return null;
 }
 
 /**
@@ -231,13 +268,15 @@ export function ownedWork(
     .map((entry) => ({ id: entry.id, sessionId }));
 }
 
-/** The worker runs a run launched, which name it as their Operation run; oldest first. */
-export function workersOf(root: string, operation: RunStatus): WorkerStatus[] {
-  return (
-    statuses(root).filter((value) => !isRun(value)) as unknown as WorkerStatus[]
-  )
-    .filter((worker) => worker.operation_run_id === operation.run_id)
-    .sort((a, b) => a.started_at.localeCompare(b.started_at));
+/** The worker runs a run launched, whose nodes lie in its folder's `workers/`; oldest first. */
+export function workersOf(_root: string, operation: RunStatus): WorkerStatus[] {
+  const directory = join(operation.folder, "workers");
+  const found: WorkerStatus[] = [];
+  for (const name of entries(directory)) {
+    const value = readJson(join(directory, name, "status.json"));
+    if (value) found.push(value as unknown as WorkerStatus);
+  }
+  return found.sort((a, b) => a.started_at.localeCompare(b.started_at));
 }
 
 /**
@@ -268,22 +307,24 @@ export function lockedInodes(): Set<string> | null {
 }
 
 /**
- * Whether the runner of `run` still lives: it holds its run lock, an exclusive `flock` on the
- * run directory, from before its first progress file until after its result. A run whose result
- * is already written counts as alive, so a run that ended properly after its progress file was
- * read is not taken for one that died; its finished progress file is read on the next look.
- * Where the kernel shows no lock table, the recorded process identifier is the only sign left.
+ * Whether the runner of `run` still lives: its run lock file `.concorde/locks/runs/<run-id>.lock`
+ * exists and some process holds it with an exclusive `flock`, from before the run's first progress
+ * file until after its result; the runner removes the file as it exits. A run whose result is
+ * already written counts as alive, so a run that ended properly after its progress file was read
+ * is not taken for one that died; its finished progress file is read on the next look. Where the
+ * kernel shows no lock table, the recorded process identifier is the only sign left.
  */
 export function runnerAlive(
   root: string,
   run: RunStatus,
   locked: Set<string> | null = lockedInodes(),
 ): boolean {
-  const directory = join(runsDirectory(root), run.run_id);
-  if (existsSync(join(directory, "result.json"))) return true;
+  if (existsSync(join(run.folder, "result.json"))) return true;
+  const lock = join(locksDirectory(root), "runs", `${run.run_id}.lock`);
+  if (!existsSync(lock)) return false;
   if (locked === null) return alive(run.host_pid);
   try {
-    return locked.has(statSync(directory, { bigint: true }).ino.toString());
+    return locked.has(statSync(lock, { bigint: true }).ino.toString());
   } catch {
     return false;
   }
@@ -349,7 +390,7 @@ export function view(
     status,
     currentAction: clip(action),
     preview: preview ? clip(preview, 4096) : undefined,
-    reportPath: join(runsDirectory(root), operation.run_id, "result.json"),
+    reportPath: join(operation.folder, "result.json"),
     startedAt: Date.parse(operation.started_at),
     updatedAt: Date.parse(
       worker && worker.updated_at > operation.updated_at
@@ -365,9 +406,8 @@ export function runError(
   root: string,
   runId: string,
 ): Record<string, unknown> | null {
-  const error = readJson(
-    join(runsDirectory(root), runId, "result.json"),
-  )?.error;
+  const folder = runFolder(root, runId);
+  const error = folder ? readJson(join(folder, "result.json"))?.error : null;
   return error && typeof error === "object"
     ? (error as Record<string, unknown>)
     : null;
@@ -388,18 +428,18 @@ export function resultText(
   );
 }
 
-/** The `concorde` command of a project: its installed command, a source checkout, or PATH. */
 /**
  * The worktree of `task` from its record in the primary worktree `root`, when the record names
  * one that exists: every Concorde command of a task runs there, with that worktree's own copy.
  */
 export function taskWorktree(root: string, task: string): string | null {
   if (!/^[a-z0-9][a-z0-9-]{0,47}$/.test(task)) return null;
-  const record = readJson(join(root, ".concorde", "tasks", `${task}.json`));
+  const record = readJson(join(root, ".concorde", "tasks", task, "task.json"));
   const worktree = record?.worktree;
   return typeof worktree === "string" && existsSync(worktree) ? worktree : null;
 }
 
+/** The `concorde` command of a project: its installed command, a source checkout, or PATH. */
 export function concordeCommand(root: string): string[] {
   const installed = join(root, ".concorde", "bin", "concorde");
   if (existsSync(installed)) return [installed];
@@ -427,18 +467,35 @@ function tasksDirectory(root: string): string {
   return join(root, ".concorde", "tasks");
 }
 
-/** The current round of every pi task session of the project, oldest first. */
+/** The current round of every pi task session of the project's current tasks, oldest first. */
 export function sessionRounds(root: string): SessionStatus[] {
   const directory = tasksDirectory(root);
-  if (!existsSync(directory)) return [];
   const found: SessionStatus[] = [];
-  for (const name of readdirSync(directory)) {
-    if (!name.endsWith(".session")) continue;
-    const value = readJson(join(directory, name, "status.json"));
-    if (value?.kind === "task-session")
-      found.push(value as unknown as SessionStatus);
+  for (const task of entries(directory)) {
+    for (const session of entries(join(directory, task, "sessions"))) {
+      const value = readJson(
+        join(directory, task, "sessions", session, "status.json"),
+      );
+      if (value?.kind === "task-session")
+        found.push(value as unknown as SessionStatus);
+    }
   }
   return found.sort((a, b) => a.started_at.localeCompare(b.started_at));
+}
+
+/** The node of a round of a pi task session. */
+export function roundFolder(
+  root: string,
+  status: { task: string; session_id: string; round: number },
+): string {
+  return join(
+    tasksDirectory(root),
+    status.task,
+    "sessions",
+    status.session_id,
+    "rounds",
+    String(status.round),
+  );
 }
 
 /** The identity FleetView files a round under. */
@@ -486,29 +543,26 @@ export function sessionView(
     status: outcome,
     currentAction: clip(action),
     preview: preview ? clip(preview, 4096) : undefined,
-    reportPath: join(tasksDirectory(root), `${status.task}.json`),
+    reportPath: join(roundFolder(root, status), "trace.json"),
     startedAt: Date.parse(status.started_at),
     updatedAt: Date.parse(status.updated_at),
     endedAt: finished ? Date.parse(status.updated_at) : undefined,
   };
 }
 
+/** A round as its node records it: its outcome as `status`, its report and error. */
 function recordedRound(
   root: string,
   status: { task: string; session_id: string; round: number },
 ): Record<string, unknown> | null {
-  const record = readJson(join(tasksDirectory(root), `${status.task}.json`));
-  const session = (
-    (record?.sessions as Record<string, unknown>[] | undefined) ?? []
-  ).find((item) => item.id === status.session_id);
-  return (
-    ((session?.rounds as Record<string, unknown>[] | undefined) ?? []).find(
-      (item) => item.round === status.round,
-    ) ?? null
-  );
+  const node = readJson(join(roundFolder(root, status), "trace.json"));
+  const data = (node?.content as Record<string, unknown> | undefined)?.data as
+    Record<string, unknown> | undefined;
+  if (!node || !data) return null;
+  return { status: data.outcome, report: data.report, error: node.error };
 }
 
-/** The outcome the task record holds for a round, or null while it is running or unknown. */
+/** The outcome the round's node holds, or null while it is running or unknown. */
 export function roundOutcome(
   root: string,
   status: { task: string; session_id: string; round: number },
@@ -537,7 +591,7 @@ export function chainText(link: Record<string, unknown>, depth = 0): string {
   return lines.join("\n");
 }
 
-/** What the main agent is told when a round ends: the outcome the task record holds. */
+/** What the main agent is told when a round ends: the outcome the round's node holds. */
 export function sessionText(root: string, status: SessionStatus): string {
   const head = `Task session of ${status.task}, round ${status.round}`;
   const round = recordedRound(root, status);
@@ -573,8 +627,6 @@ export function sessionText(root: string, status: SessionStatus): string {
       `Error chain:\n${chainText(round.error as Record<string, unknown>)}`,
     );
   if (round.status === "stopped") lines.push("The round was stopped.");
-  lines.push(
-    `Task record: ${join(tasksDirectory(root), `${status.task}.json`)}`,
-  );
+  lines.push(`Round node: ${roundFolder(root, status)}`);
   return lines.join("\n");
 }

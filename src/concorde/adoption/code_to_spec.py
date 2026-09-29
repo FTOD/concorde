@@ -292,7 +292,6 @@ def validation_repair(ctx: RunContext) -> str | None:
 def describe(ctx: RunContext):
     """Step 3: the worker. It never stops the run itself, so that ``tidy`` removes the stubs on
     every way out; ``observe`` returns what stopped it."""
-    from ..harness.runs import read_record
 
     outcome = ctx.run_worker(
         instructions(ctx),
@@ -308,7 +307,7 @@ def describe(ctx: RunContext):
         # No worker ran (the grant or the model could not be settled): nothing to observe.
         ctx.state["unobserved"] = True
         return Continue(evidence=outcome.evidence)
-    record = read_record(ctx.records, ctx.worker_runs[-1])
+    record = ctx.last_record
     ctx.state["record"] = record
     ctx.state["unobserved"] = any(
         (item.get("audit") or {}).get("verdict") == "violation"

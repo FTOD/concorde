@@ -92,8 +92,12 @@ concorde delivery
 A typical order is `understand` to assess and plan, `specify` when the Spec must change first,
 `implement` and `test`, the reviews when the change deserves them, then `task-validation` and
 `delivery`, which validates the whole workspace again and commits the evidence on the task branch.
-Each run prints one JSON run result and saves it as `.concorde/runs/<run-id>/result.json` of the
-primary worktree, where you can read it too.
+Each run prints one JSON run result and saves it in its own folder in the task's folder of the
+primary worktree, `.concorde/tasks/<task>/workspace/runs/<run-id>/result.json` (an unbound run's in
+`.concorde/unbound/<run-id>/`), where you can read it too. Every level of the work leaves such a
+record, and `concorde trace show <task>` shows a task's whole trace, from its sessions down to each
+worker round, with how long each part took and what it cost; `concorde trace show <run-id>` shows
+one run.
 
 Never wait by polling, with `sleep` loops over status files, `concorde task show` or run results:
 every wait in Concorde either wakes you or is one command that returns when the thing it waits for
@@ -129,8 +133,8 @@ already said:
   a developer who wants the result later.
 
 The workflow ends with `concorde workflow report`, which saves the workflow result beside the
-workspace's workflow record, `.concorde/runs/workflows/<task>/reports/<n>.json` of the primary
-worktree, with a Markdown rendering `<n>.md`. The task session copies its decisions and problems
+workspace's workflow record, `.concorde/tasks/<task>/workspace/workflow/reports/<n>.json` of the
+primary worktree, with a Markdown rendering `<n>.md`. The task session copies its decisions and problems
 into the task's decision log and gives the decisions in its report; read the rendering yourself
 too, since in `no-ask` mode they are decisions taken without the developer, and treat it like an
 Operation result: read every problem's chain, and merge the task when `delivery` ended `ok`.
@@ -210,7 +214,7 @@ The decision log and `concorde task escalate` belong to a task, so they cover th
 An unbound run belongs to none: when one is not `ok`, show the developer its whole error chain as
 rendered, from the command's standard error or, in pi, from the message that wakes you, never a
 summary of it. When the failure leads to work, open a task for that work and escalate in it with
-`--error-file .concorde/runs/<run-id>/result.json` (the primary worktree's run store), which records
+`--error-file .concorde/unbound/<run-id>/result.json` (of the primary worktree), which records
 the unbound run's chain under your link in the task; `--run` names only runs of the task's own
 workspace.
 

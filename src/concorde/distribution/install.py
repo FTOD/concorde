@@ -42,7 +42,9 @@ from pathlib import Path
 
 from ..dogfooding.develop import DevelopError, develop_source, guidance
 from ..errors import link
-from ..execution.runs import pid_alive, runner_alive
+from ..execution.runs import pid_alive
+from ..tracing import layout, locks, reader
+from ..tracing.layout import IGNORED as TRACES
 from ..views.docsite_template import (
     DocsiteTemplateError,
     template_files,
@@ -90,8 +92,9 @@ NOT_INSTALLED = ("e2e",)
 UPDATE_STATE = ".concorde/update.json"
 IGNORED = (
     UPDATE_STATE,
+    *TRACES,
+    # Dogfooding's defect reports and End-to-end testing's session logs.
     ".concorde/runs/",
-    ".concorde/tasks/",
     ".concorde/workspace.json",
     ".concorde/framework/",
     f"{TOOLS}/",
@@ -172,30 +175,68 @@ def _source_commit(package: Path) -> str | None:
     return (found.stdout.strip() or None) if found.returncode == 0 else None
 
 
+def _run_progress(concorde: Path) -> dict[str, tuple[Path, dict]]:
+    """The progress file of every run of the current tasks' workspace folders and of the unbound
+    runs, with what it holds, by run identity."""
+    folders: list[Path] = []
+    try:
+        tasks = sorted(
+            item for item in layout.tasks_folder(concorde).iterdir() if item.is_dir()
+        )
+    except OSError:
+        tasks = []
+    for task in tasks:
+        folders.extend(reader.workspace_runs(layout.workspace_folder(task)))
+    try:
+        folders.extend(
+            sorted(
+                item
+                for item in layout.unbound_folder(concorde).iterdir()
+                if item.is_dir()
+            )
+        )
+    except OSError:
+        pass
+    found: dict[str, tuple[Path, dict]] = {}
+    for folder in folders:
+        progress = folder / layout.PROGRESS
+        try:
+            state = json.loads(progress.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(state, dict) and state.get("kind") in ("operation", "command"):
+            found[str(state.get("run_id") or folder.name)] = (progress, state)
+    return found
+
+
 def active_runs(project: Path) -> list[str]:
     """Every Concorde run in ``project`` whose process still lives, described for a refusal:
-    Operation and execution command runs from their progress files and pi task-session rounds
-    from theirs."""
+    Operation and execution command runs by their run locks under ``.concorde/locks/runs/``,
+    named with their progress files, and pi task-session rounds by their progress files."""
     found = []
-    for path in sorted((project / ".concorde/runs").glob("*/status.json")):
-        try:
-            state = json.loads(path.read_text(encoding="utf-8"))
-            pid = int(state.get("host_pid") or 0)
-        except (OSError, ValueError, TypeError, AttributeError):
-            continue
-        # A worker's own progress file lies beside its Operation's and names the same runner;
-        # only the Operation's is a run.
-        if state.get("kind") not in ("operation", "command"):
-            continue
-        # The run lock, not the process identifier, which a runner in another PID namespace
+    concorde = project / layout.CONCORDE
+    runs = layout.locks_folder(concorde) / layout.LOCK_KINDS["run"]
+    held = []
+    for path in sorted(runs.glob("*.lock")) if runs.is_dir() else []:
+        # The run lock, not a process identifier, which a runner in another PID namespace
         # records meaninglessly.
-        if state.get("phase") != "finished" and runner_alive(path.parent):
-            found.append(
-                f"{state.get('kind')} run {state.get('run_id') or path.parent.name} "
-                f"({state.get('name')}, workspace {state.get('workspace') or 'none'}, runner "
-                f"process {pid}, progress {path.relative_to(project).as_posix()})"
-            )
-    for path in sorted((project / ".concorde/tasks").glob("*.session/status.json")):
+        holder = locks.holder(path)
+        if holder is not None:
+            held.append((path, holder))
+    progress = _run_progress(concorde) if held else {}
+    for path, holder in held:
+        lock = path.relative_to(project).as_posix()
+        known = progress.get(path.stem)
+        if known is None:
+            found.append(f"run {path.stem} (held by {holder}, run lock {lock})")
+            continue
+        file, state = known
+        found.append(
+            f"{state.get('kind')} run {path.stem} ({state.get('name')}, workspace "
+            f"{state.get('workspace') or 'none'}, held by {holder}, run lock {lock}, "
+            f"progress {file.relative_to(project).as_posix()})"
+        )
+    for path in sorted((project / ".concorde/tasks").glob("*/sessions/*/status.json")):
         try:
             state = json.loads(path.read_text(encoding="utf-8"))
             pid = int(state.get("supervisor_pid") or 0)
@@ -590,7 +631,7 @@ def install(
 def open_tasks(project: Path) -> list[dict]:
     """The tasks of ``project`` that have not ended, from their records."""
     found = []
-    for path in sorted((project / ".concorde/tasks").glob("*.json")):
+    for path in sorted((project / ".concorde/tasks").glob("*/task.json")):
         try:
             record = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError):

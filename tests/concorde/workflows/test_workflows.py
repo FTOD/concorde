@@ -16,9 +16,10 @@ from unittest.mock import patch
 
 from concorde import errors
 from concorde.commands.catalog import COMMANDS
-from concorde.execution.runs import run_lock, workspace_lock, workspace_runs
+from concorde.execution.runs import Store, run_lock, workspace_lock, workspace_runs
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
+from concorde.tracing import node as trace
 from concorde.workflows import catalog, store
 from concorde.workflows import step as steps
 from concorde.workflows.report import RESULT_SCHEMA, report
@@ -58,10 +59,12 @@ def run_link(name: str, run_id: str, code: str, reason: str = "decision") -> dic
 class Runs:
     """Saved run results written by hand, standing in for finished or dying runners.
 
-    A running run's run lock is held until ``held`` is closed, as its runner would hold it."""
+    A run is placed where its runner would trace it: in ``folder``, the ``run/`` of a workflow
+    step's node, or else among the workspace's directly started runs. A running run's run lock
+    is held until ``held`` is closed, as its runner would hold it."""
 
-    def __init__(self, records: Path):
-        self.records = records
+    def __init__(self, store: Store):
+        self.store = store
         self.held = contextlib.ExitStack()
 
     def make(
@@ -72,16 +75,18 @@ class Runs:
         error: dict | None = None,
         modules=("module.shop",),
         running: bool = False,
+        folder: Path | None = None,
     ) -> str:
         stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
         run_id = f"r-{stamp}-{name.replace('-', '_')}-{secrets.token_hex(4)}"
-        directory = self.records / "runs" / run_id
+        directory = folder or self.store.run_folder(run_id)
         directory.mkdir(parents=True)
+        trace.Node(directory, run_id, "run", metadata={"workspace": "adopt"}).start()
         # A small process identifier, as a runner in a sandbox's PID namespace records, names
         # a live process here; only the run lock tells whether the runner lives.
         (directory / "status.json").write_text(json.dumps({"host_pid": 1}))
         if running:
-            self.held.enter_context(run_lock(directory))
+            self.held.enter_context(run_lock(self.store, run_id, f"runner of {run_id}"))
         if status is not None:
             if status != "ok" and error is None:
                 error = run_link(name, run_id, f"{name.replace('-', '_')}_{status}")
@@ -184,10 +189,11 @@ class StepTests(unittest.TestCase):
         self.project.open_task()
         self.primary = self.project.root
         self.space = store.workspace(self.project.worktree())
-        self.records = self.space.records
-        self.runs = Runs(self.records)
+        self.store = self.space.store
+        self.runs = Runs(self.store)
         self.addCleanup(self.runs.held.close)
         self.started: list[list[str]] = []
+        self.placed: list[Path | None] = []
 
     def request(
         self, key="survey", argv=("survey", "--modules", "module.shop"), **changes
@@ -205,9 +211,13 @@ class StepTests(unittest.TestCase):
         return value
 
     def starter(self, status="ok", output=None, running=False):
-        def start(workflow, space, argv):
+        def start(workflow, space, argv, trace_at=None):
             self.started.append(list(argv))
-            return {"run_id": self.runs.make(argv[0], status, output, running=running)}
+            self.placed.append(trace_at)
+            run_id = self.runs.make(
+                argv[0], status, output, running=running, folder=trace_at
+            )
+            return {"run_id": run_id}
 
         return patch.object(steps, "start_run", side_effect=start)
 
@@ -221,13 +231,18 @@ class StepTests(unittest.TestCase):
             with self.subTest(identity=identity):
                 self.assertEqual(contract(path, identity), schema)
 
-    def test_the_workspace_is_the_task_worktree_and_its_records_the_primarys(self):
+    def test_the_workspace_is_the_task_worktree_and_its_traces_the_primarys(self):
         self.assertEqual("adopt", self.space.name)
         self.assertEqual(self.project.worktree(), self.space.root)
-        self.assertEqual(self.primary / ".concorde", self.records)
+        concorde = self.primary / ".concorde"
         self.assertEqual(
-            self.primary / ".concorde/runs/workflows/adopt", self.space.directory
+            (concorde, concorde / "tasks/adopt/workspace"),
+            (self.store.concorde, self.store.workspace),
         )
+        self.assertEqual(
+            concorde / "tasks/adopt/workspace/workflow", self.space.directory
+        )
+        self.assertEqual(concorde / "locks/workflows/adopt.lock", self.space.lock)
 
     @verifies("scenario.workflows.step-starts")
     def test_a_step_starts_and_records_a_run(self):
@@ -252,6 +267,26 @@ class StepTests(unittest.TestCase):
         self.assertEqual(["survey"], [s["key"] for s in record["steps"]])
         self.assertEqual(outcome["run_id"], record["steps"][0]["run_id"])
         validate(outcome, STEP_SCHEMA)
+        # The workflow record is the content of the workflow's node in the workspace folder.
+        workflow = trace.read(self.store.workspace / "workflow")
+        self.assertEqual(
+            ("workflow", "concorde-workflow-trace"),
+            (workflow["kind"], workflow["content"]["type_id"]),
+        )
+        [entry] = workflow["content"]["data"]["steps"]
+        self.assertEqual(("survey", "steps/1-survey"), (entry["key"], entry["node"]))
+        # The run's node lies in run/ of the step's node, which names the key and the run.
+        step = self.space.directory / "steps/1-survey"
+        self.assertEqual([step / "run"], self.placed)
+        self.assertEqual(step / "run", self.store.find(outcome["run_id"]))
+        self.assertEqual(outcome["run_id"], trace.read(step / "run")["id"])
+        node = trace.read(step)
+        self.assertEqual(("step", "survey"), (node["kind"], node["id"]))
+        self.assertEqual(
+            ("survey", outcome["run_id"], "finished"),
+            tuple(node["content"]["data"][k] for k in ("key", "run_id", "state")),
+        )
+        self.assertEqual("ok", node["status"])
 
     @verifies("scenario.workflows.step-starts-command")
     def test_a_real_step_runs_detached_with_the_worktrees_concorde(self):
@@ -262,9 +297,14 @@ class StepTests(unittest.TestCase):
         self.assertEqual("task-validation", outcome["name"])
         self.assertIsNotNone(outcome["status"])
         self.assertIsNotNone(outcome["ready"])
-        runs = {run["run_id"]: run for run in workspace_runs(self.records, "adopt")}
+        runs = {run["run_id"]: run for run in workspace_runs(self.store, "adopt")}
         self.assertIn(outcome["run_id"], runs)
         self.assertEqual("command", runs[outcome["run_id"]]["kind"])
+        # The detached runner placed the run's node in the step's node.
+        self.assertEqual(
+            self.space.directory / "steps/1-validate/run",
+            self.store.find(outcome["run_id"]),
+        )
 
     @verifies("scenario.workflows.step-waits")
     def test_a_long_run_is_awaited_by_repeated_calls(self):
@@ -442,7 +482,7 @@ class StepTests(unittest.TestCase):
     @verifies("scenario.workflows.step-waits-lock")
     def test_a_step_waits_while_another_run_of_the_workspace_runs(self):
         with self.starter(output=SURVEY_OUTPUT):
-            with workspace_lock(self.records, "adopt", "Operation implement r-other"):
+            with workspace_lock(self.store, "adopt", "Operation implement r-other"):
                 status, value = run_step(self.space, self.request(), wait=0.3)
                 self.assertEqual(
                     (3, "running", None), (status, value["state"], value["run_id"])
@@ -488,7 +528,7 @@ class StepTests(unittest.TestCase):
         validation = ("validate", ("task-validation",))
         with self.starter(status=None):
             _, value = run_step(self.space, self.request(*validation), wait=0)
-        (self.records / "runs" / value["run_id"] / "host.out").write_text(
+        (self.store.find(value["run_id"]) / "host.out").write_text(
             "Traceback: KeyError: 'modules'\n"
         )
         _, value = run_step(self.space, self.request(*validation))
@@ -561,12 +601,27 @@ class ReportTests(unittest.TestCase):
         self.project.open_task()
         self.primary = self.project.root
         self.space = store.workspace(self.project.worktree())
-        self.runs = Runs(self.space.records)
+        self.runs = Runs(self.space.store)
         self.addCleanup(self.runs.held.close)
 
-    def record(self, key, name, status="ok", output=None, mode="no-ask", error=None):
-        run_id = self.runs.make(name, status, output, error=error)
-        store.record_step(self.space, "brownfield", key, name, run_id, mode, None)
+    def record(
+        self,
+        key,
+        name,
+        status="ok",
+        output=None,
+        mode="no-ask",
+        error=None,
+        running=False,
+    ):
+        """Record a step whose run is traced in the step's node, as a real step's is."""
+        folder = store.next_step_folder(self.space, store.load(self.space), key)
+        run_id = self.runs.make(
+            name, status, output, error=error, running=running, folder=folder / "run"
+        )
+        store.record_step(
+            self.space, "brownfield", key, name, run_id, mode, None, folder=folder
+        )
         return run_id
 
     def complete(self, describe_status="ok"):
@@ -632,7 +687,7 @@ class ReportTests(unittest.TestCase):
         self.assertIn("Workflow brownfield report: ok", rendering)
         self.assertIn("q.retry", rendering)
         self.assertIn("check.checkout.tests", rendering)
-        log = self.primary / ".concorde/tasks/adopt.decisions.md"
+        log = self.primary / ".concorde/tasks/adopt/decisions.md"
         if log.exists():
             self.assertNotIn("Workflow brownfield report", log.read_text())
         report(self.space)
@@ -640,6 +695,19 @@ class ReportTests(unittest.TestCase):
             ["1.json", "1.md", "2.json", "2.md"],
             sorted(p.name for p in (self.space.directory / "reports").iterdir()),
         )
+        # The report ended the workflow's node with its status; every step's node has ended.
+        workflow = trace.read(self.space.directory)
+        self.assertEqual(("ok", "ok"), (workflow["status"], workflow["outcome"]))
+        self.assertEqual(
+            ["reports/1.json", "reports/2.json"],
+            [item["path"] for item in workflow["content"]["data"]["reports"]],
+        )
+        ended = {
+            item["key"]: trace.read(self.space.directory / item["node"])["status"]
+            for item in workflow["content"]["data"]["steps"]
+        }
+        self.assertEqual("blocked", ended["describe:module.inventory"])
+        self.assertEqual("ok", ended["survey"])
 
     @verifies("scenario.workflows.interactive-pause")
     def test_an_interactive_run_ends_at_survey_decisions(self):
@@ -679,10 +747,7 @@ class ReportTests(unittest.TestCase):
         self.assertEqual([cause], error["causes"])
 
     def test_a_report_during_a_running_step(self):
-        run_id = self.runs.make("survey", None, running=True)
-        store.record_step(
-            self.space, "brownfield", "survey", "survey", run_id, "no-ask", None
-        )
+        self.record("survey", "survey", None, running=True)
         result = report(self.space)
         self.assertEqual("running", result["status"])
         self.assertEqual("step_running", result["error"]["code"])

@@ -69,7 +69,7 @@ class LivePiWorkerTests(unittest.TestCase):
     def test_a_real_pi_worker_is_fenced(self):
         project = WorkerProject(self, check=False)
         root = project.root
-        run_config = Path(os.path.realpath(root)) / ".concorde/runs"
+        run_trace = project.trace
         steps = [
             f"1. read: {root}/specs/a/module.md",
             f"2. read: {root}/src/bmod/secret.py",
@@ -80,7 +80,7 @@ class LivePiWorkerTests(unittest.TestCase):
             f"7. bash: cat {root}/src/bmod/secret.py",
             f"8. bash: echo x >> {root}/specs/a/module.md",
             "9. bash: curl -sS -m 5 https://example.com",
-            f"10. bash: ls {run_config}",
+            f"10. bash: ls {run_trace}",
             f"11. edit: in {root}/src/a/calc.py replace 'return a - b' with 'return a + b'",
             '12. bash: f=$(mktemp) && echo "temp file $f" && rm "$f"',
         ]
@@ -125,7 +125,7 @@ class LivePiWorkerTests(unittest.TestCase):
         self.assertIn("No such file", bash)
         self.assertIn("ead-only file system", bash)
         self.assertNotIn("Example Domain", bash)
-        self.assertIn(f"temp file {record['tmp']}/", bash)
+        self.assertIn(f"temp file {Path(record['runtime_directory']) / 'tmp'}/", bash)
         self.assertFalse((root / "checks/new.txt").exists())
         self.assertNotIn("changed", (root / "specs/a/module.md").read_text())
         self.assertIn("return a + b", (root / "src/a/calc.py").read_text())

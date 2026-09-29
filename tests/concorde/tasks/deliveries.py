@@ -103,10 +103,20 @@ def write_run(
     modules=("module.a",),
     status: str | None = "ok",
     host_pid: int = 0,
+    traces: Path | None = None,
 ) -> Path:
     """A finished run's ``result.json`` (``status`` given) or a running run's ``status.json``
-    (``status`` None) in the run store of ``primary``."""
-    directory = primary / ".concorde/runs" / run_id
+    (``status`` None) in the run store of ``primary``: the workspace folder of the task named
+    ``workspace``, or ``.concorde/unbound/`` for an unbound run, or the workspace folder
+    ``traces`` when given. A running run is running only while a test holds its run lock
+    (``concorde.tracing.locks.hold`` of its lock file)."""
+    concorde = primary / ".concorde"
+    if traces is not None:
+        directory = Path(traces) / "runs" / run_id
+    elif workspace is None:
+        directory = concorde / "unbound" / run_id
+    else:
+        directory = concorde / "tasks" / workspace / "workspace" / "runs" / run_id
     directory.mkdir(parents=True, exist_ok=True)
     stamp = "2026-09-27T00:00:00Z"
     if status is None:

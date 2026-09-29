@@ -8,7 +8,8 @@
  * `null` to allow, or the reason of a refusal as the session should read it.
  */
 
-import { sep } from "node:path";
+import { existsSync } from "node:fs";
+import { dirname, sep } from "node:path";
 import { realOf } from "./pi_policy.ts";
 
 export interface SessionPolicy {
@@ -27,7 +28,15 @@ export function sessionWriteDecision(
   const real = realOf(path);
   const root = realOf(policy.worktree);
   if (real === root || real.startsWith(root + sep)) return null;
-  if (policy.files.some((file) => realOf(file) === real)) return null;
+  if (policy.files.some((file) => realOf(file) === real)) {
+    // A closed task's folder moved to the history, which nothing changes.
+    if (!existsSync(dirname(real)))
+      return (
+        `${path} is the decision log of task ${policy.task}, which is closed: its folder ` +
+        "moved to the history, which is never changed."
+      );
+    return null;
+  }
   return (
     `${path} is outside task ${policy.task}: a task session writes only its task worktree ` +
     `${policy.worktree} and its decision log ${policy.files.join(", ")}. A refusal means you ` +

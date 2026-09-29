@@ -90,6 +90,21 @@ def evidence_of(envelope: dict, kind: str) -> list[dict]:
     return [item for item in envelope["host_evidence"] if item["kind"] == kind]
 
 
+def run_folder(envelope: dict) -> Path:
+    """The run's trace node folder, which the first host evidence of every run names."""
+    first = envelope["host_evidence"][0]
+    assert (first["kind"], first["ref"]) == ("trace", envelope["run_id"]), first
+    return Path(first["detail"])
+
+
+def workspace_run(root: Path, envelope: dict, task_id: str = "t1") -> Path:
+    """The run's node folder in the workspace folder of task ``task_id`` of primary ``root``,
+    checked against the folder the run reports."""
+    folder = root / ".concorde/tasks" / task_id / "workspace/runs" / envelope["run_id"]
+    assert run_folder(envelope) == folder, (run_folder(envelope), folder)
+    return folder
+
+
 def status_lines(worktree: Path) -> str:
     return subprocess.run(
         ["git", "status", "--porcelain=v1", "--untracked-files=all"],
@@ -100,4 +115,11 @@ def status_lines(worktree: Path) -> str:
     ).stdout
 
 
-__all__ = ["ValidationProject", "evidence_of", "git", "status_lines"]
+__all__ = [
+    "ValidationProject",
+    "evidence_of",
+    "git",
+    "run_folder",
+    "status_lines",
+    "workspace_run",
+]

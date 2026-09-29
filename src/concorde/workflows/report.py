@@ -210,10 +210,10 @@ class Row:
         self.name = step["name"]
         self.run_id = step["run_id"]
         self.settled = answered(step.get("answers"))
-        state = run_state(space.records, self.run_id)
+        state = run_state(space.store, self.run_id)
         # One read decides: a result that appears after run_state is read on the next report.
         self.result = (
-            load_result(space.records, self.run_id) if state == "finished" else None
+            load_result(space.store, self.run_id) if state == "finished" else None
         )
         if state == "finished" and self.result is None:
             state = "running"

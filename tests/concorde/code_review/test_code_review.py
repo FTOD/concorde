@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-import json
 import os
 import subprocess
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from concorde.code_review.operation import REVIEW_SCHEMA
+from concorde.harness import claude_backend
 from concorde.harness.runs import read_record
 from concorde.spec.repository import SpecRepository
 from concorde.spec.verification import verifies
@@ -51,6 +52,20 @@ class CodeReviewTests(unittest.TestCase):
         (self.worktree / "src/a/calc.py").write_text(FIXED)
 
     def review(self, findings=(), result=None, *extra):
+        """Run the review; the settings Workers generated for the reviewer are kept in
+        ``self.settings``, since they live in the worker's runtime directory, removed at its end."""
+        self.settings = []
+        original = claude_backend.worker_settings
+
+        def spy(*args, **kwargs):
+            value = original(*args, **kwargs)
+            self.settings.append(value)
+            return value
+
+        with patch.object(claude_backend, "worker_settings", side_effect=spy):
+            return self._review(findings, result, *extra)
+
+    def _review(self, findings=(), result=None, *extra):
         plan = [
             {
                 "result": {
@@ -70,10 +85,11 @@ class CodeReviewTests(unittest.TestCase):
         )
 
     def worker(self, envelope) -> tuple[dict, str, int]:
+        """The reviewer's run record, its first prompt (the brief its run directory keeps) and
+        the number of its rounds."""
         record = read_record(self.root / ".concorde", envelope["worker_runs"][-1])
-        work = Path(record["run_directory"]) / "work"
-        rounds = sorted(work.glob("fake-round-*.json"))
-        return record, json.loads(rounds[0].read_text())["prompt"], len(rounds)
+        brief = (Path(record["run_directory"]) / "brief.md").read_text()
+        return record, brief, len(record["rounds"])
 
     @verifies("scenario.code-review.clean")
     def test_a_change_that_keeps_its_promises(self):
@@ -91,10 +107,15 @@ class CodeReviewTests(unittest.TestCase):
         self.assertIn("+    return a + b", prompt)
         self.assertIn("check.a (module.a): passed", prompt)
         self.assertEqual("Read,Glob,Grep", record["tools"])
-        settings = json.loads(
-            (Path(record["run_directory"]) / "control/settings.json").read_text()
+        # The check logs are check nodes below the run's own node, readable to the reviewer.
+        log = Path(report["checks"][0]["log"])
+        self.assertEqual(
+            Path(envelope["host_evidence"][0]["detail"]) / "checks/check.a/output.log",
+            log,
         )
-        checks = Path(os.path.realpath(self.root / report["checks"][0]["log"])).parent
+        self.assertTrue(log.is_file())
+        [settings] = self.settings
+        checks = Path(os.path.realpath(log)).parent.parent
         self.assertIn(checks.as_posix(), settings["sandbox"]["filesystem"]["allowRead"])
 
     @verifies("scenario.code-review.all-blocking")
@@ -206,7 +227,9 @@ class CodeReviewTests(unittest.TestCase):
         _, envelope = self.review((), None, "--base", "no-such-ref")
         self.assertEqual("failed", envelope["status"])
         self.assertEqual([], envelope["worker_runs"])
-        self.assertEqual("base", envelope["host_evidence"][0]["kind"])
+        self.assertEqual(
+            ["trace", "base"], [item["kind"] for item in envelope["host_evidence"]][:2]
+        )
 
     def test_an_explicit_base_is_resolved(self):
         _, envelope = self.review((), None, "--base", "HEAD")

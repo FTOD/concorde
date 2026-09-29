@@ -8,6 +8,7 @@ import sys
 import unittest
 from pathlib import Path
 
+from concorde.harness.runs import read_record
 from concorde.spec.grants import grant
 from concorde.spec.repository import SpecRepository
 from concorde.spec.schema import validate
@@ -79,13 +80,12 @@ class SpecReviewTests(unittest.TestCase):
         ).stdout
 
     def record(self, run_id):
-        return json.loads(
-            (self.root / ".concorde/runs" / run_id / "record.json").read_text()
-        )
+        """The worker run's record, rebuilt from its trace node below the primary's records."""
+        return read_record(self.root / ".concorde", run_id)
 
     def brief(self, run_id):
-        work = Path(self.record(run_id)["run_directory"]) / "work"
-        return json.loads((work / "fake-round-1.json").read_text())["prompt"]
+        """The worker's first prompt: the brief its run directory keeps."""
+        return (Path(self.record(run_id)["run_directory"]) / "brief.md").read_text()
 
     def kinds(self, envelope):
         return [item["kind"] for item in envelope["host_evidence"]]
@@ -415,7 +415,7 @@ class SpecReviewTests(unittest.TestCase):
         for run_id, module in zip(envelope["worker_runs"], ("module.a", "module.b")):
             record = self.record(run_id)
             frozen = json.loads(
-                (Path(record["run_directory"]) / "control/grant.json").read_text()
+                (Path(record["run_directory"]) / "grant.json").read_text()
             )
             self.assertEqual(
                 ([module], "review-spec"), (frozen["modules"], frozen["task_type"])

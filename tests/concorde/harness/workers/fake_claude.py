@@ -5,7 +5,8 @@ with ``writes`` (absolute path to content), ``result`` (the structured output, m
 ``ok`` result), and optional ``sleep``, ``spawn`` (start a detached sleeper that records its PID),
 ``raw`` (print this instead of an envelope), ``envelope`` (fields merged over the result envelope,
 such as an error subtype), ``no_structured`` (omit the structured output) or ``actions``
-(``[tool, input]`` pairs printed first as ``stream-json`` assistant tool uses).
+(``[tool, input]`` pairs printed first as ``stream-json`` assistant tool uses). Like Claude Code it
+writes the session's transcript below ``CLAUDE_CONFIG_DIR/projects/``.
 The plan may instead be ``{"first": [...], "relaunch": [...]}``, whose relaunch rounds serve a
 launch whose brief says the host created documents for it. The fake records its argument list,
 environment and prompt per round in its working directory. It
@@ -98,6 +99,12 @@ def main() -> int:
         "result": "",
     }
     envelope.update(step.get("envelope", {}))
+    config = os.environ.get("CLAUDE_CONFIG_DIR")
+    if config and envelope.get("session_id"):
+        # Where Claude Code keeps a session's transcript.
+        transcript = Path(config) / "projects/fake" / f"{envelope['session_id']}.jsonl"
+        transcript.parent.mkdir(parents=True, exist_ok=True)
+        transcript.write_text(json.dumps({"type": "user", "round": number}) + "\n")
     if not step.get("no_structured"):
         result = {**BASE, **step.get("result", {})}
         if result["status"] in ("blocked", "failed") and "error" not in step.get(

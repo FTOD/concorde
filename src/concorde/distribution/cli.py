@@ -468,8 +468,8 @@ def _failed(tool: str, error: BaseException) -> dict:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = create_parser()
     words = list(sys.argv[1:] if argv is None else argv)
-    # Tasks, Execution and the Workers configuration own their command lines and output; they
-    # print no Spec tooling envelope.
+    # Tasks, Execution, Workflows, Tracing and the Issues command own their command lines and
+    # output; they print no Spec tooling envelope.
     if words and words[0] == "task":
         from ..tasks.cli import main as task_main
 
@@ -483,6 +483,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         from ..workflows.cli import main as workflow_main
 
         return workflow_main(words[1:])
+    if words and words[0] == "trace":
+        from ..tracing.command import main as trace_main
+
+        return trace_main(words[1:])
     if words and words[0] == "run":
         from ..execution.runner import run_main
 

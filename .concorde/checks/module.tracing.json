@@ -1,0 +1,29 @@
+{
+  "checks": [
+    {
+      "id": "check.tracing.tests",
+      "argv": [
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "-n",
+        "4",
+        "tests/concorde/tracing",
+        "tests/concorde/test_errors.py"
+      ],
+      "timeout_seconds": 300,
+      "inputs": [
+        "conftest.py",
+        "pyproject.toml",
+        "specs/concorde/tracing",
+        "src/concorde/tracing",
+        "src/concorde/errors.py",
+        "src/concorde/spec",
+        "tests/concorde/tracing",
+        "tests/concorde/test_errors.py"
+      ]
+    }
+  ]
+}

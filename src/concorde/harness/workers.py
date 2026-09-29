@@ -7,6 +7,12 @@ keeping the progress file current, audit the task worktree after every round, ru
 checks outside the worker, resume the same session when a check fails, perform the deletions it
 proposed, and write the run record. The returned record keeps the worker's answer verbatim and
 apart from what the host observed itself.
+
+The run directory is the worker run's trace node ``workers/<run-id>/`` inside the node of the run
+that asked, holding ``trace.json`` (the run record), ``status.json``, ``grant.json``, ``brief.md``,
+the transcript and one node per round; the generated configuration, credential copies and the
+worker's own directories live in a runtime directory under ``/tmp`` that is removed when the run
+ends, after the transcript was moved into the run directory.
 """
 
 from __future__ import annotations
@@ -15,6 +21,7 @@ import copy
 import hashlib
 import json
 import os
+import shutil
 import signal
 import subprocess
 import threading
@@ -29,13 +36,96 @@ from ..spec.schema import ContractError, validate
 from .audit import audit, rw_allows, snapshot
 from .claude_backend import BackendRefusal, ClaudeBackend
 from .pi_backend import PiBackend
+from ..spec.typed_data import register
+from ..tracing import layout
+from ..tracing.node import Node
 from .progress import Progress
-from .runs import create_run, now, remove_short_tmp, write_record
+from .runs import create_run, now, remove_runtime
 from .settings import TOOL_SETS, SettingsError, grant_view
 
 BACKENDS = {"claude": ClaudeBackend, "pi": PiBackend}
 
 TAIL = 20_000
+# How much of a round's standard error its node keeps.
+STDERR_KEPT = 4 * TAIL
+_PATHS = {"type": "array", "items": {"type": "string", "minLength": 1}}
+_NULLABLE_TEXT = {"anyOf": [{"type": "null"}, {"type": "string", "minLength": 1}]}
+# A free-form object: the typed-value check closes an object without additionalProperties.
+_OBJECT = {"type": "object", "additionalProperties": {}}
+# contract.workers.worker-run-trace, version 1
+WORKER_RUN_TRACE = "concorde-worker-run-trace"
+register(
+    WORKER_RUN_TRACE,
+    1,
+    {
+        "type": "object",
+        "additionalProperties": False,
+        "required": [
+            "task_type",
+            "backend_source",
+            "tools",
+            "transcript",
+            "worker_result",
+            "pending_created",
+            "pending_removed",
+            "deleted",
+            "deletions_refused",
+            "rounds",
+        ],
+        "properties": {
+            "task_type": {"type": "string", "minLength": 1},
+            "backend_source": _NULLABLE_TEXT,
+            "tools": {
+                "anyOf": [
+                    {"type": "null"},
+                    {"type": "array", "items": {"type": "string", "minLength": 1}},
+                ]
+            },
+            "transcript": {
+                "anyOf": [
+                    {"type": "null"},
+                    {"type": "string", "minLength": 1, "format": "project-path"},
+                ]
+            },
+            "worker_result": {"anyOf": [{"type": "null"}, _OBJECT]},
+            "pending_created": _PATHS,
+            "pending_removed": _PATHS,
+            "deleted": _PATHS,
+            "deletions_refused": _PATHS,
+            "rounds": {"type": "integer", "minimum": 0},
+        },
+    },
+)
+# contract.workers.worker-round-trace, version 1
+WORKER_ROUND_TRACE = "concorde-worker-round-trace"
+register(
+    WORKER_ROUND_TRACE,
+    1,
+    {
+        "type": "object",
+        "additionalProperties": False,
+        "required": [
+            "round",
+            "prompt",
+            "session",
+            "exit",
+            "audit",
+            "checks",
+            "validation",
+            "agent",
+        ],
+        "properties": {
+            "round": {"type": "integer", "minimum": 1},
+            "prompt": {"enum": ["initial", "check_failures", "validation_failures"]},
+            "session": _NULLABLE_TEXT,
+            "exit": {"anyOf": [{"type": "null"}, {"type": "integer"}]},
+            "audit": {"anyOf": [{"type": "null"}, _OBJECT]},
+            "checks": {"type": "array", "items": _OBJECT},
+            "validation": {"anyOf": [{"type": "null"}, {"type": "string"}]},
+            "agent": _OBJECT,
+        },
+    },
+)
 
 WORKER_RESULT_SCHEMA: dict = {
     "type": "object",
@@ -103,9 +193,9 @@ class WorkerRequest:
     started: Callable[[str], None] | None = None
     # The project's own interpreter, which the worker finds first on its PATH.
     project_python: str | None = None
-    # Where the worker's run directory is created: the records directory of the run that asked
-    # for the worker (its workspace binding's), or the worktree's own ``.concorde``.
-    records: Path | None = None
+    # The trace node folder of the run that asked for the worker, below which the worker run's
+    # own node, its run directory, is created.
+    trace_parent: Path | None = None
 
 
 def _digest(path: Path) -> str:
@@ -398,22 +488,31 @@ def _consistency(result: dict) -> str | None:
 
 
 def run_worker(request: WorkerRequest) -> dict:
-    """Run one worker to its end and return its run record (also written to the run directory)."""
+    """Run one worker to its end and return its run record (also written as its trace node)."""
     from .checks import check_error
 
     worktree = Path(os.path.realpath(request.worktree))
-    run_id, paths = create_run(Path(request.records or worktree / ".concorde"))
+    parent = Path(
+        request.trace_parent or layout.unbound_folder(layout.concorde_of(worktree))
+    )
+    run_id, paths = create_run(parent)
     if request.started is not None:
         request.started(run_id)
     actor = f"Workers run {run_id} ({request.task_type} worker)"
     backend = BACKENDS[request.backend]() if request.backend in BACKENDS else None
+    trace = paths.trace
     progress = Progress(
-        paths.root,
+        trace,
         run_id=run_id,
         task_type=request.task_type,
         backend=request.backend,
         worktree=worktree.as_posix(),
         operation_run_id=request.operation_run,
+    )
+    context_identity = (
+        request.grant.get("context_identity")
+        if isinstance(request.grant, dict)
+        else None
     )
     record: dict = {
         "run_id": run_id,
@@ -425,9 +524,7 @@ def run_worker(request: WorkerRequest) -> dict:
         "model": request.model,
         "reasoning": request.reasoning,
         "worktree": worktree.as_posix(),
-        "context_identity": request.grant.get("context_identity")
-        if isinstance(request.grant, dict)
-        else None,
+        "context_identity": context_identity,
         "grant_digest": None,
         "settings_digest": None,
         "brief_digest": None,
@@ -446,17 +543,64 @@ def run_worker(request: WorkerRequest) -> dict:
         "deletions_refused": [],
         "status": "failed",
         "error": None,
-        "run_directory": paths.root.as_posix(),
-        "tmp": paths.tmp.as_posix(),
+        "run_directory": trace.as_posix(),
+        "runtime_directory": paths.root.as_posix(),
     }
+    modules = request.grant.get("modules") if isinstance(request.grant, dict) else None
+    node = Node(
+        trace,
+        run_id,
+        "worker-run",
+        content_type=WORKER_RUN_TRACE,
+        metadata={
+            "modules": list(modules) if isinstance(modules, (list, tuple)) else None,
+            "operation": request.operation,
+            "worker": request.worker,
+            "task_type": request.task_type,
+            "backend": request.backend,
+            "model": request.model,
+            "reasoning": request.reasoning,
+            "context_identity": context_identity,
+        },
+        content=_run_content(record),
+        started_at=record["started_at"],
+    )
+    for identity, relative in (
+        ("progress", layout.PROGRESS),
+        ("grant", "grant.json"),
+        ("brief", "brief.md"),
+        ("transcript", "transcript.jsonl"),
+    ):
+        node.keep(identity, relative)
+    node.start()
+    # The transcript the backend writes in the runtime directory, moved into the run directory
+    # when the run ends.
+    source: dict = {"transcript": None}
+    rounds: dict = {}
 
     def finish(status: str, error: dict | None = None) -> dict:
-        remove_short_tmp(paths)
+        _keep_transcript(source["transcript"], trace)
+        remove_runtime(paths)
         _remove_unused_pending(worktree, record)
+        for number, round_node in list(rounds.items()):
+            if round_node.record["status"] == "running":
+                _finish_round(
+                    round_node, record["rounds"][number - 1], "failed", "interrupted"
+                )
         record["status"] = status
         record["error"] = error
         record["ended_at"] = now()
-        write_record(paths, record)
+        interrupted = bool(error) and error.get("code") == "interrupted"
+        node.finish(
+            status,
+            outcome="interrupted" if interrupted else status,
+            error=error,
+            content=_run_content(record),
+            ended_at=record["ended_at"],
+            grant_digest=record["grant_digest"],
+            brief_digest=record["brief_digest"],
+            settings_digest=record["settings_digest"],
+        )
         progress.finish(status)
         return record
 
@@ -464,9 +608,7 @@ def run_worker(request: WorkerRequest) -> dict:
         found = list(extra.pop("evidence", ()))
         if record["transcript"]:
             found.append(evidence("transcript", record["transcript"], ""))
-        found.append(
-            evidence("run-record", (paths.root / "record.json").as_posix(), "")
-        )
+        found.append(evidence("trace", run_id, trace.as_posix()))
         return finish(
             "failed",
             link(
@@ -533,7 +675,7 @@ def run_worker(request: WorkerRequest) -> dict:
                 "Workers launches only with a well-formed frozen grant, which its caller "
                 "computes; it never repairs or guesses a grant",
             )
-        grant_file = paths.control / "grant.json"
+        grant_file = trace / "grant.json"
         grant_file.write_text(json.dumps(request.grant, indent=2, sort_keys=True))
         record["grant_digest"] = _digest(grant_file)
         schema = result_schema(request.output_schema)
@@ -545,10 +687,15 @@ def run_worker(request: WorkerRequest) -> dict:
             return fail(
                 refusal.code, refusal.detail, refusal.reason, refusal.explanation
             )
-        brief_file = paths.control / "brief.md"
+        brief_file = trace / "brief.md"
         brief_file.write_text(brief(request, worktree))
         record.update(
             settings_digest=_digest(configuration), brief_digest=_digest(brief_file)
+        )
+        node.update(
+            grant_digest=record["grant_digest"],
+            brief_digest=record["brief_digest"],
+            settings_digest=record["settings_digest"],
         )
         try:
             record["pending_created"] = _precreate(worktree, request.grant)
@@ -580,6 +727,9 @@ def run_worker(request: WorkerRequest) -> dict:
         for number in range(1, request.rounds + 2):
             round_record: dict = {"round": number, "prompt": kind}
             record["rounds"].append(round_record)
+            round_node = _start_round(trace, number, request, round_record)
+            rounds[number] = round_node
+            node.update(content=_run_content(record))
             command = backend.command(request, paths, schema_text, session)
             stream = backend.stream()
 
@@ -590,10 +740,12 @@ def run_worker(request: WorkerRequest) -> dict:
             progress.phase("worker", round=number)
             outcome = _launch(request, paths, command, environment, prompt, on_line)
             record["stderr_tail"] = outcome["stderr"][-TAIL:].decode("utf-8", "replace")
+            _keep_stderr(round_node, outcome["stderr"])
             round_record.update(
                 exit=outcome.get("exit"), duration=outcome.get("duration")
             )
             if outcome.get("error"):
+                _finish_round(round_node, round_record, "failed", "launch_failed")
                 return fail(
                     outcome["error"],
                     f"round {number}: the command {command[0]} could not be started: "
@@ -607,7 +759,10 @@ def run_worker(request: WorkerRequest) -> dict:
                 session = concluded.session
             round_record["session"] = session
             round_record.update(concluded.info)
-            record["transcript"] = backend.transcript(paths, session)
+            round_record["usage"] = dict(concluded.usage)
+            source["transcript"] = backend.transcript(paths, session)
+            if source["transcript"]:
+                record["transcript"] = (trace / TRANSCRIPT).as_posix()
             progress.phase("audit")
             verdict = audit(
                 worktree,
@@ -625,6 +780,7 @@ def run_worker(request: WorkerRequest) -> dict:
                 f"the grant's writable paths: {', '.join(verdict.violations)}"
             )
             if outcome["timed_out"]:
+                _finish_round(round_node, round_record, "failed", "timed_out")
                 return fail(
                     "worker_timeout",
                     f"round {number} did not finish within {request.timeout}s; the process "
@@ -637,6 +793,12 @@ def run_worker(request: WorkerRequest) -> dict:
             failure = concluded.failure
             if failure is not None:
                 exhausted = concluded.exhausted
+                _finish_round(
+                    round_node,
+                    round_record,
+                    "failed",
+                    "limit_reached" if exhausted else "process_failed",
+                )
                 return fail(
                     "worker_limit_reached" if exhausted else backend.failure_code,
                     f"round {number}: the {backend.process} process ended with an error "
@@ -667,6 +829,7 @@ def run_worker(request: WorkerRequest) -> dict:
             if invalid is None:
                 record["worker_result"] = result
             if not verdict.clean:
+                _finish_round(round_node, round_record, "failed", "audit_violation")
                 return fail(
                     "audit_violation",
                     f"round {number}: the worker changed {len(verdict.violations)} path(s) "
@@ -686,6 +849,7 @@ def run_worker(request: WorkerRequest) -> dict:
                     causes=[None if invalid else worker_link(record, result)],
                 )
             if invalid:
+                _finish_round(round_node, round_record, "failed", "result_invalid")
                 return fail(
                     "worker_result_invalid",
                     f"round {number}: the worker's result does not satisfy its result "
@@ -696,13 +860,16 @@ def run_worker(request: WorkerRequest) -> dict:
                     evidence=[
                         evidence(
                             "result-schema",
-                            (paths.control / "result.schema.json").as_posix(),
+                            "the worker result schema of this run, given to the worker",
                             "",
                         )
                     ],
                     attempts=attempts,
                 )
             if result["status"] != "ok":
+                _finish_round(
+                    round_node, round_record, result["status"], result["status"]
+                )
                 _finalize(worktree, record, result, clean=True)
                 cause = worker_link(record, result)
                 return finish(
@@ -717,11 +884,7 @@ def run_worker(request: WorkerRequest) -> dict:
                         explanation="Workers resumes a worker only to repair failing configured "
                         "checks or what its caller's validation reports; it returns every other "
                         "blocker unchanged",
-                        evidence=[
-                            evidence(
-                                "run-record", (paths.root / "record.json").as_posix()
-                            ),
-                        ]
+                        evidence=[evidence("trace", run_id, trace.as_posix())]
                         + (
                             [evidence("transcript", record["transcript"])]
                             if record["transcript"]
@@ -734,8 +897,10 @@ def run_worker(request: WorkerRequest) -> dict:
             if request.check_modules is None:
                 repair = _after_round(request, number, round_record, attempts)
                 if repair is None:
+                    _finish_round(round_node, round_record, "ok", "ok")
                     _finalize(worktree, record, result, clean=True)
                     return finish("ok")
+                _finish_round(round_node, round_record, "failed", "validation_failed")
                 prompt, kind = repair, "validation_failures"
                 continue
             progress.phase("checks")
@@ -745,10 +910,11 @@ def run_worker(request: WorkerRequest) -> dict:
                 checks = run_checks(
                     worktree,
                     modules=request.check_modules,
-                    log_directory=paths.checks / str(number),
+                    trace_directory=layout.checks_folder(round_node.folder),
                 )
             except (SpecError, OSError) as error:
                 code = getattr(error, "code", None) or "checks_unavailable"
+                _finish_round(round_node, round_record, "failed", "checks_unavailable")
                 return fail(
                     "checks_unavailable",
                     f"round {number}: the configured checks of "
@@ -764,10 +930,13 @@ def run_worker(request: WorkerRequest) -> dict:
             if not failures:
                 repair = _after_round(request, number, round_record, attempts)
                 if repair is None:
+                    _finish_round(round_node, round_record, "ok", "ok")
                     _finalize(worktree, record, result, clean=True)
                     return finish("ok")
+                _finish_round(round_node, round_record, "failed", "validation_failed")
                 prompt, kind = repair, "validation_failures"
                 continue
+            _finish_round(round_node, round_record, "failed", "checks_failed")
             attempts.append(
                 f"round {number}: the worker ended ok; failing: "
                 + ", ".join(
@@ -812,6 +981,102 @@ def run_worker(request: WorkerRequest) -> dict:
         raise
 
 
+TRANSCRIPT = "transcript.jsonl"
+
+
+def _run_content(record: dict) -> dict:
+    """The content of the worker run's trace node: what is not one of its uniform fields."""
+    return {
+        "task_type": record["task_type"],
+        "backend_source": record["backend_source"],
+        # The record keeps the tool set as the backend's comma-separated list; its trace node
+        # keeps it as an array of tool names.
+        "tools": [name for name in record["tools"].split(",") if name]
+        if record["tools"] is not None
+        else None,
+        "transcript": TRANSCRIPT if record["transcript"] else None,
+        "worker_result": record["worker_result"],
+        "pending_created": list(record["pending_created"]),
+        "pending_removed": list(record["pending_removed"]),
+        "deleted": list(record["deleted"]),
+        "deletions_refused": list(record["deletions_refused"]),
+        "rounds": len(record["rounds"]),
+    }
+
+
+def _start_round(
+    trace: Path, number: int, request: WorkerRequest, round_record: dict
+) -> Node:
+    round_node = Node(
+        layout.round_folder(trace, number),
+        str(number),
+        "worker-round",
+        content_type=WORKER_ROUND_TRACE,
+        metadata={"backend": request.backend, "model": request.model},
+        content=_round_content(round_record, layout.round_folder(trace, number)),
+    )
+    round_node.keep("stderr", "stderr.log")
+    return round_node.start()
+
+
+def _round_content(round_record: dict, folder: Path) -> dict:
+    agent = {key: round_record[key] for key in ("claude", "pi") if key in round_record}
+    checks = []
+    for item in round_record.get("checks") or []:
+        shaped = dict(item)
+        try:
+            shaped["log"] = Path(item["log"]).relative_to(folder).as_posix()
+        except (KeyError, ValueError):
+            pass
+        checks.append(shaped)
+    exit_code = round_record.get("exit")
+    validation = round_record.get("validation")
+    return {
+        "round": round_record["round"],
+        "prompt": round_record["prompt"],
+        "session": round_record.get("session") or None,
+        "exit": exit_code if isinstance(exit_code, int) else None,
+        "audit": round_record.get("audit"),
+        "checks": checks,
+        "validation": validation if isinstance(validation, str) else None,
+        "agent": agent,
+    }
+
+
+def _finish_round(
+    round_node: Node, round_record: dict, status: str, outcome: str
+) -> None:
+    used = dict(round_record.get("usage") or {})
+    if round_record.get("duration") is not None:
+        used["duration_seconds"] = round_record["duration"]
+    # The returned record holds the round's usage as its node keeps it.
+    round_record["usage"] = used
+    round_node.finish(
+        status,
+        outcome=outcome,
+        used=used,
+        content=_round_content(round_record, round_node.folder),
+        error=None,
+    )
+
+
+def _keep_stderr(round_node: Node, stderr: bytes) -> None:
+    try:
+        (round_node.folder / "stderr.log").write_bytes(stderr[-STDERR_KEPT:])
+    except OSError:
+        pass
+
+
+def _keep_transcript(source: str | None, trace: Path) -> None:
+    """Move the session's transcript from the runtime directory into the run directory."""
+    if not source:
+        return
+    try:
+        shutil.copyfile(source, trace / TRANSCRIPT)
+    except OSError:
+        pass
+
+
 def _remove_unused_pending(worktree: Path, record: dict) -> None:
     """Remove every pre-created pending path the worker left empty; runs on every exit path."""
     for path in record["pending_created"]:
@@ -832,7 +1097,7 @@ def _finalize(worktree: Path, record: dict, result: dict, *, clean: bool) -> Non
     rw = [
         entry["path"]
         for entry in json.loads(
-            (Path(record["run_directory"]) / "control/grant.json").read_text()
+            (Path(record["run_directory"]) / "grant.json").read_text()
         )["entries"]
         if entry["level"] == "rw"
     ]

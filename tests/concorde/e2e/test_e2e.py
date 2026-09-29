@@ -12,6 +12,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 from concorde.spec.verification import verifies
+from concorde.tracing import node as trace
+from concorde.workflows.store import WORKFLOW_TRACE
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 SPEC = importlib.util.spec_from_file_location(
@@ -19,6 +21,48 @@ SPEC = importlib.util.spec_from_file_location(
 )
 e2e = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(e2e)
+
+
+def workflow_node(workspace: Path, steps: list[dict], reports: list[dict] = ()) -> None:
+    """Write the workflow node of the workspace folder ``workspace`` as Workflows does."""
+    folder = workspace / "workflow"
+    trace.write(
+        folder,
+        {
+            "schema_version": 1,
+            "id": "brownfield",
+            "kind": "workflow",
+            "started_at": "2026-09-27T10:00:00Z",
+            "ended_at": None,
+            "status": "running",
+            "outcome": None,
+            "usage": trace.usage(),
+            "error": None,
+            "metadata": {"workspace": workspace.parent.name, "workflow": "brownfield"},
+            "artifacts": [],
+            "references": [],
+            "content": {
+                "type_id": WORKFLOW_TRACE,
+                "schema_version": 1,
+                "data": {
+                    "workflow": "brownfield",
+                    "steps": [
+                        {
+                            "mode": "no-ask",
+                            "answers": None,
+                            "error": None,
+                            "superseded": False,
+                            "node": f"steps/{number}-{step['key']}",
+                            "at": "2026-09-27T10:00:00Z",
+                            **step,
+                        }
+                        for number, step in enumerate(steps, 1)
+                    ],
+                    "reports": list(reports),
+                },
+            },
+        },
+    )
 
 
 def git(cwd: Path, *arguments: str) -> str:
@@ -112,63 +156,88 @@ class E2ETests(unittest.TestCase):
     def test_watch_reads_run_progress_and_workflow_records(self):
         with tempfile.TemporaryDirectory() as directory:
             project = Path(directory)
-            run = project / ".concorde/runs/r-20260927T100000-survey-00000000"
+            workspace = project / ".concorde/tasks/adopt/workspace"
+            run_id = "r-20260927T100000-survey-00000000"
+            # A workflow step's run lies in the step's node of the workspace's workflow.
+            run = workspace / "workflow/steps/1-survey/run"
             run.mkdir(parents=True)
             (run / "status.json").write_text(
                 json.dumps(
-                    {"kind": "operation", "name": "survey", "workspace": "adopt"}
-                    | {"phase": "worker", "step": "survey", "status": "running"}
+                    {"kind": "operation", "run_id": run_id, "name": "survey"}
+                    | {"workspace": "adopt", "phase": "worker", "step": "survey"}
+                    | {"status": "running"}
                 )
             )
-            record = project / ".concorde/runs/workflows/adopt/record.json"
-            record.parent.mkdir(parents=True)
-            step = {"key": "survey", "run_id": run.name, "superseded": False}
-            record.write_text(
+            # A run started directly, and an unbound one.
+            direct = workspace / "runs/r-20260927T100100-implement-00000000"
+            direct.mkdir(parents=True)
+            (direct / "status.json").write_text(
                 json.dumps(
-                    {
-                        "workspace": "adopt",
-                        "workflow": "brownfield",
-                        "steps": [step],
-                        "reports": [],
-                    }
+                    {"kind": "operation", "name": "implement", "workspace": "adopt"}
                 )
             )
+            unbound = (
+                project / ".concorde/unbound/r-20260927T100200-understand-00000000"
+            )
+            unbound.mkdir(parents=True)
+            (unbound / "status.json").write_text(
+                json.dumps(
+                    {"kind": "operation", "name": "understand", "workspace": None}
+                )
+            )
+            step = {"key": "survey", "name": "survey", "run_id": run_id}
+            workflow_node(workspace, [step])
             value = e2e.watch(project)
             self.assertEqual(
-                {"adopt": [{"key": "survey", "run": run.name, "superseded": False}]},
+                {"adopt": [{"key": "survey", "run": run_id, "superseded": False}]},
                 value["workflows"],
             )
-            [listed] = value["runs"]
             self.assertEqual(
-                (run.name, "adopt", "worker"),
-                (listed["run"], listed["workspace"], listed["phase"]),
+                [
+                    (direct.name, "adopt", None),
+                    (run_id, "adopt", "worker"),
+                    (unbound.name, None, None),
+                ],
+                [
+                    (listed["run"], listed["workspace"], listed["phase"])
+                    for listed in value["runs"]
+                ],
             )
 
     @verifies("scenario.e2e.stale-result")
     def test_a_run_returns_only_a_workflow_result_it_saved(self):
         with tempfile.TemporaryDirectory() as directory:
             project = Path(directory)
-            (project / ".concorde/tasks").mkdir(parents=True)
-            (project / ".concorde/tasks/adopt.json").write_text(
+            (project / ".concorde/tasks/adopt").mkdir(parents=True)
+            (project / ".concorde/tasks/adopt/task.json").write_text(
                 json.dumps({"worktree": str(project)})
             )
-            folder = project / ".concorde/runs/workflows/adopt"
+            workspace = project / ".concorde/tasks/adopt/workspace"
+            folder = workspace / "workflow"
             (folder / "reports").mkdir(parents=True)
-            record = folder / "record.json"
+            reports = []
 
             def save(number: int, status: str) -> None:
                 path = folder / f"reports/{number}.json"
                 path.write_text(json.dumps({"status": status}))
-                value = (
-                    json.loads(record.read_text())
-                    if record.is_file()
-                    else {"workspace": "adopt", "steps": [], "reports": []}
+                (folder / f"reports/{number}.md").write_text(status)
+                # The workflow's node names its reports relative to its folder.
+                reports.append(
+                    {
+                        "status": status,
+                        "path": f"reports/{number}.json",
+                        "rendered": f"reports/{number}.md",
+                        "at": "2026-09-27T10:00:00Z",
+                    }
                 )
-                value["reports"].append({"status": status, "path": str(path)})
-                record.write_text(json.dumps(value))
+                workflow_node(workspace, [], reports)
 
             # An earlier run of the task saved a result.
             save(1, "failed")
+            self.assertEqual(
+                [(folder / "reports/1.json").as_posix()],
+                [item["path"] for item in e2e.saved_reports(project, "adopt")],
+            )
             saves = []
 
             def session(*_arguments, **_options):

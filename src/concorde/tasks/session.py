@@ -6,14 +6,14 @@ the primary worktree itself. A task session works only inside its task worktree:
 directly or run Operations there with the worktree's own ``concorde``, keeps the task's decision
 log, delivers the task, and reports to the main agent, which alone merges and closes tasks.
 
-Its boundary is generated here, next to the task record in
-``.concorde/tasks/<task>.session/``, and guards against mistakes, not a malicious session:
+Its boundary is generated here, in the task's folder under ``.concorde/tasks/<task>/runtime/``,
+which the close removes, and guards against mistakes, not a malicious session:
 
 - a PreToolUse hook lets Edit and Write change only the task worktree and its decision log;
 - the Bash sandbox lets commands write only the task worktree, the repository's Git directory
-  (commits on the task branch), the run store of the records directory the task's workspace
-  binding names (``.concorde/runs/``: its runs and workflow record), ``.concorde/tasks/`` (task
-  records, for escalations) and the user's package caches; reads and the network stay open, since the
+  (commits on the task branch), the task's own folder (the workspace folder its binding names,
+  where its runs and workflow are traced, and its record and trace, for escalations),
+  ``.concorde/locks/`` (the locks those runs take) and the user's package caches; reads and the network stay open, since the
   boundary guards against mistakes, not exfiltration (``allowedDomains`` is ``*``, so no command
   has to name the hosts it reaches);
 - nobody answers permission prompts in a background session, so it runs in Claude Code's
@@ -51,7 +51,8 @@ def session_name(task_id: str) -> str:
 
 
 def session_directory(primary: Path, task_id: str) -> Path:
-    return store.tasks_directory(primary) / f"{task_id}.session"
+    """The task's ``runtime/``: its task session's boundary configuration, which is no trace."""
+    return store.task_folder(primary, task_id) / "runtime"
 
 
 def writable(primary: Path, record: dict, home: Path | None = None) -> list[str]:
@@ -66,15 +67,15 @@ def writable(primary: Path, record: dict, home: Path | None = None) -> list[str]
     paths = [
         Path(record["worktree"]),
         Path(os.path.realpath(common)),
-        primary / ".concorde/runs",
-        store.tasks_directory(primary),
+        store.task_folder(primary, record["id"]),
+        store.concorde(primary) / "locks",
         *(home / name for name in CACHES),
     ]
     return sorted({Path(os.path.realpath(path)).as_posix() for path in paths})
 
 
 def create_writable(paths: list[str]) -> None:
-    """Create the writable paths that do not exist yet, such as a first run's ``.concorde/runs``.
+    """Create the writable paths that do not exist yet, such as a first run's ``.concorde/locks``.
 
     A sandbox makes only existing paths writable, so a directory it lists but that is missing
     would stay read-only for the whole session.
@@ -166,12 +167,9 @@ def start(
     """Write the session's boundary and, unless ``dry_run``, start it with ``claude --bg``."""
     run = run or subprocess.run
     primary = store.require_primary(here)
-    record = store.load_task(primary, task_id)
-    if record["state"] not in ("open", "active", "delivered"):
-        raise store.TaskError(
-            "task_closed",
-            f"task {task_id} is {record['state']}; a session works only in an open task",
-        )
+    record = store.load_unended(
+        primary, task_id, "a session works only in an open task"
+    )
     if not main or not main.strip():
         raise store.TaskError(
             "invalid_input",
@@ -234,8 +232,10 @@ def start(
     session = {
         "program": "claude",
         "id": found["id"],
+        "reported_id": found["id"],
         "name": name,
         "main": main.strip(),
+        "model": model,
         "settings": path.as_posix(),
         "started_at": store.now(),
     }

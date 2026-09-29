@@ -278,7 +278,9 @@ class ScaffoldTests(AdoptionCase):
             "scaffold", "--task", "adopt", "--input", foreign["run_id"]
         )
         self.assertEqual("failed", envelope["status"])
-        self.assertEqual("input_not_admissible", envelope["host_evidence"][0]["ref"])
+        self.assertIn(
+            "input_not_admissible", [item["ref"] for item in envelope["host_evidence"]]
+        )
 
     @verifies("scenario.scaffold.unbound")
     def test_the_scaffold_is_an_execution_command_of_a_bound_workspace(self):
@@ -308,12 +310,15 @@ class ScaffoldTests(AdoptionCase):
                 envelope["worker_runs"],
             ),
         )
-        # Its run is recorded in the primary's run store, where a later run may admit it.
-        self.assertTrue(
-            (
-                self.project.root
-                / ".concorde/runs"
-                / envelope["run_id"]
-                / "result.json"
-            ).is_file()
+        # Its run's node lies in the task's workspace folder in the primary worktree, where a
+        # later run may admit it.
+        folder = (
+            self.project.root
+            / ".concorde/tasks/adopt/workspace/runs"
+            / envelope["run_id"]
+        )
+        self.assertTrue((folder / "result.json").is_file())
+        self.assertEqual(
+            {"kind": "trace", "ref": envelope["run_id"], "detail": folder.as_posix()},
+            envelope["host_evidence"][0],
         )

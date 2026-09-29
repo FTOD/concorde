@@ -29,6 +29,7 @@ from ..harness.models import (
     runtime,
     worker_choice,
 )
+from .runs import Store
 
 
 @dataclass
@@ -273,14 +274,16 @@ def withhold_writes(value: dict) -> dict:
 @dataclass
 class RunContext:
     name: str
-    # The records directory: the binding's, or an unbound worktree's own ``.concorde``.
-    records: Path
+    # Where the run's workspace keeps its runs and locks: the binding's workspace folder and
+    # ``.concorde``, or an unbound worktree's own ``.concorde``.
+    store: Store
     # The workspace binding, or None for an unbound run.
     workspace: dict | None
     # The worktree the run works in: the bound workspace, or an unbound run's checkout.
     worktree: Path
     modules: list[str]
     run_id: str
+    # The run's trace node folder, where its result, progress file, checks and worker runs lie.
     run_dir: Path
     arguments: argparse.Namespace
     inputs: dict[str, dict] = field(default_factory=dict)
@@ -299,6 +302,10 @@ class RunContext:
     origin: Path | None = None
     # The commit an unbound run's checkout holds; None for a bound run.
     commit: str | None = None
+    # The steps that began, with their timings, for the run's trace node.
+    steps: list[dict] = field(default_factory=list)
+    # References of the run's trace node its steps add, as (relation, target).
+    references: list[tuple[str, str]] = field(default_factory=list)
 
     @property
     def unbound(self) -> bool:
@@ -411,7 +418,7 @@ class RunContext:
         record = run_worker(
             WorkerRequest(
                 worktree=self.worktree,
-                records=self.records,
+                trace_parent=self.run_dir,
                 task_type=task_type,
                 grant=frozen,
                 instructions=instructions,

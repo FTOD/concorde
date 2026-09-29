@@ -185,7 +185,8 @@ class GuidanceTests(unittest.TestCase):
                     session,
                 )
                 self.assertIn(
-                    "`.concorde/runs/workflows/<task>/reports/<n>.json` of the primary worktree",
+                    "`.concorde/tasks/<task>/workspace/workflow/reports/<n>.json` of the "
+                    "primary worktree",
                     session,
                 )
                 self.assertIn(
@@ -355,7 +356,9 @@ class GuidanceTests(unittest.TestCase):
             self.skill,
         )
         self.assertIn("it starts the same workflow again with them", self.skill)
-        self.assertIn(".concorde/runs/workflows/<task>/reports/<n>.json", self.skill)
+        self.assertIn(
+            ".concorde/tasks/<task>/workspace/workflow/reports/<n>.json", self.skill
+        )
         self.assertIn(
             "The task session copies its decisions and problems into the task's decision log",
             self.skill,
@@ -421,7 +424,7 @@ class GuidanceTests(unittest.TestCase):
         self.assertIn("never a summary of it", self.skill)
         self.assertIn(
             "When the failure leads to work, open a task for that work and escalate in it with "
-            "`--error-file .concorde/runs/<run-id>/result.json`",
+            "`--error-file .concorde/unbound/<run-id>/result.json`",
             self.skill,
         )
         self.assertIn("`--run` names only runs of the task's own workspace", self.skill)

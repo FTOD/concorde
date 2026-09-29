@@ -18,7 +18,6 @@ import subprocess
 from pathlib import Path
 
 from ..harness.checks import checked_modules, run_checks
-from ..harness.runs import read_record
 from ..execution.context import (
     Continue,
     Provider,
@@ -133,15 +132,11 @@ OUTCOMES = {"passed": "passed", "failed": "failed", "timeout": "timed_out"}
 # --- shared host helpers -----------------------------------------------------------------------
 
 
-def check_results(primary: Path, results: list[dict]) -> list[dict]:
-    """Check-service results in the contract's shape; logs relative to the primary when inside."""
+def check_results(results: list[dict]) -> list[dict]:
+    """Check-service results in the contract's shape, each with the absolute path of its log."""
     shaped = []
     for item in results:
-        log = Path(item["log"])
-        try:
-            log_text = log.relative_to(primary).as_posix()
-        except ValueError:
-            log_text = log.as_posix()
+        log_text = Path(item["log"]).as_posix()
         outcome = OUTCOMES[item["status"]]
         shaped.append(
             {
@@ -201,7 +196,7 @@ def host_checks(ctx: RunContext) -> list[dict] | Stop:
         return run_checks(
             ctx.worktree,
             modules=checked_modules(SpecRepository(ctx.worktree), ctx.modules),
-            log_directory=ctx.run_dir / "checks",
+            trace_directory=ctx.run_dir / "checks",
         )
     except (SpecError, OSError) as error:
         return ctx.checks_unavailable(error)
@@ -305,7 +300,7 @@ def code_change(
         "refused_deletions": list(record.get("deletions_refused") or []),
         "pending_cleared": cleared,
         "rounds": max(len(rounds), 1),
-        "checks": check_results(ctx.records.parent, _latest_checks(record)),
+        "checks": check_results(_latest_checks(record)),
         "addresses": list(output.get("addresses") or []),
     }
 
@@ -341,7 +336,7 @@ def implement_step(ctx: RunContext):
     )
     if len(ctx.worker_runs) == launched:
         return outcome  # no worker run: nothing was pre-created or changed
-    record = read_record(ctx.records, ctx.worker_runs[-1])
+    record = ctx.last_record
     extra: list[dict] = []
     removed = remove_unused(ctx.worktree, record)
     if removed:
@@ -425,7 +420,7 @@ def testing_step(ctx: RunContext):
         output={
             "focus": focus or None,
             "passed": all(item["status"] == "passed" for item in results),
-            "checks": check_results(ctx.records.parent, results),
+            "checks": check_results(results),
             "summary": (ctx.worker or {}).get("summary") or "tested",
             "failures": list(output.get("failures") or []),
             "notes": list(output.get("notes") or []),

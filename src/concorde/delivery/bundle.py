@@ -3,7 +3,8 @@ earlier delivery commits back from Git.
 
 The bundle records the workspace, the readiness the delivery consumed and every run of the
 workspace since the previous delivery, by identity and digest; the results, run records and
-transcripts themselves stay in the run store of the workspace's records directory.
+transcripts themselves stay in the run store of the workspace folder, as trace nodes that
+retention may remove, so the bundle never needs them to be read.
 """
 
 from __future__ import annotations
@@ -13,6 +14,8 @@ import json
 import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
+
+from ..execution.runs import Store, result_path
 
 SHA256 = {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
 COMMIT = {"type": "string", "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"}
@@ -244,8 +247,8 @@ def delivery_mismatches(worktree: Path, delivery: dict) -> list[str]:
     return problems
 
 
-def _run_entry(records: Path, run: dict) -> dict:
-    path = records / "runs" / run["run_id"] / "result.json"
+def _run_entry(store: Store, run: dict) -> dict:
+    path = result_path(store, run["run_id"])
     entry = {
         "run_id": run["run_id"],
         "kind": run.get("kind") or "operation",
@@ -289,7 +292,7 @@ def runs_since(runs: list[dict], since: str | None, current_run: str) -> list[di
 
 def build_bundle(
     workspace: dict,
-    records: Path,
+    store: Store,
     runs: list[dict],
     *,
     since: str | None,
@@ -330,7 +333,7 @@ def build_bundle(
             }
             for item in confirmations
         ],
-        "runs": [_run_entry(records, run) for run in runs_since(runs, since, run_id)],
+        "runs": [_run_entry(store, run) for run in runs_since(runs, since, run_id)],
         "created_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
 

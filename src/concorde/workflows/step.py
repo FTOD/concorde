@@ -26,9 +26,10 @@ from .. import errors
 from ..commands.catalog import COMMANDS
 from ..execution.runs import (
     RUN_ID_PATTERN,
+    Store,
     load_result,
     lock_holder,
-    run_directory,
+    result_path,
     run_state,
 )
 from ..spec.schema import validate
@@ -179,18 +180,23 @@ def step_key(base: str, answers: list[dict] | None, restart: str | None = None) 
     return f"{key}@{answers_digest(answers)}" if answers else key
 
 
-def host_output(records: Path, run_id: str) -> str:
+def run_folder(store: Store, run_id: str) -> Path:
+    """The trace node folder of a step's run."""
+    return store.find(run_id) or store.run_folder(run_id)
+
+
+def host_output(store: Store, run_id: str) -> str:
     """The end of what a detached runner printed, where it reports failures outside its steps."""
     try:
-        data = (run_directory(records, run_id) / "host.out").read_bytes()
+        data = (run_folder(store, run_id) / "host.out").read_bytes()
     except OSError:
         return ""
     return data[-4000:].decode("utf-8", "replace").strip()
 
 
 def lost_link(space: Workspace, workflow: str, key: str, name: str, run_id: str):
-    output = host_output(space.records, run_id)
-    directory = run_directory(space.records, run_id).as_posix()
+    output = host_output(space.store, run_id)
+    directory = run_folder(space.store, run_id).as_posix()
     return workflow_link(
         workflow,
         space.name,
@@ -233,7 +239,9 @@ def concorde_command(worktree: Path) -> list[str]:
     return [sys.executable, "-m", "concorde"]
 
 
-def start_run(workflow: str, space: Workspace, argv: list[str]) -> dict:
+def start_run(
+    workflow: str, space: Workspace, argv: list[str], trace_at: Path | None = None
+) -> dict:
     """Start the step's run detached in the workspace; the announced run.
 
     An Operation starts with ``concorde run <argv> --detach``, an execution command with
@@ -242,7 +250,8 @@ def start_run(workflow: str, space: Workspace, argv: list[str]) -> dict:
     start (its link as the cause).
     """
     prefix = [] if argv[0] in COMMANDS else ["run"]
-    command = [*concorde_command(space.root), *prefix, *argv, "--detach"]
+    placed = ["--trace-at", str(trace_at)] if trace_at is not None else []
+    command = [*concorde_command(space.root), *prefix, *argv, *placed, "--detach"]
     environment = dict(os.environ)
     if command[1:3] == ["-m", "concorde"]:
         # This package itself: make it importable for the child.
@@ -305,7 +314,7 @@ def asking_run(space: Workspace, record: dict | None, base: str) -> str | None:
     settle. A retried or re-answered step supersedes the run that asked, yet still refers to it."""
     for step in reversed((record or {}).get("steps", [])):
         if store.base_key(step["key"]) == base and step["run_id"]:
-            result = load_result(space.records, step["run_id"])
+            result = load_result(space.store, step["run_id"])
             if result is not None and result.get("status") == "ok":
                 return step["run_id"]
     return None
@@ -322,13 +331,13 @@ def answered(path: str | None) -> set[str]:
         return set()
 
 
-def created_modules(records: Path, output: dict | None) -> list[dict]:
+def created_modules(store: Store, output: dict | None) -> list[dict]:
     """The Modules a scaffold created, each with the other created Modules its survey said it
     uses, in the scaffold's order."""
     if not output or "created" not in output:
         return []
     created = [item["id"] for item in output["created"]]
-    survey = load_result(records, output.get("survey_run")) or {}
+    survey = load_result(store, output.get("survey_run")) or {}
     uses = {
         child["id"]: [use["target"] for use in child.get("uses", [])]
         for child in ((survey.get("output") or {}).get("children") or [])
@@ -367,7 +376,7 @@ def outcome(
     error: dict | None = None,
     settled=frozenset(),
 ) -> dict:
-    result = load_result(space.records, run_id) if state == "finished" else None
+    result = load_result(space.store, run_id) if state == "finished" else None
     output = (result or {}).get("output")
     value = {
         "workflow": workflow,
@@ -379,12 +388,10 @@ def outcome(
         "status": (result or {}).get("status"),
         "summary": (result or {}).get("summary"),
         "result_path": (
-            (run_directory(space.records, run_id) / "result.json").as_posix()
-            if run_id
-            else None
+            result_path(space.store, run_id).as_posix() if run_id else None
         ),
         "decision_points": decision_points(name, output, settled),
-        "created_modules": created_modules(space.records, output)
+        "created_modules": created_modules(space.store, output)
         if name == "scaffold"
         else [],
         "ready": output.get("ready")
@@ -463,11 +470,11 @@ def run_step(
                 (s for s in reversed(store.current_steps(record)) if s["key"] == key),
                 None,
             )
-            state = run_state(space.records, found["run_id"]) if found else None
+            state = run_state(space.store, found["run_id"]) if found else None
             restart = found is None or (
                 request["retry"]
                 and state in ("finished", "lost", "refused")
-                and (load_result(space.records, found["run_id"]) or {}).get("status")
+                and (load_result(space.store, found["run_id"]) or {}).get("status")
                 != "ok"
             )
             if not restart:
@@ -477,7 +484,7 @@ def run_step(
             else:
                 # One run of a workspace at a time: wait for a run still holding the workspace,
                 # such as the previous step's whose runner is finishing, before starting this one.
-                while lock_holder(space.records, space.name) is not None:
+                while lock_holder(space.store, space.name) is not None:
                     if deadline is not None and time.monotonic() >= deadline:
                         return 3, outcome(
                             space, workflow, key, name, None, "running", None, settled
@@ -491,13 +498,18 @@ def run_step(
                     asked = asking_run(space, record, request["key"])
                     if asked:
                         argv += ["--input", asked]
+                # The step's node is created before its run, which is placed inside it.
+                folder = store.next_step_folder(space, record, key)
+                folder.mkdir(parents=True, exist_ok=True)
                 try:
-                    announced = start_run(workflow, space, argv)
+                    announced = start_run(workflow, space, argv, folder / "run")
                     run_id, error = announced["run_id"], None
                 except StepError as refusal:
                     run_id, error = None, refusal.link
                 started = run_id
-                store.record_step(space, workflow, key, name, run_id, mode, path, error)
+                store.record_step(
+                    space, workflow, key, name, run_id, mode, path, error, folder=folder
+                )
                 if error is not None:
                     return refused(error)
     except WorkflowError as refusal:
@@ -505,13 +517,15 @@ def run_step(
             rejected(space, workflow, key, name, refusal, started=started), started
         )
     while True:
-        state = run_state(space.records, run_id)
+        state = run_state(space.store, run_id)
         if state != "running" or (
             deadline is not None and time.monotonic() >= deadline
         ):
             break
         time.sleep(POLL)
     value = outcome(space, workflow, key, name, run_id, state, None, settled)
+    if state in ("finished", "lost"):
+        _end_step_node(space, key, run_id, state)
     return {"finished": 0, "running": 3}.get(state, 1), value
 
 
@@ -536,3 +550,13 @@ __all__ = [
     "step_key",
     "workflow_link",
 ]
+
+
+def _end_step_node(space: Workspace, key: str, run_id: str, state: str) -> None:
+    """End the step's trace node once its run finished or was lost."""
+    with store.step_lock(space):
+        record = store.load(space)
+        for step in reversed((record or {}).get("steps", [])):
+            if step["key"] == key and step["run_id"] == run_id:
+                store.end_step(space, step, state, load_result(space.store, run_id))
+                return

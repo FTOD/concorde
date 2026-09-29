@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -13,6 +14,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from concorde.errors import ERROR_SCHEMA
+from concorde.harness import runs as worker_runs
 from concorde.harness import write_hook
 from concorde.harness.settings import (
     RunPaths,
@@ -41,6 +43,8 @@ from tests.concorde.support.spec_project import (
 )
 
 FAKE = Path(__file__).with_name("fake_claude.py")
+# What the returned run record holds beyond the one rebuilt from its trace nodes.
+RUNTIME_ONLY = {"worktree", "stderr_tail", "runtime_directory"}
 ENVIRONMENT = {
     "PATH",
     "LANG",
@@ -94,7 +98,11 @@ class WorkerProject:
                 "flag = pathlib.Path('src/a/flag')\n"
                 "sys.exit(0 if not flag.exists() or flag.read_text() == 'ok' else 1)\n"
             ),
-            ".gitignore": ".concorde/runs/\n.concorde/workspace.json\n.claude/worktrees/\n__pycache__/\n",
+            ".gitignore": (
+                ".concorde/tasks/\n.concorde/history/\n.concorde/unbound/\n.concorde/locks/\n"
+                ".concorde/runs/\n"
+                ".concorde/workspace.json\n.claude/worktrees/\n__pycache__/\n"
+            ),
         }.items():
             (self.root / path).parent.mkdir(parents=True, exist_ok=True)
             (self.root / path).write_text(content)
@@ -134,6 +142,24 @@ class WorkerProject:
         self.grant = grant(
             SpecRepository(self.root, REPOSITORY_ROOT), ["module.a"], "implement"
         ).value
+        # The trace node of the run asking for the workers, outside the worktree.
+        self.trace = self.base / "run"
+        self.trace.mkdir()
+        # A copy of every runtime directory taken just before Workers removes it, so a test can
+        # still read what the worker was given (the fake's round records, settings, config).
+        self.kept = self.base / "kept"
+        remove = worker_runs.remove_runtime
+
+        def keeping(paths):
+            try:
+                shutil.copytree(paths.root, self.kept / paths.root.name, symlinks=True)
+            except (shutil.Error, OSError):
+                pass
+            remove(paths)
+
+        keeper = patch("concorde.harness.workers.remove_runtime", keeping)
+        keeper.start()
+        test.addCleanup(keeper.stop)
 
     def request(self, plan, **options) -> WorkerRequest:
         values = {
@@ -146,6 +172,7 @@ class WorkerProject:
             "claude": str(self.fake),
             "credentials": None,
             "timeout": 30,
+            "trace_parent": self.trace,
         }
         values.update(options)
         return WorkerRequest(**values)
@@ -153,8 +180,14 @@ class WorkerProject:
     def run(self, plan, **options) -> dict:
         return run_worker(self.request(plan, **options))
 
+    def runtime(self, record) -> Path:
+        """The copy of the worker run's runtime directory taken just before it was removed,
+        found by the run identity its name carries."""
+        [kept] = self.kept.glob(f"concorde-{record['run_id'][-6:]}-*")
+        return kept
+
     def rounds(self, record) -> list[dict]:
-        work = Path(record["run_directory"]) / "work"
+        work = self.runtime(record) / "work"
         return [
             json.loads(path.read_text())
             for path in sorted(work.glob("fake-round-*.json"))
@@ -164,7 +197,9 @@ class WorkerProject:
 class SettingsTests(unittest.TestCase):
     def setUp(self):
         self.project = WorkerProject(self)
-        self.run = RunPaths(self.project.root / ".concorde/runs/x", Path("/tmp/x"))
+        self.run = RunPaths(
+            self.project.base / "runtime", self.project.trace / "workers/x", "x"
+        )
         for directory in (
             self.run.work,
             self.run.home,
@@ -363,6 +398,8 @@ class SpecRuleTests(unittest.TestCase):
 
 
 class WorkerRunTests(unittest.TestCase):
+    maxDiff = None
+
     def setUp(self):
         self.project = WorkerProject(self)
         self.root = self.project.root
@@ -411,8 +448,10 @@ class WorkerRunTests(unittest.TestCase):
         for key in ("settings_digest", "brief_digest", "grant_digest", "tools"):
             self.assertTrue(record[key], key)
         self.assertEqual("done", record["worker_result"]["summary"])
-        stored = json.loads((Path(record["run_directory"]) / "record.json").read_text())
-        self.assertEqual(record, stored)
+        stored = worker_runs.read_record(self.project.base, record["run_id"])
+        self.assertEqual(
+            {k: v for k, v in record.items() if k not in RUNTIME_ONLY}, stored
+        )
 
     @verifies("scenario.workers.pending-precreated")
     def test_pending_files_exist_before_launch_and_vanish_if_unused(self):
@@ -438,15 +477,17 @@ class WorkerRunTests(unittest.TestCase):
         self.assertEqual(
             ENVIRONMENT, set(call["env"]) - {"PWD", "SHLVL", "_", "LC_CTYPE"}
         )
-        run = Path(record["run_directory"])
-        self.assertEqual((run / "config").as_posix(), call["env"]["CLAUDE_CONFIG_DIR"])
-        self.assertEqual((run / "home").as_posix(), call["env"]["HOME"])
-        self.assertEqual(record["tmp"], call["env"]["TMPDIR"])
+        runtime = Path(record["runtime_directory"])
+        self.assertEqual(
+            (runtime / "config").as_posix(), call["env"]["CLAUDE_CONFIG_DIR"]
+        )
+        self.assertEqual((runtime / "home").as_posix(), call["env"]["HOME"])
+        self.assertEqual((runtime / "tmp").as_posix(), call["env"]["TMPDIR"])
         self.assertEqual("1", call["env"]["CLAUDE_CODE_DISABLE_CLAUDE_MDS"])
         self.assertIn("--strict-mcp-config", call["argv"])
         self.assertIn("Fix A.", call["prompt"])
         self.assertIn(f"- {self.root}/src/a/", call["prompt"])
-        self.assertFalse(Path(record["tmp"]).exists())
+        self.assertFalse(runtime.exists())
 
     @verifies("scenario.workers.run-directory-denied")
     def test_a_run_the_deny_rules_would_disable_is_refused(self):
@@ -457,7 +498,7 @@ class WorkerRunTests(unittest.TestCase):
             record = self.project.run([{}])
         self.assertEqual("failed", record["status"])
         self.assertEqual("run_directory_denied", record["error"]["code"])
-        self.assertTrue((Path(record["run_directory"]) / "record.json").exists())
+        self.assertTrue((Path(record["run_directory"]) / "trace.json").exists())
         self.assertEqual([], record["rounds"])
 
     @verifies("scenario.workers.malformed-grant-refused")
@@ -470,10 +511,11 @@ class WorkerRunTests(unittest.TestCase):
         self.assertEqual("input", error["unhandled"]["reason"])
         self.assertIn("level 'write'", error["detail"])
         self.assertIn('"src/x.py"', error["detail"])
-        run = Path(record["run_directory"])
-        self.assertTrue((run / "record.json").exists())
-        self.assertFalse((run / "control/settings.json").exists())
-        self.assertFalse((run / "control/write_hook.py").exists())
+        self.assertTrue((Path(record["run_directory"]) / "trace.json").exists())
+        runtime = self.project.runtime(record)
+        self.assertFalse((runtime / "control/settings.json").exists())
+        self.assertFalse((runtime / "control/write_hook.py").exists())
+        self.assertFalse(Path(record["runtime_directory"]).exists())
         self.assertEqual([], record["rounds"])
 
     @verifies("scenario.workers.audit-violation")
@@ -551,6 +593,96 @@ class WorkerRunTests(unittest.TestCase):
         self.assertIn("exit code 1", second["prompt"])
         self.assertEqual("check_failures", record["rounds"][1]["prompt"])
         self.assertEqual("fake-session-2", record["rounds"][1]["session"])
+
+    @verifies("scenario.workers.trace-left")
+    def test_a_worker_run_leaves_its_trace_and_no_credentials(self):
+        credentials = self.project.base / "credentials.json"
+        credentials.write_text('{"token": "secret"}')
+        envelope = {
+            "usage": {"input_tokens": 120, "output_tokens": 30},
+            "total_cost_usd": 0.25,
+            "num_turns": 4,
+        }
+        seen = []
+
+        def validation():
+            # Round 2's checks passed; the run's node is still running.
+            [folder] = (self.project.trace / "workers").iterdir()
+            seen.append(json.loads((folder / "trace.json").read_text())["status"])
+            seen.append(sorted(p.name for p in folder.glob("rounds/*")))
+
+        record = self.project.run(
+            [
+                {"writes": {f"{self.root}/src/a/flag": "broken"}, "envelope": envelope},
+                {"writes": {f"{self.root}/src/a/flag": "ok"}, "envelope": envelope},
+            ],
+            credentials=credentials,
+            after_round=validation,
+        )
+        self.assertEqual("ok", record["status"], record["error"])
+        self.assertEqual(["running", ["1", "2"]], seen)
+        # The worker run's node lies inside the node of the run that asked for it.
+        run = self.project.trace / "workers" / record["run_id"]
+        self.assertEqual(run.as_posix(), record["run_directory"])
+        for name in (
+            "trace.json",
+            "status.json",
+            "grant.json",
+            "brief.md",
+            "transcript.jsonl",
+        ):
+            self.assertTrue((run / name).is_file(), name)
+        node = json.loads((run / "trace.json").read_text())
+        self.assertEqual(
+            ("worker-run", "ok", "concorde-worker-run-trace", 2),
+            (
+                node["kind"],
+                node["status"],
+                node["content"]["type_id"],
+                node["content"]["data"]["rounds"],
+            ),
+        )
+        self.assertEqual((run / "transcript.jsonl").as_posix(), record["transcript"])
+        self.assertIn('"round": 2', (run / "transcript.jsonl").read_text())
+        self.assertEqual(["1", "2"], sorted(p.name for p in (run / "rounds").iterdir()))
+        for number, status in ((1, "failed"), (2, "passed")):
+            folder = run / "rounds" / str(number)
+            self.assertTrue((folder / "stderr.log").is_file())
+            round_node = json.loads((folder / "trace.json").read_text())
+            self.assertEqual(
+                ("worker-round", str(number)), (round_node["kind"], round_node["id"])
+            )
+            used = round_node["usage"]
+            self.assertEqual(
+                (120, 30, 0.25, 4),
+                (
+                    used["tokens_in"],
+                    used["tokens_out"],
+                    used["cost_usd"],
+                    used["turns"],
+                ),
+            )
+            [check] = round_node["content"]["data"]["checks"]
+            self.assertEqual(status, check["status"])
+            check_node = json.loads(
+                (folder / check["log"]).parent.joinpath("trace.json").read_text()
+            )
+            self.assertEqual(
+                ("check", "check.a"), (check_node["kind"], check_node["id"])
+            )
+            self.assertTrue((folder / "checks/check.a/output.log").is_file())
+        self.assertEqual(
+            (120, 4),
+            (
+                record["rounds"][1]["usage"]["tokens_in"],
+                record["rounds"][1]["usage"]["turns"],
+            ),
+        )
+        # The credential copy lived in the runtime directory, which no longer exists.
+        kept = self.project.runtime(record)
+        self.assertTrue((kept / "config/.credentials.json").is_file())
+        self.assertFalse(Path(record["runtime_directory"]).exists())
+        self.assertEqual([], list(run.rglob(".credentials.json")))
 
     @verifies("scenario.workers.rounds-exhausted")
     def test_checks_that_keep_failing_end_the_run(self):
@@ -630,8 +762,8 @@ class WorkerRunTests(unittest.TestCase):
                 [{}], check_modules=None, after_round=interrupt, started=started.append
             )
         [run_id] = started
-        directory = self.root / ".concorde/runs" / run_id
-        record = json.loads((directory / "record.json").read_text())
+        directory = self.project.trace / "workers" / run_id
+        record = worker_runs.read_record(self.project.trace, run_id)
         self.assertEqual(
             ("failed", "interrupted"), (record["status"], record["error"]["code"])
         )

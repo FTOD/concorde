@@ -102,12 +102,17 @@ class AdoptionCase(unittest.TestCase):
             *extra,
         )
 
-    def fake_round(self, envelope) -> dict:
+    def worker_round(self, envelope) -> dict:
+        """What the run's last worker was given in its first round: its prompt, the brief its run
+        directory keeps, and its tool set, from its run record (the worker's runtime directory,
+        where the fake worker writes its own notes, is removed when the worker ends)."""
         record = read_record(
             self.project.root / ".concorde", envelope["worker_runs"][-1]
         )
-        work = Path(record["run_directory"]) / "work"
-        return json.loads((work / "fake-round-1.json").read_text())
+        return {
+            "prompt": (Path(record["run_directory"]) / "brief.md").read_text(),
+            "tools": record["tools"],
+        }
 
     def scaffolded(self) -> str:
         self.open()

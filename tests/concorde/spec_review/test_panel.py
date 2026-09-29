@@ -7,7 +7,10 @@ import subprocess
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
+from concorde.harness.claude_backend import ClaudeBackend
+from concorde.harness.runs import read_record
 from concorde.spec.grants import grant
 from concorde.spec.repository import SpecRepository
 from concorde.spec.schema import validate
@@ -90,19 +93,17 @@ class SpecPanelTests(unittest.TestCase):
         )
 
     def record(self, run_id):
-        return json.loads(
-            (self.root / ".concorde/runs" / run_id / "record.json").read_text()
-        )
+        """The worker run's record, rebuilt from its trace node below the primary's records."""
+        return read_record(self.root / ".concorde", run_id)
 
     def briefs(self, envelope, role):
+        """The first prompts, the briefs their run directories keep, of the workers of
+        ``role``."""
         found = []
         for run_id in envelope["worker_runs"]:
             record = self.record(run_id)
             if record["worker"].rstrip("0123456789") == role:
-                work = Path(record["run_directory"]) / "work"
-                found.append(
-                    json.loads((work / "fake-round-1.json").read_text())["prompt"]
-                )
+                found.append((Path(record["run_directory"]) / "brief.md").read_text())
         return found
 
     def status(self):
@@ -223,24 +224,38 @@ class SpecPanelTests(unittest.TestCase):
         # The worker configuration is tracked: the task opened by the panel carries it.
         (self.root / ".concorde/workers.json").write_text(json.dumps(config))
         commit(self.root, "choose the panel's models")
-        exit_status, envelope = self.panel(
-            {
-                "reviewer module.a 1": worker(findings=[]),
-                "reviewer module.a 2": worker(findings=[]),
-                "chair module.a 1": worker(findings=[], rejected=[]),
-            },
-            "--reviewers",
-            "2",
-        )
+        # The command line each worker was launched with, by its worker id: the worker's runtime
+        # directory, where the fake notes its arguments, is removed when the worker ends.
+        launched = {}
+        original = ClaudeBackend.command
+
+        def spy(backend, request, *args, **kwargs):
+            argv = original(backend, request, *args, **kwargs)
+            launched[request.worker] = argv
+            return argv
+
+        with patch.object(ClaudeBackend, "command", spy):
+            exit_status, envelope = self.panel(
+                {
+                    "reviewer module.a 1": worker(findings=[]),
+                    "reviewer module.a 2": worker(findings=[]),
+                    "chair module.a 1": worker(findings=[], rejected=[]),
+                },
+                "--reviewers",
+                "2",
+            )
         self.assertEqual((0, "ok"), (exit_status, envelope["status"]), envelope)
         chosen = {}
         for run_id in envelope["worker_runs"]:
             record = self.record(run_id)
-            work = Path(record["run_directory"]) / "work"
-            argv = json.loads((work / "fake-round-1.json").read_text())["argv"]
+            argv = launched[record["worker"]]
             chosen[record["worker"]] = (
                 argv[argv.index("--model") + 1],
                 argv[argv.index("--effort") + 1],
+            )
+            # The run record keeps the model and level it was launched with.
+            self.assertEqual(
+                chosen[record["worker"]], (record["model"], record["reasoning"])
             )
         self.assertEqual(
             {

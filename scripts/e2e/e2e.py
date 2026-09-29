@@ -260,16 +260,28 @@ def driver_input(project: Path, worktree: Path, workflow: str, args: dict) -> di
 
 
 def task_worktree(project: Path, task: str) -> Path:
-    record = json.loads((project / f".concorde/tasks/{task}.json").read_text())
+    record = json.loads((project / f".concorde/tasks/{task}/task.json").read_text())
     return Path(record["worktree"])
 
 
 def saved_reports(project: Path, task: str) -> list[dict]:
     """The saved workflow results of the task's workspace, oldest first."""
-    record = project / f".concorde/runs/workflows/{task}/record.json"
+    record = project / f".concorde/tasks/{task}/workspace/workflow/trace.json"
     if not record.is_file():
         return []
-    return json.loads(record.read_text()).get("reports") or []
+    workflow = project / f".concorde/tasks/{task}/workspace/workflow"
+    reports = (
+        (json.loads(record.read_text()).get("content") or {}).get("data") or {}
+    ).get("reports") or []
+    # The record names its reports relative to the workflow's node.
+    return [
+        {
+            **item,
+            "path": str(workflow / item["path"]),
+            "rendered": str(workflow / item["rendered"]),
+        }
+        for item in reports
+    ]
 
 
 def run_workflow(
@@ -344,14 +356,14 @@ def watch(project: Path) -> dict:
     """Every run of the project with its phase and outcome, and each workspace's workflow
     steps."""
     runs = []
-    for directory in sorted((project / ".concorde/runs").glob("r-*")):
+    for directory in sessions.run_folders(project):
         status = directory / "status.json"
         if not status.is_file():
             continue
         state = json.loads(status.read_text())
         runs.append(
             {
-                "run": directory.name,
+                "run": state.get("run_id") or directory.name,
                 "workspace": state.get("workspace"),
                 "phase": state.get("phase"),
                 "step": state.get("step"),
@@ -360,11 +372,14 @@ def watch(project: Path) -> dict:
             }
         )
     workflows = {}
-    for record in sorted((project / ".concorde/runs/workflows").glob("*/record.json")):
+    for record in sorted(
+        (project / ".concorde/tasks").glob("*/workspace/workflow/trace.json")
+    ):
         value = json.loads(record.read_text())
-        workflows[value["workspace"]] = [
+        data = (value.get("content") or {}).get("data") or {}
+        workflows[value["metadata"].get("workspace")] = [
             {"key": s["key"], "run": s["run_id"], "superseded": s["superseded"]}
-            for s in value["steps"]
+            for s in data.get("steps") or []
         ]
     return {"runs": runs, "workflows": workflows}
 

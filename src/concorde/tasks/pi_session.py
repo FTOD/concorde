@@ -1,20 +1,22 @@
 """The pi task session: its boundary, its rounds and the supervisor that runs each round.
 
 pi has neither background sessions nor messages between sessions, so a pi task session is a
-sequence of session rounds on one pi session file. ``start`` writes the boundary into
-``.concorde/tasks/<task>.session/`` (``boundary.ts`` with the session's policy embedded, beside the
-path decisions it imports), records the session with its first round and lets a detached
-supervisor run that round; ``answer`` starts the next round with the main agent's answer as its
-prompt, and ``stop`` ends the running one.
+sequence of session rounds on one pi session file. ``start`` writes the boundary into the task's
+``runtime/`` (``boundary.ts`` with the session's policy embedded, beside the path decisions it
+imports), records the session as a node ``sessions/<session>/`` of the task's trace with its first
+round as ``rounds/1/`` and lets a detached supervisor run that round; ``answer`` starts the next
+round with the main agent's answer as its prompt, and ``stop`` ends the running one.
 
 The supervisor (``main``, run as its own process) runs ``pi -p --mode json --approve`` in the task
-worktree with the developer's own pi configuration and the boundary loaded with ``-e``, keeps the
-round's progress file ``status.json`` current, writes pi's event stream and standard error beside
-it, and records the round's outcome in the task record: ``delivered`` or ``escalated`` only when the
-task's branch holds the delivery commit the session report names and that commit verifies against
-its evidence bundle, or its record holds the escalations the report names,
-``failed`` with an error link otherwise, ``stopped`` after ``stop``. A round whose supervisor ended without recording
-it is settled as ``failed`` the next time Tasks looks at the session.
+worktree with the developer's own pi configuration and the boundary loaded with ``-e``, the session
+file under ``pi/`` of the session's node, keeps the session's progress file ``status.json``
+current, writes the round's prompt, pi's event stream and standard error and its own output into
+the round's node, and ends the round's node with its outcome and what pi reported it consumed:
+``delivered`` or ``escalated`` only when the task's branch holds the delivery commit the session
+report names and that commit verifies against its evidence bundle, or the task's trace holds the
+escalations the report names, ``failed`` with an error link otherwise, ``stopped`` after ``stop``.
+A round whose supervisor ended without recording it is settled as ``failed`` the next time Tasks
+looks at the session.
 """
 
 from __future__ import annotations
@@ -255,7 +257,15 @@ def answer_prompt(text: str) -> str:
     )
 
 
-def command(pi: str, directory: Path, session_id: str, model: str | None) -> list[str]:
+def command(
+    pi: str,
+    directory: Path,
+    session_id: str,
+    model: str | None,
+    node: Path | None = None,
+) -> list[str]:
+    """The round's pi command: the boundary of ``directory`` (the task's ``runtime/``), the session
+    file under ``pi/`` of the session's node ``node``."""
     return [
         pi,
         "-p",
@@ -265,7 +275,7 @@ def command(pi: str, directory: Path, session_id: str, model: str | None) -> lis
         "-e",
         (directory / "boundary.ts").as_posix(),
         "--session-dir",
-        (directory / "pi").as_posix(),
+        ((node or directory) / "pi").as_posix(),
         "--session-id",
         session_id,
         *(["--model", model] if model else []),
@@ -294,12 +304,10 @@ def _alive(pid: int) -> bool:
     return stat.rsplit(")", 1)[-1].split()[0] != "Z"
 
 
-def latest(record: dict) -> dict | None:
-    """The task's latest pi task session, if it has one."""
-    found = [
-        item for item in record.get("sessions") or [] if item.get("program") == "pi"
-    ]
-    return found[-1] if found else None
+def latest(found: list[dict]) -> dict | None:
+    """The latest pi task session among a task's sessions, if it has one."""
+    pis = [item for item in found if item.get("program") == "pi"]
+    return pis[-1] if pis else None
 
 
 def running(found: dict | None) -> dict | None:
@@ -315,9 +323,11 @@ def _actor(task_id: str, session_id: str, number: int) -> str:
     )
 
 
-def settle(primary: Path, record: dict) -> dict:
-    """Record as failed every running round whose supervisor process has ended."""
-    for found in record.get("sessions") or []:
+def settle(primary: Path, task_id: str) -> list[dict]:
+    """Record as failed every running round whose supervisor process has ended; the task's
+    sessions as they then stand."""
+    record = {"id": task_id}
+    for found in store.sessions(primary, task_id):
         if found.get("program") != "pi":
             continue
         for item in found["rounds"]:
@@ -353,24 +363,22 @@ def settle(primary: Path, record: dict) -> dict:
             except store.TaskError as refused:
                 if refused.code != "session_idle":
                     raise
-    return store.load_task(primary, record["id"])
+    return store.sessions(primary, task_id)
 
 
 def _admitted(here: Path, task_id: str) -> tuple[Path, dict, Path]:
     primary = store.require_primary(here)
-    record = store.load_task(primary, task_id)
-    if record["state"] not in ("open", "active", "delivered"):
-        raise store.TaskError(
-            "task_closed",
-            f"task {task_id} is {record['state']}; a session works only in an open task",
-        )
+    record = store.load_unended(
+        primary, task_id, "a session works only in an open task"
+    )
     worktree = Path(record["worktree"])
     if not worktree.is_dir():
         raise store.TaskError(
             "missing_worktree",
             f"the worktree {worktree} of task {task_id} does not exist",
         )
-    return primary, settle(primary, record), worktree
+    settle(primary, task_id)
+    return primary, record, worktree
 
 
 def _programs(worktree: Path) -> dict:
@@ -383,7 +391,7 @@ def _programs(worktree: Path) -> dict:
     return programs
 
 
-def _round(number: int, directory: Path, pid: int, answer: str | None) -> dict:
+def _round(number: int, folder: Path, pid: int, answer: str | None) -> dict:
     entry = {
         "round": number,
         "prompt": "task" if answer is None else "answer",
@@ -393,8 +401,8 @@ def _round(number: int, directory: Path, pid: int, answer: str | None) -> dict:
         "ended_at": None,
         "report": None,
         "error": None,
-        "events": (directory / f"round-{number}.events.jsonl").as_posix(),
-        "stderr": (directory / f"round-{number}.stderr.log").as_posix(),
+        "events": (folder / "events.jsonl").as_posix(),
+        "stderr": (folder / "stderr.log").as_posix(),
     }
     if answer is not None:
         entry["answer"] = answer
@@ -409,14 +417,16 @@ def _launch(
     directory: Path,
     prompt: str,
 ) -> subprocess.Popen:
-    """Start the round's supervisor, held until ``_go`` once the round is recorded."""
-    (directory / f"round-{number}.prompt.md").write_text(prompt, encoding="utf-8")
+    """Start the round's supervisor, held until ``_go`` once the round is recorded; ``directory``
+    is the round's node, created here with the round's prompt."""
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / "prompt.md").write_text(prompt, encoding="utf-8")
     source = session.PACKAGE_ROOT / "src"
     code = (
         f"import sys; sys.path.insert(0, {source.as_posix()!r}); "
         "from concorde.tasks.pi_session import main; sys.exit(main(sys.argv[1:]))"
     )
-    log = (directory / f"round-{number}.supervisor.log").open("ab")
+    log = (directory / "supervisor.log").open("ab")
     try:
         return subprocess.Popen(
             [
@@ -470,8 +480,11 @@ def _progress(directory: Path, task_id: str, session_id: str, entry: dict) -> No
 
 
 def _session_of(primary: Path, task_id: str, session_id: str) -> dict:
-    record = store.load_task(primary, task_id)
-    return next(item for item in record["sessions"] if item.get("id") == session_id)
+    return next(
+        item
+        for item in store.sessions(primary, task_id)
+        if item.get("id") == session_id
+    )
 
 
 def start(
@@ -485,7 +498,7 @@ def start(
 ) -> dict:
     """Write the boundary and, unless ``dry_run``, start a pi task session's first round."""
     primary, record, worktree = _admitted(here, task_id)
-    busy = running(latest(record))
+    busy = running(latest(store.sessions(primary, task_id)))
     if busy:
         raise store.TaskError(
             "session_busy",
@@ -494,12 +507,12 @@ def start(
         )
     programs = _programs(worktree)
     directory = session.session_directory(primary, task_id)
-    for name in ("", "pi"):
-        (directory / name).mkdir(parents=True, exist_ok=True)
+    directory.mkdir(parents=True, exist_ok=True)
     value = policy(primary, record, directory, home)
     boundary = write_boundary(directory, value, programs["sandbox_runtime"])
     session_id = f"task-{task_id}-{time.strftime('%Y%m%dT%H%M%S', time.gmtime())}"
-    shown = command(programs["pi"], directory, session_id, model)
+    node = store.session_folder(primary, task_id, session_id)
+    shown = command(programs["pi"], directory, session_id, model, node)
     if dry_run:
         return {
             "command": shlex.join(shown),
@@ -507,27 +520,28 @@ def start(
             "boundary": boundary.as_posix(),
         }
     session.create_writable(value["sandbox"]["allowWrite"])
+    (node / "pi").mkdir(parents=True, exist_ok=True)
     prompt = brief(primary, record, main)
-    process = _launch(primary, task_id, session_id, 1, directory, prompt)
-    entry = _round(1, directory, process.pid, None)
+    folder = store.round_folder(primary, task_id, session_id, 1)
+    process = _launch(primary, task_id, session_id, 1, folder, prompt)
+    entry = _round(1, folder, process.pid, None)
     recorded = {
         "program": "pi",
         "id": session_id,
         "name": session.session_name(task_id),
         "main": main or None,
-        "directory": directory.as_posix(),
         "model": model,
         "started_at": entry["started_at"],
-        "rounds": [entry],
     }
     try:
         store.record_session(primary, task_id, recorded)
-        _progress(directory, task_id, session_id, entry)
+        store.begin_round(primary, task_id, session_id, entry)
+        _progress(node, task_id, session_id, entry)
     except BaseException:
         process.kill()
         raise
     _go(process)
-    return recorded
+    return _session_of(primary, task_id, session_id)
 
 
 def answer(here: Path, task_id: str, text: str, *, home: Path | None = None) -> dict:
@@ -535,7 +549,7 @@ def answer(here: Path, task_id: str, text: str, *, home: Path | None = None) -> 
     if not text.strip():
         raise store.TaskError("invalid_input", "--answer needs the main agent's answer")
     primary, record, worktree = _admitted(here, task_id)
-    found = latest(record)
+    found = latest(store.sessions(primary, task_id))
     if found is None:
         raise store.TaskError(
             "no_session",
@@ -550,18 +564,20 @@ def answer(here: Path, task_id: str, text: str, *, home: Path | None = None) -> 
             f"(supervisor process {busy['supervisor_pid']}); wait for its report or stop it",
         )
     programs = _programs(worktree)
-    directory = Path(found["directory"])
+    directory = session.session_directory(primary, task_id)
+    directory.mkdir(parents=True, exist_ok=True)
     value = policy(primary, record, directory, home)
     write_boundary(directory, value, programs["sandbox_runtime"])
     session.create_writable(value["sandbox"]["allowWrite"])
     number = len(found["rounds"]) + 1
+    folder = store.round_folder(primary, task_id, found["id"], number)
     process = _launch(
-        primary, task_id, found["id"], number, directory, answer_prompt(text)
+        primary, task_id, found["id"], number, folder, answer_prompt(text)
     )
-    entry = _round(number, directory, process.pid, text)
+    entry = _round(number, folder, process.pid, text)
     try:
         store.begin_round(primary, task_id, found["id"], entry)
-        _progress(directory, task_id, found["id"], entry)
+        _progress(Path(found["directory"]), task_id, found["id"], entry)
     except BaseException:
         process.kill()
         raise
@@ -572,8 +588,8 @@ def answer(here: Path, task_id: str, text: str, *, home: Path | None = None) -> 
 def stop(here: Path, task_id: str) -> dict:
     """End the running round of the task's latest pi session, which is recorded ``stopped``."""
     primary = store.require_primary(here)
-    record = settle(primary, store.load_task(primary, task_id))
-    found = latest(record)
+    store.load_task(primary, task_id)
+    found = latest(settle(primary, task_id))
     if found is None:
         raise store.TaskError("no_session", f"task {task_id} has no pi task session")
     busy = running(found)
@@ -592,8 +608,8 @@ def stop(here: Path, task_id: str) -> dict:
         if current["rounds"][busy["round"] - 1]["status"] != "running":
             return current
         time.sleep(0.2)
-    record = settle(primary, store.load_task(primary, task_id))
-    return next(item for item in record["sessions"] if item.get("id") == found["id"])
+    settle(primary, task_id)
+    return _session_of(primary, task_id, found["id"])
 
 
 def wait(here: Path, task_id: str, limit: float | None = None) -> dict:
@@ -605,8 +621,8 @@ def wait(here: Path, task_id: str, limit: float | None = None) -> dict:
     With ``limit``, the session is returned after that many seconds even if its round still runs.
     """
     primary = store.require_primary(here)
-    record = settle(primary, store.load_task(primary, task_id))
-    found = latest(record)
+    store.load_task(primary, task_id)
+    found = latest(settle(primary, task_id))
     if found is None:
         raise store.TaskError(
             "no_session",
@@ -616,10 +632,8 @@ def wait(here: Path, task_id: str, limit: float | None = None) -> dict:
     deadline = None if limit is None else time.monotonic() + limit
     while running(found) and (deadline is None or time.monotonic() < deadline):
         time.sleep(WAIT_POLL)
-        record = settle(primary, store.load_task(primary, task_id))
-        found = next(
-            item for item in record["sessions"] if item.get("id") == found["id"]
-        )
+        settle(primary, task_id)
+        found = _session_of(primary, task_id, found["id"])
     return found
 
 
@@ -662,6 +676,7 @@ def verify(report: dict, record: dict) -> list[str]:
             for mismatch in named[-1].get("mismatches") or []
         ]
     held = record.get("escalations") or []
+    # An escalation is recorded with its number and error; the number is its position.
     mismatches = []
     for number in report["escalations"]:
         if number > len(held):
@@ -683,6 +698,7 @@ def delivered_record(primary: Path, task_id: str) -> dict:
     record["deliveries"] = [
         store.verified(primary, item) for item in store.deliveries(primary, record)
     ]
+    record["escalations"] = store.escalations(primary, task_id)
     return record
 
 
@@ -781,10 +797,12 @@ def supervise(primary: Path, task_id: str, session_id: str, number: int) -> int:
     if sys.stdin.buffer.read(len(GO)) != GO:
         return 0
     directory = session.session_directory(primary, task_id)
-    status_path = directory / "status.json"
     record = store.load_task(primary, task_id)
-    found = next(item for item in record["sessions"] if item.get("id") == session_id)
+    found = _session_of(primary, task_id, session_id)
+    node = Path(found["directory"])
+    status_path = node / "status.json"
     entry = found["rounds"][number - 1]
+    folder = store.round_folder(primary, task_id, session_id, number)
     progress = json.loads(status_path.read_text(encoding="utf-8"))
     state = {"stopped": False, "child": None}
 
@@ -816,13 +834,13 @@ def supervise(primary: Path, task_id: str, session_id: str, number: int) -> int:
             # sandbox-runtime hands its commands this TMPDIR, else a /tmp/claude that may not exist.
             CLAUDE_CODE_TMPDIR=short_tmp(directory).as_posix(),
         )
-        prompt = (directory / f"round-{number}.prompt.md").read_bytes()
+        prompt = (folder / "prompt.md").read_bytes()
         with (
             open(entry["events"], "wb") as events,
             open(entry["stderr"], "wb") as stderr,
         ):
             child = subprocess.Popen(
-                command(programs["pi"], directory, session_id, found["model"]),
+                command(programs["pi"], directory, session_id, found["model"], node),
                 cwd=worktree,
                 env=environment,
                 stdin=subprocess.PIPE,
@@ -872,12 +890,20 @@ def supervise(primary: Path, task_id: str, session_id: str, number: int) -> int:
                 code="session_failed",
                 reason="environment",
                 explanation="the supervisor could not run the round and records why",
-                trace=directory / f"round-{number}.traceback.txt",
+                trace=folder / "traceback.txt",
             ),
         }
     # One round runs at a time and the next recreates it, so nothing outlives the round.
     with contextlib.suppress(store.TaskError):
         shutil.rmtree(short_tmp(directory), ignore_errors=True)
+    fields["usage"] = {
+        "tokens_in": stream.tokens["input"] if stream.reported else None,
+        "tokens_out": stream.tokens["output"] if stream.reported else None,
+        "tokens_cache_read": stream.tokens["cacheRead"] if stream.reported else None,
+        "tokens_cache_write": stream.tokens["cacheWrite"] if stream.reported else None,
+        "cost_usd": round(stream.cost, 6) if stream.reported else None,
+        "turns": stream.turns,
+    }
     store.finish_round(primary, task_id, session_id, number, fields)
     report = fields.get("report") or {}
     progress.update(

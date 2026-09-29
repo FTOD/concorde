@@ -427,7 +427,7 @@ def run_configured_checks(ctx: RunContext):
     selected = sorted(
         checked_modules(state.repository, [*state.changed_modules, *ctx.modules])
     )
-    log_directory = ctx.run_dir / "checks"
+    trace_directory = ctx.run_dir / "checks"
     found = []
     # Each Module's own checks, then the selective checks once for the whole selection.
     groups = [(module, [module], "module") for module in selected]
@@ -437,7 +437,7 @@ def run_configured_checks(ctx: RunContext):
             results = run_checks(
                 ctx.worktree,
                 modules=modules,
-                log_directory=log_directory,
+                trace_directory=trace_directory,
                 stage="readiness",
                 kinds=kinds,
             )
@@ -454,7 +454,7 @@ def run_configured_checks(ctx: RunContext):
         for result in results:
             log = Path(result["log"])
             try:
-                log = log.relative_to(ctx.records.parent)
+                log = log.relative_to(ctx.run_dir)
             except ValueError:
                 pass
             timeout = result["status"] == "timeout"
@@ -472,7 +472,7 @@ def run_configured_checks(ctx: RunContext):
                 evidence(
                     "check",
                     entry["check"],
-                    f"{entry['status']}, {exit_text}; log {entry['log']}",
+                    f"{entry['status']}, {exit_text}; log {result['log']}",
                 )
             )
             if result["status"] != "passed":
@@ -481,7 +481,7 @@ def run_configured_checks(ctx: RunContext):
                     "check",
                     entry["check"],
                     f"{entry['module']} check {entry['status']} ({exit_text}); "
-                    f"log {entry['log']}",
+                    f"log {result['log']}",
                     check_error(result),
                 )
     return Continue(evidence=found)
@@ -542,7 +542,7 @@ def readiness_of(ctx: RunContext) -> tuple[dict, list[dict]]:
     }
     path = ctx.run_dir / "readiness.json"
     path.write_text(json.dumps(readiness, indent=2) + "\n")
-    saved = path.relative_to(ctx.records.parent).as_posix()
+    saved = path.as_posix()
     found = [
         evidence(
             "readiness",
@@ -580,7 +580,7 @@ def issue_readiness(ctx: RunContext):
     state = _state(ctx)
     readiness, found = readiness_of(ctx)
     ctx.output = readiness
-    saved = (ctx.run_dir / "readiness.json").relative_to(ctx.records.parent).as_posix()
+    saved = (ctx.run_dir / "readiness.json").as_posix()
     if readiness["ready"]:
         return Stop("ok", "Readiness decided: ready.", found)
     reasons = [

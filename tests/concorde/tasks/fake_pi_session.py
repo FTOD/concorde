@@ -3,7 +3,8 @@
 The test puts a plan in the prompt as ``FAKE-PLAN: <json>``: an object with ``actions``
 (``[tool, arguments]`` pairs reported as tool executions), ``sleep`` (seconds to wait after them), ``ignore_term`` (log SIGTERM but keep running),
 ``report`` (the ``concorde_report`` arguments to end with), ``error`` (end with an assistant error
-message instead), ``stderr`` (text written to standard error) and ``exit`` (the exit code). The
+message instead), ``usage`` (the tokens and cost an assistant message reports, as pi's ``usage``
+of ``message_end``), ``stderr`` (text written to standard error) and ``exit`` (the exit code). The
 fake appends its argument list, environment, working directory and prompt to the file
 ``FAKE_PI_LOG`` names, one JSON line per round, and a ``{"signal": "SIGTERM"}`` line when it
 receives SIGTERM, on which it exits with status 143 unless told to ignore it. It enforces nothing: the boundary is exercised live.
@@ -60,6 +61,18 @@ def main() -> int:
         )
         emit({"type": "turn_end", "message": {}, "toolResults": []})
     time.sleep(float(plan.get("sleep", 0)))
+    if plan.get("usage"):
+        emit(
+            {
+                "type": "message_end",
+                "message": {
+                    "role": "assistant",
+                    "content": [],
+                    "stopReason": "toolUse",
+                    "usage": plan["usage"],
+                },
+            }
+        )
     if plan.get("stderr"):
         sys.stderr.write(plan["stderr"])
         sys.stderr.flush()

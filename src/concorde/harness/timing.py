@@ -188,7 +188,7 @@ def diagnostic_sink(directory):
             "diagnostic directory must be existing, canonical and absolute"
         )
     lifecycle = ".concorde" in root.parts and any(
-        part in {"status", "runs"}
+        part in {"tasks", "history", "unbound", "locks"}
         for part in root.parts[root.parts.index(".concorde") + 1 :]
     )
     if root.is_relative_to(Path.cwd().resolve()) or lifecycle:

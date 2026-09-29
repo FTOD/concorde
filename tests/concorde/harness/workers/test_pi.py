@@ -18,7 +18,6 @@ from unittest.mock import patch
 
 from concorde.harness import pi_backend
 from concorde.harness.settings import RunPaths, sandbox_filesystem
-from concorde.harness.workers import run_worker
 from concorde.spec.verification import verifies
 from tests.concorde.harness.workers.test_workers import WorkerProject
 
@@ -98,7 +97,10 @@ class PiRunTests(unittest.TestCase):
         self.assertEqual(pi_backend.TOOL_SETS["implement"], record["tools"])
         [first] = self.project.rounds(record)
         arguments = first["argv"]
-        run = Path(record["run_directory"])
+        # The runtime directory as it was just before Workers removed it.
+        kept = self.project.runtime(record)
+        run = Path(record["runtime_directory"])
+        self.assertFalse(run.exists())
         for flag in (
             "--no-extensions",
             "--no-context-files",
@@ -127,21 +129,24 @@ class PiRunTests(unittest.TestCase):
         self.assertEqual(first["env"]["TMPDIR"], first["env"]["CLAUDE_CODE_TMPDIR"])
         self.assertEqual(
             {"defaultProjectTrust": "never"},
-            json.loads((run / "config/settings.json").read_text()),
+            json.loads((kept / "config/settings.json").read_text()),
         )
-        self.assertTrue((run / "config/auth.json").is_file())
-        self.assertEqual(0o600, (run / "config/auth.json").stat().st_mode & 0o777)
-        extension = (run / "control/permission.ts").read_text()
+        self.assertTrue((kept / "config/auth.json").is_file())
+        self.assertEqual(0o600, (kept / "config/auth.json").stat().st_mode & 0o777)
+        extension = (kept / "control/permission.ts").read_text()
         self.assertNotIn("{} as Policy", extension)
         self.assertIn(
             json.dumps((self.project.runtime_package / "dist/index.js").as_posix()),
             extension,
         )
         self.assertIn('"rw": ["src/a/", "src/new.py"]', extension)
-        self.assertTrue((run / "control/pi_policy.ts").is_file())
-        self.assertTrue(record["transcript"].endswith(f"_{record['run_id']}.jsonl"))
+        self.assertTrue((kept / "control/pi_policy.ts").is_file())
+        # The session file pi wrote is kept as the run directory's transcript.
+        trace = Path(record["run_directory"])
+        self.assertEqual((trace / "transcript.jsonl").as_posix(), record["transcript"])
+        self.assertIn(record["run_id"], (trace / "transcript.jsonl").read_text())
         self.assertIn("concorde_result", first["prompt"])
-        status = json.loads((run / "status.json").read_text())
+        status = json.loads((trace / "status.json").read_text())
         self.assertEqual(
             ("finished", "ok", "pi"),
             (status["phase"], status["status"], status["backend"]),
@@ -172,7 +177,7 @@ class PiRunTests(unittest.TestCase):
         self.assertIn("npm install --prefix", error["detail"])
         self.assertIn("@anthropic-ai/sandbox-runtime@0.0.77", error["detail"])
         self.assertEqual([], record["rounds"])
-        self.assertTrue((Path(record["run_directory"]) / "record.json").is_file())
+        self.assertTrue((Path(record["run_directory"]) / "trace.json").is_file())
 
     @verifies("scenario.workers.pi-limit")
     def test_a_limit_entry_ends_the_run_at_its_limit(self):
@@ -202,7 +207,9 @@ class PiRunTests(unittest.TestCase):
         self.assertIn("I forgot the tool.", record["error"]["detail"])
 
     def test_the_extension_policy_uses_the_claude_sandbox_lists(self):
-        run = RunPaths(self.root / ".concorde/runs/x", Path("/tmp/x"))
+        run = RunPaths(
+            self.project.base / "runtime", self.project.trace / "workers/x", "x"
+        )
         request = self.project.request([])
         programs = {
             "rg": "/usr/bin/rg",

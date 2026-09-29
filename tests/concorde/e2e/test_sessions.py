@@ -10,8 +10,10 @@ import time
 import unittest
 from pathlib import Path
 
-from concorde.execution.runs import run_lock
+from concorde.execution.runs import Store, run_lock
 from concorde.spec.verification import verifies
+from concorde.tasks.store import ROUND_STATUS, ROUND_TRACE, SESSION_TRACE
+from concorde.tracing.node import Node
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 SPEC = importlib.util.spec_from_file_location(
@@ -39,13 +41,19 @@ if "--resume" in argv:
     say({"type": "result", "subtype": "success", "num_turns": 3, "total_cost_usd": 0.2,
          "result": "done after: " + prompt})
     sys.exit(0)
-run = Path(".concorde/runs/r-1")
+run = Path(".concorde/tasks/t1/workspace/runs/r-1")
 run.mkdir(parents=True)
-HOLD = "import fcntl, os, sys, time; d = os.open(sys.argv[1], os.O_RDONLY); " \\
-    "fcntl.flock(d, fcntl.LOCK_EX); time.sleep(float(sys.argv[2]))"
-host = subprocess.Popen([sys.executable, "-c", HOLD, str(run), "1"], start_new_session=True)
+lock = Path(".concorde/locks/runs/r-1.lock")
+lock.parent.mkdir(parents=True)
+HOLD = "import fcntl, os, sys, time; d = os.open(sys.argv[1], os.O_RDWR | os.O_CREAT); " \\
+    "fcntl.flock(d, fcntl.LOCK_EX); time.sleep(float(sys.argv[2])); os.unlink(sys.argv[1])"
+host = subprocess.Popen([sys.executable, "-c", HOLD, str(lock), "1"], start_new_session=True)
 while True:
-    probe = os.open(run, os.O_RDONLY)
+    try:
+        probe = os.open(lock, os.O_RDONLY)
+    except FileNotFoundError:
+        time.sleep(0.01)
+        continue
     try:
         fcntl.flock(probe, fcntl.LOCK_SH | fcntl.LOCK_NB)
     except BlockingIOError:
@@ -89,13 +97,19 @@ def reply(text, cost):
 if round_ > 1:
     reply("done after: " + prompt, 0.2)
     sys.exit(0)
-run = Path(".concorde/runs/r-1")
+run = Path(".concorde/tasks/t1/workspace/runs/r-1")
 run.mkdir(parents=True)
-HOLD = "import fcntl, os, sys, time; d = os.open(sys.argv[1], os.O_RDONLY); " \\
-    "fcntl.flock(d, fcntl.LOCK_EX); time.sleep(float(sys.argv[2]))"
-host = subprocess.Popen([sys.executable, "-c", HOLD, str(run), "1"], start_new_session=True)
+lock = Path(".concorde/locks/runs/r-1.lock")
+lock.parent.mkdir(parents=True)
+HOLD = "import fcntl, os, sys, time; d = os.open(sys.argv[1], os.O_RDWR | os.O_CREAT); " \\
+    "fcntl.flock(d, fcntl.LOCK_EX); time.sleep(float(sys.argv[2])); os.unlink(sys.argv[1])"
+host = subprocess.Popen([sys.executable, "-c", HOLD, str(lock), "1"], start_new_session=True)
 while True:
-    probe = os.open(run, os.O_RDONLY)
+    try:
+        probe = os.open(lock, os.O_RDONLY)
+    except FileNotFoundError:
+        time.sleep(0.01)
+        continue
     try:
         fcntl.flock(probe, fcntl.LOCK_SH | fcntl.LOCK_NB)
     except BlockingIOError:
@@ -113,8 +127,8 @@ reply("started implement; ending the turn", 0.1)
 """
 
 
-# A stand-in for `pi -p` whose first round starts a pi task session: it records the task with a
-# running round whose "supervisor" lives for a second and then records the round escalated; a
+# A stand-in for `pi -p` whose first round starts a pi task session: it writes the session's node
+# with a running round whose "supervisor" lives for a second and then records the round escalated; a
 # later round records the message it was woken with.
 FAKE_PI_TASK = """#!/usr/bin/env python3
 import json, subprocess, sys, time
@@ -138,20 +152,31 @@ def reply(text, cost):
 if round_ > 1:
     reply("done after: " + prompt, 0.2)
     sys.exit(0)
-tasks = Path(".concorde/tasks")
-tasks.mkdir(parents=True)
-record = tasks / "t1.json"
+session_node = Path(".concorde/tasks/t1/sessions/p-1")
+round_node = session_node / "rounds/1/trace.json"
+round_node.parent.mkdir(parents=True)
+Path(".concorde/tasks/t1/decisions.md").write_text("# Decision log\\n")
+stamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+def node(kind, identity, data, status="running"):
+    return {"schema_version": 1, "id": identity, "kind": kind, "started_at": stamp,
+            "ended_at": None, "status": status, "outcome": None, "error": None,
+            "metadata": {"task": "t1", "program": "pi"}, "artifacts": [], "references": [],
+            "content": {"type_id": "concorde-" + kind + "-trace", "schema_version": 1,
+                        "data": data}}
+(session_node / "trace.json").write_text(json.dumps(node("session", "p-1", {
+    "program": "pi", "name": "task-t1", "main": None, "model": None, "reported_id": None},
+    "unknown")))
 ESCALATE = "import json, sys, time; from pathlib import Path; time.sleep(1); " \\
     "p = Path(sys.argv[1]); r = json.loads(p.read_text()); " \\
-    "r['sessions'][0]['rounds'][0].update(status='escalated', report={'status': 'escalated', " \\
+    "r.update(status='blocked', outcome='escalated'); " \\
+    "r['content']['data'].update(outcome='escalated', report={'status': 'escalated', " \\
     "'summary': 'needs a decision', 'commit': None, 'escalations': [1], 'decisions': " \\
     "['named it x'], 'open': []}); p.write_text(json.dumps(r))"
-supervisor = subprocess.Popen([sys.executable, "-c", ESCALATE, str(record)],
+supervisor = subprocess.Popen([sys.executable, "-c", ESCALATE, str(round_node)],
                               start_new_session=True)
-stamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-record.write_text(json.dumps({"id": "t1", "sessions": [{"program": "pi", "id": "p-1",
-    "rounds": [{"round": 1, "status": "running", "supervisor_pid": supervisor.pid,
-                "started_at": stamp, "report": None, "error": None}]}]}))
+round_node.write_text(json.dumps(node("round", "1", {
+    "round": 1, "prompt": "task", "answer": None, "outcome": "running",
+    "supervisor_pid": supervisor.pid, "report": None})))
 say({"type": "tool_execution_start", "toolName": "concorde_task_session",
      "args": {"task": "t1"}})
 reply("started the task session; ending the turn", 0.1)
@@ -262,14 +287,17 @@ class HeadlessSessionTests(unittest.TestCase):
         self.addCleanup(live.wait)
         self.addCleanup(live.kill)
         since = "2026-09-27T10:00:00Z"
-        runs = self.project / ".concorde/runs"
+        concorde = self.project / ".concorde"
+        runs = concorde / "tasks/t1/workspace/runs"
 
-        def make(name, started, phase, pid, code=None):
-            (runs / name).mkdir(parents=True)
-            (runs / name / "status.json").write_text(
+        def make(name, started, phase, pid, code=None, folder=None):
+            folder = folder or runs / name
+            folder.mkdir(parents=True)
+            (folder / "status.json").write_text(
                 json.dumps(
                     {
                         "kind": "operation",
+                        "run_id": name,
                         "phase": phase,
                         "host_pid": pid,
                         "started_at": started,
@@ -277,7 +305,7 @@ class HeadlessSessionTests(unittest.TestCase):
                 )
             )
             if phase == "finished":
-                (runs / name / "result.json").write_text(
+                (folder / "result.json").write_text(
                     json.dumps({"status": "failed", "error": {"code": code}})
                 )
 
@@ -286,12 +314,30 @@ class HeadlessSessionTests(unittest.TestCase):
         make("r-failed", "2026-09-27T10:05:00Z", "finished", 0, "not_deliverable")
         make("r-earlier", "2026-09-27T09:00:00Z", "running", live.pid)
         # Its runner ran in a sandbox's PID namespace as process 1, a live process here; it no
-        # longer holds its run lock.
+        # longer holds its run lock, whose file it left behind.
         make("r-gone", "2026-09-27T10:05:00Z", "running", 1)
-        for name in ("r-running", "r-earlier"):
-            self.enterContext(run_lock(runs / name))
-        (runs / "w-1").mkdir()
-        (runs / "w-1/status.json").write_text(
+        # A workflow step's run, and an unbound run started in the project itself.
+        make(
+            "r-step",
+            "2026-09-27T10:06:00Z",
+            "running",
+            live.pid,
+            folder=concorde / "tasks/t1/workspace/workflow/steps/1-specify/run",
+        )
+        make(
+            "r-unbound",
+            "2026-09-27T10:07:00Z",
+            "running",
+            live.pid,
+            folder=concorde / "unbound/r-unbound",
+        )
+        store = Store(concorde)
+        for name in ("r-running", "r-earlier", "r-step", "r-unbound"):
+            self.enterContext(run_lock(store, name, "test runner"))
+        (concorde / "locks/runs/r-gone.lock").write_text("")
+        # The progress file of the running Operation's worker is no run of its own.
+        (runs / "r-running/workers/w-1").mkdir(parents=True)
+        (runs / "r-running/workers/w-1/status.json").write_text(
             json.dumps({"phase": "worker", "host_pid": live.pid})
         )
         found = sessions.unsettled_runs(self.project, since, time.time())
@@ -299,18 +345,28 @@ class HeadlessSessionTests(unittest.TestCase):
             [
                 {"run": "r-running", "why": "running"},
                 {"run": "r-stopped", "why": "stopped_with_turn"},
+                {"run": "r-step", "why": "running"},
+                {"run": "r-unbound", "why": "running"},
             ],
             found,
         )
         # A cancellation long before the round ended was the session's own doing.
         self.assertEqual(
-            [{"run": "r-running", "why": "running"}],
-            sessions.unsettled_runs(self.project, since, time.time() + 3600),
+            ["r-running", "r-step", "r-unbound"],
+            [
+                item["run"]
+                for item in sessions.unsettled_runs(
+                    self.project, since, time.time() + 3600
+                )
+            ],
         )
         self.assertEqual(
             [],
             sessions.unsettled_runs(
-                self.project, since, time.time(), {"r-running", "r-stopped"}
+                self.project,
+                since,
+                time.time(),
+                {"r-running", "r-stopped", "r-step", "r-unbound"},
             ),
         )
 
@@ -353,7 +409,7 @@ class HeadlessSessionTests(unittest.TestCase):
     def test_a_run_that_outlives_the_wait_fails_a_kept_session(self):
         fake = self.base / "claude"
         # The run's host outlives the wait, so the session fails after its first round.
-        fake.write_text(FAKE.replace('str(run), "1"]', 'str(run), "5"]'))
+        fake.write_text(FAKE.replace('str(lock), "1"]', 'str(lock), "5"]'))
         fake.chmod(0o755)
         directory = self.base / "session"
         with self.assertRaises(e2e.E2EError) as raised:
@@ -365,7 +421,9 @@ class HeadlessSessionTests(unittest.TestCase):
                 wait_limit=0.3,
                 poll=0.1,
             )
-        progress = str(self.project / ".concorde/runs/r-1/status.json")
+        progress = str(
+            self.project / ".concorde/tasks/t1/workspace/runs/r-1/status.json"
+        )
         error = raised.exception
         self.assertEqual("wait_exceeded", error.code)
         self.assertEqual(progress, error.evidence["progress"])
@@ -431,44 +489,62 @@ class HeadlessSessionTests(unittest.TestCase):
         since = "2026-09-27T10:00:00Z"
         later = "2026-09-27T10:05:00Z"
 
-        def round_(number, status, pid, started=later):
-            return {
-                "round": number,
-                "status": status,
-                "supervisor_pid": pid,
-                "started_at": started,
-            }
-
         tasks = self.project / ".concorde/tasks"
-        tasks.mkdir(parents=True)
-        (tasks / "t1.json").write_text(
-            json.dumps(
-                {
-                    "id": "t1",
-                    "sessions": [
-                        {
-                            "program": "pi",
-                            "id": "p-1",
-                            "rounds": [
-                                round_(1, "escalated", live.pid),
-                                round_(2, "running", live.pid),
-                            ],
-                        },
-                        {
-                            "program": "pi",
-                            "id": "p-2",
-                            "rounds": [
-                                round_(1, "running", gone.pid),
-                                round_(2, "running", live.pid, "2026-09-27T09:00:00Z"),
-                            ],
-                        },
-                        # A Claude Code task session reports through SendMessage.
-                        {"program": "claude", "id": "c-1", "name": "task-t1"},
-                    ],
-                }
+
+        def session(identity, program, *rounds):
+            folder = tasks / "t1/sessions" / identity
+            node = Node(
+                folder,
+                identity,
+                "session",
+                content_type=SESSION_TRACE,
+                metadata={"task": "t1", "program": program},
+                content={
+                    "program": program,
+                    "name": f"task-t1-{identity}",
+                    "main": None,
+                    "model": None,
+                    "reported_id": None,
+                },
             )
+            node.record["status"] = "unknown"
+            node.start()
+            for number, outcome, pid, *started in rounds:
+                round_node = Node(
+                    folder / "rounds" / str(number),
+                    str(number),
+                    "round",
+                    content_type=ROUND_TRACE,
+                    content={
+                        "round": number,
+                        "prompt": "task" if number == 1 else "answer",
+                        "answer": None,
+                        "outcome": "running",
+                        "supervisor_pid": pid,
+                        "report": None,
+                    },
+                    started_at=started[0] if started else later,
+                ).start()
+                if outcome != "running":
+                    round_node.finish(
+                        ROUND_STATUS[outcome],
+                        outcome=outcome,
+                        content={
+                            **round_node.record["content"]["data"],
+                            "outcome": outcome,
+                        },
+                    )
+
+        session("p-1", "pi", (1, "escalated", live.pid), (2, "running", live.pid))
+        session(
+            "p-2",
+            "pi",
+            (1, "running", gone.pid),
+            (2, "running", live.pid, "2026-09-27T09:00:00Z"),
         )
-        (tasks / "t1.decisions.md").write_text("# Decision log\n")
+        # A Claude Code task session reports through SendMessage.
+        session("c-1", "claude")
+        (tasks / "t1/decisions.md").write_text("# Decision log\n")
         self.assertEqual(
             [
                 {
@@ -512,7 +588,11 @@ class HeadlessSessionTests(unittest.TestCase):
         self.assertIn("Summary: needs a decision", woken)
         self.assertIn("- named it x", woken)
         self.assertIn("Escalations: 1", woken)
-        self.assertIn(str(self.project / ".concorde/tasks/t1.json"), woken)
+        self.assertIn(
+            "Round node: "
+            + str(self.project / ".concorde/tasks/t1/sessions/p-1/rounds/1"),
+            woken,
+        )
 
 
 if __name__ == "__main__":
