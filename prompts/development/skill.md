@@ -54,11 +54,14 @@ Developing this checkout itself is direct developer-authorized maintenance, done
    `python3 scripts/concorde.py task merge <task> --check "python3 scripts/concorde.py build"
 --check "python3 scripts/concorde.py spec-validation"`. It takes the merge lock, merges the task
    branch into main, runs the build and `spec-validation` on main as a cross-check of the branch's
-   self-validation, undoes the merge if either fails, and closes the task; its `warnings` name a
-   decision log nobody wrote in. The main agent acts on every warning and handles `merge_busy`,
-   `workspace_busy`, `merge_conflict`, `merge_incomplete` and `merge_diverged` as the `concorde`
-   skill says: on `merge_conflict` it answers the task session to merge main into its task branch,
-   resolve, verify and deliver again.
+   self-validation, undoes the merge if either fails, and closes the task, which stops its Claude
+   Code task sessions and removes them from Claude's session list, keeping their transcripts in
+   the task's trace. Its `warnings`, like those of `task close`, name a decision log nobody wrote in
+   and each task session whose transcript could not be kept or that could not be removed, with the
+   reason and the `claude rm <id>` that removes it by hand. The main agent acts on every warning
+   and handles `merge_busy`, `workspace_busy`, `merge_conflict`, `merge_incomplete` and
+   `merge_diverged` as the `concorde` skill says: on `merge_conflict` it answers the task session
+   to merge main into its task branch, resolve, verify and deliver again.
 
 A change of the worker configuration `.concorde/workers.json` alone, made when the developer asks
 for other worker models, is committed by itself directly on the primary branch, never while a

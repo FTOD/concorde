@@ -497,7 +497,8 @@ concorde task merge retry
 
 This merges the task branch, runs `concorde spec-validation` on the result (or the commands you name with
 `--check`, for example a build before validating), and closes the task. Closing removes the
-worktree and keeps the record. If a check fails, the merge is undone and the primary branch is left
+worktree and keeps the record, and ends the task's Claude Code task sessions, as
+[Task sessions](#task-sessions) says. If a check fails, the merge is undone and the primary branch is left
 as it was; the output of each check is kept with the merge attempt, in
 `.concorde/tasks/retry/merges/<n>/checks/`. A merge conflict is
 not resolved in your primary checkout either: the merge is aborted, and the main agent has the
@@ -534,6 +535,13 @@ with `concorde task close retry --failed --reason "<why>"`, plus `--run <run-id>
 whose error caused the failure, or `--no-error` when no error did; the reason and the error chains
 stay in the task's record and decision log.
 
+`task merge` and `task close` both print the task's record with a list of `warnings`, and each
+warning asks the main agent to act. A warning about the decision log means nobody wrote in it. A
+warning about a task session names a Claude Code task session whose transcript the close could not
+keep in the task's trace, which then stays in Claude's session list so that nothing of it is lost,
+or that it could not remove; it gives the reason and the `claude rm <id>` command that removes the
+session by hand.
+
 ### Task sessions
 
 Every task is worked by its own task session, and tasks whose Modules and shared files do not
@@ -555,6 +563,9 @@ merging is new work, never a reason to discard a change.
 - In Claude Code a task session is a background Claude Code session (`claude agents` lists them).
   Because nobody answers a background session's permission prompts, it runs in Claude Code's
   `auto` permission mode, where a classifier approves or refuses each action within those limits.
+  Ending the task, by its merge or its close, copies each such session's transcript into the task's
+  trace and removes the session from Claude's session list with `claude rm`, first stopping it
+  with `claude stop` when the task closes without a merge; you need not remove them yourself.
 - In pi the main agent uses its `concorde_task_session` tool. The task session is a pi session with
   your pi configuration (your packages and extensions included) that works in rounds: each round
   ends with a report, delivered or escalated, which wakes the main agent, and the main agent's
