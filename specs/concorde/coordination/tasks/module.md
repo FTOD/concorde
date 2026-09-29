@@ -223,13 +223,17 @@ free both in the history and among the committed decision logs, so no closed tas
 <a id="decision-log-in-git"></a>
 
 **The decision log in Git.** Every task that ends leaves its decision log on the primary branch at
-`.concorde/decisions/<history key>.md`. A task merged with `concorde task merge` carries it in its
-merge commit (below), as the log stood when it was merged. A task closed any other way, with
+`.concorde/decisions/<history key>.md`, as the log stands once its closing is appended, the same
+bytes as the log the history keeps. A task merged with `concorde task merge` carries it in its
+merge commit (below), already with the closing `## Closed: merged, <time>` that its close appends
+once the checks pass, dated when the merge began. A task closed any other way, with
 `--completed`, `--failed` or `--merged` after a merge made by hand, gets a commit of that file
 alone on the primary branch, with the subject `concorde: keep the decision log of <task-id>` and the
 trailer `Concorde-Task: <task-id>`, made after the closing was appended and under the merge lock the
 close holds; other changes of the primary worktree, staged or not, stay as they were and are not
-committed. A close whose history key's file the primary branch already holds commits nothing. When
+committed. A close whose primary branch already holds the log exactly as it ended commits nothing,
+as after a merge; one whose log changed after the merge commit, such as by an entry the main agent
+added before `--resume`, gets that commit of the file alone, replacing the merge commit's copy. When
 Git refuses that commit, such as on a detached `HEAD` or during an unfinished merge in the primary
 worktree, the close refuses with `decision_log_uncommitted`, after the record was closed and the log
 appended, and leaves the folder current: the same close run again commits the log and finishes.
@@ -262,8 +266,8 @@ branch head those checks accepted, the task's latest delivery commit, is the com
 records the task as **merging**, with the primary branch's commit before the merge, that checked
 commit, the history key the task will close under and the checks it will run, and only then runs
 `git merge --no-ff --no-commit <checked commit>` there, never `git merge` of the branch name, which
-could take a commit nobody checked. It then adds the task's decision log as
-`.concorde/decisions/<history key>.md` and commits the merge with the trailer
+could take a commit nobody checked. It then adds the task's decision log, followed by the closing
+its close will append, as `.concorde/decisions/<history key>.md` and commits the merge with the trailer
 `Concorde-Task: <task-id>`, so the merge commit is always a real merge, even where the primary
 branch could fast-forward: its second parent is the delivery commit and it carries the log that
 explains it. A Git refusal of that commit aborts the merge, removes the log's copy and refuses with
@@ -489,6 +493,15 @@ the committed logs hold it, because a task name can be used again once its branc
 retention may by then have removed the earlier task's history folder while its log stays in Git.
 The merge records the key it chose in the `merging` record, so that `--resume` closes the task under
 the key its merge commit already used.
+
+The copy in Git equals the log as the task ended, closing included, rather than the log as it stood
+at the merge, so that the history and Git never disagree once retention removed the one. The closing
+is appended only once the checks pass, after the merge commit, yet amending that commit would change
+the commit the checks examined, and a commit of the log after every merge would double the commits
+a merge makes. So the merge commit's copy carries the closing in advance, dated by the start the
+`merging` record keeps, and the close appends that same closing: a merge undone by a failed check
+takes the copy with it and leaves the log without a closing, and only a log changed between the
+merge commit and the close, which an interrupted merge allows, needs a commit of its own.
 
 <a id="realization.tasks.store"></a>
 

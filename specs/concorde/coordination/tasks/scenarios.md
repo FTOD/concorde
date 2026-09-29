@@ -254,9 +254,10 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - AND a clean primary worktree on its branch
 - WHEN the main agent runs `concorde task merge <task-id>` in the primary worktree
 - THEN the task branch is merged into the primary branch in a merge commit whose second parent is the delivery commit, even though the primary branch could fast-forward
-- AND the merge commit adds the task's decision log as it stood as `.concorde/decisions/<task-id>.md` and carries the trailer `Concorde-Task: <task-id>`
+- AND the merge commit adds the task's decision log as it stood, followed by the closing `## Closed: merged, <time>` with the time the merge began, as `.concorde/decisions/<task-id>.md` and carries the trailer `Concorde-Task: <task-id>`
 - AND `concorde spec-validation` ran in the primary worktree after the merge and passed, recorded as the merge attempt's node `merges/1/` of the task with the check's node and its `output.log` below it
-- AND the task is closed as merged with its worktree removed
+- AND the task is closed as merged with its worktree removed, its closing dated with that time
+- AND the merge commit is the primary branch's head, its copy of the decision log the same as the log in the history
 - AND the output names the commits before and after the merge, each check with its exit status, and how long the command waited for the lock
 
 ### scenario.tasks.merge-empty-log — A merge warns of an unwritten decision log
@@ -366,6 +367,15 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - WHEN the main agent runs `concorde task merge <task-id> --resume`
 - THEN the checks the merge recorded run again on the merge commit
 - AND when they pass, the task is closed as merged and the output names the commits before and after
+
+### scenario.tasks.merge-log-changed — A log changed after the merge commit is committed again
+
+- GIVEN a task left `merging` by an interrupted merge whose merge commit is still the primary branch's head
+- AND an entry the main agent appended to its decision log since
+- WHEN the main agent runs `concorde task merge <task-id> --resume` and the checks pass
+- THEN the task is closed as merged
+- AND the primary branch's head is a commit on top of the merge commit, with the subject `concorde: keep the decision log of <task-id>` and the trailer `Concorde-Task: <task-id>`, that changes only `.concorde/decisions/<task-id>.md`, to the log as it ended, with the entry and the closing
+- AND the primary worktree is clean
 
 ### scenario.tasks.merge-resume-check-failed — A failed check on resume undoes the merge
 

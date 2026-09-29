@@ -33,9 +33,9 @@ Tasks SHALL NOT delete a task record or a decision log, including when the task 
 ### req.tasks.decision-log-committed — An ended task's decision log is in Git
 
 When a task ends, Tasks SHALL commit its decision log on the primary branch at
-`.concorde/decisions/<history key>.md`: `concorde task merge` in the merge commit it makes, and any
-other close, once its closing is appended, in a commit of that file alone, unless the primary
-branch already holds that file.
+`.concorde/decisions/<history key>.md` exactly as the log stands once its closing is appended:
+`concorde task merge` in the merge commit it makes, with the closing its close then appends, and
+any close whose primary branch does not already hold the log so, in a commit of that file alone.
 
 The copy in Git is what outlives [Tracing](../../tracing/module.md)'s retention; the task's folder
 keeps its own log, which the copy never replaces.
