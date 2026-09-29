@@ -62,6 +62,10 @@ class InitialModuleTests(unittest.TestCase):
             self.assertEqual(("specs/project/module.md",), target.documents)
             body = repository.document(target.primary_document).body
             self.assertIn("not been specified yet", body)
+            self.assertEqual(
+                ["Purpose", "Not yet specified", "Parts"],
+                [line[3:] for line in body.splitlines() if line.startswith("## ")],
+            )
             self.assertEqual((), target.files)
             definitions = repository.definitions(target)
             self.assertEqual(

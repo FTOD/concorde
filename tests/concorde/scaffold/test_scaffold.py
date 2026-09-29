@@ -12,6 +12,11 @@ from tests.concorde.support.adoption_case import PROPOSAL, AdoptionCase, contrac
 from tests.concorde.support.brownfield_project import git
 
 
+def sections(text: str) -> list[str]:
+    """The titles of an entry's level-2 sections, in order."""
+    return [line[3:].strip() for line in text.splitlines() if line.startswith("## ")]
+
+
 class ScaffoldTests(AdoptionCase):
     def test_the_schema_is_the_contract(self):
         self.assertEqual(
@@ -43,6 +48,10 @@ class ScaffoldTests(AdoptionCase):
         self.assertIn("Checkout turns a basket into one order.", text)
         self.assertIn("not specified yet", text)
         self.assertIn('<a id="uses-inventory"></a>', text)
+        self.assertEqual(
+            ["Purpose", "Not yet specified", "Parts", "Collaborations"],
+            sections(text),
+        )
         self.assertTrue((worktree / "specs/project/inventory/module.md.json").is_file())
         root = json.loads((worktree / "specs/project/module.md.json").read_text())
         self.assertEqual(
@@ -63,10 +72,11 @@ class ScaffoldTests(AdoptionCase):
             )
         )
         self.assertEqual(sorted(entries), sorted(record["parent_entries_after"]))
-        self.assertIn(
-            '<a id="contains-checkout"></a>',
-            (worktree / "specs/project/module.md").read_text(),
-        )
+        parent = (worktree / "specs/project/module.md").read_text()
+        self.assertEqual(["Purpose", "Not yet specified", "Parts"], sections(parent))
+        parts = parent.split("## Parts\n", 1)[1]
+        self.assertIn('<a id="contains-checkout"></a>', parts)
+        self.assertIn("proposed by a survey of the code", parts)
         registry = json.loads((worktree / ".concorde/specs.json").read_text())
         self.assertEqual(
             {"module.shop", "module.checkout", "module.inventory"},

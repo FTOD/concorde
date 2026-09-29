@@ -10,8 +10,8 @@ shapes are in the [contracts](contracts.md).
 - GIVEN the root Module `module.shop`, whose entry is `specs/shop/module.md` and whose realization binds `src/`, holding `src/checkout/`, `src/inventory/` and `src/db.py`
 - AND the workspace `adopt` with an `ok` survey of `module.shop` proposing `module.checkout` bound to `src/checkout/` and `module.inventory` bound to `src/inventory/`, and a pytest check for checkout
 - WHEN the [main agent](../../../glossary.json#concept.main-agent) runs `concorde scaffold --input <survey run>` in its worktree
-- THEN `specs/shop/checkout/module.md` and `specs/shop/inventory/module.md` exist with their metadata, each stating its purpose and that its behaviour is not yet specified
-- AND the root's entry contains both with an explaining paragraph each and its realization no longer binds `src/checkout/` or `src/inventory/`
+- THEN `specs/shop/checkout/module.md` and `specs/shop/inventory/module.md` exist with their metadata, each stating its purpose and, in a section Not yet specified after it, that its core concepts, behaviour and design are not yet specified
+- AND the root's entry contains both with an explaining paragraph each at the end of its Parts section, and its realization no longer binds `src/checkout/` or `src/inventory/`
 - AND the root still binds every other file it bound under `src/`, here `src/db.py`
 - AND the registry has both records
 - BUT the project configuration and the checks files are unchanged, and the proposed check stays in the survey's proposal
