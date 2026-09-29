@@ -287,8 +287,13 @@ sources, without importing, compiling or running the tests.
 ### req.spec.typed-closed — Typed values are closed and exactly versioned
 
 Checking a [typed value](../../glossary.json#concept.typed-value) SHALL reject an unknown type, a
-schema version other than the registered one, a missing required field and any field its schema does
-not declare.
+schema version other than the registered one, any field of the value itself other than `type_id`,
+`schema_version` and `data`, and any `data` its registered schema refuses as JSON Schema would,
+among them a missing required field and a field an object closed by `additionalProperties: false`
+does not name.
+
+Registering a type SHALL fail when its schema uses a keyword that checking its values would not
+evaluate.
 
 ### req.spec.typed-offline — Typed values are checked offline
 

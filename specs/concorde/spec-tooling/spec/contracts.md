@@ -504,8 +504,20 @@ without importing it; a reference to a type that is still unregistered at check 
 an existing one and, with `expected`, its type. A value with another version fails with
 `unsupported_version`, an unregistered type with `unknown_type`, a value of the wrong type where
 `expected` is given with `incompatible_handoff`, and any other mismatch with `invalid_field` naming
-the JSON pointer of the offending field. Objects are closed unless their schema gives one schema for
-all additional keys. A checked value is returned as a deep copy.
+the JSON pointer of the offending field. A checked value is returned as a deep copy.
+
+The `data` is checked as JSON Schema checks it, for the keywords a registered schema may use. An
+object admits keys its `properties` do not name unless its `additionalProperties` is `false`, and
+checks them against `additionalProperties` when that is a schema; `obj` therefore spells
+`additionalProperties: false` to close its objects. `number` admits integers and finite
+non-integral numbers and `integer` only integers, neither a boolean, and `minimum` and `maximum`
+bound both. `pattern` matches anywhere in the string unless it is anchored. `const` and `enum`
+compare values with their JSON type, so `true` is not `1`. Each keyword applies to the kind of value
+it constrains, whether the schema names a `type` or not. Beyond JSON Schema, a string whose schema
+sets `minLength` must not consist of whitespace only. A registered schema may use every keyword of
+the offline subset below except `$defs`, `oneOf`, `allOf`, a list of types and a `$ref` other than
+`typed_schema`'s, which the checker does not evaluate: registering one fails with `invalid_input`,
+so that no registered type promises more than its values are checked for.
 
 The shared building blocks are `obj(properties, optional=())` (a closed object whose listed
 properties are required unless optional), `array(items, unique=False)`, `STRING` (a nonempty

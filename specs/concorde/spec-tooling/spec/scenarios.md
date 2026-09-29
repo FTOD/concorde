@@ -621,9 +621,16 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 
 ### scenario.spec.typed-value-reject — Refusing a value that does not fit
 
-- GIVEN a value naming an unregistered type, a value with another schema version, and a value whose data has a field its schema does not declare
+- GIVEN a value naming an unregistered type, a value with another schema version, and a value whose data has a field its closed object schema does not name
 - WHEN each is checked
 - THEN they fail with `unknown_type`, `unsupported_version` and `invalid_field` respectively, each naming the JSON pointer of the offending field
+
+### scenario.spec.typed-value-json-schema — Checking data as JSON Schema does
+
+- GIVEN a registered type whose schema has an object with no `additionalProperties`, an object with `additionalProperties: false` and a `number` with a `minimum`
+- WHEN values of that type are checked
+- THEN the first object admits a field its `properties` do not name and the closed object refuses one with `invalid_field`
+- AND the number admits an integer and a non-integral number at or above its minimum, and refuses a boolean, a string and a number below its minimum with `invalid_field`
 
 ### scenario.spec.typed-register-conflict — Registering a type twice with another schema
 

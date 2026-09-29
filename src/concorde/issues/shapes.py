@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from ..spec.typed_data import DIGEST, PATH, STRING, array, obj, register
 
-ISSUE_ID = {**STRING, "pattern": r"I-[0-9a-f]{32}"}
+ISSUE_ID = {**STRING, "pattern": r"^I-[0-9a-f]{32}$"}
 NULLABLE_STRING = {"anyOf": [STRING, {"type": "null"}]}
 GAP_KINDS = ("implementation-spec-mismatch", "spec-conflict", "missing-contract")
 EVIDENCE = obj({"path": PATH, "description": STRING})
