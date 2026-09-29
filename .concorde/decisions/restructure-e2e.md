@@ -85,4 +85,11 @@ task does the entries of the Modules it is bound to.
   (`.bashrc`, `.claude/agents`, `.idea`, …) this session did not create; they were left alone and are
   not in any commit.
 
+## Main agent on the session's report (2026-09-30)
+
+Accepted the correction of "three providers" in the End-to-end testing entry: it names the
+declared uses and changes no promise. The children diagram drawing no edge for the uses of Main
+session and Tasks is left as is (a diagram need not draw every relation). The untracked dotfiles in
+the worktree are the Bash sandbox's temporary mount points and are not committed. Merging.
+
 ## Closed: merged, 2026-09-29T18:12:41Z
