@@ -3,7 +3,7 @@
 The fake worker in ``test_pi`` cannot show what the permission extension and the sandbox enforce.
 This test starts a real pi worker with the generated extension and reads the tool results from its
 session transcript. It needs a configured pi (``CONCORDE_LIVE_PI_MODEL`` names the model, default
-``local-openai/gpt-6``), the sandbox-runtime package (``CONCORDE_SANDBOX_RUNTIME`` or the primary
+``local-openai/gpt-6-astra``), the sandbox-runtime package (``CONCORDE_SANDBOX_RUNTIME`` or the primary
 worktree's ``.concorde/tools/pi-runtime``), ``rg``, ``fd``, ``bwrap`` and ``socat``.
 """
 
@@ -19,7 +19,7 @@ from concorde.spec.verification import verifies
 from tests.concorde.harness.workers.test_workers import WorkerProject
 
 LIVE = os.environ.get("CONCORDE_LIVE_PI") == "1"
-MODEL = os.environ.get("CONCORDE_LIVE_PI_MODEL", "local-openai/gpt-6")
+MODEL = os.environ.get("CONCORDE_LIVE_PI_MODEL", "local-openai/gpt-6-astra")
 
 
 def tool_results(transcript: str) -> list[tuple[str, dict, str, bool]]:
@@ -72,12 +72,13 @@ class LivePiWorkerTests(unittest.TestCase):
         run_trace = project.trace
         steps = [
             f"1. read: {root}/specs/a/module.md",
-            f"2. read: {root}/src/bmod/secret.py",
+            # checks/ is bound by no Module, so an implement grant leaves it out.
+            f"2. read: {root}/checks/a_check.py",
             f"3. read: {root}/.git/HEAD",
             f"4. write: {root}/specs/a/module.md with the content 'changed'",
             f"5. write: {root}/checks/new.txt with the content 'new'",
-            f"6. grep: pattern 'SECRET|def add' with path {root}/src",
-            f"7. bash: cat {root}/src/bmod/secret.py",
+            f"6. grep: pattern 'pathlib|def add' with path {root}",
+            f"7. bash: cat {root}/checks/a_check.py",
             f"8. bash: echo x >> {root}/specs/a/module.md",
             "9. bash: curl -sS -m 5 https://example.com",
             f"10. bash: ls {run_trace}",
@@ -119,9 +120,11 @@ class LivePiWorkerTests(unittest.TestCase):
             any("not in this task's grant" in text for text in writes), writes
         )
         grep = [text for name, _, text, _ in results if name == "grep"]
-        self.assertTrue(grep and "SECRET" not in grep[0] and "def add" in grep[0], grep)
+        self.assertTrue(
+            grep and "pathlib" not in grep[0] and "def add" in grep[0], grep
+        )
         bash = "".join(text for name, _, text, _ in results if name == "bash")
-        self.assertNotIn("SECRET = 1", bash)
+        self.assertNotIn("import pathlib", bash)
         self.assertIn("No such file", bash)
         self.assertIn("ead-only file system", bash)
         self.assertNotIn("Example Domain", bash)

@@ -153,7 +153,12 @@ class WorkerModelTests(unittest.TestCase):
             models.worker_choice(config, "spec_review", "checker", missing)["backend"],
         )
 
-    @verifies("scenario.workers.models-listed")
+    @verifies(
+        "scenario.workers.models-listed",
+        "scenario.workers.models-listed-mapped",
+        "scenario.workers.models-listed-unmapped",
+        "scenario.workers.models-backend-missing",
+    )
     def test_the_installed_programs_models_are_listed(self):
         pi = candidates("pi", self.environ)
         self.assertTrue(pi["complete"])
@@ -263,7 +268,7 @@ class WorkerModelTests(unittest.TestCase):
             ("a-default", "default"), (other["model"], other["model_source"])
         )
 
-    @verifies("scenario.workers.model-levels")
+    @verifies("scenario.workers.model-levels", "scenario.workers.model-level-refused")
     def test_a_models_own_level_applies_when_the_entry_choosing_it_sets_none(self):
         config = {
             "schema_version": 2,
@@ -423,6 +428,10 @@ class WorkerModelTests(unittest.TestCase):
             self.assertEqual("model_not_enabled", raised.exception.code)
             for part in (where, "'a-three'", "a-one, a-two", "add it to"):
                 self.assertIn(part, str(raised.exception))
+
+    @verifies("scenario.workers.enabled-models-required")
+    def test_a_configuration_without_enabled_models_is_refused(self):
+        base = {"schema_version": 2, "enabled_models": _enabled("a-one", "a-two")}
         for missing, text in (
             ({"schema_version": 2, "default": {"model": "a-one"}}, "is missing"),
             (dict(base, enabled_models={}), "is empty"),
@@ -450,8 +459,8 @@ class WorkerModelTests(unittest.TestCase):
         ):
             self.assertIn(part, str(raised.exception))
 
-    @verifies("scenario.workers.model-refused")
-    def test_validation_accepts_custom_models_and_rejects_invalid_structure(self):
+    @verifies("scenario.workers.model-custom-accepted")
+    def test_validation_accepts_a_custom_model_without_discovery(self):
         config = {
             "schema_version": 2,
             "enabled_models": _enabled("offline-custom"),
@@ -463,6 +472,9 @@ class WorkerModelTests(unittest.TestCase):
             "offline-custom",
             models.worker_choice(config, "implement", "worker", self.environ)["model"],
         )
+
+    @verifies("scenario.workers.model-refused")
+    def test_validation_refuses_invalid_entries(self):
         enabled = {"schema_version": 2, "enabled_models": _enabled("x")}
         for invalid in (
             dict(enabled, default={"model": " "}),
@@ -482,11 +494,15 @@ class WorkerModelTests(unittest.TestCase):
         ):
             with (
                 self.subTest(config=invalid),
-                self.assertRaises(models.ModelConfigError),
+                self.assertRaises(models.ModelConfigError) as raised,
             ):
                 models.validate_config(invalid)
+            self.assertEqual("config_invalid", raised.exception.code)
 
-    @verifies("scenario.workers.models-standalone")
+    @verifies(
+        "scenario.workers.models-standalone",
+        "scenario.workers.models-standalone-missing",
+    )
     def test_standalone_discovery_outside_git_and_missing_program(self):
         script = REPOSITORY_ROOT / "scripts/available_models.py"
         for backend in ("pi", "claude"):
@@ -513,7 +529,7 @@ class WorkerModelTests(unittest.TestCase):
         self.assertEqual(1, done.returncode)
         self.assertEqual("backend_missing", json.loads(done.stdout)["error"]["code"])
 
-    @verifies("scenario.workers.limits-configured")
+    @verifies("scenario.workers.limits-default", "scenario.workers.limits-configured")
     def test_limits_and_runtime_come_from_the_worker_configuration(self):
         enabled = {
             "schema_version": 2,
@@ -531,7 +547,10 @@ class WorkerModelTests(unittest.TestCase):
         )
         self.assertEqual(("env",), models.runtime(config))
 
-    @verifies("scenario.workers.retired-configuration")
+    @verifies(
+        "scenario.workers.retired-configuration",
+        "scenario.workers.retired-configuration-beside",
+    )
     def test_the_retired_untracked_file_is_refused_not_ignored(self):
         retired = self.base / models.RETIRED
         retired.parent.mkdir(parents=True)
@@ -559,7 +578,9 @@ class WorkerModelTests(unittest.TestCase):
         with self.assertRaisesRegex(models.ModelConfigError, "duplicate key"):
             models.load(self.base)
 
-    @verifies("scenario.workers.model-config-invalid")
+    @verifies(
+        "scenario.workers.model-config-invalid", "scenario.workers.model-config-v1"
+    )
     def test_an_unreadable_configuration_is_reported(self):
         worktree = self.base / "worktree"
         path = worktree / models.CONFIG
@@ -667,7 +688,9 @@ class ModelMapTests(unittest.TestCase):
             )
         return raised.exception
 
-    @verifies("scenario.workers.model-map-location")
+    @verifies(
+        "scenario.workers.model-map-location", "scenario.workers.model-map-relative"
+    )
     def test_the_model_map_is_the_named_file_else_the_users_xdg_configuration(self):
         self.assertEqual(self.map, models.model_map_path(self.environ))
         home = {"HOME": str(self.home)}
@@ -759,7 +782,7 @@ class ModelMapTests(unittest.TestCase):
         ):
             self.assertIn(part, str(error))
 
-    @verifies("scenario.workers.model-unmapped")
+    @verifies("scenario.workers.model-unmapped", "scenario.workers.model-map-checked")
     def test_a_model_the_map_does_not_name_is_refused(self):
         self.write(
             {"schema_version": 1, "models": {"claude-opus-5-5": {"claude": "x"}}}
@@ -795,7 +818,9 @@ class ModelMapTests(unittest.TestCase):
         )
         models.check_mapped(self.config, self.environ)
 
-    @verifies("scenario.workers.model-map-missing")
+    @verifies(
+        "scenario.workers.model-map-missing", "scenario.workers.model-map-invalid"
+    )
     def test_a_missing_or_unreadable_model_map_is_refused(self):
         error = self.refused()
         self.assertEqual("model_map_missing", error.code)

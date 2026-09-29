@@ -7,7 +7,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ### scenario.workers.fenced-run — An implement worker changes only its writable files
 
-- GIVEN a worktree and an `implement` grant with a `rw` source file, a `rw` directory, `ro` Specs and a `names` file of another [Module](../../glossary.json#concept.module)
+- GIVEN a worker on the Claude Code backend, a worktree and an `implement` grant with a `rw` source file, a `rw` directory, `ro` Specs and a source file of another [Module](../../glossary.json#concept.module), `ro` since an `implement` worker reads the project's whole code
 - WHEN the host runs a worker that edits the source file, creates a new file inside the directory, changes nothing else and ends with a valid `ok` result
 - THEN both changes reach the worktree
 - AND the audit is clean, the [configured checks](../../glossary.json#concept.configured-check) run on the worktree, and when they pass the run ends `ok`
@@ -21,7 +21,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ### scenario.workers.no-ambient-instructions — The brief is the only instruction
 
-- GIVEN a `CLAUDE.md` in the worktree and in the working directory, and user settings, skills and MCP servers in the user's Claude Code configuration
+- GIVEN a worker on the Claude Code backend, a `CLAUDE.md` in the worktree and in the working directory, and user settings, skills and MCP servers in the user's Claude Code configuration
 - WHEN the host launches a worker
 - THEN none of them reaches the worker
 - AND the worker's environment holds only the listed variables, with `HOME`, `CLAUDE_CONFIG_DIR` and `TMPDIR` inside its [runtime directory](../../glossary.json#concept.runtime-directory)
@@ -34,61 +34,66 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - AND its `NO_PROXY` still lists the private range but no loopback entry
 - AND it holds no other proxy variable, such as `ALL_PROXY`
 
-### scenario.workers.own-proxy — A proxy elsewhere keeps loopback direct, and no proxy passes nothing
+### scenario.workers.own-proxy — A proxy elsewhere keeps loopback direct
 
 - GIVEN a host environment whose `HTTPS_PROXY` names a proxy on another host and whose `NO_PROXY` lists `localhost` and a domain
 - WHEN the host launches a worker
 - THEN the worker's environment holds that `HTTPS_PROXY` and the same `NO_PROXY`
-- BUT when the host's environment sets no proxy, the worker's environment holds no proxy variable and no `NO_PROXY`, even when the host sets `NO_PROXY`
+
+### scenario.workers.no-proxy — Without a proxy on the host no proxy variable passes
+
+- GIVEN a host environment that sets no proxy variable to a non-empty value but sets `NO_PROXY`
+- WHEN the host launches a worker
+- THEN the worker's environment holds no proxy variable and no `NO_PROXY`
 
 ### scenario.workers.brief-terms — The brief carries the definitions of the worker's terms
 
-- GIVEN a grant whose terms hold the glossary entries the bound Modules' documents link
+- GIVEN a `specify` grant that makes the project glossary writable and whose terms hold the glossary entries the bound Modules' documents link
 - WHEN the host launches the worker
 - THEN the brief lists each term with its identity, owner and definition
-- AND when the glossary is writable it says that only the bound Modules' entries may change
+- AND it says that only the bound Modules' entries of the glossary may change
 - BUT it lists no entry outside the grant's terms
 
 ## The boundary
 
 ### scenario.workers.undeclared-write-denied — A new undeclared file cannot be written
 
-- GIVEN a running worker
+- GIVEN a running worker on the Claude Code backend
 - WHEN it uses Write on a path in the worktree that is in no grant list
 - THEN the [write hook](../../glossary.json#concept.write-hook) denies it with a reason saying the path is not in this task's grant, that a new file outside the bound directories is created and bound to a Module by the task level before a worker fills it and that a file another Module binds needs that Module bound
 - AND the file does not appear in the worktree
 
 ### scenario.workers.ro-edit-denied — A read-only file cannot be edited
 
-- GIVEN a running worker whose grant makes a [Spec](../../glossary.json#concept.spec) file `ro`
+- GIVEN a running worker on the Claude Code backend whose grant makes a [Spec](../../glossary.json#concept.spec) file `ro`
 - WHEN it uses Edit on that file
 - THEN the edit is denied and the file is unchanged
 - BUT Read of the same file succeeds
 
 ### scenario.workers.read-denied — Withheld files cannot be read by file tools
 
-- GIVEN a running worker whose grant leaves a file out and makes another `names`
+- GIVEN a running worker on the Claude Code backend whose grant leaves a file out and makes another `names`
 - WHEN it uses Read on either file, or Grep over a directory that holds them
 - THEN Read is denied with a generic permission message
 - AND Grep returns matches only from files the grant makes readable
 
 ### scenario.workers.bash-confined — Bash is confined by the sandbox
 
-- GIVEN a running `implement` worker
+- GIVEN a running `implement` worker on the Claude Code backend
 - WHEN it uses Bash to read an ungranted file, `.git` or the user's `~/.claude`, to write a `ro` file, to reach the network, or asks to run a command unsandboxed
 - THEN the read finds no such file, the write fails as a read-only file system, the network request is refused, and the command still runs sandboxed
 - BUT Bash can read `ro` files and write `rw` files
 
 ### scenario.workers.bash-new-file-lost — A file Bash creates outside `rw` is lost
 
-- GIVEN a running `implement` worker
+- GIVEN a running `implement` worker on the Claude Code backend
 - WHEN it uses Bash to create a new file in a directory with no `rw` file
 - THEN the command appears to succeed
 - BUT the file never reaches the worktree and the audit sees no change
 
 ### scenario.workers.run-directory-denied — A run the deny rules would disable is refused
 
-- GIVEN a grant and a primary worktree whose generated [deny rules](../../glossary.json#concept.deny-rules) would cover the run's working, home or temporary directory
+- GIVEN a worker on the Claude Code backend, a grant and a primary worktree whose generated [deny rules](../../glossary.json#concept.deny-rules) would cover the run's working, home or temporary directory
 - WHEN the host is asked to start the worker
 - THEN it refuses before launch with `run_directory_denied`
 - AND it still writes the run record
@@ -105,18 +110,37 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ### scenario.workers.audit-violation — A write outside `rw` fails the run
 
-- GIVEN a worker round after which a file outside the grant's `rw` list has changed in the worktree
+- GIVEN a worker round that ends within its timeout and limits with a valid [worker result](../../glossary.json#concept.worker-result), after which a file outside the grant's `rw` list has changed in the worktree
 - WHEN the host audits the worktree
 - THEN the run ends `failed` with `audit_violation` and every violating path as host evidence
 - AND no configured check runs and no [resume round](../../glossary.json#concept.resume-round) follows
 - BUT the host neither reverts nor commits the change
 
-### scenario.workers.glossary-entries — A worker changes only its Modules' glossary entries
+### scenario.workers.violation-and-timeout — A round that timed out still reports its writes outside `rw`
+
+- GIVEN a worker round that writes a file outside the grant's `rw` list and is still running at its timeout
+- WHEN the deadline passes
+- THEN the run ends `failed` with `worker_timeout`, the code of the earlier row of [the rounds](launch.md#rounds), rather than `audit_violation`
+- AND the error's detail names the file written outside `rw`, and the round's audit records it as a violation
+
+### scenario.workers.violation-and-invalid-result — A write outside `rw` outranks an invalid result
+
+- GIVEN a worker round whose agent process ends normally, within its timeout and limits and with no process error of its backend, without a valid worker result, after writing a file outside the grant's `rw` list
+- WHEN the host reads its output and audits the worktree
+- THEN the run ends `failed` with `audit_violation` and the violating path as host evidence
+- AND the error's detail says that the worker result was invalid, and the error has no cause from the worker
+
+### scenario.workers.glossary-entries — A worker may change its own Modules' glossary entries
 
 - GIVEN a `specify` worker bound to Module A, whose grant makes the project glossary writable
-- WHEN the worker changes the glossary entry of a concept A owns
-- THEN the audit accepts the change
-- BUT when it changes an entry Module B owns, the run ends `failed` with `audit_violation`, naming the glossary, the entry and its owner before and after as the violation
+- WHEN the worker changes the glossary entry of a concept A owns, and nothing else, and ends with a valid `ok` result
+- THEN the audit accepts the change and the run ends `ok`
+
+### scenario.workers.glossary-foreign-entry — Another Module's glossary entry is a violation
+
+- GIVEN a `specify` worker bound to Module A, whose grant makes the project glossary writable
+- WHEN the worker changes the glossary entry of a concept Module B owns
+- THEN the run ends `failed` with `audit_violation`, naming the glossary, the entry and its owner before and after as the violation
 
 ### scenario.workers.proposed-deletion — The host performs proposed deletions
 
@@ -129,7 +153,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ### scenario.workers.check-failure-resume — A failing check resumes the same worker
 
-- GIVEN a worker that ended `ok` with a clean audit and a configured check that fails
+- GIVEN a worker on the Claude Code backend that ended `ok` with a clean audit and a configured check that fails
 - WHEN the host starts a resume round
 - THEN it resumes the session with the failing check's identity, exit code and log tail
 - AND the next round continues from the new session identifier the resume returned
@@ -163,18 +187,17 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 ### scenario.workers.interrupted-run — An interrupted run still ends
 
 - GIVEN a worker run whose launcher is told the run identity as soon as the run exists
-- WHEN the run is interrupted from outside before it returns, such as by a signal
+- WHEN the run is interrupted from outside before it returns in a way its host can handle, such as by a termination signal or the cancellation of the launching Operation
 - THEN its run record ends `failed` with the error `interrupted`, of reason `environment`, naming the interruption
 - AND its [progress file](../../glossary.json#concept.progress-file) is `finished` with status `failed`
 - AND the interruption travels on to the launcher
 
 ### scenario.workers.invalid-result — A worker without a valid result has failed
 
-- GIVEN a worker that exits without a structured result that satisfies the worker result schema
+- GIVEN a worker round whose agent process ends normally, within its timeout and limits and with no process error of its backend, changes nothing outside the grant's `rw` list, and ends without a structured result that satisfies the worker result schema: with none, with a status other than `ok`, `blocked` and `failed`, with a `blocked` or `failed` result without an error, or with an `ok` result with one
 - WHEN the host reads its output
 - THEN the run ends `failed` with `worker_result_invalid` and the schema violation or the worker's final text in its error
 - AND the round's standard error is its `stderr.log` and the transcript path is in the run record
-- AND a `blocked` or `failed` result without an error, or an `ok` result with one, is invalid too
 
 ### scenario.workers.claude-error — An error of Claude Code itself is reported with its cause
 
@@ -187,7 +210,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ### scenario.workers.pi-fenced-run — A pi worker is fenced by the same grant
 
-- GIVEN a run whose worker runs on pi, and an `implement` grant with a `rw` source file, `ro` Specs, a `names` file and an ungranted file
+- GIVEN a run whose worker runs on pi, and an `implement` grant with a `rw` source file, `ro` Specs, another Module's `ro` source file and a file no grant list names
 - WHEN the host runs a pi worker that reads the Specs, edits the source file and ends with `concorde_result`
 - THEN the edit reaches the worktree, the audit is clean and the run ends `ok` with the worker result verbatim
 - AND the run record holds the session identifier, the transcript path and the tool set of the pi backend
@@ -216,10 +239,10 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ### scenario.workers.pi-settings-independent — A pi worker takes nothing from the user's pi settings
 
-- GIVEN the user's pi settings choosing a default provider, model and thinking level, enabled models, per-model thinking levels, packages and other settings, and then a settings file pi would refuse
+- GIVEN a user's pi settings file that either chooses a default provider, model and thinking level, enabled models, per-model thinking levels, packages and other settings, or is one pi would refuse
 - AND a [worker configuration](../../glossary.json#concept.worker-configuration) that chooses a model and a level for a pi worker
 - WHEN the host prepares the worker's runtime directory and launches it
-- THEN its generated pi settings hold only `defaultProjectTrust` `never`, in both cases, and the run is not refused
+- THEN its generated pi settings hold only `defaultProjectTrust` `never`, and the run is not refused
 - AND the worker is launched with the local id the [model map](../../glossary.json#concept.model-map) gives the configured model and with the configured level, as `--model` and `--thinking`
 - AND its pi configuration directory holds copies of the user's `auth.json` and `models.json`
 
@@ -258,10 +281,26 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - GIVEN pi listing two models with credentials, one of them without reasoning, and Claude Code whose user settings name a model and whose environment pins another
 - WHEN Workers lists the candidates of each backend
 - THEN the pi listing names both as `provider/model`, the reasoning one with pi's thinking levels and the other with only `off`, and is marked complete
-- AND with a [model map](../../glossary.json#concept.model-map) that maps a project model name to one of them on pi and another to a pi id pi does not list, the listing names that project model name for its candidate and the other name with its unlisted id
-- AND without a model map it reports the map's refusal without refusing the listing
 - AND the Claude Code listing names the aliases, the settings' model and the pinned model with Claude Code's effort levels, is marked incomplete and says why
-- BUT a backend whose program is not installed is refused with `backend_missing`
+
+### scenario.workers.models-listed-mapped — The listing names the project model names the map gives
+
+- GIVEN pi listing a model with credentials, and a [model map](../../glossary.json#concept.model-map) that maps one project model name to that model on pi and another to a pi id pi does not list
+- WHEN Workers lists the candidates of pi
+- THEN the listing names the first project model name for its candidate
+- AND it names the other project model name with its unlisted id
+
+### scenario.workers.models-listed-unmapped — Discovery without a model map still lists
+
+- GIVEN pi listing a model with credentials, and no model map
+- WHEN Workers lists the candidates of pi
+- THEN the listing names the model and reports the map's refusal, without refusing the listing
+
+### scenario.workers.models-backend-missing — Discovery refuses a program that is not installed
+
+- GIVEN a backend whose program is not installed
+- WHEN Workers lists the candidates of that backend
+- THEN the listing is refused with `backend_missing`
 
 ### scenario.workers.model-resolution — The most specific entry wins, field by field
 
@@ -276,7 +315,12 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - THEN a worker on the default gets its model's own level, and a worker with no entry of its own in `spec_panel` the Operation's level
 - AND a worker whose entry names the second model without a level gets that model's own level, and one whose entry sets a level its own
 - AND the worker on the third model keeps the Operation's level, and a worker with no level anywhere gets none, which leaves its program's built-in default
-- BUT a model's own level of neither backend, or one the backend of a worker taking it does not have, is refused with `config_invalid`
+
+### scenario.workers.model-level-refused — A model's own level its backend lacks is refused
+
+- GIVEN `enabled_models` giving a model a level of neither backend, or a level the backend of a worker taking that model does not have
+- WHEN the configuration is checked
+- THEN it is refused with `config_invalid`
 
 ### scenario.workers.model-unresolved — A worker whose configuration names no model is refused
 
@@ -285,19 +329,30 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - THEN the checker gets the model of its Operation's default
 - AND `implement`'s worker and the chair are refused with `model_unresolved`, naming the worker, every entry its model may come from, from its own entry to the default, and how to set one, and saying that no program's or developer's default model is used
 
-### scenario.workers.model-refused — Validation admits custom models but rejects invalid entries
+### scenario.workers.model-custom-accepted — Validation admits a custom model without discovery
 
-- GIVEN a configuration with a custom model absent from discovery
+- GIVEN a configuration whose enabled and default model is a custom project model name that no discovery lists
 - WHEN the shared validator checks it without installed backends or credentials
-- THEN the custom model is accepted
-- BUT invalid structure, unknown Operation or worker names, malformed `enabled_models` entries, an enabled model named by one program's id such as `local-openai/gpt-6` rather than a project model name, and reasoning outside the effective backend's vocabulary are refused with `config_invalid`
+- THEN the configuration is accepted
+- AND a worker's choice names the custom model
+
+### scenario.workers.model-refused — Validation refuses invalid entries
+
+- GIVEN a configuration with invalid structure, an unknown Operation or worker name, a malformed `enabled_models` entry, an enabled model named by one program's id such as `local-openai/gpt-6` rather than a project model name, or a reasoning level outside the effective backend's vocabulary
+- WHEN the shared validator checks it
+- THEN it is refused with `config_invalid`
 
 ### scenario.workers.model-not-enabled — A model outside the enabled models is refused
 
 - GIVEN a worker configuration whose `enabled_models` admits two models
 - WHEN the default, an Operation's default or a worker's entry names a third model
 - THEN the whole configuration is refused with `model_not_enabled`, naming the entry, the model, the enabled models and how to repair it
-- BUT a configuration without `enabled_models`, or with an empty one, is refused with `config_invalid` saying that the list is required
+
+### scenario.workers.enabled-models-required — A configuration without enabled models is refused
+
+- GIVEN a worker configuration without `enabled_models`, or with an empty one
+- WHEN the shared validator checks it
+- THEN it is refused with `config_invalid` saying that the list is required
 
 ### scenario.workers.config-missing — A worktree without a worker configuration runs no worker
 
@@ -308,34 +363,53 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ### scenario.workers.model-config-invalid — An unreadable configuration is reported, never ignored
 
-- GIVEN a worktree whose `.concorde/workers.json` is not valid JSON or has a field the schema does not know
+- GIVEN a worktree whose `.concorde/workers.json` is not valid JSON, has a field the schema does not know or has a schema version other than 2, the one Workers reads, and 1, the retired one
 - WHEN Workers reads it
-- THEN it is refused with `config_invalid`, naming the file and what is wrong with it
-- AND a file of another schema version is refused the same way, naming the version it expects
-- AND a file of schema version 1, whose models are local ids such as `local-openai/gpt-6`, is refused saying to rename each model to a project model name, set the version and map each name in the model map
+- THEN it is refused with `config_invalid`, naming the file and what is wrong with it, and for another schema version the version it expects
+
+### scenario.workers.model-config-v1 — A configuration of schema version 1 is refused with how to convert it
+
+- GIVEN a worktree whose `.concorde/workers.json` has schema version 1, whose models are local ids such as `local-openai/gpt-6`
+- WHEN Workers reads it
+- THEN it is refused with `config_invalid`, saying to rename each model to a project model name, set the version and map each name in the model map
+
+### scenario.workers.limits-default — Without limits a launch gets the default limits and runtime paths
+
+- GIVEN a worktree whose `.concorde/workers.json` sets neither `limits` nor `runtime`
+- WHEN Workers reads the limits and runtime paths of a launch
+- THEN it gets the default limits and the runtime paths `.venv` and `node_modules`
 
 ### scenario.workers.limits-configured — Limits and runtime paths come from the worker configuration
 
-- GIVEN a worktree whose `.concorde/workers.json` sets neither `limits` nor `runtime`, and then one that sets `limits.max_turns` and `limits.rounds` and a `runtime` list
+- GIVEN a worktree whose `.concorde/workers.json` sets `limits.max_turns` and `limits.rounds` and a `runtime` list
 - WHEN Workers reads the limits and runtime paths of a launch
-- THEN the first gets the default limits and the runtime paths `.venv` and `node_modules`
-- AND the second gets its own `max_turns`, `rounds` and runtime paths, with the default for every limit it does not set
+- THEN it gets its own `max_turns`, `rounds` and runtime paths, with the default for every limit it does not set
 
 ### scenario.workers.retired-configuration — The untracked configuration of earlier versions is refused, not ignored
 
 - GIVEN a worktree that has the untracked `.concorde/worker-models.json` of earlier versions and no `.concorde/workers.json`
 - WHEN Workers reads the worker configuration
 - THEN it is refused with `config_invalid`, naming both files and saying to move the models into `.concorde/workers.json`, commit it and delete the old file
-- BUT once `.concorde/workers.json` exists, it is the configuration read
+
+### scenario.workers.retired-configuration-beside — Beside a worker configuration the untracked file is not read
+
+- GIVEN a worktree that has both the untracked `.concorde/worker-models.json` of earlier versions and `.concorde/workers.json`
+- WHEN Workers reads the worker configuration
+- THEN it reads `.concorde/workers.json`
 
 ## The model map
 
 ### scenario.workers.model-map-location — The model map is the named file, else the user's XDG configuration
 
-- GIVEN an environment that names a model map in `CONCORDE_MODEL_MAP`, and then environments that do not, with an absolute `XDG_CONFIG_HOME`, a relative one and none
+- GIVEN an environment that names a model map in `CONCORDE_MODEL_MAP` by an absolute path, or names none and sets an absolute `XDG_CONFIG_HOME`, a relative one or none
 - WHEN Workers finds the [model map](../../glossary.json#concept.model-map)
-- THEN it is the named file, then `concorde/models.json` of the absolute `XDG_CONFIG_HOME`, and for the relative one and none `~/.config/concorde/models.json`
-- BUT a `CONCORDE_MODEL_MAP` that is not an absolute path refuses the worker with `model_map_invalid`
+- THEN it is the named file, else `concorde/models.json` of the absolute `XDG_CONFIG_HOME`, else, for a relative one or none, `~/.config/concorde/models.json`
+
+### scenario.workers.model-map-relative — A model map named by a relative path is refused
+
+- GIVEN an environment whose `CONCORDE_MODEL_MAP` is not an absolute path
+- WHEN a worker is resolved
+- THEN it is refused with `model_map_invalid`
 
 ### scenario.workers.model-map-resolved — A project model name resolves to its local id on the worker's backend
 
@@ -347,22 +421,33 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 - GIVEN a worker configuration whose default chooses a model and a level and which puts `spec_panel`'s `chair` on `claude` without a model or level, and a model map giving the default's model a pi id only
 - WHEN the chair's choice is resolved
-- THEN it runs on `claude` with the default's model and level, each naming the default as its source
-- BUT since the map gives that model no Claude Code id, the chair is refused with `model_unmapped`, naming the worker, its backend and model with their sources, the map, the programs the model is mapped for and the exact entry to add, and saying that a project model name is never used as a local id
+- THEN resolving the worker configuration chooses `claude` for the chair and gives it the default's model and level, each naming the default as its source
+- BUT resolving the model map then refuses the chair with `model_unmapped` before any worker launches, since the map gives that model no Claude Code id, naming the worker, its backend and model with their sources, the map, the programs the model is mapped for and the exact entry to add, and saying that a project model name is never used as a local id
 
 ### scenario.workers.model-unmapped — A model the map gives no id for the worker's backend is refused
 
 - GIVEN a model map that does not name the default's model
 - WHEN a worker on that model is resolved
 - THEN it is refused with `model_unmapped`, saying that the map does not name the model at all
-- AND checking a whole worker configuration against the map names, in one refusal, every model and backend it lacks with the workers that would take them, and passes once the map gives each its id
 
-### scenario.workers.model-map-missing — A missing or unreadable model map is refused, never ignored
+### scenario.workers.model-map-checked — A whole configuration is checked against the map in one refusal
 
-- GIVEN no model map, and then a map that is not valid JSON, has a duplicate key, another schema version, a model without an id, an unknown program or a name that is not a project model name
+- GIVEN a worker configuration and a model map that lacks the ids of several of its models on the backends that would run them
+- WHEN the whole configuration is checked against the map
+- THEN one refusal names every model and backend the map lacks, with the workers that would take them
+- BUT once the map gives each its id, the check passes
+
+### scenario.workers.model-map-missing — A missing model map is refused, never ignored
+
+- GIVEN no model map
 - WHEN a worker is resolved
-- THEN the missing map is refused with `model_map_missing`, naming the file, showing what it holds and saying that it belongs to the machine and is never committed
-- AND each unreadable map with `model_map_invalid`, naming the file and what is wrong with it
+- THEN it is refused with `model_map_missing`, naming the file, showing what it holds and saying that it belongs to the machine and is never committed
+
+### scenario.workers.model-map-invalid — An unreadable model map is refused, never ignored
+
+- GIVEN a model map that is not valid JSON, has a duplicate key, another schema version, a model without an id, an unknown program or a name that is not a project model name
+- WHEN a worker is resolved
+- THEN it is refused with `model_map_invalid`, naming the file and what is wrong with it
 
 ## Discovering models
 
@@ -372,7 +457,13 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - WHEN `python3 scripts/available_models.py --backend pi` or `--backend claude` runs, with optional `--json`
 - THEN it lists configured candidates with sources and reasoning levels, explaining that no inference API access was probed
 - AND pi uses its credentialed listing while Claude's aliases and settings-derived list is explicitly incomplete
-- BUT a missing program or failed listing returns a discovery error without gating custom/offline configuration
+
+### scenario.workers.models-standalone-missing — Discovery without the program reports an error and gates nothing
+
+- GIVEN a directory outside Git and a backend whose program is missing or whose listing fails
+- WHEN `python3 scripts/available_models.py --backend` names that backend, with `--json`
+- THEN it exits with status 1 and a discovery error, such as `backend_missing`, naming the program
+- AND no worker configuration depends on that error, since validation never runs discovery
 
 ## What a run leaves
 

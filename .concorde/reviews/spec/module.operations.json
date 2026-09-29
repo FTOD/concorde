@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "module": "module.operations",
+  "findings": [],
+  "reviewed": {
+    "context_identity": "sha256:48f36739be21a66d3fa0e3a961caf188880f6055ebfa68d798613706ee0541f2",
+    "run": "r-20260929T210131-spec_review-dca24fef"
+  }
+}

@@ -73,6 +73,16 @@
     ],
     "includes": [
       {
+        "kind": "document",
+        "target": "document.harness.claude-code",
+        "reason": "the worker settings, deny rules, write hook and tool sets the Claude Code backend places in the runtime directory and launches with"
+      },
+      {
+        "kind": "document",
+        "target": "document.harness.pi",
+        "reason": "the permission extension's read and write tables, sandbox, limits and tool sets, whose decisions and denial reasons the pi backend's requirements and scenarios rely on"
+      },
+      {
         "kind": "external",
         "target": "references/claude-code/",
         "reason": "Claude Code's settings, permission rules, hooks, sandbox and headless CLI, which the worker settings and launch rely on"

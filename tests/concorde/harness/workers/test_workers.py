@@ -456,15 +456,12 @@ class WorkerRunTests(unittest.TestCase):
 
     @verifies("scenario.workers.fenced-run")
     def test_a_fenced_run_changes_only_writable_files(self):
-        # B's file is only named to this worker, as another Module's file may be.
-        for entry in self.project.grant["entries"]:
-            if entry["path"] == "src/bmod/secret.py":
-                entry["level"] = "names"
+        # An implement worker reads the project's whole code, so B's file is readable.
         levels = {e["path"]: e["level"] for e in self.project.grant["entries"]}
         self.assertEqual("rw", levels["src/a/"])
         self.assertEqual("rw", levels["src/new.py"])
         self.assertEqual("ro", levels["specs/a/module.md"])
-        self.assertEqual("names", levels["src/bmod/secret.py"])
+        self.assertEqual("ro", levels["src/bmod/secret.py"])
         record = self.project.run(
             [
                 {
@@ -573,7 +570,7 @@ class WorkerRunTests(unittest.TestCase):
         self.assertEqual(own["NO_PROXY"], call["env"]["NO_PROXY"])
         self.assertNotIn("HTTP_PROXY", call["env"])
 
-    @verifies("scenario.workers.own-proxy")
+    @verifies("scenario.workers.no-proxy")
     def test_without_a_proxy_no_proxy_variable_passes(self):
         with patch.dict(os.environ, {"NO_PROXY": "localhost", "HTTP_PROXY": ""}):
             record = self.project.run([{}], check_modules=None)
@@ -838,7 +835,6 @@ class WorkerRunTests(unittest.TestCase):
         self.assertEqual("decision", cause["unhandled"]["reason"])
         self.assertEqual(record["worker_result"]["error"]["detail"], cause["detail"])
 
-    @verifies("scenario.workers.timeout")
     @verifies("scenario.workers.interrupted-run")
     def test_an_interrupted_run_still_ends_its_record_and_progress(self):
         class Interrupt(BaseException):
@@ -865,6 +861,7 @@ class WorkerRunTests(unittest.TestCase):
         status = json.loads((directory / "status.json").read_text())
         self.assertEqual(("finished", "failed"), (status["phase"], status["status"]))
 
+    @verifies("scenario.workers.timeout")
     def test_a_round_past_its_deadline_is_killed(self):
         pid_file = self.project.base / "child.pid"
         record = self.project.run(
@@ -880,6 +877,47 @@ class WorkerRunTests(unittest.TestCase):
         self.assertTrue(
             not state.exists() or state.read_text().split()[2] == "Z",
             "the worker's child outlived its round",
+        )
+
+    @verifies("scenario.workers.violation-and-timeout")
+    def test_a_timed_out_round_still_reports_its_writes_outside_rw(self):
+        record = self.project.run(
+            [
+                {
+                    "writes": {f"{self.root}/src/bmod/secret.py": "SECRET = 2\n"},
+                    "sleep": 60,
+                }
+            ],
+            timeout=3,
+            check_modules=None,
+        )
+        self.assertEqual("failed", record["status"])
+        self.assertEqual("worker_timeout", record["error"]["code"])
+        self.assertIn("outside the grant's writable paths", record["error"]["detail"])
+        self.assertIn("src/bmod/secret.py", record["error"]["detail"])
+        self.assertEqual(
+            ["src/bmod/secret.py"], record["rounds"][0]["audit"]["violations"]
+        )
+
+    @verifies("scenario.workers.violation-and-invalid-result")
+    def test_a_write_outside_rw_outranks_an_invalid_result(self):
+        record = self.project.run(
+            [
+                {
+                    "writes": {f"{self.root}/src/bmod/secret.py": "SECRET = 2\n"},
+                    "no_structured": True,
+                }
+            ],
+            check_modules=None,
+        )
+        self.assertEqual("failed", record["status"])
+        error = record["error"]
+        self.assertEqual("audit_violation", error["code"])
+        self.assertIn("its result was invalid", error["detail"])
+        self.assertEqual([], error.get("causes") or [])
+        self.assertIn(
+            "violation: src/bmod/secret.py",
+            [item.get("detail") for item in error.get("evidence", [])],
         )
 
     @verifies("scenario.workers.invalid-result")
@@ -1046,13 +1084,16 @@ class GlossaryTests(unittest.TestCase):
         )
 
     @verifies("scenario.workers.glossary-entries")
-    def test_a_worker_changes_only_its_modules_entries(self):
+    def test_a_worker_may_change_its_modules_entries(self):
         self.assertEqual(
             "rw", {e["path"]: e["level"] for e in self.grant["entries"]}[GLOSSARY]
         )
         own = self.run_writing(self.edited("concept.a.answer", "What A returns."))
         self.assertEqual("ok", own["status"], own.get("error"))
         self.assertEqual([], own["rounds"][0]["audit"]["violations"])
+
+    @verifies("scenario.workers.glossary-foreign-entry")
+    def test_another_modules_entry_is_a_violation(self):
         foreign = self.run_writing(self.edited("concept.b.answer", "What B returns."))
         self.assertEqual("failed", foreign["status"])
         self.assertEqual("audit_violation", foreign["error"]["code"])

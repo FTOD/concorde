@@ -32,48 +32,26 @@ identity](../../glossary.json#concept.context-identity) of Spec core and on the
 ### The host and its worker
 
 Workers is the deterministic management code, the **host** of a worker run; the worker it launches
-is the AI process. An Operation's step calls Workers, which launches the worker and, after a clean
-audit, calls [Check execution](../checks/module.md) when checks were requested. A check failure can
-lead to another AI round within the same Operation. This is a host call, not an AI worker calling
-Check execution or starting another run. A workflow reaches workers through its Operations, never by
-directly launching a Concorde worker. Task sessions have their own task-level lifecycle outside
-Workers.
-
-The worker is untrusted in that its claims are proposals: only the host reads Git, audits, runs
-checks and records, after the worker ends — that is why the run record keeps the worker result
-separate from host evidence.
+is the AI process. The worker is untrusted in that its claims are proposals: only the host reads
+Git, audits, runs checks and records, after the worker ends — that is why the run record keeps the
+worker result separate from host evidence.
 
 ### Where a run lives
 
 <a id="concept.run-directory"></a><a id="concept.runtime-directory"></a>
 
 The host creates the **[run directory](../../glossary.json#concept.run-directory)**
-`workers/<run-id>/` inside the trace node of the Operation run that launched it, wherever that run's
-node lies, so a task's worker runs are found below its runs in the task's
-[trace](../../glossary.json#concept.trace), and an unbound run's below it in the `.concorde` of the
-worktree it started in, never in its throwaway checkout. The run directory keeps what analysis
-needs: the run record, the frozen grant, the brief, each round's node with its standard error and
-checks, and the transcript. What the worker needs only while it runs is in its **runtime
-directory**, a short private directory under `/tmp` that the host removes when the run ends: the
-host-only `control/` (settings, hook, result schema), the worker's `config/` (`CLAUDE_CONFIG_DIR` or
-pi's configuration, with the credential copies and the session), `home/` (`HOME`), `tmp/`
-(`TMPDIR`) and `work/` (its working directory). The transcript is moved from `config/` into the run
-directory before the [runtime directory](../../glossary.json#concept.runtime-directory) is removed,
-so no credential copy is ever retained.
+`workers/<run-id>/` inside the trace node of the Operation run that launched it, and keeps there
+what analysis needs of the run. What the worker needs only while it runs is in its **[runtime
+directory](../../glossary.json#concept.runtime-directory)**, a short private directory under `/tmp`
+that the host removes when the run ends.
 
 <a id="concept.progress-file"></a>
 
 Throughout, the host keeps the worker run's
-**[progress file](../../glossary.json#concept.progress-file)** `status.json` current: the phase, the
-round, the worker's latest tool call, the process identifier of the Execution runner it runs in and
-the identity of the Operation run that launched it, by which an observer pairs it with that run's
-own [run progress file](../../glossary.json#concept.run-progress-file); process identifiers are
-not unique across PID namespaces, so they never pair the two. The run record, not the progress
-file, is the run's evidence. Every run ends both, however it ends: a run interrupted from outside,
-such as by the cancellation of the Operation that launched it, is recorded as `failed` with
-`interrupted` and its progress file as finished before the interruption travels on, so no reader
-sees a worker that runs forever. The launching Operation learns the run's identity as soon as the
-run exists, so it can name the run even when it is interrupted before the run returns.
+**[progress file](../../glossary.json#concept.progress-file)** `status.json` current with its phase,
+its round and the worker's latest tool call, so that an observer sees what the run is doing. The run
+record, not the progress file, is the run's evidence.
 
 ### What the worker gets
 
@@ -87,126 +65,68 @@ and never changes them during the run.
 
 <a id="concept.brief"></a>
 
-The **[brief](../../glossary.json#concept.brief)** is the worker's only instruction — `CLAUDE.md`,
-auto memory and user settings are disabled — the Operation's task instructions plus the boundary
-Workers appends: `rw`/`ro`/`names` as absolute paths (its working directory isn't the worktree); the
-definitions of the terms its grant carries, and, when the glossary is writable, that only the bound
-Modules' entries may change; that it can't delete, only propose deletions; that a Bash-created file
-outside `rw` is silently lost; that a read denial means the path is outside its grant; and that a
-promise the [Spec](../../glossary.json#concept.spec) does not state is never inferred from code.
-What the worker does instead depends on its task type: a `review-code` worker reports such
-behaviour as a `spec-gap` finding, an `understand` worker reports the missing promise as a
-[Spec gap](../../glossary.json#concept.spec-gap) and ends `ok`, and a `code-to-spec` worker is told
-that describing the code it reads is its task and that doubtful intent is reported, never promised;
-every other worker returns `blocked`.
+The **[brief](../../glossary.json#concept.brief)** is the worker's only instruction: the
+Operation's task instructions followed by the boundary Workers appends, as [the
+brief](#the-brief) details.
 
 <a id="concept.worker-result"></a>
 
 Every worker ends with a **[worker result](../../glossary.json#concept.worker-result)** that the
-host validates against one schema, whichever the backend: Claude Code returns it through
-`--json-schema`, a pi worker as the argument of its `concorde_result` tool. It holds `status`
-(`ok`/`blocked`/`failed`), a summary, proposed deletions and, when it could not finish, its
-`error` — the first [error chain](../../glossary.json#concept.error-chain) link with its code,
-detail, evidence, attempt, reason it couldn't handle the error, options and recommendation — so the
-host and [main agent](../../glossary.json#concept.main-agent) can act without asking again.
-Contract: [the worker result contract](contracts.md).
+host validates against one schema, whichever the backend: its `status` (`ok`/`blocked`/`failed`), a
+summary, proposed deletions and, when it could not finish, its `error`, the first [error
+chain](../../glossary.json#concept.error-chain) link. Contract: [the worker result
+contract](contracts.md).
 
 ### What the host checks and keeps
 
 <a id="concept.write-audit"></a>
 
 The **[write audit](../../glossary.json#concept.write-audit)** runs read-only Git after every round,
-comparing tracked and untracked changes since the pre-launch snapshot with `rw`. Any change outside
-`rw`, or a deletion, is a violation: the run ends `failed` with every violating path as evidence, no
-resume follows, and the worktree is left for the main agent — never reverted or committed by the
-host. The project glossary is held by entry, because every Module's concepts share that one file:
-the snapshot keeps its bytes, and each entry a round added, changed or removed although a Module
-outside the grant owns it, before or after, is a violation named `<glossary>#<concept>` with both
-owners.
+comparing the worktree's changes since the pre-launch snapshot with `rw`. Any change outside `rw`,
+or a deletion, is a violation, which ends the run `failed`.
 
 <a id="concept.resume-round"></a>
 
-A **[resume round](../../glossary.json#concept.resume-round)** happens only when the worker ended
-`ok`, the audit was clean, and a check failed or, once the checks pass, the caller's own validation
-after the round reported something to repair: the host sends each failure's identity, exit code and
-log tail, or the validation's text, to the worker's latest session — on Claude Code with
-`claude -p --resume <session>`, tracking the new session id returned, on pi with the run's fixed
-session id. A Spec-writing Operation uses the validation to have its worker repair the structural
-errors it introduced. A `blocked`/`failed` result or an audit violation is never resumed — those go
-to the main agent; when the rounds are used up and a check still fails, the run ends `failed` with
-the last check results, while a validation still reporting problems leaves the round's result for
-its caller to judge. Each round records its validation outcome.
+A **[resume round](../../glossary.json#concept.resume-round)** continues the worker's own session
+with what still needs repair, a failing configured check or what the caller's own validation
+reports, so that the worker repairs it within the same run.
 
 <a id="concept.run-record"></a>
 
-The **[run record](../../glossary.json#concept.run-record)** is the worker run's `trace.json`,
-written when the run directory is created, after every round and at the end, for every run including
-a refused launch. Its metadata hold the grant's context identity, the grant, settings and brief
-digests, the task type, worker id, backend, model and reasoning level; its content the tool list,
-transcript path, the worker result verbatim and the deletions performed; and the host's final status
-with its error link. Each round is a node of its own below it, with its session, prompt kind, audit
-and [check results](../../glossary.json#concept.check-result), its standard error, and the tokens,
-cost and turns the agent program reported for it — evidence that never restates a worker's claim as
-fact.
+The **[run record](../../glossary.json#concept.run-record)** is the worker run's `trace.json`: what
+the run was given, the worker result verbatim, and each round's audit, checks and usage, which the
+host observed itself.
 
 ### Two backends from one grant
 
 <a id="concept.worker-backend"></a>
 
 The **[worker backend](../../glossary.json#concept.worker-backend)** is the agent program a worker
-runs on. The [worker configuration](../../glossary.json#concept.worker-configuration)
-may choose it for one worker, for an Operation's workers or for every worker; when no entry chooses
-it, the worker runs on **pi**, although the [main agent](../../glossary.json#concept.main-agent)
-and its task sessions run on Claude Code only for now: a Claude Code main agent so runs pi workers
-unless the configuration chooses Claude Code for some of them. A worker's backend must be installed:
-when its command (`claude` or `pi`, or the path in `CONCORDE_CLAUDE` or `CONCORDE_PI`) is missing,
-the worker is refused with `backend_missing`, naming the worker, the program and what chose it, and
-how to choose the other program for it; it never falls back to the other program. This refusal
-comes from resolving the worker's backend, which the Operation's step does before it calls Workers,
-so no worker run and no run record exists; the step reports it in its own error, with
-`backend_missing` as the cause. Everything but the agent process is shared: the grant, the brief,
-the run directory, the progress file, the audit, the checks, the rounds and the run record, so
-workers of one Operation on different backends exchange nothing but the structured results the host
-validates.
-
-On Claude Code the worker's harness is applied by its [worker
-settings](../../glossary.json#concept.worker-settings), on pi by the [permission
-extension](../../glossary.json#concept.permission-extension); the [Harness](../../harness/module.md)
-compares the two surface by surface. The pi command line and environment are in [the pi run
-mechanics](pi.md).
+runs on, Claude Code or pi: pi unless the [worker
+configuration](../../glossary.json#concept.worker-configuration) chooses Claude Code for the worker.
+Everything but the agent process is shared: the grant, the brief, the run directory, the progress
+file, the audit, the checks, the rounds and the run record, so workers of one Operation on different
+backends exchange nothing but the structured results the host validates. On Claude Code the
+worker's harness is applied by its [worker settings](../../glossary.json#concept.worker-settings),
+on pi by the [permission extension](../../glossary.json#concept.permission-extension); the
+[Harness](../../harness/module.md) compares the two surface by surface.
 
 ### The worker configuration
 
 <a id="concept.worker-configuration"></a><a id="concept.worker-id"></a>
 
 The **[worker configuration](../../glossary.json#concept.worker-configuration)** of a worktree is
-its `.concorde/workers.json`, tracked by Git like the project's code, and it is the only source of a
-worker's model and reasoning level: Workers never reads them, or which models may be used, from the
-developer's own pi or Claude Code settings, so every developer's workers of a commit run alike. It
+its tracked `.concorde/workers.json`, the only source of a worker's model and reasoning level. It
 names every model by a **project model name**, such as `gpt-6-astra` or `claude-opus-5-5`, that
-depends on no installation, since the ids a program takes, such as pi's `local-openai/gpt-6-astra`,
-are defined by one machine's own pi or Claude Code configuration. Every worker needs the file: a
-worktree without one runs no worker.
+depends on no installation, and keys its entries by **[worker
+id](../../glossary.json#concept.worker-id)**, the stable name the [Operation
+catalog](../../glossary.json#concept.operation-catalog) gives each worker an Operation may launch.
 
 <a id="concept.model-map"></a>
 
 The **[model map](../../glossary.json#concept.model-map)** is how one machine reaches those models:
 a JSON file of the user, outside every repository and never committed, that gives each project
-model name its local model id on pi, on Claude Code or on both. One file serves the primary
-worktree, every task worktree, every unbound checkout and every [test
-project](../../glossary.json#concept.test-project) of that user, as pi's
-and Claude Code's own configuration does. It says how to reach a model, never which model a worker
-uses, like the credentials and pi's provider definitions, which also come from the developer's
-installation ([the pi run mechanics](pi.md#run-directory)) and never go into Git. A worker whose
-model has no id for its program in the map runs no more than one without a model: Workers never
-takes the project model name for the local id.
-
-The configuration's models are keyed by **[worker id](../../glossary.json#concept.worker-id)**: every Operation declares the ids of
-the workers it may launch in the [Operation catalog](../../glossary.json#concept.operation-catalog),
-such as `spec_panel`'s `reviewer1` to `reviewer5` and `chair`, `spec_review`'s `reviewer` and
-`checker`, or `worker` for an Operation with one worker, and the same id names the worker in its run
-record and in the Operation's evidence. [Choosing worker models](#choosing-worker-models) explains
-the file's entries and how a worker's choice is resolved.
+model name its local model id on pi, on Claude Code or on both.
 
 ## Overview
 
@@ -272,8 +192,11 @@ brief, checks to run after the worker, and run limits — getting back a run rec
 `ok`/`blocked`/`failed`) with the worker result kept verbatim beside the host's own evidence.
 
 Take an `implement` run whose grant makes `src/shop/cart.py` and `src/shop/discounts.py`, which the
-task level created and bound for the run to fill, writable (`rw`), the [Module](../../glossary.json#concept.module)'s Specs readable (`ro`), and
-another Module's `src/shop/pricing.py` visible by name only (`names`):
+task level created and bound for the run to fill, writable (`rw`), and the
+[Module](../../glossary.json#concept.module)'s Specs and another Module's `src/shop/pricing.py`
+readable (`ro`), since a task type that reads code reads the project's whole code. A path visible by
+name only (`names`) appears in the grants of the task types that do not read code, such as
+`understand`, whose worker sees the bound Modules' implementation files by name only:
 
 ```d2 illustrative
 grant: Frozen grant
@@ -283,10 +206,10 @@ audit: Write audit
 record: Write the run record
 checks: Run configured checks
 grant -> generate -> launch -> audit
-audit -> record: violation
-audit -> checks: clean
-checks -> launch: a check fails, rounds left
-checks -> record: pass, or rounds used up
+audit -> record: "violation, timeout, limit, process failure,\ninvalid result, blocked or failed"
+audit -> checks: "valid ok result, clean audit"
+checks -> launch: "a check fails or validation\nreports a repair, rounds left"
+checks -> record: "checks pass and nothing to repair,\nor rounds used up"
 ```
 
 The host generates the worker's harness and brief, launches the worker's program headless in
@@ -319,7 +242,115 @@ record -> result: keeps
 
 ## Details
 
+### Where a run's files live
+
+The run directory lies inside the trace node of the Operation run that launched it, wherever that
+run's node lies, so a task's worker runs are found below its runs in the task's
+[trace](../../glossary.json#concept.trace), and an unbound run's below it in the `.concorde` of the
+worktree it started in, never in its throwaway checkout. It keeps what analysis needs: the run
+record, the frozen grant, the brief, each round's node with its standard error and checks, and the
+transcript. The runtime directory holds the host-only `control/` (settings, hook, result schema),
+the worker's `config/` (`CLAUDE_CONFIG_DIR` or pi's configuration, with the credential copies and
+the session), `home/` (`HOME`), `tmp/` (`TMPDIR`) and `work/` (its working directory). The
+transcript is moved from `config/` into the run directory before the runtime directory is removed,
+so no credential copy is ever retained.
+
+The progress file also names the process identifier of the Execution runner the run runs in and the
+identity of the Operation run that launched it, by which an observer pairs it with that run's own
+[run progress file](../../glossary.json#concept.run-progress-file); process identifiers are not
+unique across PID namespaces, so they never pair the two. Every run ends both its progress file and
+its run record, however it ends while its host can act: a run interrupted from outside, such as by
+a termination signal or the cancellation of the Operation that launched it, is recorded as `failed`
+with `interrupted` and its progress file as finished before the interruption travels on, so no
+reader sees a worker that runs forever. The launching Operation learns the run's identity as soon
+as the run exists, so it can name the run even when it is interrupted before the run returns. A
+host killed outside its control, by `SIGKILL`, finishes nothing: its worker run's record stays
+`running`, which [Tracing](../../tracing/module.md) shows as `lost` once no process holds the run
+lock of the run that launched it, and its runtime directory, with the credential copies, is left to
+the system's temporary-file cleaning, as the Execution runner leaves its unbound checkout.
+
+### The brief
+
+`CLAUDE.md`, auto memory and user settings are disabled, so the brief is all the worker is told. To
+the Operation's task instructions Workers appends the boundary: `rw`/`ro`/`names` as absolute paths
+(its working directory isn't the worktree); the definitions of the terms its grant carries, and,
+when the glossary is writable, that only the bound Modules' entries may change; that it can't
+delete, only propose deletions; that a Bash-created file outside `rw` is silently lost; that a read
+denial means the path is outside its grant; and that a promise the
+[Spec](../../glossary.json#concept.spec) does not state is never inferred from code. What the worker
+does instead depends on its task type: a `review-code` worker reports such behaviour as a
+`spec-gap` finding, an `understand` worker reports the missing promise as a [Spec
+gap](../../glossary.json#concept.spec-gap) and ends `ok`, and a `code-to-spec` worker is told that
+describing the code it reads is its task and that doubtful intent is reported, never promised;
+every other worker returns `blocked`.
+
+A worker returns its worker result through `--json-schema` on Claude Code and as the argument of its
+`concorde_result` tool on pi. Its `error` carries the link's code, detail, evidence, attempt, the
+reason it couldn't handle the error, options and recommendation, so the host and [main
+agent](../../glossary.json#concept.main-agent) can act without asking again.
+
+### Audit, rounds and record
+
+A violation of the write audit ends the run `failed` with every violating path as evidence, no
+resume follows, and the worktree is left for the main agent — never reverted or committed by the
+host. The project glossary is audited by entry, because every Module's concepts share that one
+file: the snapshot keeps its bytes, and each entry a round added, changed or removed although a
+Module outside the grant owns it, before or after, is a violation named `<glossary>#<concept>` with
+both owners.
+
+A resume round happens only when the worker ended `ok`, the audit was clean, and a check failed or,
+once the checks pass, the caller's own validation after the round reported something to repair: the
+host sends each failure's identity, exit code and log tail, or the validation's text, to the
+worker's latest session — on Claude Code with `claude -p --resume <session>`, tracking the new
+session id returned, on pi with the run's fixed session id. A Spec-writing Operation uses the
+validation to have its worker repair the structural errors it introduced. A `blocked`/`failed`
+result or an audit violation is never resumed — those go to the main agent; when the rounds are used
+up and a check still fails, the run ends `failed` with the last check results, while a validation
+still reporting problems leaves the round's result for its caller to judge. Each round records its
+validation outcome.
+
+The run record is written when the run directory is created, after every round and at the end, for
+every run including a refused launch. Its metadata hold the grant's context identity, the grant,
+settings and brief digests, the task type, worker id, backend, model and reasoning level; its
+content the tool list, transcript path, the worker result verbatim and the deletions performed; and
+the host's final status with its error link. Each round is a node of its own below it, with its
+session, prompt kind, audit and [check results](../../glossary.json#concept.check-result), its
+standard error, and the tokens, cost and turns the agent program reported for it — evidence that
+never restates a worker's claim as fact.
+
+### Resolving the backend
+
+When no entry of the worker configuration chooses a worker's backend, the worker runs on pi,
+although the main agent and its task sessions run on Claude Code only for now: a Claude Code main
+agent so runs pi workers unless the configuration chooses Claude Code for some of them. A worker's
+backend must be installed: when its command (`claude` or `pi`, or the path in `CONCORDE_CLAUDE` or
+`CONCORDE_PI`) is missing, the worker is refused with `backend_missing`, naming the worker, the
+program and what chose it, and how to choose the other program for it; it never falls back to the
+other program. This refusal comes from resolving the worker's backend, which the Operation's step
+does before it calls Workers, so no worker run and no run record exists; the step reports it in its
+own error, with `backend_missing` as the cause. The pi command line and environment are in [the pi
+run mechanics](pi.md).
+
 ### Choosing worker models
+
+The worker configuration is tracked by Git like the project's code: Workers never reads a worker's
+model or level, or which models may be used, from the developer's own pi or Claude Code settings,
+so every developer's workers of a commit run alike. A project model name depends on no installation,
+since the ids a program takes, such as pi's `local-openai/gpt-6-astra`, are defined by one machine's
+own pi or Claude Code configuration. Every worker needs the file: a worktree without one runs no
+worker. Every Operation declares the ids of the workers it may launch in the Operation catalog, such
+as `spec_panel`'s `reviewer1` to `reviewer5` and `chair`, `spec_review`'s `reviewer` and `checker`,
+or `worker` for an Operation with one worker, and the same id names the worker in its run record and
+in the Operation's evidence.
+
+One model map serves the primary worktree, every task worktree, every unbound checkout and every
+[test project](../../glossary.json#concept.test-project) of its user, as pi's and Claude Code's own
+configuration does. It says how to reach a model, never which model a worker uses, like the
+credentials and pi's provider definitions, which also come from the developer's installation ([the
+pi run mechanics](pi.md#run-directory)) and never go into Git. A worker whose model has no id for
+its program in the map runs no more than one without a model: Workers never takes the project model
+name for the local id.
+
 
 The worker configuration holds the required `enabled_models`, the models any worker may run on,
 each keyed by its project model name and optionally carrying the model's own `reasoning` level. A
