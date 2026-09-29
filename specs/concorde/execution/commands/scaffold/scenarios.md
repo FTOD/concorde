@@ -31,8 +31,16 @@ shapes are in the [contracts](contracts.md).
 - GIVEN a survey proposing `module.checkout`, whose entry would be `specs/shop/checkout/module.md`
 - AND that file was created in the workspace after the survey
 - WHEN the main agent runs the scaffold with that survey as input
-- THEN the result is `blocked` with `stale_proposal`
+- THEN the result is `blocked` with `stale_proposal`, naming the folder `specs/shop/checkout/` that holds the file
 - AND no file was written and the existing file is unchanged
+
+### scenario.scaffold.target-folder-exists — An existing child folder is refused even when empty
+
+- GIVEN a survey proposing `module.checkout`, whose entry would be `specs/shop/checkout/module.md`
+- AND the folder `specs/shop/checkout/` was created empty in the workspace after the survey
+- WHEN the main agent runs the scaffold with that survey as input
+- THEN the result is `blocked` with `stale_proposal`, naming the folder `specs/shop/checkout/`
+- AND no file was written and the folder is still empty
 
 ### scenario.scaffold.invalid-not-kept — A scaffold that would not validate keeps nothing
 

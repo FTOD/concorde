@@ -194,13 +194,26 @@ class ScaffoldTests(AdoptionCase):
         )
         self.assertEqual("blocked", envelope["status"])
         self.assertEqual("stale_proposal", envelope["error"]["code"])
-        # What the code names today (the folder the recheck finds); the scenario leaves open
-        # whether it should name the file, as req.scaffold.no-overwrite says.
         self.assertIn("specs/project/checkout/", envelope["error"]["detail"])
         self.assertEqual(
             before, git(worktree, "status", "--porcelain", "--untracked-files=all")
         )
         self.assertEqual("# Checkout\n", existing.read_text())
+        self.assertFalse((worktree / "specs/project/inventory").exists())
+
+    @verifies("scenario.scaffold.target-folder-exists")
+    def test_an_existing_empty_child_folder_is_refused(self):
+        worktree = self.open()
+        _, survey = self.survey()
+        folder = worktree / "specs/project/checkout"
+        folder.mkdir()
+        _status, envelope = self.project.run(
+            "scaffold", "--task", "adopt", "--input", survey["run_id"]
+        )
+        self.assertEqual("blocked", envelope["status"])
+        self.assertEqual("stale_proposal", envelope["error"]["code"])
+        self.assertIn("specs/project/checkout/", envelope["error"]["detail"])
+        self.assertEqual([], list(folder.iterdir()))
         self.assertFalse((worktree / "specs/project/inventory").exists())
 
     @verifies("scenario.scaffold.invalid-not-kept")

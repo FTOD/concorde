@@ -179,5 +179,5 @@ the [runner's errors](../../runner.md#errors).
 | --- | --- | --- | --- |
 | `invalid_request` | `failed` | `input` | the scaffold has no `--input`, several, or one that is not a survey, or the survey's output breaks its contract |
 | `specs_unloadable` | `failed` | `scope` | the worktree's Specs cannot be loaded; the cause is Spec core's error |
-| `stale_proposal` | `blocked` | `decision` | the proposal no longer fits the worktree, a file it would create exists, or a file changed while it was written; every mismatch is listed |
+| `stale_proposal` | `blocked` | `decision` | the proposal no longer fits the worktree (a child's folder already exists, among others), a file it would create exists, or a file changed while it was written; every mismatch is listed |
 | `scaffold_invalid` | `failed` | `capability` | the scaffold's files would add structural errors; one cause per finding, and nothing is kept |
