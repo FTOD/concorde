@@ -7,9 +7,10 @@ Concrete situations that show the [requirements](requirements.md) of
 
 - GIVEN a prompt, and for a later round the session's identity
 - WHEN the driver builds the round's command
-- THEN it runs `claude -p` with the prompt, the headless note as appended system prompt, `stream-json` output and the [main agent](../../glossary.json#concept.main-agent)'s tools granted
-- AND those tools include EnterWorktree and ExitWorktree, and the note tells the session to carry its tasks out itself inside their task worktrees instead of starting [task sessions](../../glossary.json#concept.task-session), since their reports would have no receiver
-- BUT pi's headless note tells a pi session no such thing
+- THEN it runs `claude -p` with the prompt, the headless note followed by the test procedure as appended system prompt, `stream-json` output and the [main agent](../../glossary.json#concept.main-agent)'s tools granted
+- AND those tools include EnterWorktree and ExitWorktree
+- AND the test procedure overrides, for this session only, the rule to hand every task to a [task session](../../glossary.json#concept.task-session), and states in order: open the task, enter its worktree with EnterWorktree, work it running Concorde commands in the foreground, validate and deliver, leave with ExitWorktree with action `keep`, merge from the primary worktree, and record in the [decision log](../../glossary.json#concept.decision-log) each decision it would otherwise ask about
+- BUT pi's headless note tells a pi session no such thing, and a headless workflow run's command carries the headless note alone
 - AND a later round resumes the session by its identity
 - AND the environment keeps a background workflow alive
 

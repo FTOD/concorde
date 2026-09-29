@@ -103,6 +103,11 @@ class E2ETests(unittest.TestCase):
         self.assertIn("`adopt`", command[2])
         self.assertIn("concorde workflow report", command[2])
         self.assertNotIn(".workflow.json", command[2])
+        # It works as the task's task session, so the main session's test procedure is not
+        # appended.
+        self.assertIn("task session of the open task", command[2])
+        appended = command[command.index("--append-system-prompt") + 1]
+        self.assertEqual(e2e.sessions.NOTE, appended)
 
     def test_watch_reads_run_progress_and_workflow_records(self):
         with tempfile.TemporaryDirectory() as directory:

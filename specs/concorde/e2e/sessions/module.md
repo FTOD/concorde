@@ -48,27 +48,41 @@ ExitWorktree, or a workflow's own list), since an untrusted project's allow rule
 **headless note** appended to its system prompt: nobody
 answers questions, a command left in the background is stopped when the turn ends and nothing wakes
 the session, so Concorde commands run in the foreground, a run still running at the end of a
-round is followed by a wake-up, and the session carries its tasks out itself instead of starting
-[task sessions](../../glossary.json#concept.task-session)
+round is followed by a wake-up, and a [task session](../../glossary.json#concept.task-session)'s
+report would find no receiver
 ([requirements](requirements.md#req.headless-sessions.conditions-in-tool),
-[tools granted](requirements.md#req.headless-sessions.tools-granted)).
+[tools granted](requirements.md#req.headless-sessions.tools-granted)). What the turn's end
+stops is Claude Code's own background command; a Concorde run it was running then ends with the
+error code `cancelled` and the session is woken for it as a run stopped by that end, while a
+[detached run](../../glossary.json#concept.detached-run) outlives the round and wakes the session
+when it ends (see Waking the session).
 
 **The Claude Code exception.** The [main agent](../../glossary.json#concept.main-agent) hands every
 task to a task session and never works inside a task worktree, but a headless Claude Code main
 session cannot: a Claude Code task session reports to the main agent with SendMessage, and the
 process of a `claude -p` round ends with its turn, long before the task session reports, so the
-report has no receiver. As a test-only exception, which holds for headless Claude Code main
-sessions only, the note tells the session not to start task sessions but to carry each task out
-itself inside its task worktree, entering it with EnterWorktree, working, validating and delivering
-it there with that worktree's own `concorde`, and leaving it with ExitWorktree after delivery before
-it merges the task from the primary worktree; the two worktree tools are granted for it
-([requirements](requirements.md#req.headless-sessions.claude-works-tasks)). A headless pi main
-session keeps delegating, and a headless workflow run works as a task session in the first place.
-What the turn's end
-stops is Claude Code's own background command; a Concorde run it was running then ends with the
-error code `cancelled` and the session is woken for it as a run stopped by that end, while a
-[detached run](../../glossary.json#concept.detached-run) outlives the round and wakes the session
-when it ends (see Waking the session).
+report has no receiver. A headless main session exists only in the tests, so Headless sessions
+gives it a procedure of its own instead of bending the main-session guidance: the **test
+procedure**, appended after the headless note to every round of a headless Claude Code main
+session. It says that, for that test session only, it overrides the guidance's rule to hand every
+task to a task session, and that the session carries each task out itself:
+
+1. open the task from the primary worktree;
+2. enter the task worktree with EnterWorktree;
+3. work the task there with that worktree's own `concorde`, running every Concorde command in the
+   foreground;
+4. validate and deliver it with `concorde task-validation` and `concorde delivery`;
+5. leave the worktree with ExitWorktree with action `keep`, so its worktree and branch stay;
+6. merge the task from the primary worktree with `concorde task merge`.
+
+Since nobody answers, it also tells the session to decide what it would otherwise ask the
+developer or escalate, and to record each such decision in the task's
+[decision log](../../glossary.json#concept.decision-log) with its reason and the options it
+weighed. EnterWorktree and ExitWorktree are granted for it
+([requirements](requirements.md#req.headless-sessions.claude-works-tasks)). The exception holds
+for headless Claude Code main sessions only: a headless pi main session keeps delegating, since a
+[session round](../../glossary.json#concept.session-round)'s outcome can wake it, and a headless
+workflow run works as a task session in the first place and gets the note alone.
 
 **A pi session.** With `--client pi` every round is `pi -p --mode json --approve`, which trusts the
 project's extension and skill for the run, with `--session-dir` under the session directory and a

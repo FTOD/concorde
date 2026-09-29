@@ -64,12 +64,30 @@ NOTE = (
     "ends while an Operation run is still running, the tool waits for it and resumes this session "
     "with the notification you would otherwise have received. For the same reason a task session "
     "could not report to you: your process ends with each turn, so its SendMessage report would "
-    "find no receiver. So, as an exception that holds only for this headless test, do not start "
-    "task sessions: carry each task out yourself inside its task worktree, entering it with "
-    "EnterWorktree (its path), working, validating and delivering it there with that worktree's "
-    "own concorde, and leaving it with ExitWorktree after delivery, before you merge it from the "
-    "primary worktree."
+    "find no receiver. Follow the test procedure below instead of starting task sessions."
 )
+# The procedure of a headless Claude Code main session, a session of the tests alone: it works its
+# tasks itself, since a task session's report would have no receiver. Appended after NOTE to a
+# main session's rounds only; a headless workflow run already works as a task session.
+MAIN_PROCEDURE = """Test procedure of this headless main session.
+
+This session exists only in Concorde's end-to-end tests. For this test session only, this \
+procedure overrides the concorde skill's rule to hand every task to a task session: you carry \
+each task out yourself, as follows.
+
+1. Open the task from the primary worktree with `concorde task open`, as the skill says, and \
+record its brief in its decision log.
+2. Enter the task worktree with EnterWorktree, giving its path.
+3. Work the task there with that worktree's own `concorde`, running every Concorde command in \
+the foreground: change Specs and code directly or through Operations, and commit each verified \
+step on the task branch.
+4. Validate and deliver the task there with `concorde task-validation` and `concorde delivery`.
+5. Leave the task worktree with ExitWorktree with action "keep", so its worktree and branch stay.
+6. Merge the task from the primary worktree with `concorde task merge <task>`.
+
+Nobody answers questions during this session. Wherever you would ask the developer or escalate a \
+decision, decide it yourself and record it in the task's decision log with your reason and the \
+options you weighed, and give it in your final answer."""
 # pi has no permission prompts to answer, and a detached `concorde_run` or task-session round
 # outlives the process.
 PI_NOTE = (
@@ -101,14 +119,17 @@ def command(
     resume: str | None = None,
     note: str | None = NOTE,
     claude: str = "claude",
+    procedure: str | None = MAIN_PROCEDURE,
 ) -> list[str]:
-    """The ``claude -p`` argument list of one round."""
+    """The ``claude -p`` argument list of one round; a main session's rounds carry the test
+    procedure after the note, a workflow run's (``procedure`` None) only the note."""
+    appended = "\n\n".join(part for part in (note, procedure) if part)
     return [
         claude,
         "-p",
         prompt,
         *(["--resume", resume] if resume else []),
-        *(["--append-system-prompt", note] if note else []),
+        *(["--append-system-prompt", appended] if appended else []),
         "--output-format",
         "stream-json",
         "--verbose",
@@ -568,6 +589,7 @@ def start(
     client: str = "claude",
     pi: str = "pi",
     model: str | None = None,
+    procedure: str | None = MAIN_PROCEDURE,
 ) -> dict:
     """Run a headless session in ``project`` until it ends with nothing left to wake it for."""
     if client not in CLIENTS:
@@ -633,6 +655,7 @@ def start(
                 resume=session,
                 note=NOTE if note is None else note,
                 claude=claude,
+                procedure=procedure,
             )
             given = None
         with log.open("w") as out, errors.open("w") as err:

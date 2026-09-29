@@ -175,7 +175,8 @@ class HeadlessSessionTests(unittest.TestCase):
         first = sessions.command("do it")
         self.assertEqual(["claude", "-p", "do it"], first[:3])
         self.assertEqual(
-            sessions.NOTE, first[first.index("--append-system-prompt") + 1]
+            f"{sessions.NOTE}\n\n{sessions.MAIN_PROCEDURE}",
+            first[first.index("--append-system-prompt") + 1],
         )
         self.assertIn("run Concorde commands in the foreground", sessions.NOTE)
         granted = first[first.index("--allowedTools") + 1 :]
@@ -185,10 +186,26 @@ class HeadlessSessionTests(unittest.TestCase):
         self.assertIn("EnterWorktree", granted)
         self.assertIn("ExitWorktree", granted)
         self.assertNotIn("SendMessage", granted)
-        self.assertIn("do not start task sessions", sessions.NOTE)
-        self.assertIn("inside its task worktree", sessions.NOTE)
-        self.assertIn("ExitWorktree after delivery", sessions.NOTE)
         self.assertIn("SendMessage report would find no receiver", sessions.NOTE)
+        # The test procedure overrides the skill's delegation rule for this session only and
+        # states every step in order.
+        procedure = sessions.MAIN_PROCEDURE
+        self.assertIn("For this test session only", procedure)
+        self.assertIn(
+            "overrides the concorde skill's rule to hand every task to a", procedure
+        )
+        steps = [
+            "`concorde task open`",
+            "EnterWorktree",
+            "running every Concorde command in the foreground",
+            "`concorde task-validation` and `concorde delivery`",
+            'ExitWorktree with action "keep"',
+            "`concorde task merge <task>`",
+            "record it in the task's decision log",
+        ]
+        places = [procedure.find(step) for step in steps]
+        self.assertNotIn(-1, places, steps)
+        self.assertEqual(sorted(places), places)
         # pi main sessions still delegate: their note names no such exception.
         self.assertNotIn("task worktree", sessions.PI_NOTE)
         self.assertNotIn("--resume", first)

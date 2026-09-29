@@ -237,7 +237,7 @@ def claude_command(workflow: str, args: dict, task: str) -> tuple[list[str], dic
         "questions, the review verdict and the proposed checks. Do not merge the task."
     )
     tools = [tool.format(workflow=workflow) for tool in WORKFLOW_TOOLS]
-    return sessions.command(prompt, tools), sessions.environment()
+    return sessions.command(prompt, tools, procedure=None), sessions.environment()
 
 
 def driver_input(project: Path, worktree: Path, workflow: str, args: dict) -> dict:
@@ -289,6 +289,7 @@ def run_workflow(
             command[2],
             log,
             tools=command[command.index("--allowedTools") + 1 :],
+            procedure=None,
         )
         if session["end"] not in ("idle", "rounds_exhausted"):
             raise E2EError(

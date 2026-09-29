@@ -17,14 +17,19 @@ command line.
 ### req.headless-sessions.claude-works-tasks — A headless Claude Code main session works its tasks itself
 
 Every Claude Code round of a headless [main agent](../../glossary.json#concept.main-agent) SHALL
-be granted EnterWorktree and ExitWorktree and told by its headless note to carry its tasks out
-itself inside their task worktrees instead of starting
-[task sessions](../../glossary.json#concept.task-session), because a task session's report would
-have no receiver once the round's process has ended.
+be granted EnterWorktree and ExitWorktree and carry, after its headless note, the test procedure,
+which overrides for that session only the rule to hand every task to a
+[task session](../../glossary.json#concept.task-session) and states that the session opens each
+task, enters its worktree with EnterWorktree, works it running Concorde commands in the
+foreground, validates and delivers it, leaves with ExitWorktree keeping the worktree, merges it
+from the primary worktree and records in the task's
+[decision log](../../glossary.json#concept.decision-log) each decision it would otherwise
+ask about, because a task session's report would have no receiver once the round's process has
+ended.
 
 ### req.headless-sessions.guidance-untouched — The headless note stays out of the guidance
 
-The tool SHALL NOT add any part of a headless note to the
+The tool SHALL NOT add any part of a headless note or of the test procedure to the
 [main-session guidance](../../glossary.json#concept.main-session-guidance), which stays what users
 get.
 
