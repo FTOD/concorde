@@ -15,6 +15,13 @@ Concrete situations that show the [requirements](requirements.md) of
 - WHEN the developer prepares a repository not on the list without `--any`
 - THEN preparation is refused with `unknown_repository` naming the known ones
 
+### scenario.e2e.worker-configuration — A test project gets a worker configuration
+
+- GIVEN this checkout's own `.concorde/workers.json`
+- WHEN the developer prepares a test project, with or without `--worker-model`
+- THEN the project's committed `.concorde/workers.json` enables and chooses the given model for every worker, or holds this checkout's enabled models, defaults, [Operation](../glossary.json#concept.operation) entries and limits without its `runtime` paths
+- AND the result names the enabled models
+
 ### scenario.e2e.default-root — Test projects live in the temporary directory
 
 - GIVEN an environment without `CONCORDE_E2E_ROOT`
