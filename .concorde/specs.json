@@ -1209,6 +1209,21 @@
             "concept.run-store",
             "concept.workspace-binding"
           ]
+        },
+        {
+          "target": "module.task-session",
+          "meaning": "#uses-task-sessions",
+          "relies_on": [
+            "concept.session-report",
+            "concept.session-round"
+          ]
+        },
+        {
+          "target": "module.tasks",
+          "meaning": "#uses-tasks",
+          "relies_on": [
+            "concept.task-record"
+          ]
         }
       ],
       "includes": [],

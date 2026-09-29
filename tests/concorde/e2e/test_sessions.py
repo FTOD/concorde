@@ -113,6 +113,51 @@ reply("started implement; ending the turn", 0.1)
 """
 
 
+# A stand-in for `pi -p` whose first round starts a pi task session: it records the task with a
+# running round whose "supervisor" lives for a second and then records the round escalated; a
+# later round records the message it was woken with.
+FAKE_PI_TASK = """#!/usr/bin/env python3
+import json, subprocess, sys, time
+from pathlib import Path
+argv = sys.argv[1:]
+prompt = sys.stdin.read()
+session = argv[argv.index("--session-id") + 1]
+directory = Path(argv[argv.index("--session-dir") + 1])
+directory.mkdir(parents=True, exist_ok=True)
+state = directory / (session + ".rounds")
+round_ = int(state.read_text()) + 1 if state.exists() else 1
+state.write_text(str(round_))
+Path("fake-pi.jsonl").open("a").write(json.dumps({"argv": argv, "prompt": prompt}) + "\\n")
+def say(event):
+    print(json.dumps(event), flush=True)
+say({"type": "session", "id": session})
+def reply(text, cost):
+    say({"type": "message_end", "message": {"role": "assistant", "stopReason": "stop",
+         "usage": {"cost": {"total": cost}}, "content": [{"type": "text", "text": text}]}})
+    say({"type": "turn_end"})
+if round_ > 1:
+    reply("done after: " + prompt, 0.2)
+    sys.exit(0)
+tasks = Path(".concorde/tasks")
+tasks.mkdir(parents=True)
+record = tasks / "t1.json"
+ESCALATE = "import json, sys, time; from pathlib import Path; time.sleep(1); " \\
+    "p = Path(sys.argv[1]); r = json.loads(p.read_text()); " \\
+    "r['sessions'][0]['rounds'][0].update(status='escalated', report={'status': 'escalated', " \\
+    "'summary': 'needs a decision', 'commit': None, 'escalations': [1], 'decisions': " \\
+    "['named it x'], 'open': []}); p.write_text(json.dumps(r))"
+supervisor = subprocess.Popen([sys.executable, "-c", ESCALATE, str(record)],
+                              start_new_session=True)
+stamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+record.write_text(json.dumps({"id": "t1", "sessions": [{"program": "pi", "id": "p-1",
+    "rounds": [{"round": 1, "status": "running", "supervisor_pid": supervisor.pid,
+                "started_at": stamp, "report": None, "error": None}]}]}))
+say({"type": "tool_execution_start", "toolName": "concorde_task_session",
+     "args": {"task": "t1"}})
+reply("started the task session; ending the turn", 0.1)
+"""
+
+
 def event(**value) -> str:
     return json.dumps(value)
 
@@ -133,9 +178,14 @@ class HeadlessSessionTests(unittest.TestCase):
             sessions.NOTE, first[first.index("--append-system-prompt") + 1]
         )
         self.assertIn("run Concorde commands in the foreground", sessions.NOTE)
-        self.assertEqual(
-            list(sessions.MAIN_AGENT_TOOLS), first[first.index("--allowedTools") + 1 :]
-        )
+        granted = first[first.index("--allowedTools") + 1 :]
+        self.assertEqual(list(sessions.MAIN_AGENT_TOOLS), granted)
+        # The main agent never works inside a task worktree; it names itself for a task
+        # session and answers it.
+        self.assertNotIn("EnterWorktree", granted)
+        self.assertNotIn("ExitWorktree", granted)
+        self.assertIn("ListAgents", granted)
+        self.assertIn("SendMessage", granted)
         self.assertNotIn("--resume", first)
         again = sessions.command("woken", resume="s-1")
         self.assertEqual("s-1", again[again.index("--resume") + 1])
@@ -316,7 +366,7 @@ class HeadlessSessionTests(unittest.TestCase):
         self.assertEqual(
             sessions.PI_NOTE, argv[argv.index("--append-system-prompt") + 1]
         )
-        self.assertIn("concorde_run keeps running", sessions.PI_NOTE)
+        self.assertIn("concorde_run and a task-session round", sessions.PI_NOTE)
         fake = self.base / "pi-fake"
         fake.write_text(FAKE_PI)
         fake.chmod(0o755)
@@ -348,6 +398,99 @@ class HeadlessSessionTests(unittest.TestCase):
         with self.assertRaises(e2e.E2EError) as raised:
             sessions.start(self.project, "x", self.base / "other", client="codex")
         self.assertEqual("unknown_client", raised.exception.code)
+
+    @verifies("scenario.headless-sessions.unsettled-rounds")
+    def test_running_rounds_of_pi_task_sessions_are_unsettled(self):
+        live = subprocess.Popen(["sleep", "30"])
+        self.addCleanup(live.wait)
+        self.addCleanup(live.kill)
+        gone = subprocess.Popen(["true"])
+        gone.wait()
+        since = "2026-09-27T10:00:00Z"
+        later = "2026-09-27T10:05:00Z"
+
+        def round_(number, status, pid, started=later):
+            return {
+                "round": number,
+                "status": status,
+                "supervisor_pid": pid,
+                "started_at": started,
+            }
+
+        tasks = self.project / ".concorde/tasks"
+        tasks.mkdir(parents=True)
+        (tasks / "t1.json").write_text(
+            json.dumps(
+                {
+                    "id": "t1",
+                    "sessions": [
+                        {
+                            "program": "pi",
+                            "id": "p-1",
+                            "rounds": [
+                                round_(1, "escalated", live.pid),
+                                round_(2, "running", live.pid),
+                            ],
+                        },
+                        {
+                            "program": "pi",
+                            "id": "p-2",
+                            "rounds": [
+                                round_(1, "running", gone.pid),
+                                round_(2, "running", live.pid, "2026-09-27T09:00:00Z"),
+                            ],
+                        },
+                        # A Claude Code task session reports through SendMessage.
+                        {"program": "claude", "id": "c-1", "name": "task-t1"},
+                    ],
+                }
+            )
+        )
+        (tasks / "t1.decisions.md").write_text("# Decision log\n")
+        self.assertEqual(
+            [
+                {
+                    "round": "t1:p-1:2",
+                    "task": "t1",
+                    "session": "p-1",
+                    "number": 2,
+                    "why": "running",
+                }
+            ],
+            sessions.unsettled_rounds(self.project, since),
+        )
+        self.assertEqual(
+            [], sessions.unsettled_rounds(self.project, since, {"t1:p-1:2"})
+        )
+
+    @verifies("scenario.headless-sessions.wake-task-session")
+    def test_a_round_that_leaves_a_task_session_round_running_is_woken_with_its_outcome(
+        self,
+    ):
+        fake = self.base / "pi-fake"
+        fake.write_text(FAKE_PI_TASK)
+        fake.chmod(0o755)
+        record = sessions.start(
+            self.project,
+            "add a property",
+            self.base / "session",
+            client="pi",
+            pi=str(fake),
+            poll=0.1,
+        )
+        self.assertEqual("idle", record["end"])
+        self.assertEqual(["t1:p-1:1"], record["rounds"][0]["woke_for"])
+        calls = [
+            json.loads(line)
+            for line in (self.project / "fake-pi.jsonl").read_text().splitlines()
+        ]
+        self.assertEqual(2, len(calls))
+        woken = calls[1]["prompt"]
+        self.assertIn("Task session of t1, round 1 ended escalated.", woken)
+        self.assertIn("Summary: needs a decision", woken)
+        self.assertIn("- named it x", woken)
+        self.assertIn("Escalations: 1", woken)
+        self.assertIn(str(self.project / ".concorde/tasks/t1.json"), woken)
 
 
 if __name__ == "__main__":

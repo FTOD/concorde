@@ -14,6 +14,11 @@ prompt.
 Every Claude Code round of a headless session SHALL be started with its tools granted on the
 command line.
 
+### req.headless-sessions.no-worktree-tools — A main agent is granted no worktree tool
+
+The tools granted to a Claude Code round of a [main agent](../../glossary.json#concept.main-agent)
+SHALL NOT include a tool that moves the session into a worktree.
+
 ### req.headless-sessions.guidance-untouched — The headless note stays out of the guidance
 
 The tool SHALL NOT add any part of a headless note to the
@@ -31,10 +36,19 @@ or its runner has gone.
 
 The wait is bounded by [its own requirement](#req.headless-sessions.wait-bounded).
 
+### req.headless-sessions.wake-task-session — A session round left running wakes the session
+
+When a round other than the session's last ends with a
+[session round](../../glossary.json#concept.session-round) of a pi
+[task session](../../glossary.json#concept.task-session) begun since the
+session began still running, the driver SHALL resume the same session, once that session round has
+been recorded or its supervisor has gone, with a wake message giving the outcome its
+[task record](../../glossary.json#concept.task-record) holds.
+
 ### req.headless-sessions.wake-once — A run wakes the session once
 
-The driver SHALL name each run in at most one wake message of a session, so a session is never
-woken twice for one run.
+The driver SHALL name each run and each session round in at most one wake message of a session,
+so a session is never woken twice for one of them.
 
 ### req.headless-sessions.rounds-bounded — A session has a bounded number of rounds
 
@@ -42,9 +56,10 @@ The driver SHALL start no more rounds of a session than the session was allowed.
 
 ### req.headless-sessions.wait-bounded — Waiting for a run is bounded
 
-When a run a round left behind is still running after the wait limit, the driver SHALL fail the
-session with `wait_exceeded`, naming that run's
-[run progress file](../../glossary.json#concept.run-progress-file) and the session's record.
+When a run or a session round a round left behind is still running after the wait limit, the
+driver SHALL fail the session with `wait_exceeded`, naming that run's
+[run progress file](../../glossary.json#concept.run-progress-file) or that session round's status
+file and the session's record.
 
 ### req.headless-sessions.logs-kept — Every round is kept
 

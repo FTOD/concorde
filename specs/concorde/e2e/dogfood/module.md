@@ -172,15 +172,16 @@ verifying the [requirements](requirements.md) and [scenarios](scenarios.md).
 <a id="uses-sessions"></a>
 
 **Headless sessions** runs the scenario's prompt as a [headless
-session](../../glossary.json#concept.headless-session), waking it for the runs it leaves behind, and
-keeps its rounds. The runner relies on the session ending on its own and never adds anything to the
+session](../../glossary.json#concept.headless-session), waking it for the runs and
+[session rounds](../../glossary.json#concept.session-round) it leaves behind, and keeps its rounds. The runner relies on the session ending on its own and never adds anything to the
 prompt beyond what the scenario's developer would say. The runner gives the session its directory
 under the scenario directory's `sessions/` in place of Headless sessions' default under the
 project's [run store](../../glossary.json#concept.run-store). `run` evaluates however the session
 ended, `idle`, `exited`, `no_session` or `rounds_exhausted` after `--rounds` rounds (4 by default),
 since the evaluation reads only files; how it ended is in the session's record that `run` prints
-beside the evaluation. When a run the session left is still running after Headless sessions' wait
-limit, `run` fails with `wait_exceeded` and evaluates nothing; `evaluate` can then be run by hand.
+beside the evaluation. When a run or a session round the session left is still running after
+Headless sessions' wait limit, `run` fails with `wait_exceeded` and evaluates nothing; `evaluate`
+can then be run by hand.
 
 <a id="uses-dogfooding"></a>
 

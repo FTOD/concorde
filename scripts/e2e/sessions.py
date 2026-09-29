@@ -8,14 +8,16 @@ guidance:
   granted on the command line;
 - a command left running in the background is stopped when the turn ends, and nothing wakes the
   session when a run ends: the session is told so in an appended system prompt, and when a round
-  ends with an Operation run still running or stopped by the turn's end, the tool waits for it
-  and resumes the same session with the notification an interactive session would have received;
+  ends with an Operation run still running or stopped by the turn's end, or with a round of a pi
+  task session still running, the tool waits for it and resumes the same session with the
+  notification an interactive session would have received;
 - resuming replays the stopped background command as an empty turn, whose result is not the
   session's answer.
 
 A pi session is ``pi -p --mode json --approve`` with a session identity the tool chooses, so
 every round continues the same session file; the prompt goes on standard input, and pi's own
-note says that its process ends with the turn while a run started with ``concorde_run`` goes on.
+note says that its process ends with the turn while a run started with ``concorde_run`` or a
+task-session round started with ``concorde_task_session`` goes on.
 
 Each round's output (``stream-json`` for Claude Code, pi's JSON events for pi) is kept under the
 session directory, with ``session.json`` summarizing the rounds, the wakes and the end.
@@ -37,7 +39,8 @@ from common import E2EError
 # Keeps a background workflow of `claude -p` alive past ten idle minutes.
 WAIT_VARIABLE = "CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS"
 # The tools a main agent uses, granted on the command line because an untrusted project's allow
-# rules are ignored.
+# rules are ignored. It never works inside a task worktree, so no worktree tool is among them;
+# ListAgents names it for `concorde task session --main` and SendMessage answers a task session.
 MAIN_AGENT_TOOLS = (
     "Bash",
     "Read",
@@ -47,8 +50,8 @@ MAIN_AGENT_TOOLS = (
     "Grep",
     "Skill",
     "TodoWrite",
-    "EnterWorktree",
-    "ExitWorktree",
+    "ListAgents",
+    "SendMessage",
 )
 NOTE = (
     "This session is run headless by Concorde's end-to-end tool. Nobody answers questions during "
@@ -57,12 +60,14 @@ NOTE = (
     "ends while an Operation run is still running, the tool waits for it and resumes this session "
     "with the notification you would otherwise have received."
 )
-# pi has no permission prompts to answer, and a detached `concorde_run` outlives the process.
+# pi has no permission prompts to answer, and a detached `concorde_run` or task-session round
+# outlives the process.
 PI_NOTE = (
     "This session is run headless by Concorde's end-to-end tool. Nobody answers questions during "
-    "it. Your process ends when your turn ends; an Operation you started with concorde_run keeps "
-    "running, and when it ends the tool resumes this session with its result, as the run view "
-    "would have woken you. So end your turn when you would otherwise wait for a run."
+    "it. Your process ends when your turn ends; an Operation you started with concorde_run and a "
+    "task-session round you started with concorde_task_session keep running, and when one ends "
+    "the tool resumes this session with its result or outcome, as the run view would have woken "
+    "you. So end your turn when you would otherwise wait for a run or a round."
 )
 CLIENTS = ("claude", "pi")
 # A cancelled run whose result was written this close to the end of a round was stopped by that
@@ -267,16 +272,22 @@ def _alive(directory: Path) -> bool:
     return False
 
 
-def runs_of(project: Path) -> Path:
-    """Where the runs started in ``project`` are recorded: the run store of the records directory
-    its workspace binding names, or its own ``.concorde/runs`` when it is unbound."""
+def records_of(project: Path) -> Path:
+    """The records directory of ``project``: the one its workspace binding names, or its own
+    ``.concorde`` when it is unbound."""
     try:
         binding = json.loads(
             (project / ".concorde/workspace.json").read_text(encoding="utf-8")
         )
-        return Path(binding["records"]) / "runs"
+        return Path(binding["records"])
     except (OSError, ValueError, KeyError, TypeError):
-        return project / ".concorde/runs"
+        return project / ".concorde"
+
+
+def runs_of(project: Path) -> Path:
+    """Where the runs started in ``project`` are recorded: the run store of its records
+    directory."""
+    return records_of(project) / "runs"
 
 
 def _state(directory: Path) -> dict | None:
@@ -295,6 +306,90 @@ def _result(directory: Path) -> dict | None:
         return json.loads((directory / "result.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
+
+
+def _pid_alive(pid) -> bool:
+    """Whether the process ``pid`` runs; one that ended but was not yet reaped does not."""
+    if not isinstance(pid, int) or pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    try:
+        stat = Path(f"/proc/{pid}/stat").read_text()
+    except OSError:
+        return True
+    return stat.rsplit(")", 1)[-1].split()[0] != "Z"
+
+
+def round_key(task: str, session: str, number: int) -> str:
+    return f"{task}:{session}:{number}"
+
+
+def _task_records(project: Path) -> list[dict]:
+    found = []
+    for path in sorted((records_of(project) / "tasks").glob("*.json")):
+        try:
+            value = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(value, dict) and value.get("id"):
+            found.append(value)
+    return found
+
+
+def _recorded_round(project: Path, item: dict) -> dict | None:
+    """The round ``item`` names, as its task record now holds it."""
+    try:
+        record = json.loads(
+            (records_of(project) / "tasks" / f"{item['task']}.json").read_text(
+                encoding="utf-8"
+            )
+        )
+    except (OSError, ValueError):
+        return None
+    for found in record.get("sessions") or []:
+        if found.get("id") != item["session"]:
+            continue
+        for entry in found.get("rounds") or []:
+            if entry.get("round") == item["number"]:
+                return entry
+    return None
+
+
+def unsettled_rounds(
+    project: Path, since: str, known: set[str] = frozenset()
+) -> list[dict]:
+    """The rounds of pi task sessions begun since ``since`` that are still running: their task
+    record holds them ``running`` and their supervisor lives. ``known`` rounds were reported
+    already."""
+    found = []
+    for record in _task_records(project):
+        for found_session in record.get("sessions") or []:
+            if found_session.get("program") != "pi":
+                continue
+            for entry in found_session.get("rounds") or []:
+                key = round_key(
+                    record["id"], found_session.get("id"), entry.get("round")
+                )
+                if key in known or str(entry.get("started_at") or "") < since:
+                    continue
+                if entry.get("status") == "running" and _pid_alive(
+                    entry.get("supervisor_pid")
+                ):
+                    found.append(
+                        {
+                            "round": key,
+                            "task": record["id"],
+                            "session": found_session.get("id"),
+                            "number": entry.get("round"),
+                            "why": "running",
+                        }
+                    )
+    return found
 
 
 def unsettled_runs(
@@ -321,33 +416,112 @@ def unsettled_runs(
     return found
 
 
+def _ended(project: Path, item: dict) -> bool:
+    """Whether a running run has finished or lost its runner, or a running task-session round
+    has been recorded or lost its supervisor."""
+    if "round" in item:
+        entry = _recorded_round(project, item) or {}
+        return entry.get("status") != "running" or not _pid_alive(
+            entry.get("supervisor_pid")
+        )
+    directory = runs_of(project) / item["run"]
+    state = _state(directory) or {}
+    return state.get("phase") == "finished" or not _alive(directory)
+
+
+def _progress_of(project: Path, item: dict) -> Path:
+    if "round" in item:
+        return records_of(project) / "tasks" / f"{item['task']}.session/status.json"
+    return runs_of(project) / item["run"] / "status.json"
+
+
 def wait_for(
     project: Path, runs: list[dict], limit: float = WAIT_SECONDS, poll: float = 2.0
 ) -> None:
-    """Wait until every running run has finished or its host has gone."""
+    """Wait until every running run has finished or its host has gone, and every running
+    task-session round has ended or its supervisor has gone."""
     deadline = time.monotonic() + limit
     for item in runs:
-        directory = runs_of(project) / item["run"]
-        while item["why"] == "running":
-            state = _state(directory) or {}
-            if state.get("phase") == "finished" or not _alive(directory):
-                break
+        while item["why"] == "running" and not _ended(project, item):
             if time.monotonic() > deadline:
+                what = (
+                    f"round {item['number']} of the task session of {item['task']}"
+                    if "round" in item
+                    else f"run {item['run']}"
+                )
                 raise E2EError(
                     "wait_exceeded",
-                    f"run {item['run']} of {project} was still running after {limit:.0f}s",
-                    progress=str(directory / "status.json"),
+                    f"{what} of {project} was still running after {limit:.0f}s",
+                    progress=str(_progress_of(project, item)),
                 )
             time.sleep(poll)
 
 
+def _chain_text(link: dict, depth: int = 0) -> list[str]:
+    """An error link and its causes as indented lines, as the run view shows them."""
+    unhandled = link.get("unhandled") or {}
+    lines = [
+        f"{'  ' * depth}{link.get('actor')}: {link.get('code')}: {link.get('detail')}"
+        + (f" (not handled: {unhandled.get('explanation')})" if unhandled else "")
+    ]
+    lines += [
+        f"{'  ' * (depth + 1)}option: {option}" for option in link.get("options") or []
+    ]
+    for cause in link.get("causes") or []:
+        lines += _chain_text(cause, depth + 1)
+    return lines
+
+
+def round_text(project: Path, item: dict) -> str:
+    """What the run view tells the main agent when a task-session round ends: the outcome its
+    task record holds."""
+    head = f"Task session of {item['task']}, round {item['number']}"
+    entry = _recorded_round(project, item)
+    record = records_of(project) / "tasks" / f"{item['task']}.json"
+    if not entry or entry.get("status") == "running":
+        return (
+            f"{head} ended without recording its outcome (its supervisor is gone). Run "
+            f"concorde task show {item['task']}; the next concorde task session command "
+            "records the round as failed with its logs."
+        )
+    report = entry.get("report") or {}
+    lines = [f"{head} ended {entry.get('status')}."]
+    if report.get("summary"):
+        lines.append(f"Summary: {report['summary']}")
+    for key, title in (("decisions", "Decisions it made"), ("open", "Still open")):
+        if report.get(key):
+            lines.append(f"{title}:\n" + "\n".join(f"- {text}" for text in report[key]))
+    if entry.get("status") == "delivered":
+        lines.append(
+            f"Delivery commit: {report.get('commit')}. Merge it with concorde task merge "
+            f"{item['task']} when the work is complete."
+        )
+    if entry.get("status") == "escalated":
+        numbers = ", ".join(str(number) for number in report.get("escalations") or [])
+        lines.append(
+            f"Escalations: {numbers}; read their chains with concorde task show "
+            f"{item['task']}. Answer with concorde_task_session (answer), or escalate to the "
+            "developer with your own link on top."
+        )
+    if entry.get("status") == "failed" and entry.get("error"):
+        lines.append("Error chain:\n" + "\n".join(_chain_text(entry["error"])))
+    if entry.get("status") == "stopped":
+        lines.append("The round was stopped.")
+    lines.append(f"Task record: {record}")
+    return "\n".join(lines)
+
+
 def wake_message(project: Path, runs: list[dict]) -> str:
-    """The notification an interactive session would have received for each run."""
+    """The notification an interactive session would have received for each run and each
+    task-session round."""
     lines = [
         "Notification from the end-to-end tool, standing in for the ones an interactive "
         "session receives:"
     ]
     for item in runs:
+        if "round" in item:
+            lines.append("- " + round_text(project, item).replace("\n", "\n  "))
+            continue
         directory = runs_of(project) / item["run"]
         result = _result(directory) or {}
         state = _state(directory) or {}
@@ -481,7 +655,9 @@ def start(
         if session is None:
             end = "no_session"
             break
-        runs = unsettled_runs(project, began, round_end, known)
+        runs = unsettled_runs(project, began, round_end, known) + unsettled_rounds(
+            project, began, known
+        )
         if not runs:
             end = "idle"
             break
@@ -493,7 +669,7 @@ def start(
             save(error.code, progress=error.evidence.get("progress"))
             error.evidence["session"] = str(directory / "session.json")
             raise
-        entry["woke_for"] = [item["run"] for item in runs]
+        entry["woke_for"] = [item.get("run") or item["round"] for item in runs]
         known.update(entry["woke_for"])
         message = wake_message(project, runs)
     return save(end)

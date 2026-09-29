@@ -4,8 +4,8 @@
 This is a tool for developing Concorde, never installed into a project. It takes a project from
 the Python repositories SWE-bench draws from (``references/swe-bench/``), sets it up as a user
 would (clone, install Concorde from this checkout, initialize, open a task), and runs a workflow
-in it with real workers, either through a headless Claude Code main session or through the
-deterministic driver that plays the pi runtime.
+in it with real workers, either through a headless Claude Code session working as the task's
+task session or through the deterministic driver that plays the pi runtime.
 
     python3 scripts/e2e/e2e.py repos
     python3 scripts/e2e/e2e.py prepare psf/requests --rev v2.31.0
@@ -63,7 +63,7 @@ from common import (  # noqa: E402
 SWE_BENCH = CHECKOUT / "references/swe-bench"
 REPO_LIST = SWE_BENCH / "swebench/harness/log_parsers/python.py"
 HARNESS = CHECKOUT / "tests/concorde/workflows/run_script.mjs"
-# The permissions a headless main session needs to run a workflow without the project's trust:
+# The permissions a headless session needs to run a workflow without the project's trust:
 # given on the command line, they apply whether or not the folder is trusted.
 WORKFLOW_TOOLS = (
     "Workflow(concorde-{workflow})",
@@ -223,11 +223,13 @@ def workflow_args(module: str, mode: str, restart: dict, retry: list) -> dict:
 
 
 def claude_command(workflow: str, args: dict, task: str) -> tuple[list[str], dict]:
-    """The headless main session that runs a workflow to its end in the task's worktree, where
-    it is started, and its environment."""
+    """The headless session that runs a workflow to its end in the task's worktree, where it is
+    started, and its environment. It works there as the task's task session, since a workflow of
+    a task is its task session's to run and the main agent never works inside a task worktree."""
     prompt = (
-        "You are Concorde's main agent in this project (see CLAUDE.md), working inside the "
-        f"worktree of the open task `{task}`, whose workspace binding the workflow runs on. Call "
+        f"You are the task session of the open task `{task}` of this project, which uses "
+        "Concorde (see CLAUDE.md), working inside its worktree, whose workspace binding the "
+        "workflow runs on. Call "
         f"the Workflow tool with the saved workflow named concorde-{workflow} and args "
         f"{json.dumps(args)}. Stay in this worktree, edit no file yourself and wait for the "
         "workflow to end. Then run .concorde/bin/concorde workflow report and report its "

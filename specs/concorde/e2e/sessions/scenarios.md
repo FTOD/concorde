@@ -8,6 +8,8 @@ Concrete situations that show the [requirements](requirements.md) of
 - GIVEN a prompt, and for a later round the session's identity
 - WHEN the driver builds the round's command
 - THEN it runs `claude -p` with the prompt, the headless note as appended system prompt, `stream-json` output and the [main agent](../../glossary.json#concept.main-agent)'s tools granted
+- AND those tools include ListAgents and SendMessage
+- BUT neither EnterWorktree nor ExitWorktree
 - AND a later round resumes the session by its identity
 - AND the environment keeps a background workflow alive
 
@@ -55,3 +57,17 @@ Concrete situations that show the [requirements](requirements.md) of
 - THEN it fails the session with `wait_exceeded`, naming the run's [run progress file](../../glossary.json#concept.run-progress-file) and the session's `session.json`
 - AND `session.json` exists, ends `wait_exceeded`, names the same run progress file under `progress` and keeps the first round with its log
 - AND the session is not woken for the run
+
+### scenario.headless-sessions.unsettled-rounds — Which session rounds a round left behind
+
+- GIVEN [task records](../../glossary.json#concept.task-record) holding pi [task sessions](../../glossary.json#concept.task-session) with a [session round](../../glossary.json#concept.session-round) running under a live supervisor, a session round that ended, a session round still recorded `running` whose supervisor is gone, a running session round begun before the session, and a Claude Code task session
+- WHEN a round ends
+- THEN the running session round under a live supervisor is unsettled
+- BUT the ended session round, the one whose supervisor is gone, the one begun before the session, the Claude Code task session and a session round already reported are not
+
+### scenario.headless-sessions.wake-task-session — A session round left running wakes the session with its outcome
+
+- GIVEN a pi session allowed more than one round, whose first round starts a pi task session with `concorde_task_session` and ends while that task session's first session round is still running
+- WHEN the session round ends escalated
+- THEN the driver resumes the same session with a message giving the task and round, that it ended escalated, the [session report](../../glossary.json#concept.session-report)'s summary and decisions, its escalations and the task record's path
+- AND the record names the session round among those the first round woke for

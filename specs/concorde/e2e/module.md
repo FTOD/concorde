@@ -112,8 +112,11 @@ under `.concorde/runs/workflows/<task>/` of the project, and logs the session un
 
 - A **headless run** (`--via claude`) runs, as a
   [headless session](../glossary.json#concept.headless-session) kept under
-  `.concorde/runs/e2e/<task>-claude/`, a main session started in the task's worktree and asked to
-  run the installed workflow there and report with `concorde workflow report`. Two testing
+  `.concorde/runs/e2e/<task>-claude/`, a session started in the task's worktree that works there as
+  the task's [task session](../glossary.json#concept.task-session), since running a task's
+  workflow is its task session's work and the [main agent](../glossary.json#concept.main-agent)
+  never works inside a task worktree, and is asked to run the installed workflow there and report
+  with `concorde workflow report`. Two testing
   conditions are handled for it: `claude -p` otherwise stops a background workflow after ten idle
   minutes, so the session keeps `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0`; and an untrusted project
   ignores its allow rules, so the workflow and its step commands are granted with `--allowedTools`.
@@ -158,8 +161,8 @@ what the developer runs by hand, after a change to Adoption, Workflows or the wo
 whose findings become ordinary tasks.
 
 The headless run and the driver run answer different questions. The headless run is what a user's
-main session does, Claude Code's workflow runtime and its step agents included. The driver run
-removes the main session's model and the client runtime from between the steps, but its
+task session does, Claude Code's workflow runtime and its step agents included. The driver run
+removes the session's model and the client runtime from between the steps, but its
 Operations still launch real workers, so a failure there lies on Concorde's side, in its commands,
 Operations or workers. When a headless run fails, a driver run of the same task with `--retry` for
 the failed step's key runs that step again without the client runtime, reusing the steps that
@@ -224,8 +227,9 @@ e2e.dogfood -> dogfooding
 <a id="contains-sessions"></a>
 
 **Headless sessions** drives a real headless Claude Code or pi main session: it grants the session
-its tools, tells it the conditions of running headless, wakes it when a run it left behind ends and
-keeps every round's log. The headless runs of workflows are headless sessions, and so are
+its tools, tells it the conditions of running headless, wakes it when a run or a
+[session round](../glossary.json#concept.session-round) it left behind ends and keeps every round's
+log. The headless runs of workflows are headless sessions, and so are
 the [dogfood scenarios](../glossary.json#concept.dogfood-scenario)' sessions.
 
 <a id="contains-cases"></a>

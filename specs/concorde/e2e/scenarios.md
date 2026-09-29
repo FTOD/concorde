@@ -41,7 +41,7 @@ Concrete situations that show the [requirements](requirements.md) of
 - THEN the `claude -p` session has `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS` set to `0`
 - AND its command line grants the workflow and its step and report commands
 - AND the workflow's arguments, the restart label `2` of `scaffold` included, reach the session's prompt
-- AND the prompt places the session in the task's worktree and has it report with `concorde workflow report`
+- AND the prompt places the session in the task's worktree as the task's [task session](../glossary.json#concept.task-session) and has it report with `concorde workflow report`
 - BUT the workflow's arguments name no task
 
 ### scenario.e2e.stale-result — A result an earlier run saved is not the run's
