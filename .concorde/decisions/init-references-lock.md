@@ -82,4 +82,12 @@ main agent will ask you to merge main into this branch.
 - **Delivered.** `task-validation` ready (check.concorde.tests passed, no blocking findings);
   `delivery` ok, delivery commit 42f2c3c9 on `concorde/init-references-lock`.
 
+## Main agent on the session's report (2026-09-30)
+
+Accepted the session's correction of the brief: `git submodule init` takes no config lock when a
+submodule is already registered (git 2.43), so the recorded failures happened only when a
+registration was missing; why the registrations were missing is unverified. The fix's real value is
+registering only what is missing, before any clone, and refusing a needed registration under a held
+lock with a detailed error. Merging with the build and spec-validation checks.
+
 ## Closed: merged, 2026-09-29T17:59:15Z
