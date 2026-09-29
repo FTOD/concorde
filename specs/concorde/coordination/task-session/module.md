@@ -14,6 +14,14 @@ in a task; that method is the
 main agent's own, given by the [Main session](../main-session/module.md) guidance, and the session
 follows it at a smaller scale. Its boundary guards against mistakes, not a malicious session.
 
+Task sessions matter to the developer only through the main agent: the developer talks to main
+sessions, and a task session is a means of the main agent that has served its purpose once its
+task ends. So Task sessions also ends them with their task: a Claude Code task session still
+running when a task is closed without a merge is stopped first, and once a task has ended, each of
+its Claude Code task sessions is removed from Claude's session list, where finished task sessions
+would otherwise pile up beside the developer's main sessions, after its transcript has been kept in
+the task's trace, which moves to the history with the task.
+
 ## Usage
 
 The task level of the work is always delegated: the main agent never works inside a task worktree
@@ -72,6 +80,36 @@ that does not report a started background session is refused (`task_closed`, `mi
 `session_failed`) with Claude Code's output in the detail. `--answer`, `--stop` and `--wait` are
 refused (`invalid_input`): a Claude Code task session receives the main agent's answers and sends
 its reports through SendMessage and is stopped with `claude stop`.
+
+<a id="ending-claude-sessions"></a>
+
+**When the task ends**, Tasks' close hands its Claude Code task sessions, every one the task's trace
+lists, to Task sessions at three points:
+
+- A close without a merge (`--completed` or `--failed`) first runs `claude stop <id>` for each, so
+  no session goes on working in the worktree the close removes or starts another run there; a
+  session already ended or no longer known to Claude Code (`No job matching`) counts as stopped.
+  When a stop cannot be confirmed, the close is refused with `session_stop_failed` before it
+  changed the task, naming the session, Claude Code's answer and the command to stop it by hand.
+- Every close, a merge's included, copies each session's transcript into the session's trace node
+  just before the task's folder moves to the history: Claude Code's
+  `projects/<the worktree's path with every character that is no letter or digit as ->/<session
+  uuid>.jsonl` of its configuration folder (`$CLAUDE_CONFIG_DIR`, by default `~/.claude`), found as
+  the only `<id>*.jsonl` of that project folder, or else of any project folder, becomes
+  `transcript.jsonl`, an artifact of the node, and the folder Claude Code keeps beside it, with
+  subagent transcripts and long tool results, becomes `transcript/`. The history thus keeps each
+  session's conversation as a pi session's session files are kept, and is never written after the
+  move.
+- Once the task is closed, `claude rm <id>` removes each session whose transcript was kept from
+  Claude's session list. It kills a session that still runs and deletes Claude Code's own state of
+  the job, and it removes a worktree only when Claude Code created it for the session, never the
+  task worktree a task session is started in. The removal is best effort: a failing `claude rm`, or
+  a transcript that could not be kept, whose session is then left in the list so nothing of it is
+  lost, never fails the close, and the close's `warnings` name the session, the whole reason and
+  the command that removes it by hand.
+
+A pi task session needs none of this: it has no entry in a session list, its session files already
+lie in its node, and the close stops its running round.
 
 <a id="concept.session-round"></a><a id="concept.session-report"></a>
 
@@ -328,7 +366,9 @@ tasksession: Task sessions {
 <a id="realization.task-session.starter"></a>
 
 The **session starter** holds the Claude Code start (`session.py`), which assembles the session's
-writable paths and settings and starts `claude --bg`, and the pi task session (`pi_session.py`),
+writable paths and settings and starts `claude --bg`, and, in the same file, the end of a task's
+Claude Code task sessions: their stop, the copy of their transcripts and their removal, which
+Tasks' close calls; and the pi task session (`pi_session.py`),
 which assembles the pi boundary's policy and starts each round's supervisor: the session starter's
 own detached process that runs the round, checks its report and records its outcome. The boundary
 files themselves, the task-session write hook and the pi boundary extension with its path decisions,
@@ -408,7 +448,7 @@ the session's own claim.
 
 Two Modules call this one, both from level 1's side: the Main session's guidance and pi run view
 start, answer and follow task sessions, and Tasks dispatches `concorde task session` here after its
-own checks. For a pi task session neither relies on anything but the recorded outcome of each start
-and round. A Claude Code task session records only its start: the main agent learns what it did
-from its SendMessage report, and finds one that ended without a message with `claude agents` and
-`claude logs`.
+own checks and, when it closes a task, has its task sessions ended here. For a pi task session neither relies on anything but the recorded outcome of each start
+and round. A Claude Code task session records only its start, and its transcript once its task ends: the
+main agent learns what it did from its SendMessage report, and finds one that ended without a
+message with `claude agents` and `claude logs` while its task is open.

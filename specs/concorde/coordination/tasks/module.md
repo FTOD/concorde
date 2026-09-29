@@ -207,9 +207,13 @@ binding, and moves the task's whole folder to the history, `.concorde/history/<t
 the branch; no run of the task's workspace can start there any more, and a closed or failed task
 stays so whatever happens afterwards. A task closes only once it has really ended: the close holds
 the task's workspace lock, so no run of it is running and none can start, while it moves the
-folder, and a close with `--completed` or `--failed` first stops the runs of the workspace that
-still run and a running round of the task's pi task session, then waits for the lock. The history
-is never changed afterwards; [Tracing](../../tracing/module.md)'s retention may remove it whole. A
+folder, and a close with `--completed` or `--failed` first stops the task's Claude Code task
+sessions, the runs of the workspace that still run and a running round of the task's pi task
+session, then waits for the lock. Just before the folder moves, [Task
+sessions](../task-session/module.md#ending-claude-sessions) copies each Claude Code task session's
+transcript into the session's node, and once the task is closed it removes those sessions from
+Claude's session list; what it could not keep or remove is named in the close's `warnings`, and
+never fails the close. The history is never changed afterwards; [Tracing](../../tracing/module.md)'s retention may remove it whole. A
 task name used again after its branch was deleted gets a new history key, so no closed task
 replaces another. A
 worktree with checked-out submodules, such as the vendored references, is removed too: its
@@ -526,7 +530,10 @@ validated.
   [task sessions](../../glossary.json#concept.task-session) when `concorde task session`
   hands it a task that passed Tasks' checks. Tasks relies on it recording sessions and
   [rounds](../../glossary.json#concept.session-round) only through the record updates,
-  and prints its refusals in the shape of every `concorde task` refusal.
+  and prints its refusals in the shape of every `concorde task` refusal. A close relies on it to
+  stop the task's Claude Code task sessions before a close without a merge, to keep their
+  transcripts in their nodes before the folder moves and to remove them from Claude's session
+  list afterwards, returning a warning, never a refusal, for what it could not keep or remove.
 - <a id="uses-tracing"></a>**Tracing** lays out the task's folder, its history and the locks, and
   gives the task, each session and round, each merge attempt and its checks the shape of a
   [trace node](../../glossary.json#concept.trace-node). Tasks writes those nodes through Tracing's

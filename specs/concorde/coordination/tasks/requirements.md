@@ -147,8 +147,8 @@ one task runs one thing at a time by Execution's
 ### req.tasks.close-when-ended — A task moves to the history only once it has ended
 
 Tasks SHALL move a closed task's folder to the history only while it holds the task's workspace
-lock, after it stopped, for a close without a merge, every run of the workspace still running and a
-running round of the task's pi task session.
+lock, after it stopped, for a close without a merge, every Claude Code task session of the task,
+every run of the workspace still running and a running round of the task's pi task session.
 
 A run of the task therefore never writes into a folder that has moved: none runs while the close
 holds the lock, and none starts after it, since its binding names a folder that no longer exists.

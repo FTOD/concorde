@@ -491,6 +491,7 @@ def _checked_close(
             "merged",
             again=f"`concorde task merge {task_id} --resume`",
             before_move=lambda: attempt.end("ok", "merged"),
+            warnings=warnings,
         )
     except TaskError as error:
         if error.code == "decision_log_failed":
@@ -518,7 +519,7 @@ def _checked_close(
                 / folder.relative_to(store.task_folder(primary, task_id))
             ).as_posix(),
         },
-        "warnings": warnings,
+        "warnings": warnings + store.end_sessions(primary, closed),
     }
 
 
