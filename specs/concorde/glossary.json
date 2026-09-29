@@ -118,7 +118,7 @@
       "id": "concept.decision-log",
       "title": "Decision log",
       "owner": "module.tasks",
-      "definition": "The Markdown file `decisions.md` in a task's folder in which the session working on the task writes the choices it made without the developer, and to which escalations are appended.",
+      "definition": "The Markdown file `decisions.md` in a task's folder in which the session working on the task writes the choices it made without the developer, and to which escalations are appended; when the task ends it is committed to the primary branch as `.concorde/decisions/<history key>.md`.",
       "explanation": "specs/concorde/coordination/tasks/module.md#concept.decision-log",
       "relates": [
         {
@@ -152,14 +152,8 @@
       "id": "concept.delivery-commit",
       "title": "Delivery commit",
       "owner": "module.delivery",
-      "definition": "The commit Delivery creates on top of a workspace's branch it validated, holding the evidence bundle, the metadata its confirmations changed and every change not yet committed, and naming the workspace, the bundle and its readiness run in its trailers.",
-      "explanation": "specs/concorde/execution/commands/delivery/module.md#concept.delivery-commit",
-      "relates": [
-        {
-          "verb": "carries",
-          "target": "concept.evidence-bundle"
-        }
-      ]
+      "definition": "The commit Delivery creates on top of a workspace's branch it validated, holding the metadata its confirmations changed and every change not yet committed, and marked as the delivery of the workspace by its subject `concorde: deliver <workspace>` alone.",
+      "explanation": "specs/concorde/execution/commands/delivery/module.md#concept.delivery-commit"
     },
     {
       "id": "concept.deny-rules",
@@ -202,13 +196,6 @@
       "owner": "module.concorde",
       "definition": "A recorded check or review result, bound to the exact inputs it examined.",
       "explanation": "specs/concorde/core-concepts.md#concept.evidence"
-    },
-    {
-      "id": "concept.evidence-bundle",
-      "title": "Evidence bundle",
-      "owner": "module.delivery",
-      "definition": "The JSON file committed with a delivery that records the workspace, the readiness the delivery decided and the runs of the workspace that led to it.",
-      "explanation": "specs/concorde/execution/commands/delivery/module.md#concept.evidence-bundle"
     },
     {
       "id": "concept.execution-command",
@@ -256,7 +243,7 @@
       "id": "concept.history",
       "title": "History",
       "owner": "module.tracing",
-      "definition": "The folder `.concorde/history/` to which closing a task moves the task's whole folder, record, decision log and trace, where it is never changed and is only removed whole by retention.",
+      "definition": "The folder `.concorde/history/` to which closing a task moves the task's whole folder, record, decision log and trace, where it is never changed and retention only removes its conversation records or the whole folder.",
       "explanation": "specs/concorde/tracing/module.md#concept.history",
       "contrasts": [
         {

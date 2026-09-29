@@ -141,13 +141,21 @@ def lock_file(concorde: Path, kind: str, name: str | None = None) -> Path:
     return base / folder / f"{name}.lock"
 
 
-def history_key(concorde: Path, task: str) -> str:
-    """The history key a closing task gets: its name, or ``<task>.<n>`` from 2 when taken."""
+def history_key(concorde: Path, task: str, taken=None) -> str:
+    """The history key a closing task gets: its name, or ``<task>.<n>`` from 2 when taken.
+
+    A key is taken when the history holds a folder of that name or ``taken(key)`` says so, as
+    for a key whose decision log is already committed.
+    """
     history = history_folder(concorde)
-    if not (history / task).exists():
+
+    def used(key: str) -> bool:
+        return (history / key).exists() or bool(taken and taken(key))
+
+    if not used(task):
         return task
     number = 2
-    while (history / f"{task}.{number}").exists():
+    while used(f"{task}.{number}"):
         number += 1
     return f"{task}.{number}"
 

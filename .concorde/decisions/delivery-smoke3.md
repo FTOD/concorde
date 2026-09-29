@@ -1,0 +1,3 @@
+# Decision log: delivery-smoke3
+
+Goal: Smoke test of a task session delivering, not a real change; it will be abandoned. Do exactly this: (1) prepare the worktree as AGENTS.md says for a task session, naming the network hosts each command needs; the main agent already initialized the reference submodules; (2) append one line '<!-- task-session delivery smoke -->' at the end of docs/README.md; (3) run python3 scripts/concorde.py run delivery --task delivery-smoke3 from the worktree; (4) send the main agent one message with each step's exact outcome, including the delivery result's status and summary or its full error chain, then stop. Do not escalate.

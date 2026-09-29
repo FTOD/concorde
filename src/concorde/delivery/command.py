@@ -1,28 +1,26 @@
 """``concorde delivery``: validate a whole workspace, then commit it (see the Delivery Spec).
 
 An execution command of the bound workspace; it launches no worker. The delivery commits on the
-bound branch are its only record: their subject and trailers name the workspace, the evidence
-bundle and the run that decided the readiness.
+bound branch are its only record: their subject names the workspace.
 
 1. Require that the workspace's head is its bound branch.
 2. Stop ``ok`` when the head already is a delivery commit of the workspace and nothing waits,
-   after verifying it against its bundle (``failed``, ``commit_unverified``, when it does not).
+   after verifying that it has exactly one parent (``failed``, ``commit_unverified``, when it
+   has not).
 3. Require new work: a commit since the base, or an uncommitted change.
 4. Decide the readiness of the whole workspace with Validation's steps, as task-validation does.
 5. Require that readiness to be ready, and every scenario changed with code to be verified.
 6. Record the index with Git (its tree, intent-to-add paths and skip-worktree and
    assume-unchanged flags), then apply the readiness's confirmations through Validation.
-7. Write the evidence bundle in the workspace.
-8. Stage everything, record the staged tree and create the delivery commit; when writing the
-   bundle, staging or the commit fails, undo steps 6 and 7 and give the recorded index back.
-9. Verify the new head, its tree (the staged one, which a commit hook may have changed), its
+7. Stage everything, record the staged tree and create the delivery commit; when staging or the
+   commit fails, undo step 6 and give the recorded index back.
+8. Verify the new head, its tree (the staged one, which a commit hook may have changed), its
    parent and a clean worktree.
-10. Return the delivery commit as the output.
+9. Return the delivery commit as the output.
 """
 
 from __future__ import annotations
 
-import json
 import re
 import subprocess
 from dataclasses import dataclass, field
@@ -36,7 +34,6 @@ from ..execution.context import (
     component,
     evidence,
 )
-from ..execution.runs import workspace_runs
 from ..validation import confirmations as confirming
 from ..validation.command import (
     READINESS_STEPS,
@@ -51,10 +48,8 @@ from ..validation.measurement import (
     head_commit,
     special_paths,
 )
-from .bundle import (
+from .commits import (
     OUTPUT_SCHEMA,
-    build_bundle,
-    bundle_path,
     commit_message,
     delivery_commits,
     delivery_mismatches,
@@ -112,9 +107,7 @@ class State:
     readiness: dict = field(default_factory=dict)
     backups: dict[str, bytes] = field(default_factory=dict)
     index: IndexRecord | None = None
-    bundle: str = ""
     sequence: int = 0
-    created: list[Path] = field(default_factory=list)
     commit: str = ""
     # ``git write-tree`` of the index once everything was staged, which the commit must hold.
     staged_tree: str = ""
@@ -328,24 +321,22 @@ def delivered(ctx: RunContext):
         return _unverified(
             ctx,
             f"The head {state.head} looks like a delivery commit of {ctx.workspace_name} but "
-            "does not verify against its bundle (commit_unverified); nothing was committed.",
-            f"the head {state.head} of {ctx.branch} has the subject and trailers of a delivery "
-            f"commit of workspace {ctx.workspace_name} but does not verify against its bundle "
-            f"{last['bundle']}: " + "; ".join(problems),
+            "does not verify (commit_unverified); nothing was committed.",
+            f"the head {state.head} of {ctx.branch} has the subject of a delivery commit of "
+            f"workspace {ctx.workspace_name} but does not verify: "
+            + "; ".join(problems),
             problems,
             state.head,
         )
     ctx.output = {
         "commit": state.head,
         "branch": ctx.branch,
-        "bundle": last["bundle"],
         "sequence": len(previous),
         "confirmed": [],
         "recovered": True,
     }
-    # An earlier run created the commit and the bundle; this run's node leads to them as found.
+    # An earlier run created the commit; this run's node leads to it as found.
     ctx.references.append(("found_commit", state.head))
-    ctx.references.append(("found_bundle", f"{state.head}:{last['bundle']}"))
     return Stop(
         "ok",
         f"{ctx.workspace_name} is already delivered as {state.head[:12]} on {ctx.branch}.",
@@ -353,7 +344,7 @@ def delivered(ctx: RunContext):
             evidence(
                 "commit",
                 state.head,
-                "the head is a delivery commit that verifies against its bundle; nothing waits",
+                "the head is a delivery commit with one parent; nothing waits",
             )
         ],
     )
@@ -602,53 +593,8 @@ def _index_unrecorded(ctx: RunContext, cause: dict) -> Stop:
     )
 
 
-def write_bundle(ctx: RunContext):
-    state = _state(ctx)
-    previous = _previous(ctx)
-    state.sequence = len(previous) + 1
-    state.bundle = bundle_path(ctx.workspace_name, state.sequence)
-    target = ctx.worktree / state.bundle
-    if target.exists():
-        undone = undo(ctx)
-        return _failed(
-            ctx,
-            "bundle_exists",
-            f"The evidence bundle {state.bundle} already exists; nothing was committed and "
-            f"{undone}.",
-            [evidence("git", state.bundle, "bundle path taken")],
-            f"the evidence bundle {state.bundle} already exists in {ctx.worktree} although "
-            f"the branch holds {state.sequence - 1} delivery commit(s) of the workspace; "
-            f"nothing was committed and {undone}",
-            ["inspect the branch and the evidence directory"],
-            reason="decision",
-            explanation="delivery never overwrites evidence; reconciling the branch and its "
-            "evidence is the task level's decision",
-            causes=undone.causes,
-        )
-    since = previous[-1]["readiness_run"] if previous else None
-    value = build_bundle(
-        ctx.workspace,
-        ctx.store,
-        workspace_runs(ctx.store, ctx.workspace_name),
-        since=since,
-        run_id=ctx.run_id,
-        sequence=state.sequence,
-        parent=state.head,
-        readiness_run=state.readiness_run,
-        readiness=state.readiness,
-        confirmations=state.readiness["confirmations"],
-    )
-    for directory in reversed(target.parents):
-        if directory.is_relative_to(ctx.worktree) and not directory.exists():
-            directory.mkdir()
-            state.created.append(directory)
-    target.write_text(json.dumps(value, indent=2) + "\n")
-    state.created.append(target)
-    return Continue()
-
-
 def undo(ctx: RunContext) -> Undone:
-    """Restore the confirmed metadata, remove the bundle and give the recorded index back.
+    """Restore the confirmed metadata and give the recorded index back.
 
     Every part is attempted even when another fails; each failure is named with its cause, so
     the caller's result says exactly what is not as the readiness examined it.
@@ -672,29 +618,6 @@ def undo(ctx: RunContext) -> Undone:
                     ),
                 )
             )
-    for path in reversed(state.created):
-        try:
-            if path.is_dir():
-                path.rmdir()
-            else:
-                path.unlink(missing_ok=True)
-        except OSError as error:
-            if path.is_dir():
-                # An empty directory is no content of the workspace; Git does not see it.
-                continue
-            undone.failed.append(
-                (
-                    f"the bundle {path.relative_to(ctx.worktree)}",
-                    component(
-                        "Delivery undo",
-                        "bundle_unremoved",
-                        f"the evidence bundle {path} could not be removed: "
-                        f"{type(error).__name__}: {error}",
-                        "environment",
-                        "the file system refused the removal",
-                    ),
-                )
-            )
     if state.index is not None:
         undone.failed.extend(restore_index(ctx.worktree, state.index))
     return undone
@@ -702,6 +625,7 @@ def undo(ctx: RunContext) -> Undone:
 
 def commit(ctx: RunContext):
     state = _state(ctx)
+    state.sequence = len(_previous(ctx)) + 1
     found = []
     # New paths Git cannot version, such as a sandbox's /dev/null mounts, are no content of the
     # workspace and would make git add refuse the whole delivery.
@@ -716,8 +640,6 @@ def commit(ctx: RunContext):
         return failure
     excluded = [f":(exclude,literal){path}" for path in special]
     staged = _git(ctx.worktree, "add", "-A", "--", ".", *excluded)
-    if staged.returncode == 0:
-        staged = _git(ctx.worktree, "add", "-f", "--", state.bundle)
     if staged.returncode != 0:
         undone = undo(ctx)
         return _failed(
@@ -746,9 +668,9 @@ def commit(ctx: RunContext):
             causes=[_git_link("write-tree", tree), *undone.causes],
         )
     state.staged_tree = tree.stdout.strip()
-    message = commit_message(ctx.workspace, state.bundle, state.readiness_run)
+    message = commit_message(ctx.workspace)
     result = subprocess.run(
-        ["git", "commit", "-q", "--cleanup=verbatim", "-F", "-"],
+        ["git", "commit", "-q", "--allow-empty", "--cleanup=verbatim", "-F", "-"],
         cwd=ctx.worktree,
         input=message,
         capture_output=True,
@@ -772,9 +694,8 @@ def commit(ctx: RunContext):
             causes=[_git_link("commit", result), *undone.causes],
         )
     state.commit = head_commit(ctx.worktree)
-    # The run's trace node leads to what was committed; the bundle names the runs by identity.
+    # The run's trace node leads to what was committed.
     ctx.references.append(("commit", state.commit))
-    ctx.references.append(("bundle", f"{state.commit}:{state.bundle}"))
     return Continue(evidence=[evidence("commit", state.commit, f"parent {state.head}")])
 
 
@@ -850,15 +771,13 @@ def output(ctx: RunContext):
     ctx.output = {
         "commit": state.commit,
         "branch": ctx.branch,
-        "bundle": state.bundle,
         "sequence": state.sequence,
         "confirmed": [item["entry"] for item in state.readiness["confirmations"]],
         "recovered": False,
     }
     return Stop(
         "ok",
-        f"Delivered {ctx.workspace_name} as {state.commit[:12]} on {ctx.branch} "
-        f"with {state.bundle}.",
+        f"Delivered {ctx.workspace_name} as {state.commit[:12]} on {ctx.branch}.",
     )
 
 
@@ -881,7 +800,6 @@ DELIVERY = command(
         decide,
         require_verified_scenarios,
         apply_confirmations,
-        write_bundle,
         commit,
         verify,
         output,

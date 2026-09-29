@@ -11,7 +11,7 @@ reports with. The [requirements](requirements.md) state the obligations; the
 ```concorde-contract
 {
   "id": "contract.tracing.node",
-  "version": 2,
+  "version": 3,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -310,9 +310,7 @@ reports with. The [requirements](requirements.md) state the obligations; the
               "input",
               "cites",
               "commit",
-              "bundle",
-              "found_commit",
-              "found_bundle"
+              "found_commit"
             ]
           },
           "target": {
@@ -343,7 +341,7 @@ reports with. The [requirements](requirements.md) state the obligations; the
       }
     }
   },
-  "semantics": "The record trace.json of one trace node, in the node's folder. id identifies the node: a run or worker run identity, which is unique in the project, or a name unique among the nodes of its kind under the same parent (a task name, a session identity, a round or merge number, a step key, a check identity). kind is one of the kinds of the node kinds table. started_at and ended_at are RFC 3339 UTC times; ended_at is null while the node runs and for a node whose end its producer never observes. status is running until the final write, then ok, blocked or failed, or unknown for a node whose end its producer never observes; outcome is the producer's finer, snake_case account of the end (such as merged, completed, passed, timed_out, cancelled), null while running. usage is what the node itself consumed, never the sum of its children: tokens read (tokens_in), written (tokens_out), read from and written to the prompt cache, the cost in US dollars as the agent program reported it, the agent turns and the node's wall-clock duration; a field is null when the node consumed none of it or its producer cannot observe it. error is the node's error link, following contract.tracing.error, when the node ended blocked or failed and its producer reports that end with a link, such as a run or a worker run; it is null for every other node, and for a node whose failure its parent reports, such as a worker round whose checks failed. metadata holds only the dimensions of the metadata table that the node's kind provides and only facts Concorde observed itself, never a statement taken from a worker result. artifacts lists files of the node's folder, each by a stable id, its path relative to the folder and its digest at the final write (null while the node runs or when the file is still growing). references name nodes of the same level and commits: input (the identity of a run whose output this run admitted), cites (the identity of a run this node cites as the source of what it decided), commit (a Git commit this node created), bundle (an evidence bundle this node committed, as <commit>:<path>), found_commit (a Git commit an earlier node created, which this node found and reports as its outcome instead of creating one) and found_bundle (an evidence bundle an earlier node committed, which this node found with that commit, as <commit>:<path>). commit and bundle are only ever what the node itself created; a node that reports existing work names it with found_commit and found_bundle, never with commit or bundle. content is the producer's own record, a typed value of the type the node kinds table names, checked against the type its producer registered; null when the producer records nothing of its own. Children are not listed: they are the trace nodes in the folders below this one. No field by which the node refers to its files or to other nodes holds an absolute path; an error link or a worker's claim the node keeps is kept as it was reported. A behaviour or field change increments the version.",
+  "semantics": "The record trace.json of one trace node, in the node's folder. id identifies the node: a run or worker run identity, which is unique in the project, or a name unique among the nodes of its kind under the same parent (a task name, a session identity, a round or merge number, a step key, a check identity). kind is one of the kinds of the node kinds table. started_at and ended_at are RFC 3339 UTC times; ended_at is null while the node runs and for a node whose end its producer never observes. status is running until the final write, then ok, blocked or failed, or unknown for a node whose end its producer never observes; outcome is the producer's finer, snake_case account of the end (such as merged, completed, passed, timed_out, cancelled), null while running. usage is what the node itself consumed, never the sum of its children: tokens read (tokens_in), written (tokens_out), read from and written to the prompt cache, the cost in US dollars as the agent program reported it, the agent turns and the node's wall-clock duration; a field is null when the node consumed none of it or its producer cannot observe it. error is the node's error link, following contract.tracing.error, when the node ended blocked or failed and its producer reports that end with a link, such as a run or a worker run; it is null for every other node, and for a node whose failure its parent reports, such as a worker round whose checks failed. metadata holds only the dimensions of the metadata table that the node's kind provides and only facts Concorde observed itself, never a statement taken from a worker result. artifacts lists files of the node's folder, each by a stable id, its path relative to the folder and its digest at the final write (null while the node runs or when the file is still growing); a conversation record listed there may be missing once retention removed it from the history. references name nodes of the same level and commits: input (the identity of a run whose output this run admitted), cites (the identity of a run this node cites as the source of what it decided), commit (a Git commit this node created) and found_commit (a Git commit an earlier node created, which this node found and reports as its outcome instead of creating one). commit is only ever what the node itself created; a node that reports existing work names it with found_commit, never with commit. content is the producer's own record, a typed value of the type the node kinds table names, checked against the type its producer registered; null when the producer records nothing of its own. Children are not listed: they are the trace nodes in the folders below this one. No field by which the node refers to its files or to other nodes holds an absolute path; an error link or a worker's claim the node keeps is kept as it was reported. A behaviour or field change increments the version.",
   "example": {
     "schema_version": 1,
     "id": "r-20260927T101500-implement-3f2a9c1b",
@@ -481,7 +479,7 @@ ignores `tasks/`, `history/`, `unbound/` and `locks/`.
 ```text
 .concorde/
 ├─ tracing.json                  the Tracing configuration (tracked, optional)
-├─ evidence/<workspace>/<n>.json evidence bundles, committed with their delivery
+├─ decisions/<key>.md            each ended task's decision log, committed by Tasks (tracked)
 ├─ locks/                        every lock and nothing else
 ├─ tasks/<task>/                 a current task
 │  ├─ task.json                  the task record
@@ -505,7 +503,12 @@ or a traceback), `checks/<check>/` and `workers/<worker run>/`. A worker run's f
 holds `trace.json` and `output.log`.
 
 The history key of a closed task is its name, or `<task>.<n>` with the smallest `n` from 2 that is
-free when the history already holds a task of that name, so no closed task ever replaces another.
+free when that name is taken: when the history already holds a task of that name or a
+[decision log](../glossary.json#concept.decision-log) `decisions/<name>.md` exists, so no closed task ever replaces another, in the history or in Git.
+
+The **conversation records** of a task are the transcripts of its task sessions and worker runs and
+their event streams: every file `transcript.jsonl` or `events.jsonl` and every folder `transcript/`
+in its folder, at any depth.
 
 ## Locks
 
@@ -561,7 +564,7 @@ run lies under `locks/` of the `.concorde` its binding names, that of an unbound
 ```concorde-contract
 {
   "id": "contract.tracing.configuration",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -602,25 +605,38 @@ run lies under `locks/` of the `.concorde` its binding names, that of an unbound
                 "minimum": 0
               }
             ]
+          },
+          "conversation_days": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "integer",
+                "minimum": 0
+              }
+            ]
           }
         }
       }
     }
   },
-  "semantics": "The optional, Git-tracked file .concorde/tracing.json of the primary worktree. retention.unbound_days is how many days after it ended an unbound run is kept; retention.history_days how many days after its close a task stays in the history; null keeps them without removal. Without the file, unbound runs are kept 7 days and the history without removal. A malformed file refuses the command that reads it with config_invalid, naming the field. A behaviour or field change increments the version.",
+  "semantics": "The optional, Git-tracked file .concorde/tracing.json of the primary worktree. retention.unbound_days is how many days after it ended an unbound run is kept; retention.history_days how many days after its close a task stays in the history; retention.conversation_days, which may be left out, how many days after its close a task in the history keeps its conversation records (the layout names them), everything else of it staying as long as history_days allows; null keeps them without removal. Without the file, or for a period it leaves out, unbound runs are kept 7 days, the history without removal and its conversation records 30 days. A malformed file refuses the command that reads it with config_invalid, naming the field. A behaviour or field change increments the version.",
   "example": {
     "schema_version": 1,
     "retention": {
       "unbound_days": 7,
-      "history_days": 90
+      "history_days": 90,
+      "conversation_days": 30
     }
   }
 }
 ```
 
 Retention removes only what has ended: an unbound run whose run lock is not held and whose node has
-an end, and a history folder whose task node has one. It runs when `concorde trace prune` is run and
-at the start of every `task open` and `task close`, and never removes a current task.
+an end, a history folder whose task node has one, and the conversation records of such a history
+folder. It runs when `concorde trace prune` is run and at the start of every `task open` and
+`task close`, and never removes anything of a current task.
 
 ## Reading traces
 
@@ -640,8 +656,8 @@ concorde trace prune [--dry-run]
   covers the whole subtree.
 - `list` lists the current tasks, with `--history` also the history and with `--unbound` also the
   unbound runs, each as a node without its children.
-- `prune` removes what the retention allows and prints what it removed; `--dry-run` prints it
-  without removing anything.
+- `prune` removes what the retention allows and prints the paths it removed, folders and
+  conversation records alike; `--dry-run` prints them without removing anything.
 - Output is one JSON value as the view contract defines; `--format tree` prints the same as an
   indented text tree instead. Exit status 0 on success, 1 for a refusal, printed as
   `{"error": <link>}`, and 2 for a malformed command line.

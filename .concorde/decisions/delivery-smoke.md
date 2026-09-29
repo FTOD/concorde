@@ -1,0 +1,9 @@
+# Decision log: delivery-smoke
+
+Goal: Smoke test of a task session delivering, not a real change; it will be abandoned. Do exactly this: (1) prepare the worktree as AGENTS.md says, naming the network hosts each command needs; (2) append one line '<!-- task-session delivery smoke -->' at the end of docs/README.md; (3) run python3 scripts/concorde.py run delivery --task delivery-smoke from the worktree; (4) send the main agent one message with each step's exact outcome, including the delivery result's status and summary or its full error chain, then stop. Do not escalate.
+
+## 2026-09-25 task session
+
+- Preparation: `uv sync --locked --group dev` (hosts pypi.org, files.pythonhosted.org) ok; `npm --prefix docsite ci` (registry.npmjs.org) ok; `python3 scripts/concorde.py build` ok (11 outputs). `scripts/development/init-references.py` (github.com hosts) failed: `git submodule init -- references/pi` exit 128, "could not lock config file /home/zhenyu/concorde/.git/config: File exists"; `.git/config.lock` is a /dev/null character device the session sandbox mounts, so the shared Git config is not writable from a task session. Not worked around (sandbox boundary); submodules left unchecked-out.
+- Appended `<!-- task-session delivery smoke -->` to docs/README.md (uncommitted, as the goal says to hand it to delivery).
+- `run delivery --task delivery-smoke`: status `blocked`, run r-20260924T181331-delivery-33774a2a, code `not_ready`, 2 blocking findings: (1) CHK.external.exists — references/pi-packages/packages/pi-permission-system/ missing (consequence of the submodule failure above); (2) check.concorde.tests exit 1 — test_install_and_initialize_a_new_project could not download d2 from github.com (name resolution failed: the delivery command was run without network hosts). Per the goal, not repaired, not re-run, not escalated.

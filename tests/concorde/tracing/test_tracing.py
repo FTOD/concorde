@@ -166,16 +166,13 @@ class TracingTests(unittest.TestCase):
     @verifies("scenario.tracing.created-or-found")
     def test_a_node_tells_what_it_created_from_what_it_found(self):
         commit = "4be1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9"
-        bundle = f"{commit}:.concorde/evidence/retry/1.json"
         created = Node(self.root / "created", "r-1", "run")
         created.start()
         created.refer("commit", commit)
-        created.refer("bundle", bundle)
         created.finish("ok", outcome="ok")
         found = Node(self.root / "found", "r-2", "run")
         found.start()
         found.refer("found_commit", commit)
-        found.refer("found_bundle", bundle)
         found.finish("ok", outcome="ok")
         records = [trace.read(self.root / name) for name in ("created", "found")]
         for record in records:
@@ -185,15 +182,13 @@ class TracingTests(unittest.TestCase):
                 [(item["relation"], item["target"]) for item in record["references"]]
                 for record in records
             ],
-            [
-                [("commit", commit), ("bundle", bundle)],
-                [("found_commit", commit), ("found_bundle", bundle)],
-            ],
+            [[("commit", commit)], [("found_commit", commit)]],
         )
-        record = ended(self.root / "other", "r-3", "run")
-        record["references"] = [{"relation": "reported_commit", "target": commit}]
-        with self.assertRaises(TraceError):
-            trace.write(self.root / "other", record)
+        for relation in ("reported_commit", "bundle"):
+            record = ended(self.root / "other", "r-3", "run")
+            record["references"] = [{"relation": relation, "target": commit}]
+            with self.assertRaises(TraceError):
+                trace.write(self.root / "other", record)
 
     @verifies("scenario.tracing.show-task")
     def test_a_tasks_trace_rolls_its_usage_up(self):
@@ -321,12 +316,37 @@ class TracingTests(unittest.TestCase):
         ended(running, running.name, "run", status="running", ended_at=None)
         history = layout.history_folder(self.concorde) / "done"
         ended(history, "done", "task", ended_at=at(timedelta(days=365)))
+        conversations = [
+            history / "sessions" / "s1" / "transcript.jsonl",
+            history / "sessions" / "s1" / "transcript" / "subagents" / "a.jsonl",
+            history / "workspace" / "runs" / "r-1" / "workers" / "w-1" / "transcript.jsonl",
+            history / "sessions" / "s2" / "rounds" / "1" / "events.jsonl",
+        ]
+        for path in conversations:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("{}\n")
+        (history / "decisions.md").write_text("# Decision log: done\n")
+        recent = layout.history_folder(self.concorde) / "recent"
+        ended(recent, "recent", "task", ended_at=at(timedelta(days=2)))
+        (recent / "sessions" / "s3").mkdir(parents=True)
+        (recent / "sessions" / "s3" / "transcript.jsonl").write_text("{}\n")
+        removed = [
+            str(old),
+            str(history / "sessions" / "s1" / "transcript"),
+            *(str(conversations[index]) for index in (0, 3, 2)),
+        ]
         dry = retention.prune(self.concorde, dry_run=True, moment=now)
-        self.assertEqual([str(old)], dry)
-        self.assertTrue(old.exists())
-        self.assertEqual([str(old)], retention.prune(self.concorde, moment=now))
+        self.assertEqual(sorted(removed), sorted(dry))
+        self.assertTrue(old.exists() and conversations[0].exists())
+        self.assertEqual(
+            sorted(removed), sorted(retention.prune(self.concorde, moment=now))
+        )
         self.assertFalse(old.exists())
+        self.assertFalse(any(path.exists() for path in conversations))
         self.assertTrue(fresh.exists() and running.exists() and history.exists())
+        self.assertTrue((history / "decisions.md").exists())
+        self.assertTrue((history / layout.TRACE).exists())
+        self.assertTrue((recent / "sessions" / "s3" / "transcript.jsonl").exists())
         (self.concorde / "tracing.json").write_text(
             json.dumps(
                 {

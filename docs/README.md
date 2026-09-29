@@ -71,8 +71,8 @@ questions itself and escalates only decisions with major impact.
 3. **Implement and test.** Run `implement` and `test`; the host audits every write and runs the
    configured checks itself.
 4. **Validate, deliver, merge.** `validate` previews readiness, `delivery` validates the whole task
-   again and commits it with its evidence, and `concorde task merge` merges the branch and closes
-   the task.
+   again and commits it, and `concorde task merge` merges the branch, with the task's decision log,
+   and closes the task.
 
 A question that changes nothing, such as how a Module works today, needs no task: `understand`,
 `spec_review` and `code_review` also run from the primary worktree without one.
@@ -126,7 +126,7 @@ print one JSON result. Run them inside a task's worktree, whose workspace bindin
 | `spec_review`     | Review findings and a verdict on the bound Modules' Specs.                                    |
 | `code_review`     | Review findings and a verdict on the task's code changes.                                     |
 | `task-validation` | (command) Readiness: structural validation and the configured checks of the changed Modules.  |
-| `delivery`        | (command) A commit of the task's change with its evidence bundle on the task branch.          |
+| `delivery`        | (command) The validated commit of the task's change on the task branch.                       |
 
 ## Explore
 

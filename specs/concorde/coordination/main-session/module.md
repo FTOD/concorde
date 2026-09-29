@@ -73,7 +73,8 @@ Concorde project's primary worktree that it is the main agent, and gives it a wo
 - **Keep the decision log.** Record every non-`ok` result of the task's runs and every
   unsupervised choice, with its reason, in the task's
   [decision log](../../glossary.json#concept.decision-log), including
-  the decisions and problems of a workflow's report, which nothing else writes there.
+  the decisions and problems of a workflow's report, which nothing else writes there, knowing that
+  the log is committed to the primary branch when the task ends and so outlives the local history.
 - **Merge delivered work.** Merge, without asking the developer's authorization, a task branch
   that `delivery` committed, from the primary worktree with `concorde task merge`, never with
   `git merge`: it holds the [merge lock](../../glossary.json#concept.merge-lock) so merges of
@@ -88,7 +89,8 @@ Concorde project's primary worktree that it is the main agent, and gives it a wo
   `merge_diverged` primary branch to the developer. Act on every warning of `task merge` and
   `task close`: each names a decision log nobody wrote in, or a Claude Code task session whose
   transcript the close could not keep or that it could not remove, with the command that removes
-  it by hand.
+  it by hand; and on a close's `decision_log_uncommitted`, fix what Git refused in the primary
+  worktree and run the same close again.
 - **Report.** Close each piece of work with a short summary for the developer: what was merged,
   what was decided on the developer's behalf, and what is still open.
 - **Use the project's terms.** Every session of the project starts with all the terms of its

@@ -34,8 +34,6 @@
         "meaning": "#uses-delivery",
         "relies_on": [
           "concept.delivery-commit",
-          "concept.evidence-bundle",
-          "contract.delivery.evidence-bundle",
           "req.delivery.recovered-verified"
         ]
       },

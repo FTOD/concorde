@@ -43,21 +43,22 @@ and the command are defined in the [contracts](contracts.md).
 
 ### scenario.tracing.created-or-found — A node tells what it created from what it found
 
-- GIVEN a run that created a commit with an [evidence bundle](../glossary.json#concept.evidence-bundle), and a later run that found that commit at the branch head and reported it instead of creating one
+- GIVEN a run that created a commit, and a later run that found that commit at the branch head and reported it instead of creating one
 - WHEN each run's node records its references
-- THEN the first node references the commit with `commit` and the bundle with `bundle`
-- AND the later node references the same commit with `found_commit` and the same bundle with `found_bundle`, and neither with `commit` nor `bundle`
+- THEN the first node references the commit with `commit`
+- AND the later node references the same commit with `found_commit`, and not with `commit`
 - AND both nodes satisfy the node contract, which refuses a reference of any other relation
 
 ## Removing
 
 ### scenario.tracing.prune — Retention removes only what has ended long enough ago
 
-- GIVEN an unbound run that ended 8 days ago, one that ended yesterday, one still running and a history folder closed a year ago, without a Tracing configuration
+- GIVEN an unbound run that ended 8 days ago, one that ended yesterday, one still running, a history folder closed a year ago whose [task sessions](../glossary.json#concept.task-session) and worker runs kept their transcripts and event streams, and one closed two days ago with a transcript, without a Tracing configuration
 - WHEN `concorde trace prune` runs
-- THEN it removes only the unbound run that ended 8 days ago and prints it
+- THEN it removes the unbound run that ended 8 days ago and the conversation records of the folder closed a year ago, and prints each
+- AND the year-old folder keeps its [decision log](../glossary.json#concept.decision-log) and [trace nodes](../glossary.json#concept.trace-node), and the folder closed two days ago keeps its transcript
 - AND with `--dry-run` it prints the same and removes nothing
-- AND with a configuration whose `history_days` is 30 it also removes the history folder
+- AND with a configuration whose `history_days` is 30 it also removes the year-old history folder
 
 ## Locks
 

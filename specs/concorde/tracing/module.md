@@ -14,7 +14,8 @@ Tracing does not produce the information. Each [Module](../glossary.json#concept
 Workflows, Execution, Workers and Check execution, still decides and writes the content of its own
 records; Tracing gives each of them the place and the shape. It keeps no state a command acts on:
 a [task record](../glossary.json#concept.task-record) or a lock is not a trace, and the
-[evidence bundle](../glossary.json#concept.evidence-bundle) a [delivery commits](../glossary.json#concept.delivery-commit) stays with the code.
+[decision log](../glossary.json#concept.decision-log) Tasks commits to Git when a task ends is the
+task's own record, which stays with the code whatever retention removes.
 Spec tooling reports with its own error record and never uses the error chain.
 
 ## Usage
@@ -48,7 +49,7 @@ task: "task\n.concorde/tasks/retry/" {
 A level above another holds it: a node's children lie in folders inside its own folder, placed there
 by the parent, which gives the child its location before the child starts, so no node is ever
 recorded without its parent. Nodes at the same level may refer to each other instead: a run names
-the earlier runs it admitted as inputs, a delivery run the evidence bundle it committed. The runs a
+the earlier runs it admitted as inputs, a delivery run the [delivery commit](../glossary.json#concept.delivery-commit) it created. The runs a
 [workflow step](../glossary.json#concept.workflow-step) starts lie inside that step; the runs a task session or the [main agent](../glossary.json#concept.main-agent) starts directly
 lie in the workspace beside the workflow.
 
@@ -74,9 +75,9 @@ it writes into.
   selected and compared by them;
 - **artifacts**: the files it keeps in its folder, such as a transcript, a log or a run result, each
   by its path relative to the folder and its digest, so a transcript is referenced, never copied;
-- **references** to nodes at the same level and to commits, which tell a commit or evidence bundle
-  the node created (`commit`, `bundle`) from one an earlier node created and this node only found
-  (`found_commit`, `found_bundle`), such as a delivery that finds its work already delivered;
+- **references** to nodes at the same level and to commits, which tell a commit the node created
+  (`commit`) from one an earlier node created and this node only found (`found_commit`), such as a
+  delivery that finds its work already delivered;
 - and the producer's own **content**, a [typed value](../glossary.json#concept.typed-value) whose
   type the producer registers, such as a run's steps with their timings or a worker round's audit.
 
@@ -114,7 +115,8 @@ task, with the cost of each run beside it.
 folder, `.concorde/tasks/<task>/`, while the task is current. When the task is closed, merged or not,
 its whole folder is moved to the **[history](../glossary.json#concept.history)**,
 `.concorde/history/<task>/`, where it stays as it was when the task ended: nothing in the history is
-ever changed, it is only removed whole or copied out. An unbound run, which belongs to no task, is
+ever changed, and retention only removes a history folder whole or, sooner, its conversation
+records; it may be copied out. An unbound run, which belongs to no task, is
 kept in `.concorde/unbound/<run>/` of the worktree it started in. The
 [layout](contracts.md#layout) gives every path.
 
@@ -141,12 +143,15 @@ release blocks on the lock itself, so the kernel wakes it when the holder ends o
 
 **Retention.** Traces are removed only at defined points, never by a process running in the
 background: `concorde trace prune`, and the start of every `task open` and `task close`, remove
-each unbound run that ended more than 7 days ago and, when the project configures it, each history
-folder of a task closed longer ago than that. By default the history is kept. A project changes both
+each unbound run that ended more than 7 days ago; from each history folder of a task closed more
+than 30 days ago, its **conversation records**, the transcripts of its task sessions and worker
+runs and their event streams, which make up most of the history's size and are read mostly while
+the task is fresh; and, when the project configures it, each history folder of a task closed longer
+ago than that, whole. By default the rest of the history is kept. A project changes the three
 periods in its tracked [Tracing configuration](contracts.md#contract.tracing.configuration),
-`.concorde/tracing.json`. A node still running is never removed. The evidence bundle each delivery
-commits to Git outlives this retention: it travels with the code and is readable on its own, and its
-run identities are an entry point into the traces only while they are kept.
+`.concorde/tracing.json`. A node still running is never removed, and nothing of a current task is.
+What a task decided outlives this retention: Tasks commits each ended task's
+[decision log](../glossary.json#concept.decision-log) to Git, where it travels with the code.
 
 <a id="concept.error-chain"></a>
 
@@ -173,8 +178,7 @@ capability of combining those records; the levels still own what they record.
 A tree whose nesting is the folder layout cannot lose a child: a node is created inside its parent's
 folder, at the location the parent chose before starting it, so there is no orphan to reattach and no
 parent identity a child could get wrong. Nodes of the same level are not nested, because neither
-contains the other; a run that admitted another run's output, or a delivery that cites the runs
-behind its readiness, refers to them by identity.
+contains the other; a run that admitted another run's output refers to it by identity.
 
 The link between the halves goes downward only because
 [Execution knows no task](../execution/requirements.md#req.execution.no-task-knowledge). The task

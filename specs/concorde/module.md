@@ -50,7 +50,7 @@ limit into the Module's Spec; `concorde run implement --goal "…"` changes the 
 `concorde run test` checks it against the Spec; `concorde run code_review` reviews the change. The
 task session may make any of these changes directly instead, committing each verified step on the
 task branch. Then `concorde task-validation` shows what would block the task and `concorde
-delivery` commits the result and its evidence on the task branch. None of these names the task:
+delivery` validates the whole workspace again and commits the result on the task branch. None of these names the task:
 each reads the worktree's binding. Told of the delivery, the main agent merges with
 `concorde task merge retry-limit`. When the session needs decisions that are not its own, it
 never asks the developer in place: it reports them all together, and the main agent decides those
@@ -75,7 +75,7 @@ task: "Task worktree\nTask session" {
   grid-columns: 1
   work: "Change Specs and code\ndirectly or through Operations"
   validate: "task-validation\ncheck readiness"
-  deliver: "delivery\ncommit result + evidence"
+  deliver: "delivery\nvalidate + commit result"
   work -> validate -> deliver
 }
 primary.open -> task.work: start a task session

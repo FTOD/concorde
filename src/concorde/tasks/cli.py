@@ -48,6 +48,11 @@ HANDLING = {
         "the file system refused the decision log after the task record was written, and "
         "Tasks does not undo a written record",
     ),
+    "decision_log_uncommitted": (
+        "environment",
+        "Git refused the commit of the decision log after the task record was written, and "
+        "Tasks does not undo a written record",
+    ),
     "dirty_worktree": (
         "decision",
         "discarding uncommitted changes of a task worktree is the caller's decision",
@@ -59,8 +64,8 @@ HANDLING = {
     ),
     "delivery_unverified": (
         "decision",
-        "Tasks merges only a delivery commit that holds what its evidence bundle says was "
-        "validated, and repairing the task branch is work for the task",
+        "Tasks merges only a delivery commit Delivery could have created, with exactly one "
+        "parent, and repairing the task branch is work for the task",
     ),
     "binding_failed": (
         "environment",
@@ -142,7 +147,7 @@ OPTIONS = {
         "deliver the task again if its branch moved past the last delivery",
     ],
     "delivery_unverified": [
-        "inspect the task branch's head and its evidence bundle in the task worktree",
+        "inspect the task branch's head in the task worktree",
         "revert or remove the commit that does not verify, then run delivery again",
     ],
     "merge_busy": [
@@ -207,6 +212,11 @@ OPTIONS = {
         "closing and changes nothing else",
         "for an escalation, append the chain the message carries to the decision log by "
         "hand; escalating again would record it twice",
+    ],
+    "decision_log_uncommitted": [
+        "fix what Git refused in the primary worktree, such as a detached HEAD, an unfinished "
+        "merge or a commit hook, then run the same close again, which commits the log and "
+        "finishes the close",
     ],
 }
 

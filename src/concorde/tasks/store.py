@@ -5,12 +5,13 @@ A task is a branch ``concorde/<id>``, a worktree checked out on it and bound as 
 ``task.json``, its trace node ``trace.json``, its decision log ``decisions.md``, its task session's
 boundary under ``runtime/``, its sessions' and merge attempts' nodes under ``sessions/`` and
 ``merges/``, and the workspace folder ``workspace/`` its runs are traced in. Closing moves the whole
-folder to ``.concorde/history/<key>/``. Only this module writes records and task nodes, and
-nothing below the task level writes them: whether a task is active or delivered is derived each
-time from what the execution core recorded, its runs in its workspace folder and its delivery
-commits on the branch, a delivery counting only when its commit verifies against its evidence
-bundle; ``merging`` is stored while ``concorde task merge`` has put a merge into the primary branch
-that its checks have not decided yet. Every change holds the task's lock
+folder to ``.concorde/history/<key>/`` and commits its decision log on the primary branch as
+``.concorde/decisions/<key>.md``, unless the task's merge commit already added it. Only this module
+writes records and task nodes, and nothing below the task level writes them: whether a task is
+active or delivered is derived each time from what the execution core recorded, its runs in its
+workspace folder and its delivery commits on the branch, a delivery counting only when its commit
+has exactly one parent; ``merging`` is stored while ``concorde task merge`` has put a merge into
+the primary branch that its checks have not decided yet. Every change holds the task's lock
 ``.concorde/locks/tasks/<id>.lock`` and is one read, a check of its preconditions and one atomic
 write bound to the bytes read.
 """
@@ -29,7 +30,7 @@ from contextlib import ExitStack, contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 
-from ..delivery.bundle import delivery_commits, delivery_mismatches
+from ..delivery.commits import delivery_commits, delivery_mismatches
 from ..execution import binding as workspace_binding
 from ..execution.runs import (
     RunError,
@@ -47,6 +48,8 @@ TASK_ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,47}$")
 HISTORY_KEY = re.compile(r"^[a-z0-9][a-z0-9-]{0,47}(\.[0-9]+)?$")
 RECORD = "task.json"
 DECISIONS = "decisions.md"
+# Where the decision logs of ended tasks are committed on the primary branch, by history key.
+DECISION_LOGS = ".concorde/decisions"
 _TEXT = {"type": "string", "minLength": 1}
 # An object of any fields, such as an error link: Spec typed data admits unknown fields only
 # through a schema-valued ``additionalProperties``.
@@ -241,6 +244,26 @@ def decision_log_path(primary: Path, task_id: str) -> Path:
         if found is not None:
             return found / DECISIONS
     return folder / DECISIONS
+
+
+def committed_log(key: str) -> str:
+    """The path, relative to the project, at which an ended task's decision log is committed."""
+    return f"{DECISION_LOGS}/{key}.md"
+
+
+def _in_head(primary: Path, path: str) -> bool:
+    return _git(primary, "cat-file", "-e", f"HEAD:{path}", check=False).returncode == 0
+
+
+def history_key(primary: Path, task_id: str) -> str:
+    """The history key a closing task gets: free in the history and among the decision logs of
+    the primary worktree, committed or not, so that no closed task replaces another."""
+
+    def taken(key: str) -> bool:
+        path = committed_log(key)
+        return (primary / path).exists() or _in_head(primary, path)
+
+    return layout.history_key(concorde(primary), task_id, taken)
 
 
 def workspace_store(primary: Path, task_id: str, folder: Path | None = None) -> Store:
@@ -594,19 +617,13 @@ def merge_commit(primary: Path, merging: dict) -> str | None:
     """The primary worktree's ``HEAD`` when it is the merge that ``merging`` began, else None.
 
     Once the merge recorded its commit, only that commit counts. Before, ``HEAD`` counts when it
-    is a merge commit of exactly the commit before and the checked commit, or the checked commit
-    itself when the merge fast-forwarded to it.
+    is a merge commit of exactly the commit before and the checked commit.
     """
     head = _git(primary, "rev-parse", "HEAD").stdout.strip()
     if merging.get("after"):
         return head if head == merging["after"] else None
     parents = _git(primary, "rev-list", "--parents", "-n", "1", "HEAD").stdout.split()
     if parents[1:] == [merging["before"], merging["checked"]]:
-        return head
-    ancestor = _git(
-        primary, "merge-base", "--is-ancestor", merging["before"], head, check=False
-    )
-    if head == merging["checked"] and ancestor.returncode == 0:
         return head
     return None
 
@@ -1021,8 +1038,8 @@ def _prune(primary: Path) -> None:
 
 def deliveries(primary: Path, record: dict) -> list[dict]:
     """The delivery commits of the task's workspace on its branch, oldest first, as Delivery's
-    reader recognises them by subject and trailers alone; ``verified`` adds whether each holds
-    what its bundle says was validated."""
+    reader recognises them by their subject; ``verified`` adds whether each has exactly one
+    parent."""
     head = _git(
         primary, "rev-parse", "--verify", "--quiet", record["branch"], check=False
     ).stdout.strip()
@@ -1032,15 +1049,14 @@ def deliveries(primary: Path, record: dict) -> list[dict]:
 
 
 def verified(primary: Path, delivery: dict) -> dict:
-    """The delivery commit with ``mismatches``: how it disagrees with its evidence bundle by
-    Delivery's own check, empty when it verifies."""
+    """The delivery commit with ``mismatches``: how it fails Delivery's own check, empty when
+    it verifies."""
     return {**delivery, "mismatches": delivery_mismatches(primary, delivery)}
 
 
 def derived_state(primary: Path, record: dict, runs: list[dict] | None = None) -> str:
     """The task's state: merging, closed or failed as stored; otherwise delivered when its branch
-    head is a delivery commit of its workspace that verifies against its bundle and its worktree
-    is clean, active when its workspace has runs or its branch moved past the base, and open
+    head is a delivery commit of its workspace that verifies and its worktree is clean, active when its workspace has runs or its branch moved past the base, and open
     before either."""
     if record["state"] in (*ENDED, "merging"):
         return record["state"]
@@ -1075,7 +1091,7 @@ def list_tasks(primary: Path, state: str | None = None) -> list[dict]:
 
 def show_task(primary: Path, task_id: str) -> dict:
     """The record with its derived state, the workspace's runs and delivery commits, each with
-    how it disagrees with its bundle, the sessions and the escalations from
+    how it fails to verify, the sessions and the escalations from
     the task's trace, who holds the workspace lock, and the paths of the decision log and of the
     task's folder, current or in the history."""
     record, folder = load_any(primary, task_id)
@@ -1203,10 +1219,9 @@ def mergeable(primary: Path, task_id: str) -> tuple[dict, str]:
     if mismatches:
         raise TaskError(
             "delivery_unverified",
-            f"the head {head} of {record['branch']} of task {task_id} has the subject and "
-            f"trailers of a delivery commit of its workspace but does not verify against its "
-            f"evidence bundle {delivered[-1]['bundle']}, so it may not hold what was validated: "
-            + "; ".join(mismatches),
+            f"the head {head} of {record['branch']} of task {task_id} has the subject of a "
+            "delivery commit of its workspace but does not verify, so Delivery did not create "
+            "it and it may not hold what was validated: " + "; ".join(mismatches),
         )
     worktree = Path(record["worktree"])
     if _dirty(worktree):
@@ -1330,6 +1345,7 @@ def close_locked(
     again: str | None = None,
     before_move=None,
     warnings: list[str] | None = None,
+    key: str | None = None,
 ) -> dict:
     """``close_task`` for a caller already holding the merge lock and the workspace lock.
 
@@ -1337,8 +1353,11 @@ def close_locked(
     log and moving the folder to the history cannot be one transaction, so a refusal after one of
     them says what this close did and that ``again`` (by default the same close) finishes it; the
     same close of a task whose record is closed but that is still current finishes the steps it
-    lacks. Before the folder moves, the transcripts of the task's Claude Code task sessions are
-    copied into their nodes, adding to ``warnings`` each one that cannot be, and
+    lacks. Once the closing is logged, the decision log is committed on the primary branch as
+    ``.concorde/decisions/<key>.md`` unless that file is already there, as the merge commit of
+    ``concorde task merge`` adds it; ``key``, the history key, is the one that merge chose, and
+    free otherwise. Before the folder moves, the transcripts of the task's Claude Code task
+    sessions are copied into their nodes, adding to ``warnings`` each one that cannot be, and
     ``before_move`` runs, such as a merge ending its attempt's node.
     """
     from . import session
@@ -1358,6 +1377,7 @@ def close_locked(
             )
         if not _closing_logged(primary, task_id, ended):
             _log_closing(primary, task_id, ended)
+        commit_decision_log(primary, task_id, ended, again)
         warnings.extend(session.keep_transcripts(primary, task_id))
         if before_move is not None:
             before_move()
@@ -1417,7 +1437,7 @@ def close_locked(
 
     stamp = now()
     state = "failed" if outcome == "failed" else "closed"
-    key = layout.history_key(concorde(primary), task_id)
+    key = key or history_key(primary, task_id)
     closing = {
         "state": state,
         "outcome": outcome,
@@ -1449,6 +1469,7 @@ def close_locked(
             "finishes the close",
         ) from error
     _log_closing(primary, task_id, closed["closed"])
+    commit_decision_log(primary, task_id, closed["closed"], again)
     warnings.extend(session.keep_transcripts(primary, task_id))
     if before_move is not None:
         before_move()
@@ -1538,6 +1559,66 @@ def _move_to_history(primary: Path, task_id: str, key: str, again: str) -> None:
         path.unlink(missing_ok=True)
 
 
+def commit_decision_log(primary: Path, task_id: str, closed: dict, again: str) -> None:
+    """Commit the closed task's decision log on the primary branch as
+    ``.concorde/decisions/<history key>.md``, in a commit of that file alone, unless the branch
+    already holds it; other changes of the primary worktree, staged or not, stay as they were.
+    """
+    path = committed_log(closed["history"])
+    if _in_head(primary, path):
+        return
+    source = decision_log_path(primary, task_id)
+    target = primary / path
+    branch = _git(primary, "symbolic-ref", "-q", "--short", "HEAD", check=False)
+
+    def refuse(problem: str) -> TaskError:
+        return TaskError(
+            "decision_log_uncommitted",
+            f"task {task_id} is {closed['state']} in its record and its decision log {source} "
+            f"holds the closing, but committing the log as {path} on the primary branch of "
+            f"{primary} failed: {problem}; nothing was committed, and once the cause is fixed, "
+            f"{again} commits it and finishes the close",
+        )
+
+    if branch.returncode != 0:
+        raise refuse(
+            "the primary worktree has a detached HEAD, so there is no branch to commit on"
+        )
+    try:
+        data = source.read_bytes()
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data)
+    except OSError as error:
+        raise refuse(f"{type(error).__name__}: {error}") from error
+    message = (
+        f"concorde: keep the decision log of {task_id}\n\n"
+        f"Task {task_id} ended {closed['outcome']}.\n\nConcorde-Task: {task_id}\n"
+    )
+    added = _git(primary, "add", "-f", "--", path, check=False)
+    committed = (
+        subprocess.run(
+            ["git", "commit", "-q", "--only", "-F", "-", "--", path],
+            cwd=primary,
+            input=message,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if added.returncode == 0
+        else added
+    )
+    if committed.returncode != 0:
+        output = (committed.stdout + committed.stderr).strip() or "(no output)"
+        _git(
+            primary, "rm", "-q", "--cached", "--ignore-unmatch", "--", path, check=False
+        )
+        target.unlink(missing_ok=True)
+        raise refuse(
+            f"git {'commit' if added.returncode == 0 else 'add'} exited "
+            f"{committed.returncode} on {branch.stdout.strip()}: {output[-2000:]}"
+        )
+
+
 def _closing_heading(closed: dict) -> str:
     return f"## Closed: {closed['outcome']}, {closed['at']}"
 
@@ -1594,6 +1675,8 @@ __all__ = [
     "begin_merge",
     "close_locked",
     "close_task",
+    "commit_decision_log",
+    "committed_log",
     "decision_log_path",
     "deliveries",
     "derived_state",
@@ -1601,6 +1684,7 @@ __all__ = [
     "end_sessions",
     "escalate",
     "guard_merges",
+    "history_key",
     "incomplete_merge",
     "list_tasks",
     "load_task",

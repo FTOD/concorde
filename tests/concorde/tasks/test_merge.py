@@ -97,6 +97,9 @@ class MergeTests(unittest.TestCase):
     def history(self, key="t1"):
         return self.root / ".concorde/history" / key
 
+    def parents(self, commit="HEAD"):
+        return git(self.root, "rev-list", "--parents", "-n", "1", commit).split()[1:]
+
     def interrupted(self, then: int = 0):
         """Merge task t1 in a process its check kills; the commits before and after."""
         self.project.open_task("t1")
@@ -137,17 +140,37 @@ class MergeTests(unittest.TestCase):
         worktree = self.project.worktree("t1")
         head = self.deliver()
         before = self.head()
+        log = (self.root / ".concorde/tasks/t1/decisions.md").read_text()
         status, value = self.command("merge", "t1")
         self.assertEqual(0, status, value)
-        self.assertEqual(head, self.head())
+        # Always a merge commit, of the commit before and the delivery commit, which adds the
+        # task's decision log as it stood and names the task.
+        after = self.head()
+        self.assertEqual([before, head], self.parents(after))
         self.assertEqual(
-            ("closed", "merged"),
-            (value["record"]["state"], value["record"]["closed"]["outcome"]),
+            [".concorde/decisions/t1.md", "src/a/calc.py"],
+            sorted(git(self.root, "diff", "--name-only", before, after).splitlines()),
+        )
+        self.assertEqual(
+            log.strip(), git(self.root, "show", f"{after}:.concorde/decisions/t1.md")
+        )
+        self.assertEqual(
+            f"Merge branch 'concorde/t1' at {head}\n\nConcorde-Task: t1",
+            git(self.root, "log", "-1", "--format=%B", after),
+        )
+        self.assertEqual("", git(self.root, "status", "--porcelain"))
+        self.assertEqual(
+            ("closed", "merged", "t1"),
+            (
+                value["record"]["state"],
+                value["record"]["closed"]["outcome"],
+                value["record"]["closed"]["history"],
+            ),
         )
         self.assertTrue(value["record"]["closed"]["worktree_removed"])
         self.assertFalse(worktree.exists())
         merge = value["merge"]
-        self.assertEqual((before, head), (merge["before"], merge["after"]))
+        self.assertEqual((before, after), (merge["before"], merge["after"]))
         self.assertEqual(
             [[sys.executable, "-m", "concorde", "spec-validation"]],
             [check["argv"] for check in merge["checks"]],
@@ -160,12 +183,12 @@ class MergeTests(unittest.TestCase):
         self.assertFalse((self.root / ".concorde/tasks/t1").exists())
         node = trace.read(attempt)
         self.assertEqual(
-            ("merge", "ok", "merged", head),
+            ("merge", "ok", "merged", after),
             (node["kind"], node["status"], node["outcome"], node["metadata"]["commit"]),
         )
         data = node["content"]["data"]
         self.assertEqual(
-            ("merge", before, head, head),
+            ("merge", before, head, after),
             (data["attempt"], data["before"], data["checked"], data["after"]),
         )
         # The merge trace types waited_seconds as a non-negative number.
@@ -220,7 +243,7 @@ class MergeTests(unittest.TestCase):
         head = self.deliver()
         status, value = self.command("merge", "t1", "--check", python("pass"))
         self.assertEqual(0, status, value)
-        self.assertEqual(head, self.head())
+        self.assertEqual(head, self.parents()[1])
 
     @verifies("scenario.tasks.merge-checks")
     def test_the_named_checks_replace_the_default(self):
@@ -347,6 +370,7 @@ class MergeTests(unittest.TestCase):
         for part in ("exited 1", "boom", str(attempt), f"back at {before}, clean"):
             self.assertIn(part, error["detail"])
         self.assert_untouched(before)
+        self.assertFalse((self.root / ".concorde/decisions/t1.md").exists())
         node = trace.read(attempt)
         self.assertEqual(
             ("failed", "check_failed", "check_failed"),
@@ -357,6 +381,29 @@ class MergeTests(unittest.TestCase):
             ("failed", 1), (check["status"], check["content"]["data"]["exit_code"])
         )
         self.assertIn("boom", (attempt / "checks/1/output.log").read_text())
+
+    @verifies("scenario.tasks.merge-commit-refused")
+    def test_a_refused_merge_commit_is_undone(self):
+        self.project.open_task("t1")
+        self.deliver()
+        before = self.head()
+        hook = self.root / ".git/hooks/pre-commit"
+        hook.write_text("#!/bin/sh\necho 'hook says no' >&2\nexit 1\n")
+        hook.chmod(0o755)
+        self.addCleanup(hook.unlink)
+        error = self.refusal("merge", "t1", "--check", python("pass"))
+        self.assertEqual("git_failed", error["code"])
+        for part in ("hook says no", ".concorde/decisions/t1.md", f"back at {before}"):
+            self.assertIn(part, error["detail"])
+        self.assert_untouched(before)
+        self.assertFalse((self.root / ".concorde/decisions/t1.md").exists())
+        self.assertIsNone(store.load_task(self.root, "t1")["merging"])
+        self.assertEqual(
+            ("failed", "git_failed"),
+            (lambda node: (node["status"], node["outcome"]))(
+                trace.read(self.root / ".concorde/tasks/t1/merges/1")
+            ),
+        )
 
     @verifies("scenario.tasks.merge-check-failed")
     def test_checks_that_leave_changes_undo_the_merge(self):
@@ -430,7 +477,7 @@ class MergeTests(unittest.TestCase):
     @verifies("scenario.tasks.delivery-unverified")
     def test_a_delivery_commit_that_does_not_verify_is_not_merged(self):
         self.project.open_task("t1")
-        head = deliver(self.project.worktree("t1"), bundle_run="r-other")
+        head = deliver(self.project.worktree("t1"), verifies=False)
         before = self.head()
         record = store.load_task(self.root, "t1")
         error = self.refusal("merge", "t1", "--check", python("pass"))
@@ -439,8 +486,7 @@ class MergeTests(unittest.TestCase):
             (error["code"], error["unhandled"]["reason"]),
         )
         self.assertIn(head, error["detail"])
-        self.assertIn(".concorde/evidence/t1/1.json", error["detail"])
-        self.assertIn("readiness run r-other", error["detail"])
+        self.assertIn("it has 2 parent(s)", error["detail"])
         self.assertTrue(error["options"])
         self.assertEqual(before, self.head())
         self.assertEqual("", git(self.root, "status", "--porcelain"))
@@ -471,7 +517,7 @@ class MergeTests(unittest.TestCase):
         self.assertIn("stays merging", error["detail"])
         self.assertIn("--resume", error["detail"])
         head = self.head()
-        self.assertEqual(checked, head)
+        self.assertEqual(checked, self.parents(head)[1])
         self.assertNotEqual(
             0,
             subprocess.run(

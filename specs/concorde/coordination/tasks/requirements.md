@@ -30,6 +30,24 @@ the update is refused with `record_conflict`.
 
 Tasks SHALL NOT delete a task record or a decision log, including when the task is closed.
 
+### req.tasks.decision-log-committed — An ended task's decision log is in Git
+
+When a task ends, Tasks SHALL commit its decision log on the primary branch at
+`.concorde/decisions/<history key>.md`: `concorde task merge` in the merge commit it makes, and any
+other close, once its closing is appended, in a commit of that file alone, unless the primary
+branch already holds that file.
+
+The copy in Git is what outlives [Tracing](../../tracing/module.md)'s retention; the task's folder
+keeps its own log, which the copy never replaces.
+
+### req.tasks.log-commit-alone — Committing a log commits nothing else
+
+A close that commits a decision log SHALL leave every other change of the primary worktree, staged
+or not, as it was, and refuse with `decision_log_uncommitted`, committing nothing and leaving the
+task's folder current, when Git refuses that commit.
+
+The same close run again commits the log and finishes the close.
+
 ### req.tasks.decision-log-untouched — The decision log belongs to the main agent
 
 Tasks SHALL NOT change a decision log after creating it except by appending a requested escalation or the entry recording how the task ended.
@@ -111,8 +129,7 @@ from its workspace's runs in its workspace folder, its branch and its worktree e
 listed or shown.
 
 A `merging` task is shown as `merging`. Otherwise it is `delivered` when the branch head is a
-delivery commit of the task's workspace that verifies against its evidence bundle and the worktree
-is clean, `active` when the workspace has a run, the branch moved past its base commit or the
+delivery commit of the task's workspace that verifies and the worktree is clean, `active` when the workspace has a run, the branch moved past its base commit or the
 worktree has uncommitted changes, and `open` otherwise. A new path Git cannot version, such as a
 path a sandbox hides behind a `/dev/null` mount, is no uncommitted change, as for Delivery.
 
@@ -120,13 +137,10 @@ path a sandbox hides behind a `/dev/null` mount, is no uncommitted change, as fo
 
 Tasks SHALL count a task as delivered, and merge it or close it as merged, only when its branch
 head is a [delivery commit](../../glossary.json#concept.delivery-commit) of its workspace that
-verifies by Delivery's own check: its only parent is its
-[evidence bundle](../../glossary.json#concept.evidence-bundle)'s `parent_commit`, it adds the
-bundle its `Concorde-Evidence` trailer names, and the bundle's `readiness.run_id` is its
-`Concorde-Readiness` trailer.
+verifies by Delivery's own check: it has exactly one parent.
 
-A head that does not verify is shown `active`, `task show` lists each mismatch with that delivery,
-and `merge` and `close --merged` refuse it with `delivery_unverified`, naming each mismatch, as
+A head that does not verify is shown `active`, `task show` lists the mismatch with that delivery,
+and `merge` and `close --merged` refuse it with `delivery_unverified`, naming the mismatch, as
 [scenario.tasks.delivery-unverified](scenarios.md#scenario.tasks.delivery-unverified) shows.
 
 ### req.tasks.failure-explained — A failed task says why
@@ -155,7 +169,8 @@ holds the lock, and none starts after it, since its binding names a folder that 
 
 ### req.tasks.history-unique — No closed task replaces another
 
-Tasks SHALL move a closed task's folder to a history folder that no other task used.
+Tasks SHALL move a closed task's folder to a history folder that no other task used, under a
+history key for which the primary worktree holds no decision log `.concorde/decisions/<key>.md`.
 
 ### req.tasks.closed-no-session — A closed task gets no task session
 
@@ -197,6 +212,8 @@ step leave that step done, and say so:
   removed the worktree leaves the task in its state without its worktree, which the refusal says;
 - a close's `decision_log_failed` leaves the task closed or failed in its record without its
   closing in the decision log;
+- a close's `decision_log_uncommitted` leaves the task closed or failed in its record, with its
+  closing in the decision log, and its folder current, since the log is not yet in Git;
 - an escalation's `decision_log_failed` leaves the escalation in the task's trace and not in the
   decision log; the refusal names its number, carries the rendered chain, says that escalating
   again would record it twice and asks for the chain to be appended by hand.
@@ -204,14 +221,17 @@ step leave that step done, and say so:
 Each refusal of a close says that running the same close again finishes it once the cause is
 fixed, or, for a close run by a merge whose task stays `merging`, `concorde task merge <task-id>
 --resume`: the rerun skips a worktree that is gone, and the same close of a task already closed
-with that outcome appends the closing its decision log lacks and changes nothing else.
+with that outcome appends the closing its decision log lacks, commits the log the primary branch
+lacks and changes nothing else.
 
 ## Merging
 
 ### req.tasks.merge-exact-commit — A merge merges the commit it checked
 
 `concorde task merge` SHALL merge, by its commit identity, the task branch's head that its checks
-before the merge accepted, never the branch by name.
+before the merge accepted, never the branch by name, in a merge commit whose second parent is that
+head, whose trailer `Concorde-Task` names the task and which adds the task's decision log, even when
+the primary branch could fast-forward.
 
 A commit added to the task branch after those checks is therefore never merged unchecked; closing
 the task as merged then refuses with `not_merged`, since the branch's head is no longer its latest
@@ -281,8 +301,8 @@ A merge refused before `git merge` is governed by
 ### req.tasks.merging-recorded — A merge is recorded before it touches the primary branch
 
 `concorde task merge` SHALL store the task as `merging`, with the primary branch's name and commit
-before the merge, the checked commit and the checks it will run, before it runs `git merge`, and
-record the merge commit once `git merge` has made it.
+before the merge, the checked commit, the history key the task will close under and the checks it
+will run, before it runs `git merge`, and record the merge commit once it has made it.
 
 ### req.tasks.merge-incomplete-refused — Nothing builds on an unchecked merge
 

@@ -1,7 +1,7 @@
 # Delivery contracts
 
-The exact commit, [evidence bundle](../../../glossary.json#concept.evidence-bundle) and output of
-the [execution command](../../../glossary.json#concept.execution-command) `delivery` of
+The exact commit and output of the
+[execution command](../../../glossary.json#concept.execution-command) `delivery` of
 [Delivery](module.md).
 
 ## Delivery commit
@@ -10,326 +10,40 @@ the [execution command](../../../glossary.json#concept.execution-command) `deliv
 concorde: deliver <workspace>
 
 <goal of the workspace>
-
-Concorde-Workspace: <workspace>
-Concorde-Evidence: .concorde/evidence/<workspace>/<n>.json
-Concorde-Readiness: <run identity of this delivery run, which decided the readiness>
 ```
 
 The commit uses the repository's configured author identity and runs the repository's commit hooks
 normally. Its parent is the head of the workspace's bound branch that the delivery validated, whose
 commits since the base commit the readiness examined. It contains every uncommitted change of the
 workspace that Git does not ignore, except an untracked path Git cannot version (neither a regular
-file, a symbolic link nor a directory), the metadata changed by the applied confirmations and the
-evidence bundle; when every step was committed before, only the bundle and any cleared markers.
+file, a symbolic link nor a directory), and the metadata changed by the applied confirmations; when
+every step was committed before and nothing was confirmed, it changes nothing and is still made, as
+the mark of the delivery.
 
 The [delivery commits](../../../glossary.json#concept.delivery-commit) are the only record of a
 delivery. A commit is a delivery commit of a workspace when it lies on the first-parent history of
-the branch since the base commit, its subject is exactly `concorde: deliver <workspace>`, its
-`Concorde-Workspace` trailer names the same workspace, and its `Concorde-Evidence` and
-`Concorde-Readiness` trailers are present, the first naming a bundle whose file name is its sequence
-number. Delivery reads its earlier deliveries this way, and so may anyone who needs to know whether
-and how often a workspace was delivered.
+the branch since the base commit and its subject is exactly `concorde: deliver <workspace>`.
+Delivery reads its earlier deliveries this way, and so may anyone who needs to know whether and how
+often a workspace was delivered.
 
-A delivery commit **verifies** when it holds what its bundle says was validated: it has exactly one
-parent, which is the bundle's `parent_commit`; it adds the bundle its `Concorde-Evidence` trailer
-names, which its parent does not hold; and that bundle's `readiness.run_id` is its
-`Concorde-Readiness` trailer. Delivery reports a delivery commit it finds at the branch head only
-when it verifies. A delivery commit Delivery creates verifies further when its tree is the tree
-`git write-tree` recorded from the index after staging, so that no commit hook changed what was
-committed.
-
-## Evidence bundle
-
-```concorde-contract
-{
-  "id": "contract.delivery.evidence-bundle",
-  "version": 2,
-  "schema": {
-    "type": "object",
-    "additionalProperties": false,
-    "required": [
-      "workspace",
-      "goal",
-      "modules",
-      "sequence",
-      "base_commit",
-      "parent_commit",
-      "readiness",
-      "confirmations",
-      "runs",
-      "created_at"
-    ],
-    "properties": {
-      "workspace": {
-        "type": "string",
-        "minLength": 1
-      },
-      "goal": {
-        "type": "string",
-        "minLength": 1
-      },
-      "modules": {
-        "type": "array",
-        "items": {
-          "type": "string",
-          "minLength": 1
-        }
-      },
-      "sequence": {
-        "type": "integer",
-        "minimum": 1
-      },
-      "base_commit": {
-        "type": "string",
-        "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
-      },
-      "parent_commit": {
-        "type": "string",
-        "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
-      },
-      "readiness": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "run_id",
-          "input_digest",
-          "modules",
-          "checks",
-          "warnings"
-        ],
-        "properties": {
-          "run_id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "input_digest": {
-            "type": "string",
-            "pattern": "^sha256:[0-9a-f]{64}$"
-          },
-          "modules": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1
-            }
-          },
-          "checks": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "check",
-                "module",
-                "status",
-                "measured_digest"
-              ],
-              "properties": {
-                "check": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "module": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "status": {
-                  "const": "passed"
-                },
-                "measured_digest": {
-                  "type": "string",
-                  "pattern": "^sha256:[0-9a-f]{64}$"
-                }
-              }
-            }
-          },
-          "warnings": {
-            "type": "integer",
-            "minimum": 0
-          }
-        }
-      },
-      "confirmations": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "module",
-            "realization",
-            "entry"
-          ],
-          "properties": {
-            "module": {
-              "type": "string",
-              "minLength": 1
-            },
-            "realization": {
-              "type": "string",
-              "minLength": 1
-            },
-            "entry": {
-              "type": "string",
-              "minLength": 1
-            }
-          }
-        }
-      },
-      "runs": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "run_id",
-            "kind",
-            "name",
-            "modules",
-            "status",
-            "summary",
-            "worker_runs",
-            "result_digest"
-          ],
-          "properties": {
-            "run_id": {
-              "type": "string",
-              "minLength": 1
-            },
-            "kind": {
-              "enum": [
-                "operation",
-                "command"
-              ]
-            },
-            "name": {
-              "type": "string",
-              "minLength": 1
-            },
-            "modules": {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "minLength": 1
-              }
-            },
-            "status": {
-              "enum": [
-                "ok",
-                "blocked",
-                "failed",
-                "interrupted"
-              ]
-            },
-            "summary": {
-              "type": "string"
-            },
-            "worker_runs": {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "minLength": 1
-              }
-            },
-            "result_digest": {
-              "anyOf": [
-                {
-                  "type": "null"
-                },
-                {
-                  "type": "string",
-                  "pattern": "^sha256:[0-9a-f]{64}$"
-                }
-              ]
-            }
-          }
-        }
-      },
-      "created_at": {
-        "type": "string",
-        "minLength": 1
-      }
-    }
-  },
-  "semantics": "The evidence committed with a delivery at .concorde/evidence/<workspace>/<sequence>.json, where sequence is one more than the number of delivery commits of the workspace on its branch since the base commit. workspace, goal and modules are copied from the workspace binding; base_commit is the binding's base commit and parent_commit the validated head the delivery commit is created on. readiness identifies this delivery run, which decided it with Validation's steps, and repeats its input digest, the Modules it covered, its check results without log paths and the number of its warnings; every check passed, because only a ready readiness is delivered. confirmations lists the pending entries whose markers this delivery cleared. runs lists every run of the workspace in the run store, Operation or execution command, that started after the delivery run named by the previous delivery commit's Concorde-Readiness trailer, or at all when there is none, and before this delivery run, in start order: its kind and name, its Modules, its status and summary from its saved run result, the run record identities of its workers, and the SHA-256 digest of its saved result.json; when no result was saved, the digest is null, the status interrupted, the summary empty and the worker run identities none. Run records, results and transcripts themselves stay uncommitted in the run store of the workspace folder, as trace nodes that Tracing's retention may remove, so the bundle never depends on them to be read. created_at is RFC 3339 in UTC. A behaviour or field change increments the version.",
-  "example": {
-    "workspace": "severity",
-    "goal": "let Issue reports carry a severity",
-    "modules": [
-      "module.issues"
-    ],
-    "sequence": 1,
-    "base_commit": "d460b95e0c1a2b3c4d5e6f708192a3b4c5d6e7f8",
-    "parent_commit": "d460b95e0c1a2b3c4d5e6f708192a3b4c5d6e7f8",
-    "readiness": {
-      "run_id": "r-20260924T103800-delivery-77d0e4f5",
-      "input_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
-      "modules": [
-        "module.issues"
-      ],
-      "checks": [
-        {
-          "check": "check.issues.tests",
-          "module": "module.issues",
-          "status": "passed",
-          "measured_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
-        }
-      ],
-      "warnings": 1
-    },
-    "confirmations": [
-      {
-        "module": "module.issues",
-        "realization": "realization.issues.store",
-        "entry": "src/concorde/issues/severity.py"
-      }
-    ],
-    "runs": [
-      {
-        "run_id": "r-20260924T090100-understand-3f2a9c01",
-        "kind": "operation",
-        "name": "understand",
-        "modules": [
-          "module.issues"
-        ],
-        "status": "ok",
-        "summary": "Assessment completed; the Spec is sufficient and a plan was returned.",
-        "worker_runs": [
-          "w-20260924T090102-understand-11aa22bb"
-        ],
-        "result_digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777"
-      },
-      {
-        "run_id": "r-20260924T103000-task_validation-9b1c0d2e",
-        "kind": "command",
-        "name": "task-validation",
-        "modules": [
-          "module.issues"
-        ],
-        "status": "ok",
-        "summary": "Readiness decided: ready.",
-        "worker_runs": [],
-        "result_digest": "sha256:8888888888888888888888888888888888888888888888888888888888888888"
-      }
-    ],
-    "created_at": "2026-09-24T10:39:00Z"
-  }
-}
-```
+A delivery commit **verifies** when it has exactly one parent, as every commit Delivery creates has.
+Delivery reports a delivery commit it finds at the branch head only when it verifies. A delivery
+commit Delivery creates verifies further when its only parent is the head it validated and its tree
+is the tree `git write-tree` recorded from the index after staging, so that no commit hook changed
+what was committed.
 
 ## Output
 
 ```concorde-contract
 {
   "id": "contract.delivery.output",
-  "version": 3,
+  "version": 4,
   "schema": {
     "type": "object",
     "additionalProperties": false,
     "required": [
       "commit",
       "branch",
-      "bundle",
       "sequence",
       "confirmed",
       "recovered"
@@ -340,10 +54,6 @@ committed.
         "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
       },
       "branch": {
-        "type": "string",
-        "minLength": 1
-      },
-      "bundle": {
         "type": "string",
         "minLength": 1
       },
@@ -363,11 +73,10 @@ committed.
       }
     }
   },
-  "semantics": "The output of a delivery run whose status is ok. commit is the delivery commit, now the head of branch, the workspace's bound branch; bundle is the project-relative path of its evidence bundle and sequence its number; confirmed lists the realization entries whose pending markers the delivery cleared. recovered is true when the run found that the branch head already is a delivery commit of the workspace that verifies against its bundle, as the delivery commit section defines, and nothing waits to be delivered, such as after a delivery whose run ended after its commit, and reports that commit instead of committing; confirmed is then empty. A head that is a delivery commit but does not verify ends the run failed with commit_unverified. A run whose status is not ok has no output. A behaviour or field change increments the version.",
+  "semantics": "The output of a delivery run whose status is ok. commit is the delivery commit, now the head of branch, the workspace's bound branch; sequence is its number among the workspace's delivery commits on the branch, counting from 1; confirmed lists the realization entries whose pending markers the delivery cleared. recovered is true when the run found that the branch head already is a delivery commit of the workspace that verifies, as the delivery commit section defines, and nothing waits to be delivered, such as after a delivery whose run ended after its commit, and reports that commit instead of committing; confirmed is then empty. A head that is a delivery commit but does not verify ends the run failed with commit_unverified. A run whose status is not ok has no output. A behaviour or field change increments the version.",
   "example": {
     "commit": "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
     "branch": "concorde/severity",
-    "bundle": ".concorde/evidence/severity/1.json",
     "sequence": 1,
     "confirmed": [
       "src/concorde/issues/severity.py"
