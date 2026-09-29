@@ -89,9 +89,9 @@ guides.
 
 ### scenario.main-session.claude-sees-by-query — A main session sees another session's work by asking
 
-- GIVEN two main sessions of the same project, the second of which started a run of the task `t1` in background Bash and a task session of `t1` naming itself with `--main`
+- GIVEN two main sessions of the same project, the second of which started a run of the task `t1` in background Bash and a task session of `t1` naming itself with `--main`, while the first registered no wait for that run
 - WHEN that run ends
-- THEN the first main session is not woken, since nothing is pushed into it
+- THEN the first main session is not woken, since nothing it did not ask for is pushed into it
 - AND `concorde task show t1`, when it asks, lists the run with its status and the task session with the main session it reports to
 
 ### scenario.main-session.merge-delivered — The guidance merges delivered work without asking
@@ -100,8 +100,21 @@ guides.
 - WHEN a main agent reads what to do after `delivery` committed a task's change
 - THEN it is told to merge the task from the primary worktree without asking the developer, with the project MCP server's `task_merge` or with `concorde task merge <task>` in background Bash
 - AND never to merge with `git merge` itself, because other main sessions may be merging, and that the merge runs `concorde spec-validation` unless it names other checks
+
+### scenario.main-session.merge-command — The guidance runs the merge command in the background
+
+- GIVEN the rendered main-session guidance
+- WHEN a main agent reads how to merge a delivered task with `concorde task merge <task>`
+- THEN it is told that the command waits up to `--wait` seconds for the task's run and for other merges, so that it runs in background Bash
 - AND to run the command again on `merge_busy`
-- AND that the merge waits for the task's run and other merges itself, so that it runs in background Bash
+- AND to run `merge` or `close` again with a longer `--wait` on `workspace_busy`
+
+### scenario.main-session.merge-through-server — The guidance retries a busy `task_merge` after a registered wait
+
+- GIVEN the rendered main-session guidance
+- WHEN a main agent reads how to merge a delivered task with the project MCP server's `task_merge`
+- THEN it is told that `task_merge` never waits for a lock: it returns at once with the merge it started, or is refused at once with `workspace_busy` or `merge_busy` naming the holder
+- AND on such a refusal to register a wait for the busy lock with `register_wait`, or to run the `concorde task wait` command it returns in background Bash without a channel, and to call `task_merge` again once woken, which may be refused again
 
 ### scenario.main-session.merge-conflict — A merge conflict goes back to the task session
 
@@ -116,7 +129,6 @@ guides.
 - WHEN a main agent reads what to do when a task command is refused with `merge_incomplete`
 - THEN it is told to finish that merge before anything else with `concorde task merge <task> --resume`, without asking the developer
 - AND to use `--abort` when the merge commit is no longer the primary branch's head or `--resume` answers `not_resumable`, and to bring `merge_diverged` to the developer
-- AND to run `merge` or `close` again with a longer `--wait` on `workspace_busy`
 - AND a task session is told to send a `merge_incomplete` or `merge_busy` refusal of its escalation to the main agent
 
 ### scenario.main-session.no-polling — Every wait wakes the agent or blocks once
@@ -260,6 +272,7 @@ This illustrates [conflict handling](requirements.md#req.main-session.issues-con
 ### scenario.main-session.project-mcp-queries — Queries answer the project from any worktree
 
 - GIVEN a project with an open task `t1`, and a server started in the task's worktree
+- AND no process holds the merge lock or the workspace lock of `t1` while the calls run
 - WHEN the session calls `task_list`, `task_show`, `trace_show` and `locks`
 - THEN each answers from the primary worktree's records as `concorde task list`, `task show` and `trace show` do, and `locks` says that nobody holds the merge lock or the workspace lock of `t1`
 

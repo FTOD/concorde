@@ -117,7 +117,8 @@ worktree as the installed `/concorde-<name>` workflow, in the mode the task's br
   has answered, start the same workflow again with `answers` mapping each step's base key (such as
   `survey` or `describe:module.checkout`) to every answer given for it so far, each
   `{"id": "<d. or q. identity>", "question": "<its text>", "answer": "<the answer>"}`. Steps that
-  finished are not run again.
+  finished and are neither answered nor retried are not run again; the answered step and every
+  step after it run anew.
 - `no-ask`: the workflow decides those points itself and reports every decision at the end.
   Escalate a decision of major impact among those the workflow took, which carries no error,
   naming no run or file, so that your link, with its step, its options and your recommendation, is
