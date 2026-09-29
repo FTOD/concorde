@@ -112,16 +112,16 @@ name; the number gives only the order, so that no row is confused with a step of
 
 | # | Name | What the runner does | Stops the run when |
 | --- | --- | --- | --- |
-| 1 | parse | Parse the command line, look up the definition and read the workspace binding, which selects the records directory (the worktree's own `.concorde` when the binding is absent or cannot be trusted); only then create the run identity, the run's directory and its run progress file | malformed command line, unknown Operation or command, a directory outside Git (exit 2, the reason on standard error, no result, no directory) |
+| 1 | parse | Parse the command line, look up the definition and read the workspace binding, which selects the records directory (the worktree's own `.concorde` when the binding is absent or cannot be trusted); only then create the run identity and the run's directory, take its [run lock](#run-progress-file) and write its run progress file | malformed command line, unknown Operation or command, a directory outside Git (exit 2, the reason on standard error, no result, no directory) |
 | 2 | binding check | Refuse a binding that could not be read, breaks the binding contract or names another root | an unreadable, invalid or misplaced binding (`failed`) |
 | 3 | lock | For a bound run, take the [workspace lock](../glossary.json#concept.workspace-lock), waiting for it up to `--wait` seconds (none by default); for an unbound run, refuse a definition that needs a binding, then create the [unbound checkout](#unbound-checkout) and work in it from here on | `workspace_busy`, `binding_required`, `checkout_unavailable` (`failed`) |
 | 4 | admission | Admit the run: settle the Modules, leaving out with `removed-module` evidence each binding Module the workspace no longer registers; check the named Modules against the workspace's registry unless the definition diagnoses the Specs itself; admit the inputs | `modules_removed`, `unknown_module`, `specs_unloadable`, `input_not_admissible` (`failed`) |
 | 5 | execution | Execute the definition's steps in order | a step stops the run with a status |
 | 6 | composition | Remove an unbound run's checkout, then compose the run result from the step outcomes and check it against the run result contract and, for an `ok` result, the definition's output contract | the result or output is invalid (`failed`, `invalid-output` evidence) |
-| 7 | finish | Write `result.json`, mark the run progress file finished, release the lock, print the result and exit | — |
+| 7 | finish | Write `result.json`, mark the run progress file finished, release the locks it holds, print the result and exit | — |
 
-- Each of the definition's steps returns either "continue", with any output and evidence it produced, or "stop", with a
-  status, a summary and evidence. Steps of one run share the run context: the workspace binding, the
+- Each of the definition's steps returns either "continue", with any output and evidence it
+  produced, or "stop", with a status, a summary and evidence. Steps of one run share the run context: the workspace binding, the
   worktree the run works in, for an unbound run also the worktree it started in and the commit it
   examines, the records directory, the Modules, the admitted inputs, the output so far, a state the
   definition owns, and the run record of the latest worker launch. The runner never skips, repeats
@@ -187,9 +187,10 @@ here called its origin:
    its control, by `SIGKILL`, leaves the directory to the system's temporary-file cleaning and its
    worktree entry to Git's own pruning.
 
-When the origin's `HEAD` names no commit, or Git refuses the checkout, the run is refused in the lock
-with `checkout_unavailable`, whose cause is the `Execution (unbound checkout)` link with Git's
-output, and nothing is left behind; the runner never falls back to working in the origin.
+When the origin's `HEAD` names no commit, or Git refuses the checkout, the run is refused in the
+lock row, where an unbound run creates its checkout, with `checkout_unavailable`, whose cause is
+the `Execution (unbound checkout)` link with Git's output, and nothing is left behind; the runner
+never falls back to working in the origin.
 
 ## Detached runs
 

@@ -48,7 +48,7 @@ The scaffold host SHALL check the proposal against the workspace again before wr
 
 ### req.scaffold.no-overwrite — The scaffold never replaces a file
 
-The scaffold host SHALL end the run `blocked` with `stale_proposal`, naming the existing file or the folder of the child that would hold it, when a file it would create exists or a child's folder already exists, even one that holds no file it would create, since the scaffold writes only into folders it creates.
+The scaffold host SHALL end the run `blocked` with `stale_proposal`, naming the existing file or the folder of the child that would hold it, when a file it would create exists or a child's folder already exists, even one that holds no file it would create, since the scaffold creates files only in folders it creates.
 
 ### req.scaffold.atomic — A scaffold is kept whole or not at all
 

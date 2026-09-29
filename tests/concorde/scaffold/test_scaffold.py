@@ -207,12 +207,16 @@ class ScaffoldTests(AdoptionCase):
         _, survey = self.survey()
         folder = worktree / "specs/project/checkout"
         folder.mkdir()
+        before = git(worktree, "status", "--porcelain", "--untracked-files=all")
         _status, envelope = self.project.run(
             "scaffold", "--task", "adopt", "--input", survey["run_id"]
         )
         self.assertEqual("blocked", envelope["status"])
         self.assertEqual("stale_proposal", envelope["error"]["code"])
         self.assertIn("specs/project/checkout/", envelope["error"]["detail"])
+        self.assertEqual(
+            before, git(worktree, "status", "--porcelain", "--untracked-files=all")
+        )
         self.assertEqual([], list(folder.iterdir()))
         self.assertFalse((worktree / "specs/project/inventory").exists())
 
