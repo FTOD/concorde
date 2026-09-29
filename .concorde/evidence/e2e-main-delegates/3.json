@@ -1,0 +1,41 @@
+{
+  "workspace": "e2e-main-delegates",
+  "goal": "Headless end-to-end main sessions follow the rule that the main agent never works inside a task worktree: stop granting EnterWorktree and ExitWorktree, and make a headless main session able to hand its tasks to task sessions and be woken by their reports, or report why it cannot",
+  "modules": [
+    "module.headless-sessions",
+    "module.e2e",
+    "module.dogfood-scenarios"
+  ],
+  "sequence": 3,
+  "base_commit": "2eb2edfe82e87257d6c27a3eef587475a8e1bb20",
+  "parent_commit": "fd2d7cead48283af6121a51ace7fd0fad6ae440c",
+  "readiness": {
+    "run_id": "r-20260929T061315-delivery-62f9d5d1",
+    "input_digest": "sha256:69fe097ee8db3980d58dd13435fc7a33874f141244fbe5ad0e75b516dd8d8b2e",
+    "modules": [
+      "module.dogfood-scenarios",
+      "module.e2e",
+      "module.headless-sessions"
+    ],
+    "checks": [],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260929T061306-task_validation-e875112b",
+      "kind": "command",
+      "name": "task-validation",
+      "modules": [
+        "module.headless-sessions",
+        "module.e2e",
+        "module.dogfood-scenarios"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:76d31a7624309177ac4c29ce198cdb18e9760f8607e3ff9f5e755d978817bcd0"
+    }
+  ],
+  "created_at": "2026-09-29T06:13:33Z"
+}
