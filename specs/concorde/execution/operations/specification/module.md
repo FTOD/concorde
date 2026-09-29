@@ -13,7 +13,69 @@ it. Specification never touches code, creates the files it declares or changes a
 [Module](../../../glossary.json#concept.module)'s documents; a Spec that still fails validation after
 the worker's bounded repair rounds stops the run for a decision, not another guess.
 
-## Usage
+## Core concepts
+
+### The Spec change
+
+<a id="concept.spec-change"></a>
+
+The Operation returns a [run result](../../../glossary.json#concept.run-result) whose `output` is a
+**Spec change**, defined by the
+[Spec change contract](contracts.md#contract.specification.spec-change): the Operation's own
+observation of the changed, created and deleted documents, added pending entries, affected Modules
+and validation findings, plus the worker's summary of what it changed and what it would still need.
+The result's facts come from the Operation's own diff; the worker's account stays a claim.
+
+### What a specify worker may write
+
+The Operation is worker-backed, run with [task type](../../../glossary.json#concept.task-type)
+`specify`: the bound Modules' own documents (reading files and metadata) and the project glossary
+are writable — the write audit reports any glossary entry changed whose owner is not a bound
+Module — other Modules' selected documents stay read-only, and implementation files show by name
+only. Declaring a pending entry is the one way a `specify` worker decides where code goes; only
+`implement` may create it.
+
+### Validation against a baseline
+
+Validation is structural: the same [checks](../../../glossary.json#concept.structural-check)
+`concorde spec-validation` runs. The Operation validates the workspace's Specs before the worker
+starts, as a baseline, and compares every later validation with it. Comparing with the baseline lets
+`specify` repair an already-broken worktree — pre-existing errors do not stop the run, only ones the
+change introduced. After each round that the worker ended `ok` with a clean audit, the Operation
+resumes the worker, at most twice per worker launch, with every error its change introduced, so the
+worker repairs the Specs it broke itself. Only errors left after the last round stop the run for a
+decision at the task level.
+
+## Overview
+
+Who does what in one `specify` run: the task level states the intent and decides what to do with
+the result, the worker edits and proposes, and the Operation validates, creates what the worker
+proposed and observes the change. [How it is built](#how-it-is-built) gives every step and exit.
+
+```d2 illustrative
+direction: down
+classes: {
+  agent: {style: {fill: "#e8edff"; stroke: "#3b5bdb"; stroke-width: 2; border-radius: 6}}
+  program: {style: {fill: "#f3f4f6"; stroke: "#6b7280"; stroke-width: 2; border-radius: 6}}
+}
+intent: "Task level: states the intent and the Modules" {class: agent}
+baseline: "Operation: validate the Specs as a baseline" {class: program}
+prepare: "Operation: freeze the specify grant" {class: program}
+edit: "Worker: edits the bound Modules' own documents,\ndeclares pending entries" {class: agent}
+check: "Operation: validate against the baseline" {class: program}
+create: "Operation: create the proposed documents,\nempty and owned" {class: program}
+observe: "Operation: regenerate the registry mirror,\nvalidate again, observe the Spec change" {class: program}
+decide: "Task level: accepts, retries, repairs\nor discards the uncommitted edits" {class: agent}
+intent -> baseline -> prepare -> edit
+edit -> check: ended ok
+check -> edit: "new errors: resume\n(at most twice per launch)" {style.stroke-dash: 3}
+edit -> create: "blocked, proposing\nnew documents" {style.stroke-dash: 3}
+create -> prepare: "launch once more" {style.stroke-dash: 3}
+check -> observe: "no new error, or\nrepair rounds used up"
+observe -> decide
+```
+
+## Running specify
 
 The caller runs the Operation in a task worktree, typically after `understand` reported Spec
 gaps or a plan that starts with a Spec change:
@@ -32,14 +94,6 @@ has the worker edit the Issues entry, contract and scenario documents for
 [Issue reports](../../../glossary.json#concept.issue-report), adding the new file as a pending
 entry.
 
-<a id="concept.spec-change"></a>
-
-The Operation returns a [run result](../../../glossary.json#concept.run-result) whose `output` is a
-**Spec change**, defined by the
-[Spec change contract](contracts.md#contract.specification.spec-change): the Operation's own
-observation of the changed, created and deleted documents, added pending entries, affected Modules
-and validation findings, plus the worker's summary of what it changed and what it would still need.
-
 `status` is `ok` when the change was made and validation reports no new error; `blocked` when the
 worker could not make the change — a contradicted promise, or an unbound Module's document needed —
 or validation finds a new error. The [error chain](../../../glossary.json#concept.error-chain) then
@@ -49,6 +103,8 @@ message; `failed` when the worker could not be run or the audit found a write ou
 Edits stay uncommitted, for the task level to accept, retry, repair or discard within its authority;
 `blocked`/`failed` still carries the observed change, except after an audit violation or a failure
 before the worker ran.
+
+### New and deleted documents
 
 The worker can write only documents its Modules already own, and the project glossary's entries
 those Modules own; a changed glossary shows among the changed documents. When the change needs a
@@ -60,18 +116,9 @@ outside the folder of that Module's entry, a file already there — refuses the 
 change needs all of them: nothing is created, no second worker runs and the run stays `blocked`,
 with `document-refused` evidence naming the reason for each refused proposal. An owned document is
 deleted only by proposing it; the Operation performs the deletion after a clean audit. A change
-spanning several
-Modules, such as a contract version increment, needs them all bound in one run.
+spanning several Modules, such as a contract version increment, needs them all bound in one run.
 
-## Design
-
-The Operation is worker-backed, run with [task type](../../../glossary.json#concept.task-type)
-`specify`: the bound Modules' own documents (reading files and metadata) and the project glossary
-are writable — the write audit reports any glossary entry changed whose owner is not a bound
-Module — other Modules' selected documents stay read-only, and implementation files show by name
-only. Declaring a
-pending entry is the one way a `specify` worker decides where code goes; only `implement` may create
-it.
+## How it is built
 
 | # | Step | Actor | Stops the run when |
 | --- | --- | --- | --- |
@@ -140,21 +187,15 @@ sufficiency. The worker runs no [configured checks](../../../glossary.json#conce
 and has only Read, Glob, Grep, Edit and Write — no Bash, web tools or MCP server — and pending files
 are never pre-created, since the grant has no implementation path.
 
-Validation is structural: the same [checks](../../../glossary.json#concept.structural-check)
-`concorde spec-validation` runs. Comparing with the baseline lets `specify` repair an already-broken
-worktree — pre-existing errors do not stop the run, only ones the change introduced. A finding is
-the same as a baseline one when its rule, file and message match; line numbers are ignored, since
-any edit shifts them, so an error that only moved stays pre-existing, and another occurrence with
-the same rule, file and message counts as pre-existing too. After each round that the worker ended
-`ok` with a clean audit, the Operation validates the same way and resumes the worker, at most twice
-per worker launch, with every error its change introduced, so the worker repairs the Specs it broke
-itself; the second worker launched to fill created documents gets its own two repair rounds. Only
-errors left after the last round stop the run for a decision at the task level.
+A finding is the same as a baseline one when its rule, file and message match; line numbers are
+ignored, since any edit shifts them, so an error that only moved stays pre-existing, and another
+occurrence with the same rule, file and message counts as pre-existing too. The repair rounds
+validate the same way; the second worker launched to fill created documents gets its own two repair
+rounds.
 
 The registry sits outside every Module's write set, so an edited `module` block leaves the mirror
 stale; step 6 is the reconciliation the Protocol provides, touching only existing Modules' mirrored
-fields, never adding or removing one. The result's facts come from the Operation's own diff; the
-worker's account stays a claim. See the [requirements](requirements.md) and
+fields, never adding or removing one. See the [requirements](requirements.md) and
 [scenarios](scenarios.md).
 
 <a id="realization.specification.operation"></a>
@@ -163,7 +204,7 @@ The **Specify Operation** realization holds the Operation's steps, worker instru
 schema in `src/concorde/specification/` (`operation.py` declares `SPECIFY`), prompt
 `prompts/workers/specify.md`, tested against a fake worker.
 
-### Outside
+## What it relies on
 
 <a id="uses-operations"></a>
 
@@ -177,20 +218,18 @@ another Operation or command, not even `task-validation` — its own validation 
 steps: it reads the [workspace binding](../../../glossary.json#concept.workspace-binding), refuses
 an [unbound run](../../../glossary.json#concept.unbound-run), holds the
 [workspace lock](../../../glossary.json#concept.workspace-lock), settles the Modules and inputs, and
-wraps the Spec change in the [run result](../../../glossary.json#concept.run-result). Specification
-relies on it for the workspace's goal and Modules, and on the lock for no other run changing the
-workspace while its audit and validation compare it with the baseline.
+wraps the Spec change in the run result. Specification relies on it for the workspace's goal and
+Modules, and on the lock for no other run changing the workspace while its audit and validation
+compare it with the baseline.
 
 <a id="uses-workers"></a>
 
 **Workers** turns the frozen grant into settings, launches the worker with this Module's brief,
-collects its [worker result](../../../glossary.json#concept.worker-result), audits
-the worktree and writes the run record; any change beyond the bound Modules' documents fails the
-run.
+collects its worker result, audits the worktree and writes the run record; any change beyond the
+bound Modules' documents fails the run.
 
 <a id="uses-spec"></a>
 
-**Spec core** computes the `specify` [grant](../../../glossary.json#concept.grant),
-runs the structural checks, regenerates the registry mirror and answers impact questions, always
-from the workspace's Specs. Specification relies on its checks as the definition of a
-structurally valid Spec and never adds checks of its own.
+**Spec core** computes the `specify` grant, runs the structural checks, regenerates the registry
+mirror and answers impact questions, always from the workspace's Specs. Specification relies on its
+checks as the definition of a structurally valid Spec and never adds checks of its own.

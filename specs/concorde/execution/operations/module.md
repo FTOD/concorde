@@ -18,31 +18,26 @@ is started, recorded, locked and reported is the
 [Execution runner](../../glossary.json#concept.execution-runner)'s, which runs an Operation's steps
 like any other definition's.
 
-## Usage
-
-An Operation hides the internal execution of one AI job from its caller. For `implement`, it
-prepares a grant and brief, delegates code changes to a
-worker through Workers, and uses check results to check the changes and drive bounded repair rounds.
-The caller receives one run result without managing those rounds. At the task level, either the
-[main agent](../../glossary.json#concept.main-agent) or a
-[task session](../../glossary.json#concept.task-session) can invoke Operations directly or through
-a workflow in its task worktree. The caller handles results and chooses the next step within its
-authority, following its existing decision and escalation rules.
+## Core concepts
 
 <a id="concept.operation"></a>
 
-Whoever works a workspace runs an **Operation** inside it:
+An **Operation** hides the internal execution of one AI job from its caller. For `implement`, it
+prepares a grant and brief, delegates code changes to a worker through Workers, and uses check
+results to check the changes and drive bounded repair rounds; the caller receives one run result
+without managing those rounds. An Operation exists because a model's answer must be checked by a
+program before anyone above relies on it, so the catalog holds exactly the jobs that involve a
+model. A plan is one answer `understand` gives, not a separate Operation; readiness, delivery and
+scaffolding are commands of their own Modules, not Operations, and the
+[worker configuration](../../glossary.json#concept.worker-configuration) is a tracked file edited
+directly.
 
-```text
-concorde run <operation> [--modules <id>[,<id>…]] [--input <run-id>]… [--detach] [operation arguments]
-```
-
-The run works on the workspace whose binding lies in the worktree it starts in; `--modules`,
-`--input`, `--detach`, the run identity, the
-[run progress file](../../glossary.json#concept.run-progress-file), the
-[workspace lock](../../glossary.json#concept.workspace-lock) and the result are the
-[Execution runner](../runner.md)'s, the same for every run. Each provider adds its own arguments,
-such as `--goal` for `understand`. No Operation needs the developer's consent.
+Every worker an Operation may launch has a stable [worker
+id](../../glossary.json#concept.worker-id), which the catalog lists: `spec_review` has a `reviewer`
+and a `checker`, `spec_panel` a `reviewer1` to `reviewer5`, one per seat its panel may have, and a
+`chair`, and every other Operation a single `worker`. The same id keys the worker configuration,
+names the worker in its run record and labels the run's `worker-model` evidence, so each worker may
+have its own backend, model and level.
 
 <a id="concept.operation-catalog"></a>
 
@@ -63,53 +58,80 @@ The **Operation catalog** of this version:
 "May change" covers both what a worker's grant makes writable and what the provider's own host
 steps change in the workspace; each provider's Spec gives the rule.
 
-A typical task runs `understand`, `specify` if needed, `implement`, `test` and the reviews, then the
-execution commands `task-validation` and `delivery`, repeating or skipping steps as the results tell
-it. Unbound, started in the primary worktree, `understand` or a review answers a question about its
-`HEAD` before any change is agreed. For a project whose code came before its Specs, `survey`, the execution command
-`scaffold` and `code_to_spec` describe the code in Specs, usually run by the
-[brownfield workflow](../workflows/module.md).
+<a id="concept.standard-worker-sequence"></a>
 
-Every worker an Operation may launch has a stable [worker
-id](../../glossary.json#concept.worker-id), which the catalog lists: `spec_review` has a
-`reviewer` and a `checker`, `spec_panel` a `reviewer1` to `reviewer5`, one per seat its panel may
-have, and a `chair`, and every other Operation a single `worker`. The same id keys the worker
-configuration, names the worker in its run record and labels the run's `worker-model` evidence,
-so each worker may have its own backend, model and level.
+Each Operation's control flow is a step table in its provider's Spec, which the runner runs in
+order until one step stops the run. A worker-backed step follows the
+**[standard worker sequence](../../glossary.json#concept.standard-worker-sequence)**: compute the
+[grant](../../glossary.json#concept.grant) for the task type and Modules from the **workspace's**
+Specs and freeze it with its [context identity](../../glossary.json#concept.context-identity),
+generate the worker's settings, tools and [brief](../../glossary.json#concept.brief), pre-create the
+pending files the grant makes writable, launch the worker, run the [write
+audit](../../glossary.json#concept.write-audit), run the [configured
+checks](../../glossary.json#concept.configured-check) of the bound Modules and of every Module that
+uses one of them outside the worker when it ended `ok`, feed failures back as a [resume
+round](../../glossary.json#concept.resume-round) until they pass or the rounds run out, and write
+the [run record](../../glossary.json#concept.run-record). The step computes and freezes the grant
+through Spec core and hands it to Workers, which performs the rest; the step decides what the
+outcome means.
+See [How an Operation runs its workers](workers.md).
+
+## Overview
+
+### How a worker-backed step runs
+
+The [standard worker sequence](../../glossary.json#concept.standard-worker-sequence): the step
+freezes the grant and decides what the outcome means, and Workers does everything between. Each
+provider's step table says which of these steps it takes, and what stops the run at each.
+
+```d2 illustrative
+direction: down
+grant: "Operation step: compute the grant from the\nworkspace's Specs and freeze it with its context identity"
+workers: Workers {
+  prepare: "Generate settings, tools and brief;\npre-create writable pending files"
+  launch: "Launch or resume the worker"
+  audit: "Write audit against the grant"
+  checks: "Run the configured checks\noutside the worker"
+  record: "Write the run record"
+  prepare -> launch -> audit
+  audit -> checks: "worker ended ok"
+  launch <- checks: "a check fails, rounds left:\nresume round with the failures" {style.stroke-dash: 3}
+  checks -> record: "checks pass, or rounds used up"
+  audit -> record: "worker blocked or failed,\nor audit violation" {style.stroke-dash: 3}
+}
+decide: "Operation step: decide what\nthe outcome means for the run"
+grant -> workers.prepare: "the frozen grant"
+workers.record -> decide: "worker result and evidence"
+```
+
+### Claims and evidence
 
 A worker-backed run's result carries the worker's own
 [worker result](../../glossary.json#concept.worker-result) unchanged in `worker`, beside
 the evidence the run's steps produced — grant, context identity, write audit, each check's exit
 code and log, resume rounds used, transcript path, worker stderr — so the caller reads the claim as
-a claim and the evidence as fact:
+a claim and the evidence as fact. For example, an `implement` worker claims the goal is done, but
+one check still fails after the last resume round:
 
 ```d2 illustrative
-shape: sequence_diagram
-worker: Worker
-op: Operation (in the Execution runner)
-caller: Task level
-worker -> op: implement result: claims the goal is done
-op -> op: audit clean; 3 resume rounds; one check still fails
-op -> caller: failed - chain: Operation (rounds used up, decide) < Workers (rounds) < check (log)
-caller -> caller: reads the claim as a claim, the evidence as fact; decides the next step
+direction: right
+worker: Worker {
+  claim: "Returns its worker result:\nclaims the goal is done"
+}
+op: "Operation (in the Execution runner)" {
+  direction: down
+  measure: "Audit clean; 3 resume rounds;\none check still fails"
+  result: "Run result failed: the claim unchanged\nin worker, the evidence beside it;\nchain: Operation (rounds used up, decide)\n< Workers (rounds) < check (log)"
+  measure -> result
+}
+caller: "Task level" {
+  decide: "Reads the claim as a claim,\nthe evidence as fact;\ndecides the next step"
+}
+worker.claim -> op.measure
+op.result -> caller.decide
 ```
 
-A plan is one answer `understand` gives, not a separate Operation; readiness, delivery and
-scaffolding are commands of their own Modules, not Operations, and the
-[worker configuration](../../glossary.json#concept.worker-configuration) is a tracked file edited
-directly.
-
-## Design
-
-An Operation exists because a model's answer must be checked by a program before anyone above
-relies on it. Between the task level, which has the workspace's goal, and a worker, which has only a
-narrow brief, an Operation's host steps freeze the grant, launch the worker through Workers, audit
-what it changed, run checks themselves, and turn the outcome into a result whose facts they
-produced. A worker's answer is a proposal until those steps have checked it, and the run result
-keeps the two apart. Deterministic work, which needs no such check, is left to execution commands,
-so the catalog holds exactly the jobs that involve a model.
-
-### Its place among the runs
+### Where Operations sits
 
 Operations is called only through the
 [Execution runner](../../glossary.json#concept.execution-runner): by the task level with
@@ -131,56 +153,48 @@ operations.operation -> workers: launches workers through
 operations.operation -> checks: runs checks through
 ```
 
-<a id="uses-workers"></a>
+## Running an Operation
 
-**Workers** launches every worker. A worker-backed step hands it the grant it froze, the brief, the
-worker id and the [trace node](../../glossary.json#concept.trace-node) folder of the run, and Workers performs the rest of the
-[standard worker sequence](../../glossary.json#concept.standard-worker-sequence) — settings,
-pending files, launch, audit, checks and resume rounds, run record — and returns the
-[worker result](../../glossary.json#concept.worker-result) with the evidence it gathered. The
-Operation relies on Workers launching the worker only under that grant, auditing every write against
-it and keeping the worker's claims apart from what it measured. It keeps the worker result unchanged
-and decides what the outcome means for the run. A launch error, a timeout or an audit violation ends
-the run `failed`, with Workers' link as a cause of the Operation's own.
+Whoever works a workspace runs an Operation inside it:
 
-<a id="uses-checks"></a>
+```text
+concorde run <operation> [--modules <id>[,<id>…]] [--input <run-id>]… [--detach] [operation arguments]
+```
 
-**Check execution** is the deterministic service that runs
-[configured checks](../../glossary.json#concept.configured-check) read-only, for the resume rounds
-Workers drives and for providers that run checks themselves, returning each result's command, exit
-code and log as evidence. An Operation relies on a check writing nothing in the workspace outside
-its check scratch, and on a result being refused as
-`stale_evidence` when the input it measured changed during the run, whatever changed it. It keeps
-each [check result](../../glossary.json#concept.check-result) as its own evidence rather than a
-worker's claim, and ends the run `failed` when the check boundary cannot be established or a check
-still fails after the last resume round, with the check's error or log in the chain.
+The run works on the workspace whose binding lies in the worktree it starts in; `--modules`,
+`--input`, `--detach`, the run identity, the
+[run progress file](../../glossary.json#concept.run-progress-file), the
+[workspace lock](../../glossary.json#concept.workspace-lock) and the result are the
+[Execution runner](../runner.md)'s, the same for every run. Each provider adds its own arguments,
+such as `--goal` for `understand`. No Operation needs the developer's consent.
 
-### Inside
+At the task level, either the [main agent](../../glossary.json#concept.main-agent) or a
+[task session](../../glossary.json#concept.task-session) can invoke Operations directly or through
+a workflow in its task worktree. The caller handles results and chooses the next step within its
+authority, following its existing decision and escalation rules. A typical task runs `understand`,
+`specify` if needed, `implement`, `test` and the reviews, then the execution commands
+`task-validation` and `delivery`, repeating or skipping steps as the results tell it. Unbound,
+started in the primary worktree, `understand` or a review answers a question about its `HEAD`
+before any change is agreed. For a project whose code came before its Specs, `survey`, the execution
+command `scaffold` and `code_to_spec` describe the code in Specs, usually run by the
+[brownfield workflow](../workflows/module.md).
 
-<a id="concept.standard-worker-sequence"></a>
+## How it is built
 
-Each Operation's control flow is a step table in its provider's Spec, which the runner runs in
-order until one step stops the run. A worker-backed step follows the **standard worker
-sequence**: compute the [grant](../../glossary.json#concept.grant) for the task
-type and Modules from the **workspace's** Specs and freeze it with its
-[context identity](../../glossary.json#concept.context-identity), generate the worker's settings,
-tools and [brief](../../glossary.json#concept.brief), pre-create the pending files the grant makes
-writable, launch the worker, run the [write audit](../../glossary.json#concept.write-audit), run
-the [configured checks](../../glossary.json#concept.configured-check) of the bound Modules and of
-every Module that uses one of them outside the worker when it ended `ok`, feed failures back as a
-[resume round](../../glossary.json#concept.resume-round) until they pass or the rounds run out,
-and write the [run record](../../glossary.json#concept.run-record). The step computes and freezes
-the grant through Spec core and hands it to Workers, which performs the rest; the step decides
-what the outcome means. See [How an Operation runs its workers](workers.md).
+Between the task level, which has the workspace's goal, and a worker, which has only a narrow
+brief, an Operation's host steps freeze the grant, launch the worker through Workers, audit what it
+changed, run checks themselves, and turn the outcome into a result whose facts they produced. A
+worker's answer is a proposal until those steps have checked it, and the run result keeps the two
+apart. Deterministic work, which needs no such check, is left to execution commands.
 
 The grant always comes from the workspace's Specs, never the primary worktree's, so a task that
 changes a Spec is bounded by the Spec as its workspace sees it; an
 [unbound run](../../glossary.json#concept.unbound-run) reads its
 [unbound checkout](../../glossary.json#concept.unbound-checkout) of the worktree it started in and
-may launch only reading workers, since only a bound workspace may change. One workspace runs one run at a time,
-because two runs in one worktree would audit each other's writes as their own, so parallelism comes
-from running workspaces side by side. No provider calls another Operation: the task level or its
-workflow decides which runs next.
+may launch only reading workers, since only a bound workspace may change. One workspace runs one run
+at a time, because two runs in one worktree would audit each other's writes as their own, so
+parallelism comes from running workspaces side by side. No provider calls another Operation: the
+task level or its workflow decides which runs next.
 
 <a id="realization.operations.catalog"></a>
 
@@ -189,6 +203,30 @@ brief helpers of worker-backed providers (`provider.py`); the standard worker se
 the run context's worker launch, which the
 [Runner and run store](../module.md#realization.execution.runner) realization binds. The providers'
 own code lives with their Modules.
+
+### Workers and Check execution
+
+<a id="uses-workers"></a>
+
+**Workers** launches every worker. A worker-backed step hands it the grant it froze, the brief, the
+worker id and the [trace node](../../glossary.json#concept.trace-node) folder of the run, and
+Workers performs the rest of the standard worker sequence — settings, pending files, launch, audit,
+checks and resume rounds, run record — and returns the worker result with the evidence it gathered.
+The Operation relies on Workers launching the worker only under that grant, auditing every write
+against it and keeping the worker's claims apart from what it measured. It keeps the worker result
+unchanged and decides what the outcome means for the run. A launch error, a timeout or an audit
+violation ends the run `failed`, with Workers' link as a cause of the Operation's own.
+
+<a id="uses-checks"></a>
+
+**Check execution** is the deterministic service that runs configured checks read-only, for the
+resume rounds Workers drives and for providers that run checks themselves, returning each result's
+command, exit code and log as evidence. An Operation relies on a check writing nothing in the
+workspace outside its check scratch, and on a result being refused as `stale_evidence` when the
+input it measured changed during the run, whatever changed it. It keeps each
+[check result](../../glossary.json#concept.check-result) as its own evidence rather than a worker's
+claim, and ends the run `failed` when the check boundary cannot be established or a check still
+fails after the last resume round, with the check's error or log in the chain.
 
 ### The providers
 
@@ -203,8 +241,8 @@ its catalog entry.
 
 **Understanding** provides `understand`: a worker reads the bound Modules' Specs and file names and
 returns an assessment, changing nothing; its output is advice to the task level, never an
-instruction to the runner. It may run unbound, which is how the
-[main agent](../../glossary.json#concept.main-agent) answers a question before any change is agreed.
+instruction to the runner. It may run unbound, which is how the main agent answers a question before
+any change is agreed.
 
 <a id="contains-specification"></a>
 
@@ -247,20 +285,18 @@ but living in Spec tooling because it maintains Specs rather than changing a pro
 `spec_review`'s `reviewer` and `checker` and `spec_panel`'s reviewers and `chair`, run like any
 other provider's and change nothing. The findings stay the reviewers' claims, while the provider
 derives the verdict from them and, in a bound `spec_review` run, keeps them in the reviewed
-Modules' [review memory](../../glossary.json#concept.review-memory). `spec_panel` is
-the one provider whose steps run a LangGraph graph inside the run, which the runner neither knows
-nor needs: the provider still returns one run result through the ordinary steps.
+Modules' review memory. `spec_panel` is the one provider whose steps run a LangGraph graph inside
+the run, which the runner neither knows nor needs: the provider still returns one run result
+through the ordinary steps.
 
 ### What every Operation relies on
 
 <a id="uses-spec"></a>
 
 **Spec core** loads the workspace's Specs, resolves the named Modules, and computes each worker's
-[grant](../../glossary.json#concept.grant) and
-[context identity](../../glossary.json#concept.context-identity). An Operation
-relies on it computing the same grant from the same Specs, and freezes that grant before any worker
-starts. A Spec that cannot be loaded is refused rather than partially read, ending the run
-`failed`.
+grant and context identity. An Operation relies on it computing the same grant from the same Specs,
+and freezes that grant before any worker starts. A Spec that cannot be loaded is refused rather than
+partially read, ending the run `failed`.
 
 <a id="uses-execution"></a>
 
