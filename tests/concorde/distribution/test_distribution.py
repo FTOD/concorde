@@ -1186,6 +1186,58 @@ class InstallTests(unittest.TestCase):
             "environment", refusal("concorde_busy", "busy")["unhandled"]["reason"]
         )
 
+    @verifies("scenario.distribution.install-write-failed")
+    def test_a_write_failing_after_the_first_write_is_refused(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+        # A file where the project skill's folder goes: every check passes, the write fails.
+        blocker = project / ".claude/skills/concorde"
+        blocker.parent.mkdir(parents=True)
+        blocker.write_text("in the way\n")
+        with self.assertRaises(InstallError) as refused:
+            install(project, package, d2=False, pi_runtime=False, dependencies=False)
+        self.assertEqual("install_failed", refused.exception.code)
+        self.assertIn(str(blocker), str(refused.exception))
+        link = refusal(refused.exception.code, str(refused.exception))
+        validate(link, ERROR_SCHEMA)
+        self.assertEqual("environment", link["unhandled"]["reason"])
+        # Nothing is rolled back, and the receipt, written last, records nothing.
+        self.assertTrue((project / ".concorde/protocol/manifest.json").is_file())
+        self.assertTrue((project / ".concorde/framework/scripts/concorde.py").is_file())
+        self.assertFalse((project / ".concorde/install.json").exists())
+        blocker.unlink()
+        receipt = install(
+            project, package, d2=False, pi_runtime=False, dependencies=False
+        )
+        self.assertEqual(
+            receipt, json.loads((project / ".concorde/install.json").read_text())
+        )
+        self.assertTrue((project / ".claude/skills/concorde/SKILL.md").is_file())
+
+    @verifies("scenario.distribution.update-mark-failed")
+    def test_an_update_failing_after_its_receipt_is_completed_again(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+        first = install(
+            project, package, d2=False, pi_runtime=False, dependencies=False
+        )
+        mark = project / ".concorde/update.json"
+        mark.mkdir()
+        with self.assertRaises(InstallError) as refused:
+            update(project, package)
+        self.assertEqual("install_failed", refused.exception.code)
+        self.assertIn(str(mark), str(refused.exception))
+        # The install finished and replaced the receipt; only the mark is missing.
+        receipt = json.loads((project / ".concorde/install.json").read_text())
+        self.assertEqual(first["files"], receipt["files"])
+        self.assertFalse((project / ".concorde/install.json.partial").exists())
+        self.assertFalse(mark.is_file())
+        mark.rmdir()
+        update(project, package)
+        self.assertEqual("unvalidated", json.loads(mark.read_text())["state"])
+
     @verifies("scenario.distribution.install-docsite-template")
     def test_an_installed_concorde_proposes_the_docsite_scaffold(self):
         package = package_copy(self)

@@ -20,7 +20,9 @@
         "relies_on": [
           "concept.structural-check",
           "concept.registry",
-          "concept.protocol-binding"
+          "concept.protocol-binding",
+          "req.spec.init-explicit-envelope",
+          "req.spec.installation-follows-record"
         ]
       },
       {
@@ -50,6 +52,7 @@
         "meaning": "#uses-execution",
         "relies_on": [
           "concept.run",
+          "concept.run-lock",
           "concept.run-progress-file"
         ]
       },
@@ -69,11 +72,18 @@
         "meaning": "#uses-tracing",
         "relies_on": [
           "contract.tracing.node",
+          "contract.tracing.error",
           "concept.trace"
         ]
       }
     ],
-    "includes": [],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.spec.contracts",
+        "reason": "the shared command-line envelope and the exit code of each of its statuses, which the distribution and Spec tooling commands print"
+      }
+    ],
     "participates": []
   },
   "defines": [

@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -472,8 +473,8 @@ def install(
             block = block.rstrip("\n") + "\n\n" + paragraph
     except DevelopError as error:
         raise InstallError(error.code, str(error)) from error
-    # Replacing the Framework copy under a running Operation or task session would change the
-    # code it runs halfway through.
+    # Replacing the Framework copy under a running Operation or execution command would change
+    # the code it runs halfway through.
     running = active_runs(project)
     if running:
         raise InstallError(
@@ -508,20 +509,78 @@ def install(
     except ToolError as error:
         raise InstallError(error.code, str(error)) from error
     tools = {}
-    if d2:
-        try:
-            tools["d2"] = install_d2(
-                project, descriptor, **({"fetch": fetch} if fetch else {})
-            )
-        except ToolError as error:
-            raise InstallError(error.code, str(error)) from error
-    if pi_runtime:
-        try:
-            tools["pi-runtime"] = install_pi_runtime(
-                project, package, plan=runtime_plan, **({"run": run} if run else {})
-            )
-        except ToolError as error:
-            raise InstallError(error.code, str(error)) from error
+    try:
+        if d2:
+            try:
+                tools["d2"] = install_d2(
+                    project, descriptor, **({"fetch": fetch} if fetch else {})
+                )
+            except ToolError as error:
+                raise InstallError(error.code, str(error)) from error
+        if pi_runtime:
+            try:
+                tools["pi-runtime"] = install_pi_runtime(
+                    project, package, plan=runtime_plan, **({"run": run} if run else {})
+                )
+            except ToolError as error:
+                raise InstallError(error.code, str(error)) from error
+        return _place(
+            project,
+            package,
+            descriptor=descriptor,
+            docsite=docsite,
+            skill=skill,
+            block=block,
+            installed_from=installed_from,
+            develop=develop,
+            requirement=requirement,
+            settings=settings,
+            mcp_config=mcp_config,
+            previous=previous,
+            placed=placed,
+            uv=uv,
+            tools=tools,
+            pi_runtime=pi_runtime,
+            dependencies=dependencies,
+            run=run,
+        )
+    except OSError as error:
+        raise _failed_write("installing Concorde into", project, error) from error
+
+
+def _failed_write(action: str, project: Path, error: OSError) -> InstallError:
+    """A file operation that failed after the first write, which nothing rolls back."""
+    return InstallError(
+        "install_failed",
+        f"{action} {project} failed: {error}. Nothing is rolled back: what the steps before it "
+        f"wrote stays in place, and {RECEIPT} names the previous install unless the failure came "
+        "after it was replaced; remove the cause and run the same command again, which repeats "
+        "every step",
+    )
+
+
+def _place(
+    project: Path,
+    package: Path,
+    *,
+    descriptor: dict,
+    docsite: dict[str, bytes],
+    skill: str,
+    block: str,
+    installed_from: dict | None,
+    develop: bool,
+    requirement: str,
+    settings: dict,
+    mcp_config: dict,
+    previous: dict,
+    placed: dict[str, Path],
+    uv: str,
+    tools: dict,
+    pi_runtime: bool,
+    dependencies: bool,
+    run: Callable | None,
+) -> dict:
+    """Place Concorde's files once every refusal was decided; return the receipt."""
     written = install_project_defaults(project, package)
     _copy_runtime(package, project / FRAMEWORK, docsite)
     own_python = _own_python(project, uv, requirement)
@@ -607,7 +666,10 @@ def install(
         "amended": amended,
         "permissions": owned_rules,
     }
-    (project / RECEIPT).write_text(json.dumps(receipt, indent=2) + "\n")
+    # Replaced whole, so that a failure leaves either the previous receipt or this one.
+    partial = project / (RECEIPT + ".partial")
+    partial.write_text(json.dumps(receipt, indent=2) + "\n")
+    os.replace(partial, project / RECEIPT)
     # An initialized project keeps every installed file bound, those this install added too.
     try:
         bind_installation(project)
@@ -680,29 +742,32 @@ def update(
     )
     config_path = project / ".concorde/config.json"
     rebound = None
-    if config_path.is_file():
-        config = json.loads(config_path.read_text(encoding="utf-8"))
-        before = config.get("protocol")
-        after = installed_protocol_binding(project)
-        if before != after:
-            config["protocol"] = after
-            config_path.write_text(
-                json.dumps(config, indent=2) + "\n", encoding="utf-8"
-            )
-            rebound = {"from": before, "to": after}
-    state = {
-        "state": "unvalidated",
-        "from": previous.get("version"),
-        "to": receipt["version"],
-        # The version seldom changes between commits of a Concorde repository; the commits do.
-        "commits": {
-            "from": previous.get("source_commit"),
-            "to": receipt["source_commit"],
-        },
-        "protocol": rebound,
-        "at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
-    }
-    (project / UPDATE_STATE).write_text(json.dumps(state, indent=2) + "\n")
+    try:
+        if config_path.is_file():
+            config = json.loads(config_path.read_text(encoding="utf-8"))
+            before = config.get("protocol")
+            after = installed_protocol_binding(project)
+            if before != after:
+                config["protocol"] = after
+                config_path.write_text(
+                    json.dumps(config, indent=2) + "\n", encoding="utf-8"
+                )
+                rebound = {"from": before, "to": after}
+        state = {
+            "state": "unvalidated",
+            "from": previous.get("version"),
+            "to": receipt["version"],
+            # The version seldom changes between commits of a Concorde repository; the commits do.
+            "commits": {
+                "from": previous.get("source_commit"),
+                "to": receipt["source_commit"],
+            },
+            "protocol": rebound,
+            "at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        }
+        (project / UPDATE_STATE).write_text(json.dumps(state, indent=2) + "\n")
+    except OSError as error:
+        raise _failed_write("updating Concorde in", project, error) from error
     tasks = open_tasks(project)
     return {
         "receipt": receipt,
