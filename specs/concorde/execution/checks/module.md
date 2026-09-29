@@ -154,9 +154,9 @@ after -> stale: "digests differ" {style.stroke-dash: 3}
 boundary -> refused: "cannot be established" {style.stroke-dash: 3}
 ```
 
-<a id="design"></a>
-
 ## What the boundary enforces
+
+<a id="design"></a>
 
 Checks produce evidence that a workspace is ready, and that evidence is only worth having if
 the check could not change what it measured. So one guarantee is enforced, and the boundary states
