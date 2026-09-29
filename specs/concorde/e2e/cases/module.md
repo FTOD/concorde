@@ -2,36 +2,68 @@
 
 ## Purpose
 
-SWE-bench cases test Concorde's whole change flow on real issues: a
-case is prepared at its base commit, adopted, its Specs
-repaired, its issue worked through Concorde as a [main
-agent](../../glossary.json#concept.main-agent) would, and the merged change graded with the case's
-own tests, the way SWE-bench grades it. This [Module](../../glossary.json#concept.module) holds the
+SWE-bench cases test Concorde's whole change flow on real issues: a case is prepared at its base
+commit, adopted, its Specs repaired, its issue worked through Concorde as a
+[main agent](../../glossary.json#concept.main-agent) would, and the merged change graded with the
+case's own tests, the way SWE-bench grades it. This [Module](../../glossary.json#concept.module) holds the
 two steps that exist only for cases, repairing the adopted Specs in one bounded round and grading a
 delivered change, and the case itself. Preparing the project and running its workflows belong to
 [End-to-end testing](../module.md). It serves the people developing Concorde only.
 
-## Usage
+## Core concepts
 
-```text
-python3 scripts/e2e/e2e.py repair-specs <project> [--modules <ids>] [--task repair-specs]
-python3 scripts/e2e/e2e.py grade <project> --instance <case.json> --python <interpreter> [--ref main] [--pythonpath <dir>]…
-```
+**A case.** A case is one SWE-bench instance, one row of SWE-bench's dataset saved as a JSON file
+and given to `grade` with `--instance`: its `instance_id`, its `base_commit`, its `test_patch`, the
+case's own test changes, and two lists of pytest test identities: `FAIL_TO_PASS`, the tests that
+fail before the issue is resolved and must pass after it, and `PASS_TO_PASS`, the tests that must
+keep passing. Each list may be a JSON list or a string holding one, as the dataset stores it.
 
 **Working a case.** The developer builds the case's own Python environment outside the project (its
 interpreter and pinned dependencies, never the project installed in it), prepares the case's
 repository at its base commit under the case's name with `--python` naming that interpreter, which
 `concorde init` records as the project's for its checks' `{python}`, adopts it with the brownfield
 workflow, configures its checks, repairs the adopted Specs with `repair-specs`, and then works the
-issue through Concorde as a main agent would, from `understand` to the merge. The case itself is one
-SWE-bench instance, one row of SWE-bench's dataset saved as a JSON file and given to `grade` with
-`--instance`: its `instance_id`, its `base_commit`, its `test_patch`, the case's own test changes,
-and two lists of pytest test identities: `FAIL_TO_PASS`, the tests that fail before the issue is
-resolved and must pass after it, and `PASS_TO_PASS`, the tests that must keep passing. Each list may
-be a JSON list or a string holding one, as the dataset stores it.
+issue through Concorde as a main agent would, from `understand` to the merge. Finally `grade` grades
+the merged change.
 
-**Repairing the adopted Specs.** In a case the Specs are the test's own addition, describing code
-the test never changes, so the [review findings](../../glossary.json#concept.review-finding)
+## Overview
+
+Working a case, with who carries each step: [End-to-end testing](../module.md) prepares the project
+and runs its workflows, this Module repairs the adopted Specs and grades the result, and the issue
+itself is worked through Concorde as a main agent would. Only `repair-specs` and `grade` belong to
+this Module.
+
+```d2 illustrative
+direction: right
+developer: "Developer" {
+  env: "Build the case's Python\nenvironment outside the project"
+  checks: "Configure the\nproject's checks"
+}
+e2e: "End-to-end testing" {
+  prepare: "prepare the repository\nat the base commit, --python"
+  adopt: "run the brownfield\nworkflow: adoption"
+}
+cases: "SWE-bench cases" {
+  repair: "repair-specs:\none bounded round"
+  grade: "grade: the case's tests\nin a throwaway worktree"
+  verdict: "resolved or not" {shape: oval}
+}
+concorde: "Concorde, as a main agent would" {
+  work: "Work the issue:\nunderstand to the merge"
+}
+developer.env -> e2e.prepare -> e2e.adopt -> developer.checks -> cases.repair -> concorde.work -> cases.grade -> cases.verdict
+```
+
+## The commands
+
+```text
+python3 scripts/e2e/e2e.py repair-specs <project> [--modules <ids>] [--task repair-specs]
+python3 scripts/e2e/e2e.py grade <project> --instance <case.json> --python <interpreter> [--ref main] [--pythonpath <dir>]…
+```
+
+### Repairing the adopted Specs
+
+In a case the Specs are the test's own addition, describing code the test never changes, so the [review findings](../../glossary.json#concept.review-finding)
 adoption leaves are repaired before the issue: `repair-specs` opens a task, named `repair-specs`
 unless `--task` names another, over the Modules `--modules` names, every Module of the registry by
 default, reviews them, runs `specify` once with that review as input and an intent to change only
@@ -76,7 +108,9 @@ validate -> stop: "not ok" {style.stroke-dash: 3}
 delivery -> stop: "not ok" {style.stroke-dash: 3}
 ```
 
-**Grading a case.** `grade` decides whether the merged change resolves the issue the way SWE-bench
+### Grading a case
+
+`grade` decides whether the merged change resolves the issue the way SWE-bench
 does: in a throwaway worktree of `--ref` it puts every file the case's test patch touches back as
 it was at the case's base commit, since the change may have edited the same test files, applies
 the test patch, runs the test files it names with the given interpreter (`--pythonpath`
@@ -95,7 +129,7 @@ exceeds 30 minutes (`grade_timeout`, naming the case, the ref, the limit and the
 output it had produced). The throwaway worktree is removed however grading ends
 ([requirements](requirements.md#req.swe-bench-cases.grading-worktree-removed)).
 
-## Design
+## Why it is built this way
 
 Repairing a review's gaps automatically is otherwise a decision for a person. This exception holds
 for cases only, because a case's Specs are the test's own description of code the test never
@@ -113,6 +147,8 @@ lists, the files it touches reset to the base commit first. Running it in a thro
 keeps the case's tests from ever reaching the project, where a worker could see them, and leaves
 the project exactly as the merge left it.
 
+## Files
+
 <a id="realization.swe-bench-cases.steps"></a>
 
 The **case steps** are `scripts/e2e/cases.py`: `repair_specs`, which runs the Operations and
@@ -126,7 +162,7 @@ The **case step tests**, `tests/concorde/e2e/test_cases.py`, clone a case at its
 a toy case before and after its fix, and drive the repair round with stand-in runs, verifying
 the [requirements](requirements.md) and [scenarios](scenarios.md).
 
-### Around it
+## Around it
 
 <a id="uses-distribution"></a>
 
