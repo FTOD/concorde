@@ -44,7 +44,7 @@ in a Concorde project's primary worktree that it is the main agent, and gives it
   `--main`, and the [session reports](../../glossary.json#concept.session-report) back with
   SendMessage. In pi the main agent uses the `concorde_task_session` tool: each
   [session round](../../glossary.json#concept.session-round) ends with a report that wakes the main
-  agent, which starts the next round with the tool's `answer`. The task session changes Specs and
+  agent that started the task session, which starts the next round with the tool's `answer`. The task session changes Specs and
   code in the task worktree directly or by running
   [Operations](../../glossary.json#concept.operation) with `concorde run <operation> …` and the
   [execution commands](../../glossary.json#concept.execution-command) `concorde task-validation`
@@ -155,15 +155,16 @@ It shows each run as an external job in pi-subagents' FleetView — its workspac
 name, its step, the worker's round and latest tool call, and on its end `completed`, `stopped` or
 `failed` for a result of `ok`, `blocked` or `failed`, with the result's summary; a run whose runner
 process ended without finishing is shown `failed`. Runs are filed under the session's file, or
-its identity when it is not persisted, the name pi-subagents gives the session. Only the runs and
-task-session rounds the session started with its own `concorde_run` and `concorde_task_session`
-tools are its **background work**: a `bg_wait` call without an id waits for those still running
-(with an id it matches only subagent runs), and a main session run with `pi -p` waits for them
-before it exits, as pi-subagents drains the work of every `pi -p` session. A run or round it only
-follows, started with bash or by another session, is shown and reported but is never its work, so
-a `pi -p` session never waits for another session's runs. When a run ends the
-extension sends the main agent a message naming the run, its workspace and name, the result's status
-and summary and the run result's file, followed, for a result that carries an
+its identity when it is not persisted, the name pi-subagents gives the session. The session
+**owns** only the runs its own `concorde_run` started and the rounds of the task sessions started
+for it (see [Owners](#owners)), and only what it owns wakes it or is its **background work**: a
+`bg_wait` call without an id waits for its own runs and rounds still running (with an id it matches
+only subagent runs), and a main session run with `pi -p` waits for them before it exits, as
+pi-subagents drains the work of every `pi -p` session. A run or round it only follows, started with
+bash, by a task session or by another main session, is shown but never wakes it and is never its
+work, so a `pi -p` session never waits for another session's runs. When a run the session owns
+ends, the extension sends the main agent a message naming the run, its workspace and name, the
+result's status and summary and the run result's file, followed, for a result that carries an
 [error chain](../../glossary.json#concept.error-chain), by that whole chain as indented text: while the main agent is in a turn the message is steered into
 that turn after its current tool calls, and otherwise it starts the next turn. A run that has
 already finished when `concorde_run` finds it, such as one refused at once, is answered in the
@@ -188,6 +189,8 @@ done: "Answered in the tool's own result; no message follows"
 follow: "Follow its run progress file and, for an Operation,\nits worker's progress file"
 fleet: "Show it in FleetView: workspace or unbound, name, step,\nworker round and latest tool call"
 ended: "The run ends, or its runner is lost"
+owned: "Owned by this session?" {shape: diamond}
+shown: "Shown ended; nobody here is woken"
 wake: "Message the main agent: status, summary, result file, error chain"
 steer: "Steered into the current turn\nafter its tool calls"
 next: "Starts the next turn"
@@ -201,23 +204,56 @@ elsewhere -> store
 store -> follow
 follow -> fleet: with pi-subagents
 follow -> ended
-ended -> wake
+ended -> owned
+owned -> wake: "yes: started by its concorde_run"
+owned -> shown: no
 wake -> steer: in a turn
 wake -> next: between turns
 ```
 
 The view follows pi task sessions the same way. The `concorde_task_session` tool starts a task
 session, answers it (`answer`, which starts the next round) or stops its running round (`stop`), by
-running `concorde task session` from the primary worktree, and returns at once. The extension reads
-each round's status file `status.json` under `.concorde/tasks/<task>.session/` and shows the round
-as an external job — its task, round and the session's latest tool call — and when the round ends it
-wakes the main agent with the outcome recorded in the task record: the report's summary, decisions
-and open points, the [delivery commit](../../glossary.json#concept.delivery-commit), the numbers of
-the escalations to read with `concorde task show`, or the failed round's error chain rendered. A
-main session that starts again finds the running rounds from their status files. In a pi task
+running `concorde task session` from the primary worktree, and returns at once; a start names the
+session with `--main`, so the task record names it as the owner of every round of that task
+session. The extension reads each round's status file `status.json` under
+`.concorde/tasks/<task>.session/` and shows every running round as an external job — its task,
+round and the session's latest tool call — and when a round the session owns ends it wakes the main
+agent with the outcome recorded in the task record: the report's summary, decisions and open points,
+the [delivery commit](../../glossary.json#concept.delivery-commit), the numbers of the escalations
+to read with `concorde task show`, or the failed round's error chain rendered. The round of another
+main session's task session is shown and never wakes it; when the session answers such a session,
+the tool's result names the owner, which alone will be woken. A main session that starts again finds
+the running rounds from their status files. In a pi task
 session itself, where `CONCORDE_TASK_SESSION` is set, the extension only adds the project's terms to
 every prompt and marks the commands the session starts as started from pi; it starts, follows and
 reports no runs or rounds.
+
+<a id="owners"></a>
+
+**Owners.** Several Claude Code and pi main sessions may work on one project at the same time,
+and each sees every run and round of it, but a run or a
+[session round](../../glossary.json#concept.session-round) wakes only its **owner**, and it has
+never more than one:
+
+| Work | Owner | How the owner is woken |
+| --- | --- | --- |
+| A run a main session starts in Claude Code, in background Bash | that session | Claude Code's own notification when the command ends |
+| A run a pi main session starts with `concorde_run` | that session | the run view's message |
+| Every round of a pi task session, whoever answered it | the main session the task record names as its `main`, the one that started it | the run view's message |
+| What a Claude Code task session reports | the session its `--main` names | the task session's SendMessage |
+| A run a task session starts in its worktree | that task session, no main session | the task session's own wait; its owner hears of it in the task session's report |
+| A run started by a command run by hand, a round of a pi task session started without `--main` | no main session | nobody is woken |
+
+The owner is recorded where the owner's side keeps it, never by Execution, which knows nothing of
+main sessions: a pi main session keeps the runs its `concorde_run` started, and each end it has
+been given, as custom entries of its own session file, so a resumed session keeps owning its runs,
+is given once the end of one that ended while it was closed, and is never given an end twice; the
+owner of a task session's rounds is the `main` of its entry in the task record. A main session that
+does not own a run or round sees its state without being woken: a pi main session in its run view
+and `/concorde`; a Claude Code main session, to which nothing is pushed, when it asks with
+`concorde task show <task>`, which lists the task workspace's runs with their status and the
+task's sessions with their owner and, for pi, each round's outcome
+([requirements](requirements.md#req.main-session.single-owner)).
 
 **Escalation policy.** A result that is not `ok`,
 or a refused `concorde` command, carries an [error chain](../../glossary.json#concept.error-chain);

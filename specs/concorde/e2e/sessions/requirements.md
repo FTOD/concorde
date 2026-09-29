@@ -52,6 +52,19 @@ session began still running, the driver SHALL resume the same session, once that
 been recorded or its supervisor has gone, with a wake message giving the outcome its
 [task record](../../glossary.json#concept.task-record) holds.
 
+### req.headless-sessions.pi-owner-wake — A headless pi session is woken only for what it owns
+
+The tool SHALL wake a headless pi session only for the runs its `concorde_run` started, recorded
+in its session file, and the session rounds of the task sessions whose task record names the
+session as their `main`.
+
+### req.headless-sessions.live-own-wake — A live session is woken by its own program
+
+A live session SHALL be woken only by its own program, never by the tool.
+
+Every event it printed is kept with its arrival time, so that a wake is told from a turn the tool
+prompted.
+
 ### req.headless-sessions.wake-once — A run wakes the session once
 
 The driver SHALL name each run and each session round in at most one wake message of a session,

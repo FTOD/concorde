@@ -107,6 +107,16 @@ stamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 (run / "status.json").write_text(json.dumps({
     "kind": "operation", "run_id": "r-1", "name": "implement", "workspace": "t1",
     "phase": "running", "host_pid": host.pid, "started_at": stamp}))
+# The run view records the run its concorde_run started in the session file, as pi does.
+(directory / ("2026-09-27T10-00-00_" + session + ".jsonl")).write_text(json.dumps(
+    {"type": "custom", "customType": "concorde-owned-run", "data": {"id": "r-1"}}) + "\\n")
+# Another session's run, running meanwhile, is not this session's to be woken for.
+other = Path(".concorde/runs/r-2")
+other.mkdir(parents=True)
+subprocess.Popen([sys.executable, "-c", HOLD, str(other), "30"], start_new_session=True)
+(other / "status.json").write_text(json.dumps({
+    "kind": "operation", "run_id": "r-2", "name": "implement", "workspace": "t2",
+    "phase": "running", "host_pid": 1, "started_at": stamp}))
 say({"type": "tool_execution_start", "toolName": "concorde_run",
      "args": {"operation": "implement", "task": "t1"}})
 reply("started implement; ending the turn", 0.1)
@@ -149,9 +159,17 @@ ESCALATE = "import json, sys, time; from pathlib import Path; time.sleep(1); " \
 supervisor = subprocess.Popen([sys.executable, "-c", ESCALATE, str(record)],
                               start_new_session=True)
 stamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-record.write_text(json.dumps({"id": "t1", "sessions": [{"program": "pi", "id": "p-1",
-    "rounds": [{"round": 1, "status": "running", "supervisor_pid": supervisor.pid,
-                "started_at": stamp, "report": None, "error": None}]}]}))
+other = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"],
+                         start_new_session=True)
+# concorde_task_session started the session with --main naming this session; another main
+# session's task session runs meanwhile.
+record.write_text(json.dumps({"id": "t1", "sessions": [
+    {"program": "pi", "id": "p-1", "main": session,
+     "rounds": [{"round": 1, "status": "running", "supervisor_pid": supervisor.pid,
+                 "started_at": stamp, "report": None, "error": None}]},
+    {"program": "pi", "id": "p-2", "main": "another-main",
+     "rounds": [{"round": 1, "status": "running", "supervisor_pid": other.pid,
+                 "started_at": stamp, "report": None, "error": None}]}]}))
 say({"type": "tool_execution_start", "toolName": "concorde_task_session",
      "args": {"task": "t1"}})
 reply("started the task session; ending the turn", 0.1)
@@ -401,6 +419,7 @@ class HeadlessSessionTests(unittest.TestCase):
             poll=0.1,
         )
         self.assertEqual(("pi", "idle"), (record["client"], record["end"]))
+        # Only the run its concorde_run started wakes it, never another session's r-2.
         self.assertEqual(["r-1"], record["rounds"][0]["woke_for"])
         calls = [
             json.loads(line)
@@ -501,6 +520,7 @@ class HeadlessSessionTests(unittest.TestCase):
             poll=0.1,
         )
         self.assertEqual("idle", record["end"])
+        # Only the round of the task session started for it, never another main session's.
         self.assertEqual(["t1:p-1:1"], record["rounds"][0]["woke_for"])
         calls = [
             json.loads(line)

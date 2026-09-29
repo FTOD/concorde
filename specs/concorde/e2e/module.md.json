@@ -47,7 +47,22 @@
         "relies_on": [
           "concept.workspace-binding",
           "concept.run-store",
-          "concept.run-progress-file"
+          "concept.run-progress-file",
+          "concept.workspace-lock"
+        ]
+      },
+      {
+        "target": "module.main-session",
+        "meaning": "#uses-main-session",
+        "relies_on": [
+          "concept.run-view"
+        ]
+      },
+      {
+        "target": "module.tasks",
+        "meaning": "#uses-tasks",
+        "relies_on": [
+          "concept.task-record"
         ]
       }
     ],
@@ -80,6 +95,16 @@
       "entries": [
         "tests/concorde/e2e/__init__.py",
         "tests/concorde/e2e/test_e2e.py"
+      ]
+    },
+    {
+      "id": "realization.e2e.owners",
+      "type": "realization",
+      "title": "Owners case",
+      "meaning": "#realization.e2e.owners",
+      "entries": [
+        "scripts/e2e/owners.py",
+        "tests/concorde/e2e/test_owners.py"
       ]
     }
   ],

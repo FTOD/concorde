@@ -1,0 +1,85 @@
+{
+  "workspace": "owner-only-wake",
+  "goal": "Every run and task-session round has exactly one owner main session, which alone is woken when it ends; every other main session (Claude Code or pi) may see its state but is never woken; verified by a live e2e case with two Claude Code and two pi main sessions",
+  "modules": [
+    "module.main-session",
+    "module.tasks",
+    "module.task-session",
+    "module.headless-sessions",
+    "module.e2e"
+  ],
+  "sequence": 1,
+  "base_commit": "c467a90ab75c71ac7abdb112825a2245f3b1007d",
+  "parent_commit": "ba679ebc7e7b036dd255377414bbfea76054f8e3",
+  "readiness": {
+    "run_id": "r-20260929T064814-delivery-0431962f",
+    "input_digest": "sha256:72fbd27a9b53d900338c5d46899b3e1bebb9d75926b01693af002a4a5fc6b358",
+    "modules": [
+      "module.concorde",
+      "module.e2e",
+      "module.headless-sessions",
+      "module.main-session",
+      "module.task-session",
+      "module.tasks"
+    ],
+    "checks": [
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:0fb31a2d4139c453f4ba2a3b16116fdf9a6ff94ab3131448f4f169ab2ef9c73c"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:d6d11e526f1a2705205c69ca6883b31e6ea6c938a3821b49c7ffe1d2cda5b020"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:161028126a1d34265dede50b2e908a325c1b2503864c98283dbddffda17041f8"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:ddacfd2eacef32e1326c62a6fa4a2edf274f948651c675a987a4552159418368"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:38031ec6e3f4b18916698b89562ed1e6824f078348a7a63dcb1c3a03d8e502ee"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:c0b0786e400d44872ddcb83f1a517aa50699c3b52946636efb2c842eda6f485f"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260929T064658-task_validation-4df8f3c9",
+      "kind": "command",
+      "name": "task-validation",
+      "modules": [
+        "module.main-session",
+        "module.tasks",
+        "module.task-session",
+        "module.headless-sessions",
+        "module.e2e"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:4abc2ac369f51a01d322d624ca18a1108baffe092b85cb34021064992743a52f"
+    }
+  ],
+  "created_at": "2026-09-29T06:49:25Z"
+}

@@ -51,6 +51,14 @@ Task sessions SHALL append a task session to the [task record](../../glossary.js
 
 A session that did not start leaves the record unchanged.
 
+### req.task-session.owner-kept — A pi task session keeps the owner it was started for
+
+Task sessions SHALL record the `--main` a pi task session was started with as the session's `main`
+in the [task record](../../glossary.json#concept.task-record), or null without one, and keep it
+unchanged for every later round, whoever answers it.
+
+The main session it names owns every round of the session and is the only one a round's end wakes.
+
 ### req.task-session.round-recorded — Every pi round ends with a recorded outcome
 
 Task sessions SHALL record every pi [session round](../../glossary.json#concept.session-round) as `delivered`, `escalated`, `failed` or `stopped`.

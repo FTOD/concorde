@@ -392,15 +392,18 @@ def _recorded_round(project: Path, item: dict) -> dict | None:
 
 
 def unsettled_rounds(
-    project: Path, since: str, known: set[str] = frozenset()
+    project: Path, since: str, known: set[str] = frozenset(), owner: str | None = None
 ) -> list[dict]:
     """The rounds of pi task sessions begun since ``since`` that are still running: their task
     record holds them ``running`` and their supervisor lives. ``known`` rounds were reported
-    already."""
+    already. With ``owner``, only the rounds of task sessions started for that main session,
+    which the task record names as their ``main``, since only the owner is woken."""
     found = []
     for record in _task_records(project):
         for found_session in record.get("sessions") or []:
             if found_session.get("program") != "pi":
+                continue
+            if owner is not None and found_session.get("main") != owner:
                 continue
             for entry in found_session.get("rounds") or []:
                 key = round_key(
@@ -424,14 +427,21 @@ def unsettled_rounds(
 
 
 def unsettled_runs(
-    project: Path, since: str, round_end: float, known: set[str] = frozenset()
+    project: Path,
+    since: str,
+    round_end: float,
+    known: set[str] = frozenset(),
+    owned: set[str] | None = None,
 ) -> list[dict]:
     """The runs started since ``since`` that the round left unsettled: still running, or
-    cancelled by the end of the round. ``known`` runs were reported already."""
+    cancelled by the end of the round. ``known`` runs were reported already. With ``owned``,
+    only those runs, the ones the session owns."""
     found = []
     for directory in sorted(runs_of(project).glob("r-*")):
         state = _state(directory)
         if state is None or directory.name in known:
+            continue
+        if owned is not None and directory.name not in owned:
             continue
         if str(state.get("started_at") or "") < since:
             continue
@@ -445,6 +455,30 @@ def unsettled_runs(
         if code == "cancelled" and abs(written - round_end) <= TURN_END_SECONDS:
             found.append({"run": directory.name, "why": "stopped_with_turn"})
     return found
+
+
+def pi_owned_runs(session_dir: Path, session_id: str) -> set[str]:
+    """The runs a pi session owns: those its run view recorded as started by its
+    ``concorde_run``, custom ``concorde-owned-run`` entries of its session file."""
+    owned = set()
+    for path in session_dir.rglob(f"*{session_id}*.jsonl"):
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            try:
+                entry = json.loads(line)
+            except ValueError:
+                continue
+            if (
+                isinstance(entry, dict)
+                and entry.get("type") == "custom"
+                and entry.get("customType") == "concorde-owned-run"
+                and isinstance((entry.get("data") or {}).get("id"), str)
+            ):
+                owned.add(entry["data"]["id"])
+    return owned
 
 
 def _ended(project: Path, item: dict) -> bool:
@@ -688,9 +722,17 @@ def start(
         if session is None:
             end = "no_session"
             break
-        runs = unsettled_runs(project, began, round_end, known) + unsettled_rounds(
-            project, began, known
-        )
+        # A pi session is woken only for what it owns, as its run view would: the runs its
+        # concorde_run started and the rounds of the task sessions started for it. A Claude Code
+        # round's runs are its own background commands, which the round's end stopped.
+        if client == "pi":
+            runs = unsettled_runs(
+                project, began, round_end, known, pi_owned_runs(pi_sessions, session)
+            ) + unsettled_rounds(project, began, known, session)
+        else:
+            runs = unsettled_runs(project, began, round_end, known) + unsettled_rounds(
+                project, began, known
+            )
         if not runs:
             end = "idle"
             break

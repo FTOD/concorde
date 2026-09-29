@@ -56,3 +56,13 @@ The tool SHALL change Claude Code's configuration only through `trust`.
 
 `trust` SHALL leave every setting of Claude Code's configuration other than the trust markings it
 adds as it was.
+
+## The owners case
+
+### req.e2e.owners-case — The owners case fails whenever a run wakes a session it does not own
+
+The owners case SHALL end `failed`, naming each problem, when the owner of a run it played was not
+woken when the run ended, when any other live session began a turn or received a notification
+while the run ended, or when a session that does not own the run could not see it ended.
+
+It prompts no session in the time it judges, so every turn and notification there is a wake.

@@ -31,10 +31,10 @@ defined in the [contracts](contracts.md).
 ### scenario.task-session.pi-start — Start a pi task session
 
 - GIVEN a pi main session, an open task `severity`, and pi, `bwrap`, `socat` and the sandbox-runtime package installed
-- WHEN the main agent runs `concorde task session severity`
+- WHEN the main agent runs `concorde task session severity --main 0199a3`
 - THEN `.concorde/tasks/severity.session/` holds `boundary.ts` with the task worktree and [decision log](../../glossary.json#concept.decision-log) embedded
 - AND a detached supervisor runs `pi -p --mode json --approve -e <boundary.ts>` in the task worktree with the developer's pi configuration, `CONCORDE_TASK_SESSION` set and a session file under `pi/`, its prompt the pi [task-session](../../glossary.json#concept.task-session) guidance followed by the task's goal, Modules and decision log
-- AND the task record lists the session with the program `pi` and round 1 as `running`, and the round's status file `status.json` names the round
+- AND the task record lists the session with the program `pi`, `0199a3` as its `main` and round 1 as `running`, and the round's status file `status.json` names the round
 - BUT when pi, on Linux `bwrap` or `socat`, or the sandbox-runtime package is missing, the command fails with `session_failed` naming each missing program, and the record is unchanged
 
 ### scenario.task-session.pi-boundary — The pi boundary confines the session's writes
@@ -50,6 +50,7 @@ defined in the [contracts](contracts.md).
 - WHEN the main agent runs `concorde task session severity --answer "<answer>"`
 - THEN round 2 runs on the same session file with the answer as its prompt
 - AND when it reports `delivered` naming the task's [delivery commit](../../glossary.json#concept.delivery-commit), round 2 is recorded `delivered` with the report
+- AND the session's `main` in the task record is still the main session it was started for, whoever gave the answer
 
 ### scenario.task-session.pi-busy — One round runs at a time
 
