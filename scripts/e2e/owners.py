@@ -13,10 +13,12 @@ and plays two phases on the project's open task:
 
 Each run is held back by the case, which holds the task's workspace lock until the run is in the
 run store, so that the run outlives its launch and its end is a wake rather than the launching
-tool's own answer. Once the run has ended and a grace period has passed, the owner must have been
-woken and every other session must not have begun a turn or received a notification. Then each
-other session, into which nothing is pushed, is asked to run ``concorde task show <task>`` and
-must find the run with its status.
+tool's own answer. Once the run has written its result, the case observes for a bounded window:
+until the owner has been woken and ended its turn, but at most ``wake`` seconds, and then a grace
+period more. The window ends whether or not the owner was woken, so an owner never woken is a
+problem of the verdict, not an error. In it the owner must have been woken and every other session
+must not have begun a turn or received a notification. Then each other session, into which nothing
+is pushed, is asked to run ``concorde task show <task>`` and must find the run with its status.
 """
 
 from __future__ import annotations
@@ -35,6 +37,7 @@ from live import LiveSession
 from sessions import records_of
 
 GRACE_SECONDS = 20.0
+WAKE_SECONDS = 180.0
 LIMIT_SECONDS = 600.0
 READY = "Reply with the single word READY and nothing else."
 
@@ -142,6 +145,17 @@ def until(condition, limit: float, what: str, poll: float = 0.5, **evidence) -> 
         time.sleep(poll)
 
 
+def observe(condition, limit: float, poll: float = 0.5) -> bool:
+    """Whether ``condition`` held within ``limit`` seconds: a window of the case that ends at its
+    deadline without an error, unlike ``until``."""
+    deadline = time.monotonic() + limit
+    while not condition():
+        if time.monotonic() > deadline:
+            return False
+        time.sleep(poll)
+    return True
+
+
 def owner_prompt(worktree: Path, limit: float) -> str:
     wait = str(int(limit))
     return (
@@ -220,10 +234,11 @@ def phase(
     task: str,
     directory: Path,
     grace: float,
+    wake: float,
     limit: float,
 ) -> dict:
-    """One phase: a run held back until it is in the run store, released, ended, judged, and
-    then looked up by every session that does not own it."""
+    """One phase: a run held back until it is in the run store, released, ended, observed for a
+    bounded window, judged, and then looked up by every session that does not own it."""
     known = known_runs(records)
     started = time.time()
     with workspace_held(records, task, limit):
@@ -261,12 +276,8 @@ def phase(
         progress=str(run_folder(records, run_id) / "status.json"),
     )
     if owner is not None:
-        until(
-            lambda: owner.woken(released) and owner.settled(released),
-            limit,
-            f"the owner {owner.name} was not woken with the end of run {run_id}",
-            log=str(owner.log),
-        )
+        # An owner not woken by the deadline is judged below, as a problem of the verdict.
+        observe(lambda: owner.woken(released) and owner.settled(released), wake)
     time.sleep(grace)
     end = time.time()
     verdicts, problems = judge(sessions, owner, baseline, end)
@@ -310,6 +321,7 @@ def owners(
     task: str = "t1",
     claude_model: str | None = None,
     grace: float = GRACE_SECONDS,
+    wake: float = WAKE_SECONDS,
     limit: float = LIMIT_SECONDS,
     claude_program: str | None = None,
 ) -> dict:
@@ -355,6 +367,7 @@ def owners(
             "task": task,
             "directory": directory,
             "grace": grace,
+            "wake": wake,
             "limit": limit,
         }
         phases.append(phase("unowned", sessions, None, **options))

@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "module": "module.dogfood-scenarios",
+  "findings": [],
+  "reviewed": {
+    "context_identity": "sha256:ad5dc76db16276c26c449c7cee2a278f455567b560c7afb18d26385dfb026332",
+    "run": "r-20260929T205653-spec_review-90427697"
+  }
+}

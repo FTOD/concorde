@@ -15,13 +15,26 @@ Concrete situations that show the [requirements](requirements.md) of
 - WHEN the developer prepares a repository not on the list without `--any`
 - THEN preparation is refused with `unknown_repository` naming the known ones
 
-### scenario.e2e.worker-configuration — A test project gets a worker configuration
+### scenario.e2e.worker-model — A test project runs every worker on the model given
 
-- GIVEN this checkout's own `.concorde/workers.json`
-- WHEN the developer prepares a test project, with or without `--worker-model`
-- THEN the project's committed `.concorde/workers.json` enables and chooses the given project model name for every worker, or holds this checkout's enabled models, defaults, [Operation](../glossary.json#concept.operation) entries and limits without its `runtime` paths
+- GIVEN a [model map](../glossary.json#concept.model-map) that gives the project model name `fast` an id for every worker's program
+- WHEN the developer prepares a test project with `--worker-model fast`
+- THEN the project's committed `.concorde/workers.json` enables `fast` alone and chooses it as the default of every worker
+- AND the result names `fast` as the enabled model
+
+### scenario.e2e.copied-configuration — A test project takes this checkout's worker configuration
+
+- GIVEN this checkout's own `.concorde/workers.json` and a model map that resolves every model it names
+- WHEN the developer prepares a test project without `--worker-model`
+- THEN the project's committed `.concorde/workers.json` holds this checkout's enabled models, defaults, [Operation](../glossary.json#concept.operation) entries and limits, without its `runtime` paths
 - AND the result names the enabled models
-- BUT a model the developer's [model map](../glossary.json#concept.model-map) gives no id for a worker's program is refused with `model_unmapped` before anything is cloned
+
+### scenario.e2e.unmapped-model — A model the model map cannot resolve is refused
+
+- GIVEN a model map that gives the project model name `unmapped` no id for a worker's program
+- WHEN the developer prepares a test project with `--worker-model unmapped`
+- THEN preparation is refused with `model_unmapped`, naming the entry the map lacks
+- AND nothing is cloned
 
 ### scenario.e2e.default-root — Test projects live in the temporary directory
 
@@ -55,15 +68,46 @@ Concrete situations that show the [requirements](requirements.md) of
 
 ### scenario.e2e.stale-result — A result an earlier run saved is not the run's
 
-- GIVEN a test project whose task's [workflow record](../glossary.json#concept.workflow-record) already holds a result an earlier run saved
+- GIVEN a test project whose task's [workflow record](../glossary.json#concept.workflow-record) holds one result an earlier run saved
 - WHEN a `run` ends without its workflow saving a result
-- THEN `run` fails with `no_result`, naming how many results the record held before and after the run
-- BUT when the workflow saves results during the run, `run` prints the newest of them
+- THEN `run` fails with `no_result`, naming that the record held one result before the run and one after it
+- AND the earlier run's result is not printed
 
-### scenario.e2e.owners-case — Several live main sessions, and only the owner woken
+### scenario.e2e.newest-result — A run prints the newest result it saved
 
-- GIVEN a test project with a task `t1` with a worktree, and live sessions of two Claude Code main sessions in its primary worktree
+- GIVEN a test project whose task's workflow record holds one result an earlier run saved
+- WHEN a `run` ends after its workflow saved two results
+- THEN `run` prints the second of them
+
+### scenario.e2e.owners-passed — Only the owner of each run is woken
+
+- GIVEN a test project with a task `t1` with a worktree, and live sessions of two Claude Code main sessions in its primary worktree, each woken only by its own background commands
 - WHEN `owners` plays a run started by nobody's tool and a run the first session starts in background Bash
-- THEN it ends `passed` when, for each run, only its owner was woken and every other session found the run ended with `concorde task show t1`
-- AND it ends `failed`, naming the session, when a session was woken by a run it does not own
-- BUT fewer than two sessions (`invalid_input`) or a task without a worktree (`no_task`) stop it before any session starts
+- THEN it ends `passed`
+- AND for the unowned run no session was woken, for the owned run only the first session was woken, and every session that does not own a run found it ended with `concorde task show t1`
+
+### scenario.e2e.owners-unwanted-wake — A session woken by a run it does not own fails the case
+
+- GIVEN a test project with a task `t1` with a worktree, and live sessions of two Claude Code main sessions in its primary worktree, each also woken by the end of every run
+- WHEN `owners` plays its two runs
+- THEN it ends `failed`, naming each session woken by a run it does not own in each phase
+- AND the first session woken by its own run is no problem
+
+### scenario.e2e.owner-not-woken — An owner not woken by its deadline fails the case
+
+- GIVEN a test project with a task `t1` with a worktree, and live sessions of two Claude Code main sessions in its primary worktree, none ever woken by a background command
+- WHEN `owners`, with `--wake 2` and `--grace 1`, plays a run the first session starts in background Bash and the run writes its result
+- THEN the case observes the sessions for 3 seconds after the result, the sum of the two, and then judges the phase
+- AND the case ends `failed`, naming that the owner `claude-1` was not woken when its run ended, and with no error
+
+### scenario.e2e.owners-too-few-sessions — The owners case needs two sessions
+
+- GIVEN a test project with a task `t1` with a worktree
+- WHEN `owners` is asked to keep fewer than two sessions
+- THEN it stops with `invalid_input` before any session starts
+
+### scenario.e2e.owners-no-task — The owners case needs a task with a worktree
+
+- GIVEN a test project without a task `t9`
+- WHEN `owners` is asked to play its runs on `t9`
+- THEN it stops with `no_task` before any session starts

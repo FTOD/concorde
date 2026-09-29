@@ -97,22 +97,9 @@ class E2ETests(unittest.TestCase):
         self.assertEqual(Path(tempfile.gettempdir()) / "concorde-e2e", root)
         self.assertFalse(root.is_relative_to(Path.home()))
 
-    @verifies("scenario.e2e.worker-configuration")
-    def test_a_test_project_gets_a_worker_configuration_before_its_first_commit(self):
-        own = json.loads((REPOSITORY_ROOT / e2e.WORKERS).read_text())
-        self.assertEqual(
-            {field: own[field] for field in e2e.WORKER_FIELDS if field in own},
-            e2e.worker_configuration(),
-        )
-        self.assertNotIn("runtime", e2e.worker_configuration())
-        self.assertEqual(
-            {
-                "schema_version": 2,
-                "enabled_models": {"fast": {}},
-                "default": {"model": "fast"},
-            },
-            e2e.worker_configuration("fast"),
-        )
+    def prepare_committing(self, worker_model: str | None) -> tuple[dict, dict]:
+        """Prepare a test project with the clone and every command stood in for; what `prepare`
+        printed, and the worker configuration it committed."""
         root = Path(tempfile.mkdtemp())
         self.addCleanup(lambda: subprocess.run(["rm", "-rf", str(root)], check=False))
         committed = {}
@@ -139,11 +126,57 @@ class E2ETests(unittest.TestCase):
                 "adopt",
                 allow_any=True,
                 name="demo",
-                worker_model="fast",
+                worker_model=worker_model,
             )
-        self.assertEqual(e2e.worker_configuration("fast"), committed["workers"])
+        return prepared, committed["workers"]
+
+    @verifies("scenario.e2e.worker-model")
+    def test_a_test_project_runs_every_worker_on_the_model_given(self):
+        self.assertEqual(
+            {
+                "schema_version": 2,
+                "enabled_models": {"fast": {}},
+                "default": {"model": "fast"},
+            },
+            e2e.worker_configuration("fast"),
+        )
+        prepared, committed = self.prepare_committing("fast")
+        self.assertEqual(e2e.worker_configuration("fast"), committed)
         self.assertEqual(["fast"], prepared["worker_models"])
-        # A model this machine's model map cannot resolve is refused before anything is set up.
+
+    @verifies("scenario.e2e.copied-configuration")
+    def test_a_test_project_takes_this_checkouts_worker_configuration(self):
+        own = json.loads((REPOSITORY_ROOT / e2e.WORKERS).read_text())
+        expected = {field: own[field] for field in e2e.WORKER_FIELDS if field in own}
+        self.assertNotIn("runtime", expected)
+        # A model map that resolves this checkout's models on both programs, as the developer's
+        # does.
+        mapped = Path(tempfile.mkdtemp()) / "models.json"
+        self.addCleanup(
+            lambda: subprocess.run(["rm", "-rf", str(mapped.parent)], check=False)
+        )
+        mapped.write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "models": {
+                        name: {"pi": f"local/{name}", "claude": name}
+                        for name in own["enabled_models"]
+                    },
+                }
+            )
+        )
+        with patch.dict(os.environ, {"CONCORDE_MODEL_MAP": str(mapped)}):
+            prepared, committed = self.prepare_committing(None)
+        self.assertEqual(expected, committed)
+        self.assertEqual(
+            sorted(own["enabled_models"]), sorted(prepared["worker_models"])
+        )
+
+    @verifies("scenario.e2e.unmapped-model")
+    def test_a_model_the_model_map_cannot_resolve_is_refused_before_cloning(self):
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: subprocess.run(["rm", "-rf", str(root)], check=False))
         with (
             patch.object(e2e, "clone") as cloned,
             self.assertRaises(e2e.E2EError) as raised,
@@ -268,60 +301,63 @@ class E2ETests(unittest.TestCase):
                 ],
             )
 
+    def run_after_earlier_result(self, saves: list[tuple[int, str]]) -> dict:
+        """A headless `run` of a test project whose workflow record holds one result an earlier
+        run saved, with a session that saves ``saves``; what `run` printed."""
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        project = Path(directory.name)
+        (project / ".concorde/tasks/adopt").mkdir(parents=True)
+        (project / ".concorde/tasks/adopt/task.json").write_text(
+            json.dumps({"worktree": str(project)})
+        )
+        workspace = project / ".concorde/tasks/adopt/workspace"
+        folder = workspace / "workflow"
+        (folder / "reports").mkdir(parents=True)
+        reports = []
+
+        def save(number: int, status: str) -> None:
+            path = folder / f"reports/{number}.json"
+            path.write_text(json.dumps({"status": status}))
+            (folder / f"reports/{number}.md").write_text(status)
+            # The workflow's node names its reports relative to its folder.
+            reports.append(
+                {
+                    "status": status,
+                    "path": f"reports/{number}.json",
+                    "rendered": f"reports/{number}.md",
+                    "at": "2026-09-27T10:00:00Z",
+                }
+            )
+            workflow_node(workspace, [], reports)
+
+        # An earlier run of the task saved a result.
+        save(1, "failed")
+        self.assertEqual(
+            [(folder / "reports/1.json").as_posix()],
+            [item["path"] for item in e2e.saved_reports(project, "adopt")],
+        )
+
+        def session(*_arguments, **_options):
+            for number, status in saves:
+                save(number, status)
+            return {"end": "idle"}
+
+        log = project / ".concorde/runs/e2e/adopt-claude"
+        with patch.object(e2e.sessions, "start", session):
+            return e2e.run_workflow(project, "claude", "brownfield", {}, log, "adopt")
+
     @verifies("scenario.e2e.stale-result")
-    def test_a_run_returns_only_a_workflow_result_it_saved(self):
-        with tempfile.TemporaryDirectory() as directory:
-            project = Path(directory)
-            (project / ".concorde/tasks/adopt").mkdir(parents=True)
-            (project / ".concorde/tasks/adopt/task.json").write_text(
-                json.dumps({"worktree": str(project)})
-            )
-            workspace = project / ".concorde/tasks/adopt/workspace"
-            folder = workspace / "workflow"
-            (folder / "reports").mkdir(parents=True)
-            reports = []
+    def test_a_run_that_saved_no_result_does_not_print_an_earlier_one(self):
+        with self.assertRaises(e2e.E2EError) as raised:
+            self.run_after_earlier_result([])
+        self.assertEqual("no_result", raised.exception.code)
+        self.assertIn("held 1 before the run and 1 after", raised.exception.detail)
 
-            def save(number: int, status: str) -> None:
-                path = folder / f"reports/{number}.json"
-                path.write_text(json.dumps({"status": status}))
-                (folder / f"reports/{number}.md").write_text(status)
-                # The workflow's node names its reports relative to its folder.
-                reports.append(
-                    {
-                        "status": status,
-                        "path": f"reports/{number}.json",
-                        "rendered": f"reports/{number}.md",
-                        "at": "2026-09-27T10:00:00Z",
-                    }
-                )
-                workflow_node(workspace, [], reports)
-
-            # An earlier run of the task saved a result.
-            save(1, "failed")
-            self.assertEqual(
-                [(folder / "reports/1.json").as_posix()],
-                [item["path"] for item in e2e.saved_reports(project, "adopt")],
-            )
-            saves = []
-
-            def session(*_arguments, **_options):
-                for number, status in saves:
-                    save(number, status)
-                return {"end": "idle"}
-
-            log = project / ".concorde/runs/e2e/adopt-claude"
-            with patch.object(e2e.sessions, "start", session):
-                with self.assertRaises(e2e.E2EError) as raised:
-                    e2e.run_workflow(project, "claude", "brownfield", {}, log, "adopt")
-                self.assertEqual("no_result", raised.exception.code)
-                self.assertIn(
-                    "held 1 before the run and 1 after", raised.exception.detail
-                )
-                saves[:] = [(2, "running"), (3, "ok")]
-                value = e2e.run_workflow(
-                    project, "claude", "brownfield", {}, log, "adopt"
-                )
-            self.assertEqual({"status": "ok"}, value)
+    @verifies("scenario.e2e.newest-result")
+    def test_a_run_prints_the_newest_result_it_saved(self):
+        value = self.run_after_earlier_result([(2, "running"), (3, "ok")])
+        self.assertEqual({"status": "ok"}, value)
 
     def test_the_driver_needs_the_projects_rendered_script(self):
         with tempfile.TemporaryDirectory() as directory:

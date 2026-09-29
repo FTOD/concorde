@@ -3,7 +3,7 @@
 The `claude` stand-in speaks the protocol the live sessions use, Claude Code's stream-json on
 standard input and output, and plays what the real program does that the case observes: a session
 is notified when its own background command ends. A stand-in that is also woken for the end of
-every run it did not start must fail the case.
+every run it did not start must fail the case, and so must one never woken at all.
 """
 
 from __future__ import annotations
@@ -17,6 +17,7 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from concorde.spec.verification import verifies
 from tests.concorde.support.paths import REPOSITORY_ROOT
@@ -70,13 +71,14 @@ elif args[:2] == ["task", "show"]:
     print(json.dumps({"record": {"id": "t1"}, "runs": listed}, indent=2))
 """
 
-# A live Claude Code session: a turn per prompt, a background command run detached and
-# notified when it ends, and a foreground command's output given as its tool result; with
-# WAKES_ALL also woken, with a notification of its own, for the end of every run.
+# A live Claude Code session: a turn per prompt, a background command run detached and, unless
+# NOTIFIES is false, notified when it ends, and a foreground command's output given as its tool
+# result; with WAKES_ALL also woken, with a notification of its own, for the end of every run.
 FAKE_CLAUDE = """#!/usr/bin/env python3
 import json, re, subprocess, sys, threading, time
 from pathlib import Path
 WAKES_ALL = %(wakes_all)r
+NOTIFIES = %(notifies)r
 RECORDS = Path(%(records)r)
 lock = threading.Lock()
 def say(event):
@@ -111,7 +113,8 @@ for line in sys.stdin:
         process = subprocess.Popen(["bash", "-c", command], stdout=subprocess.DEVNULL,
                                    start_new_session=True)
         turn("STARTED")
-        threading.Thread(target=notify, args=(process,), daemon=True).start()
+        if NOTIFIES:
+            threading.Thread(target=notify, args=(process,), daemon=True).start()
     elif "task show" in text:
         command = re.search(r"`([^`]*)`", text).group(1)
         output = subprocess.run(["bash", "-c", command], capture_output=True, text=True).stdout
@@ -155,20 +158,28 @@ class OwnersCaseTests(unittest.TestCase):
         path.chmod(0o755)
         return path
 
-    def run_case(self, wakes_all: bool = False) -> dict:
+    def run_case(
+        self, wakes_all: bool = False, notifies: bool = True, wake: float = 60.0
+    ) -> dict:
         claude = self.program(
             self.base / "claude",
-            FAKE_CLAUDE % {"wakes_all": wakes_all, "records": str(self.records)},
+            FAKE_CLAUDE
+            % {
+                "wakes_all": wakes_all,
+                "notifies": notifies,
+                "records": str(self.records),
+            },
         )
         return owners.owners(
             self.project,
             self.base / "case",
             grace=1.0,
+            wake=wake,
             limit=60.0,
             claude_program=str(claude),
         )
 
-    @verifies("scenario.e2e.owners-case")
+    @verifies("scenario.e2e.owners-passed")
     def test_only_the_owner_of_each_run_is_woken_and_the_others_see_it(self):
         value = self.run_case()
         self.assertEqual("passed", value["status"], value["problems"])
@@ -201,7 +212,7 @@ class OwnersCaseTests(unittest.TestCase):
         with (self.records / "locks/workspaces/t1.lock").open("a+") as stream:
             fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
 
-    @verifies("scenario.e2e.owners-case")
+    @verifies("scenario.e2e.owners-unwanted-wake")
     def test_a_session_woken_for_a_run_it_does_not_own_fails_the_case(self):
         value = self.run_case(wakes_all=True)
         self.assertEqual("failed", value["status"])
@@ -219,14 +230,46 @@ class OwnersCaseTests(unittest.TestCase):
             any("owned-by-claude: claude-1" in item for item in value["problems"])
         )
 
-    @verifies("scenario.e2e.owners-case")
-    def test_the_case_needs_two_sessions_and_a_task(self):
-        with self.assertRaises(e2e.E2EError) as raised:
+    @verifies("scenario.e2e.owner-not-woken")
+    def test_an_owner_not_woken_by_its_deadline_fails_the_case_without_an_error(self):
+        started = time.monotonic()
+        value = self.run_case(notifies=False, wake=2.0)
+        # The window ended at the wake deadline, long before the case's limit.
+        self.assertLess(time.monotonic() - started, 50)
+        self.assertEqual("failed", value["status"])
+        self.assertEqual(
+            ["owned-by-claude: the owner claude-1 was not woken when its run ended"],
+            value["problems"],
+        )
+        owner = value["phases"][1]["verdicts"][0]
+        self.assertEqual(
+            ("claude-1", True, False),
+            (owner["session"], owner["owner"], owner["woken"]),
+        )
+        self.assertEqual("ok", value["phases"][1]["status"])
+        self.assertEqual(
+            value, json.loads((self.base / "case/owners.json").read_text())
+        )
+
+    @verifies("scenario.e2e.owners-too-few-sessions")
+    def test_the_case_needs_two_sessions(self):
+        with (
+            patch.object(owners, "LiveSession") as started,
+            self.assertRaises(e2e.E2EError) as raised,
+        ):
             owners.owners(self.project, claude=1)
         self.assertEqual("invalid_input", raised.exception.code)
-        with self.assertRaises(e2e.E2EError) as raised:
+        started.assert_not_called()
+
+    @verifies("scenario.e2e.owners-no-task")
+    def test_the_case_needs_a_task_with_a_worktree(self):
+        with (
+            patch.object(owners, "LiveSession") as started,
+            self.assertRaises(e2e.E2EError) as raised,
+        ):
             owners.owners(self.project, task="t9")
         self.assertEqual("no_task", raised.exception.code)
+        started.assert_not_called()
 
     def test_the_status_listed_for_a_run_is_read_from_task_show(self):
         output = 'noise {"a": 1}\n' + json.dumps(
@@ -243,7 +286,10 @@ class LiveSessionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory)
             claude = base / "claude"
-            claude.write_text(FAKE_CLAUDE % {"wakes_all": False, "records": directory})
+            claude.write_text(
+                FAKE_CLAUDE
+                % {"wakes_all": False, "notifies": True, "records": directory}
+            )
             claude.chmod(0o755)
             session = live.LiveSession(
                 "claude-1", base, base / "logs", program=str(claude)

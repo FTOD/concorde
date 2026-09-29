@@ -89,8 +89,11 @@ class ScenarioTests(unittest.TestCase):
                 )
         self.assertEqual(workers, committed["workers"])
         self.assertEqual(["fast"], prepared["worker_models"])
-        # A model this machine's model map cannot resolve is refused before the scenario is set
-        # up, since the project's workers would read the same map.
+
+    @verifies("scenario.dogfood-scenarios.unmapped-model")
+    def test_a_model_the_model_map_cannot_resolve_is_refused_before_preparing(self):
+        # Refused before the scenario is set up, since the project's workers would read the same
+        # map.
         arguments = argparse.Namespace(
             action="prepare",
             scenario="write-hook-rw-directories",
@@ -201,6 +204,36 @@ class EvaluationTests(unittest.TestCase):
 
     @verifies("scenario.dogfood-scenarios.untouched")
     def test_a_changed_framework_or_installed_file_is_seen(self):
+        project = self.untouched_project()
+        framework = dogfood.framework_digest(project)
+        installed = dogfood.installed_digests(project)
+        self.assertEqual([".claude/skills/concorde/SKILL.md"], list(installed))
+        record = self.untouched_record(project, framework, installed)
+        self.assertTrue(dogfood._untouched(record)["passed"])
+        (project / ".concorde/framework/src/concorde/a.py").write_text("x = 2\n")
+        self.assertNotEqual(framework, dogfood.framework_digest(project))
+        (project / ".claude/skills/concorde/SKILL.md").write_text("changed\n")
+        self.assertNotEqual(installed, dogfood.installed_digests(project))
+        check = dogfood._untouched(record)
+        self.assertFalse(check["passed"])
+        self.assertIn(".claude/skills/concorde/SKILL.md", check["detail"])
+        self.assertIn(".concorde/framework changed", check["detail"])
+
+    @verifies("scenario.dogfood-scenarios.caches-ignored")
+    def test_a_change_to_pythons_caches_is_no_change(self):
+        project = self.untouched_project()
+        framework = dogfood.framework_digest(project)
+        installed = dogfood.installed_digests(project)
+        record = self.untouched_record(project, framework, installed)
+        (project / ".concorde/framework/src/concorde/__pycache__/a.pyc").write_bytes(
+            b"x"
+        )
+        self.assertEqual(framework, dogfood.framework_digest(project))
+        self.assertEqual(installed, dogfood.installed_digests(project))
+        self.assertTrue(dogfood._untouched(record)["passed"])
+
+    def untouched_project(self) -> Path:
+        """A project with a framework copy, its caches' folder and one installed file."""
         project = self.root / "project"
         (project / ".concorde/framework/src/concorde").mkdir(parents=True)
         (project / ".concorde/framework/src/concorde/__pycache__").mkdir()
@@ -217,34 +250,21 @@ class EvaluationTests(unittest.TestCase):
                 }
             )
         )
-        framework = dogfood.framework_digest(project)
-        installed = dogfood.installed_digests(project)
-        self.assertEqual([".claude/skills/concorde/SKILL.md"], list(installed))
-        # Python's caches are no change.
-        (project / ".concorde/framework/src/concorde/__pycache__/a.pyc").write_bytes(
-            b"x"
-        )
-        self.assertEqual(framework, dogfood.framework_digest(project))
+        return project
+
+    def untouched_record(self, project: Path, framework: str, installed: dict) -> dict:
+        """The baselines of a prepared scenario whose Concorde clone is at its fault commit."""
         concorde = self.root / "concorde"
         concorde.mkdir()
         git(concorde, "init", "-q", "-b", "main")
         git(concorde, "commit", "-q", "--allow-empty", "-m", "fault")
-        record = {
+        return {
             "concorde": str(concorde),
             "fault_commit": git(concorde, "rev-parse", "HEAD"),
             "project": str(project),
             "framework": framework,
             "installed": installed,
         }
-        self.assertTrue(dogfood._untouched(record)["passed"])
-        (project / ".concorde/framework/src/concorde/a.py").write_text("x = 2\n")
-        self.assertNotEqual(framework, dogfood.framework_digest(project))
-        (project / ".claude/skills/concorde/SKILL.md").write_text("changed\n")
-        self.assertNotEqual(installed, dogfood.installed_digests(project))
-        check = dogfood._untouched(record)
-        self.assertFalse(check["passed"])
-        self.assertIn(".claude/skills/concorde/SKILL.md", check["detail"])
-        self.assertIn(".concorde/framework changed", check["detail"])
 
 
 if __name__ == "__main__":
