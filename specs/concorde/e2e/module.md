@@ -173,10 +173,16 @@ repository's name, checks it out as a `main` branch, installs Concorde from this
 Module, which makes a test project. The task is `--task` (default `adopt`), and `--python` records
 the project's interpreter, which its
 [configured checks](../glossary.json#concept.configured-check) run for `{python}`. The worker
-configuration runs every worker on `--worker-model` when it is given, enabling only that model, and
-otherwise takes this checkout's own `.concorde/workers.json` without its `runtime` paths, which name
-this checkout's directories. It refuses a repository SWE-bench does not name unless `--any` is
-given, and a project directory that already exists.
+configuration runs every worker on `--worker-model`, a project model name, when it is given,
+enabling only that model, and otherwise takes this checkout's own `.concorde/workers.json` without
+its `runtime` paths, which name this checkout's directories. The test project's sessions and workers
+run in the developer's own environment, so the developer's [model
+map](../glossary.json#concept.model-map) resolves its models as it does the developer's own
+projects', and no map is written for it. It refuses a repository SWE-bench does not name unless
+`--any` is given, then, before anything is cloned, a worker configuration whose models that map
+cannot resolve for every worker of every Operation, with Workers' own refusal (`model_unmapped`,
+`model_map_missing` or `model_map_invalid`), which names each entry the map lacks, and a project
+directory that already exists.
 
 Each of `prepare`'s choices has its reason:
 

@@ -489,11 +489,28 @@ class GuidanceTests(unittest.TestCase):
             "`model_unresolved`, so give the `default` a model",
             "otherwise its model's own level in `enabled_models`",
             "goes into `enabled_models` too",
+            "**project model name** that depends on no installation",
+            "never goes into the file",
+            "`~/.config/concorde/models.json`",
+            "`CONCORDE_MODEL_MAP`",
+            "is never committed",
+            "write or change it only when the developer asks or agrees",
+            "tell them the entry the map needs",
+            "`model_unmapped`",
+            "`model_map_missing`",
+            "`model_map_invalid`",
+            "the project model name is never used as the id",
+            "`schema_version: 2`",
         ):
             with self.subTest(instruction=instruction):
                 self.assertIn(instruction, models)
+        # The configuration's example names project model names only.
+        example = models.split("```json")[2].split("```")[0]
+        self.assertIn('"gpt-6-astra"', example)
+        self.assertNotIn("local-openai/", example)
         self.assertNotIn("pi's default model", self.skill)
         self.assertIn("never on anyone's own Claude Code or pi settings", self.block)
+        self.assertIn("untracked model map", self.block)
         self.assertIn("ask the developer for its models", self.block)
 
     @verifies("scenario.main-session.choose-models")
@@ -518,6 +535,13 @@ class GuidanceTests(unittest.TestCase):
         )
         self.assertIn("tracked `.concorde/workers.json`", self.block)
         self.assertIn('unless an entry sets `backend: "claude"`', self.skill)
+        self.assertIn(
+            "an entry that only chooses a backend keeps the model and level it inherits",
+            self.skill,
+        )
+        self.assertNotIn(
+            "afresh", self.skill.split("## Worker models", 1)[1].split("## ", 1)[0]
+        )
         self.assertIn("The chosen backend must be installed then", self.skill)
         for old in (
             "configure-workers",

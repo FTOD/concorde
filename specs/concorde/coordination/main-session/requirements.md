@@ -288,6 +288,10 @@ The guidance SHALL tell the main agent that no worker runs without the tracked
 none, to ask the developer for its enabled models and default model and commit the file alone on the
 primary branch before any Operation runs.
 
+### req.main-session.model-map-developers — The model map is the developer's
+
+The guidance SHALL tell the main agent that the worker configuration names models by project model names which the developer's untracked [model map](../../glossary.json#concept.model-map) resolves to each program's local id, and to change that map only when the developer asks or agrees.
+
 ### req.main-session.model-change-method — Model changes edit the tracked configuration
 
 The guidance SHALL tell the main agent to change worker models by editing the tracked

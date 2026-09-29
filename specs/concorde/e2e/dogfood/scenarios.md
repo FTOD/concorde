@@ -21,6 +21,7 @@ Concrete situations that show the [requirements](requirements.md) of
 - WHEN the runner commits the initialized project
 - THEN the commit holds the project's [worker configuration](../../glossary.json#concept.worker-configuration), the one [End-to-end testing](../module.md) gives a [test project](../../glossary.json#concept.test-project)
 - AND `dogfood.json` names its enabled models
+- BUT a model the developer's [model map](../../glossary.json#concept.model-map) gives no id for a worker's program is refused with `model_unmapped` before the scenario is set up
 
 ### scenario.dogfood-scenarios.fault — A fault is its own commit
 

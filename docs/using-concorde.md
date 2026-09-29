@@ -343,33 +343,35 @@ writes it, since the models are yours to choose. When your project has none, the
 you which models workers may use and which is the default, then writes the file and commits it on
 its own on your primary branch before the first Operation runs.
 
-The file lists in `enabled_models` every model a worker may run on, keyed by its exact id as its
-program takes it, such as `local-openai/gpt-6` on pi or `opus` on Claude Code, each `{}` or with a
-`reasoning` level of its own. The entries then choose among them: a `default` for every worker, and
-under `operations` an Operation's `default` and one entry per worker id under its `workers`. Each
-entry may set a `backend` (`pi` or `claude`), a `model` and a `reasoning` level, and the most
-specific entry that sets a field wins. A worker takes the level set by the entry that chose its
-model or a more specific one, otherwise its model's own level in `enabled_models`, otherwise one a
-less specific entry sets, otherwise its program's own default. Leave a field out to inherit it. The
-same file holds the limits of every worker launch and the paths workers may read besides their
-grant:
+The file names each model by a **project model name** of your choosing that depends on no
+installation, such as `gpt-6-astra` or `claude-opus-5-5` (letters, digits, `.`, `_` and `-`). The id
+a program takes, such as `local-openai/gpt-6-astra` on pi, is defined by your own pi or Claude Code
+configuration, so it never goes into the tracked file. It lists in `enabled_models` every model a
+worker may run on, each `{}` or with a `reasoning` level of its own. The entries then choose among
+them: a `default` for every worker, and under `operations` an Operation's `default` and one entry
+per worker id under its `workers`. Each entry may set a `backend` (`pi` or `claude`), a `model` and a
+`reasoning` level, and the most specific entry that sets a field wins, a backend like any other
+field. A worker takes the level set by the entry that chose its model or a more specific one,
+otherwise its model's own level in `enabled_models`, otherwise one a less specific entry sets,
+otherwise its program's own default. Leave a field out to inherit it. The same file holds the
+limits of every worker launch and the paths workers may read besides their grant:
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "enabled_models": {
-    "anthropic/claude-sonnet-5": { "reasoning": "medium" },
-    "anthropic/claude-opus-5-5": { "reasoning": "high" },
-    "local-openai/gpt-6": {},
+    "claude-sonnet-5": { "reasoning": "medium" },
+    "claude-opus-5-5": { "reasoning": "high" },
+    "gpt-6-astra": {},
     "opus": {}
   },
-  "default": { "model": "anthropic/claude-sonnet-5" },
+  "default": { "model": "claude-sonnet-5" },
   "operations": {
     "spec_panel": {
       "workers": {
-        "reviewer1": { "model": "anthropic/claude-opus-5-5" },
-        "reviewer2": { "model": "local-openai/gpt-6", "reasoning": "high" },
-        "reviewer3": { "model": "local-openai/gpt-6" },
+        "reviewer1": { "model": "claude-opus-5-5" },
+        "reviewer2": { "model": "gpt-6-astra", "reasoning": "high" },
+        "reviewer3": { "model": "gpt-6-astra" },
         "chair": { "backend": "claude", "model": "opus" }
       }
     }
@@ -379,10 +381,39 @@ grant:
 }
 ```
 
-Here every worker runs on pi with `anthropic/claude-sonnet-5` at that model's own `medium`, except
-`spec_panel`'s: `reviewer1` on `anthropic/claude-opus-5-5` at its own `high`, `reviewer2` on
-`local-openai/gpt-6` at the `high` of its entry, `reviewer3` on the same model at pi's default
-level, and the `chair` on Claude Code with its `opus` alias.
+Here every worker runs on pi with `claude-sonnet-5` at that model's own `medium`, except
+`spec_panel`'s: `reviewer1` on `claude-opus-5-5` at its own `high`, `reviewer2` on `gpt-6-astra` at
+the `high` of its entry, `reviewer3` on the same model at pi's default level, and the `chair` on
+Claude Code with the model the project calls `opus`. An entry that only puts a worker on Claude
+Code keeps the model and level it would otherwise inherit.
+
+Your **model map** tells your machine how to reach those models: `~/.config/concorde/models.json`
+(or `concorde/models.json` of `$XDG_CONFIG_HOME` when you set it, or the file the environment
+variable `CONCORDE_MODEL_MAP` names by its absolute path). It is yours, outside every repository and
+never committed, and one map serves all your projects, their tasks and test projects. It gives each
+project model name its local id on `pi`, on `claude` or on both:
+
+```json
+{
+  "schema_version": 1,
+  "models": {
+    "claude-sonnet-5": {
+      "pi": "anthropic/claude-sonnet-5",
+      "claude": "claude-sonnet-5"
+    },
+    "claude-opus-5-5": {
+      "pi": "anthropic/claude-opus-5-5",
+      "claude": "claude-opus-5-5"
+    },
+    "gpt-6-astra": { "pi": "local-openai/gpt-6-astra" },
+    "opus": { "claude": "opus" }
+  }
+}
+```
+
+When your pi configuration renames a model, only the map changes; the project's choices stay as they
+are. A worker whose model the map does not give an id on its program is refused; Concorde never
+passes the project model name to the program instead.
 
 Because the file is tracked, a task carries the configuration of the commit it started from. A
 change meant for future tasks is committed on its own on your primary branch; the main agent does
@@ -390,14 +421,14 @@ that directly, without a task. A task may change its own models while it works, 
 arrives with the task when it merges. Runs outside a task use the committed file, so commit a change
 before such a run is to use it.
 
-An entry that puts a worker on Claude Code starts that program afresh, so a pi model set more
-generally is not carried over to it. For suggestions, `python3 scripts/available_models.py
---backend pi` (or `--backend claude`) lists the models pi has credentials for and Claude Code's
-aliases; any other name may be written too, as long as `enabled_models` lists it.
+For suggestions, `python3 scripts/available_models.py --backend pi` (or `--backend claude`) lists
+the models pi has credentials for and Claude Code's aliases, each with the project model names your
+map already gives it, and for pi the map's ids pi no longer lists; any other name may be written
+too, as long as `enabled_models` lists it and your map gives it an id.
 
 The whole file is checked every time a worker launches. When a worker cannot be configured, its
 Operation ends `failed` with `worker_model_unavailable`, and its error chain says why and how to
-repair the file:
+repair the file or your model map:
 
 - `config_missing`: the worktree has no `.concorde/workers.json`;
 - `model_not_enabled`: an entry names a model that `enabled_models` does not list, which refuses
@@ -405,9 +436,16 @@ repair the file:
 - `model_unresolved`: no entry names a model for the worker, which never falls back to its
   program's default model, so give the `default` a model;
 - `config_invalid`: anything else malformed, such as a missing or empty `enabled_models`, an
-  unknown Operation or worker id, or a reasoning level the worker's program does not know;
+  unknown Operation or worker id, a model named by a program's id such as `local-openai/gpt-6`
+  rather than a project model name, a file of the earlier `schema_version` 1, or a reasoning level
+  the worker's program does not know;
 - `backend_missing`: the worker's program is not installed; it never runs on the other one
-  instead.
+  instead;
+- `model_map_missing`: your machine has no model map;
+- `model_map_invalid`: the model map is malformed, such as a model without an id or an id keyed by
+  another program than `pi` or `claude`;
+- `model_unmapped`: the map gives the worker's model no id on the worker's program; the error names
+  the entry to add.
 
 The reasoning level is passed as `--effort` to Claude Code and as `--thinking` to pi. A pi worker
 uses copies of your pi `auth.json` and `models.json` and nothing else from your pi configuration.

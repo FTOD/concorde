@@ -383,18 +383,40 @@ developer's choice: when the project has none, ask the developer which models wo
 which is the default, then write the file and commit it alone on the primary branch before any
 Operation runs.
 
-The file holds `schema_version: 1` and the required `enabled_models`, every model a worker may
-run on, keyed by its exact id as its program takes it (such as `local-openai/gpt-6` on pi or
-`opus` on Claude Code), each `{}` or with its own `reasoning` level. Every model an entry names
-must be enabled, or every worker is refused with `model_not_enabled`. The file holds a `default`
+The file names every model by a **project model name** that depends on no installation, such as
+`gpt-6-astra` or `claude-opus-5-5`: letters, digits, `.`, `_` and `-`. The id a program takes, such
+as pi's `local-openai/gpt-6-astra`, is a fact about one machine and never goes into the file: the
+**model map**, the developer's own `~/.config/concorde/models.json` (or `$XDG_CONFIG_HOME/concorde/`,
+or the file `CONCORDE_MODEL_MAP` names), gives each project model name its local id on `pi`, on
+`claude` or both, and is never committed:
+
+```json
+{
+  "schema_version": 1,
+  "models": {
+    "gpt-6-astra": {"pi": "local-openai/gpt-6-astra"},
+    "claude-opus-5-5": {"pi": "anthropic/claude-opus-5-5", "claude": "claude-opus-5-5"}
+  }
+}
+```
+
+The map belongs to the developer's machine, so write or change it only when the developer asks or
+agrees, and when a model they choose for the file is new, tell them the entry the map needs. A
+worker whose model has no id for its program in the map is refused with `model_unmapped`, a
+missing map with `model_map_missing` and an unreadable one with `model_map_invalid`, each naming
+the map and the entry to add; the project model name is never used as the id.
+
+The file holds `schema_version: 2` and the required `enabled_models`, every model a worker may
+run on by its project model name, each `{}` or with its own `reasoning` level. Every model an entry
+names must be enabled, or every worker is refused with `model_not_enabled`. The file holds a `default`
 and, per Operation, a `default` and one entry per **worker id** under
 `operations.<operation>.default` and `operations.<operation>.workers.<worker-id>`: the name each
 Operation gives the workers it launches, `worker` for an Operation with one worker, `reviewer` and
 `checker` for `spec_review`, `reviewer1` to `reviewer5` and `chair` for `spec_panel`. Each entry
 may set a `backend` (`pi` or `claude`), a `model` and a `reasoning` level, and the most specific
 entry that sets a field wins. Workers run on pi, although you run on Claude Code, unless an entry sets
-`backend: "claude"`; an entry that chooses a backend starts that program afresh, so models named
-for the other program are not inherited. A worker whose entries name no model is refused with
+`backend: "claude"`; an entry that only chooses a backend keeps the model and level it inherits,
+which the map must then give an id on that program. A worker whose entries name no model is refused with
 `model_unresolved`, so give the `default` a model. A worker takes the level set by the entry that
 chose its model or a more specific one, otherwise its model's own level in `enabled_models`,
 otherwise one a less specific entry sets, otherwise its program's built-in default. Remove a field
@@ -404,10 +426,12 @@ read besides their grant (by default `.venv` and `node_modules`):
 
 ```json
 {
-  "schema_version": 1,
-  "enabled_models": {"local-openai/gpt-6": {"reasoning": "medium"}, "opus": {}},
-  "default": {"model": "local-openai/gpt-6"},
-  "operations": {"spec_panel": {"workers": {"chair": {"backend": "claude", "model": "opus"}}}}
+  "schema_version": 2,
+  "enabled_models": {"gpt-6-astra": {"reasoning": "medium"}, "claude-opus-5-5": {}},
+  "default": {"model": "gpt-6-astra"},
+  "operations": {
+    "spec_panel": {"workers": {"chair": {"backend": "claude", "model": "claude-opus-5-5"}}}
+  }
 }
 ```
 
@@ -426,15 +450,18 @@ For suggestions, run `python3 scripts/available_models.py --backend pi` or `--ba
 optionally with `--json`. In an installed project the script is under
 `.concorde/framework/scripts/available_models.py`. It works outside Git and calls no inference
 API: pi lists configured credentialed candidates; Claude's aliases and settings-derived names
-are incomplete and do not prove account access. Discovery failure or an empty list does not block
+are incomplete and do not prove account access. Each candidate shows the project model names the
+map already gives it, and pi's listing also names the map's pi ids pi no longer lists, such as one
+a changed pi configuration renamed: those are the map entries to update. Discovery failure or an empty list does not block
 custom/offline model names. AI may use these suggestions when the developer asks for options;
 if a requested model is already known, edit it directly without a mandatory question flow.
 
 Workers validate the whole file when a worker launches. The chosen backend must be installed then,
 but need not be installed to edit the file. A missing program causes `backend_missing`, never
-fallback, and a malformed file `config_invalid` naming the field. An Operation whose worker cannot
-be configured ends `failed` with `worker_model_unavailable`, naming the worker, file or missing
-program.
+fallback, and a malformed file `config_invalid` naming the field; a file of `schema_version: 1`,
+whose models were local ids, is refused saying how to rename them and map them. An Operation whose
+worker cannot be configured ends `failed` with `worker_model_unavailable`, naming the worker, file,
+map entry or missing program.
 
 ## The project MCP server
 

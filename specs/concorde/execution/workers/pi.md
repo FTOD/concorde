@@ -29,8 +29,9 @@ The generated `settings.json` holds only `"defaultProjectTrust": "never"`. The u
 `settings.json` is never read: its default provider, model and thinking level, its enabled models,
 its per-model thinking levels and every other setting stay the developer's, and no user package,
 extension, skill, theme or model filter reaches the worker. The worker's model and level come only
-from the [worker configuration](../../glossary.json#concept.worker-configuration), passed with
-`--model` and `--thinking` (see [choosing worker models](module.md#choosing-worker-models)). What
+from the [worker configuration](../../glossary.json#concept.worker-configuration), the model as the
+pi id the [model map](../../glossary.json#concept.model-map) gives it, passed with `--model` and
+`--thinking` (see [choosing worker models](module.md#choosing-worker-models)). What
 is copied, `auth.json` and `models.json`, says how to reach a provider, never which model to use.
 
 ## Launch

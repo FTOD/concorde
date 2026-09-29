@@ -199,13 +199,15 @@ and `update` prints exactly one JSON envelope and exits with its
 status, even when refused ([requirements](requirements.md#req.distribution.one-envelope)); those
 route to their owners, which define their own output and exit codes, except `update`, which prints
 the installer's result or its
-[error link](requirements.md#req.distribution.installer-error-links). Worker configuration defaults
-to a human terminal editor; only its explicit read-only JSON options print a configuration envelope.
+[error link](requirements.md#req.distribution.installer-error-links).
 
 The standalone Workers entry point `scripts/available_models.py --backend pi|claude [--json]`
 is shipped under `.concorde/framework/scripts/available_models.py` with the runtime. It resolves
 its imports relative to itself and works outside a Git worktree; it lists advisory configured
-candidates without probing inference API access. Configuration validation does not call it.
+candidates, with the project model names the user's [model
+map](../glossary.json#concept.model-map) gives each, without probing inference API access.
+Configuration validation does not call it. The installer writes neither the worker configuration
+nor the model map, which belongs to the user and lies outside every project.
 
 The command runs the Framework copy of the worktree it belongs to; a task worktree has none of its
 own, since Git ignores it, unless the task reinstalled Concorde there, so its command runs the

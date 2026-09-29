@@ -138,9 +138,11 @@ every file the install receipt names outside `.concorde/` and the blob of every 
 unchanged. An edit whose old text is not found exactly once is refused with
 `fault_not_applicable`, since the Concorde source has moved on and the scenario must be updated.
 The worker configuration is the one [End-to-end testing](../module.md) writes into a [test
-project](../../glossary.json#concept.test-project): every worker on `--worker-model` when it is
-given, enabling only that model, and otherwise this checkout's own `.concorde/workers.json` without
-its `runtime` paths; `dogfood.json` names its enabled models. Without it every worker the session
+project](../../glossary.json#concept.test-project): every worker on the project model name
+`--worker-model` when it is given, enabling only that model, and otherwise this checkout's own
+`.concorde/workers.json` without its `runtime` paths; `dogfood.json` names its enabled models. As
+for any test project, the developer's [model map](../../glossary.json#concept.model-map) resolves
+its models, and a configuration that map cannot resolve is refused before the scenario is set up. Without it every worker the session
 starts would be refused with `config_missing`, a failure no scenario's fault causes.
 
 `run` runs the scenario's prompt as a

@@ -138,7 +138,7 @@ guides.
 - AND to commit a change of that file alone directly on the primary branch for future tasks, never while a merge is unfinished
 - AND that a task may change its own copy, which reaches the primary branch when the task merges
 - AND that separate `scripts/available_models.py` discovery supplies advisory configured candidates without inference API probes, while custom/offline names require no discovery
-- AND to set the JSON backend to `claude` when asked, with program installation required at launch rather than at configuration time
+- AND to set the JSON backend to `claude` when asked, with program installation required at launch rather than at configuration time, an entry that only chooses a backend keeping the model and level it inherits
 - BUT to change worker models only when the developer asks
 
 ### scenario.main-session.worker-configuration-required — The guidance runs workers only on the configured models
@@ -147,7 +147,8 @@ guides.
 - WHEN a main agent is about to run an Operation in a project
 - THEN it is told that every worker runs only on what the tracked `.concorde/workers.json` enables and chooses, never on anyone's own pi or Claude Code settings, and that only credentials and provider definitions come from those
 - AND that no worker runs without the file, which the installer does not write, so when the project has none it asks the developer for the enabled models and the default, writes the file and commits it alone on the primary branch before any Operation runs
-- AND that the file's required `enabled_models` lists every model an entry may name, each with an optional level of its own, that a model outside it is refused with `model_not_enabled` and a worker without a model with `model_unresolved`
+- AND that the file's required `enabled_models` lists every model an entry may name by its project model name, each with an optional level of its own, that a model outside it is refused with `model_not_enabled` and a worker without a model with `model_unresolved`
+- AND that the developer's untracked [model map](../../glossary.json#concept.model-map) gives each project model name its local id per program, that a worker it cannot resolve is refused with `model_unmapped`, `model_map_missing` or `model_map_invalid`, and that the main agent changes the map only when the developer asks or agrees, telling the developer the entry a new model needs
 - AND which level a worker takes: its model's entry's or a more specific one's, otherwise the model's own, otherwise a less specific entry's, otherwise its program's built-in default
 - BUT a model the developer adds for a worker goes into `enabled_models` too
 
