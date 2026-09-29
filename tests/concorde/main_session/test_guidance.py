@@ -218,10 +218,41 @@ class GuidanceTests(unittest.TestCase):
             "or with `concorde task merge <task>` in background Bash", self.skill
         )
         self.assertIn("Never merge a task with `git merge` yourself", self.skill)
-        self.assertIn("When it fails with `merge_busy`", self.skill)
+        self.assertIn("runs `concorde spec-validation` there", self.skill)
         self.assertIn("merge delivered task branches without asking", self.block)
+
+    @verifies("scenario.main-session.merge-command")
+    def test_the_merge_command_runs_in_the_background(self):
+        self.assertIn("It waits up to `--wait` seconds", self.skill)
         self.assertIn(
             "Run it in background Bash (`run_in_background`) like a run", self.skill
+        )
+        self.assertIn(
+            "When it fails with `merge_busy`, another session's merge outlasted the wait: "
+            "run it again.",
+            self.skill,
+        )
+        self.assertIn(
+            "fails with `workspace_busy`, a run of that task outlasted the wait",
+            self.skill,
+        )
+        self.assertIn("run the command again with a longer `--wait`", self.skill)
+
+    @verifies("scenario.main-session.merge-through-server")
+    def test_a_busy_task_merge_is_retried_after_a_registered_wait(self):
+        self.assertIn(
+            "merges a delivered task without ever waiting for a lock", self.skill
+        )
+        self.assertIn(
+            "or is refused at once with `workspace_busy` or `merge_busy` naming who holds "
+            "the busy one",
+            self.skill,
+        )
+        self.assertIn(
+            "register a wait for that lock with `register_wait` (or, without a channel, run "
+            "the `concorde task wait` command it returns in background Bash) and call "
+            "`task_merge` again once you are woken: you may be refused again.",
+            self.skill,
         )
 
     @verifies("scenario.main-session.merge-conflict")
@@ -305,10 +336,6 @@ class GuidanceTests(unittest.TestCase):
             "`merge_diverged` means the primary branch was changed by hand", skill
         )
         self.assertIn("discarding them is the developer's decision", skill)
-        self.assertIn(
-            "fails with `workspace_busy`, a run of that task outlasted the wait", skill
-        )
-        self.assertIn("run the command again with a longer `--wait`", skill)
         self.assertIn(
             "`concorde task merge <task> --resume`", " ".join(self.block.split())
         )

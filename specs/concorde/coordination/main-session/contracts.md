@@ -4,8 +4,10 @@ The exact session, tools and events of the
 [project MCP server](../../glossary.json#concept.project-mcp-server), described in the
 [Main session](module.md#the-project-mcp-server). Every tool is a presentation of a command
 that already exists; where a row says "as" a command, the result and every refusal are that
-command's, as [Tasks](../tasks/contracts.md#commands) and [Tracing](../../tracing/contracts.md)
-define them.
+command's when it waits for no lock, as [Tasks](../tasks/contracts.md#commands) and
+[Tracing](../../tracing/contracts.md) define them. `task_merge` and `register_wait` instead answer
+at once with the start and the registration defined [below](#starting-a-merge): the merge's own
+result and refusals, and the wait's answer, are the commands' and arrive later.
 
 ## Session
 

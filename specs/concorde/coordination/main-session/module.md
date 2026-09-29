@@ -33,10 +33,10 @@ tells the Claude Code session opened in a Concorde project's primary worktree th
 agent, and gives it a [working method](#the-working-method). Its task-session part is the first
 prompt of every task session. The guidance is instructions, not a program, because the main agent's
 work is judgment; the project MCP server beside it is a program, but one that only presents
-commands and adds no rule. Everything that must hold regardless of judgment is enforced elsewhere —
-workers by the Harness, Operations by their own checks, readiness by `task-validation` and
-`delivery` — so an agent that ignores the guidance wastes effort but cannot widen a worker's
-boundary.
+commands and adds no rule beyond taking locks without waiting. Everything that must hold regardless
+of judgment is enforced elsewhere — workers by the Harness, Operations by their own checks,
+readiness by `task-validation` and `delivery` — so an agent that ignores the guidance wastes effort
+but cannot widen a worker's boundary.
 
 <a id="concept.project-mcp-server"></a>
 
@@ -46,15 +46,21 @@ as `concorde` in the project's `.mcp.json`. Each Claude Code session that loads 
 server process, which lives exactly as long as that session; there is no daemon. Started from any
 worktree, it finds the primary worktree through Git's common directory and serves that project's
 tasks, traces and locks, read afresh on every call. It is a presentation: the `concorde` commands
-stay the source of truth, every answer and every refusal is the command's own, and it adds no
-rule. Its tools and how it wakes a session are explained [below](#the-project-mcp-server).
+stay the source of truth, and every answer and refusal of a query or short write is the command's
+own. Its one rule of its own is that it never waits for a lock, so `task_merge` answers at once with
+the merge it started, and `register_wait` with the wait it registered, while the merge's result and
+the wait's answer arrive later. Its tools and how it wakes a session are explained
+[below](#the-project-mcp-server).
 
 <a id="owners"></a>
 
 **Owners.** The main agent starts each run of its own, an unbound Operation, in background Bash,
 and Claude Code wakes it when the command ends; a task session does the same with the runs of its
-task. Several main sessions may work on one project at the same time, but a run wakes only its
-**owner**, and it has never more than one:
+task. Several main sessions may work on one project at the same time, but the end of a run wakes,
+without anyone asking, only its **owner**, and it has never more than one. A session that wants to
+hear of work it does not own asks for its own wake explicitly, by registering a wait with the
+[project MCP server](../../glossary.json#concept.project-mcp-server); that wake reaches only the
+session that registered it:
 
 | Work | Owner | How the owner is woken |
 | --- | --- | --- |
@@ -67,10 +73,10 @@ task. Several main sessions may work on one project at the same time, but a run 
 Execution, which knows nothing of main sessions, never records an owner: a run's owner is the
 session whose background Bash started it, and the main session a task session reports to is the
 `main` that the session's [trace node](../../glossary.json#concept.trace-node) records. A main
-session that does not own a run sees its state without being woken, since nothing is pushed into
-it: it asks with `concorde task show <task>`, which lists the task workspace's runs with their
-status and the task's sessions with the main session each reports to
-([requirements](requirements.md#req.main-session.single-owner)).
+session that does not own a run is never woken by it unasked, since nothing it did not ask for is
+pushed into it: it asks with `concorde task show <task>`, which lists the task workspace's runs with
+their status and the task's sessions with the main session each reports to, or it registers a wait
+for the run's end ([requirements](requirements.md#req.main-session.single-owner)).
 
 ## Overview
 
@@ -203,7 +209,8 @@ The installed guidance gives the main agent this working method:
   developer approved that specific change
   ([requirements](requirements.md#req.main-session.small-change)). Besides it, the primary
   worktree sees only housekeeping that regenerates derived files, such as the registry mirror, and
-  the commit of the worker configuration alone.
+  the commit of the worker configuration alone
+  ([requirements](requirements.md#req.main-session.tasks-own-changes)).
 - **Ask the developer from the main session only.** A task never asks the developer in place: a
   task session gathers every decision it needs and escalates them together to the main agent,
   which decides those its authority covers, puts the rest to the developer at once, and answers
@@ -290,10 +297,11 @@ main agent to change the file only when the developer asks, by editing the JSON 
 preserving unrelated entries, adding every model it names to the enabled models; there is no
 editor. It chooses Claude Code for a worker by setting that entry's `backend` to `claude`; the
 chosen program must be installed when a worker launches, not when the file is edited. A change
-meant for future tasks is committed alone directly on the primary branch, the one change the main
-agent makes in the primary worktree, never while a merge is unfinished; a task may change its own
-copy, which reaches the primary branch when the task merges
-([requirements](requirements.md#req.main-session.model-change-method)). The separate
+meant for future tasks is committed alone directly on the primary branch, one of the changes the
+main agent may make in the primary worktree outside a task
+([requirements](requirements.md#req.main-session.tasks-own-changes)), never while a merge is
+unfinished; a task may change its own copy, which reaches the primary branch when the task merges
+([requirements](requirements.md#req.main-session.model-change-commit)). The separate
 `scripts/available_models.py --backend pi|claude [--json]` supplies optional suggestions without
 Git or inference API calls, with the project model names the map already gives each candidate and
 the map's pi ids pi no longer lists. Discovery does not gate custom/offline configuration or impose an extra
@@ -417,12 +425,42 @@ events are in the [contracts](contracts.md).
   process of its own and hands both locks to it: the `flock` belongs to the open file description,
   which the process inherits, and the server closes its own copy, so the lock belongs to the
   session's work, never to the server, and is released when the merge ends, however it ends,
-  even when the session and its server end first. It returns at once.
+  even when the session and its server end first. It returns at once with the merge it started,
+  not the merge's result, which a channel event or the returned wait command delivers later.
 - **Waiting**: `register_wait` asks to be woken when a task becomes `delivered`, `merging`,
   `closed` or `failed`, when a run ends, or when a lock is released. The server watches without
   polling, blocking on the lock itself or on the kernel's notice of each new holder, and wakes its
   session with a [Claude Code channel](#channels) event when it happens. It only notifies: it never
   takes a lock for the session it wakes, which asks again and may be refused again.
+
+A merge through the server, from a refusal to the merge's end, with who holds the locks at each
+stage: the server holds them only between taking them and starting the merge process, the process
+from then until it ends, and the woken session never.
+
+```d2 illustrative
+shape: sequence_diagram
+session: Claude Code session
+server: Project MCP server
+merge: "concorde task merge\nprocess"
+busy: "A lock is held by another process" {
+  session -> server: task_merge
+  server -> session: "workspace_busy or merge_busy,\nnaming the holder"
+  session -> server: register_wait for that lock
+  server -> session: "released: a wait_done event, or,\nwithout a channel, the returned\nconcorde task wait in background Bash"
+}
+granted: "Both locks are free" {
+  session -> server: task_merge again
+  server -> server: take both locks
+  server -> merge: "start it with both locked\ndescriptors inherited"
+  server -> server: close its own copies
+  server -> session: "started, with the output files\nand how the session is woken"
+  merge -> merge: "merge, run the checks,\nclose the task"
+}
+ended: "The merge ends" {
+  merge -> server: "exits, and the kernel\nreleases both locks"
+  server -> session: "a merge_ended event, or, without a\nchannel, the background concorde\ntask wait returns"
+}
+```
 
 Using the server is recommended, not enforced. The kernel's `flock` stays the only lock: the CLI
 and the runs of task sessions take the same locks directly, so both paths see each other's
@@ -514,9 +552,12 @@ tells the main agent to finish that merge first with `--resume` or `--abort` rat
 around the refusal: checking the merge again is the default, since the recorded checks decide as
 they would have, and only a primary branch changed by hand after the merge goes to the developer. A
 task session has no authority to finish a merge, so its guidance sends such a refusal to the main
-agent. The project MCP server presents Tasks' commands unchanged, starts `concorde task merge` with
-the two locks it took, and runs the waits of `concorde task wait`, which Tasks provides for
-background Bash too.
+agent. The project MCP server presents Tasks' commands unchanged, answering and refusing as each
+command does when it waits for no lock, whose results are the
+[task records](../tasks/contracts.md#contract.tasks.record) and the other results of
+[Tasks' commands](../tasks/contracts.md#commands); it starts
+`concorde task merge` with the two locks it took, and runs the waits of `concorde task wait`, which
+Tasks provides for background Bash too.
 
 <a id="uses-task-session"></a>
 
@@ -583,8 +624,11 @@ worker round. For that history with its cost, the guidance points the main agent
 project MCP server presents as `trace_show`. The server also relies on Tracing's locks: their
 holder lines name the holder's session and task, which is how a refusal says who holds a lock; a
 held lock can be handed to a process that inherits its descriptor; and a wait for a release
-blocks on the lock itself. Every refusal the server returns is a link of Tracing's
-[error chain](../../glossary.json#concept.error-chain).
+blocks on the lock itself, as Tracing's [locks](../../tracing/contracts.md#locks) state. Every
+refusal the server returns is a link of Tracing's
+[error chain](../../glossary.json#concept.error-chain), in the shape of its
+[error contract](../../tracing/contracts.md#contract.tracing.error), and `trace_show` answers as
+Tracing's [trace view](../../tracing/contracts.md#contract.tracing.view).
 
 ## Beside the levels
 

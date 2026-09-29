@@ -114,10 +114,12 @@ another session's merge releasing the merge lock, use the project MCP server's `
 
 Other main sessions may work on the same project at the same time. Each run wakes only its
 **owner**: the session whose background Bash started it, and a task session reports only to the
-main session it was started for. You are never woken for the work of another main session, of a
-task session or of a command someone ran by hand, and nothing of theirs reaches you: when you need
-to know how another session's task stands, ask once with `concorde task show <task>`, which lists
-its runs with their status and its task sessions with the main session each reports to.
+main session it was started for. You are never woken unasked for the work of another main session,
+of a task session or of a command someone ran by hand, and nothing of theirs reaches you unless you
+ask: when you need to know how another session's task stands, ask once with
+`concorde task show <task>`, which lists its runs with their status and its task sessions with the
+main session each reports to, or register a wait for it with `register_wait`, a wake you asked for
+yourself.
 
 Some Operations also run **unbound**, in a worktree without a binding such as the primary
 worktree: `understand`, `survey`, `spec_review`, `spec_panel` and `code_review` (with `--base`).
@@ -440,7 +442,8 @@ a task already open. Change worker models only when the developer asks, by editi
 directly and preserving unrelated entries; there is no editor. A model the developer adds for a
 worker goes into `enabled_models` too. For future tasks, edit the primary
 worktree's `.concorde/workers.json` and commit that file alone on the primary branch: a change of
-nothing but this file is the one change you commit directly in the primary worktree, never while a
+nothing but this file is one of the few changes you commit directly in the primary worktree, beside
+an approved small change and regenerated derived files, never while a
 `concorde task merge` is unfinished. A task may change its own models while it works, as any
 tracked file of its branch; the change stays with the task and reaches the primary branch when the
 task merges. An unbound run reads the committed file of the commit it examines, so commit a
@@ -469,7 +472,10 @@ The project's `.mcp.json` registers the **project MCP server** `concorde` (`conc
 tools that present the task and trace commands to your session. Each session runs its own server,
 which serves the whole project's tasks, traces and locks from the primary worktree, whatever
 worktree it started in, reading them afresh on every call. The `concorde` commands stay the source
-of truth: every answer and refusal is the command's own, every refusal an error chain link.
+of truth: every answer and refusal of a query or short write is the command's own, every refusal an
+error chain link. Its only rule of its own is that it never waits for a lock, so `task_merge` and
+`register_wait` answer at once with the merge they started or the wait they registered, and the
+merge's result or the wait's answer comes later.
 
 - Queries: `task_list`, `task_show`, `trace_show` (a node with a `depth`, so a large trace is read
   a level at a time), `run_result`, `workflow_report`, and `locks`, which says who holds the merge
@@ -483,7 +489,10 @@ of truth: every answer and refusal is the command's own, every refusal an error 
   `merge_busy` naming who holds the busy one. When it gets both, it starts `concorde task merge`
   as a process of its own that holds them until it ends, even if your session ends first, and
   returns at once; its `checks`, `resume` and `abort` are the command's `--check`, `--resume` and
-  `--abort`. Handle its outcome as a merge's (below).
+  `--abort`. Handle its outcome as a merge's (see "Merge delivered work" above). When it is
+  refused with `workspace_busy` or `merge_busy`, register a wait for that lock with
+  `register_wait` (or, without a channel, run the `concorde task wait` command it returns in
+  background Bash) and call `task_merge` again once you are woken: you may be refused again.
 - `register_wait`: asks to be woken when a task becomes `delivered`, `merging`, `closed` or
   `failed` (`task` with `until`), when a run ends (`run`), or when a lock is released (`lock`
   `merge`, or `workspace` with `task`). It answers at once when that already happened. It only

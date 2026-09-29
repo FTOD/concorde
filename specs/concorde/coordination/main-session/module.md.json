@@ -46,7 +46,8 @@
         "relies_on": [
           "concept.task",
           "concept.decision-log",
-          "concept.merge-lock"
+          "concept.merge-lock",
+          "contract.tasks.record"
         ]
       },
       {
@@ -84,7 +85,9 @@
         "relies_on": [
           "concept.trace",
           "concept.trace-node",
-          "concept.error-chain"
+          "concept.error-chain",
+          "contract.tracing.error",
+          "contract.tracing.view"
         ]
       }
     ],
