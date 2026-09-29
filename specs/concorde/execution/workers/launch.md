@@ -136,6 +136,7 @@ The environment is cleared and then set to exactly:
 | `CLAUDE_CODE_DISABLE_AUTO_MEMORY` | `1` |
 | `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` | `1` |
 | `ANTHROPIC_API_KEY` | the host's value, only when the host has one |
+| the [proxy variables](#proxy) | as that section derives them from the host's |
 
 Before the first round the host copies the user's Claude Code credentials file into `config/`.
 
@@ -145,6 +146,31 @@ assistant message updates the progress file, and the final `result` record gives
 identifier, exit status, the tokens, cost and turns of the round, and the schema-validated
 structured output; the round's standard error is kept, up to its last 80,000 bytes, as `stderr.log`
 of the round's node, so no round overwrites another's.
+
+### Proxy
+
+A worker's model calls leave through the proxy the host uses, if any. On both backends the host
+passes on each of `HTTP_PROXY`, `HTTPS_PROXY`, `http_proxy` and `https_proxy` that its own
+environment sets to a non-empty value and, only when it passes at least one of them, each of
+`NO_PROXY` and `no_proxy` it sets, with:
+
+- `localhost`, `127.0.0.1`, `::1` and `[::1]` removed from those lists when every passed proxy
+  names a loopback host (`localhost` or a loopback address), with or without a scheme;
+- the lists kept as they are otherwise, so a developer's own proxy elsewhere keeps sending loopback
+  direct;
+- a list that nothing is left in not passed at all.
+
+Other proxy variables, such as `ALL_PROXY`, never pass. The reason is where a worker runs. A
+[task session](../../glossary.json#concept.task-session) runs its shell commands, and so the
+Operations it starts and their workers, inside a sandbox with a network namespace of its own that
+holds only a loopback interface: its only way out is the sandbox's proxy, which it names on
+`localhost` in those variables, and its no-proxy lists name loopback. A worker that dropped the
+proxy could reach no model endpoint at all, and one that kept loopback in its no-proxy lists could
+not reach an endpoint on `localhost`, such as a local model proxy, which the sandbox's proxy
+relays. A worker started from a main session, with no proxy in its environment, gets no proxy
+variable and runs exactly as without this rule. The proxy serves the worker's own process only: its
+tools run in their own sandbox without network ([req.workers.bash-sandbox](#req.workers.bash-sandbox),
+[req.workers.pi-sandbox](pi.md#req.workers.pi-sandbox)), whose namespace cannot reach the proxy.
 
 ## Audit
 
@@ -276,6 +302,10 @@ A worker's working directory SHALL be its runtime directory's `work/` directory,
 ### req.workers.clean-environment — Nothing ambient reaches the worker
 
 The host SHALL start every worker round with only the environment variables listed in [Launch](#launch), or on the pi backend in [the pi launch](pi.md#launch).
+
+### req.workers.proxy-passed — A worker's model calls use the host's proxy
+
+On both backends the host SHALL pass on to every worker round the proxy variables that [Proxy](#proxy) derives from its own environment, removing loopback from the no-proxy lists exactly when every passed proxy names a loopback host and passing no proxy or no-proxy variable when its environment sets no proxy.
 
 ### req.workers.no-git — Workers never see Git
 

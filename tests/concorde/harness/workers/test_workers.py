@@ -16,6 +16,7 @@ from unittest.mock import patch
 from concorde.errors import ERROR_SCHEMA
 from concorde.harness import runs as worker_runs
 from concorde.harness import write_hook
+from concorde.harness.claude_backend import proxy_environment
 from concorde.harness.settings import (
     RunPaths,
     SettingsError,
@@ -55,6 +56,26 @@ ENVIRONMENT = {
     "CLAUDE_CODE_DISABLE_AUTO_MEMORY",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
 }
+HOST_PROXY = {
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "http_proxy",
+    "https_proxy",
+    "NO_PROXY",
+    "no_proxy",
+    "ALL_PROXY",
+    "all_proxy",
+}
+# The proxy variables a task session's sandbox gives its commands.
+SESSION_PROXY = {
+    "HTTP_PROXY": "http://user:secret@localhost:3128",
+    "HTTPS_PROXY": "http://user:secret@localhost:3128",
+    "http_proxy": "http://user:secret@localhost:3128",
+    "https_proxy": "http://user:secret@localhost:3128",
+    "ALL_PROXY": "http://user:secret@localhost:3128",
+    "NO_PROXY": "localhost,127.0.0.1,::1,10.0.0.0/8",
+    "no_proxy": "localhost,127.0.0.1,::1,10.0.0.0/8",
+}
 
 
 def git(root, *arguments):
@@ -70,6 +91,15 @@ class WorkerProject:
     def __init__(self, test, *, check=True):
         directory = tempfile.TemporaryDirectory()
         test.addCleanup(directory.cleanup)
+        # A task session's sandbox sets proxy variables the worker would pass on; the fixture
+        # starts from a host without them, and the proxy tests set their own.
+        unproxied = patch.dict(
+            os.environ,
+            {k: v for k, v in os.environ.items() if k not in HOST_PROXY},
+            clear=True,
+        )
+        unproxied.start()
+        test.addCleanup(unproxied.stop)
         self.base = Path(os.path.realpath(directory.name))
         self.root = self.base / "project"
         self.home = self.base / "home"
@@ -489,6 +519,44 @@ class WorkerRunTests(unittest.TestCase):
         self.assertIn(f"- {self.root}/src/a/", call["prompt"])
         self.assertFalse(runtime.exists())
 
+    @verifies("scenario.workers.session-proxy")
+    def test_a_worker_in_a_task_session_gets_the_session_proxy(self):
+        with patch.dict(os.environ, SESSION_PROXY):
+            record = self.project.run([{}], check_modules=None)
+        self.assertEqual("ok", record["status"], record["error"])
+        [call] = self.project.rounds(record)
+        for name in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"):
+            self.assertEqual(SESSION_PROXY[name], call["env"][name])
+        self.assertEqual("10.0.0.0/8", call["env"]["NO_PROXY"])
+        self.assertEqual("10.0.0.0/8", call["env"]["no_proxy"])
+        self.assertNotIn("ALL_PROXY", call["env"])
+        self.assertEqual(
+            ENVIRONMENT
+            | {"HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"}
+            | {"NO_PROXY", "no_proxy"},
+            set(call["env"]) - {"PWD", "SHLVL", "_", "LC_CTYPE"},
+        )
+
+    @verifies("scenario.workers.own-proxy")
+    def test_a_proxy_elsewhere_keeps_loopback_direct(self):
+        own = {
+            "HTTPS_PROXY": "http://proxy.example.com:8080",
+            "NO_PROXY": "localhost,.corp.example.com",
+        }
+        with patch.dict(os.environ, own):
+            record = self.project.run([{}], check_modules=None)
+        [call] = self.project.rounds(record)
+        self.assertEqual(own["HTTPS_PROXY"], call["env"]["HTTPS_PROXY"])
+        self.assertEqual(own["NO_PROXY"], call["env"]["NO_PROXY"])
+        self.assertNotIn("HTTP_PROXY", call["env"])
+
+    @verifies("scenario.workers.own-proxy")
+    def test_without_a_proxy_no_proxy_variable_passes(self):
+        with patch.dict(os.environ, {"NO_PROXY": "localhost", "HTTP_PROXY": ""}):
+            record = self.project.run([{}], check_modules=None)
+        [call] = self.project.rounds(record)
+        self.assertEqual(set(), set(call["env"]) & HOST_PROXY)
+
     @verifies("scenario.workers.run-directory-denied")
     def test_a_run_the_deny_rules_would_disable_is_refused(self):
         def covering(worktree, grant, run, runtime=(), home=None):
@@ -840,6 +908,67 @@ class WorkerRunTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ProxyEnvironmentTests(unittest.TestCase):
+    """The proxy rule on its own, over host environments the fixture runs do not cover."""
+
+    def test_loopback_is_dropped_only_for_a_proxy_on_loopback(self):
+        for proxy in (
+            "http://localhost:3128",
+            "localhost:3128",
+            "http://u:p@127.0.0.1:3128",
+            "http://127.1.2.3:3128/",
+            "http://[::1]:3128",
+            "socks5h://LOCALHOST:1080",
+        ):
+            with self.subTest(proxy=proxy):
+                self.assertEqual(
+                    {"HTTPS_PROXY": proxy, "NO_PROXY": "10.0.0.0/8,.corp"},
+                    proxy_environment(
+                        {
+                            "HTTPS_PROXY": proxy,
+                            "NO_PROXY": " localhost, 127.0.0.1,::1,[::1],10.0.0.0/8,.corp",
+                        }
+                    ),
+                )
+
+    def test_a_proxy_elsewhere_keeps_the_lists(self):
+        for proxy in ("http://proxy.corp:3128", "10.1.1.1:3128", "http://[::2]:3128"):
+            with self.subTest(proxy=proxy):
+                self.assertEqual(
+                    {"HTTP_PROXY": proxy, "no_proxy": "localhost,127.0.0.1"},
+                    proxy_environment(
+                        {"HTTP_PROXY": proxy, "no_proxy": "localhost,127.0.0.1"}
+                    ),
+                )
+
+    def test_one_proxy_elsewhere_keeps_loopback_direct(self):
+        host = {
+            "HTTP_PROXY": "http://localhost:3128",
+            "HTTPS_PROXY": "http://proxy.corp:3128",
+            "NO_PROXY": "localhost",
+        }
+        self.assertEqual(host, proxy_environment(host))
+
+    def test_an_emptied_list_is_not_passed(self):
+        self.assertEqual(
+            {"HTTP_PROXY": "http://localhost:3128"},
+            proxy_environment(
+                {"HTTP_PROXY": "http://localhost:3128", "NO_PROXY": "localhost,::1"}
+            ),
+        )
+
+    def test_no_proxy_passes_nothing(self):
+        self.assertEqual({}, proxy_environment({}))
+        self.assertEqual(
+            {}, proxy_environment({"NO_PROXY": "localhost", "ALL_PROXY": "x:1"})
+        )
+        self.assertEqual({}, proxy_environment({"HTTPS_PROXY": ""}))
+
+    def test_a_malformed_proxy_is_not_loopback(self):
+        host = {"HTTP_PROXY": "http://[::1:3128", "NO_PROXY": "localhost"}
+        self.assertEqual(host, proxy_environment(host))
 
 
 class GlossaryTests(unittest.TestCase):

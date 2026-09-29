@@ -20,7 +20,7 @@ from unittest.mock import patch
 from concorde.harness import pi_backend
 from concorde.harness.settings import RunPaths, sandbox_filesystem
 from concorde.spec.verification import verifies
-from tests.concorde.harness.workers.test_workers import WorkerProject
+from tests.concorde.harness.workers.test_workers import SESSION_PROXY, WorkerProject
 
 FAKE = Path(__file__).with_name("fake_pi.py")
 POLICY_SOURCE = Path(pi_backend.__file__).with_name("pi_policy.ts")
@@ -153,6 +153,18 @@ class PiRunTests(unittest.TestCase):
             (status["phase"], status["status"], status["backend"]),
         )
         self.assertEqual("concorde_result", status["last_action"]["tool"])
+
+    @verifies("scenario.workers.session-proxy")
+    def test_a_pi_worker_in_a_task_session_gets_the_session_proxy(self):
+        with patch.dict(os.environ, SESSION_PROXY):
+            record = self.project.run([{}])
+        self.assertEqual("ok", record["status"], record["error"])
+        [first] = self.project.rounds(record)
+        for name in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"):
+            self.assertEqual(SESSION_PROXY[name], first["env"][name])
+        self.assertEqual("10.0.0.0/8", first["env"]["NO_PROXY"])
+        self.assertEqual("10.0.0.0/8", first["env"]["no_proxy"])
+        self.assertNotIn("ALL_PROXY", first["env"])
 
     def test_a_resume_round_continues_the_same_pi_session(self):
         flag = str(self.root / "src/a/flag")

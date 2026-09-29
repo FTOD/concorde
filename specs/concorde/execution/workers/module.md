@@ -79,7 +79,8 @@ pi's configuration, with the credential copies and the session), `home/` (`HOME`
 directory before the [runtime directory](../../glossary.json#concept.runtime-directory) is removed, so no credential copy is ever retained. It
 pre-creates `src/shop/discounts.py` empty — a worker can write only files that
 already exist — generates the worker's harness and brief, launches the worker's program headless in
-`work/` with a cleared environment — on pi, the default, `pi -p` with the permission extension as
+`work/` with a cleared environment, which passes on only the proxy its model calls go through
+([the proxy](launch.md#proxy)) — on pi, the default, `pi -p` with the permission extension as
 its only extension ([the pi run mechanics](pi.md#launch)); on Claude Code `claude -p` with
 `bypassPermissions`, the result schema and no MCP servers ([the run mechanics](launch.md#launch)) —
 audits every change against `rw`, runs checks through Check execution, resumes the same session when

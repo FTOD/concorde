@@ -20,7 +20,7 @@ import shutil
 from pathlib import Path
 
 from ..errors import link
-from .claude_backend import BackendRefusal, RoundOutcome
+from .claude_backend import BackendRefusal, RoundOutcome, proxy_environment
 from .models import LEVELS
 from .settings import SettingsError, grant_view, sandbox_filesystem, tool_set
 
@@ -449,6 +449,7 @@ class PiBackend:
         for name, value in os.environ.items():
             if name.endswith("_API_KEY") and value:
                 environment[name] = value
+        environment.update(proxy_environment())
         return environment
 
     def command(

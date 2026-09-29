@@ -143,7 +143,11 @@ counterpart of a worker's permission extension, loaded on top of the developer's
 which blocks a `write` or `edit` outside the task worktree and its decision log, naming the task
 worktree, rewrites every `bash` command to run inside sandbox-runtime with the same writable paths
 and open network plus a private temporary directory, and gives the session its `concorde_report`
-tool. Exact shapes: [Claude Code mechanics](claude-code.md#task-session-settings) and
+tool. On both programs the open network is reached through the sandbox's proxy on `localhost`,
+because the sandboxed commands have a network namespace of their own; a worker those commands start
+passes that proxy on to its own process (Workers'
+[proxy rule](../execution/workers/launch.md#proxy)), never to its tools, whose sandbox stays without
+network. Exact shapes: [Claude Code mechanics](claude-code.md#task-session-settings) and
 [pi mechanics](pi.md#session-boundary-extension).
 
 ## Design

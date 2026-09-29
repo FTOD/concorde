@@ -28,6 +28,21 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - THEN none of them reaches the worker
 - AND the worker's environment holds only the listed variables, with `HOME`, `CLAUDE_CONFIG_DIR` and `TMPDIR` inside its [runtime directory](../../glossary.json#concept.runtime-directory)
 
+### scenario.workers.session-proxy — A worker started in a task session uses the session's proxy
+
+- GIVEN a host environment whose `HTTP_PROXY`, `HTTPS_PROXY`, `http_proxy` and `https_proxy` name a proxy on `localhost` and whose `NO_PROXY` lists `localhost`, `127.0.0.1`, `::1` and a private address range, as a [task session](../../glossary.json#concept.task-session)'s sandbox sets them
+- WHEN the host launches a worker, on the pi backend or the Claude Code backend
+- THEN the worker's environment holds the same four proxy variables
+- AND its `NO_PROXY` still lists the private range but no loopback entry
+- AND it holds no other proxy variable, such as `ALL_PROXY`
+
+### scenario.workers.own-proxy — A proxy elsewhere keeps loopback direct, and no proxy passes nothing
+
+- GIVEN a host environment whose `HTTPS_PROXY` names a proxy on another host and whose `NO_PROXY` lists `localhost` and a domain
+- WHEN the host launches a worker
+- THEN the worker's environment holds that `HTTPS_PROXY` and the same `NO_PROXY`
+- BUT when the host's environment sets no proxy, the worker's environment holds no proxy variable and no `NO_PROXY`, even when the host sets `NO_PROXY`
+
 ### scenario.workers.brief-terms — The brief carries the definitions of the worker's terms
 
 - GIVEN a grant whose terms hold the glossary entries the bound Modules' documents link

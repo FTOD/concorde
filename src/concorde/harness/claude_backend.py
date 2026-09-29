@@ -8,12 +8,14 @@ record gives the session, the structured output or Claude Code's own error.
 
 from __future__ import annotations
 
+import ipaddress
 import json
 import os
 import shutil
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from ..errors import link
 from .settings import (
@@ -25,6 +27,11 @@ from .settings import (
 )
 
 ACTOR = "Claude Code process (claude -p)"
+# The proxy a worker's own model calls go through: a task session's sandbox leaves the process no
+# network but its proxy, and a developer's own proxy applies to workers as to the host.
+PROXY_VARIABLES = ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy")
+NO_PROXY_VARIABLES = ("NO_PROXY", "no_proxy")
+LOOPBACK_NAMES = {"localhost", "127.0.0.1", "::1", "[::1]"}
 
 
 class BackendRefusal(Exception):
@@ -130,6 +137,49 @@ def envelope_of(stdout: bytes) -> dict | None:
     except ValueError:
         return None
     return value if isinstance(value, dict) else None
+
+
+def _on_loopback(proxy: str) -> bool:
+    """Whether a proxy variable's value names a proxy on the loopback interface."""
+    try:
+        host = urlsplit(proxy if "://" in proxy else f"http://{proxy}").hostname
+    except ValueError:
+        return False
+    if not host:
+        return False
+    if host == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def proxy_environment(host: dict[str, str] | None = None) -> dict[str, str]:
+    """The proxy variables a worker inherits from the host's environment.
+
+    Every set ``HTTP_PROXY``/``HTTPS_PROXY`` in either case passes on, and with one the
+    ``NO_PROXY``/``no_proxy`` values. When every passed proxy is on loopback, as a task session's
+    sandbox proxy is, loopback leaves the no-proxy lists: the process's network namespace may hold
+    nothing but that proxy, so ``localhost`` is reachable only through it. Without a proxy nothing
+    passes on.
+    """
+    host = os.environ if host is None else host
+    proxies = {name: host[name] for name in PROXY_VARIABLES if host.get(name)}
+    if not proxies:
+        return {}
+    environment = dict(proxies)
+    loopback = all(_on_loopback(value) for value in proxies.values())
+    for name in NO_PROXY_VARIABLES:
+        if name not in host:
+            continue
+        entries = [entry.strip() for entry in host[name].split(",")]
+        if loopback:
+            entries = [e for e in entries if e.lower() not in LOOPBACK_NAMES]
+        kept = ",".join(entry for entry in entries if entry)
+        if kept:
+            environment[name] = kept
+    return environment
 
 
 class ClaudeStream:
@@ -253,6 +303,7 @@ class ClaudeBackend:
         }
         if os.environ.get("ANTHROPIC_API_KEY"):
             environment["ANTHROPIC_API_KEY"] = os.environ["ANTHROPIC_API_KEY"]
+        environment.update(proxy_environment())
         return environment
 
     def command(

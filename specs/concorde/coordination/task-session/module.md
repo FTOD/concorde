@@ -52,7 +52,12 @@ task's record and trace, where `concorde task escalate` records its escalations,
 worktree's `.concorde/locks/`, where those runs take the
 [workspace lock](../../glossary.json#concept.workspace-lock) and their [run locks](../../glossary.json#concept.run-lock), and the user's
 package caches, and in pi also the session's private temporary directory, where sandbox-runtime
-keeps its sockets. Reads and the network stay open.
+keeps its sockets. Reads and the network stay open. On both programs the shell's sandbox reaches
+the network through a proxy of its own on `localhost`, named in the proxy variables of the commands
+it runs, since those commands have a network namespace holding only a loopback interface; the
+workers of the Operations a session starts pass that proxy on ([Workers' proxy
+rule](../../execution/workers/launch.md#proxy)), so they reach their model endpoints, one on
+`localhost` included, as a main session's workers do, while their own tools keep no network.
 
 **In Claude Code**, Task sessions writes the session's [session
 boundary](../../glossary.json#concept.session-boundary) — a settings file and the Harness's

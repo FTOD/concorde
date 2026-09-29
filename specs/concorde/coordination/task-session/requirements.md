@@ -34,7 +34,9 @@ The boundary Task sessions writes for a task session SHALL let the session's she
 
 In Claude Code the shell is Bash in Claude Code's sandbox; in pi `bash` commands run in
 sandbox-runtime, whose sockets need the private temporary directory. Both leave reads and the
-network open, allowing every host. The task's folder is writable because the task worktree's
+network open, allowing every host, through the sandbox's proxy on `localhost`, which the workers
+of the runs the session starts pass on
+([req.workers.proxy-passed](../../execution/workers/launch.md#req.workers.proxy-passed)). The task's folder is writable because the task worktree's
 [workspace binding](../../glossary.json#concept.workspace-binding) names its `workspace/` as the
 workspace folder of every run started there, and `.concorde/locks/` because those runs take their
 locks there.

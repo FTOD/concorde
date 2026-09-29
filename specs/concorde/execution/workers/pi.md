@@ -67,6 +67,7 @@ The environment is cleared and then set to exactly:
 | `PI_OFFLINE`, `PI_SKIP_VERSION_CHECK` | `1` |
 | `PI_TELEMETRY` | `0` |
 | every variable whose name ends with `_API_KEY` | the host's value, only when the host has one |
+| the [proxy variables](launch.md#proxy) | as that section derives them from the host's |
 
 The host reads the JSON event stream from standard output as it arrives. The `session` record gives
 the session identifier; the transcript is the session file under `config/sessions/`, moved into the
