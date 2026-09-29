@@ -284,26 +284,31 @@ on the project's task `--task` (default `t1`), which must have a worktree:
 2. **owned by Claude Code**: the first session starts `task-validation` of the task in background
    Bash.
 
-Each run is started with `--wait` while the case holds the task's
-[workspace lock](../glossary.json#concept.workspace-lock), which it releases only once the run is
-in the run store, so that the run outlives its launch and its end reaches the owner as a wake, never
-as the launching tool's own answer.
+Each run is started with `--wait` while the case holds the task's [workspace
+lock](../glossary.json#concept.workspace-lock), so that the run cannot start its work before the
+case has seen its launch completed. For an owned run the case, still holding the lock, first waits
+until the owner has ended the turn in which it launched the run; for either run it then waits until
+the run is in the run store, and only then releases the lock. The run therefore ends only after the
+launching turn did, and its end reaches the owner as a wake, never as the launching tool's own
+answer, within the time the case judges.
 
 Once the run has written its result, the case observes the sessions for a bounded window. For an
 owned run it waits until the owner has been woken and has ended the turn it was woken into, but at
 most `--wake` seconds (180 by default) after the result; then, and for the unowned run at once, it
 waits `--grace` seconds more (20 by default), so that a wake of another session that comes late is
 still seen. The window ends then, whether or not the owner was woken, and the phase is judged over
-the time since the owner's launching turn ended (the phase's start for the unowned run), in which
-the case prompts no session: the owner must have begun a turn or received a notification, Claude
-Code's `task_notification`, and no other session may have done either. Then every session that
-does not own the run, into which nothing is pushed, is asked to run `concorde task show <task>` and
-must find the run with the status of its result ([requirements](requirements.md#req.e2e.owners-case)).
+the time since the owner's launching turn ended (the phase's start for the unowned run) until the
+window's end, in which the case prompts no session: the owner must have begun a turn or received a
+notification, Claude Code's `task_notification`, and no other session may have done either. Then
+every session that does not own the run, into which nothing is pushed, is asked to run
+`concorde task show <task>` and must find the run with the status of its result
+([requirements](requirements.md#req.e2e.owners-case)).
 
 ```d2 illustrative
 direction: down
 hold: "The case holds the task's workspace lock"
 start: "The launcher starts task-validation with --wait:\nthe case itself (unowned) or the first session (owned)"
+turn: "Owned run: the owner's launching turn ends"
 store: "The run enters the run store,\nwaiting for the lock"
 release: "The case releases the lock"
 result: "The run works and writes its result"
@@ -312,7 +317,8 @@ grace: "The case waits --grace seconds more"
 judge: "Judge the wakes since the launching turn ended:\nthe owner woken, no other session woken"
 ask: "Ask every other session to run task show:\neach must find the run with its result's status"
 verdict: "Phase verdict, into owners.json" {shape: oval}
-hold -> start -> store -> release -> result -> wake -> grace -> judge -> ask -> verdict
+hold -> start -> turn -> store -> release -> result -> wake -> grace -> judge -> ask -> verdict
+start -> store: "unowned run" {style.stroke-dash: 3}
 result -> grace: "unowned run" {style.stroke-dash: 3}
 ```
 

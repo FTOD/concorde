@@ -96,9 +96,9 @@ Concrete situations that show the [requirements](requirements.md) of
 ### scenario.e2e.owner-not-woken — An owner not woken by its deadline fails the case
 
 - GIVEN a test project with a task `t1` with a worktree, and live sessions of two Claude Code main sessions in its primary worktree, none ever woken by a background command
-- WHEN `owners` plays a run the first session starts in background Bash and the run writes its result
-- THEN the case ends `failed` once `--wake` seconds have passed after the result, naming that the owner `claude-1` was not woken when its run ended
-- AND it stops with no error
+- WHEN `owners`, with `--wake 2` and `--grace 1`, plays a run the first session starts in background Bash and the run writes its result
+- THEN the case observes the sessions for 3 seconds after the result, the sum of the two, and then judges the phase
+- AND the case ends `failed`, naming that the owner `claude-1` was not woken when its run ended, and with no error
 
 ### scenario.e2e.owners-too-few-sessions — The owners case needs two sessions
 
