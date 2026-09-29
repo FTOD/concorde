@@ -32,7 +32,7 @@ a Claude Code main agent may run pi workers as well as Claude Code workers.
 
 ### req.concorde.worker-models-per-worktree — Worker models belong to the worktree
 
-The model and reasoning level of every worker SHALL come from the worker configuration of the worktree it works on.
+The model and reasoning level of every worker SHALL come from the worker configuration of the checkout its run works in: the worktree of the run's workspace for a bound run, and the configuration committed in the unbound checkout for an unbound run.
 
 ### req.concorde.worker-models-tracked — The worker models are tracked with the project
 
@@ -134,12 +134,15 @@ Every run result that is not successful SHALL keep the evidence the run produced
 
 The worker's link in the chain is marked with the level `worker`; the run never moves a worker's statement into its own links or its host evidence.
 
-### req.concorde.spec-gaps-stop — Automatic rounds never repair Specs
+### req.concorde.spec-gaps-stop — Automatic rounds never fill a Spec gap
 
-An Operation SHALL stop and return its [error chain](glossary.json#concept.error-chain) instead of resuming a worker when the failure is a [Spec gap](glossary.json#concept.spec-gap), a needed path outside the grant, or a failed structural Spec check.
+An Operation SHALL stop and return its [error chain](glossary.json#concept.error-chain) instead of resuming a worker when the failure is a [Spec gap](glossary.json#concept.spec-gap) or a needed path outside the grant.
 
-Only failures of [configured checks](glossary.json#concept.configured-check) against code are fed
-back to the same worker automatically.
+A [resume round](glossary.json#concept.resume-round) feeds back to the same worker only what a
+program found: the failures of [configured checks](glossary.json#concept.configured-check) against
+code and, once they pass, what the step's own validation of the round reports to repair, such as
+the structural errors a Spec-writing worker introduced. A promise the Spec does not state, or a
+path the grant does not give, is never supplied by another round; it goes up to be decided.
 
 ## Change control
 

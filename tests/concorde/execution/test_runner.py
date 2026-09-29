@@ -1421,7 +1421,7 @@ class UnboundCheckoutTests(unittest.TestCase):
         self.assertNotEqual(examined, head(self.root))
         validate(envelope, RESULT_SCHEMA)
 
-    @verifies("scenario.execution.unbound-checkout")
+    @verifies("scenario.execution.unbound-checkout-removed")
     def test_the_checkout_is_removed_however_the_run_ends(self):
         examined = head(self.root)
         status, envelope = self.probe("--fail")
@@ -1498,7 +1498,7 @@ class UnboundCheckoutTests(unittest.TestCase):
         ]
         self.assertEqual("references/lib", absent["ref"])
 
-    @verifies("scenario.execution.unbound-checkout")
+    @verifies("scenario.execution.unbound-no-commit")
     def test_a_worktree_without_a_commit_refuses_an_unbound_run(self):
         empty = self.project.base / "empty"
         empty.mkdir()

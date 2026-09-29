@@ -193,10 +193,10 @@ here called its origin:
    workers only read it, the checks inside their read-only boundary. A runtime path Git does not
    ignore is not linked, with `environment-not-linked` evidence, since the commit holds it.
 4. From here on the run context's worktree is the checkout: the Specs, the grant, the workers,
-   Workers' audit and the steps all work there. The run context keeps the origin, whose `.concorde`
-   keeps the run's trace node and run lock and whose
-   [worker configuration](../glossary.json#concept.worker-configuration) chooses the
-   workers' backends and models, and the commit, which the result names as `commit` and the run's
+   Workers' audit and the steps all work there, and the
+   [worker configuration](../glossary.json#concept.worker-configuration) committed in the checkout
+   chooses the workers' backends, models and limits. The run context keeps the origin, whose
+   `.concorde` keeps the run's trace node and run lock, and the commit, which the result names as `commit` and the run's
    error link as `… (unbound, <origin> at <commit>)`. `checkout` evidence names the commit and the
    checkout's path.
 5. Before the result is composed, however the steps ended, including a refusal, a raised error or

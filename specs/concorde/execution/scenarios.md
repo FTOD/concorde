@@ -45,8 +45,21 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 - THEN the run's steps and worker work in a detached checkout of `C` in a private temporary directory, reading `C`'s files without the uncommitted change, the primary worktree's `.venv` through a link, and the submodule with the same sparse patterns
 - AND the worker's audit of the checkout is clean, and its model is the one `C`'s committed [worker configuration](../glossary.json#concept.worker-configuration) chooses, not an uncommitted change of it
 - AND the result is `ok`, names `C` as `commit`, has `checkout` evidence and is saved in the primary worktree's `.concorde/unbound/`
-- AND the checkout and its temporary directory are gone once the result is written, also when a step raised an error, and the primary worktree keeps its uncommitted change, its `.venv` and the merge
-- BUT in a worktree whose `HEAD` names no commit the run is refused with `checkout_unavailable`, reason `environment`, and leaves nothing behind
+- AND the checkout and its temporary directory are gone once the result is written, and the primary worktree keeps its uncommitted change, its `.venv` and the merge
+
+### scenario.execution.unbound-checkout-removed — The checkout is removed when a step raises
+
+- GIVEN a primary worktree at commit `C`
+- WHEN a step of an unbound run started there raises an error
+- THEN the result is `failed` with `host_error`, names `C` as `commit` and has `checkout` evidence
+- AND the checkout and its temporary directory are gone once the result is written, and the repository lists no worktree but its own
+
+### scenario.execution.unbound-no-commit — A worktree without a commit refuses an unbound run
+
+- GIVEN a worktree whose `HEAD` names no commit
+- WHEN an unbound run is started there
+- THEN the run is refused with `checkout_unavailable`, reason `environment`, before any step or worker
+- AND the result names no `commit` and is saved in the worktree's `.concorde/unbound/`
 
 ### scenario.execution.unbound-read-only — An unbound run never launches a writing worker
 
@@ -135,7 +148,7 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 - WHEN the task level runs `concorde run implement --detach` there
 - THEN the command prints the run identity and the path of its future result and exits with status 0 while the runner keeps running
 - AND the run's [run progress file](../glossary.json#concept.run-progress-file) exists when the command exits
-- AND the runner writes the same result and [run record](../glossary.json#concept.run-record) as a run started without `--detach`
+- AND the runner writes the same [run result](../glossary.json#concept.run-result) and trace node as a run started without `--detach`
 - BUT a workspace already running something still gets a `failed` result naming the refusal, written where the printed path says
 
 ### scenario.execution.cancelled — The run is cancelled

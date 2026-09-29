@@ -914,7 +914,7 @@
       "id": "concept.workspace-lock",
       "title": "Workspace lock",
       "owner": "module.execution",
-      "definition": "The lock file `locks/workspaces/<workspace>.lock` of one workspace, held by the process running one of its runs for that run's whole life, so that a workspace runs one thing at a time.",
+      "definition": "The lock file `locks/workspaces/<workspace>.lock` of one workspace, held by the process running one of its runs from before that run's admission until after its result, so that a workspace runs one thing at a time.",
       "explanation": "specs/concorde/execution/module.md#concept.workspace-lock"
     },
     {

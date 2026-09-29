@@ -136,9 +136,10 @@ one task across them, and the Modules that carry them.
 
 ### The levels of work
 
-Every change to a Concorde project passes down the same five levels, and every result and error
-travels back up them. The first two are Coordination's, where agents decide what to work on; the
-other three are Execution's, where one bound workspace is worked on.
+Work on a Concorde project is organized in five levels, and every result and error travels back up
+them; a piece of work uses only the levels it needs, as when a task session changes a file itself or
+runs an Operation without a workflow. The first two are Coordination's, where agents decide what to
+work on; the other three are Execution's, where one bound workspace is worked on.
 
 ```d2 illustrative
 classes: {

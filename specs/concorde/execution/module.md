@@ -46,20 +46,12 @@ would bind the wrong workspace.
 
 <a id="concept.workspace-lock"></a>
 
-A bound run holds the **[workspace lock](../glossary.json#concept.workspace-lock)** for its whole life, so a workspace runs one run at a time.
-A second run started in the same workspace while the first holds it is refused with
-`workspace_busy`, naming the run that holds it, and a
-[workflow step](../glossary.json#concept.workflow-step) waits for the lock to be free before it
-starts its run. `--wait <seconds>` queues a run instead: the runner waits for the lock inside its
-own process, its [run progress file](../glossary.json#concept.run-progress-file) naming the run it
-waits for, starts the moment that run ends, and is refused with `workspace_busy` only when the lock
-is still held after that many seconds. A caller that wants a `delivery` after an `implement` thus
-asks once, and never polls the lock. The lock is a file lock held by the runner's process, so the
-kernel releases it however the run ends. The runner writes a run's result before it releases the
-lock, so a run admitted after it always finds that result written; a result on disk, though, does
-not mean the lock is free yet. The lock is a file under `locks/workspaces/` of the binding's
-`.concorde`, apart from every record and outside the workspace, so a run that only reads the
-workspace leaves it untouched.
+A bound run holds the **[workspace lock](../glossary.json#concept.workspace-lock)** from before its
+admission until after its result is written, so a workspace runs one run at a time: a second run
+started while the first holds it is refused with `workspace_busy`, naming the run that holds it, or
+waits for it with `--wait` ([Waiting for a busy workspace](#waiting-for-a-busy-workspace)). The lock
+is a file under `locks/workspaces/` of the binding's `.concorde`, apart from every record and
+outside the workspace, so a run that only reads the workspace leaves it untouched.
 
 ### Runs and their results
 
@@ -105,28 +97,23 @@ over the unchanged errors it received. The
 
 <a id="concept.unbound-run"></a>
 
-An Operation whose catalog entry allows it may also run **[unbound](../glossary.json#concept.unbound-run)**,
-in a worktree without a binding such as the primary worktree: `understand`, `survey`,
-`spec_review`, `spec_panel` and `code_review` (with `--base`). It works with the Modules `--modules`
-names, records `workspace` null, admits only unbound inputs, takes no lock, having no workspace to
-lock, and may launch only reading workers, so it changes no [Spec](../glossary.json#concept.spec) or
-code. Every other Operation and every execution command is refused unbound with `binding_required`.
+An Operation whose catalog entry allows it may also run
+**[unbound](../glossary.json#concept.unbound-run)**, in a worktree without a binding such as the
+primary worktree: `understand`, `survey`, `spec_review`, `spec_panel` and `code_review` (with
+`--base`). It works with the Modules `--modules` names, records `workspace` null, admits only
+unbound inputs, takes no workspace lock, having no workspace to lock, though it takes its run lock
+like every run, and may launch only reading workers, so it changes no
+[Spec](../glossary.json#concept.spec) or code. Every other Operation and every execution command is
+refused unbound with `binding_required`.
 
 <a id="concept.unbound-checkout"></a>
 
 An unbound run never works in the worktree it starts in. The runner checks out that worktree's
 `HEAD` detached in a private temporary directory, the
-**[unbound checkout](../glossary.json#concept.unbound-checkout)**, and the run's steps and workers
-read, and Workers audits, that checkout; the result's `commit` names the commit it examined. Main
-sessions merge tasks into the primary worktree while such a run lasts, and a merge there can
-therefore neither change what the run reads nor make a worker's audit fail. What the run examines
-is the commit, not uncommitted changes of the worktree it started in. The run is still recorded in
-that worktree's `.concorde/unbound/<run-id>/`, a trace of its own, and uses its
-[worker configuration](../glossary.json#concept.worker-configuration); the environments the project
-configuration names as runtime paths and Git ignores, such as `.venv` and `node_modules`, are linked
-from it into the checkout, so the checks a review runs there find them, and submodules it has
-checked out are checked out in the checkout too. However the run ends, the runner removes the
-checkout before it writes the result.
+**[unbound checkout](../glossary.json#concept.unbound-checkout)**, where the run's steps and workers
+work, and removes it before it writes the result, which names the commit examined as `commit`. What
+the run examines is that commit, never uncommitted changes; [Running unbound](#running-unbound)
+says what else the checkout holds.
 
 ### Long runs
 
@@ -135,18 +122,11 @@ checkout before it writes the result.
 With `--detach` the command starts the runner as a
 **[detached run](../glossary.json#concept.detached-run)**, a process of its own that outlives the
 command, and prints the run identity and the path of its result as soon as the run's
-**[run progress file](../glossary.json#concept.run-progress-file)** exists. Everything else about
-the run is the same, including a refusal, which still becomes its result. While a run lives, its
-run progress file names what runs, in which workspace and step, with the runner's process
-identifier, and every worker run it launches records the run's identity, so an observer, such as
-a workflow step or the run state of a task, follows a run and its worker without asking the runner.
-Whether the runner still lives is told by its
-**[run lock](../glossary.json#concept.run-lock)**, the file `locks/runs/<run-id>.lock` that the
-runner locks from before its first run progress file until after its result and removes as it exits,
-and that the kernel releases however the runner ends: a run without a result whose run lock nobody
-holds ended without writing one. No observer decides it by the recorded process identifier, which is
-only meaningful in the PID namespace the runner ran in: a runner started in a sandboxed shell may
-record 2, a number that names an unrelated, living process on the host.
+**[run progress file](../glossary.json#concept.run-progress-file)** exists; everything else about
+the run is the same. The run progress file names what runs, in which workspace and step, and the
+**[run lock](../glossary.json#concept.run-lock)**, `locks/runs/<run-id>.lock`, tells whether the
+runner still lives. [Following a long run](#following-a-long-run) explains how an observer uses
+both.
 
 ### The run store
 
@@ -231,8 +211,9 @@ checks out the worktree's `HEAD` for an unbound one, checks the Modules and inpu
 definition's steps in their declared order until one stops the run, removes an unbound run's
 checkout, composes the run result, checks it against its contract and, when it is `ok`, the
 definition's output contract, and writes it while it still holds the lock, so that a run that takes
-the lock after it always finds that result written, and writes its trace node again with its end.
-Seeing the result alone does not tell that the workspace is free: the runner may still hold the lock.
+the lock after it finds that result written, and writes its trace node again with its end.
+Seeing the result alone does not tell that the workspace is free: the runner may still hold
+the lock.
 A refusal before the steps, a step that raises, a signal or an invalid result each still end in a
 written result with the runner's link on top. Its exact behaviour is in
 [How a run is executed](runner.md).
@@ -290,6 +271,43 @@ computes the implement grant for `module.http` from the worktree's Specs, launch
 through [Workers](workers/module.md), audits and checks its change, and prints its run result and
 saves it in the run's trace node, `<workspace folder>/runs/<run-id>/result.json`. The command exits
 0 for `ok`, 1 for `blocked` or `failed`, and 2 for a malformed command line, which starts nothing.
+
+### Waiting for a busy workspace
+
+A [workflow step](../glossary.json#concept.workflow-step) waits for the workspace lock to be free
+before it starts its run. `--wait <seconds>` queues any run instead: the runner waits for the lock
+inside its own process, its run progress file naming the run it waits for, starts the moment that
+run ends, and is refused with `workspace_busy` only when the lock is still held after that many
+seconds. A caller that wants a `delivery` after an `implement` thus asks once, and never polls the
+lock. The lock is a file lock held by the runner's process, so the kernel releases it however the
+run ends. The runner writes a run's result before it releases the lock, so a run admitted after it
+finds that result written, unless the runner was killed before it could write one and the run is
+lost; a result on disk, though, does not mean the lock is free yet.
+
+### Running unbound
+
+Main sessions merge tasks into the primary worktree while an unbound run lasts, and since the run
+reads, and Workers audits, only its checkout, such a merge can neither change what the run reads
+nor make a worker's audit fail. The run is still recorded in the worktree it started in, in
+`.concorde/unbound/<run-id>/`, a trace of its own, while its workers' backends and models come from
+the [worker configuration](../glossary.json#concept.worker-configuration) committed in the checkout,
+like every other input of the run. The environments the project configuration names as runtime
+paths and Git ignores, such as `.venv` and `node_modules`, are linked from that worktree into the
+checkout, so the checks a review runs there find them, and submodules it has checked out are checked
+out in the checkout too. However the run ends, the runner removes the checkout before it writes the
+result.
+
+### Following a long run
+
+While a run lives, its run progress file names what runs, in which workspace and step, with the
+runner's process identifier, and every worker run it launches records the run's identity, so an
+observer, such as a workflow step or the run state of a task, follows a run and its worker without
+asking the runner. Whether the runner still lives is told by its run lock, which the runner locks
+from before its first run progress file until after its result and removes as it exits, and that
+the kernel releases however the runner ends: a run without a result whose run lock nobody holds
+ended without writing one. No observer decides it by the recorded process identifier, which is only
+meaningful in the PID namespace the runner ran in: a runner started in a sandboxed shell may record
+2, a number that names an unrelated, living process on the host.
 
 ## How it is built
 
