@@ -14,7 +14,60 @@ Operation's host steps compute the diff and run the configured checks through Ch
 leave the workspace unchanged. A clean review is evidence about the reviewed inputs only, not proof
 of no other defect.
 
-## Usage
+## Core concepts
+
+### Findings and their basis
+
+The Operation returns a [run result](../../../glossary.json#concept.run-result) whose `output` is a
+**code review report** ([contract](contracts.md#contract.code-review.review)). Each **finding** of
+the report is blocking (undeliverable unfixed) or advisory, and names its kind: a violation of a
+stated promise, a defect the Spec's promises imply, a missing test for a touched scenario, a change
+outside the bound Modules' code, or a [Spec gap](../../../glossary.json#concept.spec-gap), where
+the code does something the Spec neither requires nor forbids. A blocking finding always names its
+basis — a stable identity (requirement, scenario, contract or concept) or a Spec passage — from the
+bound Modules' [Spec context](../../../glossary.json#concept.spec-context).
+
+The reviewer judges only against the Specs in its context, never against taste or another Module's
+code, so a disputed finding traces to a written promise. Behaviour the Spec neither requires nor
+forbids is a Spec-gap finding of an `ok` run; the reviewer returns `blocked` only when it cannot
+judge the change at all.
+
+### The verdict
+
+The report's verdict is `changes_required` when any finding is blocking, else `clean`. The
+Operation derives it itself: it verifies only what it can decide — that every cited basis exists
+and which verdict follows — and otherwise keeps findings as the reviewer's claims.
+
+### One pass
+
+There is no [resume round](../../../glossary.json#concept.resume-round): the reviewer reports every
+blocking finding in one pass, since another round re-reads everything and lets one fix hide the
+next — also why a review is not repeated automatically after `implement`.
+
+## Overview
+
+A review in three hands: the Operation prepares the change and the evidence, the reviewer judges
+it once, the Operation settles the verdict, and the task level acts on the findings.
+
+```d2 illustrative
+direction: down
+classes: {
+  agent: {style: {fill: "#e8edff"; stroke: "#3b5bdb"; stroke-width: 2; border-radius: 6}}
+  program: {style: {fill: "#f3f4f6"; stroke: "#6b7280"; stroke-width: 2; border-radius: 6}}
+}
+prepare: "Operation: freeze the review-code grant,\ndiff the workspace from its base,\nrun the configured checks" {class: program}
+judge: "Reviewer: judges the change against the\nbound Modules' Specs, in one pass" {class: agent}
+settle: "Operation: resolve every finding's basis,\nderive the verdict" {class: program}
+clean: "Task level: move to validation" {class: agent}
+spec: "Task level: usually specify" {class: agent}
+code: "Task level: usually implement" {class: agent}
+prepare -> judge -> settle
+settle -> clean: clean
+settle -> spec: "changes_required:\nblocking Spec gaps"
+settle -> code: "changes_required:\nother blocking findings"
+```
+
+## Running code_review
 
 ```text
 concorde run code_review [--modules <module-id>[,<module-id>…]] [--base <ref>] [--focus "<text>"]
@@ -26,15 +79,11 @@ the worktree it starts in. `--modules` names the judged Modules (the binding's b
 computed and it ends `failed` with `grant_unavailable`), `--base` the diff's start commit (the
 binding's base commit by default; required for an unbound run, which judges the `HEAD` of the
 worktree it starts in, such as the primary worktree, since that commit, reading it from its
-[unbound checkout](../../../glossary.json#concept.unbound-checkout)), and `--focus` a concern to look at first,
-never narrowing what may be reported. For example, `code_review --modules module.issues` gives the
-reviewer the Issues Spec, code and tests, read access to the rest of the project's code, the
-workspace's diff since its base and the Issues checks.
-
-The Operation returns a [run result](../../../glossary.json#concept.run-result) whose `output` is a
-**code review report**
-([contract](contracts.md#contract.code-review.review)), with verdict `changes_required` when any
-finding is blocking, else `clean`.
+[unbound checkout](../../../glossary.json#concept.unbound-checkout)), and `--focus` a concern to
+look at first, never narrowing what may be reported. For example, `code_review --modules
+module.issues` gives the reviewer the Issues Spec, code and tests, read access to the rest of the
+project's code, the workspace's diff since its base and the Issues checks. The task level usually
+answers blocking Spec gaps with `specify`, other blocking findings with `implement`.
 
 | Status | Code | Reason | Detail |
 | --- | --- | --- | --- |
@@ -49,16 +98,7 @@ Only an `ok` run carries a report; another run names as host evidence what its s
 before it stopped: the base once resolved, the diff's paths once computed and the check results
 once the checks ran.
 
-Each **finding** of the report is blocking (undeliverable unfixed) or advisory, and names its
-kind: a violation of a stated promise, a defect
-the Spec's promises imply, a missing test for a touched scenario, a change outside the bound
-Modules' code, or a [Spec gap](../../../glossary.json#concept.spec-gap), where the code does
-something the Spec neither requires nor forbids. A blocking finding always names its basis — a
-stable identity (requirement, scenario, contract or concept) or a Spec passage — from the bound
-Modules' [Spec context](../../../glossary.json#concept.spec-context). The task level usually answers
-blocking Spec gaps with `specify`, other blocking findings with `implement`.
-
-## Design
+## How it is built
 
 The Operation is worker-backed, run by the
 [Execution runner](../../../glossary.json#concept.execution-runner) with
@@ -85,16 +125,8 @@ the Operation runs checks first and hands over the results; a failing check is f
 interpret, and it reads any check's full log at the path the brief gives. A very large diff is cut
 short in the brief, and the reviewer reads the current contents of the remaining changed files
 through its grant; the base side of the omitted part and the contents of deleted files are then not
-available to it. There is no [resume round](../../../glossary.json#concept.resume-round): it
-reports every blocking finding in one pass, since another round re-reads everything and lets one
-fix hide the next — also why a review is not repeated automatically after `implement`.
-
-The reviewer judges only against the Specs in its context, never against taste or another Module's
-code, so a disputed finding traces to a written promise. Behaviour the Spec neither requires nor
-forbids is a Spec-gap finding of an `ok` run; the reviewer returns `blocked` only when it cannot
-judge the change at all. The Operation verifies only what it can decide — that every cited basis
-exists and which verdict follows — and otherwise keeps findings as claims. See the [requirements](requirements.md) and [scenarios](scenarios.md) for the precise
-obligations.
+available to it. See the [requirements](requirements.md) and [scenarios](scenarios.md) for the
+precise obligations.
 
 <a id="realization.code-review.operation"></a>
 
@@ -102,28 +134,22 @@ The **Code review Operation** realization holds the Operation steps, the `review
 instructions, the result schema and its tests: the reviewer returns only findings and a summary;
 the Operation adds the base, paths, check results and verdict.
 
-### Outside
+## What it relies on
 
 - <a id="uses-operations"></a>**Operations** lists `code_review` in its catalog as an Operation
   that writes nothing and may run unbound with `--base`, and names this Module as its provider.
   Code review calls no other Operation.
-- <a id="uses-execution"></a>**Execution**'s
-  [runner](../../../glossary.json#concept.execution-runner) runs the Operation's steps: it reads the
+- <a id="uses-execution"></a>**Execution**'s runner runs the Operation's steps: it reads the
   [workspace binding](../../../glossary.json#concept.workspace-binding), settles the Modules,
-  records the run and wraps the report in the
-  [run result](../../../glossary.json#concept.run-result). Code review relies on it for the
+  records the run and wraps the report in the run result. Code review relies on it for the
   binding's base commit, the default of `--base`, and for recording the run.
 - <a id="uses-workers"></a>**Workers** turns the frozen grant into worker settings, launches the
-  reviewer with this Module's brief, collects its
-  [worker result](../../../glossary.json#concept.worker-result), audits the
-  worktree and writes the run record.
-- <a id="uses-checks"></a>**Check execution** runs the
-  [configured checks](../../../glossary.json#concept.configured-check) of the bound Modules and of
-  every Module that uses one of them read-only and returns a
-  [check result](../../../glossary.json#concept.check-result) for each, passed to the reviewer with
-  its log path; the report carries each result in the shape its
+  reviewer with this Module's brief, collects its worker result, audits the worktree and writes the
+  run record.
+- <a id="uses-checks"></a>**Check execution** runs the configured checks of the bound Modules and
+  of every Module that uses one of them read-only and returns a check result for each, passed to the
+  reviewer with its log path; the report carries each result in the shape its
   [contract](contracts.md#contract.code-review.review) gives, without the digests.
-- <a id="uses-spec"></a>**Spec core** computes the `review-code`
-  [grant](../../../glossary.json#concept.grant), decides which changed paths the
-  diff may show in full, and resolves findings' basis identities. Code review never computes a
+- <a id="uses-spec"></a>**Spec core** computes the `review-code` grant, decides which changed paths
+  the diff may show in full, and resolves findings' basis identities. Code review never computes a
   boundary itself.
