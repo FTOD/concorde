@@ -180,12 +180,17 @@ class HeadlessSessionTests(unittest.TestCase):
         self.assertIn("run Concorde commands in the foreground", sessions.NOTE)
         granted = first[first.index("--allowedTools") + 1 :]
         self.assertEqual(list(sessions.MAIN_AGENT_TOOLS), granted)
-        # The main agent never works inside a task worktree; it names itself for a task
-        # session and answers it.
-        self.assertNotIn("EnterWorktree", granted)
-        self.assertNotIn("ExitWorktree", granted)
-        self.assertIn("ListAgents", granted)
-        self.assertIn("SendMessage", granted)
+        # The test-only exception: a headless Claude Code main session works its tasks itself
+        # inside their task worktrees instead of starting task sessions.
+        self.assertIn("EnterWorktree", granted)
+        self.assertIn("ExitWorktree", granted)
+        self.assertNotIn("SendMessage", granted)
+        self.assertIn("do not start task sessions", sessions.NOTE)
+        self.assertIn("inside its task worktree", sessions.NOTE)
+        self.assertIn("ExitWorktree after delivery", sessions.NOTE)
+        self.assertIn("SendMessage report would find no receiver", sessions.NOTE)
+        # pi main sessions still delegate: their note names no such exception.
+        self.assertNotIn("task worktree", sessions.PI_NOTE)
         self.assertNotIn("--resume", first)
         again = sessions.command("woken", resume="s-1")
         self.assertEqual("s-1", again[again.index("--resume") + 1])

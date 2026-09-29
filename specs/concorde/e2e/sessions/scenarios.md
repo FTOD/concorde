@@ -8,8 +8,8 @@ Concrete situations that show the [requirements](requirements.md) of
 - GIVEN a prompt, and for a later round the session's identity
 - WHEN the driver builds the round's command
 - THEN it runs `claude -p` with the prompt, the headless note as appended system prompt, `stream-json` output and the [main agent](../../glossary.json#concept.main-agent)'s tools granted
-- AND those tools include ListAgents and SendMessage
-- BUT neither EnterWorktree nor ExitWorktree
+- AND those tools include EnterWorktree and ExitWorktree, and the note tells the session to carry its tasks out itself inside their task worktrees instead of starting [task sessions](../../glossary.json#concept.task-session), since their reports would have no receiver
+- BUT pi's headless note tells a pi session no such thing
 - AND a later round resumes the session by its identity
 - AND the environment keeps a background workflow alive
 
@@ -60,7 +60,7 @@ Concrete situations that show the [requirements](requirements.md) of
 
 ### scenario.headless-sessions.unsettled-rounds — Which session rounds a round left behind
 
-- GIVEN [task records](../../glossary.json#concept.task-record) holding pi [task sessions](../../glossary.json#concept.task-session) with a [session round](../../glossary.json#concept.session-round) running under a live supervisor, a session round that ended, a session round still recorded `running` whose supervisor is gone, a running session round begun before the session, and a Claude Code task session
+- GIVEN [task records](../../glossary.json#concept.task-record) holding pi task sessions with a [session round](../../glossary.json#concept.session-round) running under a live supervisor, a session round that ended, a session round still recorded `running` whose supervisor is gone, a running session round begun before the session, and a Claude Code task session
 - WHEN a round ends
 - THEN the running session round under a live supervisor is unsettled
 - BUT the ended session round, the one whose supervisor is gone, the one begun before the session, the Claude Code task session and a session round already reported are not

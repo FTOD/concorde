@@ -14,10 +14,13 @@ prompt.
 Every Claude Code round of a headless session SHALL be started with its tools granted on the
 command line.
 
-### req.headless-sessions.no-worktree-tools — A main agent is granted no worktree tool
+### req.headless-sessions.claude-works-tasks — A headless Claude Code main session works its tasks itself
 
-The tools granted to a Claude Code round of a [main agent](../../glossary.json#concept.main-agent)
-SHALL NOT include a tool that moves the session into a worktree.
+Every Claude Code round of a headless [main agent](../../glossary.json#concept.main-agent) SHALL
+be granted EnterWorktree and ExitWorktree and told by its headless note to carry its tasks out
+itself inside their task worktrees instead of starting
+[task sessions](../../glossary.json#concept.task-session), because a task session's report would
+have no receiver once the round's process has ended.
 
 ### req.headless-sessions.guidance-untouched — The headless note stays out of the guidance
 
@@ -39,8 +42,7 @@ The wait is bounded by [its own requirement](#req.headless-sessions.wait-bounded
 ### req.headless-sessions.wake-task-session — A session round left running wakes the session
 
 When a round other than the session's last ends with a
-[session round](../../glossary.json#concept.session-round) of a pi
-[task session](../../glossary.json#concept.task-session) begun since the
+[session round](../../glossary.json#concept.session-round) of a pi task session begun since the
 session began still running, the driver SHALL resume the same session, once that session round has
 been recorded or its supervisor has gone, with a wake message giving the outcome its
 [task record](../../glossary.json#concept.task-record) holds.

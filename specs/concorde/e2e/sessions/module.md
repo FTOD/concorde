@@ -42,18 +42,29 @@ scenario](../../glossary.json#concept.dogfood-scenario) runs its prompt as one, 
 scenario directory's `sessions/<time>/`, which the scenario runner passes in place of the default.
 
 **What the session is told.** A Claude Code round is started with the main agent's tools granted on
-the command line (Bash, Read, Write, Edit, Glob, Grep, Skill, TodoWrite, ListAgents and
-SendMessage, or a workflow's own list), since an untrusted project's allow rules are ignored, with
+the command line (Bash, Read, Write, Edit, Glob, Grep, Skill, TodoWrite, EnterWorktree and
+ExitWorktree, or a workflow's own list), since an untrusted project's allow rules are ignored, with
 `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0`, which keeps a background workflow alive, and with the
 **headless note** appended to its system prompt: nobody
 answers questions, a command left in the background is stopped when the turn ends and nothing wakes
-the session, so Concorde commands run in the foreground, and a run still running at the end of a
-round is followed by a wake-up
+the session, so Concorde commands run in the foreground, a run still running at the end of a
+round is followed by a wake-up, and the session carries its tasks out itself instead of starting
+[task sessions](../../glossary.json#concept.task-session)
 ([requirements](requirements.md#req.headless-sessions.conditions-in-tool),
-[tools granted](requirements.md#req.headless-sessions.tools-granted)). The
-[main agent](../../glossary.json#concept.main-agent) never works inside a task worktree, so no
-worktree tool is granted; ListAgents gives it the session name that `concorde task session --main`
-records, and SendMessage lets it answer a task session. What the turn's end
+[tools granted](requirements.md#req.headless-sessions.tools-granted)).
+
+**The Claude Code exception.** The [main agent](../../glossary.json#concept.main-agent) hands every
+task to a task session and never works inside a task worktree, but a headless Claude Code main
+session cannot: a Claude Code task session reports to the main agent with SendMessage, and the
+process of a `claude -p` round ends with its turn, long before the task session reports, so the
+report has no receiver. As a test-only exception, which holds for headless Claude Code main
+sessions only, the note tells the session not to start task sessions but to carry each task out
+itself inside its task worktree, entering it with EnterWorktree, working, validating and delivering
+it there with that worktree's own `concorde`, and leaving it with ExitWorktree after delivery before
+it merges the task from the primary worktree; the two worktree tools are granted for it
+([requirements](requirements.md#req.headless-sessions.claude-works-tasks)). A headless pi main
+session keeps delegating, and a headless workflow run works as a task session in the first place.
+What the turn's end
 stops is Claude Code's own background command; a Concorde run it was running then ends with the
 error code `cancelled` and the session is woken for it as a run stopped by that end, while a
 [detached run](../../glossary.json#concept.detached-run) outlives the round and wakes the session
@@ -167,13 +178,15 @@ that outlives the round, so its note tells the session to end its turn where it 
 wait. For both, the tool's wake stands in for the notification an interactive session would
 receive.
 
-**A Claude Code task session is not woken for.** A Claude Code task session is a background
-session that reports to the main agent with SendMessage, addressed to the session name the main
-agent gave `--main`. A `claude -p` round's process ends with its turn, and a task session's work
-lasts well beyond it, so its report finds no session to deliver to; and nothing in Concorde's files
-tells the tool that a Claude Code task session has reported, as the task record does for a session
-round. A headless Claude Code main session therefore cannot yet hand a task to a task session and
-be woken by its report.
+**Why Claude Code works its tasks itself.** A pi session round's outcome is in its task record,
+so the tool can wake a pi main session for it. A Claude Code task session instead reports with
+SendMessage to the session name the main agent gave `--main`, and nothing in Concorde's files tells
+the tool that it has reported; with the round's process gone, that report is lost. Running the
+headless main session as a background session, or reading the task session's report from its
+transcript, would change how the driver runs Claude Code; the exception keeps `claude -p` rounds
+and gives up only testing delegation with Claude Code, which a headless Claude Code main session
+does not exercise. What it does test differs from what a user's main agent does there: it works
+the task itself, as a task session would.
 
 **Resuming, not restarting.** A wake resumes the same session, so the main agent keeps its whole
 context, its [decision log](../../glossary.json#concept.decision-log) entries and its plan, exactly

@@ -6,6 +6,10 @@ guidance:
 
 - nobody answers a question, and the project may be untrusted, so the tools the session needs are
   granted on the command line;
+- a task session's SendMessage report would find no receiver, since the process of a round ends
+  with its turn, so a Claude Code main session works its tasks itself inside their task worktrees,
+  a test-only exception to the rule that the main agent never works inside a task worktree, and is
+  granted EnterWorktree and ExitWorktree for it (a pi main session still delegates);
 - a command left running in the background is stopped when the turn ends, and nothing wakes the
   session when a run ends: the session is told so in an appended system prompt, and when a round
   ends with an Operation run still running or stopped by the turn's end, or with a round of a pi
@@ -39,8 +43,8 @@ from common import E2EError
 # Keeps a background workflow of `claude -p` alive past ten idle minutes.
 WAIT_VARIABLE = "CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS"
 # The tools a main agent uses, granted on the command line because an untrusted project's allow
-# rules are ignored. It never works inside a task worktree, so no worktree tool is among them;
-# ListAgents names it for `concorde task session --main` and SendMessage answers a task session.
+# rules are ignored. The worktree tools serve the test-only exception the note states: a headless
+# Claude Code main session works its tasks itself inside their task worktrees.
 MAIN_AGENT_TOOLS = (
     "Bash",
     "Read",
@@ -50,15 +54,21 @@ MAIN_AGENT_TOOLS = (
     "Grep",
     "Skill",
     "TodoWrite",
-    "ListAgents",
-    "SendMessage",
+    "EnterWorktree",
+    "ExitWorktree",
 )
 NOTE = (
     "This session is run headless by Concorde's end-to-end tool. Nobody answers questions during "
     "it. A command you leave running in the background is stopped when your turn ends, and "
     "nothing wakes you when it ends, so run Concorde commands in the foreground. When a round "
     "ends while an Operation run is still running, the tool waits for it and resumes this session "
-    "with the notification you would otherwise have received."
+    "with the notification you would otherwise have received. For the same reason a task session "
+    "could not report to you: your process ends with each turn, so its SendMessage report would "
+    "find no receiver. So, as an exception that holds only for this headless test, do not start "
+    "task sessions: carry each task out yourself inside its task worktree, entering it with "
+    "EnterWorktree (its path), working, validating and delivering it there with that worktree's "
+    "own concorde, and leaving it with ExitWorktree after delivery, before you merge it from the "
+    "primary worktree."
 )
 # pi has no permission prompts to answer, and a detached `concorde_run` or task-session round
 # outlives the process.
