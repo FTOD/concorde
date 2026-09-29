@@ -159,4 +159,16 @@ r-20260929T175321-delivery-994cb0fe: ok, delivery commit 16673298 on concorde/en
 The scaffold follow-up named above concerns `req.scaffold.stub-unspecified` ("SHALL say in its
 Usage and Design sections").
 
+## Main agent on the session's report (2026-09-30)
+
+1. Accepted the edits outside the task's Modules (Workers' `spec-format.md`, Views' loader rule,
+   vitest case, `pipeline.md` and production-build assertion, one test each of Distribution and
+   Spec MCP): each follows from the developer's decision that nothing is enforced and changes no
+   promise of those Modules. The Views edits may conflict with the parallel task
+   `hide-implementation-tab`; that task will merge main and resolve.
+2. Accepted version 15.1.0: the change only relaxes rules.
+3. Follow-ups for later tasks: the scaffold and initialize stubs (module.scaffold + module.spec,
+   including `req.scaffold.stub-unspecified` and `parent_reading`), the 4 other sequence diagrams
+   and the restructuring of the other entries.
+
 ## Closed: merged, 2026-09-29T17:59:43Z
