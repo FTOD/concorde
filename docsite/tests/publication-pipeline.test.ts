@@ -561,14 +561,14 @@ it.each([
     /userDocs includes registered Spec/,
   ],
   [
-    "a page shadowing the Spec tabs",
+    "a page shadowing the Spec pages",
     () => {
       put("docs/index.md", "# Home");
       put("docs/specs/extra.md", "# Extra");
     },
     "../docs",
     undefined,
-    /docs\/specs would publish under \/specs, which the Spec tabs use/,
+    /docs\/specs would publish under \/specs, which the Spec pages use/,
   ],
   [
     "a page shadowing a custom collection",

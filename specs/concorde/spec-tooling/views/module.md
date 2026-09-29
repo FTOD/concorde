@@ -13,21 +13,24 @@ deploys without opting into the GitHub Pages workflow.
 ## Usage
 
 The site's Spec pages form two **reading
-collections**, each a tab showing the Module tree
-built from `contains`: **[Module](../../glossary.json#concept.module) documents** and, when any
-document is role `implementation`, **Implementation documents**. Every **canonical
+collections**, chosen by each document's role. **[Module](../../glossary.json#concept.module)
+documents** are listed in the site's one Spec tab, whose sidebar shows the Module tree built from `contains`.
+**Implementation documents**, the precise promises readers look up rather than read through, are
+in no tab or sidebar: each Module's entry page ends with a folded list of its own, and links, term
+links, search and their addresses reach them. Every **canonical
 page** sits under its owner; a Module reading it
 through `uses` or `includes` links there instead of copying it. Each page shows its owner, the
 Modules selecting it and why, and its source digests, with every identity anchored, term links
-leading to the glossary page, and illustrative diagrams labelled non-normative. The glossary is one
-page under the root Module, and an owning Module's entry page lists the terms it owns.
+leading to the glossary page, and illustrative diagrams labelled non-normative; an implementation
+page also names the Module it belongs to, linking to its entry. The glossary is one page under the
+root Module, and an owning Module's entry page lists the terms it owns.
 
 **User documents** are written for the people who use
 the project, in any structure: the site publishes their directory as it is, with a sidebar that
 follows its folders, as the first tab, and their root page (`README` or `index`, `.md` or `.mdx`)
 is the home page at `/`. Without them the home page opens the root Module's entry.
 **Custom docs** are further collections, such as
-Concorde's own Spec Protocol, each in its own tab after the Spec tabs. Neither belongs to a Module,
+Concorde's own Spec Protocol, each in its own tab after the Module documents tab. Neither belongs to a Module,
 may contain a registered document, or is ever agent context.
 
 The commands run from `docsite/` (Concorde's own, or one the scaffold below created) after

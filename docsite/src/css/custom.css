@@ -41,6 +41,21 @@
 .provenance__kind {
   font-weight: 700;
 }
+/* A Module entry ends with its implementation documents, folded: no sidebar lists them. */
+.implementationDocuments {
+  margin-top: 2rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--concorde-border);
+  border-radius: 0.65rem;
+  background: var(--concorde-surface);
+}
+.implementationDocuments summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.implementationDocuments ul {
+  margin: 0.5rem 0 0;
+}
 /* A D2 block marked illustrative explains; it is excluded from the declared model. */
 .diagram-illustrative {
   margin-bottom: 0.4rem;

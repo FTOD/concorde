@@ -15,14 +15,17 @@ scans directories for Markdown or follows links to find documents.
   source path: `specs/project/module.md` becomes `/specs/project/module` (the leading `specs/` is
   dropped when every document lies under it). A document read by other Modules through `uses` or
   `includes` is not copied; their links lead to its owner's page.
-- **Two reading collections.** The **Module documents** tab shows entries and `module`-role topics;
-  the **Implementation documents** tab, present when any document has role `implementation`, shows
-  requirements, scenarios and contracts. The role in each document's metadata decides the tab.
-- **Navigation follows composition.** Both tabs follow the `contains` tree from the root Module, in
-  the parent's `contains` order. A Module's name opens its `module.md`; its topics (in `owns`
-  order) and child Modules appear beneath it. Topic labels are file names without `.md`.
-- **Provenance.** Each page shows its collection, source path, links between the entry and the
-  Module's implementation documents, and a "Spec metadata" disclosure with the document identity,
+- **Two reading collections.** The role in each document's metadata decides its collection. The
+  **Module documents** tab shows entries and `module`-role topics. **Implementation documents**
+  (requirements, scenarios and contracts) are in no tab or sidebar: each Module's entry ends with a
+  folded "Implementation documents" list of its own, and links, term links, search and their routes
+  reach them.
+- **Navigation follows composition.** The Module documents sidebar follows the `contains` tree from
+  the root Module, in the parent's `contains` order. A Module's name opens its `module.md`; its
+  topics (in `owns` order) and child Modules appear beneath it. Topic labels are file names without
+  `.md`. An implementation page shows this sidebar without being listed in it.
+- **Provenance.** Each page shows its collection, source path, on an implementation page a link to
+  its Module's entry, and a "Spec metadata" disclosure with the document identity,
   owner, the Modules whose Spec context selects the document (and the `owns`, `contains`, `uses` or
   `includes` relation that selects it) and the digests of both members.
 
@@ -107,8 +110,8 @@ refused with a pointer to `userDocs`.
 
 ## Navigation order
 
-The navbar lists the user documents first, then **Module documents** and **Implementation
-documents**, then each custom docs collection in `site.json` order, then extension items.
+The navbar lists the user documents first, then **Module documents**, then each custom docs
+collection in `site.json` order, then extension items.
 
 ## User documents
 
@@ -128,7 +131,7 @@ Concorde publishes its own `docs/` this way.
 
 ## Custom docs
 
-Further human-authored collections live outside the Specs in their own tabs, after the Spec tabs. They belong to no Module and never
+Further human-authored collections live outside the Specs in their own tabs, after the Module documents tab. They belong to no Module and never
 enter an agent's context. Add a collection to `site.json`:
 
 ```json

@@ -44,14 +44,15 @@ describe("Concorde's registered Specs", () => {
           p.sourcePath.startsWith("protocol/"),
       ),
     ).toBe(false);
-    // The glossary page is a derived view, addressable but not one of the registered pages.
+    // The glossary page is a derived view, addressable but not one of the registered pages;
+    // implementation documents are published but listed on their Module's entry, not the sidebar.
     const glossaryId = registry.glossary?.stagedPath.replace(/\.md$/, "");
-    const ids = [
-      ...docs(scopedSidebar(registry)),
-      ...docs(scopedSidebar(registry, "implementation")),
-    ].filter((id) => id !== glossaryId);
+    const ids = docs(scopedSidebar(registry)).filter((id) => id !== glossaryId);
     expect(ids.sort()).toEqual(
-      registry.pages.map((p) => p.stagedPath.replace(/\.md$/, "")).sort(),
+      registry.pages
+        .filter((p) => p.readingCollection === "module")
+        .map((p) => p.stagedPath.replace(/\.md$/, ""))
+        .sort(),
     );
   });
 

@@ -296,7 +296,7 @@ it("accepts an entry of any section structure", () => {
 });
 
 // verifies: scenario.views.reading-collections
-it("builds both reading paths from the contains tree without repeating a document", () => {
+it("builds the navigation from the contains tree, listing no implementation document", () => {
   const registry = load();
   const reading = scopedSidebar(registry) as SidebarItem[];
   expect(reading).toEqual([
@@ -319,31 +319,16 @@ it("builds both reading paths from the contains tree without repeating a documen
       ],
     },
   ]);
-  const implementation = scopedSidebar(registry, "implementation");
-  expect(implementation).toEqual([
-    {
-      type: "category",
-      label: "Bank",
-      collapsed: false,
-      items: [
-        {
-          type: "category",
-          label: "Transfer",
-          collapsed: true,
-          items: [
-            { type: "doc", id: "transfer/requirements", label: "requirements" },
-          ],
-        },
-      ],
-    },
-  ]);
-  // The glossary page is a derived view, addressable but not one of the registered pages.
-  const ids = [...docs(reading), ...docs(implementation)].filter(
-    (id) => id !== "bank/glossary",
-  );
+  // The glossary page is a derived view, addressable but not one of the registered pages; the
+  // implementation document transfer/requirements is published but listed in no sidebar.
+  const ids = docs(reading).filter((id) => id !== "bank/glossary");
   expect(ids.sort()).toEqual(
-    registry.pages.map((p) => p.stagedPath.replace(/\.md$/, "")).sort(),
+    registry.pages
+      .filter((p) => p.readingCollection === "module")
+      .map((p) => p.stagedPath.replace(/\.md$/, ""))
+      .sort(),
   );
+  expect(ids).not.toContain("transfer/requirements");
 });
 
 // verifies: scenario.views.reading-collections
@@ -370,9 +355,10 @@ it("orders topics by owns and children by contains, labelling topics by file nam
 });
 
 // verifies: scenario.views.reading-collections
-it("changing a document's role moves it between reading paths without changing its route", () => {
+it("changing a document's role moves it into the navigation without changing its route", () => {
   const path = "specs/transfer/requirements.md";
   const before = load();
+  expect(docs(scopedSidebar(before))).not.toContain("transfer/requirements");
   updateMetadata(project, path, (m) => (m.document.role = "module"));
   put(project, path, "# Transfer requirements\n\nExplanation only.\n");
   const after = load();
@@ -380,7 +366,6 @@ it("changing a document's role moves it between reading paths without changing i
   expect(after.pages.map((p) => p.route)).toEqual(
     before.pages.map((p) => p.route),
   );
-  expect(scopedSidebar(after, "implementation")).toEqual([]);
   expect(docs(scopedSidebar(after))).toContain("transfer/requirements");
 });
 
@@ -488,18 +473,16 @@ it("stages every page with front matter and writes both sidebars", async () => {
     "displayed_sidebar: moduleDocumentsSidebar",
   );
   expect(staged("transfer/requirements.md")).toContain("title: requirements\n");
+  // An implementation page shows the Module tree for orientation without being listed in it.
   expect(staged("transfer/requirements.md")).toContain(
-    "displayed_sidebar: implementationDocumentsSidebar",
+    "displayed_sidebar: moduleDocumentsSidebar",
   );
   for (const page of registry.pages)
     expect(staged(page.stagedPath)).toContain("toc_max_heading_level: 3\n");
   // Realization bindings stay in metadata; reading gains no file inventory.
   expect(staged("ledger/module.md")).not.toContain("src/ledger.ts");
   const sidebars = readJson(project, "docsite/.generated/specs-sidebar.json");
-  expect(sidebars.moduleDocumentsSidebar).toEqual(scopedSidebar(registry));
-  expect(sidebars.implementationDocumentsSidebar).toEqual(
-    scopedSidebar(registry, "implementation"),
-  );
+  expect(sidebars).toEqual({ moduleDocumentsSidebar: scopedSidebar(registry) });
   expect(
     readJson(project, "docsite/.generated/scoped-materialization.json"),
   ).toEqual({ schema_version: 2, sourceDigest: registry.sourceDigest });

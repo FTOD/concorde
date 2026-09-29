@@ -311,17 +311,14 @@ it("refuses a term link naming an unknown glossary concept and promotes nothing"
 });
 
 // verifies: scenario.views.reading-collections-single
-it("shows only the Module documents tab when no document is an implementation document", () => {
+it("shows the same Spec tab whether or not any document is an implementation document", () => {
   const tabs = () =>
     siteConfiguration()
       .themeConfig.navbar.items.filter(
         (item: any) => item.type === "docSidebar",
       )
       .map((item: any) => [item.label, item.sidebarId]);
-  expect(tabs()).toEqual([
-    ["Module documents", "moduleDocumentsSidebar"],
-    ["Implementation documents", "implementationDocumentsSidebar"],
-  ]);
+  expect(tabs()).toEqual([["Module documents", "moduleDocumentsSidebar"]]);
   updateMetadata(project, "specs/transfer/requirements.md", (m) => {
     m.document.role = "module";
   });
@@ -330,7 +327,7 @@ it("shows only the Module documents tab when no document is an implementation do
 });
 
 // verifies: scenario.views.user-docs
-it("lists user documents first, then the Spec tabs, then custom docs, and gives them the root", () => {
+it("lists user documents first, then the Module documents tab, then custom docs, and gives them the root", () => {
   put("docs/README.md", "# Bank\n");
   put("docsite/guides/index.md", "---\nslug: /\n---\n# Guides\n");
   put(
@@ -353,12 +350,7 @@ it("lists user documents first, then the Spec tabs, then custom docs, and gives 
     config.themeConfig.navbar.items
       .filter((item: any) => item.position === "left")
       .map((item: any) => item.label),
-  ).toEqual([
-    "User documents",
-    "Module documents",
-    "Implementation documents",
-    "Guides",
-  ]);
+  ).toEqual(["User documents", "Module documents", "Guides"]);
   // The root redirect page steps aside so the user documents' root page is the home page.
   expect(config.presets[0][1].pages.exclude).toContain("index.tsx");
   expect(

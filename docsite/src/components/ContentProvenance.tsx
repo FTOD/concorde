@@ -15,7 +15,7 @@ export default function ContentProvenance({
   pages: Page[];
 }) {
   const entry = pages.find((candidate) => candidate.primaryOf === page.owner);
-  const details = pages.filter(
+  const hasDetails = pages.some(
     (candidate) =>
       candidate.owner === page.owner &&
       candidate.readingCollection === "implementation",
@@ -23,32 +23,21 @@ export default function ContentProvenance({
   return (
     <aside className="provenance" aria-label="Content provenance">
       <span className="provenance__kind">{kindLabel(page)}</span>
+      {/* No sidebar lists an implementation document, so its page names the Module it belongs to. */}
+      {page.readingCollection === "implementation" && entry && (
+        <nav aria-label="Owning Module">
+          Of the Module <Link to={entry.route}>{entry.title}</Link>
+        </nav>
+      )}
       <span>
         Canonical source: <code>{page.sourcePath}</code>
       </span>
-      {details.length > 0 && (
-        <nav aria-label="Module specification reading paths">
-          {page.readingCollection === "implementation" && entry ? (
-            <Link to={entry.route}>Module documents: {entry.title}</Link>
-          ) : (
-            <details>
-              <summary>Implementation documents ({details.length})</summary>
-              <ul>
-                {details.map((detail) => (
-                  <li key={detail.documentId}>
-                    <Link to={detail.route}>{detail.title}</Link>
-                  </li>
-                ))}
-              </ul>
-            </details>
-          )}
-        </nav>
-      )}
       <details>
         <summary>Spec metadata</summary>
-        {details.length > 0 && (
+        {hasDetails && (
           <p>
-            Both reading paths belong to the same complete Module specification.
+            The Module's entry and its implementation documents together make
+            its complete specification.
           </p>
         )}
         <div>

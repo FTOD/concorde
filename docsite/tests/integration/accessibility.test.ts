@@ -7,21 +7,26 @@ const siteDir = resolve(__dirname, "../..");
 
 describe("accessible presentation contract", () => {
   it("provides semantic landmarks and named provenance", async () => {
-    const [config, rootPage, provenance] = await Promise.all([
+    const [config, rootPage, provenance, details] = await Promise.all([
       readFile(resolve(siteDir, "docusaurus.config.ts"), "utf8"),
       readFile(resolve(siteDir, "src/pages/index.tsx"), "utf8"),
       readFile(
         resolve(siteDir, "src/components/ContentProvenance.tsx"),
         "utf8",
       ),
+      readFile(
+        resolve(siteDir, "src/components/ImplementationDocuments.tsx"),
+        "utf8",
+      ),
     ]);
     expect(config).toMatch(/label:\s*["']Module documents["']/);
-    expect(config).toMatch(/label:\s*["']Implementation documents["']/);
+    expect(config).not.toMatch(/label:\s*["']Implementation documents["']/);
     expect(config).not.toMatch(/label:\s*["']Graph["']/);
     expect(rootPage).toContain('httpEquiv="refresh"');
     expect(rootPage).toContain("<Link to={root.route}>");
     expect(provenance).toContain('aria-label="Content provenance"');
-    expect(provenance).toContain(
+    expect(provenance).toContain('aria-label="Owning Module"');
+    expect(details).toContain(
       'aria-label="Module specification reading paths"',
     );
   });

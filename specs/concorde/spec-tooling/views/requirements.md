@@ -29,9 +29,16 @@ The Spec navigation SHALL nest one [Module](../../glossary.json#concept.module) 
 
 Publication SHALL place each document in the reading collection named by its declared role.
 
-A document with role `module` is listed in Module documents and one with role `implementation` in
+A document with role `module` belongs to Module documents and one with role `implementation` to
 Implementation documents. The role is read from metadata and never inferred from a file name, a
 heading or the presence of definitions.
+
+### req.views.implementation-documents-unlisted — Implementation documents are listed by their Module
+
+Publication SHALL list each implementation document on its owning Module's entry page and in no navigation tab or sidebar.
+
+The list is folded at the end of the entry. The page itself is published like any other, so its
+route and anchors stay addressable from links, term links and search.
 
 ### req.views.reading-collection-neutral — The reading collection changes nothing else
 
@@ -119,9 +126,9 @@ Publication SHALL NOT publish user documents as Spec pages.
 
 Publication SHALL publish each custom docs collection only in its own tab and under its own routes.
 
-### req.views.custom-docs-order — Custom docs follow the Spec tabs
+### req.views.custom-docs-order — Custom docs follow the Module documents tab
 
-Publication SHALL place the tabs of custom docs after the Spec tabs.
+Publication SHALL place the tabs of custom docs after the Module documents tab.
 
 ### req.views.custom-docs-not-specs — Custom docs stay outside the Specs
 
