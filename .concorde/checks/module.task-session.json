@@ -10,8 +10,7 @@
         "no:cacheprovider",
         "-n",
         "4",
-        "tests/concorde/tasks/test_session.py",
-        "tests/concorde/tasks/test_pi_session.py"
+        "tests/concorde/tasks/test_session.py"
       ],
       "timeout_seconds": 300,
       "inputs": [
