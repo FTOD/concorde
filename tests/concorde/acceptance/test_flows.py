@@ -428,29 +428,45 @@ class TaskFlowTests(unittest.TestCase):
         )
         status, envelope = self.project.run("implement", "--task", "t1", "--goal", plan)
         self.assertEqual((1, "blocked"), (status, envelope["status"]))
-        escalated = subprocess.run(
-            [
-                *COMMAND,
-                "task",
-                "escalate",
-                "t1",
-                "--run",
-                envelope["run_id"],
-                "--code",
-                "spec_decision",
-                "--detail",
-                "module.a must say whether add rounds before it can be implemented",
-                "--reason",
-                "decision",
-                "--explanation",
-                "changing what module.a promises is the developer's decision",
-            ],
-            cwd=self.root,
-            capture_output=True,
-            text=True,
+
+        def escalate(*arguments):
+            escalated = subprocess.run(
+                [*COMMAND, "task", "escalate", "t1", *arguments],
+                cwd=self.root,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(0, escalated.returncode, escalated.stdout)
+            return json.loads(escalated.stdout)
+
+        # The task session escalates the run to the main agent, which cannot decide
+        # it either and escalates the task session's escalation to the developer.
+        session = escalate(
+            "--by",
+            "task-session",
+            "--run",
+            envelope["run_id"],
+            "--code",
+            "spec_decision",
+            "--detail",
+            "module.a must say whether add rounds before it can be implemented",
+            "--reason",
+            "decision",
+            "--explanation",
+            "a change of what module.a promises is beyond the task's goal",
         )
-        self.assertEqual(0, escalated.returncode, escalated.stdout)
-        value = json.loads(escalated.stdout)
+        value = escalate(
+            "--escalation",
+            str(session["number"]),
+            "--code",
+            "spec_decision",
+            "--detail",
+            "module.a must say whether add rounds; the developer decides",
+            "--reason",
+            "decision",
+            "--explanation",
+            "changing what module.a promises is the developer's decision",
+        )
         chain, levels = value["escalated"], []
         link = chain
         while True:
@@ -459,19 +475,26 @@ class TaskFlowTests(unittest.TestCase):
             if not link["causes"]:
                 break
             [link] = link["causes"]
-        self.assertEqual(["main-agent", "operation", "workers", "worker"], levels)
+        self.assertEqual(
+            ["main-agent", "task-session", "operation", "workers", "worker"], levels
+        )
         self.assertEqual(
             {key: link[key] for key in worker if key != "evidence"},
             {key: worker[key] for key in worker if key != "evidence"},
         )
         self.assertEqual(worker["evidence"], link["evidence"])
-        # The escalation is kept in the task's trace node, its chain whole.
-        [escalation] = task_store.escalations(self.root, "t1")
-        self.assertEqual((1, chain), (escalation["number"], escalation["error"]))
+        # Each escalation is kept in the task's trace node, its chain whole.
+        escalations = task_store.escalations(self.root, "t1")
+        self.assertEqual(
+            [(1, session["escalated"]), (2, chain)],
+            [(item["number"], item["error"]) for item in escalations],
+        )
         trace = json.loads((self.root / ".concorde/tasks/t1/trace.json").read_text())
-        self.assertEqual([escalation], trace["content"]["data"]["escalations"])
+        self.assertEqual(escalations, trace["content"]["data"]["escalations"])
         log = (self.root / ".concorde/tasks/t1/decisions.md").read_text()
         self.assertIn("does not say whether add rounds", log)
+        self.assertIn("the developer decides", log)
+        self.assertIn("does not say whether add rounds", session["rendered"])
         self.assertIn("does not say whether add rounds", value["rendered"])
 
     @verifies("scenario.concorde.parallel-tasks")

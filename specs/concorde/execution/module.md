@@ -230,8 +230,9 @@ creates the run's trace node and takes its run lock, takes the workspace lock fo
 checks out the worktree's `HEAD` for an unbound one, checks the Modules and inputs, runs the
 definition's steps in their declared order until one stops the run, removes an unbound run's
 checkout, composes the run result, checks it against its contract and, when it is `ok`, the
-definition's output contract, and writes it while it still holds the lock, so that whoever sees the
-result never finds the workspace busy with that run, and writes its trace node again with its end.
+definition's output contract, and writes it while it still holds the lock, so that a run that takes
+the lock after it always finds that result written, and writes its trace node again with its end.
+Seeing the result alone does not tell that the workspace is free: the runner may still hold the lock.
 A refusal before the steps, a step that raises, a signal or an invalid result each still end in a
 written result with the runner's link on top. Its exact behaviour is in
 [How a run is executed](runner.md).

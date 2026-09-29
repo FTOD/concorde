@@ -136,9 +136,9 @@ one task across them, and the Modules that carry them.
 
 ### The levels of work
 
-Every piece of work on a Concorde project passes down the same five levels, and every result and
-error travels back up them. The first two are Coordination's, where agents decide what to work on;
-the other three are Execution's, where one bound workspace is worked on.
+Every change to a Concorde project passes down the same five levels, and every result and error
+travels back up them. The first two are Coordination's, where agents decide what to work on; the
+other three are Execution's, where one bound workspace is worked on.
 
 ```d2 illustrative
 classes: {
@@ -176,6 +176,12 @@ coordination.task -> execution.run: "or runs directly"
 
 Calls go only downward, and results and errors come back up; [Agents at both ends, programs
 between](#agents-at-both-ends-programs-between) explains why the levels are split this way.
+
+Work that only reads need not open a task. The main agent may start an
+[unbound run](glossary.json#concept.unbound-run), such as an `understand`, a `survey` or a Spec
+review, directly in the primary worktree: it has no workspace, and its steps and workers work in a
+throwaway detached checkout of that worktree's `HEAD`, so it examines what is committed there, never
+uncommitted changes, and changes nothing. [Execution](execution/module.md#unbound-runs) explains it.
 
 ### The life of a task
 
@@ -321,7 +327,7 @@ execution: Execution {
   store: Run store and delivery commits
 }
 coordination.tasks -> execution.binding: writes
-coordination.main -> execution.runs: starts in the task worktree
+coordination.main -> execution.runs: "starts unbound runs\nin the primary worktree"
 coordination.task -> execution.runs: starts in its worktree
 execution.runs -> execution.binding: read
 execution.runs -> execution.store: record
@@ -332,20 +338,25 @@ coordination.tasks -> execution.store: reads
 
 A model is needed in two places, for opposite reasons. At the top, someone must understand the
 developer, see the whole project and judge what to do next; the main agent has the global view and
-the developer's trust, so Concorde does not restrict it, but it changes the project only inside a
-task worktree. At the bottom, someone must read and write code and Specs; a worker has one bounded
-job, no human to ask, and a boundary derived from the Specs. Keeping the two apart lets a large
-change be split into small, checkable steps without the developer supervising each one.
+the developer's trust, so Concorde does not restrict it, but it hands every task to a task session
+and never works inside a task worktree itself; in the primary worktree it makes only a small change
+the developer approved. At the bottom, someone must read and write code and Specs; a worker has one
+bounded job, no human to ask, and a boundary derived from the Specs. Keeping the two apart lets a
+large change be split into small, checkable steps without the developer supervising each one.
 
-The levels between them are programs on purpose. What happens to a worker's answer decides what
-the next level sees, so it must be reproducible and checkable rather than another model's opinion:
-an Operation computes the grant, launches and audits the worker, runs the checks and turns the
-outcome into a trustworthy result, and a workflow's order and continuation rules are declared in
-its procedure. A judgment therefore never passes from one model to another without a program having
-checked it, and the levels that can be wrong in a model's way stay at the two ends, where the grant
-and the developer bound them. An Operation exists only where a model works: deterministic steps,
-such as deciding readiness and delivering, are execution commands, which the same runner records
-without any worker machinery.
+The levels between them are programs on purpose. What happens to a worker's answer decides what the
+next level sees, so it must be reproducible and checkable rather than another model's opinion: an
+Operation computes the grant, launches and audits the worker, runs the checks and turns the outcome
+into a result whose host evidence the task level can trust, and a workflow's order and continuation
+rules are declared in its procedure. A worker's answer therefore never reaches the task level
+without a program having checked it. The two agents of Coordination exchange their judgments
+directly instead: a task session reports its decisions and escalations to the main agent, which
+answers them or asks the developer, and no program judges either side; the decision log records them
+for the main agent and the developer to read. What a task session changes, itself or through runs,
+is checked by programs before it counts: `delivery` delivers the workspace only when it validates
+whole, and a merge can run checks on the primary branch once more. An Operation exists only where a
+model works: deterministic steps, such as deciding readiness and delivering, are execution commands,
+which the same runner records without any worker machinery.
 
 Keeping one session inside one task worktree makes parallel tasks independent: the main agent
 delegates each task to a task session whose writes are confined to that task, while retaining the
@@ -442,9 +453,9 @@ The root is the composition of nine child Modules, listed here by the part they 
 
 <a id="contains-coordination"></a>
 
-**Coordination** is the upper half: the Main session at level 1 and the task level at level 2,
-played by the main agent or delegated through Task sessions, with each task's workspace from Tasks.
-It hands work to Execution only by binding a task worktree and derives each task's state from what
+**Coordination** is the upper half: the Main session at level 1 and the task level at level 2, where
+a task session carries each task the main agent hands it, with each task's workspace from Tasks. It
+hands work to Execution only by binding a task worktree and derives each task's state from what
 Execution recorded.
 
 <a id="contains-execution"></a>

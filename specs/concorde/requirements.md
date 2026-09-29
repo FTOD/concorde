@@ -6,16 +6,15 @@ together.
 
 ## Runtime
 
-### req.concorde.agent-runtimes — The main agent runs on Claude Code, workers also on pi
+### req.concorde.main-agent-program — The main agent runs on Claude Code
 
-The Framework SHALL support a [main agent](glossary.json#concept.main-agent) in Claude Code, and
-every [worker](glossary.json#concept.worker) on the agent program the worktree's
-[worker configuration](glossary.json#concept.worker-configuration) chooses for it, Claude Code or pi,
-and on pi when it chooses none.
+The Framework SHALL support a [main agent](glossary.json#concept.main-agent) in Claude Code.
 
 For now the main agent runs only on Claude Code, and so do the
 [task sessions](glossary.json#concept.task-session) it starts, which always run on the main agent's
-own program; a Claude Code main agent may still run pi workers.
+own program. [Workers](glossary.json#concept.worker) need not: their program is the
+[worker configuration](glossary.json#concept.worker-configuration)'s choice, as
+req.concorde.worker-program says, so the tasks of a Claude Code main agent may still run pi workers.
 
 ### req.concorde.worker-program — Workers run on the configured program
 
@@ -82,9 +81,9 @@ behaviour as it is and return doubtful intent as
 [open questions](glossary.json#concept.open-question) instead of promises, and the one Adoption step
 without a worker, the execution command `scaffold`, writes only what such a worker proposed.
 
-### req.concorde.grant-from-task-worktree — Grants come from the workspace's own Specs
+### req.concorde.grant-from-task-worktree — Grants come from the Specs the worker works on
 
-Every grant a worker receives SHALL be computed from the Specs in the worktree of the workspace it works on.
+Every grant a worker receives SHALL be computed from the Specs of the checkout its run works in: the worktree of the run's [workspace](glossary.json#concept.workspace) for a bound run, and the [unbound checkout](glossary.json#concept.unbound-checkout) for an [unbound run](glossary.json#concept.unbound-run).
 
 ### req.concorde.no-wider-than-type — A worker never exceeds its task type
 
