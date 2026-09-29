@@ -1,0 +1,88 @@
+{
+  "workspace": "drop-pi-subagents-reference",
+  "goal": "Remove leftovers of pi main-session support: the unused reference submodule references/pi-subagents (.gitmodules, the gitlink, specs/concorde/development.md and any reference tooling that lists it) and directories in docsite/tests/repository/run-checks.py that no longer exist, such as pi",
+  "modules": [
+    "module.concorde",
+    "module.views"
+  ],
+  "sequence": 1,
+  "base_commit": "93079bdd2860064e68c48c859a25e662e1d9e8f3",
+  "parent_commit": "ff4fec835dbd25e468f61be6a8e7ebf970d14b74",
+  "readiness": {
+    "run_id": "r-20260929T163847-delivery-57b447e2",
+    "input_digest": "sha256:5a97eb8a155a0d6922ff7b38b4759e08c29599e052f6482b58be888ce168d916",
+    "modules": [
+      "module.concorde",
+      "module.views"
+    ],
+    "checks": [
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:d83795b586b1935c86a9b353cbcf9c72f65ec460bbb6079945b53079ec626390"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:335450f6614108e91fc07279a27c75fc229a327d2cc88158f859719a08cb33ef"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:a81544eb35f09e8d6538bdcbb87394dd7606d2f3bc123d9c42a6e729ae141927"
+      },
+      {
+        "check": "check.views.publication-types",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:5ebbfe042b6ac1dc07621c1f2df71666ed125f22f602396050f508d82988d929"
+      },
+      {
+        "check": "check.views.repository-regressions",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:5ebbfe042b6ac1dc07621c1f2df71666ed125f22f602396050f508d82988d929"
+      },
+      {
+        "check": "check.views.tests",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:5ebbfe042b6ac1dc07621c1f2df71666ed125f22f602396050f508d82988d929"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260929T163404-task_validation-01bdd160",
+      "kind": "command",
+      "name": "task-validation",
+      "modules": [
+        "module.concorde",
+        "module.views"
+      ],
+      "status": "failed",
+      "summary": "The configured checks could not be run (check_sandbox_unavailable).",
+      "worker_runs": [],
+      "result_digest": "sha256:aa7a3390dd25a5f588e82c7361e537d26fa8ed25f65afa1b24b68177dd095642"
+    },
+    {
+      "run_id": "r-20260929T163432-task_validation-60eac7c5",
+      "kind": "command",
+      "name": "task-validation",
+      "modules": [
+        "module.concorde",
+        "module.views"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:808988e08b1e0b835c5dbce5c0a50058f309844202e240e093a7fd268b4da701"
+    }
+  ],
+  "created_at": "2026-09-29T16:43:04Z"
+}
