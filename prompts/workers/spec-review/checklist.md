@@ -25,25 +25,30 @@ to show what the Module binds.
 
 Work through every document the reviewed Module owns, dimension by dimension.
 
-- `readability`: the Purpose says what the Module is for, who relies on it and where its promises
-  stop, in short plain prose. Usage starts with a coherent normal path a reader can follow from an
-  input to its result, with a concrete illustration where an abstraction hides a decision, before
-  errors, repeats and cancellation. A reader never has to assemble instructions from formal
-  statements. Unknowns and unsupported behaviour are stated honestly, not invented. Look for places
-  where a diagram would make relationships, order, branching, state or data easier to understand.
-  Suggest a lightweight workflow/activity/flow view for a process, with action or step nodes, a clear
-  main path and lanes when responsibility helps; a sequence when participant message ordering needs
-  explanation; a state view for lifecycle; or a component, context, deployment or data-model view
-  for the relevant design question. Ordinary process descriptions need no sequence lifelines.
-  Usage diagrams belong next to the normal path or other behaviour they explain, design diagrams
-  in Design. Each should answer one clear question and complement explanatory prose, using the same
-  terminology. Do not require a diagram count or every kind of view.
+- `readability`: the entry lets a developer understand the Module quickly. The Protocol requires
+  no section, so judge the order, not the headings: the entry says first what the Module is for,
+  who relies on it and where its promises stop, in short plain prose; then the core concepts a
+  reader needs; then overview diagrams of the main structure, functions and flows; then the
+  details. An entry that opens with a command walk-through, or buries its core ideas behind
+  details, is a finding. Where the Module has entry points, a reader can follow a coherent normal
+  path from an input to its result, with a concrete illustration where an abstraction hides a
+  decision, before errors, repeats and cancellation; a parent leaves the commands of its children
+  to them. A reader never has to assemble instructions from formal statements. Unknowns and
+  unsupported behaviour are stated honestly, not invented. Look for places where a diagram would
+  make relationships, order, branching, state or data easier to understand. Suggest a workflow
+  view for any process, including one among several Modules or agents, with step nodes, a clear
+  main path and a lane per participant when responsibility helps; a state view for lifecycle; or a
+  component, context, deployment or data-model view for the relevant design question. A sequence
+  diagram whose point is the steps rather than the interleaving of messages is a finding: suggest
+  the workflow that replaces it. Each diagram should answer one clear question next to the prose
+  it complements, using the same terminology. Do not require a diagram count or every kind of
+  view.
 - `obligations`: each requirement is one decidable Module-wide obligation with exactly one `SHALL`
   or `SHALL NOT`, not two obligations joined in one sentence, and not a situation-specific
   guarantee that belongs in a scenario. Each scenario is one testable situation whose `THEN` steps
   state observable outcomes. No obligation is defined twice, and module-role prose never weakens,
   duplicates or contradicts one.
-- `design`: the Design explains why the decomposition, state, control and data flow and failure
+- `design`: the entry explains why the decomposition, state, control and data flow and failure
   containment fulfil the guarantees, connecting each significant choice to the problem it
   prevents. A list of names in call order is not an explanation. Every child and provider has an
   explanation of its responsibility, when the collaboration applies, the promises relied upon and
@@ -57,7 +62,7 @@ Work through every document the reviewed Module owns, dimension by dimension.
 - `terminology`: every glossary entry the Module owns has one clear one-sentence definition and
   an explanation, is used with that meaning throughout, and does not collide with another term or a
   common meaning without saying so. Words a reader needs are linked to the glossary where a
-  document first uses them, before Usage and Design rely on them. An entry for a word that is
+  document first uses them, before the rest of the entry relies on them. An entry for a word that is
   common sense, or that no other Module uses, is a finding: the word belongs in the owner's own
   document, not the glossary.
 - `context`: you cannot judge something without a document you were not given. Name the document
@@ -75,9 +80,9 @@ Report every problem you can establish as one finding:
 - `dimension`: one of `readability`, `obligations`, `design`, `views`, `terminology`, `context`.
 - `severity`: `blocking` when a reader or a worker bound to the Module could not rely on the Spec
   as written, for example a requirement with two obligations, a scenario whose outcome cannot be
-  tested, a Usage section that never shows a normal path, a contradiction between documents, or a
-  term used with two meanings; `advisory` for everything else, such as wording that could be
-  clearer without changing what a reader would do.
+  tested, an entry that never shows how a normal interaction goes, a contradiction between
+  documents, or a term used with two meanings; `advisory` for everything else, such as wording that
+  could be clearer without changing what a reader would do.
 - `problem`: what is wrong, in one or two sentences.
 - `evidence`: the text of the Spec that shows it, quoted exactly where possible.
 - `suggestion`: a concrete repair.

@@ -47,7 +47,8 @@ class InitialModuleTests(unittest.TestCase):
                 f for f in proposal["files"] if f["path"] == "specs/project/module.md"
             )
             before = source["content"]
-            source["content"] = before.replace("## Design", "## Drawing")
+            # A Mermaid block is a structural error (CHK.view.marked).
+            source["content"] = before + "\n```mermaid\ngraph TD\n  a --> b\n```\n"
             with self.assertRaises(SpecError):
                 apply_project_proposal(root, PACKAGE, proposal)
             self.assertFalse((root / ".concorde/config.json").exists())

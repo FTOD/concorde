@@ -172,3 +172,23 @@ To migrate:
 5. Point every link to a concept's anchor at the glossary (`<path to glossary>#concept.<name>`),
    rename identities in `relies_on` and `relates`, and link each term where a document first uses
    it; `CHK.term.unlinked` lists the rest.
+
+## Version 15.1
+
+Version 15.1 frees an entry from a fixed section structure. The Protocol requires no level-2
+section of an entry: `CHK.document.sections` and `CHK.document.prose` are removed, and so is the ban
+on a `Relationships` section. A required Purpose, Usage and Design made writers put an entry-point
+walk-through first and split what a Module is from why it is built that way, which buried the ideas
+a reader needs first. Writing guidance now recommends a reading order instead, purpose, core
+concepts, overview diagrams of the main structure, functions and flows, then the details, and
+treats the whole entry as the Module's design, which still never moves to a topic. A Module's own
+concepts are explained in its entry rather than in a separate topic collecting them. A process,
+including an interaction among several Modules or agents, is drawn as a workflow diagram with a
+lane per participant when that helps; a sequence diagram is kept for when the interleaving of
+messages is itself the point.
+
+Every specification valid under 15.0 stays valid; nothing needs to change. To follow the new
+guidance, reorder an entry so that its purpose and core concepts come first and its overview
+diagrams follow them, move command-level walk-throughs to the Module that owns the commands, fold a
+topic that only explains the Module's concepts into its entry, and redraw a sequence diagram whose
+point is the steps rather than the interleaving as a workflow.

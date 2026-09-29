@@ -31,10 +31,9 @@ Loading fails with an `Error` naming the source when:
 - metadata is not schema 3, has unknown fields, names another owner, or has a `role` other than
   `module` or `implementation`;
 - an entry's metadata lacks the `module` block, or any other document's metadata has one;
-- an entry has role `implementation`, does not have the level-2 headings Purpose, Usage and
-  Design, each exactly once, or has a level-2 Relationships section — the loader rejects
-  it (`requireReading` in `docsite/plugins/scoped-content/reading-format.ts`), since a Module's
-  relationships belong in its Design;
+- an entry has role `implementation` (`requireReading` in
+  `docsite/plugins/scoped-content/reading-format.ts`); how an entry is organized is never checked,
+  since the Protocol requires no section of it;
 - a `module`-role document contains a requirement or scenario heading or a `concorde-contract`
   fence, or any document's metadata holds a concept record;
 - a document contains a Mermaid block: diagrams in reading are D2;

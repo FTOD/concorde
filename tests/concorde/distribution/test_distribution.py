@@ -754,7 +754,8 @@ class InstallTests(unittest.TestCase):
         # Unvalidated: an error while anything else fails, kept until a validation passes.
         entry = project / "specs/project/module.md"
         text = entry.read_text()
-        entry.write_text(text.replace("## Design", "## Drawing"))
+        # A Mermaid block is a structural error (CHK.view.marked).
+        entry.write_text(text + "\n```mermaid\ngraph TD\n  a --> b\n```\n")
         failing = json.loads(run("spec-validation").stdout)
         self.assertEqual("invalid", failing["status"])
         self.assertIn(

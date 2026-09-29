@@ -333,7 +333,8 @@ class AdoptionTests(AdoptionCase):
     def test_errors_already_in_the_described_documents_reach_the_worker(self):
         self.scaffolded()
         entry = self.worktree / "specs/project/checkout/module.md"
-        entry.write_text(entry.read_text().replace("## Design", "## Drawing"))
+        # A Mermaid block is a structural error (CHK.view.marked).
+        entry.write_text(entry.read_text() + "\n```mermaid\ngraph TD\n  a --> b\n```\n")
         _, envelope = self.describe([{}])
         prompt = self.worker_round(envelope)["prompt"]
         self.assertIn("Structural errors already in the documents you describe", prompt)

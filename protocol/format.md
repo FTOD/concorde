@@ -6,9 +6,10 @@ readers need and the judgments authors and reviewers must make. Semantic require
 where they accompany a format rule; the [Checks](checks.md) chapter states what tools establish.
 
 This chapter defines how the [node types](model.md) and [relations](relations.md) are written.
-The fixed reading structure serves understanding: every Module reads the same way. The fixed
-declaration syntax serves boundaries: a tool computes every set without interpreting prose.
-Satisfying the syntax establishes structural conformance only; it proves nothing about meaning.
+The fixed declaration syntax serves boundaries: a tool computes every set without interpreting
+prose. The reading itself has no fixed section structure: how an entry is organized is a writing
+judgment, which [Writing guidance](module.md#the-entry) explains. Satisfying the syntax establishes
+structural conformance only; it proves nothing about meaning.
 
 ## Documents
 
@@ -172,19 +173,10 @@ choice for an item in a list of short explanations.
 
 ## Reading structure
 
-An entry `module.md` has these level-2 sections, outside fences, each exactly once and in any order:
-
-```text
-Purpose
-Usage
-Design
-```
-
-It MAY have further level-2 sections, but none titled `Relationships`: how the Module relates to its
-children and to other Modules is part of Design. A level-1 title and brief navigation may precede
-the first of them. Purpose is nonempty plain prose: no lists, tables, nested headings or fences.
-Usage and Design contain explanatory prose, not only links, headings or diagrams. Honest unknowns
-are stated explicitly.
+An entry `module.md` has no required sections: the Protocol checks no heading of an entry, and its
+level-2 sections, their titles and their order are the writer's choice. [Writing
+guidance](module.md#the-entry) recommends an order, starting with the Module's purpose. Honest
+unknowns are stated explicitly.
 
 A `module`-role topic begins with a short orienting introduction. A document holds no table of
 term definitions: definitions live in the glossary, and a document links the terms it uses.

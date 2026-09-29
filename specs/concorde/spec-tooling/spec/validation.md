@@ -16,7 +16,7 @@ severity. Validation evaluates all of them. They fall into five families:
 | Family | What it catches | Example |
 | --- | --- | --- |
 | Nodes | Bad identities, missing or unresolved explanations, concept definitions, requirement statements, scenario steps and contract fences | a requirement whose first sentence contains `SHALL` twice |
-| Documents | Unpaired or misplaced documents, wrong metadata schema, missing or repeated entry sections | an entry with two `Design` sections |
+| Documents | Unpaired or misplaced documents, wrong metadata schema, a Module without exactly one entry; never how an entry is organized, since the Protocol requires no section | a Module that owns two `module`-role `module.md` documents |
 | Glossary and terms | A malformed or doubly declared glossary, a definition of more than one sentence, two terms with one title, a term link to no entry, a term used without a link (warning) | a link to `#concept.x` that addresses a Module document |
 | Relations | Relations at the wrong site, unresolved targets, composition cycles, registry drift, bad bindings, unbound files, name collisions, contract participation | a [Module](../../glossary.json#concept.module) that uses itself, or a file no Module binds |
 | Views | Mermaid blocks, checked D2 diagrams outside `module` reading or outside the semantic subset, and checked diagrams whose shapes, nesting or edges assert something undeclared | a Module drawn inside another that does not contain it |

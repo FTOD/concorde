@@ -38,8 +38,6 @@ Severities: **error** blocks structural conformance. **warning** is reported and
 | `CHK.document.role` | `role` is exactly `module` or `implementation`, explicitly declared. | error |
 | `CHK.document.schema` | Metadata is `schema_version` 3 with the required fields and no unknown keys outside `extensions`. | error |
 | `CHK.document.entry` | Each Module owns exactly one `module`-role document whose reading path ends in `module.md`; its metadata, and no other, has the `module` block, whose `owns` includes the entry. | error |
-| `CHK.document.sections` | An entry has the level-2 sections Purpose, Usage and Design, each exactly once, in any order, and no level-2 section `Relationships`. | error |
-| `CHK.document.prose` | Purpose is plain prose; Usage and Design are not only links, headings or diagrams. | error |
 | `CHK.term.link` | Every term link, in reading or in a definition, addresses the glossary and names a declared concept. | error |
 | `CHK.term.unlinked` | A document whose reading uses a concept's title outside code, headings, links and anchors links that concept somewhere. A one-word title counts only as written, a longer title in any letter case, each also with a plural `s`. | warning |
 
@@ -121,8 +119,8 @@ These checks are weaker than the obligations they serve:
 | `CHK.view.edges` | That a drawn label describes the declared relation accurately. |
 | `CHK.participates.version` | That the participant behaves as the contract says; that is implementation conformance. |
 
-Not checked at all: whether a requirement is true of the implementation, whether reading is
-sufficient for its reader, whether a scenario is worth having, and whether an illustrative block is
+Not checked at all: whether a requirement is true of the implementation, how an entry is
+organized, whether reading is sufficient for its reader, whether a scenario is worth having, and whether an illustrative block is
 accurate.
 
 ## Tool obligations

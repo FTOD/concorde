@@ -17,7 +17,7 @@ Spec panel in its [definition](panel.md).
 
 ### scenario.spec-review.changes-required — All blocking findings in one result
 
-- GIVEN a Module A and a reviewer that reports two blocking findings about A's own documents: a requirement with two obligations, and a Usage that never shows a normal path
+- GIVEN a Module A and a reviewer that reports two blocking findings about A's own documents: a requirement with two obligations, and an entry that never shows a normal interaction
 - WHEN the caller runs `spec_review` for Module A
 - THEN the verdict is `changes_required`
 - AND both problems are returned as blocking findings in the same result, each with its path, dimension, evidence and suggestion

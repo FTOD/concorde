@@ -29,10 +29,12 @@ run anything.
    documents, and the documents they select.
 2. Read the code the bound Modules bind. In a large Module read the entry points and the public
    interface first, then what each one calls.
-3. Rewrite each bound Module's `module.md`: Purpose (plain prose, what the Module is for),
-   Usage (how it is used: entry points, inputs, results, effects, errors, repeated calls) and
-   Design (how it is built and why, with its realizations and the files they bind, and what it
-   uses and why). Link every existing glossary term where a document first uses it. Declare a new
+3. Rewrite each bound Module's `module.md` for a developer who wants to understand it quickly:
+   first its purpose (plain prose, what the Module is for), then its core concepts, then overview
+   diagrams of its main structure and flows, then the details: its realizations and the files
+   they bind, how it is used (entry points, inputs, results, effects, errors, repeated calls),
+   what it uses and why, and how it is built and why. The Protocol requires no section; choose
+   headings that suit the Module. Link every existing glossary term where a document first uses it. Declare a new
    glossary entry owned by the Module only for a word that is not common sense and that another
    Module uses, with a one-sentence definition and an explanation anchor in its documents; explain
    any other word the Module needs where its own documents first use it. Keep the anchors,
