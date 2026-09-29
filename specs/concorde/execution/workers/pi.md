@@ -108,7 +108,11 @@ On the pi backend the host SHALL derive the permission extension's policy and sa
 
 ### req.workers.pi-file-tools — pi file tools are checked before they act
 
-The permission extension SHALL decide every `read`, `write` and `edit` call with the Harness's [read table](../../harness/pi.md#read-table) and [write table](../../harness/pi.md#write-table) before pi's own tool runs, and deny with the table's reason.
+The permission extension SHALL decide every `read`, `write` and `edit` call with the Harness's [read table](../../harness/pi.md#read-table) and [write table](../../harness/pi.md#write-table) before pi's own tool runs.
+
+### req.workers.pi-denial-reason — A denied pi file tool call gives the table's reason
+
+A `read`, `write` or `edit` call the permission extension denies SHALL return the reason the deciding table gives for the denial.
 
 ### req.workers.pi-sandbox — pi commands run sandboxed without network
 

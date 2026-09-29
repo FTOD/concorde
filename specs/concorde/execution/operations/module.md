@@ -170,14 +170,15 @@ The run works on the workspace whose binding lies in the worktree it starts in; 
 [Execution runner](../runner.md)'s, the same for every run. Each provider adds its own arguments,
 such as `--goal` for `understand`. No Operation needs the developer's consent.
 
-At the task level, either the [main agent](../../glossary.json#concept.main-agent) or a
-[task session](../../glossary.json#concept.task-session) can invoke Operations directly or through
-a workflow in its task worktree. The caller handles results and chooses the next step within its
-authority, following its existing decision and escalation rules. A typical task runs `understand`,
-`specify` if needed, `implement`, `test` and the reviews, then the execution commands
-`task-validation` and `delivery`, repeating or skipping steps as the results tell it. Unbound,
-started in the primary worktree, `understand` or a review answers a question about its `HEAD`
-before any change is agreed. For a project whose code came before its Specs, `survey`, the execution
+At the task level, the [task session](../../glossary.json#concept.task-session) of a task runs its
+Operations, directly or through a workflow, in its task worktree, and handles their results and
+chooses the next step within its authority, following its decision and escalation rules. A typical
+task runs `understand`, `specify` if needed, `implement`, `test` and the reviews, then the execution
+commands `task-validation` and `delivery`, repeating or skipping steps as the results tell it. The
+[main agent](../../glossary.json#concept.main-agent) never works inside a task worktree: it runs
+only [unbound runs](../../glossary.json#concept.unbound-run) of Operations, from the primary
+worktree, where `understand` or a review answers a question about its `HEAD` before any change is
+agreed. For a project whose code came before its Specs, `survey`, the execution
 command `scaffold` and `code_to_spec` describe the code in Specs, usually run by the
 [brownfield workflow](../workflows/module.md).
 

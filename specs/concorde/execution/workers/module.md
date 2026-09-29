@@ -259,11 +259,15 @@ The progress file also names the process identifier of the Execution runner the 
 identity of the Operation run that launched it, by which an observer pairs it with that run's own
 [run progress file](../../glossary.json#concept.run-progress-file); process identifiers are not
 unique across PID namespaces, so they never pair the two. Every run ends both its progress file and
-its run record, however it ends: a run interrupted from outside, such as by the cancellation of the
-Operation that launched it, is recorded as `failed` with `interrupted` and its progress file as
-finished before the interruption travels on, so no reader sees a worker that runs forever. The
-launching Operation learns the run's identity as soon as the run exists, so it can name the run
-even when it is interrupted before the run returns.
+its run record, however it ends while its host can act: a run interrupted from outside, such as by
+a termination signal or the cancellation of the Operation that launched it, is recorded as `failed`
+with `interrupted` and its progress file as finished before the interruption travels on, so no
+reader sees a worker that runs forever. The launching Operation learns the run's identity as soon
+as the run exists, so it can name the run even when it is interrupted before the run returns. A
+host killed outside its control, by `SIGKILL`, finishes nothing: its worker run's record stays
+`running`, which [Tracing](../../tracing/module.md) shows as `lost` once no process holds the run
+lock of the run that launched it, and its runtime directory, with the credential copies, is left to
+the system's temporary-file cleaning, as the Execution runner leaves its unbound checkout.
 
 ### The brief
 

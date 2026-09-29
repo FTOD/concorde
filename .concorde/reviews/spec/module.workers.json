@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "module": "module.workers",
+  "findings": [
+    {
+      "id": "f.1",
+      "status": "open",
+      "path": "specs/concorde/execution/workers/launch.md",
+      "anchor": "req.workers.read-denials",
+      "line": 297,
+      "dimension": "design",
+      "severity": "blocking",
+      "problem": "Workers promises stronger read confinement than its provider guarantees. An ungranted file created after deny-rule generation in a directory containing a readable path can be read, so the stated design does not fulfil the unconditional requirement.",
+      "evidence": "Workers: \"SHALL forbid Read, Glob and Grep every worktree path whose level is neither `ro` nor `rw`.\" Harness, claude-code.md, Deny rules: \"A file created after the rules were generated has no rule of its own\" and \"otherwise the file tools can read it.\" Workers also requires the settings to remain unchanged across rounds.",
+      "suggestion": "Reconcile the requirement and provider limitation: explicitly restrict the guarantee to the paths covered at generation and explain later-created files, or specify a provider mechanism that denies those files too. Carry the same scope into the entry's explanation of confinement.",
+      "first_run": "r-20260929T210131-spec_review-dca24fef",
+      "last_run": "r-20260929T210131-spec_review-dca24fef",
+      "resolution": null
+    },
+    {
+      "id": "f.2",
+      "status": "open",
+      "path": "specs/concorde/execution/workers/pi.md",
+      "anchor": "req.workers.pi-file-tools",
+      "line": 111,
+      "dimension": "obligations",
+      "severity": "blocking",
+      "problem": "This requirement joins two independently decidable obligations: applying the access decision before execution and supplying the specified reason on denial. Correctly preventing access does not establish that the denial explains the reason.",
+      "evidence": "\"The permission extension SHALL decide every `read`, `write` and `edit` call with the Harness's [read table](../../harness/pi.md#read-table) and [write table](../../harness/pi.md#write-table) before pi's own tool runs, and deny with the table's reason.\"",
+      "suggestion": "Split it into one requirement governing the pre-execution access decision and another requiring a denied call to return the matching table's reason.",
+      "first_run": "r-20260929T210131-spec_review-dca24fef",
+      "last_run": "r-20260929T210131-spec_review-dca24fef",
+      "resolution": null
+    },
+    {
+      "id": "f.3",
+      "status": "open",
+      "path": "specs/concorde/execution/workers/scenarios.md",
+      "anchor": "scenario.workers.invalid-result",
+      "line": 197,
+      "dimension": "obligations",
+      "severity": "blocking",
+      "problem": "The scenario admits process failures but prescribes the invalid-result outcome even though the ordered round rules prescribe the backend's process-failure code. A normal-duration process failure with no result satisfies this GIVEN and has two contradictory expected outcomes.",
+      "evidence": "The GIVEN includes a round that ends within timeout and limits \"without a structured result ... with none\"; the THEN requires \"`worker_result_invalid`\". launch.md's first Rounds row instead gives an agent process failure priority. pi.md also specifies `pi_failed` when pi ends without a worker result and with non-zero exit status.",
+      "suggestion": "Require a normally completed agent process, with no backend process error, in this scenario's GIVEN. Keep process failures in separate scenarios that assert their precedence over a missing or invalid worker result.",
+      "first_run": "r-20260929T210131-spec_review-dca24fef",
+      "last_run": "r-20260929T210131-spec_review-dca24fef",
+      "resolution": null
+    },
+    {
+      "id": "f.4",
+      "status": "open",
+      "path": "specs/concorde/execution/workers/scenarios.md",
+      "anchor": "scenario.workers.interrupted-run",
+      "line": 190,
+      "dimension": "design",
+      "severity": "blocking",
+      "problem": "The interruption and cleanup promises include termination that prevents the host from executing any finalization, such as SIGKILL. They do not distinguish handled cancellation from the unobserved termination that Execution and Tracing explicitly support, so readers cannot rely on the promised final records or removal of credentials in every stated case.",
+      "evidence": "\"WHEN the run is interrupted from outside before it returns, such as by a signal\" requires a final failed record and finished progress file. The entry says \"Every run ends both its progress file and its run record, however it ends\"; req.workers.runtime-removed likewise promises cleanup \"however it ends\". Execution explicitly describes a runner killed with SIGKILL leaving no result, and Tracing defines `lost` for running nodes whose producer ended.",
+      "suggestion": "Limit finalization and cleanup guarantees to interruptions the host can handle, consistently in the scenario, entry and requirements. Explain that an abruptly killed host may leave running records and a runtime directory, and point to the existing lost-run observation rule without inventing an automatic cleanup guarantee.",
+      "first_run": "r-20260929T210131-spec_review-dca24fef",
+      "last_run": "r-20260929T210131-spec_review-dca24fef",
+      "resolution": null
+    },
+    {
+      "id": "f.5",
+      "status": "open",
+      "path": "specs/concorde/execution/workers/scenarios.md",
+      "anchor": "scenario.workers.no-ambient-instructions",
+      "line": 22,
+      "dimension": "obligations",
+      "severity": "advisory",
+      "problem": "Several scenarios stated for an unspecified worker contain Claude Code-specific observations. Their intended backend can be inferred from the details, but the document does not explicitly scope them, despite pi being the default backend.",
+      "evidence": "The scenario launches \"a worker\" and requires \"`HOME`, `CLAUDE_CONFIG_DIR` and `TMPDIR`\" in its environment. scenario.workers.read-denied expects a \"generic permission message\", and scenario.workers.check-failure-resume refers to \"the new session identifier the resume returned\". pi.md specifies PI_CODING_AGENT_DIR and a fixed session identifier; the pi denial scenario specifies explanatory `Concorde grant:` messages.",
+      "suggestion": "Add an explicit Claude Code backend precondition to scenarios whose environment, denial messages or resumed session identity depend on it, or state separate expected observations for each backend.",
+      "first_run": "r-20260929T210131-spec_review-dca24fef",
+      "last_run": "r-20260929T210131-spec_review-dca24fef",
+      "resolution": null
+    }
+  ],
+  "reviewed": {
+    "context_identity": "sha256:0bebb3755abbeee37f7a9814ea87f629a1e98f9dd4bf40da6d75d2fffc2aba7e",
+    "run": "r-20260929T210131-spec_review-dca24fef"
+  }
+}

@@ -7,7 +7,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ### scenario.workers.fenced-run — An implement worker changes only its writable files
 
-- GIVEN a worktree and an `implement` grant with a `rw` source file, a `rw` directory, `ro` Specs and a source file of another [Module](../../glossary.json#concept.module), `ro` since an `implement` worker reads the project's whole code
+- GIVEN a worker on the Claude Code backend, a worktree and an `implement` grant with a `rw` source file, a `rw` directory, `ro` Specs and a source file of another [Module](../../glossary.json#concept.module), `ro` since an `implement` worker reads the project's whole code
 - WHEN the host runs a worker that edits the source file, creates a new file inside the directory, changes nothing else and ends with a valid `ok` result
 - THEN both changes reach the worktree
 - AND the audit is clean, the [configured checks](../../glossary.json#concept.configured-check) run on the worktree, and when they pass the run ends `ok`
@@ -21,7 +21,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ### scenario.workers.no-ambient-instructions — The brief is the only instruction
 
-- GIVEN a `CLAUDE.md` in the worktree and in the working directory, and user settings, skills and MCP servers in the user's Claude Code configuration
+- GIVEN a worker on the Claude Code backend, a `CLAUDE.md` in the worktree and in the working directory, and user settings, skills and MCP servers in the user's Claude Code configuration
 - WHEN the host launches a worker
 - THEN none of them reaches the worker
 - AND the worker's environment holds only the listed variables, with `HOME`, `CLAUDE_CONFIG_DIR` and `TMPDIR` inside its [runtime directory](../../glossary.json#concept.runtime-directory)
@@ -58,42 +58,42 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ### scenario.workers.undeclared-write-denied — A new undeclared file cannot be written
 
-- GIVEN a running worker
+- GIVEN a running worker on the Claude Code backend
 - WHEN it uses Write on a path in the worktree that is in no grant list
 - THEN the [write hook](../../glossary.json#concept.write-hook) denies it with a reason saying the path is not in this task's grant, that a new file outside the bound directories is created and bound to a Module by the task level before a worker fills it and that a file another Module binds needs that Module bound
 - AND the file does not appear in the worktree
 
 ### scenario.workers.ro-edit-denied — A read-only file cannot be edited
 
-- GIVEN a running worker whose grant makes a [Spec](../../glossary.json#concept.spec) file `ro`
+- GIVEN a running worker on the Claude Code backend whose grant makes a [Spec](../../glossary.json#concept.spec) file `ro`
 - WHEN it uses Edit on that file
 - THEN the edit is denied and the file is unchanged
 - BUT Read of the same file succeeds
 
 ### scenario.workers.read-denied — Withheld files cannot be read by file tools
 
-- GIVEN a running worker whose grant leaves a file out and makes another `names`
+- GIVEN a running worker on the Claude Code backend whose grant leaves a file out and makes another `names`
 - WHEN it uses Read on either file, or Grep over a directory that holds them
 - THEN Read is denied with a generic permission message
 - AND Grep returns matches only from files the grant makes readable
 
 ### scenario.workers.bash-confined — Bash is confined by the sandbox
 
-- GIVEN a running `implement` worker
+- GIVEN a running `implement` worker on the Claude Code backend
 - WHEN it uses Bash to read an ungranted file, `.git` or the user's `~/.claude`, to write a `ro` file, to reach the network, or asks to run a command unsandboxed
 - THEN the read finds no such file, the write fails as a read-only file system, the network request is refused, and the command still runs sandboxed
 - BUT Bash can read `ro` files and write `rw` files
 
 ### scenario.workers.bash-new-file-lost — A file Bash creates outside `rw` is lost
 
-- GIVEN a running `implement` worker
+- GIVEN a running `implement` worker on the Claude Code backend
 - WHEN it uses Bash to create a new file in a directory with no `rw` file
 - THEN the command appears to succeed
 - BUT the file never reaches the worktree and the audit sees no change
 
 ### scenario.workers.run-directory-denied — A run the deny rules would disable is refused
 
-- GIVEN a grant and a primary worktree whose generated [deny rules](../../glossary.json#concept.deny-rules) would cover the run's working, home or temporary directory
+- GIVEN a worker on the Claude Code backend, a grant and a primary worktree whose generated [deny rules](../../glossary.json#concept.deny-rules) would cover the run's working, home or temporary directory
 - WHEN the host is asked to start the worker
 - THEN it refuses before launch with `run_directory_denied`
 - AND it still writes the run record
@@ -125,7 +125,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ### scenario.workers.violation-and-invalid-result — A write outside `rw` outranks an invalid result
 
-- GIVEN a worker round that ends within its timeout and limits without a valid worker result, after writing a file outside the grant's `rw` list
+- GIVEN a worker round whose agent process ends normally, within its timeout and limits and with no process error of its backend, without a valid worker result, after writing a file outside the grant's `rw` list
 - WHEN the host reads its output and audits the worktree
 - THEN the run ends `failed` with `audit_violation` and the violating path as host evidence
 - AND the error's detail says that the worker result was invalid, and the error has no cause from the worker
@@ -153,7 +153,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ### scenario.workers.check-failure-resume — A failing check resumes the same worker
 
-- GIVEN a worker that ended `ok` with a clean audit and a configured check that fails
+- GIVEN a worker on the Claude Code backend that ended `ok` with a clean audit and a configured check that fails
 - WHEN the host starts a resume round
 - THEN it resumes the session with the failing check's identity, exit code and log tail
 - AND the next round continues from the new session identifier the resume returned
@@ -187,14 +187,14 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 ### scenario.workers.interrupted-run — An interrupted run still ends
 
 - GIVEN a worker run whose launcher is told the run identity as soon as the run exists
-- WHEN the run is interrupted from outside before it returns, such as by a signal
+- WHEN the run is interrupted from outside before it returns in a way its host can handle, such as by a termination signal or the cancellation of the launching Operation
 - THEN its run record ends `failed` with the error `interrupted`, of reason `environment`, naming the interruption
 - AND its [progress file](../../glossary.json#concept.progress-file) is `finished` with status `failed`
 - AND the interruption travels on to the launcher
 
 ### scenario.workers.invalid-result — A worker without a valid result has failed
 
-- GIVEN a worker round that ends within its timeout and limits, changes nothing outside the grant's `rw` list, and ends without a structured result that satisfies the worker result schema: with none, with a status other than `ok`, `blocked` and `failed`, with a `blocked` or `failed` result without an error, or with an `ok` result with one
+- GIVEN a worker round whose agent process ends normally, within its timeout and limits and with no process error of its backend, changes nothing outside the grant's `rw` list, and ends without a structured result that satisfies the worker result schema: with none, with a status other than `ok`, `blocked` and `failed`, with a `blocked` or `failed` result without an error, or with an `ok` result with one
 - WHEN the host reads its output
 - THEN the run ends `failed` with `worker_result_invalid` and the schema violation or the worker's final text in its error
 - AND the round's standard error is its `stderr.log` and the transcript path is in the run record

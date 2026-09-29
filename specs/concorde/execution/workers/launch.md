@@ -52,7 +52,9 @@ Its **[runtime directory](../../glossary.json#concept.runtime-directory)** is a 
 `/tmp/concorde-<suffix>-<random>/` created for the run, or under the system temporary directory where
 `/tmp` is not writable, as inside a check boundary; the host removes it when the run ends, however it
 ends, after moving the transcript into the run directory. Credentials therefore never outlive the
-run. It holds:
+run, unless the host process itself is killed outside its control, by `SIGKILL`, which leaves the
+directory to the system's temporary-file cleaning, as [the entry](module.md#where-a-runs-files-live)
+explains. It holds:
 
 | Path | Content | Worker access |
 | --- | --- | --- |
@@ -88,7 +90,8 @@ rewrites it atomically at every phase change and at most once a second for worke
 
 The phases follow the [rounds](#rounds): every round runs the worker and then audits it, and only a
 round whose worker ended `ok` with a clean audit goes on to the checks or to a resume round. What
-ends the run from outside moves any phase to `finished` with `interrupted`.
+ends the run from outside, and the host can handle, moves any phase to `finished` with
+`interrupted`.
 
 ```d2 illustrative
 preparing
@@ -398,7 +401,7 @@ The host SHALL move the latest session's transcript into the run directory befor
 
 ### req.workers.runtime-removed — Nothing but the trace outlives a worker
 
-The host SHALL remove a worker run's runtime directory, with its credential copies, when the run ends, however it ends.
+The host SHALL remove a worker run's runtime directory, with its credential copies, when the run ends, however it ends, unless the host process itself is killed without a chance to act.
 
 ### req.workers.stderr-per-round — Every round keeps its standard error
 
