@@ -15,27 +15,61 @@ code does not settle as a promise: such behaviour becomes an
 [open question](../../../glossary.json#concept.open-question) for the developer. The one edit it
 makes outside Specs marks the project's existing tests with the scenarios taken from them.
 
-## Usage
+## Core concepts
 
-Adoption starts where initialization leaves a project: a root Module whose realization binds every
-existing file and whose entry says nothing is specified yet. The
-[main agent](../../../glossary.json#concept.main-agent) opens a task bound to that Module. The main
-agent or a [task session](../../../glossary.json#concept.task-session) then runs the three steps in
-order in its task worktree, directly or through the
-[brownfield workflow](../../workflows/module.md):
+### Decomposition proposal
 
-```text
-concorde run survey --modules <module-id> [--answers <file>] [--input <run-id>]…
-concorde scaffold --input <survey-run-id>
-concorde run code_to_spec --modules <module-id>[,<module-id>…] [--answers <file>] [--input <run-id>]…
-```
+<a id="concept.decomposition-proposal"></a>
 
-Each works on the [workspace](../../../glossary.json#concept.workspace) of the worktree it starts
-in, whose binding names it, and each is recorded in the
-[run store](../../../glossary.json#concept.run-store) like any run, so that the scaffold can admit
-the survey and a later survey or code_to_spec the run whose questions it answers.
+A survey worker reads the code of one Module, usually the root, and returns a **decomposition
+proposal** ([contract](contracts.md#contract.adoption.decomposition)): for each child Module to
+create, its identity, title, a one-paragraph purpose, the paths it should bind and the Modules it
+uses with the reason; the third-party code the project vendors, such as a bundled copy of a
+library, each with the Module that uses it; the test and lint commands it found, proposed in the
+shape of [configured checks](../../../glossary.json#concept.configured-check) of the Modules they
+check; the decisions it took; and its open questions. The host adds the realization entries, the
+bound paths, that stay with the surveyed Module. A proposal with no children is valid: the Module is
+small enough to describe as it is.
 
-The path through the three steps, with the reruns that answers lead to, each described below:
+### Spec description
+
+A `code_to_spec` worker rewrites the bound Modules' own documents from their code, and the result's
+output is a **Spec description** ([contract](contracts.md#contract.adoption.spec-description)).
+
+### Decisions and open questions
+
+<a id="concept.open-question"></a>
+
+Workers of both Operations meet two kinds of uncertainty and report each separately instead of
+hiding it in prose:
+
+- A **decision** is a choice the code leaves open, such as whether two directories are one Module
+  or two, or which name a concept gets. The worker takes it, with its options and reason, and goes
+  on.
+- An **open question** is about intent: the code does something, such as swallowing an error or
+  treating one input specially, and nothing shows whether it is meant. The worker writes no promise
+  about it. The Spec states it as an honest unknown, and the result reports what was observed, why
+  it is uncertain, the options and a recommendation.
+
+Neither Operation asks the developer: they have no one to ask. What happens next is the task
+level's or the workflow's choice: go on with the worker's decisions, or seek the developer's
+answers through the existing escalation path.
+
+### Answers and deviations
+
+The developer's answers reach a later run as an **answers** file
+([contract](contracts.md#contract.adoption.answers)) with `--answers`, each naming the decision or
+question it answers, the question's text and the answer; `--input` admits the run that asked, so the
+worker sees the earlier proposal or description. An answers file lists every answer given so far for
+that step, not only the latest. A survey rerun follows every answered decision and no longer lists
+an answered open question. A code_to_spec rerun writes an answered question as the promise the
+developer stated. When that intent differs from what the code does, the Spec states the intent, and
+the result lists a **deviation** with the intended and the observed behaviour, for later
+`implement` work: the Spec is again ahead of the code, as Concorde expects.
+
+## Overview
+
+The path through the three steps, with the reruns that answers lead to:
 
 ```d2 illustrative
 direction: down
@@ -72,27 +106,34 @@ answers -> question: settle
 answers -> decision: settle
 ```
 
-<a id="concept.decomposition-proposal"></a>
+## Running the three steps
 
-**Survey.** A worker reads the code of one Module, usually
-the root, and returns a **decomposition proposal**
-([contract](contracts.md#contract.adoption.decomposition)): for each child Module to create, its
-identity, title, a one-paragraph purpose, the paths it should bind and the Modules it uses with the
-reason; the third-party code the project vendors, such as a bundled copy of a library, each with the
-Module that uses it; the test and lint commands it found, proposed in the shape of
-[configured checks](../../../glossary.json#concept.configured-check) of the Modules they check; the
-decisions it took; and its open questions. The host adds the realization entries, the bound paths,
-that stay with the surveyed Module. A proposal with no children is valid: the Module is small enough
-to describe as it is. A survey writes nothing, so it may also run
-[unbound](../../../glossary.json#concept.unbound-run), in the primary worktree, to show the developer
-a proposal before any task exists.
+Adoption starts where initialization leaves a project: a root Module whose realization binds every
+existing file and whose entry says nothing is specified yet. The
+[main agent](../../../glossary.json#concept.main-agent) opens a task bound to that Module. The main
+agent or a [task session](../../../glossary.json#concept.task-session) then runs the three steps in
+order in its task worktree, directly or through the
+[brownfield workflow](../../workflows/module.md):
 
-The host gives the worker, as task material, an inventory of every file the surveyed Module binds
-with its size in lines, so the worker can plan what to read in a large codebase instead of opening
-everything. The files of the surveyed Module's Concorde installation realization, the skill,
-workflows and agents the installer placed, are left out of it and stay with the surveyed Module: a
-proposal that gives one of them to a child fails, since they configure the agents, not the project,
-and the installer replaces them on every update.
+```text
+concorde run survey --modules <module-id> [--answers <file>] [--input <run-id>]…
+concorde scaffold --input <survey-run-id>
+concorde run code_to_spec --modules <module-id>[,<module-id>…] [--answers <file>] [--input <run-id>]…
+```
+
+Each works on the [workspace](../../../glossary.json#concept.workspace) of the worktree it starts
+in, whose binding names it, and each is recorded in the
+[run store](../../../glossary.json#concept.run-store) like any run, so that the scaffold can admit
+the survey and a later survey or code_to_spec the run whose questions it answers.
+
+**Survey.** A survey writes nothing, so it may also run
+[unbound](../../../glossary.json#concept.unbound-run), in the primary worktree, to show the
+developer a proposal before any task exists. The host gives the worker, as task material, an
+inventory of every file the surveyed Module binds with its size in lines, so the worker can plan
+what to read in a large codebase instead of opening everything. The files of the surveyed Module's Concorde
+installation realization, the skill, workflows and agents the installer placed, are left out of it
+and stay with the surveyed Module: a proposal that gives one of them to a child fails, since they
+configure the agents, not the project, and the installer replaces them on every update.
 
 **Scaffold.** The execution command `concorde scaffold` of
 [Scaffold](../../commands/scaffold/module.md), with no worker, applies exactly one proposal admitted
@@ -110,48 +151,19 @@ order the Protocol recommends, the glossary entries of the words they own, and r
 in implementation documents. The host prepares the implementation documents the worker may need,
 `requirements.md`, `scenarios.md` and `contracts.md`, as owned stubs before the grant is frozen, and
 removes again every stub the worker left unchanged or deleted, however the run ends. The answers are
-checked before anything is written. The result's output is a **Spec
-description**
-([contract](contracts.md#contract.adoption.spec-description)). Describing the root after its
-children are scaffolded describes how the children compose and the files that stayed with it.
+checked before anything is written. Describing the root after its children are scaffolded describes
+how the children compose and the files that stayed with it.
 
-<a id="concept.open-question"></a>
-
-**Decisions and open questions.** Workers of both Operations meet two kinds of uncertainty and
-report each separately instead of hiding it in prose:
-
-- A **decision** is a choice the code leaves open, such as whether two directories are one Module
-  or two, or which name a concept gets. The worker takes it, with its options and reason, and goes
-  on.
-- An **open question** is about intent: the code does something, such as swallowing an error or
-  treating one input specially, and nothing shows whether it is meant. The worker writes no promise
-  about it. The Spec states it as an honest unknown, and the result reports what was observed, why
-  it is uncertain, the options and a recommendation.
-
-Neither Operation asks the developer: they have no one to ask. What happens next is the task
-level's or the workflow's choice: go on with the worker's decisions, or seek the developer's
-answers through the existing escalation path.
-
-**Answers.** The developer's answers reach a later run as
-an **answers** file ([contract](contracts.md#contract.adoption.answers)) with `--answers`, each
-naming the decision or question it answers, the question's text and the answer; `--input` admits the
-run that asked, so the worker sees the earlier proposal or description. An answers file lists every
-answer given so far for that step, not only the latest. A survey rerun follows every answered
-decision and no longer lists an answered open question. A code_to_spec rerun writes an answered
-question as the promise the developer stated. When that intent differs from what the code does, the
-Spec states the intent, and the result lists a **deviation** with the intended and the observed
-behaviour, for later `implement` work: the Spec is again ahead of the code, as Concorde expects.
-
-Status follows the other worker-backed Operations. A survey or code_to_spec run is `ok` when the
-worker completed its proposal or description, whatever decisions and open questions it lists. It is
-`blocked` when the worker could not do the work at all or when a code_to_spec change adds a
-structural error; the [error chain](../../../glossary.json#concept.error-chain) then names each
-finding as a cause. It is `failed` when the request or the answers are invalid, the host could not
-run the worker, the audit found a write outside the grant, or the output is inconsistent, with every
-inconsistency listed in the Operation's own link. Every code is in the
+**Statuses.** Status follows the other worker-backed Operations. A survey or code_to_spec run is
+`ok` when the worker completed its proposal or description, whatever decisions and open questions it
+lists. It is `blocked` when the worker could not do the work at all or when a code_to_spec change
+adds a structural error; the [error chain](../../../glossary.json#concept.error-chain) then names
+each finding as a cause. It is `failed` when the request or the answers are invalid, the host could
+not run the worker, the audit found a write outside the grant, or the output is inconsistent, with
+every inconsistency listed in the Operation's own link. Every code is in the
 [error table](contracts.md#errors).
 
-## Design
+## Why it is built this way
 
 The two Operations and the scaffold between them keep the Protocol's separation of reading, deciding
 and writing. The survey worker reads code but writes nothing; deciding which Modules exist is then a
@@ -180,7 +192,7 @@ checks the answers first, and removes every stub left unchanged on every way out
 failed grant or a stopped worker included: a run that ends early leaves behind only what its worker
 changed.
 
-How Adoption is built:
+## How it is built
 
 ```d2
 adoption: Adoption {
@@ -271,7 +283,7 @@ The **Adoption tests**, under `tests/concorde/adoption/` with the existing-codeb
 code_to_spec, after a scaffold, in a bound task worktree of a small existing codebase with a fake
 worker, verifying the [requirements](requirements.md) and [scenarios](scenarios.md).
 
-### Outside
+## What it relies on
 
 <a id="uses-execution"></a>
 
@@ -299,11 +311,10 @@ audits the worktree and writes the run records; any change beyond the grant fail
 
 <a id="uses-checks"></a>
 
-**Check execution** defines the [configured check](../../../glossary.json#concept.configured-check)
-entries of the checks files, one `.concorde/checks/<module id>.json` per Module. A survey proposes
-checks in that shape, each with the `module` it is for, so that the developer can put each one they
-accept into that Module's checks file without its `module` and otherwise unchanged; Adoption itself
-never runs or configures a check.
+**Check execution** defines the configured check entries of the checks files, one
+`.concorde/checks/<module id>.json` per Module. A survey proposes checks in that shape, each with the
+`module` it is for, so that the developer can put each one they accept into that Module's checks
+file without its `module` and otherwise unchanged; Adoption itself never runs or configures a check.
 
 <a id="uses-spec"></a>
 
