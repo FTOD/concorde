@@ -12,7 +12,75 @@ Validation launches no worker, changes no file of the workspace, and judges noth
 check cannot: whether code keeps its promises beyond what the checks test, or whether a Spec
 explains enough, is for the reviews and the task level.
 
-## Usage
+## Core concepts
+
+Validation rests on one idea, a readiness: a deterministic verdict on the whole workspace, bound to
+the exact inputs it examined. It builds on the [configured checks](../../../glossary.json#concept.configured-check)
+of Check execution and the [structural checks](../../../glossary.json#concept.structural-check) of
+Spec core.
+
+### Readiness
+
+<a id="concept.readiness"></a>
+
+A **readiness** is `ready` when the Specs have no structural error, every changed path is
+accounted for, and every check run passed; otherwise it lists every blocking finding the run
+established, not only the first, each of one kind:
+
+| Kind | Blocking when |
+| --- | --- |
+| `load` | the Specs fail to load at all |
+| `structural` | a [structural check](../../../glossary.json#concept.structural-check) error, e.g. a broken link or stale registry mirror, or one of the run's [Modules](../../../glossary.json#concept.module) that the workspace's registry no longer registers |
+| `unbound` | a changed path is not a Spec document, the glossary, control record, generated/build output, external material (including a submodule a Module includes), or Module-bound |
+| `check` | a [configured check](../../../glossary.json#concept.configured-check) of a Module whose checks run failed or timed out, or Check execution could not run a Module's checks (see step 7) |
+
+Warnings, such as missing scenario coverage, are reported but never block. A pending entry whose
+file now exists is not an error but a **confirmation**, cleared by Delivery on commit. Changed
+Modules bind a changed file or own a changed Spec document, found through the
+[impact indexes](../../../glossary.json#concept.impact-index); a shared file runs
+all its Modules' checks.
+
+The readiness records its inputs — head, base, every changed path's Git file mode and digest and
+the configuration digest — as one input digest, which proves exactly which inputs a readiness describes; a later
+change of the workspace alters it.
+
+## Overview
+
+### Deciding a readiness
+
+A run decides a readiness in nine steps. Steps 1, 2, 7 and 8 can fail the run, which then decides
+no readiness; steps 3 to 7 collect every blocking finding rather than stopping at the first, and
+step 9 saves what they found:
+
+```d2 illustrative
+direction: down
+branch: "1. Head on the bound branch?"
+measure: "2. Measure the inputs"
+structure: "3. Validate the Spec structure"
+sort: "4. Sort the findings"
+paths: "5. Every changed path\naccounted for?"
+modules: "6. Derive the changed Modules"
+checks: "7. Run the configured checks"
+remeasure: "8. Remeasure the inputs"
+save: "9. Save the readiness"
+ok: "ok: ready"
+blocked: "blocked: not_deliverable,\none cause per finding"
+failed: "failed: no readiness\n(wrong_branch, measurement_failed,\nchecks_unavailable, inputs_changed)"
+branch -> measure: yes
+measure -> structure -> sort -> paths -> modules -> checks -> remeasure
+sort -> remeasure: "Specs fail to load:\nskip 5 to 7" {style.stroke-dash: 3}
+remeasure -> save: "digest unchanged"
+save -> ok: "no blocking finding"
+save -> blocked: "blocking findings"
+branch -> failed: no {style.stroke-dash: 3}
+measure -> failed: "Git cannot report\nthe changes" {style.stroke-dash: 3}
+checks -> failed: "boundary unavailable,\nor a check input changed" {style.stroke-dash: 3}
+remeasure -> failed: "digest changed" {style.stroke-dash: 3}
+```
+
+[The steps](#the-steps) gives each step's actor and stopping rule.
+
+## Running task-validation
 
 The task level runs the command in the task worktree when it wants to know whether the workspace's
 work is complete, usually after `implement`, `test` and the reviews. `delivery` decides the same
@@ -39,28 +107,7 @@ check results from Modules the workspace did not touch. A run that decides a rea
 which it also saves as `readiness.json` in its
 [trace node](../../../glossary.json#concept.trace-node).
 
-<a id="concept.readiness"></a>
-
-A **readiness** is `ready` when the Specs have no structural error, every changed path is
-accounted for, and every check run passed; otherwise it lists every blocking finding the run
-established, not only the first, each of one kind:
-
-| Kind | Blocking when |
-| --- | --- |
-| `load` | the Specs fail to load at all |
-| `structural` | a [structural check](../../../glossary.json#concept.structural-check) error, e.g. a broken link or stale registry mirror, or one of the run's [Modules](../../../glossary.json#concept.module) that the workspace's registry no longer registers |
-| `unbound` | a changed path is not a Spec document, the glossary, control record, generated/build output, external material (including a submodule a Module includes), or Module-bound |
-| `check` | a [configured check](../../../glossary.json#concept.configured-check) of a Module whose checks run failed or timed out, or Check execution could not run a Module's checks (see step 7) |
-
-Warnings, such as missing scenario coverage, are reported but never block. A pending entry whose
-file now exists is not an error but a **confirmation**, cleared by Delivery on commit. Changed
-Modules bind a changed file or own a changed Spec document, found through the
-[impact indexes](../../../glossary.json#concept.impact-index); a shared file runs
-all its Modules' checks.
-
-The readiness records its inputs — head, base, every changed path's Git file mode and digest and
-the configuration digest — as one input digest, which proves exactly which inputs a readiness describes; a later
-change of the workspace alters it.
+### The result
 
 | Status | Code | Reason | Detail |
 | --- | --- | --- | --- |
@@ -88,7 +135,7 @@ unchanged workspace measures the same inputs and reaches the same structural and
 and the same Modules; only its fresh check results, and with them the readiness decision, can
 differ, when a configured check depends on something outside the workspace.
 
-## Design
+## How it is built
 
 Readiness is decided by deterministic code alone, so Delivery can run the same steps and trust their
 outcome without asking — a model's opinion of completeness is not enough. That is also why it is an
@@ -98,6 +145,8 @@ evidence and error chain like any run's. Binding the readiness to an input diges
 end, proves that the measured inputs at the end of the run are those it recorded at the start,
 rather than trusting a timestamp; Check execution in addition refuses a check whose own inputs
 changed while it ran. Changes the measurement leaves out, below, are not seen.
+
+### What is measured and checked
 
 The measurement covers everything Delivery will commit: tracked changes since the binding's base
 commit and untracked files Git does not ignore. An untracked path Git cannot version, such as the
@@ -110,6 +159,8 @@ checked, which would be too slow. A full test suite is therefore best checked by
 uses everything, such as the tests' Module, so that it runs whichever Module changes. Structural
 validation always covers the whole workspace, since a
 [Spec change](../../../glossary.json#concept.spec-change) can break a link anywhere.
+
+### The steps
 
 | # | Step | Actor | Stops when |
 | --- | --- | --- | --- |
@@ -146,13 +197,15 @@ confirmation service that clears exactly the listed pending markers in one
 digests, then revalidates and rolls back on any remaining error. See the
 [requirements](requirements.md) and [scenarios](scenarios.md).
 
+### The command
+
 <a id="realization.validation.command"></a>
 
 The **[Task](../../../glossary.json#concept.task) validation command** realization holds the steps,
 the input measurement, the confirmation service Delivery calls, and their tests, with the
 bound-workspace fixture Delivery's tests share.
 
-### Outside
+## What Validation relies on
 
 - <a id="uses-execution"></a>**Execution**'s runner runs the command: it reads the workspace
   binding, which gives the steps the workspace's name, branch, base commit and Modules, holds the
