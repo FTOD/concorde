@@ -89,8 +89,9 @@ installer -> project: places
 ### An install, step by step
 
 The installer decides everything that could refuse the install before its first write, so a
-refusal leaves the project as it was; the steps drawn dashed run programs and can fail after
-something was written, as [Installing into a project](#installing-into-a-project) explains.
+refusal leaves the project as it was. The steps drawn dashed run programs and can fail after
+something was written, as any write can, which [When an install fails
+halfway](#when-an-install-fails-halfway) explains.
 
 ```d2 illustrative
 direction: down
@@ -159,12 +160,13 @@ per-platform SHA-256). The build reads it too, so a changed descriptor makes eve
 text `{name}` so that a prompt can show a placeholder such as a check's `{python}`, and wraps every
 [workflow script](../glossary.json#concept.workflow-script) of the workflow catalog as
 `generated/workflows/claude/concorde-<name>.js` with its `meta` block and Claude Code step adapter,
-and writes
-`generated/build-manifest.json` with every source's and output's digest. The prompt roots are the
-Protocol's `prompts/protocol/principles.md` and `prompts/protocol/kinds/module.md` and every file
-directly in `prompts/workers/`, `prompts/main-session/` and `prompts/dogfooding/`, each rendered
-to the same path under `generated/`; `build --check` only reports what is stale, writing
-nothing ([requirements](requirements.md#req.distribution.build-check-read-only)). `generated/` is
+and writes `generated/build-manifest.json` with every source's and output's digest. The prompt
+roots are the Protocol's `prompts/protocol/principles.md` and `prompts/protocol/kinds/module.md`
+and every file directly in `prompts/workers/`, `prompts/main-session/`, `prompts/dogfooding/` and
+`prompts/development/`, each rendered to the same path under `generated/`; the two
+[skills](#realization.distribution.build) are rendered from two of them. `build --check` only
+reports what is stale, writing nothing
+([requirements](requirements.md#req.distribution.build-check-read-only)). `generated/` is
 Git-ignored, so a checkout always rebuilds. `protocol-manifest --write --bind-project` accepts a
 Protocol change's fresh digests, binds the configuration and refreshes this checkout's own copy.
 
@@ -232,8 +234,8 @@ project where every check passes, it goes through these steps in order:
    running (`concorde_busy`, described below); a `concorde.json` that names no Python requirement
    (`invalid_descriptor`); a `.claude/settings.json` that is not a JSON object (`settings_invalid`,
    [checked first](requirements.md#req.distribution.installer-settings-checked)); a `.mcp.json`
-   that is not a JSON object with an optional `mcpServers` object (`mcp_config_invalid`, checked
-   as early); a machine
+   that is not a JSON object with an optional `mcpServers` object (`mcp_config_invalid`,
+   [checked as early](requirements.md#req.distribution.installer-mcp-checked)); a machine
    without `uv` on `PATH` (`uv_missing`), since uv owns Concorde's Python; and, when the pi runtime described
    below is still to be placed, a machine without `npm` (`npm_missing`)
    ([requirements](requirements.md#req.distribution.installer-programs-first)).
@@ -288,7 +290,8 @@ project where every check passes, it goes through these steps in order:
    as `"concorde": {"command": ".concorde/bin/concorde", "args": ["project-mcp"]}`, which Claude
    Code starts from the directory a session starts in, the project root, keeping every other
    server, and leaves the file as it is when that entry is already there
-   ([requirements](requirements.md#req.distribution.installer-project-mcp)).
+   ([requirements](requirements.md#req.distribution.installer-project-mcp),
+   [the rest kept](requirements.md#req.distribution.installer-mcp-kept)).
 8. **It records the install.** It adds ignore rules for the folders [Tracing](../tracing/module.md)
    keeps, `.concorde/tasks/`, `.concorde/history/`, `.concorde/unbound/` and `.concorde/locks/`,
    for `.concorde/runs/`, where Dogfooding keeps [defect reports](../glossary.json#concept.defect-report) and End-to-end testing its session
@@ -303,9 +306,6 @@ project where every check passes, it goes through these steps in order:
    initialization bound
    ([requirements](requirements.md#req.distribution.installer-keeps-installation-bound)). Specs
    that cannot be read are left as they are for `spec-validation` to report.
-
-Only the steps that run those programs, `npm ci`, `uv venv` and the installation of the Python
-dependencies, can fail after something was written; an install run again repeats them.
 
 The receipt names Concorde's own environment under `python` (its path, the requirement it was
 created for, the interpreter uv chose and that interpreter's version), the installed dependencies
@@ -331,6 +331,21 @@ framework copy under a run would change its code halfway
 [progress file](../glossary.json#concept.progress-file) of an Operation's worker, which lies beside
 the Operation's and names the same runner, is not a run of its own.
 
+#### When an install fails halfway
+
+Only the refusals of step 1 and the download of step 2 are decided before the first write. After
+it, a step that runs a program can still fail (`pi_runtime_failed`, `python_env_failed`,
+`python_dependencies_failed`), and so can a file operation of the installer itself, on a full disk
+or a path it may not replace, which it refuses with `install_failed` and the operating system's
+error ([requirements](requirements.md#req.distribution.failed-write-reported)); an installer
+that is killed reports nothing. Nothing is rolled back. What the steps before the failure wrote
+stays: the project may hold the new tools, Protocol copy and a new or partly copied Framework
+runtime beside the previous command, guidance, workflows and settings. The receipt is written after
+every installed file, so it still describes the previous install, or is missing after a first
+install, and the installed command may not run until the install completes: it then says that its
+own Python environment is missing. Running the same install again repeats every step, keeping the
+`d2` and pi runtime already in place, and completes it.
+
 ### The pi runtime
 
 Workers run on pi unless the
@@ -354,25 +369,51 @@ then fails with `pi_runtime_missing`, naming the command that installs the runti
 
 <a id="concept.distribution.update"></a>
 
-`concorde update` runs, in update mode, the installer of the
-Concorde checkout the receipt names as its `source` (or `--from <checkout>`): it installs as the
-first install did, keeping `d2` and develop mode when they were installed, always placing the pi
-runtime unless the first install left it out with `--without-pi-runtime` (so an update adds it to
-an install made before the runtime was placed by default), creating Concorde's own environment
-again with uv for the new checkout's Python requirement, and refusing like an install while
-Concorde runs in the project; binds the new Protocol copy in the configuration itself, the one
-write of the project configuration an installer makes; and marks the project
-**Concorde unvalidated** by writing
-`.concorde/update.json`, which Git ignores, with the versions, installed commits and Protocol
-bindings before and after; the validation findings `CONCORDE-UPDATE-001` and `CONCORDE-UPDATE-002`
-described next name the commits too, since between two commits of a
-[Concorde repository](../glossary.json#concept.concorde-repository) the version seldom changes.
-While that state is there, `concorde spec-validation` in the primary worktree reports
-`CONCORDE-UPDATE-001` as an error, which also stops a `task merge`; the first validation that passes
-removes it and says so (`CONCORDE-UPDATE-002`). Only an update sets the state, so a project that
-stops validating because of its own changes is never marked by it. The result lists the open tasks
-and, when the Protocol copy changed, asks for the primary branch to be merged into each, since their
-worktrees keep the previous copy until then.
+`concorde update` runs, in update mode, the installer of the Concorde checkout the receipt names as
+its `source` (or `--from <checkout>`); `python3 <checkout>/scripts/install-concorde.py <project>
+--update` does the same from the checkout. An update goes through three steps:
+
+1. **It installs as the first install did.** It keeps `d2` and develop mode when they were
+   installed, always places the pi runtime unless the first install left it out with
+   `--without-pi-runtime` (so an update adds it to an install made before the runtime was placed by
+   default), creates Concorde's own environment again with uv for the new checkout's Python
+   requirement, and refuses like an install while Concorde runs in the project.
+2. **It binds the new Protocol copy** in the project configuration itself, the one write of the
+   project configuration an installer makes.
+3. **It marks the project Concorde unvalidated** by writing `.concorde/update.json`, which Git
+   ignores, with the versions, installed commits and Protocol bindings before and after. The
+   validation findings `CONCORDE-UPDATE-001` and `CONCORDE-UPDATE-002` described next name the
+   commits too, since between two commits of a
+   [Concorde repository](../glossary.json#concept.concorde-repository) the version seldom changes.
+
+The mark then decides what validation says. While it is there, `concorde spec-validation` in the
+primary worktree reports `CONCORDE-UPDATE-001` as an error, which also stops a `task merge`; a
+validation that finds other errors keeps the mark, and the first validation that finds none
+removes it and says so (`CONCORDE-UPDATE-002`). Only an update sets the mark, so a project that
+stops validating because of its own changes is never marked by it.
+
+```d2 illustrative
+direction: right
+unmarked: "Not marked\n(no update.json)"
+installing: "Installing, not yet\nrebound or marked"
+unvalidated: "Concorde unvalidated\n(update.json)"
+unmarked -> installing: "concorde update:\ninstall (step 1)"
+installing -> unvalidated: "rebind, mark\n(steps 2 and 3)"
+installing -> installing: "a failure or interruption:\nrun the update again"
+unvalidated -> unvalidated: "spec-validation with\nerrors: CONCORDE-UPDATE-001"
+unvalidated -> unmarked: "spec-validation without\nother errors: CONCORDE-UPDATE-002"
+```
+
+Open tasks are a separate matter. The result lists them and, when the Protocol copy changed, asks
+for the primary branch to be merged into each, since their worktrees keep the previous copy until
+then; validation does not wait for that merge.
+
+An update that fails during its install ends before it rebinds or marks anything, with the receipt
+of the previous install still in place, so running it again updates from that install. One
+interrupted after its receipt but before its mark is completed the same way, but its mark then
+names the Concorde just installed as the one before. When the installed command no longer runs
+because the failure left its Framework copy or environment incomplete, the update is run again
+with `install-concorde.py --update` from the checkout.
 
 ### Refusals
 

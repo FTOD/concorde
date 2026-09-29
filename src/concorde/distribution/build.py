@@ -34,8 +34,8 @@ PROTOCOL_KINDS = ("module",)
 PROTOCOL_MANIFEST_PATH = "protocol/manifest.json"
 
 # Prompt roots rendered one to one: ``prompts/<name>.md`` becomes ``generated/<name>.md``. Every
-# file directly in ``prompts/workers/``, ``prompts/main-session/`` and ``prompts/dogfooding/`` is a
-# root as well.
+# file directly in ``prompts/workers/``, ``prompts/main-session/``, ``prompts/dogfooding/`` and
+# ``prompts/development/`` is a root as well.
 PROMPT_ROOTS: tuple[str, ...] = (
     "prompts/protocol/principles.md",
     *(f"prompts/protocol/kinds/{kind}.md" for kind in PROTOCOL_KINDS),

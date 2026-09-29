@@ -91,7 +91,7 @@ Concrete situations that show the [requirements](requirements.md) at work.
 
 ### scenario.distribution.install — Install Concorde into a project
 
-- GIVEN a Git project with Specs and a fresh Concorde package
+- GIVEN a Git project that is not initialized, so that it has no Specs, and a fresh Concorde package
 - WHEN the developer runs the installer on the project
 - THEN the project has the Protocol copy under `.concorde/protocol/`, the `concorde` command and the [main-session guidance](../glossary.json#concept.main-session-guidance) as a project skill and a `CLAUDE.md` block
 - AND the `d2` release pinned in `concorde.json` for this platform is at `.concorde/tools/d2`, ignored by Git and named in the receipt
@@ -100,7 +100,7 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - AND `.claude/settings.json` allows `Workflow(concorde-brownfield)` and the two `concorde workflow` commands, keeps every setting it had, and the receipt records the added rules
 - AND the receipt records the package as `source`, mode `normal`, and `source_commit` `null` for a package outside a Git checkout
 - AND nothing is placed under `.pi/`, no `AGENTS.md` is created, and a project's own `AGENTS.md` is left as it is and not listed under `amended`
-- BUT no Spec document, registry or [Protocol binding](../glossary.json#concept.protocol-binding) of the project changed
+- BUT no Spec document, registry or project configuration with its [Protocol binding](../glossary.json#concept.protocol-binding) is created, which only initialization creates
 
 ### scenario.distribution.install-repeat — Installing again repeats no download
 
@@ -208,6 +208,14 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - WHEN the command refuses
 - THEN it prints `{"error": <link>}` with a link of the Framework's error contract, whose actor is the installer or `concorde update`, whose code is `invalid_project` or `update_source_missing`, and whose reason is `input`
 - AND it exits with status 1
+
+### scenario.distribution.install-write-failed — A write that fails after the first write is refused
+
+- GIVEN a project in which the installer cannot write the project skill, because a file stands where its folder `.claude/skills/concorde/` goes
+- WHEN the developer runs the installer
+- THEN the install is refused with `install_failed`, naming the operating system's error, whose reason is `environment`
+- AND the Protocol copy and Framework copy placed before stay in place, while no receipt is written
+- AND once the file is moved away, running the installer again completes the install and writes the receipt
 
 ### scenario.distribution.own-python — Concorde ignores the caller's Python
 

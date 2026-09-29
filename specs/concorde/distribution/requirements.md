@@ -38,12 +38,13 @@ is missing or changed, or whose rendered asset differs from the tracked manifest
 
 ### req.distribution.one-envelope — One envelope per command
 
-Every invocation of the `concorde` command other than `spec-mcp`, `project-mcp`, `task`, `run`, `task-validation`, `delivery`, `scaffold`, `workflow`, `issues` and `update` SHALL print exactly one JSON result envelope on standard output, except `--help`.
+Every invocation of the `concorde` command other than `spec-mcp`, `project-mcp`, `task`, `run`, `task-validation`, `delivery`, `scaffold`, `workflow`, `issues`, `trace` and `update` SHALL print exactly one JSON result envelope on standard output, except `--help`.
 
 The exit status is the one Spec core's shared envelope assigns to the envelope's status, so it
 follows from this requirement rather than being a separate one: a caller that only checks the status
 and a caller that reads the envelope reach the same conclusion. `update` prints the installer's
-result or [error link](#req.distribution.installer-error-links) instead.
+result or [error link](#req.distribution.installer-error-links) instead, and the other commands
+excepted print what their owners define.
 
 ## Installation
 
@@ -76,10 +77,20 @@ The refusal is `settings_invalid`.
 
 The installer SHALL register the [project MCP server](../glossary.json#concept.project-mcp-server)
 in the project's `.mcp.json` as the server `concorde`, run as `.concorde/bin/concorde
-project-mcp`, keeping every other server and setting of the file.
+project-mcp`.
 
-It refuses with `mcp_config_invalid`, before writing anything, a `.mcp.json` that is not a JSON
-object with an optional `mcpServers` object.
+### req.distribution.installer-mcp-kept — The installer keeps the rest of `.mcp.json`
+
+The installer SHALL change the project's `.mcp.json` only in its server `concorde`.
+
+Every other server and setting stays as it was, and a file whose `concorde` entry is already the
+one above is not written.
+
+### req.distribution.installer-mcp-checked — An unusable `.mcp.json` is refused first
+
+The installer SHALL refuse, before writing anything, a project whose `.mcp.json` is not a JSON object with an optional `mcpServers` object.
+
+The refusal is `mcp_config_invalid`.
 
 ### req.distribution.own-python — Concorde runs in its own Python environment
 
@@ -171,8 +182,15 @@ A failed or tampered download therefore leaves the project untouched.
 
 The installer SHALL refuse, before writing anything into the project, when `uv` is not on `PATH`, or when `npm` is not on `PATH` and the pi runtime is to be installed and not already in place.
 
-The refusals are `uv_missing` and `npm_missing`. Only the steps that run those programs can then
-fail after the first write.
+The refusals are `uv_missing` and `npm_missing`. The steps that run those programs can still fail
+after the first write, as can a write itself ([a failed write](#req.distribution.failed-write-reported)).
+
+### req.distribution.failed-write-reported — A failed write is refused as `install_failed`
+
+When a file operation of the installer or of `concorde update` fails after the first write, it SHALL refuse with `install_failed`, naming the operating system's error.
+
+Nothing is rolled back: what the earlier steps wrote stays, and the receipt, written after every
+installed file, does not record it. Running the same command again repeats every step.
 
 ### req.distribution.uv-owns-python — uv creates Concorde's own environment
 
