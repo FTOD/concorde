@@ -87,7 +87,9 @@ readable on its own: after [Tracing](../../../tracing/module.md)'s retention has
 traces, it is the only record of the delivery and travels with the code, and its run identities
 lead into the traces only while they are kept. The delivery run's own
 [trace node](../../../glossary.json#concept.trace-node) references the delivery commit and the
-bundle (`<commit>:<path>`), so the trace leads to what was committed.
+bundle (`<commit>:<path>`), so the trace leads to what was committed: as `commit` and `bundle` when
+the run created them, and as `found_commit` and `found_bundle` when it found its work already
+delivered and reported the existing commit, which an earlier run created.
 
 | Status | Code | Reason | Detail |
 | --- | --- | --- | --- |

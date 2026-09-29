@@ -75,7 +75,9 @@ it writes into.
   selected and compared by them;
 - **artifacts**: the files it keeps in its folder, such as a transcript, a log or a run result, each
   by its path relative to the folder and its digest, so a transcript is referenced, never copied;
-- **references** to nodes at the same level and to commits;
+- **references** to nodes at the same level and to commits, which tell a commit or evidence bundle
+  the node created (`commit`, `bundle`) from one an earlier node created and this node only found
+  (`found_commit`, `found_bundle`), such as a delivery that finds its work already delivered;
 - and the producer's own **content**, a [typed value](../glossary.json#concept.typed-value) whose
   type the producer registers, such as a run's steps with their timings or a worker round's audit.
 

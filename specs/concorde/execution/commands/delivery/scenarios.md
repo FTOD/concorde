@@ -95,6 +95,7 @@ commit, bundle and output are defined in the [contracts](contracts.md).
 - WHEN delivery runs
 - THEN the result has status `ok` and reports that commit with `recovered` true
 - AND nothing is committed
+- AND the run's [trace node](../../../glossary.json#concept.trace-node) references that commit with `found_commit` and its bundle with `found_bundle`, not with `commit` or `bundle`
 
 ### scenario.delivery.unbound — Delivery needs a bound workspace
 
@@ -145,6 +146,7 @@ commit, bundle and output are defined in the [contracts](contracts.md).
 - THEN no new commit is created
 - AND the output is the existing commit with `recovered` true and no confirmations, and the worktree is clean
 - AND the branch still holds exactly that one delivery commit, which alone records the delivery
+- AND the new run's trace node references that commit with `found_commit` and its bundle as `<commit>:<path>` with `found_bundle`
 
 ### scenario.delivery.recover-unverified — A head that only looks delivered is not reported
 
@@ -153,3 +155,4 @@ commit, bundle and output are defined in the [contracts](contracts.md).
 - WHEN delivery runs
 - THEN the result has status `failed` with `commit_unverified`, reason `decision`, naming each mismatch
 - AND no commit is created and the head is unchanged
+- AND the run's trace node references no commit and no bundle, created or found

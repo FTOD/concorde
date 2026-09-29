@@ -101,6 +101,16 @@ workspace and no uncommitted change waits.
 Such a run reports the existing commit instead, as
 [scenario.delivery.recover](scenarios.md#scenario.delivery.recover) shows.
 
+### req.delivery.recovered-referenced — A delivered head is referenced as found
+
+The [trace node](../../../glossary.json#concept.trace-node) of a delivery run that reports an
+existing delivery commit SHALL reference that commit with the relation `found_commit` and its
+evidence bundle, as `<commit>:<path>`, with `found_bundle`, and neither with `commit` nor `bundle`.
+
+`commit` and `bundle` name only what a node created, as
+[Tracing requires](../../../tracing/requirements.md#req.tracing.created-or-found); a recovered
+delivery created neither, yet its trace still leads to the delivery it reported.
+
 ### req.delivery.recovered-verified — A delivered head is verified before it is reported
 
 Delivery SHALL report an existing delivery commit at the branch head as delivered only when its

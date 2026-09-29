@@ -39,6 +39,16 @@ and the command are defined in the [contracts](contracts.md).
 - WHEN `concorde trace show <task>` runs
 - THEN it prints the same nodes, statuses and usage as before the move, with the new folder as `path`
 
+## Recording
+
+### scenario.tracing.created-or-found — A node tells what it created from what it found
+
+- GIVEN a run that created a commit with an [evidence bundle](../glossary.json#concept.evidence-bundle), and a later run that found that commit at the branch head and reported it instead of creating one
+- WHEN each run's node records its references
+- THEN the first node references the commit with `commit` and the bundle with `bundle`
+- AND the later node references the same commit with `found_commit` and the same bundle with `found_bundle`, and neither with `commit` nor `bundle`
+- AND both nodes satisfy the node contract, which refuses a reference of any other relation
+
 ## Removing
 
 ### scenario.tracing.prune — Retention removes only what has ended long enough ago

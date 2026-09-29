@@ -343,6 +343,9 @@ def delivered(ctx: RunContext):
         "confirmed": [],
         "recovered": True,
     }
+    # An earlier run created the commit and the bundle; this run's node leads to them as found.
+    ctx.references.append(("found_commit", state.head))
+    ctx.references.append(("found_bundle", f"{state.head}:{last['bundle']}"))
     return Stop(
         "ok",
         f"{ctx.workspace_name} is already delivered as {state.head[:12]} on {ctx.branch}.",

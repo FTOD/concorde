@@ -44,6 +44,17 @@ A node names its files relative to its own folder and other nodes by their ident
 trace reads the same after its folder moved to the [history](../glossary.json#concept.history) or to
 another machine.
 
+### req.tracing.created-or-found — A reference tells what the node created from what it found
+
+A [trace node](../glossary.json#concept.trace-node) SHALL reference a commit or an
+[evidence bundle](../glossary.json#concept.evidence-bundle) with the relation `commit` or `bundle`
+only when the node itself created it, and one an earlier node created, which it found and reports,
+with `found_commit` or `found_bundle`.
+
+A reader that follows a node's `commit` references therefore finds only the work of that node, and
+still reaches the existing work a node reported, as
+[scenario.tracing.created-or-found](scenarios.md#scenario.tracing.created-or-found) shows.
+
 ### req.tracing.large-by-reference — Large content is referenced
 
 A trace node SHALL keep a transcript, an event stream or a log as a file of its folder named among

@@ -112,8 +112,22 @@ class DeliveryTests(unittest.TestCase):
         self.assertEqual(measure(self.worktree, self.base)["digest"], digest)
         self.assertEqual(self.project.deliveries(), [])
         self.assertEqual(self.project.state(), "active")
-        relations = {item["relation"] for item in self.node(envelope)["references"]}
-        self.assertFalse({"commit", "bundle"} & relations)
+        self.assertEqual(self.commit_references(envelope), [])
+
+    def commit_references(self, envelope: dict) -> list[tuple[str, str]]:
+        """The run node's references to commits and bundles, created or found."""
+        return [
+            (item["relation"], item["target"])
+            for item in self.node(envelope)["references"]
+            if item["relation"] in {"commit", "bundle", "found_commit", "found_bundle"}
+        ]
+
+    def assert_found(self, envelope: dict, commit: str, bundle: str):
+        """The run node leads to the delivery it found, which an earlier run created."""
+        self.assertEqual(
+            self.commit_references(envelope),
+            [("found_commit", commit), ("found_bundle", f"{commit}:{bundle}")],
+        )
 
     def assert_inert(self, envelope: dict, code: str, deliveries: int = 0):
         self.assertEqual(envelope["status"], "blocked", envelope)
@@ -225,9 +239,10 @@ class DeliveryTests(unittest.TestCase):
         # The delivery run's node leads to what was committed: the commit and the bundle in it.
         node = self.node(envelope)
         self.assertEqual(("run", envelope["run_id"]), (node["kind"], node["id"]))
-        references = [(item["relation"], item["target"]) for item in node["references"]]
-        self.assertIn(("commit", commit), references)
-        self.assertIn(("bundle", f"{commit}:.concorde/evidence/t1/1.json"), references)
+        self.assertEqual(
+            self.commit_references(envelope),
+            [("commit", commit), ("bundle", f"{commit}:.concorde/evidence/t1/1.json")],
+        )
         self.assertEqual(
             [run["run_id"] for run in bundle["runs"]], [validation["run_id"]]
         )
@@ -410,6 +425,9 @@ class DeliveryTests(unittest.TestCase):
         self.assertIn("already delivered", envelope["summary"])
         self.assertEqual(self.head(), first["output"]["commit"])
         self.assertEqual(len(self.project.deliveries()), 1)
+        self.assert_found(
+            envelope, first["output"]["commit"], first["output"]["bundle"]
+        )
 
     @verifies("scenario.delivery.commit-refused")
     def test_git_refuses_the_commit(self):
@@ -567,6 +585,7 @@ class DeliveryTests(unittest.TestCase):
             [d["commit"] for d in self.project.deliveries()], [delivered["commit"]]
         )
         self.assertEqual(status_lines(self.worktree), "")
+        self.assert_found(envelope, delivered["commit"], ".concorde/evidence/t1/1.json")
 
     @verifies("scenario.delivery.recover-unverified")
     def test_a_head_that_only_looks_delivered_is_not_reported(self):
@@ -641,6 +660,7 @@ class DeliveryTests(unittest.TestCase):
                 self.assertIn(head, error["detail"])
                 self.assertIsNone(envelope["output"])
                 self.assertEqual((self.head(), status_lines(self.worktree)), (head, ""))
+                self.assertEqual(self.commit_references(envelope), [])
 
     @verifies("scenario.delivery.unbound")
     def test_a_delivery_needs_a_bound_workspace(self):

@@ -163,6 +163,38 @@ class TracingTests(unittest.TestCase):
         with self.assertRaises(TraceError):
             trace.write(folder, record)
 
+    @verifies("scenario.tracing.created-or-found")
+    def test_a_node_tells_what_it_created_from_what_it_found(self):
+        commit = "4be1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9"
+        bundle = f"{commit}:.concorde/evidence/retry/1.json"
+        created = Node(self.root / "created", "r-1", "run")
+        created.start()
+        created.refer("commit", commit)
+        created.refer("bundle", bundle)
+        created.finish("ok", outcome="ok")
+        found = Node(self.root / "found", "r-2", "run")
+        found.start()
+        found.refer("found_commit", commit)
+        found.refer("found_bundle", bundle)
+        found.finish("ok", outcome="ok")
+        records = [trace.read(self.root / name) for name in ("created", "found")]
+        for record in records:
+            validate(record, spec_contract("contract.tracing.node")["schema"])
+        self.assertEqual(
+            [
+                [(item["relation"], item["target"]) for item in record["references"]]
+                for record in records
+            ],
+            [
+                [("commit", commit), ("bundle", bundle)],
+                [("found_commit", commit), ("found_bundle", bundle)],
+            ],
+        )
+        record = ended(self.root / "other", "r-3", "run")
+        record["references"] = [{"relation": "reported_commit", "target": commit}]
+        with self.assertRaises(TraceError):
+            trace.write(self.root / "other", record)
+
     @verifies("scenario.tracing.show-task")
     def test_a_tasks_trace_rolls_its_usage_up(self):
         TaskTrace(self.concorde)
