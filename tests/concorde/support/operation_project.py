@@ -112,6 +112,10 @@ class OperationProject(WorkerProject):
     def __init__(self, test, **options):
         super().__init__(test, **options)
         self.test = test
+        # Closing a task commits its decision log in the project, which needs an identity even
+        # where the environment gives none, as in a check's sandbox.
+        for key, value in (("user.name", "t"), ("user.email", "t@t")):
+            subprocess.run(["git", "config", key, value], cwd=self.root, check=True)
         claude_workers(self.root)
 
     def open_task(
