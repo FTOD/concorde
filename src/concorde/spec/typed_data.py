@@ -12,6 +12,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import math
 import re
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -64,6 +65,31 @@ _TYPES: dict[str, tuple[int, dict]] = {}
 # The Python module whose code registered each type.
 
 
+# Keywords the offline subset admits but ``check_schema`` does not evaluate; a registered schema
+# must not use them, so that no registered type promises more than its values are checked for.
+_UNCHECKED = frozenset({"$defs", "oneOf", "allOf"})
+
+
+def _evaluated(schema: Any) -> None:
+    """Refuse a schema using a keyword that ``check_schema`` would not evaluate."""
+    if not isinstance(schema, dict):
+        return
+    unchecked = sorted(_UNCHECKED & schema.keys())
+    if unchecked or isinstance(schema.get("type"), list):
+        raise TypedDataError(
+            "invalid_input",
+            "",
+            "a registered schema uses only keywords the typed-value checker evaluates,"
+            f" not {unchecked or ['a list of types']}",
+        )
+    for child in schema.get("properties", {}).values():
+        _evaluated(child)
+    for name in ("items", "additionalProperties"):
+        _evaluated(schema.get(name))
+    for child in schema.get("anyOf", ()):
+        _evaluated(child)
+
+
 def _admissible(value: Any) -> Any:
     """The schema with every registered-type reference replaced by ``true`` for the subset check."""
     if isinstance(value, dict):
@@ -107,6 +133,7 @@ def register(type_id: str, version: int, schema: dict) -> None:
         )
     if not isinstance(schema, dict):
         raise TypedDataError("invalid_input", type_id, "schema must be an object")
+    _evaluated(schema)
     try:
         _subset.admit(_admissible(schema))
     except _subset.ContractError as error:
@@ -189,7 +216,20 @@ def _pointer(field: str, key: Any) -> str:
     return field + "/" + str(key).replace("~", "~0").replace("/", "~1")
 
 
-def check_schema(value: Any, schema: dict, field: str = "") -> None:
+def _equal(first: Any, second: Any) -> bool:
+    """JSON equality: numbers compare by value, and a boolean equals only a boolean."""
+    numbers = (int, float)
+    if type(first) in numbers and type(second) in numbers:
+        return first == second
+    return type(first) is type(second) and first == second
+
+
+def check_schema(value: Any, schema: dict | bool, field: str = "") -> None:
+    """Check ``value`` against ``schema`` as JSON Schema does, for the subset ``register`` admits."""
+    if schema is True:
+        return
+    if schema is False:
+        raise TypedDataError("invalid_field", field, "value is forbidden")
     if "anyOf" in schema:
         for option in schema["anyOf"]:
             try:
@@ -203,27 +243,30 @@ def check_schema(value: Any, schema: dict, field: str = "") -> None:
     if "$ref" in schema:
         return check_schema(value, _whole(schema["$ref"], field), field)
     types = {
-        "object": dict,
-        "array": list,
-        "string": str,
-        "integer": int,
-        "boolean": bool,
-        "null": type(None),
+        "object": (dict,),
+        "array": (list,),
+        "string": (str,),
+        "integer": (int,),
+        # Integers are numbers; booleans are neither.
+        "number": (int, float),
+        "boolean": (bool,),
+        "null": (type(None),),
     }
     expected = schema.get("type")
-    if expected and type(value) is not types[expected]:
+    if expected and type(value) not in types[expected]:
         raise TypedDataError("invalid_field", field, f"expected {expected}")
-    if "const" in schema and (
-        value != schema["const"] or type(value) is not type(schema["const"])
-    ):
+    if "const" in schema and not _equal(value, schema["const"]):
         raise TypedDataError("invalid_field", field, f"expected {schema['const']!r}")
-    if "enum" in schema and value not in schema["enum"]:
+    if "enum" in schema and not any(_equal(value, item) for item in schema["enum"]):
         raise TypedDataError("invalid_field", field, "unsupported value")
-    if expected == "object":
+    # Like JSON Schema, each keyword applies to the kind of value it constrains, whether the
+    # schema names a type or not.
+    if isinstance(value, dict):
         properties = schema.get("properties", {})
-        # A schema-valued additionalProperties admits a keyed map whose values share one schema.
-        extra = schema.get("additionalProperties")
-        if not isinstance(extra, dict):
+        # Keys that properties do not name are checked against additionalProperties, which
+        # admits any value when absent: an object is closed only by additionalProperties false.
+        extra = schema.get("additionalProperties", True)
+        if extra is False:
             for key in value.keys() - properties.keys():
                 raise TypedDataError(
                     "invalid_field", _pointer(field, key), "unknown field"
@@ -235,28 +278,43 @@ def check_schema(value: Any, schema: dict, field: str = "") -> None:
                 )
         for key, item in value.items():
             check_schema(item, properties.get(key, extra), _pointer(field, key))
-    elif expected == "array":
+    elif isinstance(value, list):
         if len(value) < schema.get("minItems", 0):
             raise TypedDataError("invalid_field", field, "too few items")
+        if len(value) > schema.get("maxItems", len(value)):
+            raise TypedDataError("invalid_field", field, "too many items")
         if schema.get("uniqueItems") and len(
             {canonical(item) for item in value}
         ) != len(value):
             raise TypedDataError("invalid_field", field, "items must be unique")
         for index, item in enumerate(value):
-            check_schema(item, schema["items"], _pointer(field, index))
-        if schema["items"] == ARTIFACT:
+            check_schema(item, schema.get("items", True), _pointer(field, index))
+        if schema.get("items") == ARTIFACT:
             for key in ("id", "path"):
                 if len({item[key] for item in value}) != len(value):
                     raise TypedDataError(
                         "invalid_field", field, f"artifact {key} values must be unique"
                     )
-    elif expected == "string":
+    elif isinstance(value, str):
         if schema.get("minLength") and not value.strip():
             raise TypedDataError("invalid_field", field, "string must not be empty")
-        if "pattern" in schema and re.fullmatch(schema["pattern"], value) is None:
+        if (
+            not schema.get("minLength", 0)
+            <= len(value)
+            <= schema.get("maxLength", len(value))
+        ):
+            raise TypedDataError("invalid_field", field, "invalid string length")
+        if "pattern" in schema and re.search(schema["pattern"], value) is None:
             raise TypedDataError("invalid_field", field, "invalid string format")
         if schema.get("format") == "project-path":
             safe_path(value, field)
+    elif type(value) in (int, float):
+        if not math.isfinite(value) or not schema.get(
+            "minimum", value
+        ) <= value <= schema.get("maximum", value):
+            raise TypedDataError(
+                "invalid_field", field, "number is outside the admitted range"
+            )
 
 
 def safe_path(value: str, field: str = "") -> str:

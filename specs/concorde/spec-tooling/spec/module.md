@@ -270,9 +270,9 @@ Python sources are under `src/concorde/spec/` and tests under `tests/concorde/sp
   Spec of a project.
 - <a id="realization.spec.transactions"></a>**Transaction writer** applies digest-bound file
   transactions and confirms pending entries whose files now exist.
-- <a id="realization.spec.typed-values"></a>**Typed values** hold the registration table, the closed
-  offline checker, shared schema building blocks, strict JSON, safe paths and the front-matter
-  parser.
+- <a id="realization.spec.typed-values"></a>**Typed values** hold the registration table, the offline
+  checker that checks data as JSON Schema does, shared schema building blocks, strict JSON, safe
+  paths and the front-matter parser.
 - <a id="realization.spec.errors"></a>**Spec tooling errors** are Spec tooling's own error type:
   code, message, location, reason, remediation and causes, as the [error record](errors.md) defines.
   They depend on no other Module.

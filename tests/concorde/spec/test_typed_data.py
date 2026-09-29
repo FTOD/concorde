@@ -117,6 +117,92 @@ class TypedDataTests(unittest.TestCase):
                 (code, field), (raised.exception.code, raised.exception.field)
             )
 
+    @verifies("scenario.spec.typed-value-json-schema")
+    def test_data_is_checked_as_json_schema_checks_it(self):
+        register(
+            "concorde-fixture-json-schema",
+            1,
+            {
+                "type": "object",
+                "properties": {
+                    "open": {"type": "object", "properties": {"name": STRING}},
+                    "closed": obj({"name": STRING}),
+                    "seconds": {"type": "number", "minimum": 0},
+                },
+            },
+        )
+
+        def value(**data):
+            return {
+                "type_id": "concorde-fixture-json-schema",
+                "schema_version": 1,
+                "data": data,
+            }
+
+        # An object with no additionalProperties is open, the data's own object included.
+        admitted = value(open={"name": "x", "other": [1]}, seconds=0, extra=True)
+        self.assertEqual(admitted, validate_typed(admitted))
+        for seconds in (0, 3, 0.4, 12.5):
+            with self.subTest(seconds=seconds):
+                self.assertEqual(
+                    seconds, validate_typed(value(seconds=seconds))["data"]["seconds"]
+                )
+        refused = {
+            "/data/closed/other": value(closed={"name": "x", "other": 1}),
+            "/data/seconds": value(seconds=True),
+            "/data/open/name": value(open={"name": 1}),
+        }
+        for seconds in (True, "0.4", -0.5, -1, None):
+            refused[f"/data/seconds {seconds!r}"] = value(seconds=seconds)
+        for label, data in refused.items():
+            with (
+                self.subTest(label=label),
+                self.assertRaises(TypedDataError) as raised,
+            ):
+                validate_typed(data)
+            self.assertEqual(
+                ("invalid_field", label.split(" ")[0]),
+                (raised.exception.code, raised.exception.field),
+            )
+
+    def test_keywords_follow_json_schema(self):
+        from concorde.spec.typed_data import check_schema
+
+        admitted = [
+            ("ab", {"pattern": "b"}),
+            (1, {"type": "number", "maximum": 1}),
+            ({"a": 1}, {"type": "object", "additionalProperties": {"type": "integer"}}),
+            (["x"], {"type": "array", "maxItems": 1}),
+            ("x", {"minLength": 1}),
+            (5, {"minLength": 1, "properties": {}}),
+            ({"a": "b"}, True),
+            (1.0, {"enum": [1, 2]}),
+        ]
+        refused = [
+            ("ab", {"pattern": "^b"}),
+            (2, {"type": "number", "maximum": 1}),
+            (1.5, {"type": "integer"}),
+            (float("nan"), {"type": "number"}),
+            ({"a": "b"}, {"additionalProperties": {"type": "integer"}}),
+            (["x", "y"], {"type": "array", "maxItems": 1}),
+            ("xyz", {"type": "string", "maxLength": 2}),
+            (" ", {"type": "string", "minLength": 1}),
+            (True, {"enum": [1, 2]}),
+            (1, {"const": True}),
+            ({"a": 1}, {"additionalProperties": False}),
+            ("x", False),
+        ]
+        for data, schema in admitted:
+            with self.subTest(data=data, schema=schema):
+                check_schema(data, schema)
+        for data, schema in refused:
+            with (
+                self.subTest(data=data, schema=schema),
+                self.assertRaises(TypedDataError) as raised,
+            ):
+                check_schema(data, schema)
+            self.assertEqual("invalid_field", raised.exception.code)
+
     @verifies("scenario.spec.typed-register-conflict")
     def test_a_second_registration_must_be_identical(self):
         schema = obj({"name": STRING})
@@ -133,6 +219,22 @@ class TypedDataTests(unittest.TestCase):
         self.assertEqual(schema, data_schema("concorde-fixture-conflict"))
         with self.assertRaises(TypedDataError):
             register("concorde-fixture-bad", 1, {"type": "object", "unknown": True})
+        # A keyword the checker would not evaluate is refused, so no type promises more.
+        for schema in (
+            {"oneOf": [STRING]},
+            {"allOf": [STRING]},
+            {"$defs": {"a": STRING}, "$ref": "#/$defs/a"},
+            obj({"a": {"type": ["string", "null"]}}),
+            obj({"a": {"anyOf": [{"type": "null"}, {"allOf": [STRING]}]}}),
+        ):
+            with (
+                self.subTest(schema=schema),
+                self.assertRaises(TypedDataError) as raised,
+            ):
+                register("concorde-fixture-unchecked", 1, schema)
+            self.assertEqual("invalid_input", raised.exception.code)
+        # A property may be named like a keyword.
+        register("concorde-fixture-keyword-names", 1, obj({"oneOf": STRING}))
 
     @verifies("scenario.spec.typed-value-reject")
     def test_json_rejects_duplicate_fields_and_non_finite_numbers(self):

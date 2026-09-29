@@ -59,9 +59,7 @@ register(
                 "type": "array",
                 "items": {"type": "array", "items": {"type": "string"}},
             },
-            # Spec typed data knows no "number" type, so the seconds, a float, are left
-            # unconstrained here; Attempt always writes a non-negative float.
-            "waited_seconds": {},
+            "waited_seconds": {"type": "number", "minimum": 0},
         },
     },
 )

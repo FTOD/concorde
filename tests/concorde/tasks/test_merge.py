@@ -20,6 +20,7 @@ from unittest.mock import patch
 from concorde.errors import ERROR_SCHEMA
 from concorde.execution.runs import workspace_lock
 from concorde.spec.schema import validate
+from concorde.spec.typed_data import TypedDataError, validate_typed
 from concorde.spec.verification import verifies
 from concorde.tasks import cli, store
 from concorde.tracing import layout
@@ -167,6 +168,13 @@ class MergeTests(unittest.TestCase):
             ("merge", before, head, head),
             (data["attempt"], data["before"], data["checked"], data["after"]),
         )
+        # The merge trace types waited_seconds as a non-negative number.
+        self.assertEqual(node["content"], validate_typed(node["content"]))
+        for wrong in (-0.5, "0.4", True, None):
+            with self.subTest(waited_seconds=wrong), self.assertRaises(TypedDataError):
+                validate_typed(
+                    {**node["content"], "data": {**data, "waited_seconds": wrong}}
+                )
         check = trace.read(attempt / "checks/1")
         self.assertEqual(
             ("merge-check", "ok", 0),
