@@ -1,0 +1,219 @@
+{
+  "workspace": "main-delegates-tasks",
+  "goal": "Task sessions work every task that is not a small change; tasks never ask the developer in place but stop and report all needed decisions upward; the installer adds the Concorde block to an existing AGENTS.md; the Concorde checkout loads the product skill plus a concorde-development skill instead of DEVELOPING.md",
+  "modules": [
+    "module.concorde",
+    "module.coordination",
+    "module.main-session",
+    "module.task-session",
+    "module.tasks",
+    "module.workflows",
+    "module.distribution",
+    "module.dogfooding"
+  ],
+  "sequence": 1,
+  "base_commit": "fc4cf7a5a3479359939fafd5a6694c72d2363041",
+  "parent_commit": "248e48fbfab36f17cef676266ef972bbb651ecfe",
+  "readiness": {
+    "run_id": "r-20260929T052356-delivery-b130710d",
+    "input_digest": "sha256:b345c8a190226c210e0c487d19b62a8c4f0df3bdb4cb4b56c460fab4e072a0db",
+    "modules": [
+      "module.adoption",
+      "module.checks",
+      "module.code-review",
+      "module.commands",
+      "module.concorde",
+      "module.coordination",
+      "module.delivery",
+      "module.distribution",
+      "module.dogfood-scenarios",
+      "module.dogfooding",
+      "module.e2e",
+      "module.execution",
+      "module.harness",
+      "module.headless-sessions",
+      "module.implementation",
+      "module.issues",
+      "module.main-session",
+      "module.operations",
+      "module.scaffold",
+      "module.spec",
+      "module.spec-mcp",
+      "module.spec-review",
+      "module.spec-tooling",
+      "module.specification",
+      "module.swe-bench-cases",
+      "module.task-session",
+      "module.tasks",
+      "module.understanding",
+      "module.validation",
+      "module.views",
+      "module.workers",
+      "module.workflows"
+    ],
+    "checks": [
+      {
+        "check": "check.checks.runtime",
+        "module": "module.checks",
+        "status": "passed",
+        "measured_digest": "sha256:73d2fb424a8e2d879ef38a22d3a34d85716500d0d1f2e2a5efd9887f2257e591"
+      },
+      {
+        "check": "check.code-review.tests",
+        "module": "module.code-review",
+        "status": "passed",
+        "measured_digest": "sha256:ca9b2ea739d40c0b9c480a8538b6bc939a6fe4d48c92071d46111362dd4aed7e"
+      },
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:db379395f91e470d637ed1bf6fea8c9f9a5777b1fdc311df72d32c64e606d982"
+      },
+      {
+        "check": "check.delivery.tests",
+        "module": "module.delivery",
+        "status": "passed",
+        "measured_digest": "sha256:a3b7f3a5fc190f8ed1d9d372a38fe504270ed8d64f78326a71ba9c6e43d52ff7"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:aa9a0cb2a1b7bfeb12de3fc08e412d6599de7818af657190ed93801e62024cba"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:99bba41d24822a469629239b0959b8f1e276d34465d2c4c26feb70df82b25e30"
+      },
+      {
+        "check": "check.execution.tests",
+        "module": "module.execution",
+        "status": "passed",
+        "measured_digest": "sha256:d072d6e04a8b329bf9ed36e4ce28b0131ba289c8cb26ae435014e310f4d0e138"
+      },
+      {
+        "check": "check.implementation.tests",
+        "module": "module.implementation",
+        "status": "passed",
+        "measured_digest": "sha256:97e8274d9412656e882bdd419b8954528c0f1071444513bccbb373fac3005493"
+      },
+      {
+        "check": "check.issues.store",
+        "module": "module.issues",
+        "status": "passed",
+        "measured_digest": "sha256:f97976feb3ceffd7bc243c43f5841c6c67f20d3232e2244e5acd3b5ae987db6d"
+      },
+      {
+        "check": "check.issues.tests",
+        "module": "module.issues",
+        "status": "passed",
+        "measured_digest": "sha256:f97976feb3ceffd7bc243c43f5841c6c67f20d3232e2244e5acd3b5ae987db6d"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:41337b1dde7db965e1511c727ee5b124907dbebd846b80ca426255d4b93bab81"
+      },
+      {
+        "check": "check.spec.model",
+        "module": "module.spec",
+        "status": "passed",
+        "measured_digest": "sha256:e5791ca06f42287907993ece3c08146d6be29e8b252cea7ef12a8b9d7c6cbf73"
+      },
+      {
+        "check": "check.spec-mcp.tests",
+        "module": "module.spec-mcp",
+        "status": "passed",
+        "measured_digest": "sha256:c2f7298dbc1343b5680dbc502edd19daba42b339643460e3b415407cb83b8b1e"
+      },
+      {
+        "check": "check.spec-review.tests",
+        "module": "module.spec-review",
+        "status": "passed",
+        "measured_digest": "sha256:5d6cf0a6ed521f648b7a7d682691678ae514f0980ac4c3e2acf57e082d8905cb"
+      },
+      {
+        "check": "check.specification.tests",
+        "module": "module.specification",
+        "status": "passed",
+        "measured_digest": "sha256:f32fafbad36d341d67d01b4af826d6de5be5cdf64464aafc120aacdc947512b8"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:f5b9d0f9c20f43d0764158faf4ed4557a0c2749714bc85aadd914df34a3e4fcf"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:2df76be16a5c7702202bee55f60f9330b47203e1358fcc1d556bbcb6a9661d31"
+      },
+      {
+        "check": "check.understanding.tests",
+        "module": "module.understanding",
+        "status": "passed",
+        "measured_digest": "sha256:5408771c996828aaf31ffd59a2400ce5b1979a3dc8e7feb508e781ef3ec0baf2"
+      },
+      {
+        "check": "check.validation.tests",
+        "module": "module.validation",
+        "status": "passed",
+        "measured_digest": "sha256:48164010afc0d867cee0d07545044ebe275a20e084214cb0d381f6174674c849"
+      },
+      {
+        "check": "check.views.publication-types",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:7e4f151ffe00291e4e93d2728e44f52f77ada48cf5d8c3c92dab7a495fddfdcd"
+      },
+      {
+        "check": "check.views.repository-regressions",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:7e4f151ffe00291e4e93d2728e44f52f77ada48cf5d8c3c92dab7a495fddfdcd"
+      },
+      {
+        "check": "check.views.tests",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:7e4f151ffe00291e4e93d2728e44f52f77ada48cf5d8c3c92dab7a495fddfdcd"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.workers",
+        "status": "passed",
+        "measured_digest": "sha256:8a65a4b6ba831ce0116ed7f9b6a52503388183b9ec407e667e0bf76aa6dff78a"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260929T051815-task_validation-872e332f",
+      "kind": "command",
+      "name": "task-validation",
+      "modules": [
+        "module.concorde",
+        "module.coordination",
+        "module.main-session",
+        "module.task-session",
+        "module.tasks",
+        "module.workflows",
+        "module.distribution",
+        "module.dogfooding"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:a79ed2efe1511fb29ceeb78bc2aa11931b3dd0ef7e8c646880cd322373175cae"
+    }
+  ],
+  "created_at": "2026-09-29T05:29:34Z"
+}
