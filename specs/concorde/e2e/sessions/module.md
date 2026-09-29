@@ -7,7 +7,8 @@ Headless sessions drives a real Claude Code or pi main session in a
 testing can watch what a [main agent](../../glossary.json#concept.main-agent) actually does with
 Concorde. It starts the session, grants it its tools, tells it the conditions of running headless,
 wakes it when a run or a [session round](../../glossary.json#concept.session-round) it left behind
-ends, keeps every round's log and reads the logs back. It exists
+ends, keeps every round's log and reads the logs back. It also keeps a main session running as a
+live session, whose wakes are its own program's. It exists
 for the people developing Concorde and changes nothing a user gets: every difference between a
 [headless session](../../glossary.json#concept.headless-session) and an interactive one is handled
 here, never in the [main-session guidance](../../glossary.json#concept.main-session-guidance).
@@ -104,9 +105,13 @@ that it has not reported yet ([requirements](requirements.md#req.headless-sessio
 the [run store](../../glossary.json#concept.run-store) of the session's worktree: the one its
 [workspace binding](../../glossary.json#concept.workspace-binding) names when the session runs in a
 task worktree, otherwise the worktree's own `.concorde/runs/`. Every run started there since the
-session began counts as the session's, including the runs of the tasks it opened, whose workspace
-bindings name the same records directory; a run another session started in the same project
-meanwhile would be taken for this one's too. A run whose
+session began counts as a Claude Code session's, including the runs of the tasks it opened, whose
+workspace bindings name the same records directory; a run another session started in the same
+project meanwhile would be taken for this one's too. A pi session is woken only for what it owns,
+as its [run view](../../glossary.json#concept.run-view) would: the runs its `concorde_run` started,
+which the run view records as `concorde-owned-run` entries of the session file under the session
+directory, and the session rounds of the task sessions whose `main` in the task record is the
+session's identity ([requirements](requirements.md#req.headless-sessions.pi-owner-wake)). A run whose
 [run progress file](../../glossary.json#concept.run-progress-file) is not finished and whose runner
 lives is still running; a run whose result has the error code `cancelled` and was written within
 30 seconds of the round's end was stopped by that end. It looks too at the session rounds of pi
@@ -167,6 +172,27 @@ remaining -> wake: yes
 wake -> round: "round n + 1"
 ```
 
+<a id="live-sessions"></a>
+
+**Live sessions.** A round's process ends with its turn, so the tool stands in for every wake. A
+**live session** instead keeps one main session's process running and feeds it prompts on standard
+input, so that what wakes it is its own program: Claude Code as `claude -p --input-format
+stream-json --output-format stream-json --verbose`, granted Bash and Read, which begins a turn of
+its own with a `task_notification` when one of its background commands ends, and pi as `pi --mode
+rpc --approve` with a session identity the tool chose, whose Concorde extension runs for the whole
+session, shows its status bar and `/concorde` listing as `extension_ui_request` records and wakes
+it with a custom message. Both get a short note appended to their system prompt: every prompt is a
+step of a test, to be done exactly and answered briefly. Every event the process prints is kept,
+with the time it arrived, as one line of `<name>.jsonl`, and its standard error as `<name>.err`,
+under the directory the caller names. From these the tool tells when a prompted turn ended (Claude
+Code's `result`, pi's `agent_settled` or pi's refusal of the prompt), when a turn began (Claude
+Code's `system` `init`, pi's `agent_start`), which notifications arrived, what pi's extension showed
+and what a tool call printed. A turn that began, or a notification that arrived, while the caller
+sent no prompt is a **wake**
+([requirements](requirements.md#req.headless-sessions.live-own-wake)). Closing standard input ends
+the session; what is left of it after 30 seconds is killed. The [owners
+case](../module.md#owners-case) of End-to-end testing runs several live sessions at once.
+
 **Reading the logs.** A resumed Claude Code round first replays the stopped background command as
 a turn of its own with no model turn; its `result` event is not the round's answer. The round's
 result is the last `result` event with a model turn. A pi round has no result event: its session is
@@ -218,13 +244,14 @@ that cancels a run in its very last seconds is woken for it too, which only cost
 
 The **session driver** is `scripts/e2e/sessions.py`: the command of a round, the environment, the
 wake loop, the log reading and `session.json`. The `session` commands of `scripts/e2e/e2e.py`
-call it.
+call it. `scripts/e2e/live.py` holds the live sessions.
 
 <a id="realization.headless-sessions.tests"></a>
 
 The **session driver tests**, `tests/concorde/e2e/test_sessions.py`, check the command, the log
 reading, which runs are unsettled and, with a stand-in for `claude -p`, a whole session that is
-woken once, verifying the [requirements](requirements.md) and [scenarios](scenarios.md).
+woken once, verifying the [requirements](requirements.md) and [scenarios](scenarios.md). The live
+sessions are tested with the owners case, in `tests/concorde/e2e/test_owners.py`.
 
 ### Around it
 
