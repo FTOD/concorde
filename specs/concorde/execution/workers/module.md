@@ -149,7 +149,9 @@ Operation's `default` and its `workers`, one entry per worker id; each entry may
 sets it wins — the worker's, then the Operation's default, then the default — with one exception: an
 entry that chooses a backend starts that program afresh, so the model and level come only from that
 entry or a more specific one, since a model named for one program means nothing to the other. A
-field no entry sets leaves the program's own default, and a backend no entry sets is pi. An
+field no entry sets leaves the program's own default — on pi the default the user's own pi
+settings choose, which the worker inherits ([the pi run mechanics](pi.md#run-directory)), or pi's
+built-in default when they choose none — and a backend no entry sets is pi. An
 Operation's step asks for the choice of one worker of its Operation by its id, in the worktree the
 run works on, and passes the model with `--model` and the level with `--effort` to Claude Code or
 `--thinking` to pi. The same file holds the `limits` of every worker launch and the `runtime`

@@ -201,6 +201,23 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - THEN it refuses before launch with `pi_runtime_missing`, naming the missing package and how to install it
 - AND it still writes the run record
 
+### scenario.workers.pi-user-default — A pi worker without a configured model starts on the user's pi default
+
+- GIVEN the user's pi settings choosing a default provider, model and thinking level beside packages and other settings
+- AND a [worker configuration](../../glossary.json#concept.worker-configuration) that names no model or level for a pi worker
+- WHEN the host prepares the worker's runtime directory
+- THEN its generated pi settings carry the user's default provider, model and thinking level with `defaultProjectTrust` `never`, and no other setting
+- AND the worker is launched without `--model` and `--thinking`
+- BUT a model or level the configuration names is passed with `--model` or `--thinking` and wins for its field
+- AND without a user settings file, or with an empty one, the generated settings hold only the trust setting
+
+### scenario.workers.pi-settings-invalid — Unusable pi settings are refused, never skipped
+
+- GIVEN the user's pi settings file holding text that is not JSON, a JSON value that is not an object, a default model that is not a string or a default thinking level that is not one of pi's levels
+- WHEN the host is asked to start a pi worker
+- THEN it refuses before launch with `pi_settings_invalid`, naming the file, what is wrong with it and how to repair it
+- AND it still writes the run record
+
 ### scenario.workers.pi-limit — A pi run over its turn limit stops
 
 - GIVEN a pi worker whose turns exceed `max_turns`
