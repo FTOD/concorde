@@ -258,6 +258,16 @@ Situations the [main-session guidance](module.md) prepares the
 - AND to set the JSON backend to `claude` when asked, with program installation required at launch rather than at configuration time
 - BUT to change worker models only when the developer asks
 
+### scenario.main-session.worker-configuration-required — The guidance runs workers only on the configured models
+
+- GIVEN the rendered main-session guidance
+- WHEN a main agent is about to run an Operation in a project
+- THEN it is told that every worker runs only on what the tracked `.concorde/workers.json` enables and chooses, never on anyone's own pi or Claude Code settings, and that only credentials and provider definitions come from those
+- AND that no worker runs without the file, which the installer does not write, so when the project has none it asks the developer for the enabled models and the default, writes the file and commits it alone on the primary branch before any Operation runs
+- AND that the file's required `enabled_models` lists every model an entry may name, each with an optional level of its own, that a model outside it is refused with `model_not_enabled` and a worker without a model with `model_unresolved`
+- AND which level a worker takes: its model's entry's or a more specific one's, otherwise the model's own, otherwise a less specific entry's, otherwise its program's built-in default
+- BUT a model the developer adds for a worker goes into `enabled_models` too
+
 ### scenario.main-session.no-task-operations — The guidance runs questions and reviews without a task
 
 - GIVEN the rendered main-session guidance

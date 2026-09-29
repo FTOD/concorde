@@ -376,24 +376,47 @@ run the store check, and a passing store check does not prove the closure is jus
 
 ## Worker models
 
-Workers run on pi, whatever program you are, unless the worktree's `.concorde/workers.json`
-puts some of them on Claude Code. The file is tracked by Git like the project's code. It is keyed
-by **worker id**, the name each Operation gives the workers it launches: `worker` for an Operation
-with one worker, `reviewer` and `checker` for `spec_review`, `reviewer1` to `reviewer5` and `chair`
-for `spec_panel`. It holds `schema_version: 1`, a `default`, and per Operation a `default` and one
-entry per worker id under `operations.<operation>.default` and
-`operations.<operation>.workers.<worker-id>`; each entry may set a `backend` (`pi` or `claude`), a
-`model` and a `reasoning` level, and the most specific entry that sets a field wins. Set
-`backend: "claude"` to choose Claude Code; an entry that chooses a backend starts that program
-afresh, so models named for the other program are not inherited. Remove a field to inherit it
-rather than writing null. The file also holds the `limits` of every worker launch
+Every worker runs on what the worktree's `.concorde/workers.json` chooses, and only on that:
+Concorde never takes a worker's model or reasoning level from your or the developer's own pi or
+Claude Code settings; only credentials and pi's provider definitions come from there. The file is
+tracked by Git like the project's code, and no worker runs without it: a run whose worktree has
+none fails with `config_missing`. The installer does not write it, since the models are the
+developer's choice: when the project has none, ask the developer which models workers may use and
+which is the default, then write the file and commit it alone on the primary branch before any
+Operation runs.
+
+The file holds `schema_version: 1` and the required `enabled_models`, every model a worker may
+run on, keyed by its exact id as its program takes it (such as `local-openai/gpt-6` on pi or
+`opus` on Claude Code), each `{}` or with its own `reasoning` level. Every model an entry names
+must be enabled, or every worker is refused with `model_not_enabled`. The file holds a `default`
+and, per Operation, a `default` and one entry per **worker id** under
+`operations.<operation>.default` and `operations.<operation>.workers.<worker-id>`: the name each
+Operation gives the workers it launches, `worker` for an Operation with one worker, `reviewer` and
+`checker` for `spec_review`, `reviewer1` to `reviewer5` and `chair` for `spec_panel`. Each entry
+may set a `backend` (`pi` or `claude`), a `model` and a `reasoning` level, and the most specific
+entry that sets a field wins. Workers run on pi, whatever program you are, unless an entry sets
+`backend: "claude"`; an entry that chooses a backend starts that program afresh, so models named
+for the other program are not inherited. A worker whose entries name no model is refused with
+`model_unresolved`, so give the `default` a model. A worker takes the level set by the entry that
+chose its model or a more specific one, otherwise its model's own level in `enabled_models`,
+otherwise one a less specific entry sets, otherwise its program's built-in default. Remove a field
+to inherit it rather than writing null. The file also holds the `limits` of every worker launch
 (`timeout_seconds`, `max_turns`, `max_budget_usd`, `rounds`) and the `runtime` paths workers may
-read besides their grant (by default `.venv` and `node_modules`). Without a file, every worker runs
-on pi with pi's default model and the default limits.
+read besides their grant (by default `.venv` and `node_modules`):
+
+```json
+{
+  "schema_version": 1,
+  "enabled_models": {"local-openai/gpt-6": {"reasoning": "medium"}, "opus": {}},
+  "default": {"model": "local-openai/gpt-6"},
+  "operations": {"spec_panel": {"workers": {"chair": {"backend": "claude", "model": "opus"}}}}
+}
+```
 
 A task carries the file of its base commit, so a later change on the primary branch never reaches
 a task already open. Change worker models only when the developer asks, by editing the JSON
-directly and preserving unrelated entries; there is no editor. For future tasks, edit the primary
+directly and preserving unrelated entries; there is no editor. A model the developer adds for a
+worker goes into `enabled_models` too. For future tasks, edit the primary
 worktree's `.concorde/workers.json` and commit that file alone on the primary branch: a change of
 nothing but this file is the one change you commit directly in the primary worktree, never while a
 `concorde task merge` is unfinished. A task may change its own models while it works, as any

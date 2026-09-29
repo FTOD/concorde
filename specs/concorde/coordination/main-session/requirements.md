@@ -270,6 +270,13 @@ only its brief, as the [Harness](../../harness/module.md) describes.
 
 The guidance SHALL tell the main agent to change worker models only when the developer asks.
 
+### req.main-session.worker-configuration-first — The worker configuration comes before any worker
+
+The guidance SHALL tell the main agent that no worker runs without the tracked
+[worker configuration](../../glossary.json#concept.worker-configuration), and, when the project has
+none, to ask the developer for its enabled models and default model and commit the file alone on the
+primary branch before any Operation runs.
+
 ### req.main-session.model-change-method — Model changes edit the tracked configuration
 
 The guidance SHALL tell the main agent to change worker models by editing the tracked
