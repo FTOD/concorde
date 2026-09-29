@@ -103,9 +103,9 @@ worker -> audit: the round ended
 audit -> finished: timeout, limit, process failure, violation, invalid result, blocked or failed
 audit -> checks: ok, clean, checks given
 audit -> worker: no checks given, validation reports a repair, rounds left
-audit -> finished: no checks given, nothing to repair or no rounds left
+audit -> finished: "no checks given, and nothing to repair or no rounds left for the repair: status ok"
 checks -> worker: a check fails or validation reports a repair, rounds left
-checks -> finished: "checks pass, nothing to repair, or no rounds left for a repair: status ok"
+checks -> finished: "every check passes, and nothing to repair or no rounds left for the validation's repair: status ok"
 checks -> finished: "a check still fails with no rounds left, or checks unavailable: status failed"
 ```
 
@@ -278,7 +278,11 @@ The host SHALL generate a run's settings, write hook, tool set and brief from on
 
 ### req.workers.malformed-grant — Nothing is generated from a malformed grant
 
-The host SHALL refuse to launch a worker whose grant has an entry that is not an object with a non-empty path relative to the task worktree and a level of `rw`, `ro` or `names`, before it generates any settings, write hook or [permission extension](../../glossary.json#concept.permission-extension), and name that entry and what is wrong with it.
+The host SHALL refuse to launch a worker whose grant has an entry that is not an object with a non-empty path relative to the task worktree and a level of `rw`, `ro` or `names`, before it generates any settings, write hook or [permission extension](../../glossary.json#concept.permission-extension).
+
+### req.workers.malformed-grant-named — A malformed grant's refusal names the entry
+
+The refusal of a malformed grant SHALL name the first malformed entry and what is wrong with it.
 
 ### req.workers.unchanged-across-rounds — The run's configuration never changes between rounds
 
@@ -306,15 +310,31 @@ The host SHALL start every worker round with only the environment variables list
 
 ### req.workers.configured-model — A worker's model comes from its worker configuration alone
 
-The configuration reader SHALL resolve every worker's model and reasoning level from the worktree's [worker configuration](../../glossary.json#concept.worker-configuration) alone, never from the developer's own agent settings, refusing before launch a worker whose configuration is missing, names no model for it or names a model outside `enabled_models`.
+The configuration reader SHALL resolve every worker's model and reasoning level from the worktree's [worker configuration](../../glossary.json#concept.worker-configuration) alone, never from the developer's own agent settings.
+
+### req.workers.model-unsettled-refused — A worker without a settled model is refused
+
+The configuration reader SHALL refuse, before launch, a worker whose worktree has no worker configuration, whose configuration names no model for it or whose configuration names a model outside `enabled_models`.
 
 ### req.workers.model-map — A worker's local model id comes from the model map alone
 
-The configuration reader SHALL pass a worker's program the local id that the [model map](../../glossary.json#concept.model-map) gives the worker's project model name on that program, never the project model name itself, refusing before launch, naming the map and the entry to add, a worker whose map is missing or malformed or gives its model no id for its backend.
+The configuration reader SHALL pass a worker's program the local id that the [model map](../../glossary.json#concept.model-map) gives the worker's project model name on that program, never the project model name itself.
+
+### req.workers.model-map-refused — A worker the model map cannot place is refused
+
+The configuration reader SHALL refuse, before launch, a worker whose model map is missing or malformed or gives its model no id for its backend.
+
+### req.workers.model-map-named — A refusal of the model map names the map
+
+Every refusal the model map causes SHALL name the map's file.
+
+### req.workers.model-map-entry — An unmapped model's refusal names the entry to add
+
+The refusal of a worker whose model the map gives no id for its backend SHALL name the exact entry to add to the map.
 
 ### req.workers.proxy-passed — A worker's model calls use the host's proxy
 
-On both backends the host SHALL pass on to every worker round the proxy variables that [Proxy](#proxy) derives from its own environment, removing loopback from the no-proxy lists exactly when every passed proxy names a loopback host and passing no proxy or no-proxy variable when its environment sets no proxy.
+On both backends the host SHALL pass on to every worker round exactly the proxy variables that [Proxy](#proxy) derives from its own environment.
 
 ### req.workers.no-git — Workers never see Git
 
@@ -334,7 +354,11 @@ A run whose audit finds a violation SHALL end `failed` without another round.
 
 ### req.workers.rounds-for-checks-only — Rounds only repair failing checks and validation
 
-The host SHALL resume a worker only when it ended `ok`, its audit was clean, and either a configured check failed or, with every check passing, the caller's validation reported something to repair, and at most the configured number of times.
+The host SHALL resume a worker only when it ended `ok`, its audit was clean, and either a configured check failed or, with every check passing, the caller's validation reported something to repair.
+
+### req.workers.rounds-limited — A run has at most its configured resume rounds
+
+The host SHALL start at most the configured number of resume rounds in one run.
 
 ### req.workers.latest-session — Resume from the newest session
 
@@ -368,9 +392,13 @@ The host SHALL keep a run's progress file current from preparation until the run
 
 The host SHALL write a run record for every run it was asked to start, before its launch and again when it ends, including one refused before launch.
 
+### req.workers.transcript-kept — The transcript is kept before the runtime directory goes
+
+The host SHALL move the latest session's transcript into the run directory before it removes the run's runtime directory.
+
 ### req.workers.runtime-removed — Nothing but the trace outlives a worker
 
-The host SHALL remove a worker run's runtime directory, with its credential copies, when the run ends, however it ends, after moving the session's transcript into the run directory.
+The host SHALL remove a worker run's runtime directory, with its credential copies, when the run ends, however it ends.
 
 ### req.workers.stderr-per-round — Every round keeps its standard error
 

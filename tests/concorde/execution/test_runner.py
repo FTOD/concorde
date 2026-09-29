@@ -566,7 +566,11 @@ class RunnerTests(unittest.TestCase):
         )
         self.assertIn("a run of t1, not of no workspace", envelope["error"]["detail"])
 
-    @verifies("scenario.operations.worker-model-unavailable")
+    @verifies(
+        "scenario.operations.worker-model-unavailable",
+        "scenario.operations.worker-backend-missing",
+        "scenario.operations.worker-model-unmapped",
+    )
     def test_a_worker_whose_backend_or_model_cannot_be_settled_fails_before_launch(
         self,
     ):

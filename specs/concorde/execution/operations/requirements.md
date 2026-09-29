@@ -21,7 +21,12 @@ run works on, never from the primary worktree's, and the grant of an
 
 ### req.operations.workers-through-workers — Workers are launched only through Workers
 
-Every Operation SHALL launch every worker through Workers with a grant frozen before the launch.
+Every Operation SHALL launch every worker through Workers.
+
+### req.operations.grant-frozen — A worker's grant is frozen before its launch
+
+Every worker-backed step SHALL freeze the grant of its worker before it asks Workers to launch the
+worker.
 
 ### req.operations.status-mapping — Worker failures are never ok
 
@@ -30,10 +35,14 @@ A run in which the grant could not be computed, a worker could not be launched o
 [configured check](../../glossary.json#concept.configured-check) still failed after the last
 [resume round](../../glossary.json#concept.resume-round) SHALL end with status `failed`.
 
-### req.operations.model-work-only — Every Operation launches a worker
+### req.operations.model-work-only — Every Operation has model work
 
-Every Operation in the catalog SHALL launch at least one AI worker on a run that reaches its worker
-step.
+Every Operation in the catalog SHALL ask Workers to launch at least one AI worker on a run whose
+worker step settles the worker's grant, backend and model.
+
+A run refused before that, such as one whose [worker
+configuration](../../glossary.json#concept.worker-configuration) cannot be read, launches no
+worker, as [the standard worker sequence](workers.md#standard-worker-sequence) shows.
 
 A job that needs no model is an [execution command](../../glossary.json#concept.execution-command)
 of its own [Module](../../glossary.json#concept.module) instead.

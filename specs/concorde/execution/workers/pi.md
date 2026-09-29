@@ -118,9 +118,17 @@ Every command the pi `bash`, `grep`, `find` or `ls` tool runs SHALL run inside t
 
 The host SHALL start every pi round with extension discovery, context files, skills and prompt templates disabled, the permission extension as the only extension, and its own `PI_CODING_AGENT_DIR`.
 
+### req.workers.pi-settings-generated — A pi worker's settings are Concorde's own
+
+The host SHALL give every pi worker a generated `settings.json` of its own that holds only `defaultProjectTrust` `never`.
+
 ### req.workers.pi-settings-independent — A pi worker takes nothing from the user's pi settings
 
-The host SHALL give every pi worker a `settings.json` of its own that holds only `defaultProjectTrust` `never`, without reading the user's pi `settings.json`, and copy from the user's pi configuration directory only `auth.json` and `models.json`.
+The host SHALL NOT read the user's pi `settings.json`.
+
+### req.workers.pi-config-copies — Only the pi files that say how to reach a provider are copied
+
+The host SHALL copy from the user's pi configuration directory only `auth.json` and `models.json`.
 
 ### req.workers.pi-limits — pi runs stop at their limits
 

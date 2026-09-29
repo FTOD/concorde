@@ -21,7 +21,7 @@ an [Operation](../../glossary.json#concept.operation) runs its workers is in
 
 ### scenario.operations.worker-model — A worker runs with the worktree's model for its id
 
-- GIVEN a task worktree whose [worker configuration](../../glossary.json#concept.worker-configuration) chooses Claude Code, a default model and a level, and a model for `implement`'s worker `worker`
+- GIVEN a task worktree whose [worker configuration](../../glossary.json#concept.worker-configuration) chooses Claude Code, a default model and a level, and a model for `implement`'s worker `worker` that has no level of its own in `enabled_models`, while no entry more specific than the default sets a level
 - WHEN the task level runs `concorde run implement --goal "<goal>"` in the task worktree
 - THEN the run launches `claude -p` with the worker's model and the default's level as `--effort`
 - AND the [run record](../../glossary.json#concept.run-record) and the result's `worker-model` host evidence name the backend, the [worker id](../../glossary.json#concept.worker-id), the project model name with the local id and the [model map](../../glossary.json#concept.model-map) it came from, and the level
@@ -34,14 +34,26 @@ an [Operation](../../glossary.json#concept.operation) runs its workers is in
 - THEN the run launches `implement`'s worker with `pi -p` and the local id the model map gives that model on pi, under the same grant a Claude Code worker would get, and the run record and `worker-model` evidence name `pi` as Concorde's default [worker backend](../../glossary.json#concept.worker-backend)
 - AND it launches the other Operation's worker with `claude -p`, naming the entry of its worker id that chose it
 
-### scenario.operations.worker-model-unavailable — A run whose worker backend or model cannot be settled fails before launch
+### scenario.operations.worker-model-unavailable — A run whose worker configuration cannot be read fails before launch
 
-- GIVEN a task whose worktree's worker configuration either is not valid JSON or chooses nothing for `implement`'s worker on a machine without pi
+- GIVEN a task whose worktree's worker configuration is not valid JSON
 - WHEN the task level runs `concorde run implement --goal "<goal>"` in the task worktree and the run reaches the worker step
 - THEN no worker starts and the result is `failed` with `worker_model_unavailable`
-- AND when the file is not valid JSON, its cause is the `component` link of Workers' model configuration with `config_invalid`, naming the file
-- AND when pi is missing, its cause is that link with `backend_missing`, saying that the worker runs on pi as Concorde's default worker backend, naming the command looked for and how to choose Claude Code for it
-- AND when pi is installed but the [model map](../../glossary.json#concept.model-map) gives the worker's model no pi id, its cause is that link with `model_unmapped`, naming the map, and the options say to add the id to the map
+- AND its cause is the `component` link of Workers' model configuration with `config_invalid`, naming the file
+
+### scenario.operations.worker-backend-missing — A run whose worker backend is not installed fails before launch
+
+- GIVEN a task whose worktree's valid worker configuration gives `implement`'s worker a model and chooses no backend for it, on a machine without pi
+- WHEN the task level runs `concorde run implement --goal "<goal>"` in the task worktree and the run reaches the worker step
+- THEN no worker starts and the result is `failed` with `worker_model_unavailable`
+- AND its cause is the `component` link of Workers' model configuration with `backend_missing`, saying that the worker runs on pi as Concorde's default worker backend, naming the command looked for and how to choose Claude Code for it
+
+### scenario.operations.worker-model-unmapped — A run whose worker model the model map cannot place fails before launch
+
+- GIVEN a task whose worktree's valid worker configuration gives `implement`'s worker a model and chooses no backend for it, on a machine with pi installed whose [model map](../../glossary.json#concept.model-map) gives that model no pi id
+- WHEN the task level runs `concorde run implement --goal "<goal>"` in the task worktree and the run reaches the worker step
+- THEN no worker starts and the result is `failed` with `worker_model_unavailable`
+- AND its cause is the `component` link of Workers' model configuration with `model_unmapped`, naming the map, and the options say to add the id to the map
 
 ### scenario.operations.worker-blocked — A blocked worker escalates
 
