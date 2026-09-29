@@ -2,7 +2,8 @@
 
 The host checks the prerequisites (``pi``, ``rg``, ``fd``, the sandbox-runtime package and, on
 Linux, ``bwrap`` and ``socat``), gives the worker its own ``PI_CODING_AGENT_DIR`` with copies of
-the user's pi credentials and model definitions, and generates the permission extension from the
+the user's pi credentials and model definitions and a settings file that keeps only the user's
+default model and thinking level, and generates the permission extension from the
 frozen grant: ``pi_permission.ts`` with the run's policy embedded, beside ``pi_policy.ts`` with the
 pure path decisions. It launches ``pi -p --mode json`` with every other resource disabled and
 reads the event stream as it arrives: tool executions update the progress file, the last
@@ -20,6 +21,7 @@ from pathlib import Path
 
 from ..errors import link
 from .claude_backend import BackendRefusal, RoundOutcome
+from .models import LEVELS
 from .settings import SettingsError, grant_view, sandbox_filesystem, tool_set
 
 ACTOR = "pi process (pi -p)"
@@ -32,6 +34,8 @@ RUNTIME_PACKAGE = "node_modules/@anthropic-ai/sandbox-runtime"
 RUNTIME_VERSION = "0.0.77"
 RESULT_TOOL = "concorde_result"
 LIMIT_ENTRY = "concorde-limit"
+# The settings of the user's pi that the worker inherits: its startup model and level, nothing else.
+DEFAULT_FIELDS = ("defaultProvider", "defaultModel", "defaultThinkingLevel")
 
 COMMON_TOOLS = "read,grep,find,ls"
 TOOL_SETS = {
@@ -47,6 +51,62 @@ TOOL_SETS = {
 
 def _tail(data: bytes, size: int = 4000) -> str:
     return data[-size:].decode("utf-8", "replace").strip()
+
+
+def user_defaults(path: Path) -> dict[str, str]:
+    """The model and level the user's pi settings choose at startup, for the worker to inherit.
+
+    A missing or unreadable file chooses nothing, which leaves pi's built-in default; a file pi
+    would refuse, or a default that is not a string pi accepts, is refused, never skipped.
+    """
+    try:
+        text = path.read_bytes().decode("utf-8-sig")
+    except OSError:
+        return {}
+    except UnicodeDecodeError as error:
+        raise _settings_invalid(path, f"it is not UTF-8 text ({error})") from error
+    if not text:
+        # pi reads an empty settings file as no settings.
+        return {}
+    try:
+        value = json.loads(text)
+    except json.JSONDecodeError as error:
+        raise _settings_invalid(
+            path,
+            f"it is not JSON: {error.msg} at line {error.lineno}, column {error.colno}",
+        ) from error
+    if not isinstance(value, dict):
+        raise _settings_invalid(
+            path, f"it holds a JSON {type(value).__name__}, not an object"
+        )
+    defaults = {}
+    for field in DEFAULT_FIELDS:
+        if field not in value:
+            continue
+        chosen = value[field]
+        if not isinstance(chosen, str) or not chosen.strip():
+            raise _settings_invalid(
+                path, f"`{field}` is {json.dumps(chosen)}, not a non-empty string"
+            )
+        if field == "defaultThinkingLevel" and chosen not in LEVELS["pi"]:
+            raise _settings_invalid(
+                path,
+                f"`defaultThinkingLevel` is {json.dumps(chosen)}, not one of pi's levels "
+                f"{', '.join(LEVELS['pi'])}",
+            )
+        defaults[field] = chosen
+    return defaults
+
+
+def _settings_invalid(path: Path, problem: str) -> BackendRefusal:
+    return BackendRefusal(
+        "pi_settings_invalid",
+        f"the user's pi settings {path} cannot give the worker its default model: {problem}; "
+        f"repair the file, or remove the setting to run workers on pi's built-in default",
+        "environment",
+        "the pi settings are the user's own; Workers never repairs them or runs a worker past "
+        "a default it cannot read",
+    )
 
 
 def sandbox_runtime(request, worktree: Path) -> Path:
@@ -346,19 +406,26 @@ class PiBackend:
         return extension
 
     def _configure(self, request, paths) -> None:
-        """The worker's ``PI_CODING_AGENT_DIR``: credentials, model definitions, no packages."""
+        """The worker's ``PI_CODING_AGENT_DIR``: credentials, model definitions, the user's
+        default model and level, no packages."""
         source = request.pi_config
         if source is None:
             configured = os.environ.get("PI_CODING_AGENT_DIR")
-            source = Path(configured) if configured else Path.home() / ".pi/agent"
+            source = (
+                Path(configured).expanduser()
+                if configured
+                else Path.home() / ".pi/agent"
+            )
         for name in ("auth.json", "models.json"):
             original = Path(source) / name
             if original.is_file():
                 shutil.copy2(original, paths.config / name)
                 os.chmod(paths.config / name, 0o600)
-        (paths.config / "settings.json").write_text(
-            json.dumps({"defaultProjectTrust": "never"}) + "\n"
-        )
+        settings = {
+            **user_defaults(Path(source) / "settings.json"),
+            "defaultProjectTrust": "never",
+        }
+        (paths.config / "settings.json").write_text(json.dumps(settings) + "\n")
         (paths.config / "sessions").mkdir(exist_ok=True)
 
     def environment(self, request, paths) -> dict[str, str]:
@@ -431,4 +498,5 @@ __all__ = [
     "extension_source",
     "policy",
     "prerequisites",
+    "user_defaults",
 ]

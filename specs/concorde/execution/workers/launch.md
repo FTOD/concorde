@@ -228,7 +228,7 @@ by every code whose round had one, even when the round also timed out or failed 
 | `worker_timeout` | the round and the timeout | `exhausted` | none |
 | `worker_limit_reached` | the round and the limit Claude Code reported | `exhausted` | the Claude Code process's link |
 | `claude_failed` | the round and the error Claude Code reported, or that it printed no envelope (Claude Code backend) | `environment` | the Claude Code process's link |
-| `pi_runtime_missing`, `pi_failed` | see [the pi run mechanics](pi.md#errors) | `environment` | the pi process's link for `pi_failed` |
+| `pi_runtime_missing`, `pi_settings_invalid`, `pi_failed` | see [the pi run mechanics](pi.md#errors) | `environment` | the pi process's link for `pi_failed` |
 | `worker_result_invalid` | the schema violation, or the worker's final text when it gave no structured result | `capability` | none |
 | `audit_violation` | every violating path and the worker's own reported status | `permission` | the worker's link, when its result was valid |
 | `worker_blocked`, `worker_failed` | the worker's code and detail | `capability` | the worker's link |
