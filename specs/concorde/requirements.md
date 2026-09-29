@@ -94,8 +94,10 @@ home and temporary directories and leaves readable the system paths every progra
 
 A worker SHALL NOT be able to read or change Git metadata.
 
-Git belongs to the deterministic code around the workers: the run that launches a worker reads the
-worktree's changes to audit them against the grant, `delivery` commits, and the main agent merges.
+Git belongs to the levels around the workers: the run that launches a worker reads the worktree's
+changes to audit them against the grant, the task level commits verified steps on the task branch,
+`delivery` makes the [delivery commit](glossary.json#concept.delivery-commit), and the main agent
+merges.
 
 ## Results and errors
 
@@ -140,7 +142,12 @@ back to the same worker automatically.
 
 ### req.concorde.delivery-separate — Delivery is its own execution command
 
-Changes of a task SHALL reach the task branch only through the `delivery` execution command, which decides their readiness itself and commits them only when the workspace is ready.
+A task SHALL count as delivered only through a [delivery commit](glossary.json#concept.delivery-commit), which only the `delivery` execution command makes, after deciding in the same run that the whole workspace is ready.
+
+The task level may commit verified steps on the task branch as it works; those commits deliver
+nothing. `delivery` validates everything the branch holds since its base commit together with what
+is not committed yet, and commits the delivery commit on top only when that whole workspace is
+ready.
 
 ### req.concorde.merge-by-main-agent — The main agent merges delivered tasks
 
