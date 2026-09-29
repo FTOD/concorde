@@ -69,7 +69,7 @@
     "includes": [
       {
         "kind": "document",
-        "target": "document.concorde.contracts",
+        "target": "document.tracing.contracts",
         "reason": "the Framework's error contract, whose workflow level this Module writes"
       }
     ],

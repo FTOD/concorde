@@ -236,7 +236,7 @@ A failed write never changes the run.
 ## Errors
 
 When a run does not end `ok`, the result's `error` is the run's own link of the
-[error chain](../contracts.md#contract.concorde.error): the level `operation` for an Operation and
+[error chain](../tracing/contracts.md#contract.tracing.error): the level `operation` for an Operation and
 `command` for an execution command, the actor `Operation <name> <run-id> (workspace <workspace>)`,
 `Command <name> <run-id> (workspace <workspace>)` or, unbound, `… (unbound, <worktree> at <commit>)`,
 without ` at <commit>` when the run was refused before its checkout existed, a code, a

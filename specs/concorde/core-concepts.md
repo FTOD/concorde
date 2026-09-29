@@ -118,19 +118,8 @@ explained by the [Harness](harness/module.md).
 about specific inputs. When any of those inputs change, the evidence no longer applies; it is never
 a permanent property of a Module, and a Spec never stores it.
 
-<a id="concept.error-chain"></a>
-
-An **[error chain](glossary.json#concept.error-chain)** preserves both the original failure and why
-each receiving level could not handle it. Read it from the top: first the account of the actor
-reporting to you, then the errors it received as causes. Each level adds its own detailed link and
-keeps those causes unchanged, so you can follow the account back to the failure without losing
-what earlier levels observed or tried.
-
-A link records the failure, the evidence and attempts, the specific reason that level cannot
-handle it, and any options and recommendation it offers. Reasons distinguish, for example, missing
-permission, a decision reserved to a higher level and used-up rounds. Worker links are claims;
-the links of runs, commands and components record observations. The
-[error contract](contracts.md#contract.concorde.error) gives the exact shape and fixed reasons.
-The root's [error flow](module.md#errors) explains how the chain moves between levels, and
-[Main session](coordination/main-session/module.md) explains how the main agent handles and
-escalates it.
+An [error chain](glossary.json#concept.error-chain) preserves both the original failure and why
+each receiving level could not handle it, and every level leaves a
+[trace node](glossary.json#concept.trace-node) of what it did; [Tracing](tracing/module.md) explains
+both, and [Main session](coordination/main-session/module.md) explains how the main agent handles
+and escalates a chain.

@@ -45,7 +45,7 @@
     "includes": [
       {
         "kind": "document",
-        "target": "document.concorde.contracts",
+        "target": "document.tracing.contracts",
         "reason": "the Framework's error contract, which every run's errors follow"
       }
     ],

@@ -219,7 +219,7 @@ session declares `session -> issues` above; its
 [guidance](../coordination/main-session/module.md) says when to record, solve and close Issues.
 
 Of the Modules, Issues relies only on Spec core. It also follows the Framework's
-[error contract](../contracts.md#contract.concorde.error): the command checks a report's
+[error contract](../tracing/contracts.md#contract.tracing.error): the command checks a report's
 `error_chain` against it and prints every refusal as one link of it. For provenance the command
 asks Git for the project's `HEAD` and records `null` when Git fails, so a project outside Git can
 still record Issues; nothing else of Issues runs Git.

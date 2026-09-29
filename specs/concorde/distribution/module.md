@@ -241,7 +241,7 @@ interactive start asks for and a headless `pi -p` or RPC run grants with `--appr
 
 Every refusal of the installer and of `concorde update` prints `{"error": <link>}` and exits with
 status 1: one link of the Framework's [error chain](../glossary.json#concept.error-chain), in the
-shape of its [error contract](../contracts.md#contract.concorde.error),
+shape of its [error contract](../tracing/contracts.md#contract.tracing.error),
 whose actor is `Installer (install-concorde)` or `concorde update`, whose code is the refusal's,
 whose detail names what is wrong and where, and whose reason is `input` when only a different
 project, Concorde checkout or argument corrects it and `environment` otherwise

@@ -156,7 +156,7 @@ drive a repair loop inside one Operation.
 
 The levels are levels of work, not of Modules. [Coordination](coordination/module.md) groups the
 sessions and the task workspace; [Execution](execution/module.md) groups everything that works in a
-bound workspace; and two Modules serve both halves without being a level, described under
+bound workspace; and three Modules serve both halves without being a level, described under
 [Design](#design).
 
 ### Errors
@@ -168,7 +168,14 @@ task session escalates to the main agent with its link on top, and the main agen
 above that when the developer must decide. The main agent reads the chain, decides what it can,
 logs the decision and escalates only a major-impact one. Every `concorde` command refuses in the
 same shape, except Spec tooling's deterministic commands, which use Spec tooling's own error
-record. [Core concepts](core-concepts.md#results-and-problems) explains how to read a chain.
+record. [Tracing](tracing/contracts.md#reading-an-error-chain) explains how to read a chain.
+
+Every level also leaves a [trace node](glossary.json#concept.trace-node) of what it did, nested
+below the level that started it, so a task's whole [trace](glossary.json#concept.trace), from its
+sessions down to each worker round with its cost, is read with `concorde trace show <task>`. While
+the task is current, its record, decision log and traces are one folder, `.concorde/tasks/<task>/`;
+closing it moves that folder to the [history](glossary.json#concept.history).
+[Tracing](tracing/module.md) defines that structure; each level still records its own content.
 
 A step needing an unstated promise stops with a [Spec gap](glossary.json#concept.spec-gap) instead of
 inferring it from code; outside a `specify` run and the
@@ -281,9 +288,9 @@ m -> t: merge the task branch (delivered: read from the delivery commit)
 
 ### Modules that serve both halves
 
-Two Modules serve both halves without being a level: the Harness, drawn below, and Spec tooling,
-which is not drawn because nearly every Module relies on it. Every agent gets its harness from one
-Harness:
+Three Modules serve both halves without being a level: the Harness, drawn below, Tracing, which
+gives every level the place and shape of its trace, and Spec tooling, which is not drawn because
+nearly every Module relies on it. Every agent gets its harness from one Harness:
 
 ```d2 illustrative
 coordination: Coordination
@@ -334,27 +341,16 @@ e2e -> workflows
 
 Errors travel as a chain because every level handles some errors and must pass the others up:
 Workers resumes a worker for a failing check but not for a Spec gap, a run reruns nothing, and the
-main agent decides ordinary questions but not the project's direction. Summarizing an error loses
-what the next level needs to decide; re-describing it at every level lets the account drift. Keeping
-the received causes unchanged preserves that account while each level explains its own inability
-to proceed. The shared [error contract](contracts.md#contract.concorde.error) makes this checkable:
-the runner checks the chain against its schema, and the main agent extends it through a command,
-so the developer receives the whole path from the failing check to the question they are asked.
-
-<a id="realization.concorde.error-chain"></a>
-
-**Error chain code** builds and renders the links of an
-[error chain](glossary.json#concept.error-chain) in the shape of the Framework's
-[error contract](contracts.md#contract.concorde.error): the schema, the reasons a level cannot
-handle an error, helpers turning an exception or finding into a link, and the human rendering.
-Workers and Check execution report their failures with it, and so do the Execution runner, Tasks,
-Task sessions and the Issues command, so every level's link has the same shape whoever wrote it. The
-root binds it because the contract is the root's and every Module promises it. Spec tooling keeps
-its own error types and does not use it.
+main agent decides ordinary questions but not the project's direction. Every level therefore keeps
+the causes it received unchanged and adds its own reason on top, in the shape of the
+[error contract](tracing/contracts.md#contract.tracing.error), so the developer receives the whole
+path from the failing check to the question they are asked. The chain is part of what
+[Tracing](tracing/module.md#the-error-chain) retains, and it stays in band: each result carries its
+chain whole. Spec tooling keeps its own error types and does not use it.
 
 ### The children
 
-The root is the composition of eight child Modules, listed here by the part they play.
+The root is the composition of nine child Modules, listed here by the part they play.
 
 <a id="contains-coordination"></a>
 
@@ -376,6 +372,15 @@ Workers and Check execution. It knows no task and records every run in its run s
 The **Harness** derives each agent's harness — what it may know, what it may touch and the
 environment it runs in — and applies it through Claude Code's or pi's own configuration, the same
 code for every level.
+
+<a id="contains-tracing"></a>
+
+**Tracing** decides which information about the work is combined and retained, and in what
+structure: the uniform [trace node](glossary.json#concept.trace-node) every level records, nested
+from a task down to each worker round, the folder of each task and its
+[history](glossary.json#concept.history), the locks kept apart from the records, retention, the
+`concorde trace` command that reads them, and the
+[error chain](glossary.json#concept.error-chain). Every level produces its own content through it.
 
 <a id="contains-spec-tooling"></a>
 

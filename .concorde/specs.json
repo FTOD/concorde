@@ -10,8 +10,7 @@
         "specs/concorde/core-concepts.md",
         "specs/concorde/requirements.md",
         "specs/concorde/scenarios.md",
-        "specs/concorde/development.md",
-        "specs/concorde/contracts.md"
+        "specs/concorde/development.md"
       ],
       "contains": [
         {
@@ -29,6 +28,10 @@
         {
           "target": "module.harness",
           "meaning": "#contains-harness"
+        },
+        {
+          "target": "module.tracing",
+          "meaning": "#contains-tracing"
         },
         {
           "target": "module.issues",
@@ -186,7 +189,7 @@
       "includes": [
         {
           "kind": "document",
-          "target": "document.concorde.contracts",
+          "target": "document.tracing.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
         },
         {
@@ -325,7 +328,7 @@
       "includes": [
         {
           "kind": "document",
-          "target": "document.concorde.contracts",
+          "target": "document.tracing.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
         },
         {
@@ -375,7 +378,7 @@
       "includes": [
         {
           "kind": "document",
-          "target": "document.concorde.contracts",
+          "target": "document.tracing.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
         }
       ],
@@ -439,7 +442,7 @@
       "includes": [
         {
           "kind": "document",
-          "target": "document.concorde.contracts",
+          "target": "document.tracing.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
         }
       ],
@@ -507,7 +510,7 @@
       "includes": [
         {
           "kind": "document",
-          "target": "document.concorde.contracts",
+          "target": "document.tracing.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
         }
       ],
@@ -551,7 +554,7 @@
       "includes": [
         {
           "kind": "document",
-          "target": "document.concorde.contracts",
+          "target": "document.tracing.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
         }
       ],
@@ -594,7 +597,7 @@
       "includes": [
         {
           "kind": "document",
-          "target": "document.concorde.contracts",
+          "target": "document.tracing.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
         }
       ],
@@ -641,7 +644,7 @@
       "includes": [
         {
           "kind": "document",
-          "target": "document.concorde.contracts",
+          "target": "document.tracing.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
         }
       ],
@@ -689,7 +692,7 @@
       "includes": [
         {
           "kind": "document",
-          "target": "document.concorde.contracts",
+          "target": "document.tracing.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
         }
       ],
@@ -743,7 +746,7 @@
       "includes": [
         {
           "kind": "document",
-          "target": "document.concorde.contracts",
+          "target": "document.tracing.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
         }
       ],
@@ -798,10 +801,33 @@
       "includes": [
         {
           "kind": "document",
-          "target": "document.concorde.contracts",
+          "target": "document.tracing.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
         }
       ],
+      "participates": []
+    },
+    {
+      "id": "module.tracing",
+      "title": "Tracing",
+      "entry": "specs/concorde/tracing/module.md",
+      "owns": [
+        "specs/concorde/tracing/module.md",
+        "specs/concorde/tracing/contracts.md",
+        "specs/concorde/tracing/requirements.md",
+        "specs/concorde/tracing/scenarios.md"
+      ],
+      "contains": [],
+      "uses": [
+        {
+          "target": "module.spec",
+          "meaning": "#uses-spec",
+          "relies_on": [
+            "concept.typed-value"
+          ]
+        }
+      ],
+      "includes": [],
       "participates": []
     },
     {
@@ -829,7 +855,7 @@
       "includes": [
         {
           "kind": "document",
-          "target": "document.concorde.contracts",
+          "target": "document.tracing.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
         },
         {
@@ -921,7 +947,7 @@
       "includes": [
         {
           "kind": "document",
-          "target": "document.concorde.contracts",
+          "target": "document.tracing.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
         },
         {
@@ -1075,7 +1101,7 @@
       "includes": [
         {
           "kind": "document",
-          "target": "document.concorde.contracts",
+          "target": "document.tracing.contracts",
           "reason": "the Framework's error contract, whose workflow level this Module writes"
         }
       ],
@@ -1125,7 +1151,7 @@
       "includes": [
         {
           "kind": "document",
-          "target": "document.concorde.contracts",
+          "target": "document.tracing.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
         }
       ],
@@ -1477,7 +1503,7 @@
       "includes": [
         {
           "kind": "document",
-          "target": "document.concorde.contracts",
+          "target": "document.tracing.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
         },
         {
@@ -1530,7 +1556,7 @@
       "includes": [
         {
           "kind": "document",
-          "target": "document.concorde.contracts",
+          "target": "document.tracing.contracts",
           "reason": "the Framework's error contract, which every run's errors follow"
         }
       ],
@@ -1618,7 +1644,7 @@
       "includes": [
         {
           "kind": "document",
-          "target": "document.concorde.contracts",
+          "target": "document.tracing.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
         }
       ],

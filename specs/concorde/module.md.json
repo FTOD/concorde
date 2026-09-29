@@ -12,8 +12,7 @@
       "specs/concorde/core-concepts.md",
       "specs/concorde/requirements.md",
       "specs/concorde/scenarios.md",
-      "specs/concorde/development.md",
-      "specs/concorde/contracts.md"
+      "specs/concorde/development.md"
     ],
     "contains": [
       {
@@ -31,6 +30,10 @@
       {
         "target": "module.harness",
         "meaning": "#contains-harness"
+      },
+      {
+        "target": "module.tracing",
+        "meaning": "#contains-tracing"
       },
       {
         "target": "module.issues",
@@ -127,17 +130,6 @@
       "meaning": "#realization.concorde.acceptance-tests",
       "entries": [
         "tests/concorde/acceptance/"
-      ],
-      "pending": []
-    },
-    {
-      "id": "realization.concorde.error-chain",
-      "type": "realization",
-      "title": "Error chain code",
-      "meaning": "#realization.concorde.error-chain",
-      "entries": [
-        "src/concorde/errors.py",
-        "tests/concorde/test_errors.py"
       ],
       "pending": []
     }

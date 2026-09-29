@@ -8,7 +8,7 @@ offers its parent, and the errors of its children that it received and could not
 the child's error among the causes, so the last receiver reads, level by level, why nobody below
 could handle it. Several independent causes, such as every failing check, are siblings.
 
-The schema is ``contract.concorde.error`` of the Framework's contracts.
+The schema is ``contract.tracing.error`` of Tracing's contracts.
 """
 
 from __future__ import annotations
@@ -104,7 +104,7 @@ DEFS: dict = {
     "unhandled": UNHANDLED_SCHEMA,
 }
 
-# contract.concorde.error: one error with its causes, as a stand-alone schema.
+# contract.tracing.error: one error with its causes, as a stand-alone schema.
 ERROR_SCHEMA: dict = {"$ref": "#/$defs/error", "$defs": DEFS}
 
 # What a worker reports about its own error: a link without level, actor or causes, which the

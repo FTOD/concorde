@@ -4,7 +4,7 @@ The exact shapes of [Workflows](module.md): what one step prints, the step and r
 pi [step agent](../../glossary.json#concept.step-agent) passes on standard input, the
 [workflow result](../../glossary.json#concept.workflow-result), and the error codes of the
 workflow's own links. Error links follow the Framework's
-[error contract](../../contracts.md#contract.concorde.error), copied here as `$defs`.
+[error contract](../../tracing/contracts.md#contract.tracing.error), copied here as `$defs`.
 
 ## Step outcome
 

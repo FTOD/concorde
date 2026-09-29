@@ -101,13 +101,13 @@ A status, a code or a one-line summary alone is never the whole report. The pare
 Spec tooling's deterministic commands and library, such as `concorde spec-validation`, are the one
 exception: they depend on no other Module and report with Spec tooling's own, equally detailed error
 record, which a Module that cannot handle it translates into a link
-([Where links appear](contracts.md#where-links-appear)).
+([Where links appear](tracing/contracts.md#where-links-appear)).
 
 ### req.concorde.error-chain — An unhandled error keeps its chain
 
 An actor that cannot handle an error it received from a child SHALL pass the child's error on unchanged as a cause of its own link, which states the reason the actor cannot handle the error.
 
-The reasons are the fixed set of the [error contract](contracts.md#contract.concorde.error). The last receiver thereby reads one reason per level, from where the error started up to itself. Independent errors, such as several failing checks, are sibling causes.
+The reasons are the fixed set of the [error contract](tracing/contracts.md#contract.tracing.error). The last receiver thereby reads one reason per level, from where the error started up to itself. Independent errors, such as several failing checks, are sibling causes.
 
 ### req.concorde.structured-errors — The chain is structured data
 

@@ -229,7 +229,7 @@ writes. In the unified CLI, `python3 scripts/concorde.py issues` in a source che
 
 `report` reads the file as UTF-8 JSON and validates it as a [report](#contract.issues.report),
 including a given `error_chain` against the Framework's
-[error contract](../contracts.md#contract.concorde.error). Its `owner_target_id`, when not `null`,
+[error contract](../tracing/contracts.md#contract.tracing.error). Its `owner_target_id`, when not `null`,
 must be a registered Module, and each evidence path must exist in the project or, for a report with
 an `origin`, in the origin project, whose path the refusal then names. A report file may lie outside
 the project, such as a report another project wrote. When the owner is `null` the registry must have
@@ -248,7 +248,7 @@ violation with `usage`; a `--duplicate-of` naming the Issue being closed passes 
 refused by the store with `invalid_issue`.
 
 Every refusal prints `{"error": <link>}` and writes nothing. The link is a `component` link of
-the Framework's [error chain](../contracts.md#contract.concorde.error) with the actor
+the Framework's [error chain](../tracing/contracts.md#contract.tracing.error) with the actor
 `Issues (concorde issues)`: its code is the refusal code, its detail names the Issue, the report
 file and field, or the argument concerned and states what is wrong, and its reason is
 `environment` for `io_error` and `input` for every other code. The Issue store raises `IssueError`,

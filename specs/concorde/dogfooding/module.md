@@ -143,7 +143,7 @@ the main agent's link, without causes, is the whole chain and cites the run, whi
 `concorde task escalate` records when it names no run
 ([requirements](requirements.md#req.dogfooding.ok-run-defect)). Outside a task the main agent
 writes its link by hand in the shape of the Framework's
-[error contract](../contracts.md#contract.concorde.error), with the failure's own error, the
+[error contract](../tracing/contracts.md#contract.tracing.error), with the failure's own error, the
 refusal's or that of the run's result, as its only cause, and none for an `ok` run. The
 guidance lists every field the
 [Issue report contract](../issues/interface.md#contract.issues.report) requires, with an example,
@@ -243,7 +243,7 @@ main agent is told.
 [Issue report](../glossary.json#concept.issue-report) shape with its `origin` and
 `error_chain`. Dogfooding relies on the report command checking a report's evidence in its origin
 project and its error chain against the Framework's
-[error contract](../contracts.md#contract.concorde.error), so a defect report that
+[error contract](../tracing/contracts.md#contract.tracing.error), so a defect report that
 reaches the Concorde repository incomplete is refused with the field that is wrong.
 
 <a id="uses-tasks"></a>

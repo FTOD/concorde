@@ -197,7 +197,7 @@ is the validation's text.
 | `worker_result` | the last worker result, verbatim, or null |
 | `pending_created`, `pending_removed`, `deleted`, `deletions_refused` | paths the host pre-created, removed or refused to remove |
 | `status` | the host's final status: `ok`, `blocked` or `failed` |
-| `error` | null for `ok`; otherwise Workers' link of the [error chain](../../contracts.md#contract.concorde.error) |
+| `error` | null for `ok`; otherwise Workers' link of the [error chain](../../tracing/contracts.md#contract.tracing.error) |
 | `rounds[].claude` | per round, the subtype, error flag, turn count and cost the Claude Code envelope reported |
 
 ## Errors

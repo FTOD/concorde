@@ -192,9 +192,9 @@
     {
       "id": "concept.error-chain",
       "title": "Error chain",
-      "owner": "module.concorde",
+      "owner": "module.tracing",
       "definition": "The structured report of an error that travels up: one link per level that could not handle it, each with its detailed account and its reason for not handling it, and the errors it received from below nested as its causes.",
-      "explanation": "specs/concorde/core-concepts.md#concept.error-chain"
+      "explanation": "specs/concorde/tracing/module.md#concept.error-chain"
     },
     {
       "id": "concept.evidence",
@@ -251,6 +251,19 @@
       "owner": "module.headless-sessions",
       "definition": "A `claude -p` or `pi -p` main session in a test project, run by the tool in one or more rounds and kept in a session directory.",
       "explanation": "specs/concorde/e2e/sessions/module.md#concept.headless-session"
+    },
+    {
+      "id": "concept.history",
+      "title": "History",
+      "owner": "module.tracing",
+      "definition": "The folder `.concorde/history/` to which closing a task moves the task's whole folder, record, decision log and trace, where it is never changed and is only removed whole by retention.",
+      "explanation": "specs/concorde/tracing/module.md#concept.history",
+      "contrasts": [
+        {
+          "target": "concept.task-record",
+          "reason": "the task record is the current state the task commands act on; the history keeps a closed task as it was"
+        }
+      ]
     },
     {
       "id": "concept.impact-index",
@@ -689,6 +702,26 @@
       "owner": "module.e2e",
       "definition": "A codebase cloned at a pinned revision into the end-to-end root, from SWE-bench's repositories unless `--any` admits another, with Concorde installed, initialized and a task open.",
       "explanation": "specs/concorde/e2e/module.md#concept.test-project"
+    },
+    {
+      "id": "concept.trace",
+      "title": "Trace",
+      "owner": "module.tracing",
+      "definition": "The tree of [trace nodes](#concept.trace-node) below one task or one unbound run, nested as the work was: a task's sessions, merges and workspace, the workspace's workflow and runs, each run's checks and worker runs, each worker run's rounds.",
+      "explanation": "specs/concorde/tracing/module.md#concept.trace",
+      "relates": [
+        {
+          "verb": "is made of",
+          "target": "concept.trace-node"
+        }
+      ]
+    },
+    {
+      "id": "concept.trace-node",
+      "title": "Trace node",
+      "owner": "module.tracing",
+      "definition": "The folder one level of work leaves, holding its `trace.json` record in one uniform shape (identity, kind, times, status, own usage, error link, metadata, artifacts, references and its producer's content) with its files and the folders of the nodes below it.",
+      "explanation": "specs/concorde/tracing/module.md#concept.trace-node"
     },
     {
       "id": "concept.typed-value",
