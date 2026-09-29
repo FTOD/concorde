@@ -129,11 +129,18 @@ project where every check passes, it goes through these steps in order:
    project venv never becomes Concorde's interpreter
    ([requirements](requirements.md#req.distribution.own-python)).
 6. **It installs the guidance.** The main-session guidance becomes the project skill
-   `.claude/skills/concorde/SKILL.md` and a block between `<!-- concorde:start -->` and
-   `<!-- concorde:end -->` in the project's `CLAUDE.md`, replaced in place on a later install,
-   leaving the rest of the file untouched, and ending with an `@<path>` import of the project's
-   glossary once one is declared, which `concorde init --apply` also adds when it creates the
-   first glossary ([requirements](requirements.md#req.distribution.glossary-import)).
+   `.claude/skills/concorde/SKILL.md`, the build's rendered skill as it is, and a block between
+   `<!-- concorde:start -->` and `<!-- concorde:end -->` in the project's `CLAUDE.md`, replaced in
+   place on a later install, leaving the rest of the file untouched, and ending with an `@<path>`
+   import of the project's glossary once one is declared, which `concorde init --apply` also adds
+   when it creates the first glossary
+   ([requirements](requirements.md#req.distribution.glossary-import)). When the project has an
+   `AGENTS.md`, the same block, without the glossary import, which is Claude Code's syntax, goes
+   into it the same way; the installer never creates an `AGENTS.md`
+   ([requirements](requirements.md#req.distribution.agents-md-block)). pi reads only the first of
+   `AGENTS.override.md`, `AGENTS.md`, `AGENTS.MD`, `CLAUDE.md` and `CLAUDE.MD` it finds in a
+   directory, so a project's own `AGENTS.md` would hide the `CLAUDE.md` block from a pi session, and
+   an `AGENTS.md` the installer created would hide the project's own `CLAUDE.md`.
 7. **It installs the workflows.** Every rendered workflow for Claude Code becomes
    `.claude/workflows/concorde-<name>.js`, which Claude Code offers as the command
    `/concorde-<name>`, and the `permissions.allow` of the project's `.claude/settings.json` gains
@@ -162,8 +169,8 @@ checkout) and the `mode`, `normal` or, for a
 lists under `files` every file Concorde owns in the project, including a default an earlier
 install wrote and this one found in place
 ([requirements](requirements.md#req.distribution.receipt-complete)), and under `amended` the
-project's own files it only amends: `.gitignore`, `CLAUDE.md` and, once written,
-`.claude/settings.json` ([requirements](requirements.md#req.distribution.receipt-amended)).
+project's own files it only amends: `.gitignore`, `CLAUDE.md`, an existing `AGENTS.md` and, once
+written, `.claude/settings.json` ([requirements](requirements.md#req.distribution.receipt-amended)).
 
 A project in which Concorde is still running is refused with `concorde_busy`, since replacing the
 framework copy under a run would change its code halfway
@@ -226,8 +233,9 @@ With `--pi` the installer also prepares the project for a pi main session: it pl
 second time as `.pi/skills/concorde/SKILL.md`; every rendered pi workflow script under
 `.concorde/workflows/pi/`; and the command-runner agents `concorde-step` and `concorde-report` under
 `.pi/agents/`, where pi-subagents finds the project's agents. The receipt records the choice (`pi`),
-which an update keeps. Both skills carry the same frontmatter, whose values are bare names or
-double-quoted strings, because pi parses it as strict YAML and drops a skill it cannot parse. pi
+which an update keeps. Both skills are the same rendered file, whose front matter the build writes
+with values that are bare names or double-quoted strings, because pi parses it as strict YAML and
+drops a skill it cannot parse. pi
 loads the project's extension and skill only once the developer trusts the project, which its
 interactive start asks for and a headless `pi -p` or RPC run grants with `--approve`.
 
@@ -347,6 +355,15 @@ is `worker` or `shared`; text meant for another audience (`ambient`) is never pu
 root a prompt is reached at most once. A leftover is removed only when its bytes still match the
 previous manifest; an edited leftover, a link or an unknown file stops the build first.
 
+The build also renders each **skill**, a prompt root that agents load as an Agent Skill, a second
+time as `generated/skills/<name>/SKILL.md`: the root's render under the front matter naming the
+skill and describing it ([requirements](requirements.md#req.distribution.skills-rendered)). The
+`concorde` skill is the main-session guidance, which the installer places as it is, adding only
+Dogfooding's section in a develop install; `concorde-development` is the root Module's guidance for
+developing Concorde in its own source checkout, which that checkout loads beside `concorde` and no
+installation places. Rendering the front matter in the build rather than in the installer lets the
+checkout and every installed project load the very same file.
+
 <a id="realization.distribution.command"></a>
 
 The **command entry points** are thin: they parse the command line, call the owning Module's
@@ -364,7 +381,7 @@ Protocol the manifest names.
 <a id="realization.distribution.installer"></a>
 
 The **installer program** reuses the writer, the build's freshness check and Views' docsite
-template inventory, and installs the rendered main-session guidance. Everything that can refuse an
+template inventory, and installs the rendered `concorde` skill and main-session block. Everything that can refuse an
 install before any program runs — the build's freshness, the docsite template, Dogfooding's develop
 source check, the running Concorde, the descriptor's Python requirement, the project's settings,
 `uv` on `PATH` and, when the pi runtime is still to be placed, `npm` — and then the pinned download

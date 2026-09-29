@@ -1,7 +1,9 @@
 """The build: render the Protocol bundle and every prompt root into ``generated/``.
 
 Prompts are authored under ``prompts/`` with ``@include`` directives and rendered to plain files
-the runtime reads. The build records every source and output digest in
+the runtime reads. The prompt roots that are skills are rendered once more, with the Agent Skills
+front matter, as ``generated/skills/<name>/SKILL.md``, the one file the installer places in a
+project and Concorde's own source checkout loads. The build records every source and output digest in
 ``generated/build-manifest.json`` so a stale render is detected instead of used.
 """
 
@@ -42,7 +44,30 @@ PROMPT_ROOT_DIRECTORIES: tuple[str, ...] = (
     "prompts/workers",
     "prompts/main-session",
     "prompts/dogfooding",
+    "prompts/development",
 )
+
+# The skills the build renders: name -> (prompt root, description). `concorde` is the main-session
+# guidance every installation places; `concorde-development` holds the rules for developing
+# Concorde in its own source checkout, which loads both.
+SKILLS: dict[str, tuple[str, str]] = {
+    "concorde": (
+        "prompts/main-session/skill.md",
+        (
+            "Work as Concorde's main agent in this project: split work into tasks, hand each "
+            "to a task session and answer it, read results, keep decision logs and merge "
+            "delivered work."
+        ),
+    ),
+    "concorde-development": (
+        "prompts/development/skill.md",
+        (
+            "Develop Concorde in its own source checkout: prepare a task worktree, build, "
+            "format, verify, deliver and merge with the checkout's checks, and fix defects "
+            "reported by develop installs."
+        ),
+    ),
+}
 
 # The build owns exactly these locations under `generated/`; `generated/` is a shared, ignored
 # root, and check_build never judges locations it does not own.
@@ -51,6 +76,8 @@ GENERATED_OWNED_DIRS: tuple[str, ...] = (
     "generated/workers",
     "generated/main-session",
     "generated/dogfooding",
+    "generated/development",
+    "generated/skills",
     "generated/workflows",
 )
 
@@ -96,6 +123,37 @@ def _sha256_file(project_root: Path, relative: str) -> str:
 def output_path(root: str) -> str:
     """The generated path of a prompt root."""
     return "generated/" + root.removeprefix("prompts/")
+
+
+def skill_path(name: str) -> str:
+    """The generated path of a skill."""
+    return f"generated/skills/{name}/SKILL.md"
+
+
+def skill_header(name: str) -> str:
+    """The Agent Skills front matter of a skill.
+
+    The description is written as a JSON string, which YAML reads as a double-quoted scalar: its
+    ": " would otherwise make the front matter invalid YAML, and pi drops a skill it cannot parse.
+    """
+    return f"---\nname: {name}\ndescription: {json.dumps(SKILLS[name][1])}\n---\n\n"
+
+
+def render_skills(rendered: dict[str, BuildOutput]) -> list[BuildOutput]:
+    """Each skill: its prompt root's render under the skill's front matter."""
+    outputs = []
+    for name, (root, _) in SKILLS.items():
+        body = rendered.get(output_path(root))
+        if body is None:
+            raise BuildError(f"skill {name}: its prompt root {root} is missing")
+        outputs.append(
+            BuildOutput(
+                path=skill_path(name),
+                content=skill_header(name).encode("utf-8") + body.content,
+                sources=body.sources,
+            )
+        )
+    return outputs
 
 
 def render_prompt(project_root: Path, root: str) -> BuildOutput:
@@ -150,7 +208,12 @@ def build(project_root: str | Path) -> BuildResult:
     """Render every prompt root and workflow; raise BuildError on any failure. Writes nothing."""
     root = Path(project_root)
     roots = prompt_roots(root)
-    outputs = [render_prompt(root, item) for item in roots] + render_workflows(root)
+    prompts = [render_prompt(root, item) for item in roots]
+    outputs = (
+        prompts
+        + render_skills({output.path: output for output in prompts})
+        + render_workflows(root)
+    )
     unreachable = find_unreachable_prompts(root, list(roots))
     if unreachable:
         raise BuildError(

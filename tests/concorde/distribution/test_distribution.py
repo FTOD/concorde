@@ -175,6 +175,25 @@ class BuildTests(unittest.TestCase):
         )
         self.assertEqual((True, ()), check_build(root))
 
+    @verifies("scenario.distribution.build-skills")
+    def test_the_build_renders_every_skill_with_its_front_matter(self):
+        root = package_copy(self)
+        write_build(root)
+        manifest = json.loads((root / "generated/build-manifest.json").read_text())
+        for name, source in (
+            ("concorde", "main-session/skill.md"),
+            ("concorde-development", "development/skill.md"),
+        ):
+            with self.subTest(skill=name):
+                skill = (root / f"generated/skills/{name}/SKILL.md").read_text()
+                fields = strict_frontmatter(self, skill)
+                self.assertEqual(name, fields["name"])
+                self.assertTrue(fields["description"])
+                self.assertIn('description: "', skill)
+                body = (root / f"generated/{source}").read_text()
+                self.assertTrue(skill.endswith("---\n\n" + body))
+                self.assertIn(f"generated/skills/{name}/SKILL.md", manifest["outputs"])
+
     @verifies("scenario.distribution.build-workflows")
     def test_the_build_renders_every_workflow_for_both_clients(self):
         root = package_copy(self)
@@ -362,6 +381,7 @@ class InstallTests(unittest.TestCase):
         "scenario.distribution.install-repeat",
         "scenario.distribution.glossary-import",
         "scenario.distribution.glossary-import-none",
+        "scenario.distribution.agents-md",
     )
     def test_install_places_concorde_without_touching_specs(self):
         package = package_copy(self)
@@ -369,6 +389,7 @@ class InstallTests(unittest.TestCase):
         project.mkdir()
         subprocess.run(["git", "init", "-q", str(project)], check=True)
         (project / "CLAUDE.md").write_text("# My project\n\nKeep this.\n")
+        (project / "AGENTS.md").write_text("# Agents\n\nKeep this too.\n")
         fetch = fake_d2(self, package)
         receipt = install(
             project, package, pi_runtime=False, fetch=fetch, dependencies=False
@@ -408,6 +429,15 @@ class InstallTests(unittest.TestCase):
         self.assertEqual("concorde", fields["name"])
         self.assertIn("Concorde's main agent", fields["description"])
         self.assertIn("Concorde main agent", skill)
+        # The installed skill is the build's rendered skill, front matter included.
+        self.assertEqual(
+            (package / "generated/skills/concorde/SKILL.md").read_text(), skill
+        )
+        agents = (project / "AGENTS.md").read_text()
+        self.assertIn("Keep this too.", agents)
+        self.assertEqual(1, agents.count("<!-- concorde:start -->"))
+        self.assertIn("hand every task, even a single one, to a task session", agents)
+        self.assertIn("AGENTS.md", receipt["amended"])
         claude = (project / "CLAUDE.md").read_text()
         self.assertIn("Keep this.", claude)
         self.assertEqual(1, claude.count("<!-- concorde:start -->"))
@@ -432,6 +462,9 @@ class InstallTests(unittest.TestCase):
         self.assertEqual(1, len(fetch.urls))
         self.assertEqual(
             1, (project / "CLAUDE.md").read_text().count("<!-- concorde:start -->")
+        )
+        self.assertEqual(
+            1, (project / "AGENTS.md").read_text().count("<!-- concorde:start -->")
         )
         self.assertIn(".claude/skills/concorde/SKILL.md", receipt["files"])
         proposed = subprocess.run(
@@ -480,6 +513,10 @@ class InstallTests(unittest.TestCase):
         install(project, package, pi_runtime=False, fetch=fetch, dependencies=False)
         self.assertEqual(
             1, (project / "CLAUDE.md").read_text().count("@specs/project/glossary.json")
+        )
+        # pi reads AGENTS.md and takes the terms from its extension, not from an import.
+        self.assertNotIn(
+            "@specs/project/glossary.json", (project / "AGENTS.md").read_text()
         )
 
     @verifies(
@@ -885,6 +922,7 @@ class InstallTests(unittest.TestCase):
         "scenario.distribution.install",
         "scenario.distribution.install-settings-kept",
         "scenario.distribution.install-settings-invalid",
+        "scenario.distribution.agents-md",
     )
     def test_install_places_workflows_and_only_its_own_permission_rules(self):
         package = package_copy(self)
@@ -904,6 +942,9 @@ class InstallTests(unittest.TestCase):
         self.assertTrue(workflow.read_text().startswith("export const meta = {"))
         self.assertIn(".claude/workflows/concorde-brownfield.js", receipt["files"])
         self.assertFalse((project / ".pi/agents").exists())
+        # A project without an AGENTS.md gets none: it would hide CLAUDE.md from pi.
+        self.assertFalse((project / "AGENTS.md").exists())
+        self.assertNotIn("AGENTS.md", receipt["amended"])
         value = json.loads(settings.read_text())
         self.assertEqual("x", value["model"])
         allow = value["permissions"]["allow"]

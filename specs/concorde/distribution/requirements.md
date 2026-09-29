@@ -7,10 +7,17 @@ in concrete situations.
 
 ### req.distribution.build-owned-outputs — The build writes only where it owns
 
-The build SHALL write only inside `generated/protocol/`, `generated/workers/`, `generated/main-session/`, `generated/dogfooding/` and `generated/workflows/` and to `generated/build-manifest.json`.
+The build SHALL write only inside `generated/protocol/`, `generated/workers/`, `generated/main-session/`, `generated/dogfooding/`, `generated/development/`, `generated/skills/` and `generated/workflows/` and to `generated/build-manifest.json`.
 
 Other locations under `generated/` belong to other producers, and the build never judges or removes
 them. Each new prompt root adds its own owned location in the same change.
+
+### req.distribution.skills-rendered — Every skill is rendered with its front matter
+
+The build SHALL render each skill, `concorde` from `prompts/main-session/skill.md` and `concorde-development` from `prompts/development/skill.md`, as `generated/skills/<name>/SKILL.md`: front matter with the skill's `name` and a double-quoted `description`, followed by the render of its prompt root.
+
+The installer places the `concorde` skill from that file, so an installed project and Concorde's
+own source checkout load the same text.
 
 ### req.distribution.build-check-read-only — Checking the build writes nothing
 
@@ -43,6 +50,16 @@ result or [error link](#req.distribution.installer-error-links) instead.
 ### req.distribution.glossary-import — The CLAUDE.md block imports the glossary
 
 The installed `CLAUDE.md` block SHALL import the glossary the project's registry declares, and nothing when none is declared.
+
+### req.distribution.agents-md-block — An existing AGENTS.md carries the block too
+
+The installer SHALL write the Concorde block, without the glossary import, into the project's `AGENTS.md` when that file exists, replacing an earlier block in place, and only then.
+
+It never creates an `AGENTS.md`. pi reads only the first of `AGENTS.override.md`, `AGENTS.md`,
+`AGENTS.MD`, `CLAUDE.md` and `CLAUDE.MD` in a directory, so the block must be where pi reads; a
+created `AGENTS.md` would hide
+the project's `CLAUDE.md` from pi. The installer amends the file whether or not it installs for pi,
+and lists it under `amended`.
 
 ### req.distribution.receipt-complete — The receipt names every owned file
 

@@ -13,6 +13,14 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - AND `generated/build-manifest.json` records the digest of every source and output
 - AND a following `build --check` reports no differences
 
+### scenario.distribution.build-skills — Render every skill with its front matter
+
+- GIVEN a checkout with the prompt roots `prompts/main-session/skill.md` and `prompts/development/skill.md`
+- WHEN the developer runs `build`
+- THEN `generated/skills/concorde/SKILL.md` and `generated/skills/concorde-development/SKILL.md` each start with front matter naming the skill and describing it in a double-quoted string
+- AND each continues with the render of its prompt root, byte for byte
+- AND the [build manifest](../glossary.json#concept.build-manifest) records both
+
 ### scenario.distribution.build-workflows — Render every workflow for both clients
 
 - GIVEN a workflow catalog with the [brownfield workflow](../glossary.json#concept.brownfield-workflow)
@@ -113,6 +121,13 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - WHEN the developer installs it into a project
 - THEN the install is refused with `invalid_docsite_template`, naming the link, whose reason is `input`
 - BUT nothing is written into the project
+
+### scenario.distribution.agents-md — An existing AGENTS.md gets the block, and none is created
+
+- GIVEN a project with an `AGENTS.md` of its own and a project without one
+- WHEN the developer installs Concorde into each, and again
+- THEN the first project's `AGENTS.md` keeps its own content and holds exactly one Concorde block, the same as the `CLAUDE.md` block without the glossary import, and the receipt lists it under `amended`
+- AND the second project has no `AGENTS.md` afterwards
 
 ### scenario.distribution.glossary-import — The CLAUDE.md block imports the project's glossary
 

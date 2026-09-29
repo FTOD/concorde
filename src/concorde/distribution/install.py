@@ -4,7 +4,8 @@ It copies the package's runtime (``src``, ``scripts``, ``prompts``, ``protocol``
 ``generated`` outputs) to ``.concorde/framework/``, with the docsite template under
 ``.concorde/framework/docsite/`` selected by Views' template inventory rule, writes the
 ``.concorde/bin/concorde`` command, the Protocol copy under ``.concorde/protocol/``, the main-session guidance as the project skill
-``.claude/skills/concorde/SKILL.md`` and a delimited block in ``CLAUDE.md``, Concorde-owned
+``.claude/skills/concorde/SKILL.md`` (the build's rendered skill) and a delimited block in
+``CLAUDE.md`` and, when the project has one, in ``AGENTS.md``, Concorde-owned
 defaults when absent, the pinned ``d2`` program under ``.concorde/tools/``, ignore rules for local
 state and task worktrees, and a receipt ``.concorde/install.json``. ``uv`` owns Concorde's Python:
 it creates Concorde's own environment under ``.concorde/framework/python/`` on an interpreter that
@@ -47,7 +48,7 @@ from ..views.docsite_template import (
     template_files,
     verify_package_root,
 )
-from .build import BuildError, verify_fresh
+from .build import BuildError, skill_path, verify_fresh
 from .project_defaults import install_project_defaults, project_default_files
 from .tools import TOOLS, ToolError, install_d2, install_pi_runtime, plan_pi_runtime
 
@@ -65,6 +66,10 @@ PI_EXTENSION_SOURCES = {
     "pi_runs.ts": "src/concorde/main_session/pi_runs.ts",
 }
 CLAUDE_MD = "CLAUDE.md"
+# pi reads only the first of AGENTS.override.md, AGENTS.md, AGENTS.MD, CLAUDE.md and CLAUDE.MD in a
+# directory, so a project's own AGENTS.md hides the CLAUDE.md block from pi: the block goes into an
+# existing AGENTS.md too. The installer never creates one, which would hide the project's CLAUDE.md.
+AGENTS_MD = "AGENTS.md"
 CLAUDE_WORKFLOWS = ".claude/workflows"
 CLAUDE_SETTINGS = ".claude/settings.json"
 PI_WORKFLOWS = ".concorde/workflows/pi"
@@ -91,16 +96,6 @@ IGNORED = (
     ".concorde/framework/",
     f"{TOOLS}/",
     ".claude/worktrees/",
-)
-SKILL_DESCRIPTION = (
-    "Work as Concorde's main agent in this project: split work into tasks, carry them out inside "
-    "their worktrees or through task sessions, read results, keep decision logs and merge "
-    "delivered work."
-)
-# The description is written as a JSON string, which YAML reads as a double-quoted scalar: its
-# ": " would otherwise make the frontmatter invalid YAML, and pi drops a skill it cannot parse.
-SKILL_HEADER = (
-    f"---\nname: concorde\ndescription: {json.dumps(SKILL_DESCRIPTION)}\n---\n\n"
 )
 
 
@@ -151,7 +146,12 @@ def refusal(
 
 
 def _guidance(package: Path, name: str) -> str:
-    path = package / "generated/main-session" / f"{name}.md"
+    """The rendered skill ``concorde``, with its front matter, or another main-session render."""
+    path = package / (
+        skill_path("concorde")
+        if name == "skill"
+        else f"generated/main-session/{name}.md"
+    )
     if not path.is_file():
         raise InstallError("stale_build", f"{path} is missing; run the build")
     return path.read_text(encoding="utf-8")
@@ -290,12 +290,13 @@ def refresh_glossary(project: Path) -> bool:
     updated = with_glossary(block, project)
     if updated.strip() == block.strip():
         return False
-    _claude_md(project, updated)
+    _amend(project, CLAUDE_MD, updated)
     return True
 
 
-def _claude_md(project: Path, block: str) -> None:
-    path = project / CLAUDE_MD
+def _amend(project: Path, name: str, block: str) -> None:
+    """Write ``block`` between the markers of ``name``, replacing an earlier block in place."""
+    path = project / name
     text = path.read_text(encoding="utf-8") if path.exists() else ""
     section = f"{START}\n{block.strip()}\n{END}\n"
     if START in text and END in text:
@@ -510,12 +511,17 @@ def install(
     )
     command.chmod(0o755)
     (project / SKILL).parent.mkdir(parents=True, exist_ok=True)
-    (project / SKILL).write_text(SKILL_HEADER + skill, encoding="utf-8")
-    _claude_md(project, with_glossary(block, project))
+    (project / SKILL).write_text(skill, encoding="utf-8")
+    _amend(project, CLAUDE_MD, with_glossary(block, project))
+    # The glossary import is Claude Code's syntax, and pi, which reads AGENTS.md, gets the terms
+    # from Concorde's pi extension.
+    agents = (project / AGENTS_MD).is_file()
+    if agents:
+        _amend(project, AGENTS_MD, block)
     pi_files = []
     if pi:
         (project / PI_SKILL).parent.mkdir(parents=True, exist_ok=True)
-        (project / PI_SKILL).write_text(SKILL_HEADER + skill, encoding="utf-8")
+        (project / PI_SKILL).write_text(skill, encoding="utf-8")
         extension = project / PI_EXTENSION
         extension.mkdir(parents=True, exist_ok=True)
         for name, source in PI_EXTENSION_SOURCES.items():
@@ -534,8 +540,10 @@ def install(
         list(previous.get("permissions") or []),
     )
     _ignore(project)
-    amended = [".gitignore", CLAUDE_MD] + (
-        [CLAUDE_SETTINGS] if (project / CLAUDE_SETTINGS).exists() else []
+    amended = (
+        [".gitignore", CLAUDE_MD]
+        + ([AGENTS_MD] if agents else [])
+        + ([CLAUDE_SETTINGS] if (project / CLAUDE_SETTINGS).exists() else [])
     )
     receipt = {
         "version": descriptor["version"],

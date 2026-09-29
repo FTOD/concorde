@@ -49,10 +49,13 @@ class GuidanceTests(unittest.TestCase):
         self.assertIn("you never work inside a task worktree yourself", self.skill)
         self.assertNotIn("EnterWorktree", self.skill)
         self.assertNotIn("EnterWorktree", self.block)
-        self.assertIn("hand every task, even a single one, to a task session", self.block)
+        self.assertIn(
+            "hand every task, even a single one, to a task session", self.block
+        )
         for session in (self.session, self.pi_session):
             self.assertIn(
-                "Inside the task worktree you may change Specs and code yourself", session
+                "Inside the task worktree you may change Specs and code yourself",
+                session,
             )
             self.assertIn(
                 "from the task worktree with the worktree's own command, never the primary "
@@ -92,7 +95,9 @@ class GuidanceTests(unittest.TestCase):
             "and then answer the session once with every answer",
             self.skill,
         )
-        self.assertIn("after recording its brief in the task's decision log", self.block)
+        self.assertIn(
+            "after recording its brief in the task's decision log", self.block
+        )
         self.assertIn("naming its escalation as a cause", self.skill)
         self.assertIn("concorde task session", self.block)
         self.assertIn("call the `concorde_task_session` tool with the task", self.skill)
@@ -122,7 +127,9 @@ class GuidanceTests(unittest.TestCase):
             "Do not merge the task branch into the primary branch, close the task",
             self.session,
         )
-        self.assertIn("Read the task's decision log before you change anything", self.session)
+        self.assertIn(
+            "Read the task's decision log before you change anything", self.session
+        )
 
     @verifies("scenario.main-session.pi-task-session-role")
     def test_a_pi_task_session_ends_each_round_with_a_report(self):
@@ -236,7 +243,9 @@ class GuidanceTests(unittest.TestCase):
             "primary branch",
             self.skill,
         )
-        self.assertIn("run `task-validation` and `delivery` again and report", self.skill)
+        self.assertIn(
+            "run `task-validation` and `delivery` again and report", self.skill
+        )
         for session in (self.session, self.pi_session):
             self.assertIn(
                 "merge the primary branch it names into your task branch", session
@@ -252,7 +261,10 @@ class GuidanceTests(unittest.TestCase):
             self.skill,
         )
         self.assertIn("Without that approval, open a task.", self.skill)
-        self.assertIn("that the developer approved after you said what you would change", self.block)
+        self.assertIn(
+            "that the developer approved after you said what you would change",
+            self.block,
+        )
 
     @verifies("scenario.main-session.batched-decisions")
     def test_decisions_go_up_together_and_come_back_together(self):
@@ -261,7 +273,8 @@ class GuidanceTests(unittest.TestCase):
                 "never stop in the middle of the work to wait for one answer", session
             )
             self.assertIn(
-                "carry on with every part of the work that does not depend on them", session
+                "carry on with every part of the work that does not depend on them",
+                session,
             )
         self.assertIn(
             "A task never asks the developer in place: its session stops and escalates every "
@@ -330,7 +343,9 @@ class GuidanceTests(unittest.TestCase):
             self.skill,
         )
         self.assertIn("have its task session run it", self.skill)
-        self.assertIn("the task's session starts it inside the task worktree", self.skill)
+        self.assertIn(
+            "the task's session starts it inside the task worktree", self.skill
+        )
         self.assertIn("never names the task", self.skill)
         self.assertIn(
             "Ask the developer which mode to use unless they already said", self.skill
