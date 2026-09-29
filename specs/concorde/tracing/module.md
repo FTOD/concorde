@@ -18,11 +18,13 @@ a [task record](../glossary.json#concept.task-record) or a lock is not a trace, 
 task's own record, which stays with the code whatever retention removes.
 Spec tooling reports with its own error record and never uses the error chain.
 
-## Usage
+## Core concepts
+
+### Traces and trace nodes
 
 <a id="concept.trace"></a><a id="concept.trace-node"></a>
 
-**Traces and their nodes.** Every level of work in Concorde leaves one
+Every level of work in Concorde leaves one
 **[trace node](../glossary.json#concept.trace-node)**: a folder holding a `trace.json` record in one
 uniform shape, the files that level keeps next to it and the folders of the nodes below it. A task
 is a node, and so is each of its task sessions, each merge attempt, the workflow of its workspace
@@ -31,6 +33,36 @@ and each of its steps, each run of an [Operation](../glossary.json#concept.opera
 [configured check](../glossary.json#concept.configured-check) a run or a merge ran, each worker run
 and each of its rounds. The tree of nodes below one task, or below one
 [unbound run](../glossary.json#concept.unbound-run), is a **[trace](../glossary.json#concept.trace)**.
+
+### The history
+
+<a id="concept.history"></a>
+
+Everything about one task, its state and its traces alike, lives in one
+folder, `.concorde/tasks/<task>/`, while the task is current. When the task is closed, merged or not,
+its whole folder is moved to the **[history](../glossary.json#concept.history)**,
+`.concorde/history/<task>/`, where it stays as it was when the task ended: nothing in the history is
+ever changed, and retention only removes a history folder whole or, sooner, its conversation
+records; it may be copied out. An unbound run, which belongs to no task, is
+kept in `.concorde/unbound/<run>/` of the worktree it started in. The
+[layout](contracts.md#layout) gives every path.
+
+### The error chain
+
+<a id="concept.error-chain"></a>
+
+An **[error chain](../glossary.json#concept.error-chain)** preserves both the original
+failure and why each receiving level could not handle it: each level that cannot handle an error it
+received adds its own detailed link, with its reason, on top of the unchanged links below. Every
+result that is not `ok` carries its error chain whole, as the
+[error contract](contracts.md#contract.tracing.error) defines: its receiver decides from the chain
+alone and never has to open a trace to learn what failed. The chain may name trace nodes as entry
+points for a deeper analysis, never in place of what it says. How to read a chain, and where each
+level writes its link, is in [Reading an error chain](contracts.md#reading-an-error-chain).
+
+## Overview
+
+### The shape of a trace
 
 ```d2 illustrative
 task: "task\n.concorde/tasks/retry/" {
@@ -59,7 +91,53 @@ workspace records the task, since Execution knows no task, and nothing walks bac
 [workspace binding](../glossary.json#concept.workspace-binding) is what gives Execution the folder
 it writes into.
 
-**What a node records.** Every `trace.json` holds the same fields, defined by the
+### Where records live over a task's life
+
+A task's folder is current while the task is and moves whole to the history when the task is
+closed; there only retention removes anything, first its conversation records and then, when the
+project configures it, the whole folder. An unbound run is kept beside the tasks and removed sooner.
+The decision log leaves with the task into Git, so it outlives every retention period, and the locks
+lie apart from all these folders ([Locks are not records](#locks-are-not-records)).
+
+```d2 illustrative
+direction: right
+open: "task open" {shape: oval}
+current: "Current task\n.concorde/tasks/<task>/\nrecord, decision log, trace"
+history: "History\n.concorde/history/<task>/\nnever changed"
+slim: "History folder without\nits conversation records"
+removed: "Removed" {shape: oval}
+git: "Git, with the code\n.concorde/decisions/"
+unbound: "Unbound run\n.concorde/unbound/<run>/"
+open -> current
+current -> history: "task close,\nmerged or not"
+current -> git: "task close: Tasks commits\nthe decision log" {style.stroke-dash: 3}
+history -> slim: "closed more than\n30 days ago (default)"
+slim -> removed: "closed longer ago than\nthe project configures,\nif it does"
+unbound -> removed: "ended more than\n7 days ago (default)"
+```
+
+### Tracing and its producers
+
+Every producer writes its nodes and takes its locks through the tracing library and reports its
+failures with the error chain code; the trace command reads and prunes through the same library.
+
+```d2 illustrative
+tracing: Tracing {
+  library: Tracing library
+  command: Trace command
+  errors: Error chain code
+  command -> library: reads and prunes through
+}
+producers: "Tasks, Task sessions, Workflows,\nExecution, Workers, Check execution" {shape: page}
+producers -> tracing.library: write their nodes and take their locks through
+producers -> tracing.errors: report with
+```
+
+## Using traces
+
+### What a node records
+
+Every `trace.json` holds the same fields, defined by the
 [trace node contract](contracts.md#contract.tracing.node):
 
 - its identity and kind, when it started and ended, and its status: `running`, `ok`, `blocked`,
@@ -86,7 +164,9 @@ still running, or whose process died, is already there. A node never refers to a
 path: it names its files relative to its own folder and other nodes by their identity, since a
 task's folder moves when the task ends.
 
-**Reading a trace.** `concorde trace` reads traces and never changes one:
+### Reading a trace
+
+`concorde trace` reads traces and never changes one:
 
 ```text
 concorde trace show [<node>] [--depth <n>] [--format json|tree]
@@ -109,18 +189,9 @@ For a task `retry` whose session ran `implement` and then `delivery`,
 workspace, the `implement` run's worker run with its rounds and checks, and the total cost of the
 task, with the cost of each run beside it.
 
-<a id="concept.history"></a>
+### Locks are not records
 
-**Where traces are kept.** Everything about one task, its state and its traces alike, lives in one
-folder, `.concorde/tasks/<task>/`, while the task is current. When the task is closed, merged or not,
-its whole folder is moved to the **[history](../glossary.json#concept.history)**,
-`.concorde/history/<task>/`, where it stays as it was when the task ended: nothing in the history is
-ever changed, and retention only removes a history folder whole or, sooner, its conversation
-records; it may be copied out. An unbound run, which belongs to no task, is
-kept in `.concorde/unbound/<run>/` of the worktree it started in. The
-[layout](contracts.md#layout) gives every path.
-
-**Locks are not records.** Every lock Concorde takes lies under `.concorde/locks/`, never inside a
+Every lock Concorde takes lies under `.concorde/locks/`, never inside a
 trace or a task folder, and its file holds only who holds it now:
 
 | Lock | Taken by | Kept |
@@ -141,7 +212,9 @@ merge it starts, so that the lock belongs to the work and not to the server. A w
 release blocks on the lock itself, so the kernel wakes it when the holder ends or dies
 ([contracts](contracts.md#locks)).
 
-**Retention.** Traces are removed only at defined points, never by a process running in the
+### Retention
+
+Traces are removed only at defined points, never by a process running in the
 background: `concorde trace prune`, and the start of every `task open` and `task close`, remove
 each unbound run that ended more than 7 days ago; from each history folder of a task closed more
 than 30 days ago, its **conversation records**, the transcripts of its task sessions and worker
@@ -153,18 +226,9 @@ periods in its tracked [Tracing configuration](contracts.md#contract.tracing.con
 What a task decided outlives this retention: Tasks commits each ended task's
 [decision log](../glossary.json#concept.decision-log) to Git, where it travels with the code.
 
-<a id="concept.error-chain"></a>
+## How it is built
 
-**Errors.** An **[error chain](../glossary.json#concept.error-chain)** preserves both the original
-failure and why each receiving level could not handle it: each level that cannot handle an error it
-received adds its own detailed link, with its reason, on top of the unchanged links below. Every
-result that is not `ok` carries its error chain whole, as the
-[error contract](contracts.md#contract.tracing.error) defines: its receiver decides from the chain
-alone and never has to open a trace to learn what failed. The chain may name trace nodes as entry
-points for a deeper analysis, never in place of what it says. How to read a chain, and where each
-level writes its link, is in [Reading an error chain](contracts.md#reading-an-error-chain).
-
-## Design
+### Why Tracing combines the records
 
 Two needs meet in Tracing. Every level already had to leave some record, because the level above
 decides from it; and a developer who wants to know why a task was expensive, slow or failed needs
@@ -235,7 +299,7 @@ credentials it needs, its home, temporary and working directories exist only whi
 private directory outside the records that is removed when it ends; what analysis needs, the grant,
 the brief and the transcript, is kept in its node. Credentials are therefore never retained.
 
-### The error chain
+### Why errors travel as a chain
 
 <a id="realization.tracing.error-chain"></a>
 
@@ -277,18 +341,6 @@ one command of this Module and, like every command, is named after its owner.
 
 The **Tracing tests** exercise the library and the command on traces they build, and the error
 chain code.
-
-```d2 illustrative
-tracing: Tracing {
-  library: Tracing library
-  command: Trace command
-  errors: Error chain code
-  command -> library: reads and prunes through
-}
-producers: "Tasks, Task sessions, Workflows,\nExecution, Workers, Check execution" {shape: page}
-producers -> tracing.library: write their nodes and take their locks through
-producers -> tracing.errors: report with
-```
 
 ### What Tracing relies on
 

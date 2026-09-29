@@ -17,47 +17,29 @@ Concorde repository, under that repository's own tasks, checks and merges. It do
 into the project on its own either; the project takes it with an ordinary update. A normal
 install, for a developer who only uses Concorde, has none of this.
 
-## Usage
+## Core concepts
+
+### Develop installs and the Concorde repository
 
 <a id="concept.develop-install"></a><a id="concept.concorde-repository"></a>
 
-**Making a develop install.** In the Concorde repository's primary worktree, with the build fresh
-and every change committed, the developer runs
+A **[develop install](../glossary.json#concept.develop-install)** installs Concorde into a project
+from the clean primary worktree of a
+**[Concorde repository](../glossary.json#concept.concorde-repository)**: the independent Git
+repository of Concorde that the developer also changes, and in which the Concorde defects the
+project reports are fixed. Its receipt records the mode `develop`, and the main agent's guidance
+carries Dogfooding's section; otherwise it is an ordinary install.
 
-```text
-python3 scripts/install-concorde.py <project> --develop
-```
-
-The installer first checks that it runs from the root of the repository's primary worktree, on a
-branch, with no uncommitted or untracked change
-([requirements](requirements.md#req.dogfooding.clean-primary-source)); a task worktree of the
-Concorde repository is refused because it disappears once its branch is merged, and uncommitted
-changes because they would install a Concorde no commit records. It then installs as a normal
-install does, copying the framework into the project, and adds Dogfooding's guidance to the
-installed skill and `CLAUDE.md` block. The receipt `.concorde/install.json` records `mode:
-"develop"`, the repository as `source` and the installed commit as `source_commit`. The project's
-own task worktrees therefore work exactly as in a normal install; only the main agent's guidance
-differs.
-
-**What the project's main agent does.** Besides its work on the project, it watches Concorde. It
-observes every run of an [Operation](../glossary.json#concept.operation) or [execution
-command](../glossary.json#concept.execution-command), every
-[workflow](../glossary.json#concept.workflow) and every [worker](../glossary.json#concept.worker)
-run closely, the result, [error chain](../glossary.json#concept.error-chain), host evidence, [run
-record](../glossary.json#concept.run-record) and the changes it made, rather than trusting its
-status, and treats a run that ended `ok` but did something wrong like a failure. It never changes
-the Concorde repository, the framework copy under `.concorde/framework/` or any file the installer
-placed ([requirements](requirements.md#req.dogfooding.never-change-concorde)), and never works
-around a defect in the project ([requirements](requirements.md#req.dogfooding.no-workaround)) but
-reports it ([requirements](requirements.md#req.dogfooding.defect-reported)). For every problem it
-asks whose it is: a problem of the project, its Specs, code, checks or configuration, is ordinary
-work there; a **[Concorde defect](../glossary.json#concept.concorde-defect)** is one that would
-happen in any project using Concorde the same way, whether Concorde implements its design wrongly or
-its design cannot serve what a correct project legitimately needs.
+### Concorde defects and boundary cases
 
 <a id="concept.concorde-defect"></a><a id="concept.boundary-case"></a>
 
-**When a [boundary](../glossary.json#concept.boundary) blocks work.** A refused read, write or tool
+For every problem the project's main agent asks whose it is: a problem of the project, its Specs,
+code, checks or configuration, is ordinary work there; a **[Concorde defect](../glossary.json#concept.concorde-defect)** is one that would
+happen in any project using Concorde the same way, whether Concorde implements its design wrongly or
+its design cannot serve what a correct project legitimately needs.
+
+A refused read, write or tool, where a [boundary](../glossary.json#concept.boundary) blocks work,
 is the case where the two are most easily confused, and where the tempting fix, loosening the
 boundary, is most often wrong. The guidance therefore makes the main agent place every refusal in
 one of four **[boundary cases](../glossary.json#concept.boundary-case)** before it acts
@@ -78,10 +60,25 @@ host evidence), and the refused action with its message
 the Concorde repository ([requirements](requirements.md#req.dogfooding.concorde-cases-only)), and
 only the third may be fixed there without asking the developer.
 
+### Defect reports
+
+<a id="concept.defect-report"></a>
+
+A **[defect report](../glossary.json#concept.defect-report)** is an
+[Issue report](../glossary.json#concept.issue-report) the project's main agent writes about a
+Concorde defect. Its owner is `null`, since the Concorde repository decides which of its Modules is
+at fault; its `origin` names the project and the Concorde commit the defect was seen on; and its
+`error_chain` is the failure's whole [error chain](../glossary.json#concept.error-chain) with the
+main agent's own link on top.
+
+## Overview
+
+### A defect's path
+
 A Concorde defect crosses two repositories and three actors: the project's main agent reports it, the
 developer carries it to a session in the Concorde repository and decides what only the developer
-may, and that session fixes it; the project then takes the fix with an update. The following
-paragraphs explain each step:
+may, and that session fixes it; the project then takes the fix with an update. The sections
+below explain each step:
 
 ```d2 illustrative
 direction: down
@@ -127,9 +124,52 @@ concorde.primary -> developer.tell: merged
 developer.tell -> project.agent.update
 ```
 
-<a id="concept.defect-report"></a>
+## Using a develop install
 
-**Reporting a defect.** The main agent writes a **defect report**: an
+### Making a develop install
+
+In the Concorde repository's primary worktree, with the build fresh
+and every change committed, the developer runs
+
+```text
+python3 scripts/install-concorde.py <project> --develop
+```
+
+The installer first checks that it runs from the root of the repository's primary worktree, on a
+branch, with no uncommitted or untracked change
+([requirements](requirements.md#req.dogfooding.clean-primary-source)); a task worktree of the
+Concorde repository is refused because it disappears once its branch is merged, and uncommitted
+changes because they would install a Concorde no commit records. It then installs as a normal
+install does, copying the framework into the project, and adds Dogfooding's guidance to the
+installed skill and `CLAUDE.md` block. The receipt `.concorde/install.json` records `mode:
+"develop"`, the repository as `source` and the installed commit as `source_commit`. The project's
+own task worktrees therefore work exactly as in a normal install; only the main agent's guidance
+differs.
+
+A develop install is refused, writing nothing, when the checkout is not a Git worktree's root
+(`develop_source_not_repository`), is a linked worktree (`develop_source_not_primary`, naming the
+primary worktree), has a detached `HEAD` (`develop_source_detached`) or has uncommitted changes
+(`develop_source_dirty`, naming them)
+([requirements](requirements.md#req.dogfooding.refusal-names-reason)). Turning a develop install
+into a normal one, or the reverse, is a new install with or without `--develop`.
+
+### What the project's main agent does
+
+Besides its work on the project, the project's main agent watches Concorde. It
+observes every run of an [Operation](../glossary.json#concept.operation) or [execution
+command](../glossary.json#concept.execution-command), every
+[workflow](../glossary.json#concept.workflow) and every [worker](../glossary.json#concept.worker)
+run closely, the result, [error chain](../glossary.json#concept.error-chain), host evidence, [run
+record](../glossary.json#concept.run-record) and the changes it made, rather than trusting its
+status, and treats a run that ended `ok` but did something wrong like a failure. It never changes
+the Concorde repository, the framework copy under `.concorde/framework/` or any file the installer
+placed ([requirements](requirements.md#req.dogfooding.never-change-concorde)), and never works
+around a defect in the project ([requirements](requirements.md#req.dogfooding.no-workaround)) but
+reports it ([requirements](requirements.md#req.dogfooding.defect-reported)).
+
+### Reporting a defect
+
+The main agent writes a **defect report**: an
 [Issue report](../glossary.json#concept.issue-report) as JSON under
 `.concorde/runs/defects/<report_key>.json`, which Git ignores. Its owner is `null`, since the
 Concorde repository decides which of its Modules is at fault; its evidence paths are relative to
@@ -182,7 +222,9 @@ to the developer ([requirements](requirements.md#req.dogfooding.defect-outside-t
 }
 ```
 
-**Fixing it in the Concorde repository.** The developer hands the report's path to a session in
+### Fixing it in the Concorde repository
+
+The developer hands the report's path to a session in
 the Concorde repository. That session follows the repository's own agent instructions: it opens a
 task for the Module it judges at fault, records the report there as an Issue with
 `python3 scripts/issues.py report --file <path> --task <task>`, whose evidence is checked in the
@@ -197,7 +239,9 @@ Concorde's design or Protocol or loosens a boundary
 ([requirements](requirements.md#req.dogfooding.design-limits-decided)); one that turns out to be
 the project's own problem or overreaching work is closed `not-actionable` with the reason.
 
-**Taking the fix.** Once the fix is merged, which the project's main agent learns from the developer
+### Taking the fix
+
+Once the fix is merged, which the project's main agent learns from the developer
 or by listing the Concorde repository's Issues with `concorde issues list --root <source>`, it runs
 `concorde update` from the project's primary worktree. The update refuses while a run of an
 Operation or execution command is still running in the project, re-checks that the Concorde repository's primary worktree is clean,
@@ -208,14 +252,7 @@ leaves the project unvalidated until `concorde spec-validation` passes. The main
 sessions of the open tasks merge the primary branch into their task branches when the update asks
 for it and takes up the blocked work.
 
-A develop install is refused, writing nothing, when the checkout is not a Git worktree's root
-(`develop_source_not_repository`), is a linked worktree (`develop_source_not_primary`, naming the
-primary worktree), has a detached `HEAD` (`develop_source_detached`) or has uncommitted changes
-(`develop_source_dirty`, naming them)
-([requirements](requirements.md#req.dogfooding.refusal-names-reason)). Turning a develop install
-into a normal one, or the reverse, is a new install with or without `--develop`.
-
-## Design
+## How it is built
 
 ### Around it
 
@@ -257,7 +294,7 @@ which builds the main agent's link on top of a run's error chain for the report.
 case is decided against: `concorde grant` shows what the Protocol derives from the Specs, which the
 main agent compares with what a run actually applied.
 
-### Inside
+### Why it is built this way
 
 **Two repositories, not a submodule.** Concorde could have been placed in the project as a Git
 submodule and edited in place. It is not, because a project's task worktrees would each get their
@@ -297,6 +334,8 @@ fragment that the develop guidance and the development skill both include and th
 tests find word for word in the rendered skill
 ([requirements](requirements.md#req.dogfooding.one-observation-rule)), so that the two sides never
 drift into different ideas of what observing a run means.
+
+### The parts
 
 <a id="realization.dogfooding.source-check"></a>
 
