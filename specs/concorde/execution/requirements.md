@@ -31,13 +31,16 @@ breaks the binding contract or names a root other than that worktree.
 Every `concorde run` or [execution command](../glossary.json#concept.execution-command) started in
 a Git worktree whose whole command line is accepted and names a known
 [Operation](../glossary.json#concept.operation) or command SHALL write exactly one run result,
-including when the run is refused, fails or is cancelled, unless it was started with `--detach` and
-reported `detach_failed`.
+including when the run is refused, fails or is cancelled by `SIGINT` or `SIGTERM`, unless it was
+started with `--detach` and reported `detach_failed`, or its runner was killed by a signal it cannot
+handle, such as `SIGKILL`, before writing the result.
 
 A malformed command line, including one with an unknown argument, or one started outside every Git
 worktree starts no run and writes no result (exit status 2), and a detached runner that ends or is
 killed before it announced its run (`detach_failed`) leaves no run, as
-[How a run is executed](runner.md) describes.
+[How a run is executed](runner.md) describes. A runner killed outside its control after that leaves
+a run without a result whose [run lock](../glossary.json#concept.run-lock) nobody holds: a lost run,
+which every observer tells by that lock ([Run progress file](runner.md#run-progress-file)).
 
 ### req.execution.result-printed — A foreground run prints its result
 
@@ -84,11 +87,15 @@ holds, at once or, with `--wait <seconds>`, once the lock is still held after th
 
 ### req.execution.workspace-wait — A waiting run waits in its own process
 
-With `--wait <seconds>`, the runner SHALL wait for a busy workspace's lock inside its own process
-and start the run's steps as soon as the lock is free within that time.
+With `--wait <seconds>`, the runner SHALL wait for a busy workspace's lock inside its own process.
 
-While it waits, its run [progress file](../glossary.json#concept.progress-file) names the step `workspace-lock` and, in `waiting_for`, the
-run holding the lock.
+While it waits, its [run progress file](../glossary.json#concept.run-progress-file) names the step
+`workspace-lock` and, in `waiting_for`, the run holding the lock.
+
+### req.execution.workspace-wait-continues — A waiting run goes on once the lock is free
+
+With `--wait <seconds>`, the runner SHALL take a busy workspace's lock as soon as it is free within
+that time and go on with the run from its admission, as for a run that found the workspace free.
 
 ### req.execution.unbound-read-only — Only a definition that allows it runs unbound
 
@@ -103,8 +110,12 @@ An unbound run SHALL NOT launch a worker whose grant would keep a writable path.
 
 The runner SHALL run every step of an admitted unbound run, and every worker it launches, in an
 [unbound checkout](../glossary.json#concept.unbound-checkout) of the commit at `HEAD` of the
-worktree the run started in, changing no file of that worktree outside its `.concorde/unbound/` and `.concorde/locks/` and
-not its index.
+worktree the run started in.
+
+### req.execution.unbound-origin-untouched — An unbound run leaves its worktree as it was
+
+An unbound run SHALL NOT change any file of the worktree it started in outside that worktree's
+`.concorde/unbound/` and `.concorde/locks/`, nor that worktree's index.
 
 ### req.execution.checkout-removed — The checkout does not outlive the run
 
@@ -124,7 +135,7 @@ run or a run whose binding it refused, writing its `trace.json` before its first
 after its result.
 
 The node lies in `runs/<run-id>/` of the workspace folder, or in the folder `--trace-at` names inside
-it, and every file of the run, its result, progress file, checks and worker runs, lies in it.
+it, and every file of the run, its result, run progress file, checks and worker runs, lies in it.
 
 ### req.execution.locks-apart — A run's locks lie under the locks directory
 

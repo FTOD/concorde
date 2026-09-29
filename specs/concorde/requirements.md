@@ -6,16 +6,15 @@ together.
 
 ## Runtime
 
-### req.concorde.agent-runtimes — The main agent runs on Claude Code, workers also on pi
+### req.concorde.main-agent-program — The main agent runs on Claude Code
 
-The Framework SHALL support a [main agent](glossary.json#concept.main-agent) in Claude Code, and
-every [worker](glossary.json#concept.worker) on the agent program the worktree's
-[worker configuration](glossary.json#concept.worker-configuration) chooses for it, Claude Code or pi,
-and on pi when it chooses none.
+The Framework SHALL support a [main agent](glossary.json#concept.main-agent) in Claude Code.
 
 For now the main agent runs only on Claude Code, and so do the
 [task sessions](glossary.json#concept.task-session) it starts, which always run on the main agent's
-own program; a Claude Code main agent may still run pi workers.
+own program. [Workers](glossary.json#concept.worker) need not: their program is the
+[worker configuration](glossary.json#concept.worker-configuration)'s choice, as
+req.concorde.worker-program says, so the tasks of a Claude Code main agent may still run pi workers.
 
 ### req.concorde.worker-program — Workers run on the configured program
 
@@ -33,7 +32,7 @@ a Claude Code main agent may run pi workers as well as Claude Code workers.
 
 ### req.concorde.worker-models-per-worktree — Worker models belong to the worktree
 
-The model and reasoning level of every worker SHALL come from the worker configuration of the worktree it works on.
+The model and reasoning level of every worker SHALL come from the worker configuration of the checkout its run works in: the worktree of the run's workspace for a bound run, and the configuration committed in the unbound checkout for an unbound run.
 
 ### req.concorde.worker-models-tracked — The worker models are tracked with the project
 
@@ -82,9 +81,9 @@ behaviour as it is and return doubtful intent as
 [open questions](glossary.json#concept.open-question) instead of promises, and the one Adoption step
 without a worker, the execution command `scaffold`, writes only what such a worker proposed.
 
-### req.concorde.grant-from-task-worktree — Grants come from the workspace's own Specs
+### req.concorde.grant-from-task-worktree — Grants come from the Specs the worker works on
 
-Every grant a worker receives SHALL be computed from the Specs in the worktree of the workspace it works on.
+Every grant a worker receives SHALL be computed from the Specs of the checkout its run works in: the worktree of the run's [workspace](glossary.json#concept.workspace) for a bound run, and the [unbound checkout](glossary.json#concept.unbound-checkout) for an [unbound run](glossary.json#concept.unbound-run).
 
 ### req.concorde.no-wider-than-type — A worker never exceeds its task type
 
@@ -135,12 +134,15 @@ Every run result that is not successful SHALL keep the evidence the run produced
 
 The worker's link in the chain is marked with the level `worker`; the run never moves a worker's statement into its own links or its host evidence.
 
-### req.concorde.spec-gaps-stop — Automatic rounds never repair Specs
+### req.concorde.spec-gaps-stop — Automatic rounds never fill a Spec gap
 
-An Operation SHALL stop and return its [error chain](glossary.json#concept.error-chain) instead of resuming a worker when the failure is a [Spec gap](glossary.json#concept.spec-gap), a needed path outside the grant, or a failed structural Spec check.
+An Operation SHALL stop and return its [error chain](glossary.json#concept.error-chain) instead of resuming a worker when the failure is a [Spec gap](glossary.json#concept.spec-gap) or a needed path outside the grant.
 
-Only failures of [configured checks](glossary.json#concept.configured-check) against code are fed
-back to the same worker automatically.
+A [resume round](glossary.json#concept.resume-round) feeds back to the same worker only what a
+program found: the failures of [configured checks](glossary.json#concept.configured-check) against
+code and, once they pass, what the step's own validation of the round reports to repair, such as
+the structural errors a Spec-writing worker introduced. A promise the Spec does not state, or a
+path the grant does not give, is never supplied by another round; it goes up to be decided.
 
 ## Change control
 

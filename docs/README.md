@@ -60,19 +60,20 @@ in step.
 
 ## One task from idea to merge
 
-The main agent agrees the direction with you, then works through a task; it decides ordinary
-questions itself and escalates only decisions with major impact.
+The main agent agrees the direction with you, then hands the work to a task session, even when
+there is only one task; it decides ordinary questions itself and escalates only decisions with
+major impact.
 
 1. **Discuss and open.** Agree the change and open a task: a branch and worktree for the Modules
-   it touches. The main agent works inside that worktree, or starts a task session per task when
-   the work splits into several.
-2. **Understand and specify.** Run `understand` to assess and plan; run `specify` when the Spec
-   must change first.
-3. **Implement and test.** Run `implement` and `test`; the host audits every write and runs the
-   configured checks itself.
-4. **Validate, deliver, merge.** `validate` previews readiness, `delivery` validates the whole task
-   again and commits it, and `concorde task merge` merges the branch, with the task's decision log,
-   and closes the task.
+   it touches. The main agent starts a task session in that worktree, which carries the task
+   through the next steps; the main agent never works inside the worktree itself.
+2. **Understand and specify.** The task session runs `understand` to assess and plan, and
+   `specify` when the Spec must change first.
+3. **Implement and test.** It runs `implement` and `test`; the host audits every write and runs
+   the configured checks itself.
+4. **Validate, deliver, merge.** `task-validation` previews readiness, `delivery` validates the
+   whole task again and commits it, and the main agent's `concorde task merge` merges the branch,
+   with the task's decision log, and closes the task.
 
 A question that changes nothing, such as how a Module works today, needs no task: `understand`,
 `spec_review` and `code_review` also run from the primary worktree without one.

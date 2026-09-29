@@ -1,7 +1,7 @@
 # Framework scenarios
 
-These scenarios describe whole flows that cross several Modules, seen from the developer and the
-[main agent](glossary.json#concept.main-agent). The precise behaviour of every step belongs to the
+These scenarios describe whole flows that cross several Modules, seen from the developer, the
+[main agent](glossary.json#concept.main-agent) and its [task sessions](glossary.json#concept.task-session). The precise behaviour of every step belongs to the
 [Module](glossary.json#concept.module) that performs it; a scenario here promises only what the
 Modules achieve together. They are verified by end-to-end acceptance tests that drive the installer
 and the `concorde` command with a fake worker; what Claude Code itself enforces is verified by the
@@ -22,7 +22,7 @@ live worker test of Workers.
 
 - GIVEN an initialized project whose code came before its Specs, with the root Module binding every existing file
 - WHEN the main agent opens a task bound to the root Module
-- AND runs the `brownfield` workflow in it in no-ask mode
+- AND the task's task session runs the `brownfield` workflow in its worktree in no-ask mode
 - THEN the workflow runs `survey`, `scaffold`, one `code_to_spec` per described Module, `spec_review`, `task-validation` and `delivery` in the task's worktree, one run at a time
 - AND the delivered task branch holds child Modules whose entries describe the code they bind
 - AND no implementation file changed
@@ -35,7 +35,7 @@ live worker test of Workers.
 
 - GIVEN an initialized project whose Specs validate
 - WHEN the main agent opens a task for one Module
-- AND runs `implement` for that Module in the task worktree
+- AND the task's task session runs `implement` for that Module in the task worktree
 - AND runs `task-validation` and then `delivery` there
 - AND none of these runs names the task: each reads the worktree's [workspace binding](glossary.json#concept.workspace-binding)
 - THEN the task branch holds one [delivery commit](glossary.json#concept.delivery-commit) with the change
@@ -54,11 +54,13 @@ live worker test of Workers.
 
 ### scenario.concorde.parallel-tasks — Two tasks in parallel
 
-- GIVEN two tasks for different Modules, each in its own worktree
-- WHEN the main agent runs Operations in both at the same time
+- GIVEN two tasks whose Modules and the files those Modules bind do not overlap, each in its own worktree
+- WHEN their task sessions run `implement` in both worktrees at the same time, each run ending `ok`
+- AND each task session then runs `task-validation` and `delivery` in its own worktree
 - THEN each worker's grant comes from its own task's worktree
 - AND neither task's changes appear in the other's worktree
-- AND both tasks can be delivered and merged
+- AND both tasks are delivered
+- AND the main agent can merge both task branches into the primary branch
 
 ## Errors
 
@@ -67,8 +69,9 @@ live worker test of Workers.
 - GIVEN a task whose `implement` worker finds that the Spec does not state a promise it needs
 - WHEN the worker ends `blocked` with its detailed error and the reason it cannot handle it
 - AND the Operation returns its run result
-- AND the main agent escalates the result to the developer with `concorde task escalate`
-- THEN the escalation is one chain: the main agent's link, then the Operation's, then Workers', then the worker's own
+- AND the task's task session escalates that run to the main agent with `concorde task escalate --by task-session`
+- AND the main agent, which may not decide it either, escalates the task session's escalation to the developer with `concorde task escalate`
+- THEN the main agent's escalation is one chain: the main agent's link, then the task session's, then the Operation's, then Workers', then the worker's own
 - AND every link gives its level, its actor, a detailed description and the reason that level could not handle the error
 - AND the worker's description, evidence and options arrive unchanged
-- AND the chain is recorded in the task record and the [decision log](glossary.json#concept.decision-log) and printed rendered for the developer
+- AND each escalation is recorded in the task's [trace node](glossary.json#concept.trace-node) and the [decision log](glossary.json#concept.decision-log) and printed rendered for its receiver

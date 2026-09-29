@@ -40,8 +40,9 @@ Developing this checkout itself is direct developer-authorized maintenance, done
    worktree's own script: it registers in the shared `.git/config`, which the session's sandbox
    keeps read-only, each reference submodule not registered yet, and checks them all out. While
    another task session runs a command, its sandbox holds `.git/config.lock`; the script then
-   still checks out registered submodules but refuses to register a new one. Run it again once
-   that command ends, and never delete the lock. It records the task's brief in the decision log
+   still checks out the submodules when all are registered, but when one still needs registering
+   it refuses before checking out any. Run it again once that command ends, and never delete the
+   lock. It records the task's brief in the decision log
    and starts the session with
    `python3 scripts/concorde.py task session <task> --main <its session name>` from the primary
    worktree.

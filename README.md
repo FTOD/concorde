@@ -43,7 +43,7 @@ flowchart TB
   you(["You"])
   subgraph top["Coordination: sessions and tasks"]
     main["1 · Main session<br/>your Claude Code, primary checkout"]
-    task["2 · Task level<br/>the main agent or a task session,<br/>branch + worktree"]
+    task["2 · Task level<br/>a task session,<br/>branch + worktree"]
   end
   subgraph mid["Execution, in the bound workspace: programs"]
     wf["3 · Workflow<br/>orders the workspace's runs"]
@@ -54,7 +54,7 @@ flowchart TB
   end
   specs[("Specs")]
   you <--> main
-  main -->|opens, enters or delegates, merges| task
+  main -->|opens, delegates, merges| task
   task -->|starts| wf
   task -->|or runs directly| op
   wf -->|runs, one at a time| op
@@ -70,17 +70,17 @@ the project with you from the Specs, which describe every Module's purpose, usag
 relations and files to a human and an agent alike. It splits the agreed work into tasks, decides
 the ordinary things itself and writes them into each task's decision log, asks you only about
 decisions with a major impact, and merges what was delivered. It never edits the primary checkout's
-sources.
+sources, except a small change you approved.
 
 **Task sessions: one per task, in parallel.** A task is a branch with its own worktree, record and
 decision log, and Concorde manages the worktree for you: `concorde task open` creates it for the
 task's goal and Modules, and `concorde task merge` takes a lock, merges the branch, validates the
-result, undoes the merge if validation fails, and removes the worktree. For work split into several
-tasks, the main agent starts one task session per task, a background Claude Code session with your
+result, undoes the merge if validation fails, and removes the worktree. The main agent starts one
+task session per task, even for a single task, a background Claude Code session with your
 configuration, and tasks whose Modules and shared files do not overlap run at once. A task session may write only its
 own task: it changes Specs and code in the worktree, commits verified steps, runs `task-validation`
-and `delivery`, and reports back when it has delivered or needs a decision beyond its task. A single
-task the main agent can also carry out itself inside the worktree. `concorde task open` binds the
+and `delivery`, and reports back when it has delivered or needs a decision beyond its task. The main
+agent never works inside a task worktree itself. `concorde task open` binds the
 worktree as the task's workspace, so every command run there works on the task without naming it,
 and whether a task is active or delivered is read from what those runs recorded.
 
@@ -91,7 +91,7 @@ runs and stops wherever you must decide. An **Operation** completes one bounded 
 one result: it launches workers, runs the project's configured checks itself, and checks
 the outcome itself. An **execution command** does a deterministic step, such as deciding readiness or
 delivering, and returns the same kind of result without any worker. None of them decides the
-project's direction; they follow declared rules, so no model's answer reaches the next level
+project's direction; they follow declared rules, so no worker's answer reaches the task level
 unchecked.
 
 **Workers: one bounded step, inside a harness.** For a bounded step, a task runs an Operation: the

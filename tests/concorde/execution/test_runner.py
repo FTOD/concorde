@@ -1071,8 +1071,9 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(envelope["status"], self.run_status(envelope))
         # The detached runner's own output is kept in the run's node.
         self.assertTrue((folder / "host.out").is_file())
-        # A workspace already running something still gets its refusal as the result.
-        with runs.workspace_lock(self.store(), "t1", "implement run r-other"):
+        # A workspace already running something still gets its refusal as the result. The
+        # finished runner may still hold the lock after its result is written, so wait for it.
+        with runs.workspace_lock(self.store(), "t1", "implement run r-other", wait=30):
             status, announced = detach(
                 "command", "task-validation", [], cwd=self.worktree
             )
@@ -1425,7 +1426,7 @@ class UnboundCheckoutTests(unittest.TestCase):
         self.assertNotEqual(examined, head(self.root))
         validate(envelope, RESULT_SCHEMA)
 
-    @verifies("scenario.execution.unbound-checkout")
+    @verifies("scenario.execution.unbound-checkout-removed")
     def test_the_checkout_is_removed_however_the_run_ends(self):
         examined = head(self.root)
         status, envelope = self.probe("--fail")
@@ -1502,7 +1503,7 @@ class UnboundCheckoutTests(unittest.TestCase):
         ]
         self.assertEqual("references/lib", absent["ref"])
 
-    @verifies("scenario.execution.unbound-checkout")
+    @verifies("scenario.execution.unbound-no-commit")
     def test_a_worktree_without_a_commit_refuses_an_unbound_run(self):
         empty = self.project.base / "empty"
         empty.mkdir()

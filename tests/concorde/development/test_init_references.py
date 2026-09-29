@@ -47,14 +47,15 @@ class InitReferencesTests(unittest.TestCase):
         git(upstream, *identity, "commit", "--quiet", "-m", "reference")
         self.primary = root / "primary"
         git(root, "init", "--quiet", "-b", "main", self.primary.as_posix())
-        git(
-            self.primary,
-            "submodule",
-            "add",
-            "--quiet",
-            upstream.as_posix(),
-            "references/r",
-        )
+        for path in ("references/r", "references/s"):
+            git(
+                self.primary,
+                "submodule",
+                "add",
+                "--quiet",
+                upstream.as_posix(),
+                path,
+            )
         git(self.primary, *identity, "commit", "--quiet", "-m", "vendor")
         self.worktree = root / "task"
         git(self.primary, "worktree", "add", "--quiet", self.worktree.as_posix())
@@ -77,14 +78,15 @@ class InitReferencesTests(unittest.TestCase):
         self.lock.write_bytes(b"")
         self.lock.chmod(0o444)
         output = self.run_script()
-        self.assertIn("references/r: initialized", output)
-        self.assertEqual(
-            (self.worktree / "references/r/README.md").read_text(), "reference\n"
-        )
+        for path in ("references/r", "references/s"):
+            self.assertIn(f"{path}: initialized", output)
+            self.assertEqual(
+                (self.worktree / path / "README.md").read_text(), "reference\n"
+            )
         self.assertEqual(self.config.read_bytes(), before)
         self.assertTrue(self.lock.exists())
 
-    @verifies("scenario.concorde.references-registered-once")
+    @verifies("scenario.concorde.references-unregistered-refused")
     def test_unregistered_submodule_under_a_held_lock_is_refused_in_detail(self):
         git(self.primary, "config", "--remove-section", "submodule.references/r")
         before = self.config.read_bytes()
@@ -102,9 +104,11 @@ class InitReferencesTests(unittest.TestCase):
         self.assertIn("never delete the lock", message)
         self.assertTrue(self.lock.exists())
         self.assertEqual(self.config.read_bytes(), before)
-        self.assertFalse((self.worktree / "references/r/.git").exists())
+        # The registered submodule is not checked out either.
+        for path in ("references/r", "references/s"):
+            self.assertFalse((self.worktree / path / ".git").exists())
 
-    @verifies("scenario.concorde.references-registered-once")
+    @verifies("scenario.concorde.references-registered-when-free")
     def test_unregistered_submodule_is_registered_when_the_lock_is_free(self):
         git(self.primary, "config", "--remove-section", "submodule.references/r")
         output = self.run_script()
@@ -113,7 +117,8 @@ class InitReferencesTests(unittest.TestCase):
             git(self.primary, "config", "--get", "submodule.references/r.active"),
             "true",
         )
-        self.assertTrue((self.worktree / "references/r/README.md").is_file())
+        for path in ("references/r", "references/s"):
+            self.assertTrue((self.worktree / path / "README.md").is_file())
 
 
 if __name__ == "__main__":
