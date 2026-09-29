@@ -107,3 +107,5 @@ this log and stop; the main agent also waits on the task becoming `delivered`.
 
 - `task-validation` ready (no blocking findings, no warnings); `delivery` ok, delivery commit
   b7bde2b6 on `concorde/decision-log-closing`.
+
+## Closed: merged, 2026-09-29T17:29:40Z
