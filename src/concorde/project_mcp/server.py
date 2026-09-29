@@ -7,9 +7,11 @@ directory, so a server started from any worktree serves the same tasks, traces a
 child of one Claude Code session and lives as long as that session. It declares the tools
 capability and the experimental ``claude/channel`` capability; whether the session actually
 listens to it as a channel is not something Claude Code tells a server, so it is read from
-``CONCORDE_CHANNEL`` (``1`` or ``0``) when set, otherwise from the command lines of its ancestor
-processes, one of which is the ``claude`` that started it with
-``--dangerously-load-development-channels server:<name>`` or ``--channels server:<name>``.
+``CONCORDE_CHANNEL`` (``1`` or ``0``) when set, otherwise from its ancestor processes: one of them
+must be a ``claude`` started with ``--dangerously-load-development-channels server:<name>`` or
+``--channels server:<name>`` whose standard input is a terminal. Only an interactive session is
+woken by channel events: a probe on 2026-09-29 (Claude Code 2.1.284) found a ``claude --bg``
+session started with the flag never woken, and ``claude -p`` registers no channel at all.
 """
 
 from __future__ import annotations
@@ -45,8 +47,19 @@ INSTRUCTIONS = (
 )
 
 
-def _ancestor_command_lines(start: int, depth: int = ANCESTORS) -> list[list[str]]:
-    lines, pid = [], start
+def _on_terminal(pid: int) -> bool:
+    """Whether the process's standard input is a terminal, as an interactive session's is."""
+    try:
+        target = os.readlink(f"/proc/{pid}/fd/0")
+    except OSError:
+        return False
+    return target.startswith(("/dev/pts/", "/dev/tty"))
+
+
+def _ancestors(start: int, depth: int = ANCESTORS) -> list[tuple[list[str], bool]]:
+    """The command line of each ancestor process, nearest first, and whether it runs on a
+    terminal."""
+    found, pid = [], start
     for _ in range(depth):
         try:
             with open(f"/proc/{pid}/stat", encoding="utf-8") as stat:
@@ -59,33 +72,39 @@ def _ancestor_command_lines(start: int, depth: int = ANCESTORS) -> list[list[str
                 ]
         except (OSError, ValueError, IndexError):
             break
-        lines.append(words)
+        found.append((words, _on_terminal(parent)))
         if parent <= 1:
             break
         pid = parent
-    return lines
+    return found
 
 
-def channel_requested(name: str, lines: list[list[str]]) -> bool:
-    """Whether one of the command lines starts Claude Code with ``server:<name>`` as a channel."""
+def channel_requested(name: str, words: list[str]) -> bool:
+    """Whether the command line starts Claude Code with ``server:<name>`` as a channel."""
     entry = f"server:{name}"
-    for words in lines:
-        listening = False
-        for word in words:
-            if word in CHANNEL_FLAGS:
-                listening = True
-            elif word.startswith("--"):
-                listening = False
-            elif listening and entry in word.split():
-                return True
+    listening = False
+    for word in words:
+        if word in CHANNEL_FLAGS:
+            listening = True
+        elif word.startswith("--"):
+            listening = False
+        elif listening and entry in word.split():
+            return True
     return False
+
+
+def channel_from(name: str, ancestors: list[tuple[list[str], bool]]) -> bool:
+    """Whether an interactive ancestor, one on a terminal, names this server as a channel."""
+    return any(
+        terminal and channel_requested(name, words) for words, terminal in ancestors
+    )
 
 
 def detect_channel(name: str, environment: dict, pid: int | None = None) -> bool:
     configured = environment.get("CONCORDE_CHANNEL")
     if configured in ("1", "0"):
         return configured == "1"
-    return channel_requested(name, _ancestor_command_lines(pid or os.getpid()))
+    return channel_from(name, _ancestors(pid or os.getpid()))
 
 
 def find_primary(environment: dict, cwd: Path) -> Path | None:
@@ -256,4 +275,4 @@ def main(argv=None) -> int:
     return Session(sys.stdin, sys.stdout, name=arguments.name).run()
 
 
-__all__ = ["Session", "channel_requested", "detect_channel", "main"]
+__all__ = ["Session", "channel_from", "channel_requested", "detect_channel", "main"]

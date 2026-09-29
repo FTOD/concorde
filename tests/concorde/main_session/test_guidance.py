@@ -553,6 +553,8 @@ class ProjectMcpGuidanceTests(unittest.TestCase):
         )
         self.assertIn("The `concorde` commands stay the source of truth", skill)
         self.assertIn("you never merge or close your task", session)
+        self.assertIn("A background session is never woken by channel events", session)
+        self.assertIn("Task sessions receive the server too, but without a channel", skill)
 
 
 if __name__ == "__main__":

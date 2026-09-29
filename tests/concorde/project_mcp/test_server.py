@@ -17,7 +17,7 @@ from pathlib import Path
 
 from concorde.errors import ERROR_SCHEMA
 from concorde.execution.runs import workspace_lock
-from concorde.project_mcp.server import channel_requested
+from concorde.project_mcp.server import channel_from, detect_channel
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
 from concorde.tasks import store
@@ -391,36 +391,46 @@ class ProjectMcpTests(unittest.TestCase):
 
 class ChannelDetectionTests(unittest.TestCase):
     @verifies("scenario.main-session.project-mcp-channel-detection")
-    def test_the_flag_that_names_the_server(self):
+    def test_an_interactive_claude_that_names_the_server(self):
+        flagged = [
+            "claude",
+            "--dangerously-load-development-channels",
+            "server:concorde",
+            "--model",
+            "opus",
+        ]
         self.assertTrue(
-            channel_requested(
+            channel_from("concorde", [(["node", "x"], False), (flagged, True)])
+        )
+        self.assertTrue(
+            channel_from(
+                "concorde",
+                [(["claude", "--channels", "plugin:a@b server:concorde"], True)],
+            )
+        )
+        # A background session is never woken by channel events, flag or not.
+        self.assertFalse(channel_from("concorde", [(flagged, False)]))
+        self.assertFalse(
+            channel_from("concorde", [(["claude", "--model", "server:concorde"], True)])
+        )
+        self.assertFalse(
+            channel_from(
                 "concorde",
                 [
-                    ["node", "x"],
-                    [
-                        "claude",
-                        "--dangerously-load-development-channels",
-                        "server:concorde",
-                        "--model",
-                        "opus",
-                    ],
+                    (
+                        [
+                            "claude",
+                            "--dangerously-load-development-channels",
+                            "server:other",
+                        ],
+                        True,
+                    )
                 ],
             )
         )
-        self.assertTrue(
-            channel_requested(
-                "concorde", [["claude", "--channels", "plugin:a@b server:concorde"]]
-            )
-        )
-        self.assertFalse(
-            channel_requested("concorde", [["claude", "--model", "server:concorde"]])
-        )
-        self.assertFalse(
-            channel_requested(
-                "concorde",
-                [["claude", "--dangerously-load-development-channels", "server:other"]],
-            )
-        )
+        # The environment decides when it says so.
+        self.assertFalse(detect_channel("concorde", {"CONCORDE_CHANNEL": "0"}))
+        self.assertTrue(detect_channel("concorde", {"CONCORDE_CHANNEL": "1"}))
 
 
 if __name__ == "__main__":

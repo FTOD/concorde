@@ -629,10 +629,12 @@ class Project:
                 "registered": False,
                 "channel": False,
                 "command": command,
-                "explanation": "this session was not started with the server as a Claude Code "
-                "channel (`--dangerously-load-development-channels server:concorde`), so the "
-                "server cannot wake it; run the command in background Bash instead: it blocks "
-                f"without polling until {description} and prints one JSON value",
+                "explanation": "the server cannot wake this session: it was not started "
+                "interactively with the server as a Claude Code channel "
+                "(`claude --dangerously-load-development-channels server:concorde`), and a "
+                "background session, such as a task session, is never woken by channel events; "
+                "run the command in background Bash instead: it blocks without polling until "
+                f"{description} and prints one JSON value",
             }
         self.waits += 1
         identity = str(self.waits)

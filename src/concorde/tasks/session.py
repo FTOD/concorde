@@ -16,10 +16,13 @@ which the close removes, and guards against mistakes, not a malicious session:
   boundary guards against mistakes, not exfiltration (``allowedDomains`` is ``*``, so no command
   has to name the hosts it reaches);
 - the session is given the project MCP server through ``--mcp-config`` (a background session in
-  a folder it never trusted would not load the project's ``.mcp.json``), loaded as a Claude Code
-  channel with ``--dangerously-load-development-channels server:concorde`` so that a wait it
-  registers wakes it; the server runs outside the Bash sandbox, as every MCP server does, and
-  may change task records, which the developer accepted: it is a management tool, not a boundary;
+  a folder it never trusted would not load the project's ``.mcp.json``), told that it has no
+  channel (``CONCORDE_CHANNEL=0``): a live probe on 2026-09-29 (Claude Code 2.1.284) found that a
+  ``claude --bg`` session started with ``--dangerously-load-development-channels`` is never woken
+  by a channel event, so a task session waits with ``concorde task wait`` in background Bash,
+  which ``register_wait`` returns to it; the server runs outside the Bash sandbox, as every MCP
+  server does, and may change task records, which the developer accepted: it is a management
+  tool, not a boundary;
 - nobody answers permission prompts in a background session, so it runs in Claude Code's
   ``auto`` mode, where a classifier approves or refuses each action instead of asking; the hook
   and sandbox stay the boundary, and ``auto`` needs no one-time consent the way
@@ -47,7 +50,7 @@ PROMPT = "generated/main-session/task-session.md"
 CACHES = (".cache", ".npm")
 # Every host: the sandbox's proxy otherwise admits only hosts a command names.
 ALL_HOSTS = ("*",)
-# The project MCP server's name, which the channel flag names as server:<name>.
+# The project MCP server's name in the session's MCP configuration.
 SERVER = "concorde"
 STARTED = re.compile(r"backgrounded\s+·\s+(?P<id>[0-9A-Za-z-]+)\s+·")
 # The terminal escapes (colour, dimming) Claude Code puts around parts of that line.
@@ -139,7 +142,8 @@ def settings(
 
 def mcp_config(python: str) -> dict:
     """The MCP configuration of one task session: the project MCP server, by this Python and this
-    package, told that the session listens to it as a channel."""
+    package, told that its background session has no channel, since Claude Code does not wake a
+    background session with channel events."""
     return {
         "mcpServers": {
             SERVER: {
@@ -148,7 +152,7 @@ def mcp_config(python: str) -> dict:
                     (PACKAGE_ROOT / "scripts/concorde.py").as_posix(),
                     "project-mcp",
                 ],
-                "env": {"CONCORDE_CHANNEL": "1"},
+                "env": {"CONCORDE_CHANNEL": "0"},
             }
         }
     }
@@ -230,8 +234,6 @@ def start(
         path.as_posix(),
         "--mcp-config",
         servers.as_posix(),
-        "--dangerously-load-development-channels",
-        f"server:{SERVER}",
         "--permission-mode",
         "auto",
         *(["--model", model] if model else []),

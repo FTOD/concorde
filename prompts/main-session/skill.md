@@ -466,7 +466,8 @@ answer names. If a channel event you expected never comes although the server sa
 channel, the organization may block channels: use the background Bash form. Using the server is
 recommended, not required: the kernel lock is the same whichever path takes it, and everything the
 server does not present, such as `concorde task session`, stays a command. Task sessions receive
-the server too; workers never do.
+the server too, but without a channel, since Claude Code never wakes a background session with
+channel events: they wait with `concorde task wait` in background Bash. Workers never receive it.
 
 ## Spec queries
 

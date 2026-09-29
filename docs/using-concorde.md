@@ -284,7 +284,8 @@ Claude Code asks you once to confirm the flag, and asks, the first time, whether
 to be logged in with claude.ai or a Console API key, and a Team or Enterprise organization must
 have enabled them. Without a channel everything still works: the server's tools answer as usual,
 and instead of waking the main agent itself it gives the main agent a `concorde task wait` command
-that it runs in background Bash, which wakes it when the command returns.
+that it runs in background Bash, which wakes it when the command returns. Task sessions always
+work this way: Claude Code does not wake a background session with channel events.
 
 - **Discuss first.** Ask about the project, agree the direction and the large plan. The main agent
   answers from the Specs.

@@ -26,9 +26,12 @@ It takes the **session** it serves from `CLAUDE_CODE_SESSION_ID`, the identity C
 the processes of a session, and writes it into the holder line of every lock it takes.
 
 It decides once whether the session **listens to it as a channel**: `CONCORDE_CHANNEL` `1` or `0`
-when set; otherwise whether the command line of one of its ancestor processes, up to eight levels
-up, has an entry `server:<name>` among the words after `--dangerously-load-development-channels` or
-`--channels` and before the next option. Claude Code tells a server neither whether it loaded it as
+when set; otherwise whether one of its ancestor processes, up to eight levels up, has its standard
+input on a terminal and a command line with an entry `server:<name>` among the words after
+`--dangerously-load-development-channels` or `--channels` and before the next option. The terminal
+is required because only an interactive session is woken by channel events: a `claude --bg` session
+started with the flag was never woken in a probe on 2026-09-29 (Claude Code 2.1.284), and `claude -p`
+registers no channel. Claude Code tells a server neither whether it loaded it as
 a channel nor whether a notification was delivered, so this is the server's only knowledge of it;
 an organization policy that disables channels leaves it believing it has one.
 

@@ -14,12 +14,12 @@ Commands, the session's [trace node](../../glossary.json#concept.trace-node) and
 - AND the task's [trace](../../glossary.json#concept.trace) holds the started session as the node `sessions/<id>/` with its identity and name
 - BUT when Claude Code reports no started session, the command fails with `session_failed`, carrying Claude Code's output, and the task is unchanged
 
-### scenario.task-session.project-mcp — A task session gets the project MCP server as a channel
+### scenario.task-session.project-mcp — A task session gets the project MCP server without a channel
 
 - GIVEN an open task `t1`
 - WHEN the main agent starts its task session
-- THEN `.concorde/tasks/t1/runtime/mcp.json` configures the [project MCP server](../../glossary.json#concept.project-mcp-server) `concorde` with `CONCORDE_CHANNEL` `1`
-- AND `claude --bg` is started with `--mcp-config` naming that file and `--dangerously-load-development-channels server:concorde`
+- THEN `.concorde/tasks/t1/runtime/mcp.json` configures the [project MCP server](../../glossary.json#concept.project-mcp-server) `concorde` with `CONCORDE_CHANNEL` `0`
+- AND `claude --bg` is started with `--mcp-config` naming that file and without any channel flag, since a background session is never woken by channel events
 
 ### scenario.task-session.boundary — The session's boundary confines its writes
 

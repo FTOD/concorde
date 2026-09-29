@@ -304,9 +304,10 @@ This illustrates [conflict handling](requirements.md#req.main-session.issues-con
 ### scenario.main-session.project-mcp-channel-detection — The server reads its channel from the session's command line
 
 - GIVEN the command lines of the server's ancestor processes
-- WHEN one is a `claude` started with `--dangerously-load-development-channels server:concorde` or with `server:concorde` among the entries of `--channels`
+- WHEN one is a `claude` on a terminal started with `--dangerously-load-development-channels server:concorde` or with `server:concorde` among the entries of `--channels`
 - THEN the server knows it has a channel
-- BUT `server:concorde` as the value of another option, or another server's entry, does not give it one
+- BUT the same command line of a `claude` without a terminal, a background session, does not give it one, nor does `server:concorde` as the value of another option or another server's entry
+- AND `CONCORDE_CHANNEL` `0` or `1` decides instead when it is set
 
 ### scenario.main-session.project-mcp-guidance — The guidance says how to start with the server and when to use it
 
@@ -314,3 +315,4 @@ This illustrates [conflict handling](requirements.md#req.main-session.issues-con
 - WHEN a main agent reads how to merge a task and how to wait for a task, run or lock
 - THEN it is told to start its session with `--dangerously-load-development-channels server:concorde`, to use `task_merge` and `register_wait`, and, without a channel, to run the `concorde task wait` command they return in background Bash
 - AND that a woken session is never handed a lock and asks again, and that the `concorde` commands stay the source of truth
+- AND the task-session guidance tells a task session that, as a background session, it is never woken by channel events and waits with `concorde task wait` in background Bash

@@ -335,23 +335,27 @@ session`, the runs of a task, and anything the server does not present.
 
 <a id="channels"></a>
 
-**Channels.** Claude Code delivers a server's `notifications/claude/channel` only to a session
-started with that server as a channel. Channels are a research preview of Claude Code: a
+**Channels.** Claude Code delivers a server's `notifications/claude/channel` only to an
+interactive session started with that server as a channel. Channels are a research preview of Claude Code: a
 self-built server needs `--dangerously-load-development-channels server:concorde` when the session
 starts, which Claude Code confirms once, and they need Anthropic authentication (claude.ai or a
 Console key) and an organization that has not disabled them (`channelsEnabled`). The guidance tells
 the developer to start the main agent's session in the primary worktree with
-`claude --dangerously-load-development-channels server:concorde`, and `concorde task session`
-starts every task session with the server and that flag
-([Task sessions](../task-session/module.md)). A server cannot learn from Claude Code whether it is
-a channel, so it reads it from the session's command line; when it has none, `register_wait` says
+`claude --dangerously-load-development-channels server:concorde`. A background session is never
+woken by them: a probe on 2026-09-29 (Claude Code 2.1.284) started a `claude --bg` session with that
+flag, whose server loaded and registered a wait, and the session stayed idle when the lock it waited
+for was released; `claude -p` registers no channel at all. So task sessions, which are background
+sessions, get the server without a channel ([Task sessions](../task-session/module.md)). A server
+cannot learn from Claude Code whether it is a channel, so it reads it from the command line of the
+interactive `claude` above it, one whose standard input is a terminal; when it has none, `register_wait` says
 so and returns the equivalent blocking `concorde task wait` command, and `task_merge` returns the
 `concorde task wait … --lock workspace` that returns when the merge ends, to run in background
 Bash, which wakes the session when the command ends. An organization that disabled channels drops
 the events silently; the guidance tells the agent to use the background Bash form then.
 
 **Task sessions** receive the server too, with the same tools: a task session may query its task
-or register a wait, and the developer does not consider its reach to other tasks' management a
+or register a wait, which answers it with the `concorde task wait` command for its background Bash
+since it has no channel, and the developer does not consider its reach to other tasks' management a
 problem, so there is no split by role. The guidance still tells a task session never to merge or
 close its task. [Workers](../../glossary.json#concept.worker) never receive it: they launch with an
 empty MCP configuration.

@@ -39,11 +39,12 @@ Run Operations, `task-validation` and `delivery` in background Bash (`run_in_bac
 wakes you when the command ends: they may take longer than a foreground Bash call is allowed, and
 a timeout kills the run half done. Never wait for anything with `sleep` loops.
 
-Your session has the project MCP server `concorde` as a channel: its `task_show`, `trace_show`,
-`run_result` and `workflow_report` read your task's records, and `register_wait` wakes you when
-something you did not start yourself ends, such as another run of your workspace holding its lock;
-without a channel it returns the `concorde task wait` command to run in background Bash instead.
-Its `task_merge` and `task_close` are the main agent's: you never merge or close your task.
+Your session has the project MCP server `concorde`: its `task_show`, `trace_show`, `run_result`
+and `workflow_report` read your task's records. A background session is never woken by channel
+events, so to wait for something you did not start yourself, such as another run of your workspace
+holding its lock, call `register_wait`, which returns the `concorde task wait` command, or run that
+command directly, in background Bash. Its `task_merge` and `task_close` are the main agent's: you
+never merge or close your task.
 
 Your settings enforce this boundary: Edit and Write refuse any path outside the task worktree and
 its decision log, and Bash commands may write only the worktree, the repository's Git directory,

@@ -35,12 +35,17 @@ The task's folder is writable because the task worktree's
 workspace folder of every run started there, and `.concorde/locks/` because those runs take their
 locks there.
 
-### req.task-session.project-mcp — A task session gets the project MCP server as a channel
+### req.task-session.project-mcp — A task session gets the project MCP server without a channel
 
 Task sessions SHALL start every task session with the
 [project MCP server](../../glossary.json#concept.project-mcp-server) in an MCP configuration it
-passes explicitly, loaded as a Claude Code channel and told so, so that a wait the session
-registers wakes it.
+passes explicitly, telling the server that the session has no channel.
+
+Claude Code does not wake a background session with channel events: a probe on 2026-09-29 (Claude
+Code 2.1.284) found a `claude --bg` session started with
+`--dangerously-load-development-channels server:concorde` never woken by the event of a wait it had
+registered. Told so, `register_wait` answers the session with the `concorde task wait` command for
+its background Bash instead of promising an event that never comes.
 
 ### req.task-session.boundary-first — The boundary is written before the session starts
 

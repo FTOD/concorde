@@ -61,8 +61,7 @@ rule](../../execution/workers/launch.md#proxy)), so they reach their model endpo
 task-session [write hook](../../glossary.json#concept.write-hook) with the task's paths embedded —
 under `.concorde/tasks/severity/runtime/`, with an MCP configuration `mcp.json` there that gives
 the session the [project MCP server](../../glossary.json#concept.project-mcp-server), starts
-`claude --bg` in the task worktree with that configuration, the server loaded as a Claude Code
-channel (`--dangerously-load-development-channels server:concorde`), and the
+`claude --bg` in the task worktree with that configuration and the
 task-session guidance and the task's goal, Modules, decision log and the main agent's session name
 as its first prompt, and records the started session as a node `sessions/<id>/` of the task's
 trace, with status `unknown`, since nothing tells Concorde when a Claude Code session ends.
@@ -73,9 +72,13 @@ that does not report a started background session is refused (`task_closed`, `mi
 answers and sends its reports through SendMessage; `claude stop` stops it.
 
 The server is passed explicitly because a background session does not load the project-scoped
-`.mcp.json` of a folder nobody trusted, and its configuration tells the server that its session
-listens to it as a channel, since the server cannot learn that from a background session's
-process. The server runs as every MCP server does, outside the Bash sandbox, and its tools may
+`.mcp.json` of a folder nobody trusted. It comes without a channel, and its configuration says so
+(`CONCORDE_CHANNEL=0`): Claude Code does not wake a background session with channel events. A
+probe on 2026-09-29 (Claude Code 2.1.284) started a `claude --bg` session with
+`--dangerously-load-development-channels server:concorde`; the server loaded and registered a wait
+on a held [merge lock](../../glossary.json#concept.merge-lock), and when the lock was released the idle session was never woken. So
+`register_wait` answers a task session with the `concorde task wait` command, which it runs in
+background Bash and is woken by when it returns. The server runs as every MCP server does, outside the Bash sandbox, and its tools may
 change any task's record: the developer accepted that a task session can reach the task
 management tools, which are no boundary, so the guidance, not the boundary, keeps a task session
 from merging or closing its task.
