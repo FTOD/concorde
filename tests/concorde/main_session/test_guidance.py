@@ -32,22 +32,35 @@ class GuidanceTests(unittest.TestCase):
         self.assertIn(
             "Every change of Spec meaning or code behaviour runs as a task", self.skill
         )
-        self.assertIn("Never change Specs or code in the primary worktree.", self.skill)
-        self.assertIn("concorde task open", self.skill)
-        self.assertIn("enter its worktree with the EnterWorktree tool", self.skill)
         self.assertIn(
-            "Inside the task worktree you may change Specs and code yourself",
+            "Never change Specs or code in the primary worktree, with one exception: a "
+            "**small change**",
             self.skill,
         )
+        self.assertIn(
+            "only after you told the developer what you would change and why it is small, and "
+            "the developer approved that specific change",
+            self.skill,
+        )
+        self.assertIn("concorde task open", self.skill)
+        self.assertIn(
+            "Hand every task to a task session, even when there is only one", self.skill
+        )
+        self.assertIn("you never work inside a task worktree yourself", self.skill)
+        self.assertNotIn("EnterWorktree", self.skill)
+        self.assertNotIn("EnterWorktree", self.block)
+        self.assertIn("hand every task, even a single one, to a task session", self.block)
+        for session in (self.session, self.pi_session):
+            self.assertIn(
+                "Inside the task worktree you may change Specs and code yourself", session
+            )
+            self.assertIn(
+                "from the task worktree with the worktree's own command, never the primary "
+                "worktree's",
+                session,
+            )
         self.assertIn("in background Bash", self.skill)
         self.assertIn("`concorde_run` tool", self.skill)
-        self.assertIn("runs the task worktree's own `concorde` there", self.skill)
-        self.assertIn(
-            "from the task worktree with the worktree's own command, never the primary "
-            "worktree's",
-            self.skill,
-        )
-        self.assertIn("with that worktree's own copy", self.block)
         # Runs read the task worktree's workspace binding and never name the task.
         self.assertIn("`concorde task open` binds the task worktree", self.skill)
         self.assertIn(
@@ -57,7 +70,7 @@ class GuidanceTests(unittest.TestCase):
         self.assertIn("a second is refused with `workspace_busy`", self.skill)
         self.assertIn(
             "`concorde task-validation` shows what would block; `concorde delivery`",
-            self.skill,
+            self.session,
         )
         self.assertIn(
             "`concorde spec-validation` checks the Specs' structure", self.skill
@@ -67,12 +80,19 @@ class GuidanceTests(unittest.TestCase):
         self.assertNotIn("concorde run delivery", self.skill)
 
     @verifies("scenario.main-session.split-into-sessions")
-    def test_split_work_goes_to_task_sessions(self):
+    def test_every_task_goes_to_a_task_session(self):
         self.assertIn(
             "concorde task session <task> --main <your session name>", self.skill
         )
-        self.assertIn("inside at most one task at a time", self.skill)
-        self.assertIn("stay in the primary worktree while any runs", self.skill)
+        self.assertIn("Every task is worked by a task session", self.skill)
+        self.assertIn("Stay in the primary worktree while any runs", self.skill)
+        self.assertIn("record there the task's **brief**", self.skill)
+        self.assertIn(
+            "put all the others to the developer at once (AskUserQuestion in Claude Code), "
+            "and then answer the session once with every answer",
+            self.skill,
+        )
+        self.assertIn("after recording its brief in the task's decision log", self.block)
         self.assertIn("naming its escalation as a cause", self.skill)
         self.assertIn("concorde task session", self.block)
         self.assertIn("call the `concorde_task_session` tool with the task", self.skill)
@@ -88,10 +108,21 @@ class GuidanceTests(unittest.TestCase):
         self.assertIn("concorde task escalate <task> --by task-session", self.session)
         self.assertIn("SendMessage", self.session)
         self.assertIn(
-            "When the task is delivered, or cannot go further, send the main agent's session",
+            "When the task is delivered, or cannot go further without decisions that are not "
+            "yours, send the main agent's session one message",
             self.session,
         )
-        self.assertIn("Do not merge the task branch, close the task", self.session)
+        self.assertIn(
+            "Record every escalation the task needs first. Then send the main agent's session "
+            "one message",
+            self.session,
+        )
+        self.assertNotIn("wait for its answer before continuing", self.session)
+        self.assertIn(
+            "Do not merge the task branch into the primary branch, close the task",
+            self.session,
+        )
+        self.assertIn("Read the task's decision log before you change anything", self.session)
 
     @verifies("scenario.main-session.pi-task-session-role")
     def test_a_pi_task_session_ends_each_round_with_a_report(self):
@@ -113,15 +144,37 @@ class GuidanceTests(unittest.TestCase):
         self.assertIn("its answer is the prompt of your next round", self.pi_session)
         self.assertNotIn("SendMessage", self.pi_session)
         self.assertIn("stage the paths you changed by name", self.pi_session)
-        self.assertIn("Do not merge the task branch, close the task", self.pi_session)
+        self.assertIn(
+            "Record every escalation the task needs first, then end the round with a report "
+            "naming all their numbers",
+            self.pi_session,
+        )
+        self.assertIn(
+            "Do not merge the task branch into the primary branch, close the task",
+            self.pi_session,
+        )
 
     @verifies("scenario.main-session.task-session-workflow")
-    def test_a_task_session_runs_workflows_in_no_ask_mode(self):
+    def test_a_task_session_runs_workflows_in_the_mode_of_its_brief(self):
         for session in (self.session, self.pi_session):
             with self.subTest(session=session[:40]):
+                self.assertIn("in the mode the task's brief names", session)
                 self.assertIn(
-                    'but only in `no-ask` mode (`"mode": "no-ask"` in its `args`): nobody '
-                    "answers you at a decision point",
+                    "`interactive`, also when the brief names no mode", session
+                )
+                self.assertIn(
+                    "escalate every point in `pending` at once, with `--error-file` naming "
+                    "its report",
+                    session,
+                )
+                self.assertIn(
+                    "start the same workflow again with `answers` mapping each step's base key",
+                    session,
+                )
+                self.assertIn("**Never ask in place.**", session)
+                self.assertIn(
+                    "gather every decision the task still needs and escalate them together, "
+                    "in one report, rather than one at a time",
                     session,
                 )
                 self.assertIn(
@@ -135,14 +188,13 @@ class GuidanceTests(unittest.TestCase):
                     "give its decisions in your report to the main agent", session
                 )
                 self.assertIn(
-                    "Escalate to the main agent what needs the developer: a result that is "
-                    "not `ok` and that you cannot repair within the task, with "
-                    "`--error-file` naming that report",
+                    "Escalate a result that is not `ok` and that you cannot repair within the "
+                    "task with `--error-file` naming that report",
                     session,
                 )
                 self.assertIn(
-                    "a decision of major impact among those the workflow took, which carries "
-                    "no error, escalated naming no run or file, so that your link, with its "
+                    "Escalate a decision of major impact among those the workflow took, which "
+                    "carries no error, naming no run or file, so that your link, with its "
                     "step, its options and your recommendation, is the whole chain",
                     session,
                 )
@@ -164,16 +216,12 @@ class GuidanceTests(unittest.TestCase):
     @verifies("scenario.main-session.merge-delivered")
     def test_delivered_tasks_are_merged_without_asking(self):
         self.assertIn("without asking the developer for authorization", self.skill)
-        self.assertIn("leave the task worktree if you are in it", self.skill)
+        self.assertNotIn("leave the task worktree", self.skill)
         self.assertIn(
             "run `concorde task merge <task>` from the primary worktree", self.skill
         )
         self.assertIn("Never merge a task with `git merge` yourself", self.skill)
         self.assertIn("When it fails with `merge_busy`", self.skill)
-        self.assertIn(
-            "merge the primary branch into the task branch, resolve the conflicts",
-            self.skill,
-        )
         self.assertIn("merge delivered task branches without asking", self.block)
         self.assertIn(
             "In Claude Code, run it in background Bash (`run_in_background`) like a run",
@@ -181,10 +229,55 @@ class GuidanceTests(unittest.TestCase):
         )
         self.assertIn("in pi, run it with bash without a timeout", self.skill)
 
+    @verifies("scenario.main-session.merge-conflict")
+    def test_a_merge_conflict_goes_back_to_the_task_session(self):
+        self.assertIn(
+            "answer the task's session (start one again if it has ended) to merge the "
+            "primary branch",
+            self.skill,
+        )
+        self.assertIn("run `task-validation` and `delivery` again and report", self.skill)
+        for session in (self.session, self.pi_session):
+            self.assertIn(
+                "merge the primary branch it names into your task branch", session
+            )
+            self.assertIn("It is the only merge you make.", session)
+        self.assertIn("merge the primary branch into its task branch", self.block)
+
+    @verifies("scenario.main-session.small-change")
+    def test_a_small_change_needs_the_developers_approval(self):
+        self.assertIn(
+            "a typo, a one-line fix or a wording correction, may be made directly there, but "
+            "only after you told the developer what you would change and why it is small",
+            self.skill,
+        )
+        self.assertIn("Without that approval, open a task.", self.skill)
+        self.assertIn("that the developer approved after you said what you would change", self.block)
+
+    @verifies("scenario.main-session.batched-decisions")
+    def test_decisions_go_up_together_and_come_back_together(self):
+        for session in (self.session, self.pi_session):
+            self.assertIn(
+                "never stop in the middle of the work to wait for one answer", session
+            )
+            self.assertIn(
+                "carry on with every part of the work that does not depend on them", session
+            )
+        self.assertIn(
+            "A task never asks the developer in place: its session stops and escalates every "
+            "decision it needs to you together",
+            self.skill,
+        )
+        self.assertIn(
+            "decide those your authority covers, put all the others to the developer at once",
+            self.skill,
+        )
+        self.assertIn("a task never asks the developer in place", self.block)
+
     @verifies("scenario.main-session.no-polling")
     def test_every_wait_wakes_or_blocks_once(self):
         self.assertIn("Never wait by polling, with `sleep` loops", self.skill)
-        self.assertIn("start it with `--wait <seconds>`", self.skill)
+        self.assertIn("started with `--wait <seconds>`", self.skill)
         self.assertIn(
             "`concorde task session <task> --wait` in bash without a timeout",
             self.skill,
@@ -236,23 +329,23 @@ class GuidanceTests(unittest.TestCase):
             "the `brownfield` workflow: open a task bound to the root Module",
             self.skill,
         )
-        self.assertIn("start the workflow inside the task worktree", self.skill)
+        self.assertIn("have its task session run it", self.skill)
+        self.assertIn("the task's session starts it inside the task worktree", self.skill)
         self.assertIn("never names the task", self.skill)
         self.assertIn(
-            "Ask the developer which **mode** to use unless they already said",
-            self.skill,
+            "Ask the developer which mode to use unless they already said", self.skill
         )
         self.assertIn(
-            "put every point in `pending` to the developer at once", self.skill
+            "put the rest to the developer at once, with their options and recommendations",
+            self.skill,
         )
-        self.assertIn("start the same workflow again with `answers`", self.skill)
+        self.assertIn("it starts the same workflow again with them", self.skill)
         self.assertIn(".concorde/runs/workflows/<task>/reports/<n>.json", self.skill)
         self.assertIn(
-            "copy the rendering's decisions and problems into the task's decision log "
-            "yourself",
+            "The task session copies its decisions and problems into the task's decision log",
             self.skill,
         )
-        self.assertIn("Treat it like an Operation result", self.skill)
+        self.assertIn("treat it like an Operation result", self.skill)
         self.assertIn("never configured automatically", self.skill)
         self.assertIn("`survey`", self.skill)
         self.assertIn(
@@ -334,6 +427,7 @@ class GuidanceTests(unittest.TestCase):
             "neither records Issues automatically",
             "`concorde issues list` (open and closed Issues) and `show <id>` first",
             "Run every Issue write (`report`, `close`, `reopen`) in a task worktree",
+            "through the session working that task",
             "concorde issues report --file <report.json> --task <task>",
             "keep its receipt and revision",
             "`--task` records provenance only: it does not choose the worktree",
@@ -366,12 +460,12 @@ class GuidanceTests(unittest.TestCase):
     def test_rendered_conflict_guidance_requires_both_judgment_and_store_check(self):
         issues = self.skill.split("## Issues", 1)[1].split("## Worker models", 1)[0]
         for instruction in (
-            "Resolve Git conflicts in Issue records in the task worktree",
-            "Preserve accepted reports unchanged",
+            "Git conflicts in Issue records are resolved in the task worktree",
+            "preserve accepted reports unchanged",
             "document the decision about competing dispositions, retaining their evidence",
-            "Never concatenate incompatible closes or invent reopenings",
+            "never to concatenate incompatible closes or invent reopenings",
             (
-                "Run `concorde issues check` explicitly on the resolved records before "
+                "run `concorde issues check` explicitly on the resolved records before "
                 "`task-validation` and `delivery`"
             ),
             "a passing store check does not prove the closure is justified",

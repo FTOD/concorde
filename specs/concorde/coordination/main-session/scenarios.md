@@ -83,15 +83,22 @@ Situations the [main-session guidance](module.md) prepares the
 - WHEN the main agent's session or a task session, in Claude Code or pi, starts in one of its worktrees
 - THEN the session starts without terms and without an error
 
-### scenario.main-session.change-through-task — The guidance routes an agreed change through a task
+### scenario.main-session.change-through-task — The guidance routes an agreed change through a task session
 
 - GIVEN the rendered [main-session guidance](../../glossary.json#concept.main-session-guidance)
 - WHEN a main agent reads how to carry out a change agreed with the developer
-- THEN it is told to open a task with its own branch and worktree for the Modules involved
-- AND to work inside that worktree, entering it in Claude Code and addressing its path in pi, and make the change there, directly or with Operations and the execution commands `task-validation` and `delivery` run in the background
-- AND to run every `concorde` command that works on the task's workspace with the worktree's own copy
+- THEN it is told to open a task with its own branch and worktree for the Modules involved and to hand it to a [task session](../../glossary.json#concept.task-session), even when it is the only task
+- AND never to work inside a task worktree itself
+- AND the task-session guidance tells the session to make the change inside that worktree, directly or with Operations and the execution commands `task-validation` and `delivery`, running every `concorde` command that works on the task's workspace with the worktree's own copy
 - AND that `concorde task open` bound the worktree as the task's workspace, whose binding every run reads without naming the task, and that a second run while one runs is refused with `workspace_busy`
-- BUT it is told never to change Specs or code in the primary worktree
+- BUT it is told never to change Specs or code in the primary worktree beyond a small change the developer approved
+
+### scenario.main-session.small-change — The guidance makes a small change only with the developer's approval
+
+- GIVEN the rendered main-session guidance
+- WHEN a main agent reads whether it may fix a typo or a one-line defect directly in the primary worktree
+- THEN it is told that such a small change may be made there only after it told the developer what it would change and why it is small, and the developer approved that specific change
+- AND that without that approval the change runs in a task
 
 ### scenario.main-session.parallel-tasks — The guidance allows parallel work only between worktrees
 
@@ -100,41 +107,50 @@ Situations the [main-session guidance](module.md) prepares the
 - THEN it is told to run tasks in parallel only in separate worktrees whose Modules and shared files do not overlap
 - BUT to run tasks that write the same [Module](../../glossary.json#concept.module) or shared file one after another
 
-### scenario.main-session.split-into-sessions — The guidance hands split work to task sessions
+### scenario.main-session.split-into-sessions — The guidance hands every task to a task session
 
 - GIVEN the rendered main-session guidance
-- WHEN a main agent reads how to carry out work it split into several tasks
-- THEN it is told to start one [task session](../../glossary.json#concept.task-session) per task on its own program: in Claude Code with `concorde task session` naming its own session, in pi with the `concorde_task_session` tool, answering a round with its `answer`
-- AND to stay in the primary worktree while they run, being inside at most one task at a time itself
+- WHEN a main agent reads how to carry out the tasks it opened
+- THEN it is told to start one [task session](../../glossary.json#concept.task-session) per task, even for a single task, on its own program: in Claude Code with `concorde task session` naming its own session, in pi with the `concorde_task_session` tool, answering a round with its `answer`
+- AND to record the task's brief in its [decision log](../../glossary.json#concept.decision-log) before starting the session
+- AND to stay in the primary worktree
 - AND to answer a task session's escalation or pass it to the developer with its own link on top
+
+### scenario.main-session.batched-decisions — Decisions travel up together and come back together
+
+- GIVEN the rendered main-session and task-session guidance
+- WHEN a task session meets decisions its task needs that are not its own
+- THEN it is told not to wait in the middle of its work, but to carry on with what does not depend on them and then escalate all of them together in one report
+- AND the main agent is told to decide those its authority covers, to put all the others to the developer at once and to answer the session once with every answer
 
 ### scenario.main-session.task-session-role — The task-session guidance keeps a session within its task
 
 - GIVEN the rendered Claude Code task-session guidance
 - WHEN a Claude Code task session reads how to work
-- THEN it is told to work only inside its task worktree with the worktree's own `concorde`
-- AND to escalate beyond its task's goal or Modules with `concorde task escalate --by task-session` and SendMessage
-- AND to report to the main agent when the task is delivered or cannot go further
-- BUT never to merge the task branch or close the task
+- THEN it is told to read the task's decision log first and to work only inside its task worktree with the worktree's own `concorde`
+- AND to escalate beyond its task's goal or Modules with `concorde task escalate --by task-session`, recording every escalation first and then sending them together with SendMessage
+- AND to report to the main agent when the task is delivered or cannot go further without decisions that are not its own
+- BUT never to merge the task branch into the primary branch or close the task
 
 ### scenario.main-session.pi-task-session-role — The pi task-session guidance ends each round with a report
 
 - GIVEN the rendered pi task-session guidance
 - WHEN a pi task session reads how to report
 - THEN it is told to run Operations with the worktree's own `concorde` in the foreground
-- AND to end every round by calling `concorde_report`, always supplying `status`, `summary`, `commit`, `escalations`, `decisions` and `open`, with the [delivery commit](../../glossary.json#concept.delivery-commit) and an empty escalation array when delivered, or after `concorde task escalate --by task-session` with a null commit and the unique escalation numbers
+- AND to end every round by calling `concorde_report`, always supplying `status`, `summary`, `commit`, `escalations`, `decisions` and `open`, with the [delivery commit](../../glossary.json#concept.delivery-commit) and an empty escalation array when delivered, or after recording every escalation it needs with `concorde task escalate --by task-session` with a null commit and all their unique numbers
 - AND that the main agent's answer arrives as the prompt of the next round
-- BUT never to merge the task branch or close the task
+- BUT never to merge the task branch into the primary branch or close the task
 
-### scenario.main-session.task-session-workflow — A task session runs its workflow in no-ask mode
+### scenario.main-session.task-session-workflow — A task session runs its workflow in its brief's mode
 
 - GIVEN the rendered Claude Code and pi task-session guidance
 - WHEN a task session reads how to run a task that follows a known procedure
-- THEN it is told to start the [workflow](../../glossary.json#concept.workflow) in its task worktree only in no-ask [mode](../../glossary.json#concept.workflow-mode), since nobody answers it at a [decision point](../../glossary.json#concept.decision-point)
+- THEN it is told to start the [workflow](../../glossary.json#concept.workflow) in its task worktree in the [mode](../../glossary.json#concept.workflow-mode) its brief names, interactive when it names none
+- AND to escalate every pending [decision point](../../glossary.json#concept.decision-point) of a workflow that ended `awaiting_decision` at once, with the report as `--error-file`, and to start the same workflow again with every answer given so far
 - AND to read the [workflow result](../../glossary.json#concept.workflow-result) like a run result, copying its decisions and problems into the task's [decision log](../../glossary.json#concept.decision-log)
 - AND to give the workflow's decisions in its own report to the main agent, naming those of major impact for the developer
 - AND to escalate a workflow result that is not `ok` and that it cannot repair within the task with `concorde task escalate --by task-session` and the report as `--error-file`
-- AND to escalate a decision of major impact the workflow took, which carries no error, with `concorde task escalate --by task-session` naming no run or file
+- AND to escalate a decision of major impact a no-ask workflow took, which carries no error, with `concorde task escalate --by task-session` naming no run or file
 
 ### scenario.main-session.pi-task-session-view — pi shows task-session rounds and wakes on their end
 
@@ -154,10 +170,17 @@ Situations the [main-session guidance](module.md) prepares the
 
 - GIVEN the rendered main-session guidance
 - WHEN a main agent reads what to do after `delivery` committed a task's change with its evidence
-- THEN it is told to leave the task worktree if it is in it and merge the task with `concorde task merge <task>` without asking the developer
+- THEN it is told to merge the task with `concorde task merge <task>` from the primary worktree without asking the developer
 - AND never to merge with `git merge` itself, because other main sessions may be merging, and that the merge runs `concorde spec-validation` unless it names other checks
-- AND to run the command again on `merge_busy`, and to resolve a `merge_conflict` in the task worktree and deliver again
+- AND to run the command again on `merge_busy`
 - AND that the merge waits for the task's run and other merges itself, so that in Claude Code it runs in background Bash and in pi in bash without a timeout
+
+### scenario.main-session.merge-conflict — A merge conflict goes back to the task session
+
+- GIVEN the rendered main-session and task-session guidance
+- WHEN merging a delivered task fails with `merge_conflict`
+- THEN the main agent is told to answer the task's session, starting one again if it has ended, to merge the primary branch into its task branch, resolve the conflicts, run `task-validation` and `delivery` again and report
+- AND the task session is told to make that merge in its task worktree and that it is the only merge it makes
 
 ### scenario.main-session.merge-interrupted — The guidance finishes an interrupted merge first
 
@@ -204,12 +227,10 @@ Situations the [main-session guidance](module.md) prepares the
 
 - GIVEN the rendered main-session guidance
 - WHEN a main agent has just initialized a project whose code came before its Specs
-- THEN it is told to open a task bound to the root Module and start the [brownfield workflow](../../glossary.json#concept.brownfield-workflow) inside its worktree, which never names the task
-- AND to ask the developer for interactive or no-ask mode unless the developer already said
-- AND to put every pending [decision point](../../glossary.json#concept.decision-point) to the developer when the workflow ends `awaiting_decision`, then start the workflow again with every answer given so far, keyed by each step's base key, its [step key](../../glossary.json#concept.step-key) without a restart label or answer digest
-- AND to read the [workflow result](../../glossary.json#concept.workflow-result) saved beside the workspace's [workflow record](../../glossary.json#concept.workflow-record) like a run result, copy its decisions and problems into the task's [decision log](../../glossary.json#concept.decision-log) itself, and merge the delivered task
-
-## Escalation
+- THEN it is told to open a task bound to the root Module and have its task session run the [brownfield workflow](../../glossary.json#concept.brownfield-workflow) inside its worktree, which never names the task
+- AND to ask the developer for interactive or no-ask mode unless the developer already said, and to name it in the task's brief
+- AND when the task session escalates the pending [decision points](../../glossary.json#concept.decision-point) of a workflow that ended `awaiting_decision`, to decide those its authority covers, put the rest to the developer at once and answer the session with every answer, with which it starts the workflow again
+- AND to read the [workflow result](../../glossary.json#concept.workflow-result) saved beside the workspace's [workflow record](../../glossary.json#concept.workflow-record) like a run result, whose decisions and problems the task session copies into the task's [decision log](../../glossary.json#concept.decision-log), and merge the delivered task
 
 ### scenario.main-session.ordinary-decision — The guidance decides ordinary questions and reports them
 
@@ -249,7 +270,7 @@ Situations the [main-session guidance](module.md) prepares the
 - WHEN a main agent reads how to retain a worker finding or Operation error that the current task will not fix
 - THEN it is told to inspect `issues list` and `show` for existing open or closed matches before recording
 - AND to decide whether to create an [Issue](../../glossary.json#concept.issue), append to an open one at its current revision, or reopen a closed one
-- AND to run the writing command in a task worktree, with `--task` on `report`, and keep the receipt
+- AND to have the writing command run in a task worktree by the task's session, with `--task` on `report`, and keep the receipt
 - BUT it is told that neither the worker nor the Operation records the Issue automatically
 
 This illustrates [recording decisions](requirements.md#req.main-session.issues-recording) and
@@ -259,8 +280,8 @@ This illustrates [recording decisions](requirements.md#req.main-session.issues-r
 
 - GIVEN the rendered main-session guidance
 - WHEN a main agent reads how to solve an open Issue owned by a Module
-- THEN it is told to open a task for that Module and run the Operations that fix the problem
-- AND to close the Issue on the task branch with the evidence, so the closure is merged with the fix
+- THEN it is told to open a task for that Module whose session runs the Operations that fix the problem
+- AND to have the Issue closed on the task branch with the evidence, so the closure is merged with the fix
 - BUT starting or delivering the task does not itself close the Issue
 
 This illustrates [ordinary repair](requirements.md#req.main-session.issues-by-operations) and
@@ -281,9 +302,9 @@ This illustrates [handoff before closure](requirements.md#req.main-session.issue
 
 - GIVEN the rendered main-session guidance
 - WHEN a main agent reads how to resolve a Git conflict in an Issue record
-- THEN it is told to resolve it in the task worktree, preserving accepted reports and documenting the disposition decision with its evidence
+- THEN it is told that the task's session resolves it in the task worktree, and to tell it to preserve accepted reports and document the disposition decision with its evidence
 - AND to run `issues check` explicitly before validation and delivery
-- BUT it is told not to concatenate incompatible closes or invent reopenings to satisfy the state rules
+- BUT not to concatenate incompatible closes or invent reopenings to satisfy the state rules
 - AND that a passing store check does not establish that the disposition is justified
 
 This illustrates [conflict handling](requirements.md#req.main-session.issues-conflicts) and the

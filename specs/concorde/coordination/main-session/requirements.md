@@ -15,17 +15,25 @@ against the extension and the session's context rather than against the guidance
 ### req.main-session.tasks-own-changes — Changes run in tasks
 
 The guidance SHALL tell the main agent to make every change of
-[Spec](../../glossary.json#concept.spec) meaning or code behaviour in a task, from inside the task
-worktree, directly or through runs of Operations and
-[execution commands](../../glossary.json#concept.execution-command), and never in the primary
-worktree.
+[Spec](../../glossary.json#concept.spec) meaning or code behaviour in a task, and never in the
+primary worktree except an approved [small change](#req.main-session.small-change).
 
-Trivial housekeeping that changes neither, such as regenerating the registry mirror after a merge,
-is the only exception.
+Besides such a change, only housekeeping that regenerates derived files, such as the registry
+mirror after a merge, and the commit of the worker configuration alone
+([Model changes edit the tracked configuration](#req.main-session.model-change-method)) are made
+in the primary worktree.
+
+### req.main-session.small-change — A small change needs the developer's approval
+
+The guidance SHALL tell the main agent that it may make a very small change, such as a typo, a
+one-line fix or a wording correction, directly in the primary worktree only after it said what it
+would change and why the change is small and the developer approved that specific change.
+
+Without that approval the change runs in a task like any other.
 
 ### req.main-session.worktree-own-concorde — A task runs its worktree's Concorde
 
-The guidance SHALL tell whoever works on a task to run every `concorde` command that works on the
+The task-session guidance SHALL tell a task session to run every `concorde` command that works on the
 task's workspace, such as `spec-validation`, `build`, `run <operation>`, `task-validation` and
 `delivery`, from the task worktree with that worktree's own copy, never the primary worktree's.
 
@@ -33,32 +41,27 @@ The commands that manage tasks are the exception: [Tasks](../tasks/module.md) op
 closes tasks and starts task sessions only from the primary worktree, and refuses those commands
 elsewhere with `not_primary`.
 
-### req.main-session.one-task-at-a-time — One task per session at a time
-
-The guidance SHALL tell the main agent to be inside at most one task at a time.
-
-### req.main-session.single-task-in-worktree — A single task is worked in its worktree
-
-The guidance SHALL tell the main agent to carry out a single task it works itself inside that
-task's worktree.
-
-In Claude Code the main agent enters the worktree. pi cannot move a session into another worktree,
-so there the main agent addresses the task worktree explicitly: it runs the task's commands with
-that worktree as working directory and changes files under its path.
-
-### req.main-session.leave-after-delivery — The main agent leaves a delivered task
-
-In Claude Code, the guidance SHALL tell the main agent to leave a task worktree it entered once the
-task is delivered.
-
-### req.main-session.task-sessions — Split work goes to task sessions
+### req.main-session.every-task-delegated — Every task is worked by a task session
 
 The guidance SHALL tell the main agent to start a
-[task session](../../glossary.json#concept.task-session) per task, with `concorde task session`, for
-work split into several tasks.
+[task session](../../glossary.json#concept.task-session) with `concorde task session` for every
+task, even a single one, and never to work inside a task worktree itself.
 
 In pi the main agent starts it with the `concorde_task_session` tool, which runs that command from
-the primary worktree.
+the primary worktree. The main agent keeps what needs the whole project or the developer:
+discussing, opening, merging and closing tasks, starting and answering task sessions,
+[unbound runs](../../glossary.json#concept.unbound-run), reporting, Issues and the worker
+configuration.
+
+### req.main-session.task-brief — A task's brief is recorded before its session starts
+
+The guidance SHALL tell the main agent to record a task's brief in the task's
+[decision log](../../glossary.json#concept.decision-log) before starting its task session, and the
+task session to read the decision log before changing anything.
+
+The brief holds the developer's decisions the task carries out, the workflow and its
+[mode](../../glossary.json#concept.workflow-mode) when one applies, and what the main agent leaves
+for the session to decide.
 
 ### req.main-session.dispatched-named — Dispatched tasks are named to the developer
 
@@ -71,19 +74,21 @@ task by.
 
 ### req.main-session.stay-in-primary — The main agent stays in the primary worktree
 
-The guidance SHALL tell the main agent to stay in the primary worktree while any task session runs.
+The guidance SHALL tell the main agent to stay in the primary worktree.
 
 ### req.main-session.parallel-by-worktree — Parallelism only between worktrees
 
 The guidance SHALL tell the main agent to run tasks in parallel only in separate worktrees and only
 when their Modules and shared files do not overlap.
 
-### req.main-session.background-operations — Runs start in the background inside the task
+### req.main-session.background-operations — Runs start in the background
 
-The guidance SHALL tell the main agent to start each
-[Operation](../../glossary.json#concept.operation) and execution command of a task inside the task
-worktree, without naming the task, in the background (background Bash in Claude Code, the
-`concorde_run` tool in pi).
+The guidance SHALL tell the main agent to start each unbound run in the background (background
+Bash in Claude Code, the `concorde_run` tool in pi), and a task session to start each
+[Operation](../../glossary.json#concept.operation) and
+[execution command](../../glossary.json#concept.execution-command) of its task inside the task
+worktree, without naming the task, in background Bash in Claude Code and in the foreground within
+its round in pi.
 
 The task worktree's [workspace binding](../../glossary.json#concept.workspace-binding) tells the run
 which task's goal, Modules, branch and base it works on, and one workspace runs one thing at a time.
@@ -105,8 +110,8 @@ what becomes of its result.
 
 ### req.main-session.workflow-report-logged — A workflow's report reaches the decision log
 
-The guidance SHALL tell the main agent to copy the decisions and problems of a workflow's report
-into the task's decision log.
+The task-session guidance SHALL tell a task session to copy the decisions and problems of a
+workflow's report into the task's decision log.
 
 Workflows never writes them into the log, and in no-ask mode they were taken without the
 developer.
@@ -121,8 +126,9 @@ Every change still runs in a task ([Changes run in tasks](#req.main-session.task
 
 ### req.main-session.workflows — Preset tasks run their workflow
 
-The guidance SHALL tell the main agent to run a task that follows a known procedure through its
-[workflow](../../glossary.json#concept.workflow), started inside the task worktree.
+The guidance SHALL tell the main agent to have a task that follows a known procedure run through
+its [workflow](../../glossary.json#concept.workflow), by naming the workflow, its Module and its
+mode in the task's brief for the task session to start inside the task worktree.
 
 ### req.main-session.workflow-mode — The developer chooses the workflow mode
 
@@ -131,9 +137,10 @@ The guidance SHALL tell the main agent to ask the developer which
 
 ### req.main-session.workflow-pause — A paused workflow is answered and started again
 
-The guidance SHALL tell the main agent to answer a workflow that ends `awaiting_decision` by
-putting every pending [decision point](../../glossary.json#concept.decision-point) to the developer
-and starting the same workflow again with every answer given so far.
+The guidance SHALL tell the main agent to answer the escalation of a workflow that ended
+`awaiting_decision` by settling every pending
+[decision point](../../glossary.json#concept.decision-point), itself or through the developer, in
+one answer, and the task session to start the same workflow again with every answer given so far.
 
 ### req.main-session.merge-without-authorization — Delivered tasks are merged
 
@@ -154,6 +161,15 @@ bring a `merge_diverged` refusal to the developer.
 
 The task-session guidance tells a task session whose escalation is refused with `merge_incomplete`
 or `merge_busy` to send that refusal to the main agent instead.
+
+### req.main-session.merge-conflict — The task session resolves a merge conflict
+
+The guidance SHALL tell the main agent, when merging a task fails with `merge_conflict`, to have
+the task's session merge the primary branch into its task branch, resolve the conflicts, validate
+and deliver again, and the task session to make that merge when the main agent asks for it.
+
+It is the only merge a task session makes; merging the task into the primary branch stays the main
+agent's.
 
 ### req.main-session.no-polling — Waiting never polls
 
@@ -239,6 +255,15 @@ works and that the change reaches the primary branch when the task merges.
 
 ## Escalation
 
+### req.main-session.batched-decisions — Decisions go up together and come back together
+
+The guidance SHALL tell a task session never to wait in the middle of its work for an answer, but
+to gather every decision its task needs that is not its own and escalate them together in one
+report, and the main agent to answer them together: to decide those its authority covers, to put
+all the others to the developer at once and to answer the session once with every answer.
+
+A task never asks the developer in place: the developer is asked only from the main session.
+
 ### req.main-session.escalation-policy — Only major decisions reach the developer
 
 The guidance SHALL state the escalation policy:
@@ -284,30 +309,38 @@ goal and Modules itself.
 The task-session guidance SHALL tell a task session to escalate every other question to the main
 agent with its own link on top of the [error chain](../../glossary.json#concept.error-chain).
 
-A Claude Code task session sends the escalation with SendMessage; a pi task session names the
-escalation's number in its round's report.
+A Claude Code task session records every escalation and then sends them together with SendMessage;
+a pi task session records them and names all their numbers in its round's report
+([Decisions go up together and come back together](#req.main-session.batched-decisions)).
 
-### req.main-session.task-session-no-ask — A task session runs workflows without asking
+### req.main-session.task-session-workflow — A task session runs workflows in its brief's mode
 
 The task-session guidance SHALL tell a task session to run a
-[workflow](../../glossary.json#concept.workflow) only in no-ask
-[mode](../../glossary.json#concept.workflow-mode), to give the decisions of the workflow's report in
-its own report, and to escalate to the main agent what needs the developer.
+[workflow](../../glossary.json#concept.workflow) in the
+[mode](../../glossary.json#concept.workflow-mode) its brief names, interactive when it names none,
+to escalate every pending [decision point](../../glossary.json#concept.decision-point) of an
+interactive workflow that ended `awaiting_decision` at once, to give the decisions of the workflow's
+report in its own report, and to escalate to the main agent what needs the developer.
 
-Nobody answers a task session at a [decision point](../../glossary.json#concept.decision-point), so
-an interactive workflow would stop there with no one to settle it. A
-[workflow result](../../glossary.json#concept.workflow-result) that is not `ok` is escalated with the report as `--error-file`; a decision of major impact the workflow took,
-which carries no error, is escalated naming no run or file, so that the session's own link is the
-whole chain the main agent puts to the developer.
+The workflow's report is the `--error-file` of an escalation of pending decision points, whose
+chain names each point, and of a [workflow result](../../glossary.json#concept.workflow-result) that
+is not `ok`; a decision of major impact a no-ask workflow took, which carries no error, is escalated
+naming no run or file, so that the session's own link is the whole chain the main agent puts to the
+developer.
 
 ### req.main-session.task-session-reports — A task session reports its end
 
 The task-session guidance SHALL tell a task session to report to the main agent when it has
 delivered the task or cannot go further.
 
-### req.main-session.task-session-never-merges — A task session never merges or closes
+### req.main-session.task-session-never-merges — A task session never merges or closes its task
 
-The task-session guidance SHALL tell a task session never to merge or close its task.
+The task-session guidance SHALL tell a task session never to merge its task into the primary
+branch, rebase, switch branches or close its task.
+
+Merging the primary branch into its task branch when the main agent asks for it after a
+`merge_conflict` is the one merge it makes
+([The task session resolves a merge conflict](#req.main-session.merge-conflict)).
 
 ## Issues
 
@@ -322,8 +355,8 @@ creation command creates another [Issue](../../glossary.json#concept.issue).
 
 ### req.main-session.issues-worktree — Issue writes belong to a task
 
-The guidance SHALL tell the main agent to run every Issue writing command in a task worktree,
-passing the task identity on `report`.
+The guidance SHALL tell the main agent to have every Issue writing command run in a task
+worktree, by the session working that task, passing the task identity on `report`.
 
 This applies to creation, append, closure and reopening; read-only inspection may use either
 worktree. Only `report` has a `--task` argument. It supplies provenance and does not select the
@@ -331,13 +364,13 @@ worktree; this is a workflow obligation, not additional CLI admission logic.
 
 ### req.main-session.issues-by-operations — Issues are solved by ordinary work
 
-The guidance SHALL tell the main agent to solve an Issue by running ordinary Operations on the
-Issue's [Module](../../glossary.json#concept.module) in a task.
+The guidance SHALL tell the main agent to solve an Issue by a task on the Issue's
+[Module](../../glossary.json#concept.module) whose session runs ordinary Operations.
 
 ### req.main-session.issues-close-with-fix — An Issue closes with its fix
 
-The guidance SHALL tell the main agent to close a solved Issue on the branch of the task that fixed
-it.
+The guidance SHALL tell the main agent to have a solved Issue closed on the branch of the task that
+fixed it.
 
 ### req.main-session.issues-unmerged — Unmerged observations retain a handoff
 
@@ -351,14 +384,15 @@ on the primary branch.
 
 ### req.main-session.issues-conflicts — Issue conflicts are reconciled
 
-The guidance SHALL tell the main agent to reconcile conflicting Issue records in the task
-worktree, preserving accepted reports and documenting the disposition decision.
+The guidance SHALL tell the main agent to have the task's session reconcile conflicting Issue
+records in the task worktree, preserving accepted reports and documenting the disposition
+decision.
 
 Competing closes cannot simply be concatenated or made to alternate with fictitious reopenings.
 
 ### req.main-session.issues-store-check — Reconciled Issue records are checked
 
-The guidance SHALL tell the main agent to run `concorde issues check` on reconciled Issue records
-before validation and delivery.
+The guidance SHALL tell the main agent to have `concorde issues check` run on reconciled Issue
+records before validation and delivery.
 
 The store check establishes record consistency, not the truth of a closure's evidence.

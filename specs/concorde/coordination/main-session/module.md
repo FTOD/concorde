@@ -5,19 +5,19 @@
 Main session is the top of Concorde's levels of work, level 1: the guidance that makes an ordinary
 Claude Code or pi session in a project's primary worktree act as Concorde's
 [main agent](../../glossary.json#concept.main-agent): discuss work with the developer, split it into
-[tasks](../../glossary.json#concept.task), carry a task out inside its worktree or hand tasks to
-[task sessions](../../glossary.json#concept.task-session), keep each task's
+[tasks](../../glossary.json#concept.task), hand every task to a
+[task session](../../glossary.json#concept.task-session) and answer it, keep each task's
 [decision log](../../glossary.json#concept.decision-log), decide ordinary questions itself while
 escalating only major ones, merge delivered tasks, and handle
 [Issues](../../glossary.json#concept.issue). The method of working inside a task is part of this
-guidance, because the task level is the main agent's own work: it follows the method when it works a
-task itself, and a task session it delegates the task to starts with the same method in the guidance
-it is given. It is advice to a model, not enforcement — Concorde places no permission limits on the
+guidance too, as the task-session guidance: the task level is the main agent's own work, which it
+always delegates, and a task session starts with that method in the guidance it is given. It is
+advice to a model, not enforcement — Concorde places no permission limits on the
 main agent, and nothing here constrains the developer. In pi it adds a
 [run view](../../glossary.json#concept.run-view), an extension that starts
 [Operations](../../glossary.json#concept.operation) and
-[execution commands](../../glossary.json#concept.execution-command) in a task's worktree in the
-background and shows their progress. Distribution renders and installs this
+[execution commands](../../glossary.json#concept.execution-command) in the
+background and shows their progress and that of every task session's round. Distribution renders and installs this
 [Module](../../glossary.json#concept.module)'s content.
 
 ## Usage
@@ -32,34 +32,43 @@ in a Concorde project's primary worktree that it is the main agent, and gives it
   opened with `concorde task`. Run tasks in parallel only across worktrees whose Modules and shared
   files do not overlap; run the rest one after another
   ([requirements](requirements.md#req.main-session.parallel-by-worktree)).
-- **Work inside the task.** Never change Specs or code in the primary worktree. For a single
-  task, work inside its worktree: in Claude Code enter it (EnterWorktree) and leave it after
-  delivery; in pi, which cannot move a session into another worktree, address it explicitly, with
-  that worktree as the commands' working directory and the files under its path. Change Specs and
-  code there directly or by running [Operations](../../glossary.json#concept.operation) with
-  `concorde run <operation> …` and the
-  [execution commands](../../glossary.json#concept.execution-command)
-  `concorde task-validation` and `concorde delivery` in the background (background Bash in Claude
-  Code, the `concorde_run` tool in pi), reading each
-  [run result](../../glossary.json#concept.run-result), and run every `concorde` command that works
-  on the task's workspace with the worktree's own copy; the commands that open, merge and close
-  tasks and start task sessions run from the primary worktree. None of these names the task: the
-  task worktree's [workspace binding](../../glossary.json#concept.workspace-binding),
-  which `concorde task open` wrote, tells every run which goal, Modules, branch and base it works
-  on, and one workspace runs one of them at a time (`workspace_busy` otherwise). Be inside at most
-  one task at a time. The only change made in the primary worktree is trivial housekeeping, such as
-  regenerating the registry mirror.
-- **Hand split work to task sessions.** For work split into several tasks, start one
+- **Hand every task to a task session.** Never work inside a task worktree: start one
   [task session](../../glossary.json#concept.task-session) per task with
-  `concorde task session <task>` and stay in the primary worktree while they run. A task session
-  runs on the main agent's own program. In Claude Code the command names the main agent's session
-  with `--main`, and the [session reports](../../glossary.json#concept.session-report) back with
+  `concorde task session <task>`, even for a single task, and stay in the primary worktree, where
+  the main agent discusses, opens and closes tasks, starts and answers task sessions, runs
+  [unbound](../../glossary.json#concept.unbound-run) Operations, merges, reports, inspects Issues
+  and changes the worker configuration. Before starting the session, record the task's brief in its
+  decision log: the developer's decisions the task carries out, the workflow and mode when one
+  applies, and what is left to the session; the session reads it first. A task session runs on the
+  main agent's own program. In Claude Code the command names the main agent's session with
+  `--main`, and the [session reports](../../glossary.json#concept.session-report) back with
   SendMessage. In pi the main agent uses the `concorde_task_session` tool: each
   [session round](../../glossary.json#concept.session-round) ends with a report that wakes the main
-  agent, which starts the next round with the tool's `answer`; since a round ends only with its
-  report, a pi task session runs its `concorde` commands in the foreground within the round (see
-  [Task sessions](../task-session/module.md)). Either way a task session escalates with its own
-  link on the chain.
+  agent, which starts the next round with the tool's `answer`. The task session changes Specs and
+  code in the task worktree directly or by running
+  [Operations](../../glossary.json#concept.operation) with `concorde run <operation> …` and the
+  [execution commands](../../glossary.json#concept.execution-command) `concorde task-validation`
+  and `concorde delivery`, reading each [run result](../../glossary.json#concept.run-result), and
+  runs every `concorde` command that works on the task's workspace with the worktree's own copy;
+  the commands that open, merge and close tasks and start task sessions run from the primary
+  worktree. None of these names the task: the task worktree's
+  [workspace binding](../../glossary.json#concept.workspace-binding), which `concorde task open`
+  wrote, tells every run which goal, Modules, branch and base it works on, and one workspace runs
+  one of them at a time (`workspace_busy` otherwise); in Claude Code a task session starts them in
+  background Bash, and since a pi round ends only with its report, a pi task session runs them in
+  the foreground within the round (see [Task sessions](../task-session/module.md)).
+- **Make only approved small changes in the primary worktree.** A very small change, such as a
+  typo, a one-line fix or a wording correction, may be made by the main agent directly in the
+  primary worktree, but only after it said what it would change and why the change is small and the
+  developer approved that specific change
+  ([requirements](requirements.md#req.main-session.small-change)). Besides it, the primary
+  worktree sees only housekeeping that regenerates derived files, such as the registry mirror, and
+  the commit of the worker configuration alone.
+- **Ask the developer from the main session only.** A task never asks the developer in place: a
+  task session gathers every decision it needs and escalates them together to the main agent,
+  which decides those its authority covers, puts the rest to the developer at once, and answers
+  the session once with every answer
+  ([requirements](requirements.md#req.main-session.batched-decisions)).
 - **Keep the decision log.** Record every non-`ok` result of the task's runs and every
   unsupervised choice, with its reason, in the task's
   [decision log](../../glossary.json#concept.decision-log), including
@@ -69,8 +78,9 @@ in a Concorde project's primary worktree that it is the main agent, and gives it
   `git merge`: it holds the [merge lock](../../glossary.json#concept.merge-lock) so merges of
   several main sessions never interleave, runs `concorde spec-validation` on the primary branch, or
   exactly the `--check` commands given, undoes a merge whose checks fail and closes the task.
-  Retry a `merge_busy`, and a `workspace_busy` once the task's run ended; resolve a conflict in the
-  task worktree by merging the primary branch into the task branch and delivering again; handle a
+  Retry a `merge_busy`, and a `workspace_busy` once the task's run ended; have the task's session
+  resolve a conflict by merging the primary branch into its task branch and delivering again, the
+  only merge a task session makes; handle a
   failed check as new work, never by discarding someone's change. Finish a merge that a
   `merge_incomplete` refusal names before anything else, with `concorde task merge <task> --resume`,
   or `--abort` when the merge commit is no longer the primary branch's head, and leave a
@@ -87,8 +97,7 @@ in a Concorde project's primary worktree that it is the main agent, and gives it
   glossary through a task. A SessionStart hook could not carry the terms: Claude Code cuts a hook's
   output at 10,000 characters, while a project's glossary is usually longer.
 
-A representative flow, agreeing a payments retry limit, with where the main agent works at each
-stage:
+A representative flow, agreeing a payments retry limit, with who works where at each stage:
 
 ```d2 illustrative
 direction: down
@@ -98,21 +107,21 @@ developer: Developer {
 }
 primary: Main agent in the primary worktree {
   agree: agree the limit with the developer
-  open: open a task for module.payments
+  open: "open a task for module.payments,\nrecord its brief"
   merge: merge the delivered task
   report: report the exponential back-off it chose
 }
-task: Main agent in the task worktree {
+task: Task session in the task worktree {
   work: run specify, implement, test
   review: run code_review
   deliver: run task-validation, delivery
 }
 developer.ask -> primary.agree
 primary.agree -> primary.open
-primary.open -> task.work: enter the worktree
+primary.open -> task.work: start a task session
 task.work -> task.review: read each run result
 task.review -> task.deliver
-task.deliver -> primary.merge: leave after delivery
+task.deliver -> primary.merge: report the delivery
 primary.merge -> primary.report
 primary.report -> developer.read
 ```
@@ -120,8 +129,8 @@ primary.report -> developer.read
 <a id="concept.run-view"></a>
 
 **The [run view](../../glossary.json#concept.run-view) in pi.** In Claude Code the main agent runs
-`concorde run` and the recorded commands in background Bash inside the task worktree and is woken
-when they exit. In pi the installed extension gives the same with more to watch. The `concorde_run`
+its unbound Operations in background Bash and is woken when they exit, and a task session does the
+same with the runs of its task. In pi the installed extension gives the same with more to watch. The `concorde_run`
 tool takes an Operation or an execution command (`task-validation`, `delivery`, `scaffold`), the
 task and further arguments, and starts `concorde run <operation> …` or `concorde <command> …` as a
 detached process in the task's worktree, found through the
@@ -219,7 +228,9 @@ and reports the choice. It asks the developer first only for a decision with maj
 what a Module promises to its users or the project's direction, contradicting an earlier developer
 decision, discarding work or data, doing something an ordinary revert cannot undo, touching security
 or credentials, or needing more resources than the developer set; in doubt it records its reasoning
-and asks. An escalation is never a summary: `concorde task escalate` adds its own link, with the
+and asks. A task never asks the developer in place: a task session escalates every decision it needs
+together, and the main agent answers them together, asking the developer at once about all those
+it may not decide. An escalation is never a summary: `concorde task escalate` adds its own link, with the
 reason it may not decide, on top of the chain, records it in the task and prints it rendered for the
 developer; a decision of major impact that no error carries is escalated as that link alone. The decision log and the escalation both belong to a task, so they cover the runs of a
 task. An [unbound run](../../glossary.json#concept.unbound-run) belongs to none: when one is not
@@ -257,32 +268,37 @@ must be unbound too, and they change no
 workers. It uses them for a question or a review that does not justify a task, such as understanding
 a Module before a change is agreed. In pi `concorde_run` takes the task as optional for them.
 
-**Workflows.** For a task that follows a known procedure the guidance tells the main agent to run
-its [workflow](../../glossary.json#concept.workflow) instead of sequencing the runs by hand: open
-the task, then start the workflow inside the task worktree, since like every run it works on the
-workspace of the worktree it starts in and never names the task. In Claude Code the main agent
-enters the worktree and runs the installed `/concorde-<name>` workflow; in pi it starts the
-installed script through pi-subagents with the task worktree as working directory. The main agent
-asks the developer which [mode](../../glossary.json#concept.workflow-mode) to use unless the
-developer already said; interactive suits a developer who is present, no-ask one who wants the
-result later. A task session, which nobody answers, runs a workflow only in no-ask mode: its guidance
-tells it to copy the report's decisions and problems into the decision log, to give the decisions in
-its own report and to escalate to the main agent what needs the developer, a result that is not
-`ok` with the report as `--error-file` and a decision of major impact named in its report
-([requirements](requirements.md#req.main-session.task-session-no-ask)). When a workflow ends `awaiting_decision`, the main agent puts every pending
-[decision point](../../glossary.json#concept.decision-point) to the developer at once, with its
-options and recommendation, and starts the same workflow again with its `answers` keyed by each
-step's base key, its [step key](../../glossary.json#concept.step-key) without a restart label or
-answer digest, each key holding every answer the developer has given for that step so far, not only
-the newest ([Workflows](../../execution/workflows/module.md) defines the arguments). It reads the
-[workflow result](../../glossary.json#concept.workflow-result) from the file Workflows saves beside
-the workspace's [workflow record](../../glossary.json#concept.workflow-record) in the run store, and
-treats it like a run result: it copies the result's decisions and problems into the task's decision
-log itself, since Workflows keeps its record apart from the task and in no-ask mode those are
-decisions taken without the developer, reads every problem's chain, and merges a delivered task. The
-guidance names the [brownfield workflow](../../glossary.json#concept.brownfield-workflow) as the way
-to describe a project whose code came before its Specs, right after installation and initialization,
-and nowhere else, in a task opened for the root Module, or for a created Module to split further.
+**Workflows.** For a task that follows a known procedure the guidance tells the main agent to have
+its [workflow](../../glossary.json#concept.workflow) run instead of sequencing the runs by hand:
+open the task and name in its brief the workflow, its Module and its
+[mode](../../glossary.json#concept.workflow-mode); the task session starts the workflow inside the
+task worktree, since like every run it works on the workspace of the worktree it starts in and
+never names the task. In Claude Code the task session runs the installed `/concorde-<name>`
+workflow; in pi it starts the installed script through pi-subagents with the task worktree as
+working directory. The main agent asks the developer which mode to use unless the developer
+already said; interactive suits a developer who wants to settle the decision points, no-ask one
+who wants the result later. A task session runs the workflow in the mode its brief names, and in
+interactive mode when the brief names none
+([requirements](requirements.md#req.main-session.task-session-workflow)). When the workflow ends
+`awaiting_decision`, the session escalates every pending
+[decision point](../../glossary.json#concept.decision-point) at once, with the
+[workflow result](../../glossary.json#concept.workflow-result) as `--error-file`, whose chain names
+each point with its options and recommendation; the main agent decides those its authority covers,
+puts the rest to the developer at once and answers the session with every answer, and the session
+starts the same workflow again with its `answers` keyed by each step's base key, its
+[step key](../../glossary.json#concept.step-key) without a restart label or answer digest, each key
+holding every answer given for that step so far, not only the newest
+([Workflows](../../execution/workflows/module.md) defines the arguments). The session reads the
+workflow result from the file Workflows saves beside the workspace's
+[workflow record](../../glossary.json#concept.workflow-record) in the run store and treats it like a
+run result: it copies the result's decisions and problems into the task's decision log, since
+Workflows keeps its record apart from the task and in no-ask mode those are decisions taken
+without the developer, gives the decisions in its own report and escalates a result that is not
+`ok` with the report as `--error-file` and a decision of major impact with its own link alone. The
+main agent reads every problem's chain and merges a delivered task. The guidance names the
+[brownfield workflow](../../glossary.json#concept.brownfield-workflow) as the way to describe a
+project whose code came before its Specs, right after installation and initialization, and
+nowhere else, in a task opened for the root Module, or for a created Module to split further.
 
 ### Issues
 
@@ -294,8 +310,9 @@ automatically. The guidance tells the main agent to inspect `concorde issues lis
 bookkeeping command. It keeps the receipt for follow-up; repeating a creation command would
 create another Issue. Inspecting Issues is explicit, with no automatic notification to sessions.
 
-Run every writing command (`report`, `close`, `reopen`) in a task worktree, and pass that task's
-identity to `report --task`. If no task exists, open one for the owning Module, or the root Module
+Run every writing command (`report`, `close`, `reopen`) in a task worktree, through the task
+session working that task, which the main agent tells so in the task's brief or its answer, and
+pass that task's identity to `report --task`. If no task exists, open one for the owning Module, or the root Module
 when the owner is unknown. `--task` supplies provenance, not routing; the working directory or
 explicit root selects the Issue files. The command still accepts reports without a task; this
 workflow is a rule of the guidance. Read-only `list`, `show` and `check` may run in either
@@ -320,8 +337,8 @@ worktree removal. Tasks keeps the branch and decision log after closing; committ
 survive there, but the primary branch's list still shows only what has been merged. A log entry
 is a handoff, not a published Issue or an automatic transfer.
 
-If Git reports a conflict in an Issue record, resolve it in the task worktree while merging the
-primary branch into it. Preserve accepted reports unchanged and document how competing
+If Git reports a conflict in an Issue record, the task session resolves it in the task worktree
+while merging the primary branch into it, as the main agent's answer tells it. Preserve accepted reports unchanged and document how competing
 dispositions are reconciled, retaining their evidence. Do not concatenate incompatible closes or
 invent a reopening just to satisfy the state rules. Run `concorde issues check` explicitly on the
 resolved records before `task-validation` and `delivery`; structural Spec validation alone does not
@@ -356,11 +373,11 @@ guidance wastes effort but cannot widen a worker's boundary.
 The main session is level 1 of Concorde's [levels of work](../../module.md#the-levels-of-work), the
 top of Coordination. Nothing in Concorde calls it: the developer talks to it, and the installed
 skill and `CLAUDE.md` block are Concorde's only way to reach a session at all. It calls only
-downward. At level 2 it opens a task and either works it itself or delegates it to a task session;
-from inside a task, its own or a task session's, workflows (level 3) and runs (level 4), Operations
-and execution commands, are started in the task worktree; and it reaches workers (level 5) only
-through an Operation, touching Workers otherwise only to watch a run and to edit the worker
-configuration. What comes back up is structured: run results, workflow results, and task-session reports
+downward. At level 2 it opens a task and delegates it to a task session; from inside the task,
+the task session starts workflows (level 3) and runs (level 4), Operations and execution
+commands, in the task worktree; the main agent itself starts only unbound runs, in the primary
+worktree, and it reaches workers (level 5) only through an Operation, touching Workers otherwise
+only to watch a run and to edit the worker configuration. What comes back up is structured: run results, workflow results, and task-session reports
 and escalations, each failure carrying its
 [error chain](../../glossary.json#concept.error-chain). The chain ends here: the main agent
 decides what the escalation policy lets it decide, records and reports it, and otherwise adds its
@@ -378,40 +395,47 @@ runs: "Runs: Operations and execution commands"
 workers: Workers
 mainsession -> tasks: opens, merges, closes
 mainsession -> tasksession: delegates a task to
-mainsession -> workflows: starts in a task worktree
-mainsession -> runs: starts in a task worktree
+mainsession -> runs: starts unbound
 tasksession -> tasks: records rounds in
+tasksession -> workflows: starts in its task worktree
+tasksession -> runs: starts in its task worktree
 workflows -> runs: runs one at a time
 runs -> workers: an Operation launches
 ```
 
-The main agent never changes the primary worktree's Specs or code: its view there is the whole
-project, so nothing would bound or evidence a change made directly, and the primary worktree must
-stay clean to merge. Inside a task worktree a direct change is bounded by the task and evidenced by
-`task-validation` and `delivery`, so the main agent and task sessions may change Specs and code
-there themselves. Every `concorde` command that works on a task's workspace runs with the
+The main agent never changes the primary worktree's Specs or code beyond a small change the
+developer approved: its view there is the whole project, so nothing would bound or evidence a
+change made directly, and the primary worktree must stay clean to merge; the developer's approval
+of the specific change stands in for that evidence where a task would cost more than the change.
+Inside a task worktree a direct change is bounded by the task and evidenced by `task-validation`
+and `delivery`, so task sessions may change Specs and code there themselves. Every `concorde` command that works on a task's workspace runs with the
 worktree's own copy, because only the branch's copy knows the Specs, Protocol and checks the task
-changes, and only that worktree's binding names the task's workspace. A session is inside one task
-at a time, which is why split work goes to task sessions; a task session's writes are confined to its task by the
+changes, and only that worktree's binding names the task's workspace. The main agent hands every
+task, even a single one, to a task session, so that it stays free to talk with the developer and to
+answer every session while tasks run, and every task runs under a boundary; a task session's writes
+are confined to its task by the
 [session boundary](../../glossary.json#concept.session-boundary), which
 [Task sessions](../task-session/module.md) obtains from the Harness, while the main agent stays
 unrestricted and alone merges; merging needs no authorization because `delivery` only commits what
 it found ready, and a merge is ordinary, revertible Git. The escalation policy balances the same
 way: deciding ordinary questions keeps work moving, recording and reporting them keeps them
 reviewable, and reserving major-impact ones protects decisions only the developer may make.
+Gathering a task's decisions into one escalation, and the developer's answers into one reply,
+keeps the developer's attention in one place, the main session, and asks for it once per round
+rather than once per question.
 
 <a id="uses-tasks"></a>
 
 **Tasks** provides the [task](../../glossary.json#concept.task) — its branch, its worktree bound as
 a workspace, and its record — and the [decision log](../../glossary.json#concept.decision-log): the
-workspace of level 2, the same whether the main agent works the task itself or through a task
-session. `concorde task show` lists the task's runs, deliveries and the holder of its
+workspace of level 2, which a task session works. `concorde task show` lists the task's runs, deliveries and the holder of its
 [workspace lock](../../glossary.json#concept.workspace-lock), read from what Execution recorded, so
 the main agent learns a task's progress from one command. Each task's own worktree is what keeps
-parallel tasks from mixing changes; opening, merging, closing tasks and writing the log are the main
-agent's responsibility, whether it works the task itself or through a task session. The guidance
+parallel tasks from mixing changes; opening, merging and closing tasks are the main agent's
+responsibility, and the log is written by the main agent and the task's session alike. The guidance
 relies on `concorde task merge` holding the merge lock and undoing a merge whose checks fail, and
-tells the main agent to retry a `merge_busy`, to resolve a conflict in the task worktree, and to
+tells the main agent to retry a `merge_busy`, to have the task's session resolve a conflict in the
+task worktree, and to
 treat a failed check as new work rather than discard a change. It also relies on Tasks refusing
 every task command with `merge_incomplete` after a merge was interrupted, and tells the main agent
 to finish that merge first with `--resume` or `--abort` rather than to work around the refusal:
@@ -423,34 +447,36 @@ authority to finish a merge, so its guidance sends such a refusal to the main ag
 
 **Task sessions** starts the task sessions the main agent delegates tasks to and, in pi, runs and
 records their [session rounds](../../glossary.json#concept.session-round), whose
-progress files and recorded outcomes the run view reads. It applies whenever the main agent wants
-several tasks to run at once. The guidance relies on a task session never merging or closing its
-task and on every round ending with an outcome the task record confirms. A task session's report or
-escalation is its result travelling up to level 1: the main agent answers an escalation, or asks
-for more, with the next round's answer, reads a failed round's error chain like any other, and
+progress files and recorded outcomes the run view reads. It applies to every task. The guidance
+relies on a task session never merging its task into the primary branch or closing it and on every
+round ending with an outcome the task record confirms. A task session's report or
+escalation is its result travelling up to level 1: the main agent answers the escalations, all at
+once, or asks for more, with the next round's answer, reads a failed round's error chain like any other, and
 merges a delivered task itself.
 
 <a id="uses-workflows"></a>
 
-**Workflows** provides the [workflows](../../glossary.json#concept.workflow) the main agent starts
-in a task, their modes and the [workflow result](../../glossary.json#concept.workflow-result) it
-reads when one ends. The guidance relies on a workflow never opening, merging or closing a task and
-on its result keeping every run's chain whole, so that a workflow's end is handled like a run's: an
-`awaiting_decision` result makes the main agent put every pending decision point to the developer at
-once and start the same workflow again with the answers. Workflows never writes the decision log, so
-the guidance makes the main agent copy a report's decisions and problems there.
+**Workflows** provides the [workflows](../../glossary.json#concept.workflow) the main agent names
+in a task's brief, their modes and the
+[workflow result](../../glossary.json#concept.workflow-result) read when one ends. The guidance
+relies on a workflow never opening, merging or closing a task and on its result keeping every
+run's chain whole, so that a workflow's end is handled like a run's: an `awaiting_decision` result
+makes the task session escalate every pending decision point at once, and the main agent answers
+them all before the session starts the same workflow again with the answers. Workflows never
+writes the decision log, so the guidance makes the task session copy a report's decisions and
+problems there.
 
 <a id="uses-execution"></a>
 
-**Execution** runs the work the main agent starts in a task worktree: `concorde run` for an
+**Execution** runs the work a task session starts in its task worktree: `concorde run` for an
 Operation and the [execution commands](../../glossary.json#concept.execution-command)
 `concorde task-validation`, `concorde delivery` and `concorde scaffold`, each reading the
 worktree's [workspace binding](../../glossary.json#concept.workspace-binding), and
 the Operations that run [unbound](../../glossary.json#concept.unbound-run) in the
 primary worktree. Each run returns a [run result](../../glossary.json#concept.run-result)
 the main agent can read without inspecting a worker, and none starts the next one: that choice is
-the main agent's. The main agent records every non-`ok` result in the decision log and reads its
-chain in full before deciding or escalating. The run view relies on each running run keeping its
+the agent's that started it. Every non-`ok` result of a task's runs is recorded in the decision log, and its
+chain is read in full before deciding or escalating. The run view relies on each running run keeping its
 [run progress file](../../glossary.json#concept.run-progress-file) current in the
 primary worktree's run store, which every task worktree's binding names as its records directory.
 
@@ -458,14 +484,14 @@ primary worktree's run store, which every task worktree's binding names as its r
 
 **Operations** provides the [Operation](../../glossary.json#concept.operation)
 catalog: which Operations exist, what each takes and which may run unbound. The guidance names
-them, and the main agent chooses which to run for a task's next step.
+them, and the task session chooses which to run for a task's next step.
 
 <a id="uses-commands"></a>
 
 **Commands** provides the catalog of
 [execution commands](../../glossary.json#concept.execution-command), the
-deterministic runs `task-validation`, `delivery` and `scaffold` that the main agent starts by name
-in a task worktree. The guidance names them apart from the Operations, since they launch no worker
+deterministic runs `task-validation`, `delivery` and `scaffold` that a task session starts by name
+in its task worktree. The guidance names them apart from the Operations, since they launch no worker
 and a caller starts them without `run`.
 
 ### Beside the levels
@@ -573,5 +599,5 @@ Three Modules consume what this one authors. [Distribution](../../distribution/m
 the guidance sources and installs the rendered guidance and the pi extension into a project;
 [Dogfooding](../../dogfooding/module.md) appends its own section to the guidance in a develop
 install and changes nothing else; and [Task sessions](../task-session/module.md) gives a task
-session the rendered task-session guidance as its first prompt, so a delegated task follows the
-same method the main agent follows when it works the task itself.
+session the rendered task-session guidance as its first prompt, so every task follows the method
+this Module sets.
