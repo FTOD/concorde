@@ -223,9 +223,9 @@ Tools that MCP servers add are outside the write hook, which guards Edit and Wri
 makes only existing paths writable, so Task sessions creates the writable directories that do not
 exist yet, such as the task's `.concorde/locks/`, before a session starts.
 
-<a id="ending-claude-sessions"></a>
-
 ## When the task ends
+
+<a id="ending-claude-sessions"></a>
 
 Tasks' close hands its task sessions, every one the task's trace lists, to Task sessions at three
 points:
