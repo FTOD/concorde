@@ -10,8 +10,8 @@ worker, yet it is a run like an Operation: the
 [Execution runner](../../glossary.json#concept.execution-runner) runs it in the workspace of the
 worktree it starts in, under the [workspace lock](../../glossary.json#concept.workspace-lock), and
 records its [run result](../../glossary.json#concept.run-result) in the
-[run store](../../glossary.json#concept.run-store), so that a workflow can take it as a step and a
-later run can cite it. Work that needs a model is not an execution command: it is an
+[run store](../../glossary.json#concept.run-store), so that a workflow can take it as a step and the
+task level can read it later. Work that needs a model is not an execution command: it is an
 [Operation](../../glossary.json#concept.operation).
 
 Commands never chooses the next run, asks the developer anything or reads a
@@ -34,9 +34,9 @@ that lists every such step.
 Whoever works a workspace runs an
 **[execution command](../../glossary.json#concept.execution-command)** inside it by name, without
 `run`. An execution command exists because some steps of the work need
-no model, yet must be taken, cited and awaited like any run: a workflow takes `task-validation` or
-`scaffold` as a step, Delivery cites the runs that led to it, and the task level reads each
-command's evidence and [error chain](../../glossary.json#concept.error-chain). Running them with the
+no model, yet must be taken, recorded and awaited like any run: a workflow takes `task-validation`
+or `scaffold` as a step, and the task level waits for each command and reads its evidence and
+[error chain](../../glossary.json#concept.error-chain). Running them with the
 same runner as Operations gives them all of that without the
 [Operation catalog](../../glossary.json#concept.operation-catalog) or any worker machinery.
 
@@ -167,7 +167,7 @@ deliver and binds that readiness to the inputs it examined. It writes nothing in
 <a id="contains-delivery"></a>
 
 **Delivery** provides `delivery`, the only run that commits: it decides the readiness again with
-Validation's steps and commits the workspace's changes with their evidence on the bound branch. Its
+Validation's steps and commits the workspace's changes on the bound branch. Its
 delivery commits are the only record of a delivery.
 
 <a id="contains-scaffold"></a>

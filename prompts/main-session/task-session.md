@@ -37,7 +37,11 @@ by default (`concorde task show <task>` prints its path):
 
 Run Operations, `task-validation` and `delivery` in background Bash (`run_in_background`), which
 wakes you when the command ends: they may take longer than a foreground Bash call is allowed, and
-a timeout kills the run half done. Never wait for anything with `sleep` loops.
+a timeout kills the run half done. Never wait for anything with `sleep` loops. Before
+`task-validation` and `delivery`, stop every background command you started that still runs, a
+polling loop above all: while one lives, its sandbox keeps placeholder files in your worktree and
+holds the repository's `.git/config.lock`, which blocks your validation and other tasks'
+preparation.
 
 Your session has the project MCP server `concorde`: its `task_show`, `trace_show`, `run_result`
 and `workflow_report` read your task's records. A background session is never woken by channel

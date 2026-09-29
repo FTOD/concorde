@@ -72,8 +72,8 @@ A **run** is one execution of an Operation or of an execution command in one wor
 catalog of [Operations](operations/module.md) lists them. An
 [execution command](../glossary.json#concept.execution-command) is deterministic and launches no
 worker: [`task-validation`](commands/validation/module.md) decides whether the workspace is ready to
-deliver, [`delivery`](commands/delivery/module.md) validates it again and commits it with its
-evidence, and [`scaffold`](commands/scaffold/module.md) creates the child Modules a survey proposed;
+deliver, [`delivery`](commands/delivery/module.md) decides that readiness again and commits the
+workspace, and [`scaffold`](commands/scaffold/module.md) creates the child Modules a survey proposed;
 the catalog of [Commands](commands/module.md) lists them. Both kinds are **runs**: the same runner
 parses their command line, resolves the workspace, takes the workspace lock, runs their steps and
 writes one run result, so a workflow, the task level or an observer treats them alike.
@@ -219,7 +219,7 @@ execution: Execution {
 
 A run is something the task level or a workflow starts and waits for, and its result is recorded;
 a worker or a service is started or called by a run's step and answers only to that step. So
-deterministic work that is taken and cited as a step of its own is an execution command, and
+deterministic work that is taken and recorded as a step of its own is an execution command, and
 deterministic work that a step calls is a service. [The children](#the-children) explains each
 child's part.
 
@@ -315,9 +315,8 @@ trace reaches its runs without anything in Execution naming the task.
 
 An Operation exists to combine AI workers with host logic that checks them. Deciding readiness,
 delivering and scaffolding need no model, so they are not Operations; but a workflow must be able to
-take them as steps, delivery must cite the run that decided the readiness it committed, and a caller
-must be able to wait for them, read their evidence and receive their error chain like any
-Operation's. Running execution commands with the same runner gives them all of that without the
+take them as steps, and a caller must be able to wait for them, read their evidence and receive
+their error chain like any Operation's. Running execution commands with the same runner gives them all of that without the
 [Operation catalog](../glossary.json#concept.operation-catalog) or any worker machinery: the only
 difference a caller sees is the result's `kind` and the error link's level, `command` instead of
 `operation`. Being a run is also what tells an execution command from a deterministic service such
@@ -390,7 +389,7 @@ steps like any other definition's.
 **Commands** holds the catalog of execution commands and their Modules: Validation's
 `task-validation`, which decides whether the bound workspace is ready to deliver; Delivery's
 `delivery`, the only run that commits, which decides the readiness again and commits the
-workspace's changes with their evidence on the bound branch; and Scaffold's `scaffold`, which
+workspace's changes on the bound branch; and Scaffold's `scaffold`, which
 creates the child Modules a survey proposed. The runner runs their steps like an Operation's.
 
 <a id="contains-workers"></a>

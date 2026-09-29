@@ -217,7 +217,11 @@ its cache or Git cannot fetch an object of a partial clone, and keeping the netw
 guard against exfiltration, which is outside what this boundary is for. Claude Code's sandbox keeps
 the repository's `.git/config` and Git's hooks read-only inside the writable Git directory, since
 writing them could run code outside the sandbox; a session commits but cannot register a submodule,
-so the main agent prepares that before starting it.
+so the main agent prepares that before starting it. While a sandboxed background command of a
+session lives, its sandbox also keeps placeholder files in the task worktree and holds the
+repository's `.git/config.lock`, which blocks the session's own `task-validation` and every other
+task's preparation; so the guidance has a task session stop every background command it started
+before `task-validation` and `delivery`, and never wait by polling, whose loop may never end.
 
 Tools that MCP servers add are outside the write hook, which guards Edit and Write only. A sandbox
 makes only existing paths writable, so Task sessions creates the writable directories that do not
@@ -372,7 +376,7 @@ Claude Code, never from the program the task session runs on.
 rendered task-session guidance, which carries the same rules for working inside a task that the
 main agent follows. A missing rendered guidance refuses the start with `session_failed`. It also
 provides the [project MCP server](../../glossary.json#concept.project-mcp-server), which Task
-sessions configures for every task session it starts, as a channel.
+sessions configures for every task session it starts, without a channel (`CONCORDE_CHANNEL=0`).
 
 Two Modules call this one, both from level 1's side: the Main session's guidance has the main
 agent start task sessions, and Tasks dispatches `concorde task session` here after its own checks

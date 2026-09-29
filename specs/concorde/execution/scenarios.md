@@ -59,7 +59,7 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 - GIVEN a bound workspace
 - WHEN the task level runs `concorde task-validation` there
 - THEN the result has `kind` `command`, `worker` null, an empty `worker_runs` and Validation's readiness as `output`
-- AND it is recorded in the [run store](../glossary.json#concept.run-store) like any Operation run, so a later `delivery` or [workflow step](../glossary.json#concept.workflow-step) can find it
+- AND it is recorded in the [run store](../glossary.json#concept.run-store) like any Operation run, so a later [workflow step](../glossary.json#concept.workflow-step) or the task level can find it
 - BUT `concorde run task-validation` is a command-line error naming `concorde task-validation`
 
 ## One run at a time
