@@ -6,17 +6,16 @@ them in concrete situations.
 ### req.headless-sessions.conditions-in-tool — Testing conditions are told by the tool
 
 Every round of a [headless session](../../glossary.json#concept.headless-session) SHALL be started
-with its client's headless note appended to its system
-prompt.
+with the headless note appended to its system prompt.
 
-### req.headless-sessions.tools-granted — A Claude Code round is granted its tools
+### req.headless-sessions.tools-granted — A round is granted its tools
 
-Every Claude Code round of a headless session SHALL be started with its tools granted on the
+Every round of a headless session SHALL be started with its tools granted on the
 command line.
 
-### req.headless-sessions.claude-works-tasks — A headless Claude Code main session works its tasks itself
+### req.headless-sessions.claude-works-tasks — A headless main session works its tasks itself
 
-Every Claude Code round of a headless [main agent](../../glossary.json#concept.main-agent) SHALL
+Every round of a headless [main agent](../../glossary.json#concept.main-agent) SHALL
 be granted EnterWorktree and ExitWorktree and carry, after its headless note, the test procedure,
 which overrides for that session only the rule to hand every task to a
 [task session](../../glossary.json#concept.task-session) and states that the session opens each
@@ -44,20 +43,6 @@ or its runner has gone.
 
 The wait is bounded by [its own requirement](#req.headless-sessions.wait-bounded).
 
-### req.headless-sessions.wake-task-session — A session round left running wakes the session
-
-When a round other than the session's last ends with a
-[session round](../../glossary.json#concept.session-round) of a pi task session begun since the
-session began still running, the driver SHALL resume the same session, once that session round has
-been recorded or its supervisor has gone, with a wake message giving the outcome its
-[task record](../../glossary.json#concept.task-record) holds.
-
-### req.headless-sessions.pi-owner-wake — A headless pi session is woken only for what it owns
-
-The tool SHALL wake a headless pi session only for the runs its `concorde_run` started, recorded
-in its session file, and the session rounds of the task sessions whose session node names the
-session as their `main`.
-
 ### req.headless-sessions.live-own-wake — A live session is woken by its own program
 
 A live session SHALL be woken only by its own program, never by the tool.
@@ -67,8 +52,8 @@ prompted.
 
 ### req.headless-sessions.wake-once — A run wakes the session once
 
-The driver SHALL name each run and each session round in at most one wake message of a session,
-so a session is never woken twice for one of them.
+The driver SHALL name each run in at most one wake message of a session, so a session is never
+woken twice for one run.
 
 ### req.headless-sessions.rounds-bounded — A session has a bounded number of rounds
 
@@ -76,10 +61,9 @@ The driver SHALL start no more rounds of a session than the session was allowed.
 
 ### req.headless-sessions.wait-bounded — Waiting for a run is bounded
 
-When a run or a session round a round left behind is still running after the wait limit, the
-driver SHALL fail the session with `wait_exceeded`, naming that run's
-[run progress file](../../glossary.json#concept.run-progress-file) or that session round's status
-file and the session's record.
+When a run a round left behind is still running after the wait limit, the driver SHALL fail the
+session with `wait_exceeded`, naming that run's
+[run progress file](../../glossary.json#concept.run-progress-file) and the session's record.
 
 ### req.headless-sessions.logs-kept — Every round is kept
 

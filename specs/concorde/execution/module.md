@@ -141,9 +141,8 @@ command, and prints the run identity and the path of its result as soon as the r
 **[run progress file](../glossary.json#concept.run-progress-file)** exists. Everything else about
 the run is the same, including a refusal, which still becomes its result. While a run lives, its
 run progress file names what runs, in which workspace and step, with the runner's process
-identifier, and every worker run it launches records the run's identity, so an observer such as the
-main session's [run view](../glossary.json#concept.run-view) follows a run and its worker without
-asking the runner. Whether the runner still lives is told by its
+identifier, and every worker run it launches records the run's identity, so an observer, such as
+a workflow step or the run state of a task, follows a run and its worker without asking the runner. Whether the runner still lives is told by its
 **[run lock](../glossary.json#concept.run-lock)**, the file `locks/runs/<run-id>.lock` that the
 runner locks from before its first run progress file until after its result and removes as it exits,
 and that the kernel releases however the runner ends: a run without a result whose run lock nobody

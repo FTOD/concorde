@@ -6,17 +6,19 @@ Distribution turns the Concorde checkout into something a developer can run and 
 the package, builds the generated files, routes each `concorde`
 command to its owning [Module](../glossary.json#concept.module), writes the
 [Protocol copy](../glossary.json#concept.protocol-copy) a project carries, and installs Concorde
-with the [main-session guidance](../glossary.json#concept.main-session-guidance), for Claude Code
-and, on request, for pi. It does not decide what a command does, what the
-[main agent](../glossary.json#concept.main-agent) is told, or a project's Specs and configuration —
-the installer writes no Spec but the realization that keeps its own installed files bound.
+with the [main-session guidance](../glossary.json#concept.main-session-guidance) for Claude Code,
+on which the [main agent](../glossary.json#concept.main-agent) and its
+[task sessions](../glossary.json#concept.task-session) run for now,
+and with the runtime its workers need on pi. It does not decide what a command does, what the main
+agent is told, or a project's Specs and configuration — the installer writes no Spec but the
+realization that keeps its own installed files bound.
 
 ## Usage
 
 **The package.** `concorde.json` is the package's identity: name, version, licence, the roots the
-installer ships, install locations, the supported clients `claude-code` and `pi`, and the pinned
-third-party programs under `tools` (today `d2`, by release, URL and per-platform SHA-256). The build
-reads it too, so a changed descriptor makes every render stale.
+installer ships, install locations, the clients `claude-code` and `pi` the build renders workflows
+for, and the pinned third-party programs under `tools` (today `d2`, by release, URL and
+per-platform SHA-256). The build reads it too, so a changed descriptor makes every render stale.
 
 <a id="concept.build-manifest"></a>
 
@@ -56,7 +58,7 @@ dependencies; an installed copy has no `.venv` and runs on Concorde's own enviro
 | `trace show`, `list` or `prune` | shows a [trace](../glossary.json#concept.trace) with its timing and cost rolled up, lists traces, or removes what retention allows; prints its own JSON | [Tracing](../tracing/module.md) |
 | `build [--check]` | renders or checks the generated files | Distribution |
 | `protocol-manifest [--write] [--bind-project]` | reconciles the Protocol manifest | Distribution |
-| `update [--from <checkout>] [--pi]` | updates the installed Concorde, as described below; prints the installer's own JSON | Distribution |
+| `update [--from <checkout>]` | updates the installed Concorde, as described below; prints the installer's own JSON | Distribution |
 
 A command is named after the part of Concorde that owns it: `task` gives the coordination
 commands, `spec-validation`, `registry`, `docsite`, `grant`, `spec-mcp` and `init` the Spec tooling
@@ -135,13 +137,9 @@ project where every check passes, it goes through these steps in order:
    place on a later install, leaving the rest of the file untouched, and ending with an `@<path>`
    import of the project's glossary once one is declared, which `concorde init --apply` also adds
    when it creates the first glossary
-   ([requirements](requirements.md#req.distribution.glossary-import)). When the project has an
-   `AGENTS.md`, the same block, without the glossary import, which is Claude Code's syntax, goes
-   into it the same way; the installer never creates an `AGENTS.md`
-   ([requirements](requirements.md#req.distribution.agents-md-block)). pi reads only the first of
-   `AGENTS.override.md`, `AGENTS.md`, `AGENTS.MD`, `CLAUDE.md` and `CLAUDE.MD` it finds in a
-   directory, so a project's own `AGENTS.md` would hide the `CLAUDE.md` block from a pi session, and
-   an `AGENTS.md` the installer created would hide the project's own `CLAUDE.md`.
+   ([requirements](requirements.md#req.distribution.glossary-import)). The guidance is for Claude
+   Code alone, since the main agent and its task sessions run on Claude Code for now; nothing is
+   placed for a pi session, and a project's own `AGENTS.md` is left as it is.
 7. **It installs the workflows.** Every rendered workflow for Claude Code becomes
    `.claude/workflows/concorde-<name>.js`, which Claude Code offers as the command
    `/concorde-<name>`, and the `permissions.allow` of the project's `.claude/settings.json` gains
@@ -162,8 +160,8 @@ project where every check passes, it goes through these steps in order:
 9. **It keeps the installed files bound.** In an initialized project it asks Spec core to bring the
    root Module's Concorde installation realization in step with the receipt: every installed file
    that exists and that no realization binds by its exact path becomes an exact entry, and an entry
-   whose file is gone is removed, so the pi files of a later `--pi` or the files a newer Concorde
-   adds are bound like those initialization bound
+   whose file is gone is removed, so the files a newer Concorde adds are bound like those
+   initialization bound
    ([requirements](requirements.md#req.distribution.installer-keeps-installation-bound)). Specs
    that cannot be read are left as they are for `spec-validation` to report.
 
@@ -180,8 +178,8 @@ checkout) and the `mode`, `normal` or, for a
 lists under `files` every file Concorde owns in the project, including a default an earlier
 install wrote and this one found in place
 ([requirements](requirements.md#req.distribution.receipt-complete)), and under `amended` the
-project's own files it only amends: `.gitignore`, `CLAUDE.md`, an existing `AGENTS.md` and, once
-written, `.claude/settings.json` ([requirements](requirements.md#req.distribution.receipt-amended)).
+project's own files it only amends: `.gitignore`, `CLAUDE.md` and, once written,
+`.claude/settings.json` ([requirements](requirements.md#req.distribution.receipt-amended)).
 
 A project in which Concorde is still running is refused with `concorde_busy`, since replacing the
 framework copy under a run would change its code halfway
@@ -189,9 +187,8 @@ framework copy under a run would change its code halfway
 [run](../glossary.json#concept.run) of an Operation or of an
 [execution command](../glossary.json#concept.execution-command) whose runner still holds its
 [run lock](../glossary.json#concept.run-lock), found through its
-[run progress file](../glossary.json#concept.run-progress-file), or a pi
-[task-session](../glossary.json#concept.task-session) round whose supervisor lives; the refusal
-names each ([requirements](requirements.md#req.distribution.busy-named)). The
+[run progress file](../glossary.json#concept.run-progress-file); the refusal names each
+([requirements](requirements.md#req.distribution.busy-named)). The
 [progress file](../glossary.json#concept.progress-file) of an Operation's worker, which lies beside
 the Operation's and names the same runner, is not a run of its own.
 
@@ -203,9 +200,8 @@ primary worktree's copy, found through Git's common directory.
 
 **Updating an installed Concorde.** `concorde update` runs, in update mode, the installer of the
 Concorde checkout the receipt names as its `source` (or `--from <checkout>`): it installs as the
-first install did, keeping `d2`, the pi main session's files and develop mode when they were
-installed (`--pi` adds the pi main session's files to an install that has none), always placing the
-pi runtime unless the first install left it out with `--without-pi-runtime` (so an update adds it to
+first install did, keeping `d2` and develop mode when they were installed, always placing the pi
+runtime unless the first install left it out with `--without-pi-runtime` (so an update adds it to
 an install made before the runtime was placed by default), creating Concorde's own environment
 again with uv for the new checkout's Python requirement, and refusing like an install while
 Concorde runs in the project; binds the new Protocol copy in the configuration itself, the one
@@ -224,7 +220,7 @@ worktrees keep the previous copy until then.
 
 Workers run on pi unless the
 [worker configuration](../glossary.json#concept.worker-configuration) chooses Claude
-Code for them, whatever program the main session is, so every install places the
+Code for them, although the main agent runs on Claude Code, so every install places the
 **pi runtime** — the sandbox engine
 `@anthropic-ai/sandbox-runtime` that pi workers run their commands in — under
 `.concorde/tools/pi-runtime/` by copying the package's
@@ -238,17 +234,6 @@ is not on `PATH`, the install refuses with `npm_missing` before writing anything
 `--without-pi-runtime` leaves the runtime out, for a machine where every worker runs on Claude
 Code; the receipt records that choice (`pi_runtime`) so that an update keeps it, and a pi worker
 then fails with `pi_runtime_missing`, naming the command that installs the runtime.
-
-With `--pi` the installer also prepares the project for a pi main session: it places the
-[run view](../glossary.json#concept.run-view) as `.pi/extensions/concorde/`; the skill a
-second time as `.pi/skills/concorde/SKILL.md`; every rendered pi workflow script under
-`.concorde/workflows/pi/`; and the command-runner agents `concorde-step` and `concorde-report` under
-`.pi/agents/`, where pi-subagents finds the project's agents. The receipt records the choice (`pi`),
-which an update keeps. Both skills are the same rendered file, whose front matter the build writes
-with values that are bare names or double-quoted strings, because pi parses it as strict YAML and
-drops a skill it cannot parse. pi
-loads the project's extension and skill only once the developer trusts the project, which its
-interactive start asks for and a headless `pi -p` or RPC run grants with `--approve`.
 
 Every refusal of the installer and of `concorde update` prints `{"error": <link>}` and exits with
 status 1: one link of the Framework's [error chain](../glossary.json#concept.error-chain), in the
@@ -328,14 +313,6 @@ trace command prints its own output. The installer takes from Tracing's
 [layout](../tracing/contracts.md#layout) the folders it has Git ignore and the run locks it reads,
 relying on a runner holding its run lock for as long as it runs.
 
-<a id="uses-task-session"></a>
-
-**Task session** owns the pi task session's
-[session rounds](../glossary.json#concept.session-round) and the progress file `status.json` its
-supervisor keeps for each session under `.concorde/tasks/<task>/sessions/<session>/`. The installer reads those
-files to refuse while a round runs, relying on each naming its task, its round, its phase and its
-supervisor's process, and never starts, stops or answers a task session.
-
 <a id="uses-commands"></a>
 
 **Commands** lists the [execution commands](../glossary.json#concept.execution-command)
@@ -345,10 +322,10 @@ new execution command is one more catalog entry and no change here.
 <a id="uses-workflows"></a>
 
 **Workflows** owns each workflow's script, its catalog entry with name and description, the step
-adapters and the pi command-runner agent, and the `concorde workflow` command that `workflow` routes
-to. Distribution only wraps and places them: the build renders each script for both clients
-unchanged in its steps, and the installer places the renders and the permission rules their step
-agents need, refusing stale renders like any other build output.
+adapters and the pi command-runner agents, and the `concorde workflow` command that `workflow`
+routes to. Distribution only wraps and places them: the build renders each script for both clients
+unchanged in its steps, and the installer places the Claude Code renders and the permission rules
+their step agents need, refusing stale renders like any other build output.
 
 ### Inside
 

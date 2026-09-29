@@ -147,8 +147,8 @@ one task runs one thing at a time by Execution's
 ### req.tasks.close-when-ended — A task moves to the history only once it has ended
 
 Tasks SHALL move a closed task's folder to the history only while it holds the task's workspace
-lock, after it stopped, for a close without a merge, every Claude Code task session of the task,
-every run of the workspace still running and a running round of the task's pi task session.
+lock, after it stopped, for a close without a merge, every task session of the task and every run
+of the workspace still running.
 
 A run of the task therefore never writes into a folder that has moved: none runs while the close
 holds the lock, and none starts after it, since its binding names a folder that no longer exists.
@@ -160,12 +160,10 @@ Tasks SHALL move a closed task's folder to a history folder that no other task u
 ### req.tasks.closed-no-session — A closed task gets no task session
 
 Tasks SHALL refuse with `task_closed` to start or record a
-[task session](../../glossary.json#concept.task-session), or to begin a round of one, for a closed
-or failed task.
+[task session](../../glossary.json#concept.task-session) for a closed or failed task.
 
-Beginning a round checks the task's state inside the record update that appends the round, so a
-close stored after the session's own check still refuses it. Finishing a round is never refused
-for a closed task, so the outcome of a round that was running when the task closed is recorded.
+Recording a session checks the task's state again inside the record update that writes the
+session's node, so a close stored after the start's own check still refuses it.
 
 ### req.tasks.merge-verified — Merged means contained in the primary branch
 
@@ -271,8 +269,8 @@ While a task is stored as `merging` and no live process holds the merge lock, `c
 changing nothing, naming the merging task, the commit before its merge, its merge commit, the
 primary branch's head and the `--resume` and `--abort` recovery.
 
-The exceptions are `merge --resume` and `merge --abort` of the merging task itself, and `session
---stop`, which only ends a round; `list` and `show` read and are never refused. While the merge's
+The exceptions are `merge --resume` and `merge --abort` of the merging task itself; `list` and
+`show` read and are never refused. While the merge's
 process still holds the lock, `open`, `merge` and `close` wait for it as for any holder and a
 `session` or `escalate` of the merging task refuses with `merge_busy`.
 

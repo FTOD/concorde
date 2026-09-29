@@ -14,7 +14,8 @@ The developer and the [main agent](glossary.json#concept.main-agent) rely on it.
 [Coordination](coordination/module.md) organizes work into tasks, and
 [Execution](execution/module.md) carries out bounded work in their workspaces. Spec tooling checks,
 serves and publishes the Specs on its own. Concorde never chooses the developer's direction or
-repairs a Spec on its own. The main agent and the workers run on Claude Code or on pi.
+repairs a Spec on its own. The main agent and its task sessions run on Claude Code for now;
+each worker runs on Claude Code or on pi.
 
 ## Usage
 
@@ -110,9 +111,9 @@ travels back up them. The first two are Coordination's, the rest Execution's:
 
 | Level | Half | Who or what works there | Where | What it does | Module |
 | --- | --- | --- | --- | --- | --- |
-| 1. Main session | Coordination | the main agent, an interactive Claude Code or pi session | the primary worktree | discusses the project with the developer, splits work into tasks, merges delivered tasks, decides ordinary questions and escalates major ones | [Main session](coordination/main-session/module.md) |
+| 1. Main session | Coordination | the main agent, an interactive Claude Code session | the primary worktree | discusses the project with the developer, splits work into tasks, merges delivered tasks, decides ordinary questions and escalates major ones | [Main session](coordination/main-session/module.md) |
 | 2. Task | Coordination | the task session the main agent delegated the task to | one task worktree | changes Specs and code directly or through runs of Execution, keeps the [decision log](glossary.json#concept.decision-log), validates and delivers | [Task sessions](coordination/task-session/module.md), with the workspace from [Tasks](coordination/tasks/module.md) |
-| 3. Workflow | Execution | a procedure rendered for Claude Code and pi | one bound workspace | orders the workspace's runs for a known procedure and stops where a decision is needed | [Workflows](execution/workflows/module.md) |
+| 3. Workflow | Execution | a procedure the build renders for Claude Code and for pi, installed for Claude Code | one bound workspace | orders the workspace's runs for a known procedure and stops where a decision is needed | [Workflows](execution/workflows/module.md) |
 | 4. Run | Execution | the Execution runner, running an [Operation](glossary.json#concept.operation) or an execution command | one bound workspace | completes one bounded job and returns one [run result](glossary.json#concept.run-result) with evidence: an Operation with AI workers, an [execution command](glossary.json#concept.execution-command) without | [Execution](execution/module.md), [Operations](execution/operations/module.md), [Commands](execution/commands/module.md) |
 | 5. Worker | Execution | a headless `claude -p` or `pi -p` process | a run over the workspace | reasons within its grant on one bounded job and returns a [worker result](glossary.json#concept.worker-result) the run checks | [Workers](execution/workers/module.md) |
 
@@ -208,9 +209,8 @@ two halves with one narrow seam: the upper half reaches the lower one only throu
 [workspace binding](glossary.json#concept.workspace-binding), Execution's commands and what
 Execution recorded. It writes the binding into each task worktree, runs Execution's commands inside
 that worktree and reads what the lower half recorded: its runs in the
-[run store](glossary.json#concept.run-store), whose
-[run progress files](glossary.json#concept.run-progress-file) the pi main session's
-[run view](glossary.json#concept.run-view) follows, and its
+[run store](glossary.json#concept.run-store), with their
+[run progress files](glossary.json#concept.run-progress-file), and its
 [delivery commits](glossary.json#concept.delivery-commit) on the task branch. The lower half reads
 the binding and never learns that tasks exist. No record is written by both, so whether a task is
 active or delivered is derived each time from what happened, together with the task branch's head
@@ -234,7 +234,6 @@ coordination.task -> execution.runs: starts in its worktree
 execution.runs -> execution.binding: read
 execution.runs -> execution.store: record
 coordination.tasks -> execution.store: reads
-coordination.main -> execution.store: follows runs in pi
 ```
 
 ### Agents at both ends, programs between

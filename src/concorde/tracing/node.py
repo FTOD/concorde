@@ -27,7 +27,6 @@ from . import layout
 KINDS = (
     "task",
     "session",
-    "round",
     "merge",
     "merge-check",
     "workflow",
@@ -58,7 +57,6 @@ METADATA = (
     "command",
     "workflow",
     "mode",
-    "program",
     "task_type",
     "worker",
     "backend",

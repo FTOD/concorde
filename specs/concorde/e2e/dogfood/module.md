@@ -33,7 +33,6 @@ type `bug` whose basis names the case "Concorde implements the boundary wrongly"
 {
   "name": "write-hook-rw-directories",
   "description": "The workers' write checks ... ignore writable directory entries ...",
-  "client": "claude",
   "project": {"repository": "psf/requests", "rev": "v2.32.3"},
   "fault": {
     "summary": "writable directory entries are not applied by the harness",
@@ -47,30 +46,27 @@ type `bug` whose basis names the case "Concorde implements the boundary wrongly"
 
 A scenario has the fields `name`, `description`, `project` (`repository` and `rev`), `fault`
 (`summary` and `edits`, each `file`, `old` and `new`), `prompt` and `expect` (`types`, `basis`
-phrases and `unchanged` paths), and optionally `client`, `claude` or `pi`, the main session's
-program, `claude` when absent. The client names only the main session's program: the workers run
-on whatever the project's [worker configuration](../../glossary.json#concept.worker-configuration)
-chooses, which the preparation writes whichever the client. A fault still breaks what both
-[worker backends](../../glossary.json#concept.worker-backend) share, or each backend's part alike,
-so that it holds whichever backend a worker configuration chooses.
+phrases and `unchanged` paths). The main session is always a Claude Code session, since
+Concorde's main agent runs on Claude Code only for now, while the workers run on whatever the
+project's [worker configuration](../../glossary.json#concept.worker-configuration) chooses. A fault
+therefore breaks what both [worker backends](../../glossary.json#concept.worker-backend) share, or
+each backend's part alike, so that it holds whichever backend a worker configuration chooses.
 
 **Running one.**
 
 ```text
 python3 scripts/e2e/e2e.py dogfood list
-python3 scripts/e2e/e2e.py dogfood prepare write-hook-rw-directories [--name <dir>] [--client claude|pi] [--worker-model <model>]
+python3 scripts/e2e/e2e.py dogfood prepare write-hook-rw-directories [--name <dir>] [--worker-model <model>]
 python3 scripts/e2e/e2e.py dogfood run /tmp/concorde-e2e/write-hook-rw-directories [--rounds 4]
 python3 scripts/e2e/e2e.py dogfood evaluate /tmp/concorde-e2e/write-hook-rw-directories
 ```
 
-`prepare` makes the **scenario directory** under
-the end-to-end root: it clones this checkout's
+`prepare` makes the **scenario directory** under the end-to-end root: it clones this checkout's
 committed Concorde into `concorde/`, applies the fault's edits there and commits them as one commit
 of their own, builds that clone, clones the project at its revision into `project/`, makes a develop
-install there from the clone without `d2`, with `--pi` for a pi scenario or `--client pi`,
-initializes it, writes its worker configuration `.concorde/workers.json`, as a developer would, and
-commits both, and records the baselines in `dogfood.json`: the fault commit, the
-digest of the framework copy's sources (its `src`, `scripts`, `prompts` and `generated` under
+install there from the clone without `d2`, initializes it, writes its worker configuration
+`.concorde/workers.json`, as a developer would, and commits both, and records the baselines in
+`dogfood.json`: the fault commit, the digest of the framework copy's sources (its `src`, `scripts`, `prompts` and `generated` under
 `.concorde/framework/`, leaving out Python's caches), the digest of every file the install receipt
 names outside `.concorde/` and the blob of every path that must stay unchanged. An edit whose old
 text is not found exactly once is refused with `fault_not_applicable`, since the Concorde source has
@@ -80,8 +76,8 @@ project](../../glossary.json#concept.test-project): every worker on `--worker-mo
 given, enabling only that model, and otherwise this checkout's own `.concorde/workers.json` without
 its `runtime` paths; `dogfood.json` names its enabled models. Without it every worker the session
 starts would be refused with `config_missing`, a failure no scenario's fault causes. `run` runs the
-scenario's prompt as a [headless session](../../glossary.json#concept.headless-session) of the
-recorded client in the project, kept under the scenario directory's `sessions/<time>/`, and then
+scenario's prompt as a [headless session](../../glossary.json#concept.headless-session) in the
+project, kept under the scenario directory's `sessions/<time>/`, and then
 evaluates. `evaluate` can be run again at any time.
 
 What each command makes, and where:
@@ -178,14 +174,14 @@ verifying the [requirements](requirements.md) and [scenarios](scenarios.md).
 <a id="uses-sessions"></a>
 
 **Headless sessions** runs the scenario's prompt as a [headless
-session](../../glossary.json#concept.headless-session), waking it for the runs and
-[session rounds](../../glossary.json#concept.session-round) it leaves behind, and keeps its rounds. The runner relies on the session ending on its own and never adds anything to the
-prompt beyond what the scenario's developer would say. The runner gives the session its directory
+session](../../glossary.json#concept.headless-session), waking it for the runs it leaves behind, and
+keeps its rounds. The runner relies on the session ending on its own and never adds anything to
+the prompt beyond what the scenario's developer would say. The runner gives the session its directory
 under the scenario directory's `sessions/` in place of Headless sessions' default under the
 project's [run store](../../glossary.json#concept.run-store). `run` evaluates however the session
 ended, `idle`, `exited`, `no_session` or `rounds_exhausted` after `--rounds` rounds (4 by default),
 since the evaluation reads only files; how it ended is in the session's record that `run` prints
-beside the evaluation. When a run or a session round the session left is still running after
+beside the evaluation. When a run the session left is still running after
 Headless sessions' wait limit, `run` fails with `wait_exceeded` and evaluates nothing; `evaluate`
 can then be run by hand.
 

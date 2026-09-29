@@ -2,12 +2,11 @@
 exit 1, bad usage 2.
 
 While a merge is unfinished, every one of them that changes something is refused with
-``merge_incomplete`` apart from ``merge --resume`` and ``merge --abort`` of that task and
-``session --stop``; ``list`` and ``show`` still answer.
+``merge_incomplete`` apart from ``merge --resume`` and ``merge --abort`` of that task; ``list`` and ``show`` still answer.
 
 A refusal prints ``{"error": <error link>}``: the Tasks component's account of what it refused,
-why it cannot handle it, and what the caller can do. ``session`` starts a task session in a task
-worktree on the main session's program, and in pi answers or stops its running round.
+why it cannot handle it, and what the caller can do. ``session`` starts a Claude Code task
+session in a task worktree.
 ``escalate`` records the escalating session's own link of an error chain (the main agent's, or a
 task session's to the main agent), with the errors of the named runs, files or earlier escalations
 as its causes; naming none records that link alone as the whole chain, as for a decision an ok run
@@ -25,7 +24,7 @@ from .. import errors
 from ..execution.runs import load_result, result_path
 from ..tracing import reader
 from ..spec.schema import ContractError, validate
-from . import merge, pi_session, session, store
+from . import merge, session, store
 
 # Why Tasks cannot handle each refusal itself; every other code is an input the caller corrects.
 HANDLING = {
@@ -69,13 +68,8 @@ HANDLING = {
     ),
     "session_failed": (
         "environment",
-        "the agent program did not start the task session Tasks asked for, or the machine "
-        "lacks a program it needs; Tasks installs nothing",
-    ),
-    "session_busy": (
-        "decision",
-        "one round of a task session runs at a time; waiting for its report or stopping it is "
-        "the main agent's decision",
+        "Claude Code did not start the task session Tasks asked for, or the machine lacks a "
+        "program it needs; Tasks installs nothing",
     ),
     "missing_worktree": (
         "environment",
@@ -187,24 +181,14 @@ OPTIONS = {
         "pass --path outside the primary worktree",
     ],
     "session_failed": [
-        "in Claude Code, have the developer run claude once in the task worktree and accept "
-        "the trust prompt",
-        "in pi, install what the message names",
+        "have the developer run claude once in the task worktree and accept the trust prompt",
         "work in the task yourself instead of starting a session",
-    ],
-    "client_unknown": [
-        "run the command from the Claude Code or pi main session, or set CONCORDE_CLIENT",
     ],
     "decision_log_failed": [
         "make the decision log writable, then run the same close again, which appends the "
         "closing and changes nothing else",
         "for an escalation, append the chain the message carries to the decision log by "
         "hand; escalating again would record it twice",
-    ],
-    "session_busy": [
-        "wait until the running round reports: the run view wakes you in pi, or run "
-        "concorde task session <task> --wait, which returns when the round ends",
-        "stop it with concorde task session <task> --stop",
     ],
 }
 
@@ -251,11 +235,6 @@ def parser() -> argparse.ArgumentParser:
     starting.add_argument("--main")
     starting.add_argument("--model")
     starting.add_argument("--dry-run", action="store_true")
-    starting.add_argument("--answer")
-    starting.add_argument("--stop", action="store_true")
-    starting.add_argument(
-        "--wait", nargs="?", type=float, const=float("inf"), default=None
-    )
     closing = commands.add_parser("close")
     closing.add_argument("task_id")
     mode = closing.add_mutually_exclusive_group(required=True)
@@ -399,67 +378,14 @@ def close(here: Path, arguments) -> dict:
 
 
 def start_session(here: Path, arguments) -> dict:
-    """Start, answer or stop a task session on the main session's own program."""
-    from ..harness.models import ModelConfigError, detect_client
-
-    primary = store.require_primary(here)
-    waiting = arguments.wait is not None
-    if not arguments.stop and not waiting:
-        # Stopping or waiting for a round never builds on the primary branch, so an unfinished
-        # merge does not keep a runaway round alive or its outcome unseen.
-        store.guard_merges(primary, arguments.task_id)
-    try:
-        program, _ = detect_client()
-    except ModelConfigError as error:
-        raise store.TaskError(
-            "client_unknown",
-            f"a task session runs on the main session's own program, which cannot be read "
-            f"from the environment: {error}",
-        ) from error
-    follow = arguments.answer is not None or arguments.stop or waiting
-    if sum((arguments.answer is not None, arguments.stop, waiting)) > 1:
-        raise store.TaskError(
-            "invalid_input", "--answer, --stop and --wait exclude each other"
-        )
-    if waiting and arguments.wait < 0:
-        raise store.TaskError("invalid_input", f"--wait {arguments.wait:g} is negative")
-    if follow and (arguments.model or arguments.dry_run or arguments.main):
+    """Start a Claude Code task session in a task worktree."""
+    store.guard_merges(store.require_primary(here), arguments.task_id)
+    if not arguments.main or not arguments.main.strip():
         raise store.TaskError(
             "invalid_input",
-            "--answer, --stop and --wait take no --main, --model or --dry-run: they act on "
-            "the session already started",
+            "--main must name the main agent's session, which the task session reports to",
         )
-    if program == "claude":
-        if follow:
-            raise store.TaskError(
-                "invalid_input",
-                "--answer, --stop and --wait are for a pi task session: a Claude Code task "
-                "session receives answers and reports through SendMessage and is stopped with "
-                "claude stop",
-            )
-        if not arguments.main or not arguments.main.strip():
-            raise store.TaskError(
-                "invalid_input",
-                "--main must name the main agent's session, which the task session reports to",
-            )
-        return session.start(
-            here,
-            arguments.task_id,
-            arguments.main,
-            model=arguments.model,
-            dry_run=arguments.dry_run,
-        )
-    if arguments.stop:
-        return pi_session.stop(here, arguments.task_id)
-    if waiting:
-        return pi_session.wait(
-            here,
-            arguments.task_id,
-            None if arguments.wait == float("inf") else arguments.wait,
-        )
-    if arguments.answer is not None:
-        return pi_session.answer(here, arguments.task_id, arguments.answer)
-    return pi_session.start(
+    return session.start(
         here,
         arguments.task_id,
         arguments.main,

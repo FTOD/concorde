@@ -200,8 +200,7 @@ the project's own problem or overreaching work is closed `not-actionable` with t
 **Taking the fix.** Once the fix is merged, which the project's main agent learns from the developer
 or by listing the Concorde repository's Issues with `concorde issues list --root <source>`, it runs
 `concorde update` from the project's primary worktree. The update refuses while a run of an
-Operation or execution command or a pi [task-session](../glossary.json#concept.task-session) round
-is still running in the project, re-checks that the Concorde repository's primary worktree is clean,
+Operation or execution command is still running in the project, re-checks that the Concorde repository's primary worktree is clean,
 installs from it again in develop mode
 ([requirements](requirements.md#req.dogfooding.develop-kept)), recording the commit it installed
 ([requirements](requirements.md#req.dogfooding.update-commit-recorded)), and, like every update,
@@ -292,8 +291,8 @@ the defect is already fixed at its head.
 
 **One observation rule.** Watching runs closely is asked of the Concorde repository's own agents
 too. The repository's agent instructions are its `concorde-development` skill, which its `CLAUDE.md`
-and `AGENTS.md` tell every session to load beside the `concorde` skill; the root Module binds its
-source and those files, not Dogfooding. Both sides receive the same sentence, kept once as a prompt
+tells every session to load beside the `concorde` skill; the root Module binds its source and that
+file, not Dogfooding. Both sides receive the same sentence, kept once as a prompt
 fragment that the develop guidance and the development skill both include and that the Dogfooding
 tests find word for word in the rendered skill
 ([requirements](requirements.md#req.dogfooding.one-observation-rule)), so that the two sides never

@@ -3,8 +3,9 @@
 This guide is for developers who want to use Concorde in their own project. It covers installing
 Concorde, writing the first Spec, working with the main agent, carrying one change from an idea to
 a merge, and reading what Concorde reports back. It describes Concorde 9 with
-[Spec Protocol 13](https://ftod.github.io/concorde/protocol) with Claude Code or
-[pi](https://github.com/earendil-works/pi) as the client, for the main agent and for the workers.
+[Spec Protocol 13](https://ftod.github.io/concorde/protocol) with Claude Code as the client for
+the main agent and its task sessions, and [pi](https://github.com/earendil-works/pi) or Claude Code
+for the workers.
 
 In the commands below, `concorde` stands for your project's `.concorde/bin/concorde`.
 
@@ -24,7 +25,7 @@ itself, only that binding. Agents sit at both ends, and programs run between the
 
 | Level           | Kind    | What it is                                                                                                                                                                                                                                |
 | --------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1. Main session | agent   | Your own Claude Code or pi session in the primary checkout, the **main agent**. It discusses the project with you, splits work into tasks and merges what was delivered.                                                                  |
+| 1. Main session | agent   | Your own Claude Code session in the primary checkout, the **main agent**. It discusses the project with you, splits work into tasks and merges what was delivered.                                                                        |
 | 2. Task         | agent   | One task's branch and worktree, worked by a **task session** the main agent starts for it; the main agent never works inside a task itself.                                                                                               |
 | 3. Workflow     | program | A procedure for tasks that follow a known path, such as `brownfield`; it orders the runs in the task's worktree and stops where a decision is needed.                                                                                     |
 | 4. Run          | program | One bounded job with one result: an **Operation**, which computes the grant, launches AI workers and runs your checks itself, or an **execution command** such as `task-validation` or `delivery`, a deterministic step without a worker. |
@@ -52,11 +53,10 @@ You need:
 - Python 3.11 or later, to build Concorde and run its installer;
 - [uv](https://docs.astral.sh/uv/getting-started/installation/), which creates Concorde's own
   Python environment and installs its dependencies;
-- [Claude Code](https://docs.claude.com/en/docs/claude-code), installed and logged in, or
-  [pi](https://github.com/earendil-works/pi) with a configured model; for pi also Node.js with npm,
-  `rg` (ripgrep), `fd` and `socat`, and optionally
-  [pi-subagents](https://github.com/nicobailon/pi-subagents) for its run view, installed with
-  `pi install npm:pi-subagents`;
+- [Claude Code](https://docs.claude.com/en/docs/claude-code), installed and logged in, for the main
+  agent and its task sessions;
+- for workers that run on pi, [pi](https://github.com/earendil-works/pi) with a configured model,
+  Node.js with npm, `rg` (ripgrep), `fd` and `socat`;
 - Linux with a root-owned [bubblewrap](https://github.com/containers/bubblewrap) (`bwrap`), which
   backs the command sandbox of workers and runs your checks read-only; Concorde refuses a
   check it cannot sandbox rather than fall back to an unconfined process;
@@ -83,35 +83,20 @@ The installer places:
 - a copy of the Spec Protocol under `.concorde/protocol/`, so the rules your Specs follow travel
   with your project;
 - the main agent's guidance, as the Claude Code skill `.claude/skills/concorde/SKILL.md` and a short
-  block between `<!-- concorde:start -->` and `<!-- concorde:end -->` in your `CLAUDE.md`, and the
-  same block in your `AGENTS.md` when you have one (the rest of each file is left untouched; an
-  `AGENTS.md` is never created, since pi reads only the first of `AGENTS.md` and `CLAUDE.md` it
-  finds);
+  block between `<!-- concorde:start -->` and `<!-- concorde:end -->` in your `CLAUDE.md` (the
+  rest of the file is left untouched);
 - the [`d2`](https://github.com/d2lang/d2) program that draws your Specs' diagrams, as
   `.concorde/tools/d2`, at a pinned release whose checksum it verifies (`--without-d2` skips it);
 - the sandbox engine pi workers run their commands in, `@anthropic-ai/sandbox-runtime`, under
   `.concorde/tools/pi-runtime/`, installed with `npm ci --ignore-scripts` from the lockfile
   Concorde ships, so you get exactly the versions it was tested with. Workers run on pi unless you
-  choose Claude Code for them, whatever your own session is, so this needs npm;
+  choose Claude Code for them, so this needs npm;
   `--without-pi-runtime` skips it when every worker will run on Claude Code;
 - ignore rules for the directories Concorde writes at run time, and a receipt
   `.concorde/install.json`.
 
 The installer checks that uv, and npm when it installs the pi runtime, are on your `PATH` before it
 writes anything into your project; when one is missing it refuses and says which.
-
-To work with pi as your main session, add `--pi` (or `concorde update --pi` later). The installer
-then also places:
-
-- Concorde's pi extension, the **run view**, as `.pi/extensions/concorde/`;
-- the main agent's guidance a second time, as the pi skill `.pi/skills/concorde/SKILL.md`.
-
-pi loads a project's extension and skills only when you trust the project. The first time you open
-pi in it, pi asks; choose to trust it, or the run view and the guidance are skipped. A headless
-`pi -p` or RPC run cannot ask, so pass `--approve` (or trust the project once interactively, or with
-`/trust`). The run view shows its runs in FleetView and counts them for `bg_wait` only when
-pi-subagents is installed; without it, `concorde_run`, the completion wake and `/concorde` still
-work.
 
 The installer never writes your Specs or your registry, except the Concorde installation
 realization, which it keeps in step with the files it installs, and writes your project
@@ -127,8 +112,8 @@ install did, binds the new Protocol copy in `.concorde/config.json` (read what c
 their worktrees keep the previous Protocol copy. Your project is then **Concorde unvalidated**:
 `concorde spec-validation` reports it as an error, and nothing merges, until you have repaired what the
 new version finds and a validation passes. That mark comes only from an update; your own changes
-never set it. An update also waits for Concorde to be idle: while an Operation, an execution command
-or a pi task session is still running in your project, it refuses and names what runs.
+never set it. An update also waits for Concorde to be idle: while an Operation or an execution command is still
+running in your project, it refuses and names what runs.
 
 ### Use Concorde while developing it
 
@@ -284,7 +269,7 @@ check.
 
 ## Work with the main agent
 
-Open Claude Code or pi in your project's primary checkout. The installed skill makes that session
+Open Claude Code in your project's primary checkout. The installed skill makes that session
 the main agent; you talk to it as usual.
 
 - **Discuss first.** Ask about the project, agree the direction and the large plan. The main agent
@@ -306,23 +291,17 @@ the main agent; you talk to it as usual.
 
 You can run every command below yourself as well; the main agent uses exactly the same ones.
 
-### In pi: the run view
+### Follow runs
 
-In pi the main agent starts Operations with the `concorde_run` tool instead of background Bash. The
-tool starts `concorde run` in the background and returns at once; when the run ends, the main agent
-is woken with its result. Meanwhile every run of the project appears in pi-subagents' **FleetView**
-as an external job: its task and Operation, the step it is in, and, while a worker runs, the
-worker's round and latest tool call, such as `implement worker (pi) round 2 · worker: bash pytest
--q`. When it ends, the view shows its status and summary. Only the session that started a run is
-woken when it ends: the runs of other main sessions, of task sessions and of commands run by hand
-are shown but wake nobody, and a task session's rounds wake only the main session that started it.
-In Claude Code, see how another session's task stands with `concorde task show <task>`.
-`/concorde` lists the recent runs, also without pi-subagents. The view only observes: the Operation
-keeps running if you close pi.
+The main agent starts Operations and execution commands in background Bash, so it keeps talking
+with you while they run, and it is woken with the result when a run it started ends. Only the
+session that started a run is woken: runs of other main sessions, of task sessions and of commands
+run by hand wake nobody. See how any task stands, including another session's, with
+`concorde task show <task>`.
 
 ### Choose the worker models
 
-Workers run on pi, whatever program you talk to, unless you put some of them on Claude Code. Which
+Workers run on pi unless you put some of them on Claude Code. Which
 model and reasoning level each worker uses is yours to choose, for every worker or for one worker
 by its id, such as a cheaper model for `implement`'s `worker` or three different models for
 `spec_panel`'s `reviewer1`, `reviewer2` and `reviewer3`; ask the main agent to change the worker
@@ -552,28 +531,20 @@ primary checkout:
 concorde task session retry --main <the main agent's session name>
 ```
 
-A task session does the main agent's own work inside the task, so it always runs on the same
-program as the main agent, with the same configuration. Its file tools and shell may write only its
+A task session does the main agent's own work inside the task, so it runs on the same program as
+the main agent, Claude Code, with the same configuration. Its file tools and shell may write only its
 own task, and it reports back to the main agent when it has delivered or needs decisions beyond its
 task. It never asks you directly: it gathers every decision it needs and reports them together, and
 the main agent settles those it may and asks you the rest at once. Only the main agent merges a task
 into your primary branch. One task runs at most one Operation at a time. A check that fails after
 merging is new work, never a reason to discard a change.
 
-- In Claude Code a task session is a background Claude Code session (`claude agents` lists them).
-  Because nobody answers a background session's permission prompts, it runs in Claude Code's
-  `auto` permission mode, where a classifier approves or refuses each action within those limits.
-  Ending the task, by its merge or its close, copies each such session's transcript into the task's
-  trace and removes the session from Claude's session list with `claude rm`, first stopping it
-  with `claude stop` when the task closes without a merge; you need not remove them yourself.
-- In pi the main agent uses its `concorde_task_session` tool. The task session is a pi session with
-  your pi configuration (your packages and extensions included) that works in rounds: each round
-  ends with a report, delivered or escalated, which wakes the main agent, and the main agent's
-  answer starts the next round with everything the session did so far. Concorde's own extension
-  confines its `write` and `edit` to the task and runs its commands in a sandbox; tools that your
-  other extensions add are not confined. The run view shows each running round, and
-  `concorde task session retry --stop` stops one. The session's commands are sandboxed with
-  sandbox-runtime, which on Linux needs `bwrap` and `socat`.
+A task session is a background Claude Code session (`claude agents` lists them). Because nobody
+answers a background session's permission prompts, it runs in Claude Code's `auto` permission mode,
+where a classifier approves or refuses each action within those limits. Ending the task, by its
+merge or its close, copies each such session's transcript into the task's trace and removes the
+session from Claude's session list with `claude rm`, first stopping it with `claude stop` when the
+task closes without a merge; you need not remove them yourself.
 
 ## Read results
 
@@ -613,8 +584,7 @@ the full path from where the error started to the question you are asked.
 
 ### Traces
 
-Every level of the work leaves a record in one shape: the task, its task sessions and their rounds,
-its merges, its workflow and steps, each run, each check and each worker run with its rounds, each
+Every level of the work leaves a record in one shape: the task, its task sessions, its merges, its workflow and steps, each run, each check and each worker run with its rounds, each
 nested inside the level that started it. Together they are the task's trace, which you read with:
 
 ```bash

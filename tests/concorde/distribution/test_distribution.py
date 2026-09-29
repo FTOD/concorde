@@ -49,8 +49,8 @@ COPIED = (
 def strict_frontmatter(test, text: str) -> dict:
     """The skill's frontmatter fields, each a bare name or a JSON string.
 
-    Both forms are valid YAML for every parser, strict ones such as pi's included; a bare value
-    holding ": " is not, and pi drops a skill whose frontmatter it cannot parse.
+    Both forms are valid YAML for every parser, strict ones included; a bare value holding ": "
+    is not, and a skill reader drops a skill whose frontmatter it cannot parse.
     """
     test.assertTrue(text.startswith("---\n"), text[:80])
     header = text[4:].split("\n---\n", 1)[0]
@@ -383,7 +383,8 @@ class InstallTests(unittest.TestCase):
         "scenario.distribution.install-repeat",
         "scenario.distribution.glossary-import",
         "scenario.distribution.glossary-import-none",
-        "scenario.distribution.agents-md",
+        "scenario.main-session.project-terms",
+        "scenario.main-session.project-terms-missing",
     )
     def test_install_places_concorde_without_touching_specs(self):
         package = package_copy(self)
@@ -435,11 +436,11 @@ class InstallTests(unittest.TestCase):
         self.assertEqual(
             (package / "generated/skills/concorde/SKILL.md").read_text(), skill
         )
-        agents = (project / "AGENTS.md").read_text()
-        self.assertIn("Keep this too.", agents)
-        self.assertEqual(1, agents.count("<!-- concorde:start -->"))
-        self.assertIn("hand every task, even a single one, to a task session", agents)
-        self.assertIn("AGENTS.md", receipt["amended"])
+        # The project's own AGENTS.md is left as it is.
+        self.assertEqual(
+            "# Agents\n\nKeep this too.\n", (project / "AGENTS.md").read_text()
+        )
+        self.assertNotIn("AGENTS.md", receipt["amended"])
         claude = (project / "CLAUDE.md").read_text()
         self.assertIn("Keep this.", claude)
         self.assertEqual(1, claude.count("<!-- concorde:start -->"))
@@ -473,9 +474,6 @@ class InstallTests(unittest.TestCase):
         self.assertEqual(1, len(fetch.urls))
         self.assertEqual(
             1, (project / "CLAUDE.md").read_text().count("<!-- concorde:start -->")
-        )
-        self.assertEqual(
-            1, (project / "AGENTS.md").read_text().count("<!-- concorde:start -->")
         )
         self.assertIn(".claude/skills/concorde/SKILL.md", receipt["files"])
         proposed = subprocess.run(
@@ -525,10 +523,6 @@ class InstallTests(unittest.TestCase):
         self.assertEqual(
             1, (project / "CLAUDE.md").read_text().count("@specs/project/glossary.json")
         )
-        # pi reads AGENTS.md and takes the terms from its extension, not from an import.
-        self.assertNotIn(
-            "@specs/project/glossary.json", (project / "AGENTS.md").read_text()
-        )
 
     @verifies(
         "scenario.distribution.install-busy",
@@ -565,19 +559,6 @@ class InstallTests(unittest.TestCase):
         self.addCleanup(held.close)
         held.enter_context(
             run_lock(Store(concorde, workspace), "r-1", "Execution runner")
-        )
-        round_ = concorde / "tasks/t2/sessions/task-t2-s/status.json"
-        round_.parent.mkdir(parents=True)
-        round_.write_text(
-            json.dumps(
-                {
-                    "kind": "task-session",
-                    "task": "t2",
-                    "round": 3,
-                    "phase": "running",
-                    "supervisor_pid": live.pid,
-                }
-            )
         )
         # A finished run, a run whose runner is gone (its process identifier, recorded in a
         # sandbox's PID namespace, names a live unrelated process here, and its lock file was
@@ -617,9 +598,6 @@ class InstallTests(unittest.TestCase):
                 f"held by Execution runner (process {os.getpid()}",
                 ".concorde/locks/runs/r-1.lock",
                 ".concorde/tasks/t1/workspace/runs/r-1/status.json",
-                "round 3 of the pi task session of task t2",
-                f"supervisor process {live.pid}",
-                ".concorde/tasks/t2/sessions/task-t2-s/status.json",
             ):
                 self.assertIn(fragment, message)
             self.assertNotIn("r-0", message)
@@ -891,10 +869,8 @@ class InstallTests(unittest.TestCase):
             ]
         )
 
-    @verifies(
-        "scenario.distribution.install-pi", "scenario.distribution.install-repeat"
-    )
-    def test_install_with_pi_places_the_locked_runtime_extension_and_skill(self):
+    @verifies("scenario.distribution.install-repeat")
+    def test_install_places_the_locked_runtime_once(self):
         package = package_copy(self)
         project = package.parent / "project"
         project.mkdir()
@@ -912,11 +888,9 @@ class InstallTests(unittest.TestCase):
 
         with which(npm="/usr/bin/npm"):
             receipt = install(
-                project, package, d2=False, pi=True, run=fake_npm, dependencies=False
+                project, package, d2=False, run=fake_npm, dependencies=False
             )
-            install(
-                project, package, d2=False, pi=True, run=fake_npm, dependencies=False
-            )
+            install(project, package, d2=False, run=fake_npm, dependencies=False)
         [(command, cwd)] = calls
         self.assertEqual(["/usr/bin/npm", "ci", "--ignore-scripts"], command[:3])
         self.assertEqual(project / ".concorde/tools/pi-runtime", cwd)
@@ -931,22 +905,13 @@ class InstallTests(unittest.TestCase):
             ("@anthropic-ai/sandbox-runtime", "0.0.77"),
             (placed["package"], placed["version"]),
         )
-        extension = project / ".pi/extensions/concorde"
-        self.assertIn("concorde_run", (extension / "index.ts").read_text())
-        self.assertTrue((extension / "pi_runs.ts").is_file())
-        self.assertFalse((extension / "pi_models.ts").exists())
-        self.assertNotIn(
-            "concorde_configure_workers", (extension / "index.ts").read_text()
-        )
-        skill = (project / ".pi/skills/concorde/SKILL.md").read_text()
-        self.assertEqual({"name", "description"}, set(strict_frontmatter(self, skill)))
-        self.assertIn(".pi/extensions/concorde/index.ts", receipt["files"])
+        # No file of a pi main session is placed: the main agent runs on Claude Code.
+        self.assertFalse((project / ".pi").exists())
 
     @verifies(
         "scenario.distribution.install",
         "scenario.distribution.install-settings-kept",
         "scenario.distribution.install-settings-invalid",
-        "scenario.distribution.agents-md",
     )
     def test_install_places_workflows_and_only_its_own_permission_rules(self):
         package = package_copy(self)
@@ -965,10 +930,8 @@ class InstallTests(unittest.TestCase):
         workflow = project / ".claude/workflows/concorde-brownfield.js"
         self.assertTrue(workflow.read_text().startswith("export const meta = {"))
         self.assertIn(".claude/workflows/concorde-brownfield.js", receipt["files"])
-        self.assertFalse((project / ".pi/agents").exists())
-        # A project without an AGENTS.md gets none: it would hide CLAUDE.md from pi.
+        self.assertFalse((project / ".pi").exists())
         self.assertFalse((project / "AGENTS.md").exists())
-        self.assertNotIn("AGENTS.md", receipt["amended"])
         value = json.loads(settings.read_text())
         self.assertEqual("x", value["model"])
         allow = value["permissions"]["allow"]
@@ -1005,40 +968,13 @@ class InstallTests(unittest.TestCase):
             (project / ".claude/workflows/concorde-brownfield.js").exists()
         )
 
-    @verifies("scenario.distribution.install-pi")
-    def test_install_with_pi_places_workflow_scripts_and_agents(self):
-        package = package_copy(self)
-        project = package.parent / "project"
-        project.mkdir()
-        subprocess.run(["git", "init", "-q", str(project)], check=True)
-
-        def fake_npm(command, cwd, **options):
-            entry = (
-                Path(cwd) / "node_modules/@anthropic-ai/sandbox-runtime/dist/index.js"
-            )
-            entry.parent.mkdir(parents=True)
-            entry.write_text("export {};\n")
-            return subprocess.CompletedProcess(command, 0, "", "")
-
-        with which(npm="/usr/bin/npm"):
-            receipt = install(
-                project, package, d2=False, pi=True, run=fake_npm, dependencies=False
-            )
-        self.assertIn(
-            "runs.run", (project / ".concorde/workflows/pi/brownfield.js").read_text()
-        )
-        for name in ("concorde-step", "concorde-report"):
-            agent = (project / f".pi/agents/{name}.md").read_text()
-            self.assertIn("type: external-cli", agent)
-            self.assertIn(f".pi/agents/{name}.md", receipt["files"])
-
     @verifies("scenario.distribution.install-programs-missing")
-    def test_install_with_pi_without_npm_installs_nothing(self):
+    def test_install_without_npm_installs_nothing(self):
         package = package_copy(self)
         project = package.parent / "project"
         project.mkdir()
         with which(), self.assertRaises(InstallError) as raised:
-            install(project, package, d2=False, pi=True, dependencies=False)
+            install(project, package, d2=False, dependencies=False)
         self.assertEqual("npm_missing", raised.exception.code)
         self.assertFalse((project / ".concorde/framework").exists())
 
@@ -1054,10 +990,8 @@ class InstallTests(unittest.TestCase):
             )
         self.assertEqual(1, len(calls))
         self.assertIn("pi-runtime", receipt["tools"])
-        self.assertEqual((False, True), (receipt["pi"], receipt["pi_runtime"]))
-        # The pi main session's files come only with --pi.
-        self.assertFalse((project / ".pi/skills/concorde/SKILL.md").exists())
-        self.assertFalse((project / ".concorde/workflows/pi").exists())
+        self.assertTrue(receipt["pi_runtime"])
+        self.assertNotIn("pi", receipt)
         with which():
             left_out = install(
                 project, package, d2=False, pi_runtime=False, dependencies=False
@@ -1079,36 +1013,26 @@ class InstallTests(unittest.TestCase):
         self.assertNotIn("pi-runtime", receipt["tools"])
         self.assertFalse(receipt["pi_runtime"])
 
-    @verifies(
-        "scenario.distribution.update-pi",
-        "scenario.distribution.update-add-pi",
-        "scenario.distribution.update-keeps-pi-choices",
-    )
-    def test_an_update_adds_the_pi_runtime_and_on_request_the_pi_files(self):
+    @verifies("scenario.distribution.update-pi-runtime")
+    def test_an_update_adds_the_pi_runtime(self):
         package = package_copy(self)
         project = package.parent / "project"
         subprocess.run(["git", "init", "-q", str(project)], check=True)
         install(project, package, d2=False, pi_runtime=False, dependencies=False)
-        # A receipt written before the choice was recorded: it had no runtime and no pi files.
+        # A receipt written before the choice was recorded: it had no runtime.
         path = project / ".concorde/install.json"
         receipt = json.loads(path.read_text())
-        del receipt["pi"], receipt["pi_runtime"]
+        del receipt["pi_runtime"]
         path.write_text(json.dumps(receipt))
         calls = []
         with which(npm="/usr/bin/npm"):
             updated = update(project, package, run=fake_npm(calls))["receipt"]
             self.assertIn("pi-runtime", updated["tools"])
-            self.assertEqual((False, True), (updated["pi"], updated["pi_runtime"]))
-            self.assertFalse((project / ".pi/skills/concorde/SKILL.md").exists())
-            with_pi = update(project, package, run=fake_npm(calls), pi=True)["receipt"]
-            self.assertTrue(with_pi["pi"])
-            self.assertTrue((project / ".pi/skills/concorde/SKILL.md").is_file())
-            self.assertTrue(
-                (project / ".concorde/workflows/pi/brownfield.js").is_file()
-            )
-            # Both choices are kept by the next update.
+            self.assertTrue(updated["pi_runtime"])
+            self.assertFalse((project / ".pi").exists())
+            # The choice is kept by the next update.
             kept = update(project, package, run=fake_npm(calls))["receipt"]
-        self.assertEqual((True, True), (kept["pi"], kept["pi_runtime"]))
+        self.assertTrue(kept["pi_runtime"])
         self.assertEqual(1, len(calls), "the locked runtime is installed once")
 
     @verifies("scenario.distribution.install-later-files-bound")
@@ -1132,18 +1056,25 @@ class InstallTests(unittest.TestCase):
                 if r["id"] == "realization.project.concorde-installation"
             )
 
-        before = installation()
-        self.assertNotIn(".pi/skills/concorde/SKILL.md", before)
+        # As if an older Concorde had not installed the brownfield workflow yet.
+        added = ".claude/workflows/concorde-brownfield.js"
+        (project / added).unlink()
+        value = json.loads(metadata.read_text())
+        for item in value["defines"]:
+            if item["id"] == "realization.project.concorde-installation":
+                item["entries"].remove(added)
+        metadata.write_text(json.dumps(value, indent=2) + "\n")
+        self.assertNotIn(added, installation())
         entry = (project / "specs/project/module.md").read_bytes()
         receipt = install(
-            project, package, d2=False, pi=True, pi_runtime=False, dependencies=False
+            project, package, d2=False, pi_runtime=False, dependencies=False
         )
         placed = sorted(
             path
             for path in receipt["files"]
             if not path.startswith(".concorde/") and path not in receipt["amended"]
         )
-        self.assertIn(".pi/skills/concorde/SKILL.md", placed)
+        self.assertIn(added, placed)
         self.assertEqual(placed, installation())
         self.assertEqual(entry, (project / "specs/project/module.md").read_bytes())
         subprocess.run(["git", "add", "-A"], cwd=project, check=True)
@@ -1163,7 +1094,7 @@ class InstallTests(unittest.TestCase):
             update(project, package)
         self.assertEqual(bound, metadata.read_bytes())
 
-    @verifies("scenario.distribution.update-keeps-pi-choices")
+    @verifies("scenario.distribution.update-keeps-pi-runtime-choice")
     def test_an_update_keeps_a_runtime_that_was_left_out(self):
         package = package_copy(self)
         project = package.parent / "project"

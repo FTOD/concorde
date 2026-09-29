@@ -2,8 +2,7 @@
 
 The root [Module](glossary.json#concept.module) binds the files that set up development of this
 checkout: the Python project and lock, the pytest configuration and its evidence plugin, the
-reference initializer, the Claude Code documentation fetcher, the docsite type check and the pi
-project settings that load Concorde's own pi extension here. These
+reference initializer, the Claude Code documentation fetcher and the docsite type check. These
 promises concern how Concorde's own tests and checks run, not what Concorde offers a consumer
 project.
 
@@ -43,42 +42,25 @@ without their media, at exactly the recorded commits.
 
 ## Agent instructions
 
-A session in this checkout, main agent or task session, works as in any Concorde project, plus the
+A session in this checkout, [main agent](glossary.json#concept.main-agent) or
+[task session](glossary.json#concept.task-session), works as in any Concorde project, plus the
 rules for developing Concorde itself. Both come as skills the build renders: `concorde`, the
 [main-session guidance](glossary.json#concept.main-session-guidance) the installer places in every
 project, and `concorde-development`, rendered from `prompts/development/skill.md`, which includes
-Dogfooding's rule for observing runs. Skills load on demand, so `CLAUDE.md` and `AGENTS.md` keep a
-short part that is always in context: the instruction to load both skills before any work, the core
-rules of the main agent and of a task session, and in `CLAUDE.md` the import of the glossary.
-Claude Code finds the skills through `.claude/skills/<name>`, links into `generated/skills/`, and pi
-through the `skills` of `.pi/settings.json`; in a worktree not built yet, the instructions say to
-build first and to read the rendered files directly.
+Dogfooding's rule for observing runs. Skills load on demand, so `CLAUDE.md` keeps a short part that
+is always in context: the instruction to load both skills before any work, the core rules of the
+main agent and of a task session, and the import of the glossary. The main agent and its task
+sessions are Claude Code sessions, which find the skills through `.claude/skills/<name>`, links
+into `generated/skills/`; in a worktree not built yet, the instructions say to build first and to
+read the rendered files directly.
 
 ### scenario.concorde.development-skills — Sessions in this checkout load both skills
 
 - GIVEN this checkout, its primary worktree or a task worktree, after a build
-- WHEN a Claude Code or pi session starts there
-- THEN `CLAUDE.md` and `AGENTS.md` tell it to load the `concorde` and `concorde-development` skills before any work
-- AND `.pi/settings.json` lists `generated/skills/concorde` and `generated/skills/concorde-development`, which hold the rendered skills
+- WHEN a Claude Code session starts there
+- THEN `CLAUDE.md` tells it to load the `concorde` and `concorde-development` skills before any work
+- AND `.claude/skills/concorde` and `.claude/skills/concorde-development` link to the folders of `generated/skills/` that hold the rendered skills
 - AND `concorde-development` states Dogfooding's rule for observing runs word for word
-
-## pi main sessions
-
-A pi session in this checkout is a [main agent](glossary.json#concept.main-agent) like one in an
-installed project, and needs the same [run view](glossary.json#concept.run-view) to be woken when a
-run or a [task session](glossary.json#concept.task-session)'s round ends instead of polling for it. This
-checkout has no installed copy of the extension, so `.pi/settings.json` loads the source,
-`src/concorde/main_session/pi_extension.ts` with the modules beside it, as a project extension of
-every worktree of the checkout once pi trusts the project. The extension runs the worktree's
-`python3 scripts/concorde.py` when no installed `concorde` exists, and leaves its run view off in
-a task session; workers run with `--no-extensions` and never load it.
-
-### scenario.concorde.pi-extension-in-checkout — pi sessions in this checkout get the run view
-
-- GIVEN this checkout, its primary worktree or a task worktree
-- WHEN a pi session starts there and trusts the project
-- THEN `.pi/settings.json` loads `src/concorde/main_session/pi_extension.ts`, the same source the installer copies into a project, with the modules it imports beside it
-- AND the session has the `concorde_run` and `concorde_task_session` tools, which wake it when a run or round ends
 
 ## Docsite type check
 

@@ -571,9 +571,6 @@ class MergeTests(unittest.TestCase):
             )
             for part in ("task t1", before, after, "--resume", "--abort"):
                 self.assertIn(part, error["detail"])
-        self.assertNotIn(
-            "merge_incomplete", json.dumps(self.command("session", "t1", "--stop")[1])
-        )
         self.assertFalse((self.root / ".concorde/tasks/t2").exists())
         self.assertEqual(after, self.head())
         # The killed merge's attempt node still says it runs; nothing ended it.

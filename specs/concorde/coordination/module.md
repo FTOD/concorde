@@ -31,7 +31,8 @@ code there, directly or through [runs](../glossary.json#concept.run) of Executio
 delivers it. Only a small change the developer approved is made by the main agent directly in the
 primary worktree.
 The main agent then merges the delivered task from the primary worktree and reports to the
-developer.
+developer. For now the main agent is a Claude Code session and every task session a background
+Claude Code session, while the workers that the runs of a task launch may run on pi.
 
 ```d2 illustrative
 direction: right
@@ -109,7 +110,6 @@ coordination.main -> execution: runs unbound in the primary worktree
 coordination.session -> execution: runs in its task worktree
 coordination.tasks -> execution.store: reads a task's runs
 coordination.tasks -> execution.commits: reads whether a task is delivered
-coordination.main -> execution.store: follows runs in pi
 ```
 
 The upper half talks to the lower half only through the binding, Execution's commands and what
@@ -122,10 +122,8 @@ Tasks reads back the task's runs in that part of the
 [run store](../glossary.json#concept.run-store) and its
 [delivery commits](../glossary.json#concept.delivery-commit) on the task branch, and derives whether
 a task is active or delivered from them together with its branch head and whether its worktree is
-clean. The Main session's pi [run view](../glossary.json#concept.run-view) follows every run through
-its [run progress file](../glossary.json#concept.run-progress-file) in the run store, its [run lock](../glossary.json#concept.run-lock)
-and the
-[progress file](../glossary.json#concept.progress-file) of the worker it launched. No record is
+clean. A main session learns how the runs it did not start stand only by asking Tasks with
+`concorde task show`, and is woken only by the runs its own background Bash started. No record is
 written by both halves, so neither can leave the other with a state that disagrees with what
 happened.
 
@@ -167,8 +165,7 @@ The **Harness** generates the [agent harness](../glossary.json#concept.agent-har
 session from its task: the [session boundary](../glossary.json#concept.session-boundary), which
 confines what the session's own file tools and shell write to its task worktree, its decision log,
 what its commits, runs and escalations write (the Git directory, the task's own folder and the
-locks), the user's package caches and, in pi, a private temporary directory. Tools that other
-extensions or MCP servers add are outside it, and it guards against mistakes, not a malicious
+locks) and the user's package caches. Tools that MCP servers add are outside it, and it guards against mistakes, not a malicious
 session; the [Harness](../harness/module.md) states its exact paths and limits. The main session's
 harness is its installed guidance alone, since Concorde places no permission limits on the main
 agent. A task session that cannot get its harness does not start.
@@ -188,9 +185,8 @@ the developer is asked once, from the main session, rather than once per questio
 <a id="contains-main-session"></a>
 
 The **Main session** is the level where the developer and the main agent work on the whole project:
-the guidance that makes a Claude Code or pi session in the primary worktree the main agent,
-including the method of working inside a task that it gives its task sessions, and pi's run view.
-It asks Task sessions to start a task session for every task.
+the guidance that makes a Claude Code session in the primary worktree the main agent, including
+the method of working inside a task that it gives its task sessions. It asks Task sessions to start a task session for every task.
 
 <a id="contains-tasks"></a>
 
@@ -200,6 +196,5 @@ merge of a delivered task into the primary branch under a lock.
 
 <a id="contains-task-session"></a>
 
-**Task sessions** is the task level delegated: it starts a task session in a task worktree on the
-main agent's own program, confines its writes with the session boundary, and in pi runs and records
-its rounds.
+**Task sessions** is the task level delegated: it starts a background Claude Code task session in a
+task worktree, confines its writes with the session boundary, and ends it with its task.

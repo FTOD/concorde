@@ -5,20 +5,16 @@ It copies the package's runtime (``src``, ``scripts``, ``prompts``, ``protocol``
 ``.concorde/framework/docsite/`` selected by Views' template inventory rule, writes the
 ``.concorde/bin/concorde`` command, the Protocol copy under ``.concorde/protocol/``, the main-session guidance as the project skill
 ``.claude/skills/concorde/SKILL.md`` (the build's rendered skill) and a delimited block in
-``CLAUDE.md`` and, when the project has one, in ``AGENTS.md``, Concorde-owned
-defaults when absent, the pinned ``d2`` program under ``.concorde/tools/``, ignore rules for local
+``CLAUDE.md``, Concorde-owned defaults when absent, the pinned ``d2`` program under ``.concorde/tools/``, ignore rules for local
 state and task worktrees, and a receipt ``.concorde/install.json``. ``uv`` owns Concorde's Python:
 it creates Concorde's own environment under ``.concorde/framework/python/`` on an interpreter that
 satisfies the package's ``runtime.python`` requirement, a uv-managed CPython when the machine has
 none, and installs the locked runtime dependencies of the package's ``uv.lock`` there, such as
 LangGraph. The installer also places the locked pi runtime
 under ``.concorde/tools/pi-runtime/``, which every pi worker runs in (workers run on pi unless the
-worker configuration chooses Claude Code). With ``pi`` it also places, for a pi main
-session, Concorde's pi extension under ``.pi/extensions/concorde/`` and the guidance as the pi
-skill ``.pi/skills/concorde/SKILL.md``.
-Every rendered workflow is installed for Claude Code under ``.claude/workflows/`` with the
-permission rules its step agents need in ``.claude/settings.json``, and with ``pi`` under
-``.concorde/workflows/pi/`` with the command-runner agents under ``.pi/agents/``.
+worker configuration chooses Claude Code). The main agent and its task sessions are Claude Code
+sessions, so every rendered workflow is installed for Claude Code under ``.claude/workflows/``
+with the permission rules its step agents need in ``.claude/settings.json``.
 With ``develop`` it makes a develop install (see ``concorde.dogfooding.develop``): only from the
 clean primary worktree of a Concorde repository, with Dogfooding's guidance added to the skill and
 the ``CLAUDE.md`` block. It refuses a package whose build is stale and a project in which a
@@ -42,7 +38,6 @@ from pathlib import Path
 
 from ..dogfooding.develop import DevelopError, develop_source, guidance
 from ..errors import link
-from ..execution.runs import pid_alive
 from ..spec.errors import SpecError
 from ..spec.initialize import bind_installation
 from ..tracing import layout, locks, reader
@@ -63,21 +58,9 @@ FRAMEWORK = ".concorde/framework"
 OWN_PYTHON = f"{FRAMEWORK}/python"
 COMMAND = ".concorde/bin/concorde"
 SKILL = ".claude/skills/concorde/SKILL.md"
-PI_SKILL = ".pi/skills/concorde/SKILL.md"
-PI_EXTENSION = ".pi/extensions/concorde"
-PI_EXTENSION_SOURCES = {
-    "index.ts": "src/concorde/main_session/pi_extension.ts",
-    "pi_runs.ts": "src/concorde/main_session/pi_runs.ts",
-}
 CLAUDE_MD = "CLAUDE.md"
-# pi reads only the first of AGENTS.override.md, AGENTS.md, AGENTS.MD, CLAUDE.md and CLAUDE.MD in a
-# directory, so a project's own AGENTS.md hides the CLAUDE.md block from pi: the block goes into an
-# existing AGENTS.md too. The installer never creates one, which would hide the project's CLAUDE.md.
-AGENTS_MD = "AGENTS.md"
 CLAUDE_WORKFLOWS = ".claude/workflows"
 CLAUDE_SETTINGS = ".claude/settings.json"
-PI_WORKFLOWS = ".concorde/workflows/pi"
-PI_AGENTS = ".pi/agents"
 # The Bash commands every workflow's Claude Code step agents run.
 STEP_RULES = (
     f"Bash({COMMAND} workflow step:*)",
@@ -214,7 +197,7 @@ def _run_progress(concorde: Path) -> dict[str, tuple[Path, dict]]:
 def active_runs(project: Path) -> list[str]:
     """Every Concorde run in ``project`` whose process still lives, described for a refusal:
     Operation and execution command runs by their run locks under ``.concorde/locks/runs/``,
-    named with their progress files, and pi task-session rounds by their progress files."""
+    named with their progress files."""
     found = []
     concorde = project / layout.CONCORDE
     runs = layout.locks_folder(concorde) / layout.LOCK_KINDS["run"]
@@ -238,18 +221,6 @@ def active_runs(project: Path) -> list[str]:
             f"{state.get('workspace') or 'none'}, held by {holder}, run lock {lock}, "
             f"progress {file.relative_to(project).as_posix()})"
         )
-    for path in sorted((project / ".concorde/tasks").glob("*/sessions/*/status.json")):
-        try:
-            state = json.loads(path.read_text(encoding="utf-8"))
-            pid = int(state.get("supervisor_pid") or 0)
-        except (OSError, ValueError, TypeError, AttributeError):
-            continue
-        if state.get("phase") == "running" and pid_alive(pid):
-            found.append(
-                f"round {state.get('round')} of the pi task session of task "
-                f"{state.get('task')} (supervisor process {pid}, progress "
-                f"{path.relative_to(project).as_posix()})"
-            )
     return found
 
 
@@ -357,10 +328,6 @@ def _rendered_workflows(package: Path) -> dict[str, Path]:
     placed = {}
     for path in sorted((rendered / "claude").glob("*.js")):
         placed[f"{CLAUDE_WORKFLOWS}/{path.name}"] = path
-    for path in sorted((rendered / "pi").glob("*.js")):
-        placed[f"{PI_WORKFLOWS}/{path.name}"] = path
-    for path in sorted((rendered / "pi/agents").glob("*.md")):
-        placed[f"{PI_AGENTS}/{path.name}"] = path
     return placed
 
 
@@ -433,7 +400,6 @@ def install(
     *,
     d2: bool = True,
     fetch: Callable[[str], bytes] | None = None,
-    pi: bool = False,
     pi_runtime: bool = True,
     run: Callable | None = None,
     develop: bool = False,
@@ -444,8 +410,7 @@ def install(
     With ``d2`` false the docsite's diagram program is left to the developer. ``fetch`` replaces
     the download of the pinned ``d2`` archive, for tests and offline mirrors. With
     ``pi_runtime`` (the default) the pi runtime every pi worker runs in is installed; without it
-    workers can run only on Claude Code. With ``pi`` the pi main session's extension, skill and
-    workflows are installed too; ``run`` replaces the ``npm ci`` call and the ``uv`` calls that
+    workers can run only on Claude Code. ``run`` replaces the ``npm ci`` call and the ``uv`` calls that
     install the Python dependencies, never the creation of the environment. ``develop`` makes a
     develop install. With ``dependencies`` false Concorde's Python dependencies are left out of
     its environment, and the Operations that need them refuse.
@@ -486,11 +451,7 @@ def install(
             previous = json.loads((project / RECEIPT).read_text())
         except ValueError:
             previous = {}
-    placed = {
-        path: source
-        for path, source in _rendered_workflows(package).items()
-        if pi or not path.startswith((PI_WORKFLOWS, PI_AGENTS))
-    }
+    placed = _rendered_workflows(package)
     # Every cheap precondition is checked before the first write: only the npm and uv steps
     # below, which the installer cannot foresee, can still fail once something was written.
     uv = shutil.which("uv")
@@ -556,23 +517,6 @@ def install(
     (project / SKILL).parent.mkdir(parents=True, exist_ok=True)
     (project / SKILL).write_text(skill, encoding="utf-8")
     _amend(project, CLAUDE_MD, with_glossary(block, project))
-    # The glossary import is Claude Code's syntax, and pi, which reads AGENTS.md, gets the terms
-    # from Concorde's pi extension.
-    agents = (project / AGENTS_MD).is_file()
-    if agents:
-        _amend(project, AGENTS_MD, block)
-    pi_files = []
-    if pi:
-        (project / PI_SKILL).parent.mkdir(parents=True, exist_ok=True)
-        (project / PI_SKILL).write_text(skill, encoding="utf-8")
-        extension = project / PI_EXTENSION
-        extension.mkdir(parents=True, exist_ok=True)
-        for name, source in PI_EXTENSION_SOURCES.items():
-            shutil.copy2(package / source, extension / name)
-        pi_files = [
-            PI_SKILL,
-            *(f"{PI_EXTENSION}/{name}" for name in PI_EXTENSION_SOURCES),
-        ]
     for path, source in placed.items():
         (project / path).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, project / path)
@@ -583,10 +527,8 @@ def install(
         list(previous.get("permissions") or []),
     )
     _ignore(project)
-    amended = (
-        [".gitignore", CLAUDE_MD]
-        + ([AGENTS_MD] if agents else [])
-        + ([CLAUDE_SETTINGS] if (project / CLAUDE_SETTINGS).exists() else [])
+    amended = [".gitignore", CLAUDE_MD] + (
+        [CLAUDE_SETTINGS] if (project / CLAUDE_SETTINGS).exists() else []
     )
     receipt = {
         "version": descriptor["version"],
@@ -605,9 +547,8 @@ def install(
         # install left them out.
         "dependencies": installed,
         "tools": tools,
-        # What the developer chose, which `concorde update` keeps: the pi main session's files,
-        # and whether the pi worker runtime was left out.
-        "pi": pi,
+        # What the developer chose, which `concorde update` keeps: whether the pi worker runtime
+        # was left out.
         "pi_runtime": pi_runtime,
         # Every file Concorde owns, whether this install wrote it or found it in place: a
         # default is written only when absent, yet stays Concorde's.
@@ -617,7 +558,6 @@ def install(
                 *project_default_files(package),
                 COMMAND,
                 SKILL,
-                *pi_files,
                 *placed,
             }
         ),
@@ -665,12 +605,11 @@ def update(
     *,
     fetch: Callable[[str], bytes] | None = None,
     run: Callable | None = None,
-    pi: bool = False,
 ) -> dict:
     """Update the Concorde installed in ``project`` from ``package``.
 
-    It installs as the first install did (keeping d2, the pi main session's files and develop
-    mode when they were installed, and adding them with ``pi``), always with the pi worker runtime
+    It installs as the first install did (keeping d2 and develop mode when they were installed),
+    always with the pi worker runtime
     unless the first install left it out and with Concorde's own environment created again by
     uv for the new package's Python requirement, binds the
     new Protocol copy in the configuration, and marks the project Concorde unvalidated until a
@@ -688,14 +627,11 @@ def update(
             f"{project} has no readable {RECEIPT} ({error}); install Concorde first",
         ) from error
     tools = previous.get("tools") or {}
-    # A receipt from before these fields existed installed the pi files only with the runtime.
-    had_pi = previous.get("pi", PI_SKILL in (previous.get("files") or []))
     receipt = install(
         project,
         package,
         d2="d2" in tools,
         fetch=fetch,
-        pi=pi or had_pi,
         pi_runtime=previous.get("pi_runtime", True),
         run=run,
         develop=previous.get("mode") == "develop",
@@ -902,12 +838,6 @@ def main(argv) -> int:
         help="do not download d2; the docsite then needs d2 on PATH or in CONCORDE_D2",
     )
     parser.add_argument(
-        "--pi",
-        action="store_true",
-        help="also install Concorde's pi extension, pi skill and pi workflows, for a pi main "
-        "session; with --update, add them to an existing install",
-    )
-    parser.add_argument(
         "--without-pi-runtime",
         action="store_true",
         help="do not install the pi runtime (with npm) that pi workers run in; workers must "
@@ -933,13 +863,12 @@ def main(argv) -> int:
     package = Path(__file__).resolve().parents[3]
     try:
         if arguments.update:
-            receipt = update(arguments.project, package, pi=arguments.pi)
+            receipt = update(arguments.project, package)
         else:
             receipt = install(
                 arguments.project,
                 package,
                 d2=not arguments.without_d2,
-                pi=arguments.pi,
                 pi_runtime=not arguments.without_pi_runtime,
                 develop=arguments.develop,
                 dependencies=not arguments.without_dependencies,

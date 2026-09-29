@@ -35,7 +35,9 @@
         "target": "module.workers",
         "meaning": "#uses-workers",
         "relies_on": [
-          "concept.worker-backend"
+          "concept.worker-backend",
+          "concept.worker-configuration",
+          "req.workers.proxy-passed"
         ]
       },
       {
@@ -67,13 +69,6 @@
         "relies_on": [
           "concept.operation"
         ]
-      },
-      {
-        "target": "module.delivery",
-        "meaning": "#uses-delivery",
-        "relies_on": [
-          "concept.delivery-commit"
-        ]
       }
     ],
     "includes": [
@@ -81,11 +76,6 @@
         "kind": "document",
         "target": "document.tracing.contracts",
         "reason": "the Framework's error contract, which this Module's errors follow"
-      },
-      {
-        "kind": "external",
-        "target": "references/pi/",
-        "reason": "pi's command line, JSON event stream and extension API (tools that end a run, project trust), which the pi task session relies on"
       }
     ],
     "participates": []
@@ -98,21 +88,12 @@
       "meaning": "#realization.task-session.starter",
       "entries": [
         "src/concorde/tasks/session.py",
-        "src/concorde/tasks/pi_session.py",
-        "tests/concorde/tasks/test_session.py",
-        "tests/concorde/tasks/test_pi_session.py",
-        "tests/concorde/tasks/fake_pi_session.py"
+        "tests/concorde/tasks/test_session.py"
       ],
       "pending": []
     }
   ],
   "relations": [
-    {
-      "type": "relates",
-      "source": "realization.task-session.starter",
-      "verb": "runs and records",
-      "target": "concept.session-round"
-    },
     {
       "type": "relates",
       "source": "realization.task-session.starter",
@@ -128,14 +109,8 @@
     {
       "type": "relates",
       "source": "realization.task-session.starter",
-      "verb": "reads the main session's program through",
-      "target": "module.workers"
-    },
-    {
-      "type": "relates",
-      "source": "realization.task-session.starter",
-      "verb": "records rounds in",
-      "target": "concept.task-record"
+      "verb": "records sessions in the trace of",
+      "target": "concept.task"
     }
   ],
   "extensions": {}

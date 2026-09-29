@@ -54,13 +54,6 @@
         ]
       },
       {
-        "target": "module.task-session",
-        "meaning": "#uses-task-session",
-        "relies_on": [
-          "concept.session-round"
-        ]
-      },
-      {
         "target": "module.workflows",
         "meaning": "#uses-workflows"
       },

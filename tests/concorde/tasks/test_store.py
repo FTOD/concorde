@@ -30,19 +30,6 @@ from tests.concorde.tasks.deliveries import deliver, write_run
 TASK_CONTRACTS = "specs/concorde/coordination/tasks/contracts.md"
 
 
-# A fake supervisor of a pi round: it records the round stopped on SIGTERM, as the real one does.
-SUPERVISOR = """
-import signal, sys, time
-from pathlib import Path
-from concorde.tasks import store
-primary, task, session, number = Path(sys.argv[1]), sys.argv[2], sys.argv[3], int(sys.argv[4])
-stopped = []
-signal.signal(signal.SIGTERM, lambda *_: stopped.append(True))
-print("ready", flush=True)
-while not stopped:
-    time.sleep(0.02)
-store.finish_round(primary, task, session, number, {"status": "stopped"})
-"""
 # A fake runner of a run of a task's workspace: it holds the workspace lock and the run lock, as
 # a live runner does, and on SIGTERM writes its own result before it releases them.
 RUNNER = """
@@ -607,52 +594,32 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual(2, cli.main(["frobnicate"], cwd=self.root))
 
     @verifies("scenario.main-session.claude-sees-by-query")
-    def test_show_gives_another_session_the_state_of_runs_and_rounds(self):
-        # A main session that owns neither the run nor the task session, such as a Claude Code
-        # session nothing is pushed into, sees both ended by asking once.
+    def test_show_gives_another_session_the_state_of_runs_and_sessions(self):
+        # A main session that owns neither the run nor the task session, such as one nothing is
+        # pushed into, sees both by asking once.
         self.project.open_task("t1")
         run = write_run(self.root, "r-20260927T000001-implement-00000003", "t1")
         store.record_session(
             self.root,
             "t1",
             {
-                "program": "pi",
                 "id": "task-t1-s",
+                "reported_id": "task-t1-s",
                 "name": "task-t1",
                 "main": "0199a3",
                 "model": None,
                 "started_at": store.now(),
             },
         )
-        store.begin_round(
-            self.root,
-            "t1",
-            "task-t1-s",
-            {
-                "round": 1,
-                "prompt": "task",
-                "supervisor_pid": 4242,
-                "started_at": store.now(),
-            },
-        )
-        report = {"status": "escalated", "summary": "One question.", "escalations": [1]}
-        store.finish_round(
-            self.root, "t1", "task-t1-s", 1, {"status": "escalated", "report": report}
-        )
         _, shown = self.command("show", "t1")
         self.assertEqual(
             [(run.parent.name, "ok")],
             [(item["run_id"], item["status"]) for item in shown["runs"]],
         )
-        # The owner is the `main` of the session's trace node; the round's outcome its node's.
-        session = shown["sessions"][0]
+        # The main session a task session reports to is the `main` of its trace node.
         self.assertEqual(
-            ("0199a3", "escalated", "One question."),
-            (
-                session["main"],
-                session["rounds"][0]["status"],
-                session["rounds"][0]["report"]["summary"],
-            ),
+            [("task-t1-s", "task-t1", "0199a3")],
+            [(item["id"], item["name"], item["main"]) for item in shown["sessions"]],
         )
 
     @verifies("scenario.tasks.first-run")
@@ -1165,16 +1132,16 @@ class TaskStoreTests(unittest.TestCase):
         _, closed = self.command("list", "--state", "closed")
         self.assertEqual(["t1"], [item["id"] for item in closed])
         with self.assertRaises(store.TaskError) as raised:
-            store.record_session(self.root, "t1", self.session("t1", "claude"))
+            store.record_session(self.root, "t1", self.session("t1"))
         self.assertEqual("task_closed", raised.exception.code)
         # Refusing it made no lock of the closed task again.
         self.assertFalse(self.lock("task", "t1").exists())
 
     @staticmethod
-    def session(task_id, program="pi", session_id="s1"):
+    def session(task_id, session_id="s1"):
         return {
-            "program": program,
             "id": session_id,
+            "reported_id": session_id,
             "name": f"task-{task_id}",
             "main": "main",
             "model": None,
@@ -1195,76 +1162,6 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual("ready\n", process.stdout.readline())
         return process
 
-    def supervised_round(self, task_id, number=1, session_id="s1"):
-        """Begin round ``number`` of the task's pi session with a fake supervisor that records
-        the round ``stopped`` when it receives ``SIGTERM``, as the real one does."""
-        supervisor = self.child(
-            SUPERVISOR, str(self.root), task_id, session_id, str(number)
-        )
-        store.begin_round(
-            self.root,
-            task_id,
-            session_id,
-            {"round": number, "prompt": "task", "supervisor_pid": supervisor.pid},
-        )
-        return supervisor
-
-    def rounds(self, task_id, session_id="s1"):
-        (found,) = [
-            item
-            for item in store.show_task(self.root, task_id)["sessions"]
-            if item["id"] == session_id
-        ]
-        return found["rounds"]
-
-    @verifies("scenario.tasks.round-closed")
-    def test_no_round_begins_in_a_task_closed_meanwhile(self):
-        self.project.open_task("t1")
-        store.record_session(self.root, "t1", self.session("t1"))
-        supervisor = self.supervised_round("t1")
-        # A round running when the task closes still records its outcome: the close stops it.
-        status, value = self.close("t1", "--completed", "--note", "done")
-        self.assertEqual(0, status, value)
-        self.assertEqual(0, supervisor.wait(30))
-        self.assertEqual(["stopped"], [item["status"] for item in self.rounds("t1")])
-        with self.assertRaises(store.TaskError) as raised:
-            store.begin_round(
-                self.root,
-                "t1",
-                "s1",
-                {"round": 2, "prompt": "answer", "supervisor_pid": os.getpid()},
-            )
-        self.assertEqual("task_closed", raised.exception.code)
-        self.assertEqual(1, len(self.rounds("t1")))
-        # A close stored between the round's first check and its write refuses it.
-        self.project.open_task("t2")
-        store.record_session(self.root, "t2", self.session("t2"))
-        path = self.folder("t2") / "task.json"
-        real_locked = store.task_locked
-
-        @contextlib.contextmanager
-        def closing(primary, task_id):
-            value = json.loads(path.read_text())
-            if value["state"] == "open":
-                value["state"] = "closed"
-                path.write_text(json.dumps(value))
-            with real_locked(primary, task_id):
-                yield
-
-        with (
-            patch.object(store, "task_locked", closing),
-            self.assertRaises(store.TaskError) as raised,
-        ):
-            store.begin_round(
-                self.root,
-                "t2",
-                "s1",
-                {"round": 1, "prompt": "task", "supervisor_pid": os.getpid()},
-            )
-        self.assertEqual("task_closed", raised.exception.code)
-        self.assertEqual([], self.rounds("t2"))
-        self.assertFalse((self.folder("t2") / "sessions/s1/rounds").exists())
-
     @verifies("scenario.tasks.close-stops-runs")
     def test_a_failed_close_stops_what_still_runs_before_the_folder_moves(self):
         self.project.open_task("t1")
@@ -1275,12 +1172,9 @@ class TaskStoreTests(unittest.TestCase):
         runner = self.child(
             RUNNER, str(self.root / ".concorde"), "t1", run_id, str(folder)
         )
-        store.record_session(self.root, "t1", self.session("t1"))
-        supervisor = self.supervised_round("t1")
         shown = store.show_task(self.root, "t1")
         self.assertEqual(["running"], [run["status"] for run in shown["runs"]])
         self.assertIn(run_id, shown["busy"])
-        self.assertEqual(["running"], [item["status"] for item in self.rounds("t1")])
         status, value = self.close(
             "t1",
             "--failed",
@@ -1289,13 +1183,12 @@ class TaskStoreTests(unittest.TestCase):
             "--no-error",
         )
         self.assertEqual(0, status, value)
-        # Both were stopped with SIGTERM and ended on their own.
-        self.assertEqual((0, 0), (runner.wait(30), supervisor.wait(30)))
+        # It was stopped with SIGTERM and ended on its own.
+        self.assertEqual(0, runner.wait(30))
         self.assertEqual(
             ("failed", "failed"), (value["state"], value["closed"]["outcome"])
         )
-        # Only then did the folder move: the run's own result and the stopped round are in the
-        # history, and nothing was written into the task's former folder afterwards.
+        # Only then did the folder move: the run's own result is in the history, and nothing was written into the task's former folder afterwards.
         self.assertFalse(self.folder().exists())
         result = json.loads(
             (self.history() / "workspace/runs" / run_id / "result.json").read_text()
@@ -1308,12 +1201,6 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual(
             [(run_id, "failed")],
             [(run["run_id"], run["status"]) for run in shown["runs"]],
-        )
-        (round_,) = self.rounds("t1")
-        self.assertEqual("stopped", round_["status"])
-        self.assertEqual(
-            "failed",
-            trace.read(self.history() / "sessions/s1/rounds/1")["status"],
         )
         for kind in ("task", "workspace", "workflow", "run"):
             name = run_id if kind == "run" else "t1"

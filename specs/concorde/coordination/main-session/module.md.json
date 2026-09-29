@@ -20,9 +20,7 @@
         "relies_on": [
           "concept.workspace-binding",
           "concept.run-result",
-          "concept.unbound-run",
-          "concept.run-progress-file",
-          "concept.execution-runner"
+          "concept.unbound-run"
         ]
       },
       {
@@ -36,7 +34,6 @@
         "target": "module.workers",
         "meaning": "#uses-workers",
         "relies_on": [
-          "concept.progress-file",
           "concept.worker-configuration"
         ]
       },
@@ -50,10 +47,7 @@
       },
       {
         "target": "module.task-session",
-        "meaning": "#uses-task-session",
-        "relies_on": [
-          "concept.session-round"
-        ]
+        "meaning": "#uses-task-session"
       },
       {
         "target": "module.workflows",
@@ -84,23 +78,12 @@
         "target": "module.tracing",
         "meaning": "#uses-tracing",
         "relies_on": [
-          "contract.tracing.node",
+          "concept.trace",
           "concept.trace-node"
         ]
       }
     ],
-    "includes": [
-      {
-        "kind": "external",
-        "target": "references/pi/",
-        "reason": "pi's extension API (tools, commands, session events, messages that start a turn), which the run view relies on"
-      },
-      {
-        "kind": "external",
-        "target": "references/pi-subagents/",
-        "reason": "pi-subagents' external-runs and background-work APIs, through which the run view shows runs in FleetView and in bg_wait"
-      }
-    ],
+    "includes": [],
     "participates": []
   },
   "defines": [
@@ -114,17 +97,6 @@
         "tests/concorde/main_session/"
       ],
       "pending": []
-    },
-    {
-      "id": "realization.main-session.pi-run-view",
-      "type": "realization",
-      "title": "pi run view",
-      "meaning": "#realization.main-session.pi-run-view",
-      "entries": [
-        "src/concorde/main_session/pi_extension.ts",
-        "src/concorde/main_session/pi_runs.ts"
-      ],
-      "pending": []
     }
   ],
   "relations": [
@@ -133,24 +105,6 @@
       "source": "realization.main-session.guidance",
       "verb": "authors",
       "target": "concept.main-session-guidance"
-    },
-    {
-      "type": "relates",
-      "source": "realization.main-session.pi-run-view",
-      "verb": "follows",
-      "target": "concept.session-round"
-    },
-    {
-      "type": "relates",
-      "source": "realization.main-session.pi-run-view",
-      "verb": "reads",
-      "target": "concept.progress-file"
-    },
-    {
-      "type": "relates",
-      "source": "realization.main-session.pi-run-view",
-      "verb": "reads",
-      "target": "concept.run-progress-file"
     }
   ],
   "extensions": {}

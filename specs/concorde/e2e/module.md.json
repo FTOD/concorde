@@ -53,10 +53,7 @@
       },
       {
         "target": "module.main-session",
-        "meaning": "#uses-main-session",
-        "relies_on": [
-          "concept.run-view"
-        ]
+        "meaning": "#uses-main-session"
       },
       {
         "target": "module.tasks",

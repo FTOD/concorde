@@ -3,7 +3,7 @@
 ## Purpose
 
 Main session is the top of Concorde's levels of work, level 1: the guidance that makes an ordinary
-Claude Code or pi session in a project's primary worktree act as Concorde's
+Claude Code session in a project's primary worktree act as Concorde's
 [main agent](../../glossary.json#concept.main-agent): discuss work with the developer, split it into
 [tasks](../../glossary.json#concept.task), hand every task to a
 [task session](../../glossary.json#concept.task-session) and answer it, keep each task's
@@ -13,19 +13,18 @@ escalating only major ones, merge delivered tasks, and handle
 guidance too, as the task-session guidance: the task level is the main agent's own work, which it
 always delegates, and a task session starts with that method in the guidance it is given. It is
 advice to a model, not enforcement — Concorde places no permission limits on the
-main agent, and nothing here constrains the developer. In pi it adds a
-[run view](../../glossary.json#concept.run-view), an extension that starts
-[Operations](../../glossary.json#concept.operation) and
-[execution commands](../../glossary.json#concept.execution-command) in the
-background and shows their progress and that of every task session's round. Distribution renders and installs this
+main agent, and nothing here constrains the developer. For now the guidance serves Claude Code
+only: the main agent is a Claude Code session, and so is every task session, since a task session
+runs on the main agent's own program, while the [workers](../../glossary.json#concept.worker) of
+their runs may run on pi. Distribution renders and installs this
 [Module](../../glossary.json#concept.module)'s content.
 
 ## Usage
 
 <a id="concept.main-session-guidance"></a>
 
-**What the main agent is told.** The installed guidance tells the Claude Code or pi session opened
-in a Concorde project's primary worktree that it is the main agent, and gives it a working method:
+**What the main agent is told.** The installed guidance tells the Claude Code session opened in a
+Concorde project's primary worktree that it is the main agent, and gives it a working method:
 
 - **Discuss first.** Agree the direction with the developer before changing anything.
 - **Split into tasks.** Turn agreed work into [tasks](../../glossary.json#concept.task),
@@ -39,16 +38,13 @@ in a Concorde project's primary worktree that it is the main agent, and gives it
   [unbound](../../glossary.json#concept.unbound-run) Operations, merges, reports, inspects Issues
   and changes the worker configuration. Before starting the session, record the task's brief in its
   decision log: the developer's decisions the task carries out, the workflow and mode when one
-  applies, and what is left to the session; the session reads it first. A task session runs on the
-  main agent's own program. In Claude Code the command names the main agent's session with
-  `--main`, and the [session reports](../../glossary.json#concept.session-report) back with
-  SendMessage; ending the task, by its merge or its close, stops its Claude Code task sessions and
+  applies, and what is left to the session; the session reads it first. A task session is a
+  background Claude Code session, on the main agent's own program: the command names the main
+  agent's session with `--main`, the task session reports back with SendMessage, and the main agent
+  answers it the same way; ending the task, by its merge or its close, stops its task sessions and
   removes them from Claude's session list, keeping their transcripts in the task's
-  [trace](../../glossary.json#concept.trace), so the main agent never removes them itself. In pi
-  the main agent uses the `concorde_task_session` tool: each
-  [session round](../../glossary.json#concept.session-round) ends with a report that wakes the main
-  agent that started the task session, which starts the next round with the tool's `answer`. The task session changes Specs and
-  code in the task worktree directly or by running
+  [trace](../../glossary.json#concept.trace), so the main agent never removes them itself. The task
+  session changes Specs and code in the task worktree directly or by running
   [Operations](../../glossary.json#concept.operation) with `concorde run <operation> …` and the
   [execution commands](../../glossary.json#concept.execution-command) `concorde task-validation`
   and `concorde delivery`, reading each [run result](../../glossary.json#concept.run-result), and
@@ -57,9 +53,8 @@ in a Concorde project's primary worktree that it is the main agent, and gives it
   worktree. None of these names the task: the task worktree's
   [workspace binding](../../glossary.json#concept.workspace-binding), which `concorde task open`
   wrote, tells every run which goal, Modules, branch and base it works on, and one workspace runs
-  one of them at a time (`workspace_busy` otherwise); in Claude Code a task session starts them in
-  background Bash, and since a pi round ends only with its report, a pi task session runs them in
-  the foreground within the round (see [Task sessions](../task-session/module.md)).
+  one of them at a time (`workspace_busy` otherwise); a task session starts them in background
+  Bash, which wakes it when they end (see [Task sessions](../task-session/module.md)).
 - **Make only approved small changes in the primary worktree.** A very small change, such as a
   typo, a one-line fix or a wording correction, may be made by the main agent directly in the
   primary worktree, but only after it said what it would change and why the change is small and the
@@ -94,9 +89,8 @@ in a Concorde project's primary worktree that it is the main agent, and gives it
 - **Report.** Close each piece of work with a short summary for the developer: what was merged,
   what was decided on the developer's behalf, and what is still open.
 - **Use the project's terms.** Every session of the project starts with all the terms of its
-  worktree's glossary: in Claude Code the Concorde block of `CLAUDE.md` imports the glossary file,
-  which Claude Code loads at launch, and in pi Concorde's extension adds the terms, read afresh, to
-  the system prompt of every prompt, in main and task sessions alike. The guidance tells the main
+  worktree's glossary: the Concorde block of `CLAUDE.md` imports the glossary file, which Claude
+  Code loads at launch, in main and task sessions alike. The guidance tells the main
   agent and every task session to use each term exactly as defined, with the developer and in task
   goals, decision logs, escalations, commit messages and Specs; never to coin a synonym; and to
   raise a missing or no longer fitting definition instead of working around it, changing the
@@ -132,140 +126,26 @@ primary.merge -> primary.report
 primary.report -> developer.read
 ```
 
-<a id="concept.run-view"></a>
-
-**The [run view](../../glossary.json#concept.run-view) in pi.** In Claude Code the main agent runs
-its unbound Operations in background Bash and is woken when they exit, and a task session does the
-same with the runs of its task. In pi the installed extension gives the same with more to watch. The `concorde_run`
-tool takes an Operation or an execution command (`task-validation`, `delivery`, `scaffold`), the
-task and further arguments, and starts `concorde run <operation> … --detach` or
-`concorde <command> … --detach` in the task's worktree, found through the
-[task record](../../glossary.json#concept.task-record), since a pi session cannot move into the task
-worktree itself: the task worktree's own `concorde` runs there and reads its workspace binding, so
-the command line never names the task. The runner then runs as a process of its own and writes
-its output to `host.out` in the run's own [trace node](../../glossary.json#concept.trace-node); a
-failure before any run exists, such as a malformed command line, comes back to the tool directly
-with its error. Without a task it starts an
-[unbound](../../glossary.json#concept.unbound-run) Operation in the session's own worktree; an
-execution command without a task starts there too, and Execution refuses it with `binding_required`
-in a worktree without a binding, a run refused at once whose result the tool returns (see below). A
-task without a worktree is refused before anything starts. The tool returns at once with the run
-identity. The extension follows every run of the project, Operation or recorded command, whoever
-started it: the `concorde_run` tool, a command the main agent ran with bash, or another session,
-a pi task session's included. It looks in the primary worktree's
-[run store](../../glossary.json#concept.run-store), the workspace folders of the current tasks,
-where every task worktree's binding records its runs, and `.concorde/unbound/`, for every run still
-running when the session starts and every run started since, even one
-that ended between two looks; a run that had already ended when the session started is only listed
-by `/concorde` ([requirements](requirements.md#req.main-session.pi-run-follow)). It follows each
-through its [run progress file](../../glossary.json#concept.run-progress-file) there and through
-the [progress file](../../glossary.json#concept.progress-file) of the worker an
-Operation launched, which lies in the run's own node; an execution command has no worker.
-It shows each run as an external job in pi-subagents' FleetView — its workspace (or `unbound`) and
-name, its step, the worker's round and latest tool call, and on its end `completed`, `stopped` or
-`failed` for a result of `ok`, `blocked` or `failed`, with the result's summary; a run whose runner
-process ended without finishing is shown `failed`. Runs are filed under the session's file, or
-its identity when it is not persisted, the name pi-subagents gives the session. The session
-**owns** only the runs its own `concorde_run` started and the rounds of the task sessions started
-for it (see [Owners](#owners)), and only what it owns wakes it or is its **background work**: a
-`bg_wait` call without an id waits for its own runs and rounds still running (with an id it matches
-only subagent runs), and a main session run with `pi -p` waits for them before it exits, as
-pi-subagents drains the work of every `pi -p` session. A run or round it only follows, started with
-bash, by a task session or by another main session, is shown but never wakes it and is never its
-work, so a `pi -p` session never waits for another session's runs. When a run the session owns
-ends, the extension sends the main agent a message naming the run, its workspace and name, the
-result's status and summary and the run result's file, followed, for a result that carries an
-[error chain](../../glossary.json#concept.error-chain), by that whole chain as indented text: while the main agent is in a turn the message is steered into
-that turn after its current tool calls, and otherwise it starts the next turn. A run that has
-already finished when `concorde_run` finds it, such as one refused at once, is answered in the
-tool's own result instead, and no message follows. `/concorde` lists the recent runs of both kinds.
-The view only launches and observes: the
-[Execution runner](../../glossary.json#concept.execution-runner) runs and records every run, so
-closing pi never stops or changes one. Without pi-subagents the tool, the wake and `/concorde` still
-work.
-
-How the run view carries one run from its start, or from its discovery, to the message that wakes
-the main agent:
-
-```d2 illustrative
-direction: down
-tool: "concorde_run: an Operation or execution command, with or without a task"
-worktree: "Find the task worktree through the task record"
-refused: "Refused before anything starts, naming the task"
-launch: "Start the worktree's own concorde with --detach\n(the session's own worktree without a task)"
-elsewhere: "A run still running when the session started,\nor started since with bash or by another session"
-store: "Find the run in the primary worktree's run store"
-done: "Answered in the tool's own result; no message follows"
-follow: "Follow its run progress file and, for an Operation,\nits worker's progress file"
-fleet: "Show it in FleetView: workspace or unbound, name, step,\nworker round and latest tool call"
-ended: "The run ends, or its runner is lost"
-owned: "Owned by this session?" {shape: diamond}
-shown: "Shown ended; nobody here is woken"
-wake: "Message the main agent: status, summary, result file, error chain"
-steer: "Steered into the current turn\nafter its tool calls"
-next: "Starts the next turn"
-tool -> worktree: with a task
-tool -> launch: without a task
-worktree -> refused: no worktree
-worktree -> launch: worktree found
-launch -> done: already finished, such as refused at once
-launch -> follow: still running
-elsewhere -> store
-store -> follow
-follow -> fleet: with pi-subagents
-follow -> ended
-ended -> owned
-owned -> wake: "yes: started by its concorde_run"
-owned -> shown: no
-wake -> steer: in a turn
-wake -> next: between turns
-```
-
-The view follows pi task sessions the same way. The `concorde_task_session` tool starts a task
-session, answers it (`answer`, which starts the next round) or stops its running round (`stop`), by
-running `concorde task session` from the primary worktree, and returns at once. Like `concorde_run`,
-it takes an optional text argument (`answer`, `model`, or `concorde_run`'s `task`) that is empty or
-only whitespace as absent, since a model may fill an optional field it means to leave out that way.
-A start names the session with `--main`, so the task session's [trace node](../../glossary.json#concept.trace-node)
-names it as the owner of every round of that task session. The extension reads each pi session's
-status file `status.json` in the session's node `.concorde/tasks/<task>/sessions/<session>/` and
-shows every running round as an external job — its task, round and the session's latest tool call —
-and when a round the session owns ends it wakes the main agent with the outcome recorded in the
-round's node `rounds/<n>/`: the report's summary, decisions and open points, the
-[delivery commit](../../glossary.json#concept.delivery-commit), the numbers of the escalations to
-read with `concorde task show`, or the failed round's error chain rendered. The round of another
-main session's task session is shown and never wakes it; when the session answers such a session,
-the tool's result names the owner, which alone will be woken. A main session that starts again finds
-the running rounds from their status files. In a pi task
-session itself, where `CONCORDE_TASK_SESSION` is set, the extension only adds the project's terms to
-every prompt and marks the commands the session starts as started from pi; it starts, follows and
-reports no runs or rounds.
-
 <a id="owners"></a>
 
-**Owners.** Several Claude Code and pi main sessions may work on one project at the same time,
-and each sees every run and round of it, but a run or a
-[session round](../../glossary.json#concept.session-round) wakes only its **owner**, and it has
-never more than one:
+**Owners.** The main agent starts each run of its own, an unbound Operation, in background Bash,
+and Claude Code wakes it when the command ends; a task session does the same with the runs of its
+task. Several main sessions may work on one project at the same time, but a run wakes only its
+**owner**, and it has never more than one:
 
 | Work | Owner | How the owner is woken |
 | --- | --- | --- |
-| A run a main session starts in Claude Code, in background Bash | that session | Claude Code's own notification when the command ends |
-| A run a pi main session starts with `concorde_run` | that session | the run view's message |
-| Every round of a pi task session, whoever answered it | the main session its session's node names as its `main`, the one that started it | the run view's message |
-| What a Claude Code task session reports | the session its `--main` names | the task session's SendMessage |
-| A run a task session starts in its worktree | that task session, no main session | the task session's own wait; its owner hears of it in the task session's report |
-| A run started by a command run by hand, a round of a pi task session started without `--main` | no main session | nobody is woken |
+| A run a main session starts, in background Bash | that session | Claude Code's own notification when the command ends |
+| What a task session reports | the main session its `--main` names | the task session's SendMessage |
+| A run a task session starts in its worktree | that task session, no main session | Claude Code's own notification in the task session; its main session hears of it in the task session's report |
+| A run started by a command run by hand | no main session | nobody is woken |
 
-The owner is recorded where the owner's side keeps it, never by Execution, which knows nothing of
-main sessions: a pi main session keeps the runs its `concorde_run` started, and each end it has
-been given, as custom entries of its own session file, so a resumed session keeps owning its runs,
-is given once the end of one that ended while it was closed, and is never given an end twice; the
-owner of a task session's rounds is the `main` its session's trace node records. A main session that
-does not own a run or round sees its state without being woken: a pi main session in its run view
-and `/concorde`; a Claude Code main session, to which nothing is pushed, when it asks with
-`concorde task show <task>`, which lists the task workspace's runs with their status and the
-task's sessions with their owner and, for pi, each round's outcome
+Execution, which knows nothing of main sessions, never records an owner: a run's owner is the
+session whose background Bash started it, and the main session a task session reports to is the
+`main` that the session's [trace node](../../glossary.json#concept.trace-node) records. A main
+session that does not own a run sees its state without being woken, since nothing is pushed into
+it: it asks with `concorde task show <task>`, which lists the task workspace's runs with their
+status and the task's sessions with the main session each reports to
 ([requirements](requirements.md#req.main-session.single-owner)).
 
 **Escalation policy.** A result that is not `ok`,
@@ -284,7 +164,7 @@ reason it may not decide, on top of the chain, records it in the task and prints
 developer; a decision of major impact that no error carries is escalated as that link alone. The decision log and the escalation both belong to a task, so they cover the runs of a
 task. An [unbound run](../../glossary.json#concept.unbound-run) belongs to none: when one is not
 `ok`, the guidance tells the main agent to show the developer its whole chain as rendered, on the
-command's standard error or in the pi run view's message, and, when the failure leads to work, to
+command's standard error, and, when the failure leads to work, to
 open a task for that work and escalate there with the run's result file,
 `--error-file .concorde/unbound/<run-id>/result.json`, since `--run` names only runs of the task's own
 workspace ([requirements](requirements.md#req.main-session.unbound-failure)).
@@ -293,8 +173,8 @@ workspace ([requirements](requirements.md#req.main-session.unbound-failure)).
 worktree's [worker configuration](../../glossary.json#concept.worker-configuration), the tracked
 `.concorde/workers.json`, enables and chooses per [worker
 id](../../glossary.json#concept.worker-id), never on the developer's own pi or Claude Code settings;
-it runs on pi, whatever program the main agent runs on, unless the file chooses Claude Code for
-it. No worker runs without the file, which the installer does not write: the guidance tells the
+it runs on pi, although the main agent runs on Claude Code, unless the file chooses Claude Code
+for it. No worker runs without the file, which the installer does not write: the guidance tells the
 main agent, when the project has none, to ask the developer which models workers may use and which
 is the default, and to write the file with its required enabled models and a default model and
 commit it alone on the primary branch before any Operation runs
@@ -323,16 +203,14 @@ result has `workspace` null and names the examined commit as `commit`, an `--inp
 must be unbound too, and they change no
 [Spec](../../glossary.json#concept.spec) or code, since an unbound run launches only reading
 workers. It uses them for a question or a review that does not justify a task, such as understanding
-a Module before a change is agreed. In pi `concorde_run` takes the task as optional for them.
+a Module before a change is agreed.
 
 **Workflows.** For a task that follows a known procedure the guidance tells the main agent to have
 its [workflow](../../glossary.json#concept.workflow) run instead of sequencing the runs by hand:
 open the task and name in its brief the workflow, its Module and its
 [mode](../../glossary.json#concept.workflow-mode); the task session starts the workflow inside the
 task worktree, since like every run it works on the workspace of the worktree it starts in and
-never names the task. In Claude Code the task session runs the installed `/concorde-<name>`
-workflow; in pi it starts the installed script through pi-subagents with the task worktree as
-working directory. The main agent asks the developer which mode to use unless the developer
+never names the task: it runs the installed `/concorde-<name>` workflow. The main agent asks the developer which mode to use unless the developer
 already said; interactive suits a developer who wants to settle the decision points, no-ask one
 who wants the result later. A task session runs the workflow in the mode its brief names, and in
 interactive mode when the brief names none
@@ -435,7 +313,7 @@ downward. At level 2 it opens a task and delegates it to a task session; from in
 the task session starts workflows (level 3) and runs (level 4), Operations and execution
 commands, in the task worktree; the main agent itself starts only unbound runs, in the primary
 worktree, and it reaches workers (level 5) only through an Operation, touching Workers otherwise
-only to watch a run and to edit the worker configuration. What comes back up is structured: run results, workflow results, and task-session reports
+only to edit the worker configuration. What comes back up is structured: run results, workflow results, and task-session reports
 and escalations, each failure carrying its
 [error chain](../../glossary.json#concept.error-chain). The chain ends here: the main agent
 decides what the escalation policy lets it decide, records and reports it, and otherwise adds its
@@ -454,7 +332,7 @@ workers: Workers
 mainsession -> tasks: opens, merges, closes
 mainsession -> tasksession: delegates a task to
 mainsession -> runs: starts unbound
-tasksession -> tasks: records rounds in
+tasksession -> tasks: records sessions in
 tasksession -> workflows: starts in its task worktree
 tasksession -> runs: starts in its task worktree
 workflows -> runs: runs one at a time
@@ -479,15 +357,15 @@ it found ready, and a merge is ordinary, revertible Git. The escalation policy b
 way: deciding ordinary questions keeps work moving, recording and reporting them keeps them
 reviewable, and reserving major-impact ones protects decisions only the developer may make.
 Gathering a task's decisions into one escalation, and the developer's answers into one reply,
-keeps the developer's attention in one place, the main session, and asks for it once per round
-rather than once per question.
+keeps the developer's attention in one place, the main session, and asks for it once per
+escalation rather than once per question.
 
 <a id="uses-tasks"></a>
 
 **Tasks** provides the [task](../../glossary.json#concept.task) — its branch, its worktree bound as
 a workspace, and its record — and the [decision log](../../glossary.json#concept.decision-log): the
-workspace of level 2, which a task session works. `concorde task show` lists the task's runs, deliveries and the holder of its
-[workspace lock](../../glossary.json#concept.workspace-lock), read from what Execution recorded, so
+workspace of level 2, which a task session works. `concorde task show` lists the task's runs,
+deliveries and task sessions and the holder of its [workspace lock](../../glossary.json#concept.workspace-lock), read from what Execution recorded, so
 the main agent learns a task's progress from one command. Each task's own worktree is what keeps
 parallel tasks from mixing changes; opening, merging and closing tasks are the main agent's
 responsibility, and the log is written by the main agent and the task's session alike. The guidance
@@ -503,14 +381,12 @@ authority to finish a merge, so its guidance sends such a refusal to the main ag
 
 <a id="uses-task-session"></a>
 
-**Task sessions** starts the task sessions the main agent delegates tasks to and, in pi, runs and
-records their [session rounds](../../glossary.json#concept.session-round), whose
-progress files and recorded outcomes the run view reads. It applies to every task. The guidance
-relies on a task session never merging its task into the primary branch or closing it and on every
-round ending with an outcome its round's node records. A task session's report or
-escalation is its result travelling up to level 1: the main agent answers the escalations, all at
-once, or asks for more, with the next round's answer, reads a failed round's error chain like any other, and
-merges a delivered task itself.
+**Task sessions** starts the background Claude Code task sessions the main agent delegates tasks to
+and ends them with their task. It applies to every task. The guidance relies on a task session
+never merging its task into the primary branch or closing it, and on it reporting only to the main
+session its `--main` names. A task session's report or escalation is its result travelling up to
+level 1: the main agent answers the escalations, all at once, or asks for more, with SendMessage,
+reads every error chain it carries like any other, and merges a delivered task itself.
 
 <a id="uses-workflows"></a>
 
@@ -526,13 +402,10 @@ problems there.
 
 <a id="uses-tracing"></a>
 
-**Tracing** lays out where the run view finds what it shows: the runs in the current tasks'
-workspace folders and in `.concorde/unbound/`, each a [trace node](../../glossary.json#concept.trace-node)
-with its workers inside it, the nodes of task-session rounds, and the run locks under
-`.concorde/locks/runs/`. The run view relies on the [layout](../../tracing/contracts.md#layout)
-and the [locks](../../tracing/contracts.md#locks), and on a runner removing its run lock file as it
-exits. For a whole task's history with its cost, the guidance points the main agent to
-`concorde trace show <task>`.
+**Tracing** records the whole history of a task as its [trace](../../glossary.json#concept.trace),
+a tree of [trace nodes](../../glossary.json#concept.trace-node) from its sessions down to each
+worker round. For that history with its cost, the guidance points the main agent to
+`concorde trace show <task>`, and to `concorde trace show <run-id>` for one run.
 
 <a id="uses-execution"></a>
 
@@ -544,11 +417,7 @@ the Operations that run [unbound](../../glossary.json#concept.unbound-run) in th
 primary worktree. Each run returns a [run result](../../glossary.json#concept.run-result)
 the main agent can read without inspecting a worker, and none starts the next one: that choice is
 the agent's that started it. Every non-`ok` result of a task's runs is recorded in the decision log, and its
-chain is read in full before deciding or escalating. The run view relies on each running run keeping its
-[run progress file](../../glossary.json#concept.run-progress-file) current in its trace node in
-the primary worktree's run store, whose workspace folders every task worktree's binding names, and
-on each runner holding its [run lock](../../glossary.json#concept.run-lock) under
-`.concorde/locks/runs/` for as long as it runs.
+chain is read in full before deciding or escalating.
 
 <a id="uses-operations"></a>
 
@@ -589,7 +458,7 @@ about a task's Specs needs a server, or a `concorde` command, rooted in that tas
 
 ### Inside
 
-How this Module is built: the guidance on one side, and the pi extension on the other.
+How this Module is built: the guidance sources and what the build renders from them.
 
 ```d2
 mainsession: Main session {
@@ -597,10 +466,6 @@ mainsession: Main session {
     "prompts/main-session/"
   }
   guidance: Main-session guidance
-  view: pi run view {
-    "pi_extension.ts"
-    "pi_runs.ts"
-  }
   sources -> guidance: authors
 }
 ```
@@ -609,66 +474,23 @@ mainsession: Main session {
 
 The **guidance sources** live under `prompts/main-session/` (`skill.md`, installed as the project
 skill `.claude/skills/concorde/SKILL.md`; `claude-md.md`, installed into the project's `CLAUDE.md`;
-`task-session.md` and `task-session-pi.md`, the first prompts `concorde task session` gives a
-Claude Code and a pi task session, which share `common/task-session.md`; and
-`common/in-task.md`, the rules for working inside a task that the skill and the task-session
-guidance share) and are rendered by Distribution's build into `generated/main-session/`. Their
-tests, under `tests/concorde/main_session/`, check that the rendered guidance states every rule the
+and `task-session.md`, the first prompt `concorde task session` gives a task session) and are
+rendered by Distribution's build into `generated/main-session/`. Their tests, under
+`tests/concorde/main_session/`, check that the rendered guidance states every rule the
 [scenarios](scenarios.md) describe; what the main agent then does is judgment no deterministic test
-observes. The skill is also installed for pi as `.pi/skills/concorde/SKILL.md`.
-
-<a id="realization.main-session.pi-run-view"></a>
-
-The **pi run view** is `src/concorde/main_session/pi_extension.ts`, installed as
-`.pi/extensions/concorde/index.ts`, with the pure reading of progress files in `pi_runs.ts` beside
-it. It also sets `CONCORDE_CLIENT=pi` for every command the session starts, which tells Concorde
-that the main session is pi, so that `concorde task session` starts pi task sessions; which
-backend a worker runs on is not affected, since Workers takes it from the worktree's worker
-configuration. It tells an execution command from an Operation by name and starts the first as
-`concorde <command>`, the second as `concorde run <operation>`, both with `--detach`, and reads the
-announced run. It finds a worker's progress file in the run's own node, `workers/<worker run>/`,
-never by a process identifier, which runners in different PID namespaces, such as sandboxed shells,
-share. It tells whether a runner still lives by its [run lock](../../glossary.json#concept.run-lock)
-`.concorde/locks/runs/<run-id>.lock`: a missing file means the runner has exited, and an existing
-one is held exactly when the kernel's lock table `/proc/locks` names its inode, whichever PID
-namespace holds it; only where the kernel shows no lock table does it fall back to the recorded
-process identifier. A run still marked running without a result whose run lock nobody holds is
-shown `failed`. It looks for runs it does not follow yet on every refresh, except while
-`concorde_run` is still waiting for a run it started to be announced, which that tool then answers,
-so that no run is reported twice. `pi_runs.ts` also reads the status files of task-session
-sessions and the nodes of their rounds. The
-tests run `pi_runs.ts` under Node against progress files; the extension itself needs a pi session
-and is exercised in one.
-
-The pi extension is the only part of this Module that is code meeting other Modules directly. It
-observes what they record and starts their commands, and the records it reads stay theirs:
-
-```d2
-view: pi run view
-round: Task sessions / Session round
-wprogress: Workers / Progress file
-rprogress: Execution / Run progress file
-view -> round: follows
-view -> wprogress: reads
-view -> rprogress: reads
-```
+observes.
 
 <a id="uses-workers"></a>
 
-**Workers** keeps each worker run's [progress file](../../glossary.json#concept.progress-file). The
-run view relies on it recording the phase, round and latest tool call, and the Operation run that
-launched the worker, and on it being an observation only: the
-[run record](../../glossary.json#concept.run-record), not the progress file, is the evidence, so the
-view shows but never judges a run from it. Workers also owns the
-[worker configuration](../../glossary.json#concept.worker-configuration), which the guidance tells
-the main agent to edit directly; the guidance relies on Workers validating the whole file when a
-worker launches and reporting a malformed one with `config_invalid`. The separate discovery helper
-supplies suggestions without proving API access or gating edits.
+**Workers** owns the [worker configuration](../../glossary.json#concept.worker-configuration),
+which the guidance tells the main agent to edit directly; the guidance relies on Workers validating
+the whole file when a worker launches and reporting a malformed one with `config_invalid`. The
+separate discovery helper supplies suggestions without proving API access or gating edits.
 
 ### Who relies on it
 
 Three Modules consume what this one authors. [Distribution](../../distribution/module.md) renders
-the guidance sources and installs the rendered guidance and the pi extension into a project;
+the guidance sources and installs the rendered guidance into a project;
 [Dogfooding](../../dogfooding/module.md) appends its own section to the guidance in a develop
 install and changes nothing else; and [Task sessions](../task-session/module.md) gives a task
 session the rendered task-session guidance as its first prompt, so every task follows the method

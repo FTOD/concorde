@@ -1,109 +1,23 @@
 # Main session scenarios
 
 Situations the [main-session guidance](module.md) prepares the
-[main agent](../../glossary.json#concept.main-agent) for, and what the pi
-[run view](../../glossary.json#concept.run-view) does in them.
+[main agent](../../glossary.json#concept.main-agent) for, and what holds for the sessions it
+guides.
 
 ## Working method
 
-### scenario.main-session.pi-task-worktree — pi runs a task's work with its worktree's copy
-
-- GIVEN a pi main session in the primary worktree and a task whose record names an existing worktree
-- WHEN the main agent starts an [Operation](../../glossary.json#concept.operation) or an [execution command](../../glossary.json#concept.execution-command) of that task with the `concorde_run` tool
-- THEN the run view starts the task worktree's own `concorde`, with the task worktree as working directory, as `concorde run <operation>` or `concorde <command>` without naming the task
-- AND the run works on the workspace the worktree's binding names
-
-### scenario.main-session.pi-task-worktree-missing — pi refuses a task without a worktree
-
-- GIVEN a pi main session in the primary worktree and a task that has no record, or whose record names no existing worktree
-- WHEN the main agent starts an Operation or an execution command of that task with the `concorde_run` tool
-- THEN the tool is refused before anything starts, naming the task
-
-### scenario.main-session.pi-run-view — pi shows every run and its worker's progress
-
-- GIVEN a pi main session with the run view and an Operation run whose worker is in its second round
-- WHEN the run view reads the [progress files](../../glossary.json#concept.progress-file) of the [run store](../../glossary.json#concept.run-store)
-- THEN it shows the run with its workspace, Operation, step, the worker's round and latest tool call
-- AND a worker of another run is not attributed to it, even when that run's runner recorded the same process identifier in another PID namespace
-
-### scenario.main-session.pi-run-lock-file — pi tells a live run by its run lock file
-
-- GIVEN a pi main session with the run view, a run of a task's workspace whose runner holds `.concorde/locks/runs/<run-id>.lock`, and a run without a result whose lock file is missing or held by nobody
-- WHEN the run view refreshes
-- THEN it shows the first running and the second `failed`, since its runner ended without a result
-- AND a run `concorde_run` starts is started with `--detach`, its output kept in `host.out` of the run's node, and no `launch-*.log` is written
-
-### scenario.main-session.pi-run-view-command — pi shows an execution command's run without a worker
-
-- GIVEN a pi main session with the run view and a running `task-validation` run of the task `t1`
-- WHEN the run view reads the run's [run progress file](../../glossary.json#concept.run-progress-file)
-- THEN it shows the run as `t1 · task-validation` with its step, as it shows an Operation's run
-- AND it pairs no worker with the run, even while an Operation's worker is running
-
-### scenario.main-session.pi-run-view-unbound — pi shows an unbound run without a workspace
-
-- GIVEN a pi main session with the run view and an [unbound run](../../glossary.json#concept.unbound-run) of `understand`
-- WHEN the run view reads the run's run progress file
-- THEN it shows the run as `unbound · understand`, with `unbound` in place of the workspace
-
-### scenario.main-session.pi-run-finished — pi shows a finished run and wakes its owner
-
-- GIVEN a pi main session with the run view and a run it started with `concorde_run` that has finished with the status `ok`, `blocked` or `failed`
-- WHEN the run view reads its run progress file
-- THEN it shows the run `completed`, `stopped` or `failed` respectively, with the result's summary
-- AND the message the main agent is given names the run, its workspace and name, its status and summary, and its [run result](../../glossary.json#concept.run-result)'s file
-- AND for a result that carries an [error chain](../../glossary.json#concept.error-chain) the message is followed by that whole chain, and for a result without one by none
-
-### scenario.main-session.pi-run-lost — pi shows a run whose runner ended without finishing as failed
-
-- GIVEN a pi main session with the run view and a run that has no result and whose runner ended without finishing, so that nobody holds its [run lock](../../glossary.json#concept.run-lock)
-- WHEN the run view reads its run progress file
-- THEN it shows the run `failed` and does not count it as running, even when the process identifier it recorded names a living process
-- AND the message the main agent is given says that the runner ended without finishing the run
-- BUT a run whose runner holds its run lock, or whose result has been written, is not taken for a lost one
-
-### scenario.main-session.pi-run-discovered — pi follows runs it did not start
-
-- GIVEN a pi main session with the run view, and runs of the project started before and after the session started, by a command run with bash or by another session
-- WHEN the run view looks in the [run store](../../glossary.json#concept.run-store) for runs to follow
-- THEN it follows every run still running when the session started and every run started since, even one that already ended, and shows them as it does the runs of `concorde_run`
-- BUT it does not follow a run that had already ended before the session started, and leaves a run `concorde_run` started and is still waiting to be announced to that tool
-
-### scenario.main-session.pi-wake-owner-only — pi wakes a session only for the runs it owns
-
-- GIVEN a pi main session with the run view that started one run with `concorde_run`, while a run another main session started, a run a task session started and a run started with bash are running
-- WHEN all four runs end
-- THEN the run view shows each of them ended
-- AND the main agent is woken once, with the result of the run it started
-- AND it is not woken for the other three
-
-### scenario.main-session.pi-owner-resumed — A resumed pi session keeps owning its runs
-
-- GIVEN a pi main session that started a run with `concorde_run`, recorded in its session file, and was closed before the run ended
-- WHEN the same session is resumed after the run ended
-- THEN the run view wakes the main agent once with the run's result
-- BUT a run whose end the session was already given, recorded in its session file too, does not wake it again, and a new session with another identity is woken for neither
-
-### scenario.main-session.pi-owned-work — A `pi -p` session waits only for its own runs
-
-- GIVEN a pi main session with the run view that started one run with `concorde_run` and one task session with `concorde_task_session`, while another session's run and a run started with bash are running
-- WHEN pi-subagents asks the run view for the session's background work, as `bg_wait` and `pi -p` do before the session ends
-- THEN it lists the unfinished run and round the session owns
-- AND it lists neither the other session's run nor the run started with bash, which the view still shows
-- AND a finished run of the session is no longer listed
-
 ### scenario.main-session.project-terms — Every session starts with the project's terms
 
-- GIVEN a project whose root Module declares a glossary that can be read
-- WHEN the main agent's session or a task session, in Claude Code or pi, starts in one of its worktrees
-- THEN the session holds every term of that worktree's glossary with its identity, owner and definition
-- AND the guidance tells it to use each term exactly as defined, with the developer and in task goals, decision logs, escalations, commit messages and Specs
+- GIVEN a project whose root Module declares a glossary that can be read, with Concorde installed
+- WHEN the main agent's session or a task session starts in one of its worktrees
+- THEN the Concorde block of that worktree's `CLAUDE.md` imports the glossary, so Claude Code loads every term with its identity, owner and definition at launch
+- AND the rest of `CLAUDE.md` is kept
 
-### scenario.main-session.project-terms-missing — A session without a readable glossary starts without terms
+### scenario.main-session.project-terms-missing — A session without a declared glossary starts without terms
 
-- GIVEN a project whose root Module declares no glossary, or declares one that cannot be read
-- WHEN the main agent's session or a task session, in Claude Code or pi, starts in one of its worktrees
-- THEN the session starts without terms and without an error
+- GIVEN a project whose root Module declares no glossary yet, with Concorde installed
+- WHEN the main agent's session or a task session starts in one of its worktrees
+- THEN the Concorde block of `CLAUDE.md` imports no glossary, and the session starts without terms and without an error
 
 ### scenario.main-session.change-through-task — The guidance routes an agreed change through a task session
 
@@ -111,7 +25,7 @@ Situations the [main-session guidance](module.md) prepares the
 - WHEN a main agent reads how to carry out a change agreed with the developer
 - THEN it is told to open a task with its own branch and worktree for the Modules involved and to hand it to a [task session](../../glossary.json#concept.task-session), even when it is the only task
 - AND never to work inside a task worktree itself
-- AND the task-session guidance tells the session to make the change inside that worktree, directly or with Operations and the execution commands `task-validation` and `delivery`, running every `concorde` command that works on the task's workspace with the worktree's own copy
+- AND the task-session guidance tells the session to make the change inside that worktree, directly or with [Operations](../../glossary.json#concept.operation) and the [execution commands](../../glossary.json#concept.execution-command) `task-validation` and `delivery`, running every `concorde` command that works on the task's workspace with the worktree's own copy
 - AND that `concorde task open` bound the worktree as the task's workspace, whose binding every run reads without naming the task, and that a second run while one runs is refused with `workspace_busy`
 - BUT it is told never to change Specs or code in the primary worktree beyond a small change the developer approved
 
@@ -133,7 +47,7 @@ Situations the [main-session guidance](module.md) prepares the
 
 - GIVEN the rendered main-session guidance
 - WHEN a main agent reads how to carry out the tasks it opened
-- THEN it is told to start one [task session](../../glossary.json#concept.task-session) per task, even for a single task, on its own program: in Claude Code with `concorde task session` naming its own session, in pi with the `concorde_task_session` tool, answering a round with its `answer`
+- THEN it is told to start one [task session](../../glossary.json#concept.task-session) per task, even for a single task, as a background Claude Code session with `concorde task session` naming its own session with `--main`
 - AND to record the task's brief in its [decision log](../../glossary.json#concept.decision-log) before starting the session
 - AND to stay in the primary worktree
 - AND to answer a task session's escalation or pass it to the developer with its own link on top
@@ -147,68 +61,30 @@ Situations the [main-session guidance](module.md) prepares the
 
 ### scenario.main-session.task-session-role — The task-session guidance keeps a session within its task
 
-- GIVEN the rendered Claude Code task-session guidance
-- WHEN a Claude Code task session reads how to work
+- GIVEN the rendered task-session guidance
+- WHEN a task session reads how to work
 - THEN it is told to read the task's decision log first and to work only inside its task worktree with the worktree's own `concorde`
 - AND to escalate beyond its task's goal or Modules with `concorde task escalate --by task-session`, recording every escalation first and then sending them together with SendMessage
 - AND to report to the main agent when the task is delivered or cannot go further without decisions that are not its own
 - BUT never to merge the task branch into the primary branch or close the task
 
-### scenario.main-session.pi-task-session-role — The pi task-session guidance ends each round with a report
-
-- GIVEN the rendered pi task-session guidance
-- WHEN a pi task session reads how to report
-- THEN it is told to run Operations with the worktree's own `concorde` in the foreground
-- AND to end every round by calling `concorde_report`, always supplying `status`, `summary`, `commit`, `escalations`, `decisions` and `open`, with the [delivery commit](../../glossary.json#concept.delivery-commit) and an empty escalation array when delivered, or after recording every escalation it needs with `concorde task escalate --by task-session` with a null commit and all their unique numbers
-- AND that the main agent's answer arrives as the prompt of the next round
-- BUT never to merge the task branch into the primary branch or close the task
-
 ### scenario.main-session.task-session-workflow — A task session runs its workflow in its brief's mode
 
-- GIVEN the rendered Claude Code and pi task-session guidance
+- GIVEN the rendered task-session guidance
 - WHEN a task session reads how to run a task that follows a known procedure
 - THEN it is told to start the [workflow](../../glossary.json#concept.workflow) in its task worktree in the [mode](../../glossary.json#concept.workflow-mode) its brief names, interactive when it names none
 - AND to escalate every pending [decision point](../../glossary.json#concept.decision-point) of a workflow that ended `awaiting_decision` at once, with the report as `--error-file`, and to start the same workflow again with every answer given so far
-- AND to read the [workflow result](../../glossary.json#concept.workflow-result) like a run result, copying its decisions and problems into the task's [decision log](../../glossary.json#concept.decision-log)
+- AND to read the [workflow result](../../glossary.json#concept.workflow-result) like a [run result](../../glossary.json#concept.run-result), copying its decisions and problems into the task's [decision log](../../glossary.json#concept.decision-log)
 - AND to give the workflow's decisions in its own report to the main agent, naming those of major impact for the developer
 - AND to escalate a workflow result that is not `ok` and that it cannot repair within the task with `concorde task escalate --by task-session` and the report as `--error-file`
 - AND to escalate a decision of major impact a no-ask workflow took, which carries no error, with `concorde task escalate --by task-session` naming no run or file
 
-### scenario.main-session.pi-task-session-view — pi shows task-session rounds and wakes on their end
+### scenario.main-session.claude-sees-by-query — A main session sees another session's work by asking
 
-- GIVEN a pi main session that started a task session with `concorde_task_session`
-- WHEN the round's status file changes while the round runs
-- THEN the run view shows the task, the round and the session's latest tool call
-- AND a pi main session that starts again follows the rounds still running, from their status files
-
-### scenario.main-session.pi-task-session-wake — pi wakes the main agent with a round's recorded outcome
-
-- GIVEN a pi main session following a round of a task session it started
-- WHEN the round ends and its outcome is recorded in the round's [trace node](../../glossary.json#concept.trace-node)
-- THEN the run view shows the round finished with its outcome
-- AND the main agent is woken with the recorded outcome: the report's summary, decisions and open points with the delivery commit or the escalation numbers, or the failed round's [error chain](../../glossary.json#concept.error-chain)
-
-### scenario.main-session.pi-round-owner — The rounds of a task session wake the session it was started for
-
-- GIVEN two pi main sessions of one project, the first of which started a task session with `concorde_task_session`, so that the session's [trace node](../../glossary.json#concept.trace-node) names it as its `main`
-- WHEN the second answers the task session's round and the next round ends
-- THEN both show the round, and only the first is woken with its outcome
-- AND the second's tool result names the first as the owner that alone will be woken
-- AND a round of a task session started without `--main` wakes neither
-
-### scenario.main-session.pi-tool-empty-argument — pi treats an empty optional argument of its tools as absent
-
-- GIVEN a pi main session whose model fills an optional text argument of `concorde_task_session` (`answer`, `model`) or `concorde_run` (`task`) with an empty or whitespace-only string
-- WHEN the tool runs
-- THEN it runs the `concorde` command as if the argument had been left out, passing no empty flag value such as `--answer ""`
-- AND a `concorde_task_session` call with an empty `answer` and no `stop` starts a task session named with `--main`, as a start does
-
-### scenario.main-session.claude-sees-by-query — A Claude Code main session sees another session's work by asking
-
-- GIVEN a Claude Code main session and another main session of the same project that owns a run of the task `t1` or a round of its task session
-- WHEN that run or round ends
-- THEN the Claude Code main session is not woken, since nothing is pushed into it
-- AND `concorde task show t1`, when it asks, lists the run with its status and the task session with its `main` and the round's outcome
+- GIVEN two main sessions of the same project, the second of which started a run of the task `t1` in background Bash and a task session of `t1` naming itself with `--main`
+- WHEN that run ends
+- THEN the first main session is not woken, since nothing is pushed into it
+- AND `concorde task show t1`, when it asks, lists the run with its status and the task session with the main session it reports to
 
 ### scenario.main-session.merge-delivered — The guidance merges delivered work without asking
 
@@ -217,7 +93,7 @@ Situations the [main-session guidance](module.md) prepares the
 - THEN it is told to merge the task with `concorde task merge <task>` from the primary worktree without asking the developer
 - AND never to merge with `git merge` itself, because other main sessions may be merging, and that the merge runs `concorde spec-validation` unless it names other checks
 - AND to run the command again on `merge_busy`
-- AND that the merge waits for the task's run and other merges itself, so that in Claude Code it runs in background Bash and in pi in bash without a timeout
+- AND that the merge waits for the task's run and other merges itself, so that it runs in background Bash
 
 ### scenario.main-session.merge-conflict — A merge conflict goes back to the task session
 
@@ -241,8 +117,7 @@ Situations the [main-session guidance](module.md) prepares the
 - WHEN an agent reads how to wait for a run, a busy workspace, a task session or a merge
 - THEN it is told never to wait by polling with `sleep` loops
 - AND to queue a run behind a running one with `--wait <seconds>`
-- AND in pi without the run view to wait for a task-session round with `concorde task session <task> --wait`
-- AND a task session is told to run long `concorde` commands in background Bash in Claude Code, and in pi in bash without a timeout
+- AND a task session is told to run long `concorde` commands in background Bash
 
 ## Worker models
 
@@ -298,7 +173,7 @@ Situations the [main-session guidance](module.md) prepares the
 - GIVEN the rendered main-session guidance
 - WHEN a main agent reads how to handle a result whose options would change what a Module promises to its users
 - THEN it is told to ask the developer before acting
-- AND to escalate with `concorde task escalate`, adding its own link on top of the error chain instead of replacing it with a summary
+- AND to escalate with `concorde task escalate`, adding its own link on top of the [error chain](../../glossary.json#concept.error-chain) instead of replacing it with a summary
 
 ### scenario.main-session.read-error-chain — The guidance reads the whole error chain
 

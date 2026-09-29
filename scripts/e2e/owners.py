@@ -1,24 +1,22 @@
 """The owners case: several live main sessions on one test project, and only a run's owner woken.
 
 Concorde promises that every run has at most one owner main session, the one whose own tool
-started it, and that only the owner is woken when the run ends, while every other main session,
-Claude Code or pi, may see the run's state and is never woken by it. This case checks that promise
-with real sessions: it keeps Claude Code and pi main sessions running at once in the test
-project's primary worktree (two of each by default), each a live session (``live.py``) whose
-wakes are its program's own, and plays three phases on the project's open task:
+started it, and that only the owner is woken when the run ends, while every other main session
+may see the run's state and is never woken by it. This case checks that promise with real
+sessions: it keeps Claude Code main sessions running at once in the test project's primary
+worktree (two by default), each a live session (``live.py``) whose wakes are its program's own,
+and plays two phases on the project's open task:
 
 1. **unowned**: the case itself starts ``concorde task-validation`` in the task worktree, a run of
    nobody's tool, which must wake no session;
-2. **owned by pi**: the first pi session starts ``task-validation`` with its ``concorde_run`` tool;
-3. **owned by Claude Code**: the first Claude Code session starts it in background Bash.
+2. **owned by Claude Code**: the first session starts it in background Bash.
 
-Each run is held back by the case, which holds the task's workspace lock until every pi session's
-run view shows the run running, so that the run outlives its launch and its end is a wake rather
-than the launching tool's own answer. Once the run has ended and a grace period has passed, the
-owner must have been woken and every other session must not have begun a turn or received a
-notification. Then each other session is shown to see the run: a pi session's ``/concorde``
-listing names it, and a Claude Code session, into which nothing is pushed, asked to run
-``concorde task show <task>``, finds it with its status.
+Each run is held back by the case, which holds the task's workspace lock until the run is in the
+run store, so that the run outlives its launch and its end is a wake rather than the launching
+tool's own answer. Once the run has ended and a grace period has passed, the owner must have been
+woken and every other session must not have begun a turn or received a notification. Then each
+other session, into which nothing is pushed, is asked to run ``concorde task show <task>`` and
+must find the run with its status.
 """
 
 from __future__ import annotations
@@ -144,19 +142,8 @@ def until(condition, limit: float, what: str, poll: float = 0.5, **evidence) -> 
         time.sleep(poll)
 
 
-def shows_running(session: LiveSession, moment: float) -> bool:
-    """Whether a pi session's run view has shown a running run since ``moment``."""
-    return any("running" in text for text in session.statuses(moment))
-
-
-def owner_prompt(client: str, task: str, worktree: Path, limit: float) -> str:
+def owner_prompt(worktree: Path, limit: float) -> str:
     wait = str(int(limit))
-    if client == "pi":
-        return (
-            f'Call the concorde_run tool with operation "task-validation", task "{task}" and '
-            f'arguments ["--wait", "{wait}"]. Then end your turn at once, replying only STARTED. '
-            "When you later receive the run's result, reply only DONE followed by its status."
-        )
     return (
         "Run this command with the Bash tool in the background (run_in_background true), then "
         "end your turn at once, replying only STARTED:\n"
@@ -206,8 +193,7 @@ def judge(
             "woken": woken,
             "turns": len(session.turns(moment, end)),
             "notifications": [
-                event.get("subtype") or (event.get("message") or {}).get("customType")
-                for event in session.notifications(moment, end)
+                event.get("subtype") for event in session.notifications(moment, end)
             ],
         }
         verdicts.append(verdict)
@@ -236,7 +222,7 @@ def phase(
     grace: float,
     limit: float,
 ) -> dict:
-    """One phase: a run held back until every pi session shows it, released, ended, judged, and
+    """One phase: a run held back until it is in the run store, released, ended, judged, and
     then looked up by every session that does not own it."""
     known = known_runs(records)
     started = time.time()
@@ -257,13 +243,8 @@ def phase(
             )
             baseline = started
         else:
-            prompted = owner.send(owner_prompt(owner.client, task, worktree, limit))
+            prompted = owner.send(owner_prompt(worktree, limit))
             owner.wait_settled(prompted, limit)
-            refused = owner.client == "pi" and owner.refusal(prompted)
-            if refused:
-                raise E2EError(
-                    "session_failed", f"{owner.name} refused its prompt: {refused}"
-                )
             baseline = time.time()
         until(
             lambda: new_run(records, task, known) is not None,
@@ -272,15 +253,6 @@ def phase(
             log=str(owner.log) if owner else None,
         )
         run_id = new_run(records, task, known)
-        pis = [session for session in sessions if session.client == "pi"]
-        until(
-            lambda: all(shows_running(session, started) for session in pis),
-            60.0,
-            f"not every pi session's run view showed run {run_id} running",
-            sessions=[
-                session.name for session in pis if not shows_running(session, started)
-            ],
-        )
     released = time.time()
     until(
         lambda: result_of(records, run_id) is not None,
@@ -304,49 +276,21 @@ def phase(
     for session in sessions:
         if session is owner:
             continue
-        if session.client == "pi":
-            asked = session.send("/concorde")
-            until(
-                lambda session=session, asked=asked: any(
-                    run_id in text for text in session.notices(asked)
-                ),
-                30.0,
-                f"{session.name}'s /concorde listing did not name run {run_id}",
-                log=str(session.log),
+        asked = session.send(query_prompt(task, run_id))
+        session.wait_settled(asked, limit)
+        found_it = listed_status(session.tool_output(asked), run_id) == status
+        seen.append(
+            {
+                "session": session.name,
+                "how": f"concorde task show {task}",
+                "ok": found_it,
+            }
+        )
+        if not found_it:
+            problems.append(
+                f"{session.name}'s concorde task show {task} did not list run {run_id} "
+                f"with the status {status}"
             )
-            listing = next(text for text in session.notices(asked) if run_id in text)
-            line = next(item for item in listing.splitlines() if run_id in item)
-            shown = not line.startswith("running")
-            # A pi session saw the run running and then ended through its status bar too.
-            seen.append(
-                {
-                    "session": session.name,
-                    "how": "/concorde",
-                    "line": line,
-                    "ok": shown and shows_running(session, started),
-                }
-            )
-            if not shown:
-                problems.append(f"{session.name} still lists run {run_id} as running")
-            # The listing is an extension command: it must not begin a turn either.
-            if session.turns(asked):
-                problems.append(f"{session.name} began a turn for /concorde")
-        else:
-            asked = session.send(query_prompt(task, run_id))
-            session.wait_settled(asked, limit)
-            found_it = listed_status(session.tool_output(asked), run_id) == status
-            seen.append(
-                {
-                    "session": session.name,
-                    "how": f"concorde task show {task}",
-                    "ok": found_it,
-                }
-            )
-            if not found_it:
-                problems.append(
-                    f"{session.name}'s concorde task show {task} did not list run {run_id} "
-                    f"with the status {status}"
-                )
     return {
         "phase": name,
         "owner": owner.name if owner else None,
@@ -363,20 +307,17 @@ def owners(
     directory: Path | None = None,
     *,
     claude: int = 2,
-    pi: int = 2,
     task: str = "t1",
     claude_model: str | None = None,
-    pi_model: str | None = None,
     grace: float = GRACE_SECONDS,
     limit: float = LIMIT_SECONDS,
     claude_program: str | None = None,
-    pi_program: str | None = None,
 ) -> dict:
     """Run the owners case in ``project``, keeping every session's events under ``directory``."""
     project = project.resolve()
-    if claude < 0 or pi < 0 or claude + pi < 2:
+    if claude < 2:
         raise E2EError(
-            "invalid_input", "the owners case needs at least two main sessions in all"
+            "invalid_input", "the owners case needs at least two main sessions"
         )
     record_path = project / ".concorde/tasks" / task / "task.json"
     try:
@@ -387,12 +328,6 @@ def owners(
             f"{project} has no open task {task} with a worktree ({error}); prepare the project "
             "with a task first",
         ) from error
-    if pi and not (project / ".pi/extensions").is_dir():
-        raise E2EError(
-            "pi_not_installed",
-            f"{project} has no Concorde pi extension; prepare it with --pi, or run "
-            "install-concorde.py --update --pi on it",
-        )
     records = records_of(worktree)
     directory = directory or project / ".concorde/runs/e2e/owners" / _stamp()
     directory.mkdir(parents=True, exist_ok=True)
@@ -404,34 +339,15 @@ def owners(
             sessions.append(
                 LiveSession(
                     f"claude-{number}",
-                    "claude",
                     project,
                     directory,
                     model=claude_model,
                     program=claude_program,
                 )
             )
-        for number in range(1, pi + 1):
-            sessions.append(
-                LiveSession(
-                    f"pi-{number}",
-                    "pi",
-                    project,
-                    directory,
-                    model=pi_model,
-                    program=pi_program,
-                )
-            )
         for session in sessions:
             asked = session.send(READY)
             session.wait_settled(asked, limit)
-            refused = session.client == "pi" and session.refusal(asked)
-            if refused:
-                raise E2EError(
-                    "session_failed",
-                    f"{session.name} refused its first prompt: {refused}",
-                    stderr=session.stderr(),
-                )
         options = {
             "project": project,
             "worktree": worktree,
@@ -442,10 +358,7 @@ def owners(
             "limit": limit,
         }
         phases.append(phase("unowned", sessions, None, **options))
-        for client in ("pi", "claude"):
-            owner = next((item for item in sessions if item.client == client), None)
-            if owner is not None:
-                phases.append(phase(f"owned-by-{client}", sessions, owner, **options))
+        phases.append(phase("owned-by-claude", sessions, sessions[0], **options))
     finally:
         for session in sessions:
             session.close()

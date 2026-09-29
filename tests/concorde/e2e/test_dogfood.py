@@ -59,28 +59,6 @@ class ScenarioTests(unittest.TestCase):
         self.assertEqual("unknown_scenario", raised.exception.code)
         self.assertIn("write-hook-rw-directories", raised.exception.detail)
 
-    @verifies("scenario.dogfood-scenarios.client")
-    def test_a_scenario_without_a_client_runs_on_claude_code(self):
-        value = json.loads(
-            (dogfood.SCENARIOS / "write-hook-rw-directories.json").read_text()
-        )
-        value.pop("client", None)
-        with tempfile.TemporaryDirectory() as directory:
-            (Path(directory) / "unset.json").write_text(
-                json.dumps({**value, "name": "unset"})
-            )
-            with patch.object(dogfood, "SCENARIOS", Path(directory)):
-                self.assertEqual("claude", dogfood.scenario("unset")["client"])
-
-    @verifies("scenario.dogfood-scenarios.client-install")
-    def test_the_client_decides_the_develop_install(self):
-        concorde, project = Path("/c"), Path("/p")
-        self.assertNotIn("--pi", dogfood.install_command(concorde, project, "claude"))
-        self.assertEqual(
-            ["/p", "--develop", "--without-d2", "--pi"],
-            dogfood.install_command(concorde, project, "pi")[2:],
-        )
-
     @verifies("scenario.dogfood-scenarios.worker-configuration")
     def test_the_project_gets_a_worker_configuration_before_its_adopt_commit(self):
         workers = e2e.worker_configuration("local/fast")

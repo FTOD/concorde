@@ -51,16 +51,6 @@ result or [error link](#req.distribution.installer-error-links) instead.
 
 The installed `CLAUDE.md` block SHALL import the glossary the project's registry declares, and nothing when none is declared.
 
-### req.distribution.agents-md-block — An existing AGENTS.md carries the block too
-
-The installer SHALL write the Concorde block, without the glossary import, into the project's `AGENTS.md` when that file exists, replacing an earlier block in place, and only then.
-
-It never creates an `AGENTS.md`. pi reads only the first of `AGENTS.override.md`, `AGENTS.md`,
-`AGENTS.MD`, `CLAUDE.md` and `CLAUDE.MD` in a directory, so the block must be where pi reads; a
-created `AGENTS.md` would hide
-the project's `CLAUDE.md` from pi. The installer amends the file whether or not it installs for pi,
-and lists it under `amended`.
-
 ### req.distribution.receipt-complete — The receipt names every owned file
 
 The installer's receipt SHALL list under `files` every file Concorde owns in the project, whether or not this install wrote it.
@@ -90,14 +80,13 @@ The installed `concorde` command SHALL run Concorde only with the interpreter of
 
 The installer SHALL refuse, before writing anything, to install into a project in which the runner
 process of an [Operation](../glossary.json#concept.operation) or
-[execution command](../glossary.json#concept.execution-command) run or a pi
-[task-session](../glossary.json#concept.task-session) round's supervisor is still running.
+[execution command](../glossary.json#concept.execution-command) run is still running.
 
 The update runs the installer, so the same holds for `concorde update`.
 
 ### req.distribution.busy-named — A busy refusal names what runs
 
-The installer's `concorde_busy` refusal SHALL name each run and task-session round it found running.
+The installer's `concorde_busy` refusal SHALL name each run it found running.
 
 ### req.distribution.installer-error-links — Installer refusals are error links
 

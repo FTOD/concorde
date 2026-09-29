@@ -10,7 +10,7 @@ Concrete situations that show the [requirements](requirements.md) of
 - THEN it runs `claude -p` with the prompt, the headless note followed by the test procedure as appended system prompt, `stream-json` output and the [main agent](../../glossary.json#concept.main-agent)'s tools granted
 - AND those tools include EnterWorktree and ExitWorktree
 - AND the test procedure overrides, for this session only, the rule to hand every task to a [task session](../../glossary.json#concept.task-session), and states in order: open the task, enter its worktree with EnterWorktree, work it running Concorde commands in the foreground, validate and deliver, leave with ExitWorktree with action `keep`, merge from the primary worktree, and record in the [decision log](../../glossary.json#concept.decision-log) each decision it would otherwise ask about
-- BUT pi's headless note tells a pi session no such thing, and a headless workflow run's command carries the headless note alone
+- BUT a headless workflow run's command carries the headless note alone
 - AND a later round resumes the session by its identity
 - AND the environment keeps a background workflow alive
 
@@ -28,15 +28,6 @@ Concrete situations that show the [requirements](requirements.md) of
 - THEN the running run and the run cancelled at the round's end are unsettled
 - BUT a run started before the session, a run whose runner is gone, a run that failed otherwise, a run cancelled long before the round ended, a worker's progress file and a run already reported are not
 
-### scenario.headless-sessions.pi — A pi session continues one session file and is woken alike
-
-- GIVEN a project installed for pi and a prompt
-- WHEN the developer starts a [headless session](../../glossary.json#concept.headless-session) with `--client pi`
-- THEN every round runs `pi -p --mode json --approve` with pi's headless note, the session directory and the same session identity, the prompt on standard input
-- AND a round that leaves running a run its `concorde_run` started is followed, once the run ends, by a round of the same session whose prompt names the run and its result
-- BUT a run another session started, running meanwhile, is not the session's to be woken for
-- AND the record names the client, adds up the rounds' costs and shows each round's tool calls and turns
-
 ### scenario.headless-sessions.wake — A run left running wakes the session
 
 - GIVEN a session allowed more than one round, whose first round ends while an [Operation](../../glossary.json#concept.operation) run it started is still running
@@ -44,12 +35,6 @@ Concrete situations that show the [requirements](requirements.md) of
 - WHEN the run ends
 - THEN the driver resumes the same session with a message naming the run, its kind, name and workspace, how it ended and its result file
 - AND the session ends idle after the second round, with both rounds, the run it woke for and the final answer and cost in `session.json`
-
-### scenario.headless-sessions.unknown-client — Another client is refused
-
-- GIVEN a project and a prompt
-- WHEN the driver is asked to start a headless session on a client other than Claude Code or pi
-- THEN it refuses with `unknown_client`
 
 ### scenario.headless-sessions.wait-exceeded — A run that outlives the wait fails a kept session
 
@@ -59,21 +44,6 @@ Concrete situations that show the [requirements](requirements.md) of
 - THEN it fails the session with `wait_exceeded`, naming the run's [run progress file](../../glossary.json#concept.run-progress-file) and the session's `session.json`
 - AND `session.json` exists, ends `wait_exceeded`, names the same run progress file under `progress` and keeps the first round with its log
 - AND the session is not woken for the run
-
-### scenario.headless-sessions.unsettled-rounds — Which session rounds a round left behind
-
-- GIVEN task folders holding pi task sessions, as [trace nodes](../../glossary.json#concept.trace-node), with a [session round](../../glossary.json#concept.session-round) running under a live supervisor, a session round that ended, a session round still recorded `running` whose supervisor is gone, a running session round begun before the session, and a Claude Code task session
-- WHEN a round ends
-- THEN the running session round under a live supervisor is unsettled
-- BUT the ended session round, the one whose supervisor is gone, the one begun before the session, the Claude Code task session and a session round already reported are not
-
-### scenario.headless-sessions.wake-task-session — A session round left running wakes the session with its outcome
-
-- GIVEN a pi session allowed more than one round, whose first round starts a pi task session with `concorde_task_session` and ends while that task session's first session round is still running
-- WHEN the session round ends escalated
-- THEN the driver resumes the same session with a message giving the task and round, that it ended escalated, the [session report](../../glossary.json#concept.session-report)'s summary and decisions, its escalations and the path of the round's [trace node](../../glossary.json#concept.trace-node)
-- AND the record names the session round among those the first round woke for
-- BUT a session round of a task session whose session node names another main session as its `main` is not the session's to be woken for
 
 ### scenario.headless-sessions.live — A live session's own wake is told from a prompted turn
 

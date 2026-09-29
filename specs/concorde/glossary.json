@@ -249,7 +249,7 @@
       "id": "concept.headless-session",
       "title": "Headless session",
       "owner": "module.headless-sessions",
-      "definition": "A `claude -p` or `pi -p` main session in a test project, run by the tool in one or more rounds and kept in a session directory.",
+      "definition": "A `claude -p` main session in a test project, run by the tool in one or more rounds and kept in a session directory.",
       "explanation": "specs/concorde/e2e/sessions/module.md#concept.headless-session"
     },
     {
@@ -310,14 +310,14 @@
       "id": "concept.main-agent",
       "title": "Main agent",
       "owner": "module.concorde",
-      "definition": "The developer-facing Claude Code or pi session, started in the primary worktree, that discusses the project, splits work into tasks, hands every task to a task session and answers it, and merges the delivered tasks, asking the developer every question a task needs.",
+      "definition": "The developer-facing Claude Code session, started in the primary worktree, that discusses the project, splits work into tasks, hands every task to a task session and answers it, and merges the delivered tasks, asking the developer every question a task needs.",
       "explanation": "specs/concorde/core-concepts.md#concept.main-agent"
     },
     {
       "id": "concept.main-session-guidance",
       "title": "Main-session guidance",
       "owner": "module.main-session",
-      "definition": "The instructions, installed as a project skill for Claude Code and for pi and as a block of the project's `CLAUDE.md` and of an existing `AGENTS.md`, that tell the main agent how to work with Concorde.",
+      "definition": "The instructions, installed as a project skill for Claude Code and as a block of the project's `CLAUDE.md`, that tell the main agent how to work with Concorde.",
       "explanation": "specs/concorde/coordination/main-session/module.md#concept.main-session-guidance"
     },
     {
@@ -546,13 +546,6 @@
       ]
     },
     {
-      "id": "concept.run-view",
-      "title": "Run view",
-      "owner": "module.main-session",
-      "definition": "The Concorde extension of a pi main session that starts Operations and execution commands in the background, shows every run and its worker's progress, and wakes the main agent when a run ends.",
-      "explanation": "specs/concorde/coordination/main-session/module.md#concept.run-view"
-    },
-    {
       "id": "concept.runtime-directory",
       "title": "Runtime directory",
       "owner": "module.workers",
@@ -575,38 +568,8 @@
       "id": "concept.session-boundary",
       "title": "Session boundary",
       "owner": "module.harness",
-      "definition": "The settings and write hook on Claude Code, or the boundary extension on pi, that confine a task session's file tools and shell to its task, leaving reads and the network open.",
+      "definition": "The settings and write hook that confine a task session's file tools and shell to its task, leaving reads and the network open.",
       "explanation": "specs/concorde/harness/module.md#concept.session-boundary"
-    },
-    {
-      "id": "concept.session-report",
-      "title": "Session report",
-      "owner": "module.task-session",
-      "definition": "The structured report with which a pi task session ends a session round: delivered with the delivery commit, or escalated with the escalations it recorded, plus its summary, decisions and open points.",
-      "explanation": "specs/concorde/coordination/task-session/module.md#concept.session-report",
-      "relates": [
-        {
-          "verb": "is checked against",
-          "target": "concept.task-record"
-        },
-        {
-          "verb": "is checked against",
-          "target": "concept.delivery-commit"
-        }
-      ]
-    },
-    {
-      "id": "concept.session-round",
-      "title": "Session round",
-      "owner": "module.task-session",
-      "definition": "One headless run of a pi task session, from its prompt (the task at the start, or the main agent's answer) to its session report, a failure or a stop, recorded as a [trace node](#concept.trace-node) below the session's; a pi task session is a sequence of rounds on one pi session file.",
-      "explanation": "specs/concorde/coordination/task-session/module.md#concept.session-round",
-      "relates": [
-        {
-          "verb": "ends with",
-          "target": "concept.session-report"
-        }
-      ]
     },
     {
       "id": "concept.spec",
@@ -701,7 +664,7 @@
       "id": "concept.task-session",
       "title": "Task session",
       "owner": "module.concorde",
-      "definition": "A session of the main agent's own program to which the main agent delegates the work of one task, as it does for every task, working only inside that task's worktree until delivery and reporting to the main agent, to which it escalates together every decision the task needs that is not its own.",
+      "definition": "A background Claude Code session to which the main agent delegates the work of one task, as it does for every task, working only inside that task's worktree until delivery and reporting to the main agent, to which it escalates together every decision the task needs that is not its own.",
       "explanation": "specs/concorde/core-concepts.md#concept.task-session"
     },
     {

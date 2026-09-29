@@ -118,7 +118,7 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 ### scenario.execution.run-lock — A dead runner is told by its run lock
 
 - GIVEN a run with a [run progress file](../glossary.json#concept.run-progress-file) still `running` and no result, whose runner ran in another PID namespace and recorded a process identifier that names a living, unrelated process where the run is observed
-- WHEN an observer, such as the run state of a task or workflow step, the installer or the main session's [run view](../glossary.json#concept.run-view), asks whether it still runs
+- WHEN an observer, such as the run state of a task or workflow step or the installer, asks whether it still runs
 - THEN it is running only while its [run lock](../glossary.json#concept.run-lock) is held, from whichever PID namespace the observer looks
 - AND once the runner ended without writing a result, the run is lost, whatever process now has the recorded identifier
 

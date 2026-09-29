@@ -1,5 +1,4 @@
-"""``concorde task session`` in Claude Code: start a task session, a background Claude Code session
-in one task (``pi_session`` starts one in pi).
+"""``concorde task session``: start a task session, a background Claude Code session in one task.
 
 The main agent starts one per task when it splits complex work into several tasks, and stays in
 the primary worktree itself. A task session works only inside its task worktree: it may edit
@@ -232,7 +231,6 @@ def start(
             f"background session; its output: {output[-2000:] or '(none)'}",
         )
     session = {
-        "program": "claude",
         "id": found["id"],
         "reported_id": found["id"],
         "name": name,
@@ -265,16 +263,6 @@ def claude_directory() -> Path:
     """Claude Code's configuration folder, which holds ``projects/`` with every transcript."""
     configured = os.environ.get("CLAUDE_CONFIG_DIR")
     return Path(configured) if configured else Path.home() / ".claude"
-
-
-def claude_sessions(
-    primary: Path, task_id: str, folder: Path | None = None
-) -> list[dict]:
-    return [
-        item
-        for item in store.sessions(primary, task_id, folder)
-        if item["program"] == "claude"
-    ]
 
 
 def _short(session: dict) -> str:
@@ -310,7 +298,7 @@ def stop_sessions(primary: Path, task_id: str) -> list[str]:
     What was stopped, described; ``session_stop_failed`` when one cannot be confirmed stopped,
     before the close changed anything."""
     stopped = []
-    for found in claude_sessions(primary, task_id):
+    for found in store.sessions(primary, task_id):
         short = _short(found)
         worktree = store.load_task(primary, task_id)["worktree"]
         command = f"claude stop {short}"
@@ -376,7 +364,7 @@ def keep_transcripts(primary: Path, task_id: str) -> list[str]:
     such a session is then not removed, so nothing of it is lost."""
     worktree = store.load_task(primary, task_id)["worktree"]
     warnings = []
-    for found in claude_sessions(primary, task_id):
+    for found in store.sessions(primary, task_id):
         short, folder = _short(found), Path(found["directory"])
         with store.task_locked(primary, task_id):
             record = trace.read(folder)
@@ -412,7 +400,7 @@ def remove_sessions(primary: Path, task_id: str, folder: Path) -> list[str]:
     history, from Claude's session list with ``claude rm``, once its transcript is kept there.
     Best effort: a warning for each session not removed, naming the reason and the command."""
     warnings = []
-    for found in claude_sessions(primary, task_id, folder):
+    for found in store.sessions(primary, task_id, folder):
         short = _short(found)
         if not _kept(trace.read(Path(found["directory"])) or {}):
             continue

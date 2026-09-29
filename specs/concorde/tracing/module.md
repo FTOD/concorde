@@ -24,9 +24,8 @@ Spec tooling reports with its own error record and never uses the error chain.
 **Traces and their nodes.** Every level of work in Concorde leaves one
 **[trace node](../glossary.json#concept.trace-node)**: a folder holding a `trace.json` record in one
 uniform shape, the files that level keeps next to it and the folders of the nodes below it. A task
-is a node, and so is each of its task sessions, each round of a pi task session, each merge
-attempt, the workflow of its workspace and each of its steps, each run of an
-[Operation](../glossary.json#concept.operation) or
+is a node, and so is each of its task sessions, each merge attempt, the workflow of its workspace
+and each of its steps, each run of an [Operation](../glossary.json#concept.operation) or
 [execution command](../glossary.json#concept.execution-command), each
 [configured check](../glossary.json#concept.configured-check) a run or a merge ran, each worker run
 and each of its rounds. The tree of nodes below one task, or below one
@@ -34,7 +33,7 @@ and each of its rounds. The tree of nodes below one task, or below one
 
 ```d2 illustrative
 task: "task\n.concorde/tasks/retry/" {
-  sessions: "session → round"
+  sessions: "session"
   merges: "merge → check"
   workspace: "workspace/ (Execution below)" {
     workflow: "workflow → step → run"
@@ -173,8 +172,7 @@ The link between the halves goes downward only because
 places its workspace's folder inside its own, and the binding tells Execution to write there; so a
 task's trace reaches every run of its workspace without Execution ever learning that a task exists,
 and the same Execution serves a workspace someone else prepared, with a folder that preparer chose.
-The link is at the workspace, not at each round of a task session, since a workspace is what
-Execution knows.
+The link is at the workspace, not at each task session, since a workspace is what Execution knows.
 
 ### One record, structured for analysis
 

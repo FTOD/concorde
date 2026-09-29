@@ -15,18 +15,6 @@ Concrete situations that show the [requirements](requirements.md) of
 - WHEN a scenario none of them names is read
 - THEN it is refused with `unknown_scenario` naming the known ones
 
-### scenario.dogfood-scenarios.client — A scenario without a client runs on Claude Code
-
-- GIVEN a scenario without a `client`
-- WHEN it is read
-- THEN its client is Claude Code
-
-### scenario.dogfood-scenarios.client-install — The client decides the develop install
-
-- GIVEN a scenario being prepared for a client
-- WHEN the runner makes the [develop install](../../glossary.json#concept.develop-install)
-- THEN for pi it installs Concorde with `--pi`, and for Claude Code without
-
 ### scenario.dogfood-scenarios.worker-configuration — The project gets a worker configuration
 
 - GIVEN a scenario being prepared, with or without `--worker-model`

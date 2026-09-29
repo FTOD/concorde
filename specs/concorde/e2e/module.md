@@ -9,7 +9,7 @@ for the people developing Concorde: nothing of it is installed into a project, a
 never meets it. Its second job is to keep apart the problems that only testing conditions cause,
 such as a headless main session or an untrusted scratch project, from the problems a user would
 meet, so that the first are solved here rather than in what users get. Three children carry parts of
-it: [Headless sessions](sessions/module.md) drives any real headless main session,
+it: [Headless sessions](sessions/module.md) drives any real headless Claude Code main session,
 [SWE-bench cases](cases/module.md) repairs and grades cases worked on real issues, and
 [Dogfood scenarios](dogfood/module.md) tests a
 [develop install](../glossary.json#concept.develop-install)'s
@@ -23,11 +23,11 @@ command and `{"error": …}` with the failed command and its output otherwise:
 
 ```text
 python3 scripts/e2e/e2e.py repos
-python3 scripts/e2e/e2e.py prepare <owner/name> --rev <tag|branch|commit> [--name <dir>] [--python <interpreter>] [--task <task>] [--any] [--pi] [--worker-model <model>]
+python3 scripts/e2e/e2e.py prepare <owner/name> --rev <tag|branch|commit> [--name <dir>] [--python <interpreter>] [--task <task>] [--any] [--worker-model <model>]
 python3 scripts/e2e/e2e.py trust <project>…
 python3 scripts/e2e/e2e.py run <project> [--via claude|driver] [--workflow brownfield] [--task <task>] [--module <id>] [--mode no-ask|interactive] [--retry <key>]… [--restart <key>=<label>]…
 python3 scripts/e2e/e2e.py watch <project>
-python3 scripts/e2e/e2e.py owners <project> [--task t1] [--claude 2] [--pi 2] [--claude-model <model>] [--pi-model <model>] [--grace 20]
+python3 scripts/e2e/e2e.py owners <project> [--task t1] [--claude 2] [--claude-model <model>] [--grace 20]
 ```
 
 Its children add `session` ([Headless sessions](sessions/module.md)), `repair-specs` and `grade`
@@ -69,8 +69,7 @@ checkout without `d2`, initializes it, writes its [worker
 configuration](../glossary.json#concept.worker-configuration), commits and opens a task bound to the root
 [Module](../glossary.json#concept.module), which makes a **test project**. The task is `--task`
 (default `adopt`), and `--python` records the project's interpreter, which its
-[configured checks](../glossary.json#concept.configured-check) run for `{python}`. `--pi` also
-installs Concorde's pi extension, which a pi main session in the project needs. The worker
+[configured checks](../glossary.json#concept.configured-check) run for `{python}`. The worker
 configuration runs every worker on `--worker-model` when it is given, enabling only that model, and
 otherwise takes this checkout's own `.concorde/workers.json` without its `runtime` paths, which name
 this checkout's directories. It refuses a
@@ -132,7 +131,7 @@ under `.concorde/tasks/<task>/workspace/workflow/` of the project, and logs the 
   ignores its allow rules, so the workflow and its step commands are granted with `--allowedTools`.
 - A **driver run** (`--via driver`) runs the rendered pi
   script of the workflow from the runtime the installer places under `.concorde/framework/`, which
-  every install carries with or without `--pi`, and refuses with `script_missing` when that script
+  every install carries, and refuses with `script_missing` when that script
   is absent. It runs the script under the stand-in runtime of the Workflows tests, whose
   [step agents](../glossary.json#concept.step-agent) execute the real
   `concorde workflow step --stdin` and `concorde workflow report --stdin` in the task's worktree, so
@@ -166,39 +165,34 @@ with their runs and whether they were superseded.
 
 **The owners case.** `owners` checks, with real sessions, the promise of
 [Main session](../coordination/main-session/module.md#owners) that a run wakes only its owner
-while every other main session may see it: it keeps several main sessions running at once in
-the test project's primary worktree, `--claude` Claude Code and `--pi` pi sessions, two of each by
-default and at least two in all, each a live session of [Headless
-sessions](sessions/module.md) whose wakes are its own program's, and plays three phases on the
-project's task `--task` (default `t1`), which must have a worktree:
+while every other main session may see it: it keeps `--claude` Claude Code main sessions running at
+once in the test project's primary worktree, two by default and at least two, each a live session
+of [Headless sessions](sessions/module.md) whose wakes are its own program's, and plays two phases
+on the project's task `--task` (default `t1`), which must have a worktree:
 
 1. **unowned**: the case itself starts `concorde task-validation` in the task worktree, a run of
    nobody's tool;
-2. **owned by pi**, with a pi session: the first pi session starts `task-validation` of the task
-   with its `concorde_run` tool;
-3. **owned by Claude Code**, with a Claude Code session: the first Claude Code session starts it
-   in background Bash.
+2. **owned by Claude Code**: the first session starts `task-validation` of the task in background
+   Bash.
 
 Each run is started with `--wait` while the case holds the task's
-[workspace lock](../glossary.json#concept.workspace-lock), which it releases only once every pi
-session's [run view](../glossary.json#concept.run-view) shows the run running in its status bar, so
-that the run outlives its launch and its end reaches the owner as a wake, never as the launching
-tool's own answer. When the run has written its result and the owner has been woken, and after
-`--grace` seconds more, the phase is judged over the time since the owner's launching turn ended
-(the phase's start for the unowned run), in which the case prompts no session: the owner must have
-begun a turn or received a notification, Claude Code's `task_notification` or the run view's
-`concorde-run` message, and no other session may have done either. Then every session that does
-not own the run shows that it sees it: a pi session's `/concorde` names the run as ended, which
-begins no turn, after its status bar showed it running; a Claude Code session, into which nothing is
-pushed, is asked to run `concorde task show <task>` and finds the run with the status of its result
+[workspace lock](../glossary.json#concept.workspace-lock), which it releases only once the run is
+in the [run store](../glossary.json#concept.run-store), so that the run outlives its launch and its
+end reaches the owner as a wake, never as the launching tool's own answer. When the run has written
+its result and the owner has been woken, and after `--grace` seconds more, the phase is judged over
+the time since the owner's launching turn ended (the phase's start for the unowned run), in which
+the case prompts no session: the owner must have begun a turn or received a notification, Claude
+Code's `task_notification`, and no other session may have done either. Then every session that
+does not own the run, into which nothing is pushed, is asked to run `concorde task show <task>`
+and must find the run with the status of its result
 ([requirements](requirements.md#req.e2e.owners-case)). The case prints, and keeps as
 `owners.json` beside every session's events under `.concorde/runs/e2e/owners/<time>/`, the
 sessions, every phase with its owner, run, status, each session's verdict and what each other
-session saw, and its outcome: `passed`, or `failed` with every problem, such as `pi-2 was woken by
-a run it does not own`. A contradicted promise is the case's verdict, not an error; a session that
-cannot start or refuses its first prompt, such as a pi without a usable model, a missing task
-(`no_task`), a project without the pi extension (`pi_not_installed`) or a step that does not happen
-in time (`live_timeout`) stops it with an error. The case spends real model turns and is run by
+session saw, and its outcome: `passed`, or `failed` with every problem, such as `claude-2 was
+woken by a run it does not own`. A contradicted promise is the case's verdict, not an error; fewer
+than two sessions (`invalid_input`), a missing task (`no_task`), a session that cannot start
+(`session_failed`) or a step that does not happen in time (`live_timeout`) stops it with an
+error. The case spends real model turns and is run by
 hand, like every end-to-end run.
 
 ## Design
@@ -250,9 +244,9 @@ repositories only, without the network or agents, verifying the
 
 The **owners case** is `scripts/e2e/owners.py`: the phases, holding the workspace lock, judging
 who was woken and asking the others what they see. Its tests,
-`tests/concorde/e2e/test_owners.py`, run the whole case with stand-ins for `claude`, `pi` and
-`concorde` that speak the live sessions' protocols, including a pi stand-in that wakes for every
-run, which must fail the case.
+`tests/concorde/e2e/test_owners.py`, run the whole case with stand-ins for `claude` and
+`concorde`, the first speaking the live sessions' protocol, including a `claude` stand-in that is
+also woken for every run it does not own, which must fail the case.
 
 ### The children
 
@@ -283,10 +277,9 @@ e2e.dogfood -> dogfooding
 
 <a id="contains-sessions"></a>
 
-**Headless sessions** drives a real headless Claude Code or pi main session: it grants the session
-its tools, tells it the conditions of running headless, wakes it when a run or a
-[session round](../glossary.json#concept.session-round) it left behind ends and keeps every round's
-log. The headless runs of workflows are headless sessions, and so are
+**Headless sessions** drives a real headless Claude Code main session: it grants the session its
+tools, tells it the conditions of running headless, wakes it when a run it left behind ends and
+keeps every round's log. The headless runs of workflows are headless sessions, and so are
 the [dogfood scenarios](../glossary.json#concept.dogfood-scenario)' sessions.
 
 <a id="contains-cases"></a>
@@ -318,9 +311,8 @@ record listing the saved results in order and each step with its run.
 
 <a id="uses-main-session"></a>
 
-**Main session** makes the promise the owners case checks, and provides what the case observes of
-a pi main session: the [run view](../glossary.json#concept.run-view)'s `concorde_run` tool, its
-status bar under the key `concorde`, its `/concorde` listing and its `concorde-run` message.
+**Main session** makes the promise the owners case checks: a run wakes only its owner main
+session, while every other main session may see it.
 
 <a id="uses-tasks"></a>
 

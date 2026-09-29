@@ -296,12 +296,11 @@ class ConcordeRepositoryTests(unittest.TestCase):
     def test_the_repository_instructions_take_reports_and_share_the_observation_rule(
         self,
     ):
-        # Both hosts are told to load the development skill, which the build renders.
-        for instructions in ("AGENTS.md", "CLAUDE.md"):
-            self.assertIn(
-                "`concorde-development`",
-                (REPOSITORY_ROOT / instructions).read_text(),
-            )
+        # The checkout's instructions tell every session to load the development skill, which
+        # the build renders.
+        self.assertIn(
+            "`concorde-development`", (REPOSITORY_ROOT / "CLAUDE.md").read_text()
+        )
         outputs = {
             output.path: output.content for output in build(REPOSITORY_ROOT).outputs
         }

@@ -5,7 +5,7 @@
 <p align="center">
   <a href="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml"><img src="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml/badge.svg" alt="Source validation" /></a>
   <a href="protocol/README.md"><img src="https://img.shields.io/badge/Spec_Protocol-13.2.0-0F7ADA" alt="Spec Protocol 13.2.0" /></a>
-  <a href="#get-started"><img src="https://img.shields.io/badge/client-Claude_Code_%7C_pi-092857" alt="Client: Claude Code or pi" /></a>
+  <a href="#get-started"><img src="https://img.shields.io/badge/client-Claude_Code-092857" alt="Client: Claude Code" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-092857" alt="MIT license" /></a>
 </p>
 
@@ -24,9 +24,9 @@
 Concorde is **spec-harnessed agent development**. Your project's Specs divide it into Modules and
 say what each one is responsible for. Concorde turns that division of responsibility into the
 **harness** of every AI agent that works on the project: the context it is given and the files it
-may read and write. You work with your own Claude Code or pi session, the **main agent**; it splits
-the work into tasks, and every worker it launches through Concorde runs inside the harness its
-task's Modules define.
+may read and write. You work with your own Claude Code session, the **main agent**; it splits the
+work into tasks, and every worker it launches through Concorde, on pi or on Claude Code, runs inside
+the harness its task's Modules define.
 
 ## The idea
 
@@ -42,7 +42,7 @@ errors come back up. The project's Specs shape every level.
 flowchart TB
   you(["You"])
   subgraph top["Coordination: sessions and tasks"]
-    main["1 · Main session<br/>your Claude Code or pi, primary checkout"]
+    main["1 · Main session<br/>your Claude Code, primary checkout"]
     task["2 · Task level<br/>the main agent or a task session,<br/>branch + worktree"]
   end
   subgraph mid["Execution, in the bound workspace: programs"]
@@ -64,8 +64,8 @@ flowchart TB
   task -.->|delivered or escalated| main
 ```
 
-**The main session: the project.** You work with your own Claude Code or pi session in the
-project's primary checkout; Concorde's installed guidance makes it the **main agent**. It discusses
+**The main session: the project.** You work with your own Claude Code session in the project's
+primary checkout; Concorde's installed guidance makes it the **main agent**. It discusses
 the project with you from the Specs, which describe every Module's purpose, usage, design,
 relations and files to a human and an agent alike. It splits the agreed work into tasks, decides
 the ordinary things itself and writes them into each task's decision log, asks you only about
@@ -76,8 +76,8 @@ sources.
 decision log, and Concorde manages the worktree for you: `concorde task open` creates it for the
 task's goal and Modules, and `concorde task merge` takes a lock, merges the branch, validates the
 result, undoes the merge if validation fails, and removes the worktree. For work split into several
-tasks, the main agent starts one task session per task, on its own program and configuration, and
-tasks whose Modules and shared files do not overlap run at once. A task session may write only its
+tasks, the main agent starts one task session per task, a background Claude Code session with your
+configuration, and tasks whose Modules and shared files do not overlap run at once. A task session may write only its
 own task: it changes Specs and code in the worktree, commits verified steps, runs `task-validation`
 and `delivery`, and reports back when it has delivered or needs a decision beyond its task. A single
 task the main agent can also carry out itself inside the worktree. `concorde task open` binds the
@@ -145,10 +145,10 @@ concorde task merge retry
 - **Spec tooling that stands alone.** `concorde spec-validation`, `concorde grant` and the local stdio MCP
   server `concorde spec-mcp` answer from the Specs of one worktree without calling a model, so any
   agent can ask which Modules exist, what a Module's context is and what a task may touch.
-- **Claude Code and pi.** One grant is compiled into each backend: Claude Code deny rules, a write
-  hook and its Bash sandbox, or a pi permission extension on the same sandbox engine. In pi the
-  main agent also sees every run in [pi-subagents](https://github.com/nicobailon/pi-subagents)'
-  FleetView. Worker models are yours to choose, for all workers or one Operation's.
+- **Workers on pi or Claude Code.** One grant is compiled into each worker backend: Claude Code
+  deny rules, a write hook and its Bash sandbox, or a pi permission extension on the same sandbox
+  engine. Worker programs and models are yours to choose, for all workers or one Operation's. The
+  main agent and its task sessions run on Claude Code for now.
 
 These layers guard against scope drift and mistakes, not a malicious actor; the
 [Harness](specs/concorde/harness/module.md) Spec states their limits.
@@ -159,7 +159,7 @@ Install Concorde into a Git project and initialize its first Spec:
 
 ```bash
 python3 /path/to/concorde/scripts/concorde.py build
-python3 /path/to/concorde/scripts/install-concorde.py /path/to/project   # add --pi for a pi session
+python3 /path/to/concorde/scripts/install-concorde.py /path/to/project
 cd /path/to/project
 .concorde/bin/concorde init --propose --name "My project" > /tmp/proposal.json
 jq .result /tmp/proposal.json > /tmp/accepted.json   # inspect it first
@@ -171,9 +171,8 @@ The installer places the runtime under `.concorde/framework/`, the `.concorde/bi
 command, the Protocol copy under `.concorde/protocol/`, the main agent's guidance (a Claude Code
 skill and a block in `CLAUDE.md`) and the pinned [`d2`](https://github.com/d2lang/d2) program that
 renders your Specs' diagrams, and the locked pi runtime your workers run in (they run on pi unless
-you choose Claude Code for them). With `--pi` it also places the pi run view and the pi skill for a
-pi main session. It never writes your Specs. Then open Claude Code or pi in the project and talk to it:
-it is now the main agent.
+you choose Claude Code for them). It never writes your Specs. Then open Claude Code in the project
+and talk to it: it is now the main agent.
 
 [Using Concorde](docs/using-concorde.md) walks through installation, the first Spec, worker models,
 tasks, results and error chains in detail.
@@ -222,7 +221,7 @@ The last two commands run a real worker to check what only the agent itself enfo
 needs a logged-in Claude Code and costs a few cents; the second needs a configured pi
 (`CONCORDE_LIVE_PI_MODEL` names the model) and the pi runtime, which every install places, or
 `CONCORDE_SANDBOX_RUNTIME`. Never edit build output under `generated/`; change the
-sources (`prompts/`, `protocol/`, `src/`) and rebuild. See the [source-checkout rules](AGENTS.md) and
+sources (`prompts/`, `protocol/`, `src/`) and rebuild. See the [source-checkout rules](CLAUDE.md) and
 [Concorde's own Specs](specs/concorde/module.md).
 
 ---

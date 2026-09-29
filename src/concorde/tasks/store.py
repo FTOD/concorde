@@ -714,10 +714,9 @@ def _ignored_inside(primary: Path, worktree: Path) -> None:
         )
 
 
-# --- task sessions and their rounds, as nodes of the task's trace ------------------------------
+# --- task sessions, as nodes of the task's trace -----------------------------------------------
 
 SESSION_TRACE = "concorde-session-trace"
-ROUND_TRACE = "concorde-round-trace"
 _NULLABLE = {"anyOf": [{"type": "null"}, _TEXT]}
 # contract.task-session.session-trace, version 1
 register(
@@ -726,9 +725,8 @@ register(
     {
         "type": "object",
         "additionalProperties": False,
-        "required": ["program", "name", "main", "model", "reported_id"],
+        "required": ["name", "main", "model", "reported_id"],
         "properties": {
-            "program": {"enum": ["claude", "pi"]},
             "name": _TEXT,
             "main": _NULLABLE,
             "model": _NULLABLE,
@@ -736,46 +734,6 @@ register(
         },
     },
 )
-# contract.task-session.round-trace, version 1
-register(
-    ROUND_TRACE,
-    1,
-    {
-        "type": "object",
-        "additionalProperties": False,
-        "required": [
-            "round",
-            "prompt",
-            "answer",
-            "outcome",
-            "supervisor_pid",
-            "report",
-        ],
-        "properties": {
-            "round": {"type": "integer", "minimum": 1},
-            "prompt": {"enum": ["task", "answer"]},
-            "answer": {"anyOf": [{"type": "null"}, {"type": "string"}]},
-            "outcome": {
-                "enum": ["running", "delivered", "escalated", "failed", "stopped"]
-            },
-            "supervisor_pid": {"type": "integer"},
-            "report": {"anyOf": [{"type": "null"}, _OBJECT]},
-        },
-    },
-)
-# How a round's outcome ends its node.
-ROUND_STATUS = {
-    "delivered": "ok",
-    "escalated": "blocked",
-    "failed": "failed",
-    "stopped": "failed",
-}
-ROUND_FILES = {
-    "prompt": "prompt.md",
-    "events": "events.jsonl",
-    "stderr": "stderr.log",
-    "supervisor": "supervisor.log",
-}
 
 
 def sessions_folder(primary: Path, task_id: str, folder: Path | None = None) -> Path:
@@ -786,36 +744,8 @@ def session_folder(primary: Path, task_id: str, session_id: str) -> Path:
     return sessions_folder(primary, task_id) / session_id
 
 
-def round_folder(primary: Path, task_id: str, session_id: str, number: int) -> Path:
-    return layout.round_folder(session_folder(primary, task_id, session_id), number)
-
-
-def _round_entry(folder: Path, record: dict) -> dict:
-    data = record["content"]["data"]
-    entry = {
-        "round": data["round"],
-        "prompt": data["prompt"],
-        "status": data["outcome"],
-        "supervisor_pid": data["supervisor_pid"],
-        "started_at": record["started_at"],
-        "ended_at": record["ended_at"],
-        "report": data["report"],
-        "error": record["error"],
-        "usage": record["usage"],
-        # The round's files; its prompt file is ``prompt_file``, since ``prompt`` says whether
-        # the prompt was the task or an answer.
-        "prompt_file": (folder / ROUND_FILES["prompt"]).as_posix(),
-        "events": (folder / ROUND_FILES["events"]).as_posix(),
-        "stderr": (folder / ROUND_FILES["stderr"]).as_posix(),
-        "supervisor_log": (folder / ROUND_FILES["supervisor"]).as_posix(),
-    }
-    if data.get("answer") is not None:
-        entry["answer"] = data["answer"]
-    return entry
-
-
 def sessions(primary: Path, task_id: str, folder: Path | None = None) -> list[dict]:
-    """The task's sessions in the order they started, each with its rounds, from its trace."""
+    """The task's Claude Code task sessions in the order they started, from its trace."""
     found = []
     parent = sessions_folder(primary, task_id, folder)
     for item in sorted(parent.iterdir()) if parent.is_dir() else []:
@@ -823,32 +753,17 @@ def sessions(primary: Path, task_id: str, folder: Path | None = None) -> list[di
         if record is None or record.get("kind") != "session":
             continue
         data = record["content"]["data"]
-        entry = {
-            "program": data["program"],
-            "id": record["id"],
-            "name": data["name"],
-            "main": data["main"],
-            "model": data["model"],
-            "started_at": record["started_at"],
-            "directory": item.as_posix(),
-        }
-        if data["program"] == "claude":
-            entry["reported_id"] = data["reported_id"]
-        else:
-            rounds = []
-            for child in (
-                sorted(
-                    (layout.round_folder(item, 1).parent).glob("*"),
-                    key=lambda path: int(path.name) if path.name.isdigit() else 0,
-                )
-                if (item / "rounds").is_dir()
-                else []
-            ):
-                node = trace.read(child)
-                if node is not None and node.get("kind") == "round":
-                    rounds.append(_round_entry(child, node))
-            entry["rounds"] = rounds
-        found.append(entry)
+        found.append(
+            {
+                "id": record["id"],
+                "name": data["name"],
+                "main": data["main"],
+                "model": data["model"],
+                "reported_id": data["reported_id"],
+                "started_at": record["started_at"],
+                "directory": item.as_posix(),
+            }
+        )
     found.sort(key=lambda item: (item["started_at"], item["id"]))
     return found
 
@@ -860,8 +775,8 @@ def _current_open(primary: Path, task_id: str) -> dict:
 
 def record_session(primary: Path, task_id: str, session: dict) -> dict:
     """Record a started task session as a node of the task's trace, for a task that has not
-    ended. ``session`` names its program, identity, name, main session and model, and for
-    Claude Code the identity Claude Code reported."""
+    ended. ``session`` names its identity, name, main session, model and the identity Claude
+    Code reported."""
     # Checked before taking the lock too, so no lock file is made again for a closed task.
     _current_open(primary, task_id)
     with task_locked(primary, task_id):
@@ -872,13 +787,8 @@ def record_session(primary: Path, task_id: str, session: dict) -> dict:
             session["id"],
             "session",
             content_type=SESSION_TRACE,
-            metadata={
-                "task": task_id,
-                "program": session["program"],
-                "model": session.get("model"),
-            },
+            metadata={"task": task_id, "model": session.get("model")},
             content={
-                "program": session["program"],
                 "name": session["name"],
                 "main": session.get("main"),
                 "model": session.get("model"),
@@ -888,132 +798,12 @@ def record_session(primary: Path, task_id: str, session: dict) -> dict:
         )
         # Concorde never observes when a session ends.
         node.record["status"] = "unknown"
-        if session["program"] == "pi":
-            node.keep("progress", layout.PROGRESS)
         node.start()
         if node.failure is not None:
             raise TaskError(
                 "record_unwritable",
                 f"the session node {folder} of task {task_id} cannot be written: {node.failure}",
             )
-        return record
-
-
-def _pi_session(primary: Path, task_id: str, session_id: str) -> dict:
-    for item in sessions(primary, task_id):
-        if item.get("program") == "pi" and item.get("id") == session_id:
-            return item
-    raise TaskError(
-        "no_session",
-        f"task {task_id} has no pi task session {session_id}",
-    )
-
-
-def begin_round(primary: Path, task_id: str, session_id: str, entry: dict) -> dict:
-    """Write a running round's node under a pi task session of an unended task whose rounds
-    have all ended.
-
-    The task's state is checked while holding its lock, so a close stored between the caller's
-    own check and this write refuses the round.
-    """
-    purpose = "a round of a task session begins only in an open task"
-    # Checked before taking the lock too, so no lock file is made again for a closed task.
-    load_unended(primary, task_id, purpose)
-    with task_locked(primary, task_id):
-        record = load_unended(primary, task_id, purpose)
-        found = _pi_session(primary, task_id, session_id)
-        running = [item for item in found["rounds"] if item["status"] == "running"]
-        if running:
-            raise TaskError(
-                "session_busy",
-                f"round {running[-1]['round']} of the task session of {task_id} is still "
-                f"running (supervisor process {running[-1]['supervisor_pid']})",
-            )
-        folder = round_folder(primary, task_id, session_id, entry["round"])
-        node = Node(
-            folder,
-            str(entry["round"]),
-            "round",
-            content_type=ROUND_TRACE,
-            metadata={"program": "pi", "model": found.get("model")},
-            content={
-                "round": entry["round"],
-                "prompt": entry["prompt"],
-                "answer": entry.get("answer"),
-                "outcome": "running",
-                "supervisor_pid": int(entry["supervisor_pid"]),
-                "report": None,
-            },
-            started_at=entry.get("started_at"),
-        )
-        for identity, name in ROUND_FILES.items():
-            node.keep(identity, name)
-        node.start()
-        if node.failure is not None:
-            raise TaskError(
-                "record_unwritable",
-                f"the round node {folder} of task {task_id} cannot be written: {node.failure}",
-            )
-        return record
-
-
-def finish_round(
-    primary: Path, task_id: str, session_id: str, number: int, fields: dict
-) -> dict:
-    """End the node of a running round of a pi task session, whatever the task's state.
-
-    ``fields`` holds the round's ``status`` (delivered, escalated, failed or stopped) and may
-    hold its ``report``, ``error`` and ``usage``.
-    """
-    with task_locked(primary, task_id):
-        folder = round_folder(primary, task_id, session_id, number)
-        record = trace.read(folder)
-        if record is None:
-            if not task_folder(primary, task_id).is_dir():
-                raise _unknown(primary, task_id)
-            raise TaskError(
-                "no_session", f"task {task_id} has no pi task session {session_id}"
-            )
-        data = record["content"]["data"]
-        if data["outcome"] != "running":
-            raise TaskError(
-                "session_idle",
-                f"round {number} of the task session {session_id} of {task_id} is not running",
-            )
-        status = fields["status"]
-        data = {
-            **data,
-            "outcome": status,
-            "report": fields.get("report", data["report"]),
-        }
-        ended = now()
-        used = trace.usage(
-            **{
-                key: value
-                for key, value in (fields.get("usage") or {}).items()
-                if key in trace.USAGE_FIELDS
-            }
-        )
-        if used["duration_seconds"] is None:
-            used["duration_seconds"] = trace.seconds_between(
-                record["started_at"], ended
-            )
-        record.update(
-            ended_at=ended,
-            status=ROUND_STATUS[status],
-            outcome=status,
-            error=fields.get("error")
-            if ROUND_STATUS[status] in ("blocked", "failed")
-            else None,
-            usage=used,
-            content={"type_id": ROUND_TRACE, "schema_version": 1, "data": data},
-            artifacts=[
-                trace.artifact(folder, identity, name)
-                for identity, name in ROUND_FILES.items()
-                if (folder / name).exists()
-            ],
-        )
-        trace.write(folder, record)
         return record
 
 
@@ -1278,7 +1068,7 @@ def list_tasks(primary: Path, state: str | None = None) -> list[dict]:
 
 def show_task(primary: Path, task_id: str) -> dict:
     """The record with its derived state, the workspace's runs and delivery commits, each with
-    how it disagrees with its bundle, the sessions with their rounds and the escalations from
+    how it disagrees with its bundle, the sessions and the escalations from
     the task's trace, who holds the workspace lock, and the paths of the decision log and of the
     task's folder, current or in the history."""
     record, folder = load_any(primary, task_id)
@@ -1432,9 +1222,8 @@ def close_task(
     A merged task must have its latest delivery commit in the primary branch. A completed task
     reached its goal without merging and says how in ``note``. A failed task gives its reason in
     ``note`` and the error chains that caused it in ``errors``, or none when no error did. A task
-    closed without a merge first has its Claude Code task sessions, the runs of its workspace
-    that still run and a running round of its pi task session stopped; the close then waits for
-    its workspace lock, so the task's folder moves to the history only once nothing of it runs.
+    closed without a merge first has its Claude Code task sessions and the runs of its workspace
+    that still run stopped; the close then waits for its workspace lock, so the task's folder moves to the history only once nothing of it runs.
     Once the task is closed, its Claude Code task sessions are removed from Claude's session
     list. ``{"record": <the closed record>, "warnings": [...]}``, the warnings naming what the
     close could not do besides, such as a session it did not remove.
@@ -1494,9 +1283,8 @@ def stop_task(primary: Path, task_id: str) -> list[str]:
     """Stop what still runs for a task: first its Claude Code task sessions, with
     ``claude stop``, so none starts another run or keeps working in the worktree the close
     removes, then each run of its workspace whose runner holds its run lock and is visible to
-    this process, with ``SIGTERM``, and a running round of its pi task session, as
-    ``session --stop`` does. The runs end with their own results; the close then waits for the
-    workspace lock. What was stopped, described."""
+    this process, with ``SIGTERM``. The runs end with their own results; the close then waits
+    for the workspace lock. What was stopped, described."""
     import signal
 
     from . import session
@@ -1513,22 +1301,6 @@ def stop_task(primary: Path, task_id: str) -> list[str]:
                 stopped.append(f"run {run_id} (process {pid})")
             except OSError:
                 continue
-    running = [
-        item
-        for found in sessions(primary, task_id)
-        if found.get("program") == "pi"
-        for item in found.get("rounds", [])
-        if item["status"] == "running"
-    ]
-    if running:
-        from . import pi_session
-
-        try:
-            pi_session.stop(primary, task_id)
-            stopped.append(f"round {running[-1]['round']} of the pi task session")
-        except TaskError as error:
-            if error.code not in ("session_idle", "no_session"):
-                raise
     return stopped
 
 

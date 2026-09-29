@@ -7,8 +7,9 @@
 Concorde is spec-harnessed agent development. Your project's Specs divide it into Modules and say
 what each one is responsible for; Concorde turns that division of responsibility into the harness
 of every AI agent that works on the project: the context it is given and the files it may read and
-write. Your Claude Code or pi session, the main agent, splits the work into tasks, and every worker
-it launches through Concorde runs inside the harness its task's Modules define.
+write. Your Claude Code session, the main agent, splits the work into tasks, and every worker it
+launches through Concorde, on pi or on Claude Code, runs inside the harness its task's Modules
+define.
 
 New here? Start with **[Using Concorde](using-concorde.md)**.
 
@@ -78,8 +79,9 @@ A question that changes nothing, such as how a Module works today, needs no task
 
 ## Install into a Git project
 
-Use Python 3.11+ and [uv](https://docs.astral.sh/uv/) on Linux with bubblewrap, and a logged-in
-Claude Code or a configured [pi](https://github.com/earendil-works/pi). The installer places the
+Use Python 3.11+ and [uv](https://docs.astral.sh/uv/) on Linux with bubblewrap, a logged-in Claude
+Code for the main agent and a configured [pi](https://github.com/earendil-works/pi) for workers that
+run on pi. The installer places the
 runtime, the `concorde` command, the Protocol copy and the main agent's guidance; it never writes
 your Specs.
 
@@ -87,7 +89,7 @@ your Specs.
 git clone https://github.com/FTOD/concorde.git
 cd concorde
 python3 scripts/concorde.py build
-python3 scripts/install-concorde.py /absolute/path/to/project   # add --pi for a pi session
+python3 scripts/install-concorde.py /absolute/path/to/project
 
 cd /absolute/path/to/project
 .concorde/bin/concorde init --propose --name "My project"

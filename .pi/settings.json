@@ -1,7 +1,0 @@
-{
-  "extensions": ["../src/concorde/main_session/pi_extension.ts"],
-  "skills": [
-    "../generated/skills/concorde",
-    "../generated/skills/concorde-development"
-  ]
-}

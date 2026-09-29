@@ -17,17 +17,16 @@ Any headless main session, with a prompt of the developer's, and the dogfood sce
 develop install from a Concorde clone with a known fault must be reported, not worked around:
 
     python3 scripts/e2e/e2e.py session start /tmp/concorde-e2e/requests --prompt-file ask.md
-    python3 scripts/e2e/e2e.py session start /tmp/concorde-e2e/requests --client pi --prompt "..."
     python3 scripts/e2e/e2e.py session show <session directory>
     python3 scripts/e2e/e2e.py dogfood list
     python3 scripts/e2e/e2e.py dogfood prepare write-hook-rw-directories [--worker-model <model>]
     python3 scripts/e2e/e2e.py dogfood run /tmp/concorde-e2e/write-hook-rw-directories
     python3 scripts/e2e/e2e.py dogfood evaluate /tmp/concorde-e2e/write-hook-rw-directories
 
-Several live Claude Code and pi main sessions at once in one project, checking that a run wakes
-only its owner while the others can see it:
+Several live Claude Code main sessions at once in one project, checking that a run wakes only its
+owner while the others can see it:
 
-    python3 scripts/e2e/e2e.py prepare psf/requests --rev v2.31.0 --name owners --task t1 --pi
+    python3 scripts/e2e/e2e.py prepare psf/requests --rev v2.31.0 --name owners --task t1
     python3 scripts/e2e/e2e.py owners /tmp/concorde-e2e/owners --task t1
 
 A SWE-bench case is prepared at its base commit under its own name, and a delivered change is
@@ -128,13 +127,12 @@ def prepare(
     allow_any: bool = False,
     name: str | None = None,
     python: str | None = None,
-    pi: bool = False,
     worker_model: str | None = None,
 ) -> dict:
     """Clone ``repo`` at ``rev`` under ``root`` as ``name`` (the repository's name by default),
-    install and initialize Concorde, with its pi extension for pi main sessions when ``pi``,
-    recording ``python`` as the project's interpreter when given, write its worker configuration
-    (every worker on ``worker_model``, or this checkout's models) and open ``task``."""
+    install and initialize Concorde, recording ``python`` as the project's interpreter when given,
+    write its worker configuration (every worker on ``worker_model``, or this checkout's models)
+    and open ``task``."""
     workers = worker_configuration(worker_model)
     if not allow_any and repo not in repositories():
         raise E2EError(
@@ -157,7 +155,6 @@ def prepare(
             str(CHECKOUT / "scripts/install-concorde.py"),
             str(project),
             "--without-d2",
-            *(["--pi"] if pi else []),
         ],
         cwd=CHECKOUT,
     )
@@ -353,15 +350,10 @@ def run_workflow(
             )
         completed = subprocess.CompletedProcess([], 0, "", "")
     else:
-        environment = {
-            **os.environ,
-            "CONCORDE_CLIENT": os.environ.get("CONCORDE_CLIENT", "claude"),
-        }
         with log.open("w") as stream:
             completed = subprocess.run(
                 ["node", str(HARNESS)],
                 cwd=worktree,
-                env=environment,
                 input=json.dumps(driver_input(project, worktree, workflow, args)),
                 stdout=stream,
                 stderr=subprocess.PIPE,
@@ -443,8 +435,6 @@ def session_command(arguments) -> dict:
         prompt,
         directory,
         rounds=arguments.rounds,
-        client=arguments.client,
-        model=arguments.model,
     )
 
 
@@ -457,7 +447,6 @@ def dogfood_command(arguments) -> dict:
             e2e_root(),
             worker_configuration(arguments.worker_model),
             arguments.name,
-            arguments.client,
         )
     if arguments.action == "run":
         return dogfood.run_scenario(arguments.directory.resolve(), arguments.rounds)
@@ -476,9 +465,6 @@ def main(argv) -> int:
     prepare_.add_argument("--name")
     prepare_.add_argument(
         "--python", help="the case's own interpreter, recorded for its checks' {python}"
-    )
-    prepare_.add_argument(
-        "--pi", action="store_true", help="also install Concorde's pi extension"
     )
     prepare_.add_argument(
         "--worker-model",
@@ -517,8 +503,6 @@ def main(argv) -> int:
     start_.add_argument("--prompt")
     start_.add_argument("--prompt-file", type=Path)
     start_.add_argument("--rounds", type=int, default=sessions.ROUNDS)
-    start_.add_argument("--client", choices=sessions.CLIENTS, default="claude")
-    start_.add_argument("--model", help="the pi model of the main session (pi only)")
     show_ = session_actions.add_parser("show")
     show_.add_argument("directory", type=Path)
     dogfood_ = sub.add_parser("dogfood")
@@ -527,11 +511,6 @@ def main(argv) -> int:
     dogfood_prepare = dogfood_actions.add_parser("prepare")
     dogfood_prepare.add_argument("scenario")
     dogfood_prepare.add_argument("--name")
-    dogfood_prepare.add_argument(
-        "--client",
-        choices=sessions.CLIENTS,
-        help="the scenario's own client by default",
-    )
     dogfood_prepare.add_argument(
         "--worker-model",
         help="run every worker of the project on this model; this checkout's worker "
@@ -546,9 +525,7 @@ def main(argv) -> int:
     owners_.add_argument("project", type=Path)
     owners_.add_argument("--task", default="t1")
     owners_.add_argument("--claude", type=int, default=2)
-    owners_.add_argument("--pi", type=int, default=2)
     owners_.add_argument("--claude-model")
-    owners_.add_argument("--pi-model")
     owners_.add_argument("--grace", type=float, default=owners.GRACE_SECONDS)
     arguments = parser.parse_args(argv)
     try:
@@ -563,7 +540,6 @@ def main(argv) -> int:
                 arguments.any,
                 arguments.name,
                 arguments.python,
-                arguments.pi,
                 arguments.worker_model,
             )
         elif arguments.command == "trust":
@@ -616,10 +592,8 @@ def main(argv) -> int:
             value = owners.owners(
                 arguments.project,
                 claude=arguments.claude,
-                pi=arguments.pi,
                 task=arguments.task,
                 claude_model=arguments.claude_model,
-                pi_model=arguments.pi_model,
                 grace=arguments.grace,
             )
         else:

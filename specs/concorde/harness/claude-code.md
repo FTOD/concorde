@@ -106,7 +106,7 @@ whatever its task type. WebFetch, WebSearch, the agent tool and notebook editing
 
 ## Task-session settings
 
-A Claude Code task session's settings, `.concorde/tasks/<task>/runtime/settings.json`, hold the
+A task session's settings, `.concorde/tasks/<task>/runtime/settings.json`, hold the
 task-session write hook and the Bash sandbox of its
 [session boundary](../glossary.json#concept.session-boundary):
 

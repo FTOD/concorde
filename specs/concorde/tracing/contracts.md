@@ -42,7 +42,6 @@ reports with. The [requirements](requirements.md) state the obligations; the
         "enum": [
           "task",
           "session",
-          "round",
           "merge",
           "merge-check",
           "workflow",
@@ -225,9 +224,6 @@ reports with. The [requirements](requirements.md) state the obligations; the
             "$ref": "#/$defs/text"
           },
           "mode": {
-            "$ref": "#/$defs/text"
-          },
-          "program": {
             "$ref": "#/$defs/text"
           },
           "task_type": {
@@ -428,8 +424,7 @@ directory for the three roots.
 | Kind | Producer | Folder | Identity | Metadata it provides | Content type |
 | --- | --- | --- | --- | --- | --- |
 | `task` | [Tasks](../coordination/tasks/module.md) | `tasks/<task>/`, moved to `history/<key>/` | the task name | `task`, `modules`, `branch`, `base_commit`, `concorde_commit`, `protocol_version` | `concorde-task-trace` |
-| `session` | [Task sessions](../coordination/task-session/module.md) | `sessions/<session>/` | the session identity | `task`, `program`, `model` | `concorde-session-trace` |
-| `round` | Task sessions | `rounds/<n>/` of a pi session | the round number | `program`, `model` | `concorde-round-trace` |
+| `session` | [Task sessions](../coordination/task-session/module.md) | `sessions/<session>/` | the session identity | `task`, `model` | `concorde-session-trace` |
 | `merge` | Tasks | `merges/<n>/` | the attempt number | `task`, `branch`, `commit` | `concorde-merge-trace` |
 | `merge-check` | Tasks | `checks/<n>/` of a merge | the check's number | none | `concorde-merge-check-trace` |
 | `workflow` | [Workflows](../execution/workflows/module.md) | `workflow/` of a workspace folder | the workflow name | `workspace`, `workflow`, `mode` | `concorde-workflow-trace` |
@@ -455,7 +450,6 @@ its content type.
 | `commit` | the commit the node examined (an [unbound run](../glossary.json#concept.unbound-run)) or produced (a merge), or the `HEAD` a bound run started on |
 | `operation`, `command` | the Operation or execution command that ran |
 | `workflow`, `mode` | the workflow and its mode |
-| `program` | the agent program of a session, `claude` or `pi` |
 | `task_type`, `worker` | a worker's [task type](../glossary.json#concept.task-type) and [worker id](../glossary.json#concept.worker-id) |
 | `backend`, `model`, `reasoning` | the agent program, model and reasoning level a worker or session ran on, as configured; absent when the program's default applied |
 | `context_identity`, `grant_digest`, `brief_digest`, `settings_digest` | the identity and digests of what a worker was given |
@@ -474,8 +468,8 @@ its content type.
 - Every artifact path is relative to the node's folder; every other node is named by identity.
 - A file that grows while the node runs, such as a transcript or an event stream, is an artifact of
   the node; its content is never copied into `trace.json`.
-- The live [progress file](../glossary.json#concept.progress-file) `status.json` of a run, worker run
-  or pi [session round](../glossary.json#concept.session-round), and a [run result](../glossary.json#concept.run-result) `result.json`, stay
+- The live [progress file](../glossary.json#concept.progress-file) `status.json` of a run or worker
+  run, and a [run result](../glossary.json#concept.run-result) `result.json`, stay
   separate files of the node's folder, listed among its artifacts.
 
 ## Layout
@@ -494,7 +488,7 @@ ignores `tasks/`, `history/`, `unbound/` and `locks/`.
 │  ├─ trace.json                 the task's node
 │  ├─ decisions.md               the decision log
 │  ├─ runtime/                   the task session's boundary configuration, removed at close
-│  ├─ sessions/<session>/        session nodes, pi rounds under rounds/<n>/
+│  ├─ sessions/<session>/        session nodes
 │  ├─ merges/<n>/                merge attempts, their checks under checks/<n>/
 │  └─ workspace/                 the workspace folder the task's binding names
 │     ├─ workflow/               the workflow node, answers/, reports/, steps/<seq>-<key>/run/

@@ -13,8 +13,9 @@ sources. Specs and their paired metadata use English.
 
 ## How work is organized
 
-Concorde supports Claude Code and pi. The developer works with a main agent: the Claude Code or pi
-session in the primary worktree. The main agent discusses the project, splits work into tasks (a
+The developer works with a main agent: the Claude Code session in the primary worktree. For now
+the main agent and its task sessions run only on Claude Code, while workers may also run on pi. The
+main agent discusses the project, splits work into tasks (a
 branch and its worktree each), hands every task to a task session, keeps each task's decision log
 and merges delivered task branches. It never edits the primary worktree's sources, except a small
 change the developer approved, and never works inside a task worktree.
@@ -39,7 +40,7 @@ Developing this checkout itself is direct developer-authorized maintenance, done
    worktree's own script: it registers the reference submodules in the shared `.git/config`, which
    the session's sandbox keeps read-only. It records the task's brief in the decision log and starts
    the session with `python3 scripts/concorde.py task session <task> --main <its session name>`
-   from the primary worktree (in pi, the `concorde_task_session` tool).
+   from the primary worktree.
 3. The task session creates what Git ignores in its worktree: `uv sync --locked --group dev`,
    `npm --prefix docsite ci` and `python3 scripts/concorde.py build`.
 4. It changes the sources, verifies, and commits each verified step on the task branch. It runs

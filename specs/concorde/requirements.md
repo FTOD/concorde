@@ -6,13 +6,20 @@ together.
 
 ## Runtime
 
-### req.concorde.agent-runtimes — Claude Code and pi are the agent runtimes
+### req.concorde.agent-runtimes — The main agent runs on Claude Code, workers also on pi
 
-The Framework SHALL support a [main agent](glossary.json#concept.main-agent) in Claude Code or in pi.
+The Framework SHALL support a [main agent](glossary.json#concept.main-agent) in Claude Code, and
+every [worker](glossary.json#concept.worker) on the agent program the worktree's
+[worker configuration](glossary.json#concept.worker-configuration) chooses for it, Claude Code or pi,
+and on pi when it chooses none.
+
+For now the main agent runs only on Claude Code, and so do the
+[task sessions](glossary.json#concept.task-session) it starts, which always run on the main agent's
+own program; a Claude Code main agent may still run pi workers.
 
 ### req.concorde.worker-program — Workers run on the configured program
 
-Every worker SHALL run on the agent program the worktree's [worker configuration](glossary.json#concept.worker-configuration) chooses for it, and on pi when it chooses none, whatever program the main agent runs on.
+Every worker SHALL run on the agent program the worktree's worker configuration chooses for it, and on pi when it chooses none, whatever program the main agent runs on.
 
 A worker whose chosen program is not installed is refused, never moved to the other program.
 
@@ -22,7 +29,7 @@ A worker's grant SHALL NOT depend on the agent program the worker runs on.
 
 The [Spec](glossary.json#concept.spec) Protocol needs no change for this, because it defines
 visibility, not how an agent is run; each backend compiles the same grant into its own mechanism, so
-a Claude Code main agent may run pi workers and a pi main agent Claude Code workers.
+a Claude Code main agent may run pi workers as well as Claude Code workers.
 
 ### req.concorde.worker-models-per-worktree — Worker models belong to the worktree
 

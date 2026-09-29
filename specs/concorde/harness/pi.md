@@ -1,9 +1,8 @@
 # pi harness mechanics
 
-The exact extensions the Harness generates to apply a harness to a pi agent: the worker's
-[permission extension](../glossary.json#concept.permission-extension) with its read and write
-tables, sandbox, limits and tool sets, and the
-[task session](../glossary.json#concept.task-session)'s boundary extension. The [entry](module.md)
+The exact extension the Harness generates to apply a harness to a pi worker, the only agent that
+runs on pi: the worker's [permission extension](../glossary.json#concept.permission-extension) with
+its read and write tables, sandbox, limits and tool sets. The [entry](module.md)
 explains why a harness is applied this way; the [Claude Code mechanics](claude-code.md) state what
 the Claude Code backend generates, and [the pi run mechanics](../execution/workers/pi.md) of Workers
 how a pi worker is launched with it.
@@ -94,26 +93,3 @@ and aborts the run.
 | `implement` | `read,grep,find,ls,edit,write,bash,concorde_result` |
 
 A grant with no writable path gets the first row's set whatever its task type, as on Claude Code.
-
-## Session boundary extension
-
-A pi task session's boundary is `.concorde/tasks/<task>/runtime/boundary.ts`, the source
-`pi_session.ts` with the session's policy embedded, beside `pi_session_policy.ts` and the
-`pi_policy.ts` it imports. The policy holds, as absolute paths, the task worktree, the decision log,
-the writable paths of the shell, the private temporary directory and the
-[session report](../glossary.json#concept.session-report) schema. Unlike the worker's extension it
-intercepts pi's tools instead of replacing them, so the developer's own extensions keep theirs:
-
-| Tool | Behaviour |
-| --- | --- |
-| `write`, `edit` | Blocked, with a reason naming the task worktree, unless the path, resolved as pi resolves it, is inside the task worktree or is the [decision log](../glossary.json#concept.decision-log) while its folder exists |
-| `bash` | Rewritten to run inside sandbox-runtime, writing only the policy's writable paths and the temporary directory, with every network host allowed |
-| `concorde_report` | Takes the [session report](../coordination/task-session/contracts.md#contract.task-session.report) and ends the round |
-
-Every other tool is left as the developer's configuration gives it.
-
-pi validates the argument of `concorde_report` against the embedded schema, and the extension then
-checks what the schema cannot express, such as that a delivered report names a full commit identity
-and no escalation, and an escalated one names each escalation number once and no commit. A report
-either check rejects comes back to the session as an error result naming the problem, and the round
-goes on so the session can report again; an accepted one ends the round.

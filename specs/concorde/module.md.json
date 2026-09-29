@@ -65,7 +65,6 @@
       "meaning": "#realization.concorde.project-files",
       "entries": [
         "README.md",
-        "AGENTS.md",
         "CLAUDE.md",
         "LICENSE",
         ".gitignore",
@@ -108,8 +107,7 @@
         "scripts/development/fetch-claude-code-docs.py",
         "scripts/development/check-docsite-types.py",
         "tests/concorde/support/operation_project.py",
-        "tests/concorde/support/agent_fakes.py",
-        ".pi/settings.json"
+        "tests/concorde/support/agent_fakes.py"
       ],
       "pending": []
     },

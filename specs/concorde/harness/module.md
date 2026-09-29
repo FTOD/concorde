@@ -4,7 +4,9 @@
 
 The Harness is how Concorde derives an agent's harness and applies it to the agent: what the agent
 is given to know, what it may touch and the environment it runs in, turned into the agent program's
-own configuration on Claude Code or on pi. It is independent of which agent it serves. Each
+own configuration: on Claude Code for every agent, and on pi for a worker, since the main agent and
+task sessions run on Claude Code only for now while a worker may run on pi. It is independent of
+which agent it serves. Each
 [agent](../coordination/module.md) level asks for the harness it needs: Workers for a worker, from
 the frozen [grant](../glossary.json#concept.grant) of its task; Task sessions for a
 [task session](../glossary.json#concept.task-session), from its task's worktree and
@@ -26,7 +28,7 @@ levels need very different amounts of each:
 | --- | --- | --- | --- |
 | Context | the installed [guidance](../glossary.json#concept.main-session-guidance) and whatever the developer's own configuration adds | the developer's configuration, the task-session guidance and the task's goal, Modules and decision log | only its brief: the [Operation](../glossary.json#concept.operation)'s instructions and the grant's `rw`, `ro` and `names` lists, from which it reads its [Spec context](../glossary.json#concept.spec-context), [external context](../glossary.json#concept.external-context), [implementation context](../glossary.json#concept.implementation-context) and [task context](../glossary.json#concept.task-context); its tool set is its [capability context](../glossary.json#concept.capability-context) |
 | Permission | none | file tools and shell write only the task worktree, its decision log and what commits and runs need; reads and the network open | the grant: `rw` writable, `ro` readable, `names` named only, everything else hidden; no network, no Git |
-| Environment | the developer's | the developer's configuration and program | its own configuration directory, a cleared environment, its own working directory and limits |
+| Environment | the developer's | the developer's Claude Code configuration | its own configuration directory, a cleared environment, its own working directory and limits |
 | Applied by | Distribution, which installs the guidance | the [session boundary](../glossary.json#concept.session-boundary), for Task sessions | [worker settings](../glossary.json#concept.worker-settings) or the [permission extension](../glossary.json#concept.permission-extension), for Workers |
 
 The context of a worker, its five kinds and how each is computed are defined in the
@@ -129,7 +131,7 @@ Exact tables: [pi mechanics](pi.md).
 <a id="concept.session-boundary"></a>
 
 **A task session.** The **session boundary** confines what a task session writes and nothing else.
-On Claude Code it is a settings file with a write hook of its own, which lets Edit and Write change
+A task session runs on Claude Code, so its boundary is a settings file with a write hook of its own, which lets Edit and Write change
 only the task worktree and its decision log instead of a grant's `rw` list, and a Bash sandbox that
 writes only the task worktree, the repository's Git directory (for commits on the task branch), the
 task's own folder `.concorde/tasks/<task>/` of the primary worktree (which holds the workspace
@@ -138,17 +140,11 @@ names for every run started there, and the [task record](../glossary.json#concep
 primary worktree's `.concorde/locks/` (where those runs take their locks) and the user's package
 caches, with every network host allowed. Once the task is closed its folder has moved to the
 [history](../glossary.json#concept.history), and the write hook refuses every write to the decision
-log, whose folder no longer exists, rather than recreate it. On pi it is the **boundary extension**, the session's
-counterpart of a worker's permission extension, loaded on top of the developer's own configuration,
-which blocks a `write` or `edit` outside the task worktree and its decision log, naming the task
-worktree, rewrites every `bash` command to run inside sandbox-runtime with the same writable paths
-and open network plus a private temporary directory, and gives the session its `concorde_report`
-tool. On both programs the open network is reached through the sandbox's proxy on `localhost`,
-because the sandboxed commands have a network namespace of their own; a worker those commands start
-passes that proxy on to its own process (Workers'
+log, whose folder no longer exists, rather than recreate it. The open network is reached through the sandbox's
+proxy on `localhost`, because the sandboxed commands have a network namespace of their own; a worker
+those commands start passes that proxy on to its own process (Workers'
 [proxy rule](../execution/workers/launch.md#proxy)), never to its tools, whose sandbox stays without
-network. Exact shapes: [Claude Code mechanics](claude-code.md#task-session-settings) and
-[pi mechanics](pi.md#session-boundary-extension).
+network. Exact shapes: [Claude Code mechanics](claude-code.md#task-session-settings).
 
 ## Design
 
@@ -187,21 +183,19 @@ path argument exactly as pi resolves it.
 ### Inside
 
 The Harness is separate from the agents because what it produces does not depend on who runs the
-agent or why: the same deny-rule generator, write-hook table, pi path resolution and sandbox engine
-serve a worker and a task session, and the pi task session's path decisions import the worker's.
-The agent Modules keep what does: when an agent starts, how its rounds go, what is audited and
+agent or why: the same write-hook table and sandbox settings serve a worker and a task session, and
+a worker's harness on either program comes from the same grant by the same code. The agent Modules keep what does: when an agent starts, how its rounds go, what is audited and
 recorded. So a new kind of agent, or a new level, needs a new set of inputs for the Harness, not a
 new enforcement mechanism.
 
-A harness is compiled for each agent program rather than one being translated into the other:
-Claude Code's permission-rule language is closed and changes between versions, and pi has no
-permission system of its own, so the inputs — a grant, or a task's paths — are the one source and
-each program gets the mechanism that fits it. On pi the file tools are checked by an extension
-because an extension sees every tool call before it runs and can explain a denial; searching and
-commands go through the sandbox because only an OS boundary confines what a command or a search
-actually opens. A worker's tools are replaced rather than merely intercepted, so the check sees the
-final arguments, which a later `tool_call` handler could otherwise still change; a task session's
-are intercepted, so the developer's own extensions keep theirs.
+A worker's harness is compiled for each agent program rather than one being translated into the
+other: Claude Code's permission-rule language is closed and changes between versions, and pi has no
+permission system of its own, so the grant is the one source and each program gets the mechanism
+that fits it. On pi the file tools are checked by an extension because an extension sees every tool
+call before it runs and can explain a denial; searching and commands go through the sandbox because
+only an OS boundary confines what a command or a search actually opens. The worker's tools are
+replaced rather than merely intercepted, so the check sees the final arguments, which a later
+`tool_call` handler could otherwise still change.
 
 A worker gets three layers on Claude Code since each alone failed in a spike against Claude Code
 2.1.280: the Bash sandbox governs only Bash and its children — alone it let Read return ungranted
@@ -246,10 +240,8 @@ flags and environment listed here; the Harness generates everything the settings
   the audit — the brief warns of this.
 - Writes to Git-ignored paths are not audited; Workers' audit is the last line of defense for a
   worker's write outside `rw`.
-- A task session's boundary does not cover tools other extensions or MCP servers add, such as a
-  formatter that writes files. On pi it intercepts rather than replaces `write` and `edit`, so it
-  checks the path its own `tool_call` handler sees; an extension whose handler runs after it and
-  changes that path is not covered either.
+- A task session's boundary does not cover tools that plugins or MCP servers add, such as a
+  formatter that writes files.
 - On Claude Code a file created in the task worktree after the deny rules were generated has no
   rule of its own: the write hook still refuses to change it unless it is `rw`, and a directory rule
   hides it when its directory has no `ro` or `rw` path below it, but otherwise the file tools can
@@ -277,7 +269,6 @@ settings -> deny: carries
 settings -> hook: carries
 pi -> ext: provides
 claude -> session: provides the write hook of
-pi -> session: provides the extension of
 ```
 
 <a id="realization.harness.package"></a>
@@ -297,10 +288,8 @@ Task sessions assembles the rest of a task session's settings around its hook.
 <a id="realization.harness.pi"></a>
 
 The **pi harness** is the worker's permission extension (`pi_permission.ts`) with the pure path
-decisions of its read and write tables (`pi_policy.ts`), and the task session's boundary extension
-(`pi_session.ts`) with its write decision and report check (`pi_session_policy.ts`), which imports
-`pi_policy.ts` to resolve paths exactly as pi does. Workers and Task sessions embed the policy into
-these sources and copy them into place.
+decisions of its read and write tables (`pi_policy.ts`), which resolve paths exactly as pi does.
+Workers embeds the policy into these sources and copies them into place.
 
 ### Where its promises are required
 
@@ -332,4 +321,4 @@ Module that applies it, and the tests that verify those requirements exercise th
   ([req.task-session.boundary-first](../coordination/task-session/requirements.md#req.task-session.boundary-first)).
 
 The Workers tests run fake and, on request, live workers and the pi path decisions under Node; the
-Task session tests run the task-session hook and boundary decisions.
+Task session tests run the task-session hook and settings.

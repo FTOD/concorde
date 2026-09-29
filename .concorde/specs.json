@@ -434,18 +434,8 @@
           "meaning": "#uses-spec"
         },
         {
-          "target": "module.workers",
-          "meaning": "#uses-workers",
-          "relies_on": [
-            "concept.worker-backend"
-          ]
-        },
-        {
           "target": "module.task-session",
-          "meaning": "#uses-task-session",
-          "relies_on": [
-            "concept.session-round"
-          ]
+          "meaning": "#uses-task-session"
         },
         {
           "target": "module.tracing",
@@ -897,9 +887,7 @@
           "relies_on": [
             "concept.workspace-binding",
             "concept.run-result",
-            "concept.unbound-run",
-            "concept.run-progress-file",
-            "concept.execution-runner"
+            "concept.unbound-run"
           ]
         },
         {
@@ -913,7 +901,6 @@
           "target": "module.workers",
           "meaning": "#uses-workers",
           "relies_on": [
-            "concept.progress-file",
             "concept.worker-configuration"
           ]
         },
@@ -927,10 +914,7 @@
         },
         {
           "target": "module.task-session",
-          "meaning": "#uses-task-session",
-          "relies_on": [
-            "concept.session-round"
-          ]
+          "meaning": "#uses-task-session"
         },
         {
           "target": "module.workflows",
@@ -961,23 +945,12 @@
           "target": "module.tracing",
           "meaning": "#uses-tracing",
           "relies_on": [
-            "contract.tracing.node",
+            "concept.trace",
             "concept.trace-node"
           ]
         }
       ],
-      "includes": [
-        {
-          "kind": "external",
-          "target": "references/pi/",
-          "reason": "pi's extension API (tools, commands, session events, messages that start a turn), which the run view relies on"
-        },
-        {
-          "kind": "external",
-          "target": "references/pi-subagents/",
-          "reason": "pi-subagents' external-runs and background-work APIs, through which the run view shows runs in FleetView and in bg_wait"
-        }
-      ],
+      "includes": [],
       "participates": []
     },
     {
@@ -1028,13 +1001,6 @@
           "relies_on": [
             "concept.run",
             "concept.run-progress-file"
-          ]
-        },
-        {
-          "target": "module.task-session",
-          "meaning": "#uses-task-session",
-          "relies_on": [
-            "concept.session-round"
           ]
         },
         {
@@ -1236,10 +1202,7 @@
         },
         {
           "target": "module.main-session",
-          "meaning": "#uses-main-session",
-          "relies_on": [
-            "concept.run-view"
-          ]
+          "meaning": "#uses-main-session"
         },
         {
           "target": "module.tasks",
@@ -1278,21 +1241,6 @@
             "concept.run-result",
             "concept.run-store",
             "concept.workspace-binding"
-          ]
-        },
-        {
-          "target": "module.task-session",
-          "meaning": "#uses-task-sessions",
-          "relies_on": [
-            "concept.session-report",
-            "concept.session-round"
-          ]
-        },
-        {
-          "target": "module.tasks",
-          "meaning": "#uses-tasks",
-          "relies_on": [
-            "concept.task-record"
           ]
         }
       ],
@@ -1456,8 +1404,7 @@
           "meaning": "#uses-execution",
           "relies_on": [
             "concept.workspace-binding",
-            "concept.run-store",
-            "concept.run-progress-file"
+            "concept.run-store"
           ]
         },
         {
@@ -1503,7 +1450,9 @@
           "target": "module.workers",
           "meaning": "#uses-workers",
           "relies_on": [
-            "concept.worker-backend"
+            "concept.worker-backend",
+            "concept.worker-configuration",
+            "req.workers.proxy-passed"
           ]
         },
         {
@@ -1535,13 +1484,6 @@
           "relies_on": [
             "concept.operation"
           ]
-        },
-        {
-          "target": "module.delivery",
-          "meaning": "#uses-delivery",
-          "relies_on": [
-            "concept.delivery-commit"
-          ]
         }
       ],
       "includes": [
@@ -1549,11 +1491,6 @@
           "kind": "document",
           "target": "document.tracing.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
-        },
-        {
-          "kind": "external",
-          "target": "references/pi/",
-          "reason": "pi's command line, JSON event stream and extension API (tools that end a run, project trust), which the pi task session relies on"
         }
       ],
       "participates": []

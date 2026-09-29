@@ -24,7 +24,6 @@
       ],
       "timeout_seconds": 600,
       "inputs": [
-        "AGENTS.md",
         "CLAUDE.md",
         "prompts",
         "src",

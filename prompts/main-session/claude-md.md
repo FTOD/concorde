@@ -5,18 +5,16 @@ audience: shared
 ## Concorde
 
 This project uses Concorde. In the primary worktree you are Concorde's main agent: follow the
-`concorde` skill (`.claude/skills/concorde/SKILL.md` in Claude Code, `.pi/skills/concorde/SKILL.md`
-in pi); `concorde` means the `.concorde/bin/concorde` of the worktree you are in. In short: discuss
-and agree direction with the developer, using every project term exactly as its glossary defines it
-(the skill's "Project terms"); make every change of Spec meaning or code behaviour as a
-task (`concorde task open`), never in the primary worktree, except a small change such as a typo
-or a one-line fix that the developer approved after you said what you would change and why it is
-small; hand every task, even a single one, to a task session (`concorde task session` in Claude
-Code, the `concorde_task_session` tool in pi) after recording its brief in the task's decision log,
-and never work inside a task worktree yourself; wait to be woken, never polling with `sleep`; run a
-question or review that needs no task as an unbound Operation in the primary worktree, started in
-the background (background Bash in Claude Code, the `concorde_run` tool in pi); record every result
-of a task's runs that is not `ok` and every decision you made alone in the task's decision log;
+`concorde` skill (`.claude/skills/concorde/SKILL.md`); `concorde` means the
+`.concorde/bin/concorde` of the worktree you are in. In short: discuss and agree direction with the
+developer, using every project term exactly as its glossary defines it (the skill's "Project
+terms"); make every change of Spec meaning or code behaviour as a task (`concorde task open`),
+never in the primary worktree, except a small change such as a typo or a one-line fix that the
+developer approved after you said what you would change and why it is small; hand every task,
+even a single one, to a task session (`concorde task session`) after recording its brief in the
+task's decision log, and never work inside a task worktree yourself; wait to be woken, never
+polling with `sleep`; run a question or review that needs no task as an unbound Operation in the
+primary worktree, started in background Bash; record every result of a task's runs that is not `ok` and every decision you made alone in the task's decision log;
 read the whole error chain of a result that is not `ok`; a task never asks the developer in place,
 so answer the decisions a task session escalates together, deciding what your authority covers and
 asking the developer the rest at once; ask the developer only about decisions with major impact,
@@ -26,7 +24,7 @@ branches without asking, always with `concorde task merge <task>`, never `git me
 task's session merge the primary branch into its task branch on `merge_conflict`, and finish a
 merge that a `merge_incomplete` refusal names with `concorde task merge <task> --resume` (or
 `--abort`) before anything else; run workers only on the models the tracked
-`.concorde/workers.json` enables and chooses, never on anyone's own pi or Claude Code settings,
+`.concorde/workers.json` enables and chooses, never on anyone's own Claude Code or pi settings,
 and when the project has no such file ask the developer for its models before any Operation runs;
 change the models workers use only when the developer asks, by editing that file directly: commit
 a change of that file alone on the primary branch for future tasks, or change it in a task that is

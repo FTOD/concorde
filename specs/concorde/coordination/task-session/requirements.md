@@ -1,42 +1,36 @@
 # Task sessions requirements
 
-The Module-wide obligations of [Task sessions](module.md). Exact commands, the
-[session report](../../glossary.json#concept.session-report) and error codes are in the
-[contracts](contracts.md); the [scenarios](scenarios.md) show the obligations at work.
+The Module-wide obligations of [Task sessions](module.md). Exact commands, the session trace node
+and error codes are in the [contracts](contracts.md); the [scenarios](scenarios.md) show the
+obligations at work.
 
 ## Starting and confining
 
-### req.task-session.same-program — A task session runs on the main session's program
+### req.task-session.same-program — A task session runs on the main agent's program
 
-Task sessions SHALL start a [task session](../../glossary.json#concept.task-session) only on the agent program of the main session that asked for it, Claude Code or pi.
+Task sessions SHALL start a [task session](../../glossary.json#concept.task-session) as a
+background Claude Code session, the program the main agent runs on.
 
-A pi task session runs with the developer's own pi configuration, with Concorde's boundary added
-on top.
-
-### req.task-session.program-unknown — No task session without a known program
-
-A `concorde task session` command SHALL be refused, starting no task session, when the main session's program cannot be read from the environment.
-
-The refusal is `client_unknown` and names each variable it looked at; the command line of Tasks
-reads the program before handing the command to Task sessions.
+For now Claude Code is the only program a main agent runs on, so it is the only one a task session
+runs on; the [workers](../../glossary.json#concept.worker) of the runs a task session starts take
+their program from the [worker configuration](../../glossary.json#concept.worker-configuration)
+and may run on pi.
 
 ### req.task-session.boundary — A task session's file tools write only its task
 
 The boundary Task sessions writes for a task session SHALL let the session's file-writing tools change only the task worktree and its [decision log](../../glossary.json#concept.decision-log).
 
-In Claude Code the file-writing tools are Edit and Write, checked by the
-[write hook](../../glossary.json#concept.write-hook); in pi they are `write` and `edit`, checked by
-the task-session extension. Both leave reads open.
+The file-writing tools are Edit and Write, checked by the
+[write hook](../../glossary.json#concept.write-hook), which leaves reads open.
 
 ### req.task-session.shell-boundary — A task session's shell writes only what its task needs
 
-The boundary Task sessions writes for a task session SHALL let the session's shell commands write only the task worktree, the repository's Git directory, the task's own folder `.concorde/tasks/<task>/` and `.concorde/locks/` of the primary worktree, the user's package caches and, in pi, the session's private temporary directory.
+The boundary Task sessions writes for a task session SHALL let the session's shell commands write only the task worktree, the repository's Git directory, the task's own folder `.concorde/tasks/<task>/` and `.concorde/locks/` of the primary worktree and the user's package caches.
 
-In Claude Code the shell is Bash in Claude Code's sandbox; in pi `bash` commands run in
-sandbox-runtime, whose sockets need the private temporary directory. Both leave reads and the
-network open, allowing every host, through the sandbox's proxy on `localhost`, which the workers
-of the runs the session starts pass on
-([req.workers.proxy-passed](../../execution/workers/launch.md#req.workers.proxy-passed)). The task's folder is writable because the task worktree's
+The shell is Bash in Claude Code's sandbox, which leaves reads and the network open, allowing every
+host, through the sandbox's proxy on `localhost`, which the workers of the runs the session starts
+pass on ([req.workers.proxy-passed](../../execution/workers/launch.md#req.workers.proxy-passed)).
+The task's folder is writable because the task worktree's
 [workspace binding](../../glossary.json#concept.workspace-binding) names its `workspace/` as the
 workspace folder of every run started there, and `.concorde/locks/` because those runs take their
 locks there.
@@ -49,69 +43,38 @@ Task sessions SHALL write a task session's boundary before it starts the session
 
 ### req.task-session.recorded — A started session is recorded
 
-Task sessions SHALL record a task session as a node of the task's [trace](../../glossary.json#concept.trace), through Tasks' record updates, only after Claude Code reported it started, or after the supervisor of its first pi round started.
+Task sessions SHALL record a task session as a node of the task's [trace](../../glossary.json#concept.trace), through Tasks' record updates, only after Claude Code reported it started.
 
-A session that did not start leaves the task unchanged.
-
-### req.task-session.owner-kept — A pi task session keeps the owner it was started for
-
-Task sessions SHALL record the `--main` a pi task session was started with as the `main` of the
-session's [trace node](../../glossary.json#concept.trace-node), or null without one, and keep it unchanged for every later round, whoever
-answers it.
-
-The main session it names owns every round of the session and is the only one a round's end wakes.
-
-### req.task-session.round-recorded — Every pi round ends with a recorded outcome
-
-Task sessions SHALL record every pi [session round](../../glossary.json#concept.session-round) as `delivered`, `escalated`, `failed` or `stopped`.
-
-A round recorded as `failed` carries an error link with one of the codes in the
-[contracts](contracts.md#commands): without a report it names pi's exit code, stop reason and error
-message and the paths of the round's logs; for a report the record contradicts, each mismatch. A
-round whose supervisor ended without recording it is recorded `failed` with
-`session_supervisor_lost`, naming the supervisor's process and the round's logs, by the next start,
-`--answer`, `--stop` or `--wait` of the task.
-
-### req.task-session.wait — A main agent waits for a round without polling
-
-`concorde task session <task> --wait` SHALL return only once no round of the task's latest pi
-session runs, or once the seconds it names have passed, waiting inside its own process.
-
-### req.task-session.delivered-verified — Delivered only with the delivery commit
-
-Task sessions SHALL record a pi session round as `delivered` only when the task branch holds the commit its session report names as a [delivery commit](../../glossary.json#concept.delivery-commit) of the task's workspace.
-
-### req.task-session.escalated-verified — Escalated only with the recorded escalations
-
-Task sessions SHALL record a pi session round as `escalated` only when the task's trace holds the escalations its session report names.
+A session that did not start leaves the task unchanged. The node's `main` names the main agent's
+session the task session reports to, as `--main` gave it.
 
 ## Ending with the task
 
-### req.task-session.stopped-before-close — A close without a merge stops Claude Code task sessions first
+### req.task-session.stopped-before-close — A close without a merge stops task sessions first
 
-Before a task is closed without a merge, Task sessions SHALL stop every Claude Code task session
-of the task with `claude stop`, refusing the close, before it changed anything of the task, when
-one of them cannot be confirmed stopped.
+Before a task is closed without a merge, Task sessions SHALL stop every task session of the task
+with `claude stop`, refusing the close, before it changed anything of the task, when one of them
+cannot be confirmed stopped.
 
 A session Claude Code no longer knows counts as stopped. Stopping first keeps a session from going
 on working in, or starting runs in, the worktree the close removes; a merge stops nothing, since a
 delivered task's session has reported and waits.
 
-### req.task-session.transcript-kept — A Claude Code task session's transcript moves to the history
+### req.task-session.transcript-kept — A task session's transcript moves to the history
 
-When a task ends, Task sessions SHALL copy the transcript of each of its Claude Code task sessions
-into that session's [trace node](../../glossary.json#concept.trace-node) before the task's folder
+When a task ends, Task sessions SHALL copy the transcript of each of its task sessions into that
+session's [trace node](../../glossary.json#concept.trace-node) before the task's folder
 moves to the [history](../../glossary.json#concept.history), and never write into the history
 afterwards.
 
 A transcript that cannot be found or copied does not fail the close; it is named in the close's
 warnings.
 
-### req.task-session.removed — An ended task leaves no Claude Code task session in Claude's session list
+### req.task-session.removed — An ended task leaves no task session in Claude's session list
 
-Once a task has ended, by any outcome, Task sessions SHALL remove each of its Claude Code task
-sessions whose transcript it kept from Claude's session list with `claude rm`, as a best effort
-whose failure leaves the close as it succeeded.
+Once a task has ended, by any outcome, Task sessions SHALL remove each of its task sessions whose
+transcript it kept from Claude's session list with `claude rm`, as a best effort whose failure
+leaves the close as it succeeded.
 
 Each session it does not remove, because its transcript was not kept or `claude rm` failed, is
 named in the close's warnings with the whole reason and the command that removes it by hand. A

@@ -1,13 +1,12 @@
-"""Live sessions: keep a real Claude Code or pi main session running in a test project, so that
-what wakes it is the program's own notification, never the end-to-end tool's stand-in.
+"""Live sessions: keep a real Claude Code main session running in a test project, so that what
+wakes it is the program's own notification, never the end-to-end tool's stand-in.
 
 A headless round (``sessions.py``) ends its process with its turn, and the tool must stand in for
 every wake. A live session is instead one long-lived process that is fed prompts on standard
-input: Claude Code as ``claude -p --input-format stream-json --output-format stream-json``, which
-starts a turn of its own when one of its background commands ends, and pi as ``pi --mode rpc``,
-whose Concorde extension runs for the whole session and wakes it with a message. Every event the
-process prints is kept with the time it arrived, so a case can tell a turn it prompted from a turn
-the session began by itself, which is a wake.
+input, ``claude -p --input-format stream-json --output-format stream-json``, which starts a turn
+of its own when one of its background commands ends. Every event the process prints is kept with
+the time it arrived, so a case can tell a turn it prompted from a turn the session began by
+itself, which is a wake.
 """
 
 from __future__ import annotations
@@ -16,11 +15,10 @@ import json
 import subprocess
 import threading
 import time
-import uuid
 from pathlib import Path
 
 from common import E2EError
-from sessions import CLIENTS, environment
+from sessions import environment
 
 # What a live session needs: a prompt of the case may ask it to run a command, in the background
 # or not, and to read a file.
@@ -57,31 +55,6 @@ def claude_command(
     ]
 
 
-def pi_command(
-    session_id: str,
-    session_dir: Path,
-    *,
-    note: str = LIVE_NOTE,
-    model: str | None = None,
-    pi="pi",
-) -> list[str]:
-    """The argument list of a live pi session in RPC mode; ``--approve`` trusts the project's
-    Concorde extension for the run."""
-    return [
-        pi,
-        "--mode",
-        "rpc",
-        "--approve",
-        "--session-dir",
-        str(session_dir),
-        "--session-id",
-        session_id,
-        "--append-system-prompt",
-        note,
-        *(["--model", model] if model else []),
-    ]
-
-
 class LiveSession:
     """One live main session: its process, every event it printed with its arrival time, and the
     times at which the case prompted it."""
@@ -89,7 +62,6 @@ class LiveSession:
     def __init__(
         self,
         name: str,
-        client: str,
         project: Path,
         directory: Path,
         *,
@@ -97,27 +69,11 @@ class LiveSession:
         program: str | None = None,
         note: str = LIVE_NOTE,
     ):
-        if client not in CLIENTS:
-            raise E2EError(
-                "unknown_client",
-                f"a live session runs on {' or '.join(CLIENTS)}, not {client!r}",
-            )
         self.name = name
-        self.client = client
         directory.mkdir(parents=True, exist_ok=True)
         self.log = directory / f"{name}.jsonl"
         self.errors = directory / f"{name}.err"
-        self.session_id = str(uuid.uuid4()) if client == "pi" else None
-        if client == "pi":
-            argv = pi_command(
-                self.session_id,
-                directory / f"{name}-pi",
-                note=note,
-                model=model,
-                pi=program or "pi",
-            )
-        else:
-            argv = claude_command(note=note, model=model, claude=program or "claude")
+        argv = claude_command(note=note, model=model, claude=program or "claude")
         self.argv = argv
         self.events: list[tuple[float, dict]] = []
         self.prompts: list[float] = []
@@ -159,14 +115,7 @@ class LiveSession:
 
     def send(self, text: str) -> float:
         """Prompt the session; the time the prompt was sent."""
-        if self.client == "pi":
-            record = {
-                "id": f"p{len(self.prompts) + 1}",
-                "type": "prompt",
-                "message": text,
-            }
-        else:
-            record = {"type": "user", "message": {"role": "user", "content": text}}
+        record = {"type": "user", "message": {"role": "user", "content": text}}
         moment = time.time()
         self.prompts.append(moment)
         try:
@@ -189,21 +138,9 @@ class LiveSession:
                 if at >= moment and (until is None or at < until)
             ]
 
-    def refusal(self, moment: float) -> str | None:
-        """The error of a prompt pi refused since ``moment``, such as a model without a key."""
-        for event in self.since(moment):
-            if event.get("type") == "response" and event.get("success") is False:
-                return str(event.get("error"))
-        return None
-
     def settled(self, moment: float) -> bool:
-        """Whether a turn ended since ``moment``: Claude Code's ``result`` event, pi's
-        ``agent_settled`` or pi's refusal of the prompt."""
-        for event in self.since(moment):
-            kind = event.get("type")
-            if kind == ("agent_settled" if self.client == "pi" else "result"):
-                return True
-        return self.client == "pi" and self.refusal(moment) is not None
+        """Whether a turn ended since ``moment``: Claude Code's ``result`` event."""
+        return any(event.get("type") == "result" for event in self.since(moment))
 
     def wait_settled(self, moment: float, limit: float, poll: float = 0.5) -> None:
         deadline = time.monotonic() + limit
@@ -226,64 +163,33 @@ class LiveSession:
 
     def turns(self, moment: float, until: float | None = None) -> list[dict]:
         """The turns that began from ``moment`` on: Claude Code's ``system`` ``init`` event, which
-        opens every turn, and pi's ``agent_start``."""
+        opens every turn."""
         return [
             event
             for event in self.since(moment, until)
-            if (self.client == "pi" and event.get("type") == "agent_start")
-            or (
-                self.client == "claude"
-                and event.get("type") == "system"
-                and event.get("subtype") == "init"
-            )
+            if event.get("type") == "system" and event.get("subtype") == "init"
         ]
 
     def notifications(self, moment: float, until: float | None = None) -> list[dict]:
         """The notifications that reached the session from ``moment`` on: Claude Code's
-        ``task_notification`` of a background command, and the custom messages pi's extensions
-        send, such as the run view's ``concorde-run``."""
-        found = []
-        for event in self.since(moment, until):
-            if self.client == "claude":
-                if event.get("type") == "system" and event.get("subtype") in (
-                    "task_notification",
-                ):
-                    found.append(event)
-            elif event.get("type") == "message_start":
-                message = event.get("message") or {}
-                if message.get("role") == "custom":
-                    found.append(event)
-        return found
+        ``task_notification`` of a background command."""
+        return [
+            event
+            for event in self.since(moment, until)
+            if event.get("type") == "system"
+            and event.get("subtype") == "task_notification"
+        ]
 
     def woken(self, moment: float, until: float | None = None) -> bool:
         """Whether the session began a turn or received a notification from ``moment`` on without
         being prompted: the case prompts no session in the window it judges."""
         return bool(self.turns(moment, until) or self.notifications(moment, until))
 
-    def statuses(self, moment: float, key: str = "concorde") -> list[str]:
-        """The status texts pi's extension showed under ``key`` from ``moment`` on."""
-        return [
-            str(event.get("statusText") or "")
-            for event in self.since(moment)
-            if event.get("type") == "extension_ui_request"
-            and event.get("method") == "setStatus"
-            and event.get("statusKey") == key
-        ]
-
-    def notices(self, moment: float) -> list[str]:
-        """The messages pi's extensions showed with ``notify`` from ``moment`` on."""
-        return [
-            str(event.get("message") or "")
-            for event in self.since(moment)
-            if event.get("type") == "extension_ui_request"
-            and event.get("method") == "notify"
-        ]
-
     def tool_output(self, moment: float) -> str:
         """The text of every tool result from ``moment`` on, where a Bash command's output is."""
         parts = []
         for event in self.since(moment):
-            if self.client == "claude" and event.get("type") == "user":
+            if event.get("type") == "user":
                 content = (event.get("message") or {}).get("content")
                 for block in content if isinstance(content, list) else []:
                     if isinstance(block, dict) and block.get("type") == "tool_result":
@@ -293,8 +199,6 @@ class LiveSession:
                             if isinstance(value, str)
                             else json.dumps(value, ensure_ascii=False)
                         )
-            elif self.client == "pi" and event.get("type") == "tool_execution_end":
-                parts.append(json.dumps(event.get("result"), ensure_ascii=False))
         return "\n".join(parts)
 
     def stderr(self) -> str:
@@ -304,7 +208,7 @@ class LiveSession:
             return ""
 
     def close(self) -> None:
-        """End the session: its standard input closes, which ends either program in order, and
+        """End the session: its standard input closes, which ends Claude Code in order, and
         what is left of it is killed after a grace period."""
         try:
             self.process.stdin.close()
@@ -320,15 +224,14 @@ class LiveSession:
         self._err.close()
 
     def record(self) -> dict:
-        # Claude Code names its session in its events; pi's is the one the tool chose.
+        # Claude Code names its session in its events.
         named = next(
             (event["session_id"] for event in self.since(0) if event.get("session_id")),
             None,
         )
         return {
             "name": self.name,
-            "client": self.client,
-            "session_id": self.session_id or named,
+            "session_id": named,
             "log": str(self.log),
             "stderr": str(self.errors),
             "exit": self.process.returncode,

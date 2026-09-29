@@ -45,7 +45,7 @@ class TaskSessionTests(unittest.TestCase):
     def recorded(self, started: dict) -> None:
         """The task's trace holds ``started`` as its only session, a node of its own."""
         (found,) = store.sessions(self.root, "t1")
-        fields = ("program", "id", "reported_id", "name", "main", "model", "started_at")
+        fields = ("id", "reported_id", "name", "main", "model", "started_at")
         self.assertEqual(
             {key: started[key] for key in fields}, {key: found[key] for key in fields}
         )
@@ -57,8 +57,8 @@ class TaskSessionTests(unittest.TestCase):
             (node["id"], node["kind"], node["status"]),
         )
         self.assertEqual(
-            ("claude", started["name"], started["main"]),
-            tuple(node["content"]["data"][key] for key in ("program", "name", "main")),
+            (started["name"], started["main"]),
+            tuple(node["content"]["data"][key] for key in ("name", "main")),
         )
         # The record keeps no sessions.
         self.assertNotIn("sessions", store.load_task(self.root, "t1"))
@@ -267,7 +267,6 @@ class EndOfTaskTests(unittest.TestCase):
             self.root,
             "t1",
             {
-                "program": "claude",
                 "id": short,
                 "reported_id": short,
                 "name": "task-t1",

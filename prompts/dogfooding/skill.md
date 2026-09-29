@@ -122,7 +122,7 @@ only under `.concorde/runs/defects/` and name that file to the developer.
 The developer tells you when the fix is merged, or you see its Issue closed with
 `concorde issues list --root <source>`, which only reads. Then, from the primary worktree and
 while no Operation, workflow or task session is running, run `concorde update`: it refuses while an
-Operation run or a pi task-session round is still running, installs the new Concorde and leaves
+Operation run is still running, installs the new Concorde and leaves
 the project unvalidated until `concorde spec-validation` passes. When the update asks for it, answer
 the session of each open task to merge the primary branch into its task branch; check that the
 reported problem is gone, and take up the work it blocked.

@@ -61,8 +61,8 @@ Concrete situations that show the [requirements](requirements.md) of
 
 ### scenario.e2e.owners-case — Several live main sessions, and only the owner woken
 
-- GIVEN a test project prepared with `--pi` and a task `t1` with a worktree, and live sessions of two Claude Code and two pi main sessions in its primary worktree
-- WHEN `owners` plays a run started by nobody's tool, a run the first pi session starts with `concorde_run` and a run the first Claude Code session starts in background Bash
-- THEN it ends `passed` when, for each run, only its owner was woken and every other session saw the run ended: a pi session in its status bar and `/concorde`, a Claude Code session with `concorde task show t1`
+- GIVEN a test project with a task `t1` with a worktree, and live sessions of two Claude Code main sessions in its primary worktree
+- WHEN `owners` plays a run started by nobody's tool and a run the first session starts in background Bash
+- THEN it ends `passed` when, for each run, only its owner was woken and every other session found the run ended with `concorde task show t1`
 - AND it ends `failed`, naming the session, when a session was woken by a run it does not own
-- BUT fewer than two sessions (`invalid_input`), a task without a worktree (`no_task`) or pi sessions in a project without the pi extension (`pi_not_installed`) stop it before any session starts
+- BUT fewer than two sessions (`invalid_input`) or a task without a worktree (`no_task`) stop it before any session starts

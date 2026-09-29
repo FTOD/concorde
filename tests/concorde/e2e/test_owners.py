@@ -1,10 +1,9 @@
-"""The owners case and its live sessions, driven by stand-ins for `claude`, `pi` and `concorde`.
+"""The owners case and its live sessions, driven by stand-ins for `claude` and `concorde`.
 
-The stand-ins speak the protocols the live sessions use (Claude Code's stream-json on standard
-input and output, pi's RPC records) and play what the real programs do that the case observes: a
-Claude Code session is notified when its own background command ends, and a pi session's run
-view shows every run in its status bar and wakes the session with a custom message when a run it
-started ends. A pi stand-in that wakes for every run, as the run view once did, must fail the case.
+The `claude` stand-in speaks the protocol the live sessions use, Claude Code's stream-json on
+standard input and output, and plays what the real program does that the case observes: a session
+is notified when its own background command ends. A stand-in that is also woken for the end of
+every run it did not start must fail the case.
 """
 
 from __future__ import annotations
@@ -72,9 +71,13 @@ elif args[:2] == ["task", "show"]:
 """
 
 # A live Claude Code session: a turn per prompt, a background command run detached and
-# notified when it ends, and a foreground command's output given as its tool result.
+# notified when it ends, and a foreground command's output given as its tool result; with
+# WAKES_ALL also woken, with a notification of its own, for the end of every run.
 FAKE_CLAUDE = """#!/usr/bin/env python3
-import json, re, subprocess, sys, threading
+import json, re, subprocess, sys, threading, time
+from pathlib import Path
+WAKES_ALL = %(wakes_all)r
+RECORDS = Path(%(records)r)
 lock = threading.Lock()
 def say(event):
     with lock:
@@ -90,6 +93,17 @@ def notify(process):
     process.wait()
     say({"type": "system", "subtype": "task_notification", "status": "completed"})
     turn("DONE ok")
+def wake_for_every_run():
+    woken = set()
+    while True:
+        for result in sorted(RECORDS.glob("tasks/*/workspace/runs/r-*/result.json")):
+            if result.parent.name not in woken:
+                woken.add(result.parent.name)
+                say({"type": "system", "subtype": "task_notification", "status": "completed"})
+                turn("DONE ok")
+        time.sleep(0.1)
+if WAKES_ALL:
+    threading.Thread(target=wake_for_every_run, daemon=True).start()
 for line in sys.stdin:
     text = json.loads(line)["message"]["content"]
     if "run_in_background" in text:
@@ -106,68 +120,6 @@ for line in sys.stdin:
         turn("READY")
 """
 
-# A live pi session with Concorde's run view: every run in the status bar, `/concorde` listing
-# the runs, `concorde_run` starting one, and a wake for the end of the runs it started, or of
-# every run with WAKES_ALL.
-FAKE_PI = """#!/usr/bin/env python3
-import json, os, subprocess, sys, threading, time
-from pathlib import Path
-WAKES_ALL = %(wakes_all)r
-RECORDS = Path(%(records)r)
-WORKTREE = %(worktree)r
-lock = threading.Lock()
-owned, seen, woken = set(), set(), set()
-def say(event):
-    with lock:
-        print(json.dumps(event), flush=True)
-def runs():
-    found = {}
-    for directory in sorted(RECORDS.glob("tasks/*/workspace/runs/r-*")):
-        found[directory.name] = (directory / "result.json").exists()
-    return found
-def turn(text, custom=None):
-    if custom:
-        say({"type": "message_start", "message": {"role": "custom", "customType": custom}})
-    say({"type": "agent_start"})
-    say({"type": "message_end", "message": {"role": "assistant", "content": [
-        {"type": "text", "text": text}]}})
-    say({"type": "agent_settled"})
-def view():
-    while True:
-        current = runs()
-        running = [run for run, ended in current.items() if not ended]
-        seen.update(running)
-        say({"type": "extension_ui_request", "id": "s", "method": "setStatus",
-             "statusKey": "concorde",
-             "statusText": f"Concorde: {len(running)} running" if running else ""})
-        for run, ended in current.items():
-            if ended and run in seen and run not in woken and (run in owned or WAKES_ALL):
-                woken.add(run)
-                turn("DONE ok", "concorde-run")
-        time.sleep(0.2)
-threading.Thread(target=view, daemon=True).start()
-for line in sys.stdin:
-    record = json.loads(line)
-    text = record["message"]
-    say({"type": "response", "id": record.get("id"), "command": "prompt", "success": True})
-    if text == "/concorde":
-        lines = [("completed" if ended else "running").ljust(9) + f" t1 · task-validation ({run})"
-                 for run, ended in runs().items()]
-        say({"type": "extension_ui_request", "id": "n", "method": "notify",
-             "message": "\\n".join(lines) or "No Concorde runs in this project yet."})
-    elif "concorde_run" in text:
-        before = set(runs())
-        subprocess.Popen([os.path.join(WORKTREE, ".concorde/bin/concorde"), "task-validation",
-                          "--wait", "60"], cwd=WORKTREE, stdout=subprocess.DEVNULL,
-                         start_new_session=True)
-        while not set(runs()) - before:
-            time.sleep(0.05)
-        owned.update(set(runs()) - before)
-        turn("STARTED")
-    else:
-        turn("READY")
-"""
-
 
 class OwnersCaseTests(unittest.TestCase):
     def setUp(self):
@@ -180,7 +132,6 @@ class OwnersCaseTests(unittest.TestCase):
         (self.worktree / ".concorde/bin").mkdir(parents=True)
         (self.project / ".concorde/bin").mkdir(parents=True)
         (self.project / ".concorde/tasks/t1").mkdir(parents=True)
-        (self.project / ".pi/extensions").mkdir(parents=True)
         (self.project / ".concorde/tasks/t1/task.json").write_text(
             json.dumps({"id": "t1", "worktree": str(self.worktree)})
         )
@@ -205,15 +156,9 @@ class OwnersCaseTests(unittest.TestCase):
         return path
 
     def run_case(self, wakes_all: bool = False) -> dict:
-        claude = self.program(self.base / "claude", FAKE_CLAUDE)
-        pi = self.program(
-            self.base / "pi",
-            FAKE_PI
-            % {
-                "wakes_all": wakes_all,
-                "records": str(self.records),
-                "worktree": str(self.worktree),
-            },
+        claude = self.program(
+            self.base / "claude",
+            FAKE_CLAUDE % {"wakes_all": wakes_all, "records": str(self.records)},
         )
         return owners.owners(
             self.project,
@@ -221,7 +166,6 @@ class OwnersCaseTests(unittest.TestCase):
             grace=1.0,
             limit=60.0,
             claude_program=str(claude),
-            pi_program=str(pi),
         )
 
     @verifies("scenario.e2e.owners-case")
@@ -229,26 +173,24 @@ class OwnersCaseTests(unittest.TestCase):
         value = self.run_case()
         self.assertEqual("passed", value["status"], value["problems"])
         self.assertEqual(
-            ["unowned", "owned-by-pi", "owned-by-claude"],
+            ["unowned", "owned-by-claude"],
             [item["phase"] for item in value["phases"]],
         )
         self.assertEqual(
-            [None, "pi-1", "claude-1"], [item["owner"] for item in value["phases"]]
+            [None, "claude-1"], [item["owner"] for item in value["phases"]]
         )
         for item in value["phases"]:
             woken = [entry["session"] for entry in item["verdicts"] if entry["woken"]]
             self.assertEqual([item["owner"]] if item["owner"] else [], woken)
             self.assertEqual("ok", item["status"])
-            # Every session that does not own the run sees it: pi through /concorde and its
-            # status bar, Claude Code through concorde task show.
+            # Every session that does not own the run sees it through concorde task show.
             self.assertTrue(all(entry["ok"] for entry in item["seen"]), item["seen"])
-            self.assertEqual(4 - (1 if item["owner"] else 0), len(item["seen"]))
-        owned = value["phases"][1]["verdicts"][2]
+            self.assertEqual(2 - (1 if item["owner"] else 0), len(item["seen"]))
+        owner = value["phases"][1]["verdicts"][0]
         self.assertEqual(
-            ("pi-1", ["concorde-run"]), (owned["session"], owned["notifications"])
+            ("claude-1", ["task_notification"]),
+            (owner["session"], owner["notifications"]),
         )
-        claude = value["phases"][2]["verdicts"][0]
-        self.assertEqual(["task_notification"], claude["notifications"])
         # Every session's events are kept, and the case is recorded beside them.
         self.assertEqual(
             value, json.loads((self.base / "case/owners.json").read_text())
@@ -263,32 +205,28 @@ class OwnersCaseTests(unittest.TestCase):
     def test_a_session_woken_for_a_run_it_does_not_own_fails_the_case(self):
         value = self.run_case(wakes_all=True)
         self.assertEqual("failed", value["status"])
-        self.assertIn(
-            "unowned: pi-1 was woken by a run it does not own "
-            "(1 turn(s), notifications ['concorde-run'])",
-            value["problems"],
-        )
-        self.assertIn(
-            "owned-by-pi: pi-2 was woken by a run it does not own "
-            "(1 turn(s), notifications ['concorde-run'])",
-            value["problems"],
-        )
+        for problem in (
+            "unowned: claude-1 was woken by a run it does not own",
+            "unowned: claude-2 was woken by a run it does not own",
+            "owned-by-claude: claude-2 was woken by a run it does not own",
+        ):
+            self.assertIn(
+                f"{problem} (1 turn(s), notifications ['task_notification'])",
+                value["problems"],
+            )
+        # The owner woken for its own run is no problem, however often it is woken.
         self.assertFalse(
-            any("claude-2 was woken" in item for item in value["problems"])
+            any("owned-by-claude: claude-1" in item for item in value["problems"])
         )
 
     @verifies("scenario.e2e.owners-case")
-    def test_the_case_needs_two_sessions_a_task_and_the_pi_extension(self):
+    def test_the_case_needs_two_sessions_and_a_task(self):
         with self.assertRaises(e2e.E2EError) as raised:
-            owners.owners(self.project, claude=1, pi=0)
+            owners.owners(self.project, claude=1)
         self.assertEqual("invalid_input", raised.exception.code)
         with self.assertRaises(e2e.E2EError) as raised:
             owners.owners(self.project, task="t9")
         self.assertEqual("no_task", raised.exception.code)
-        (self.project / ".pi/extensions").rmdir()
-        with self.assertRaises(e2e.E2EError) as raised:
-            owners.owners(self.project)
-        self.assertEqual("pi_not_installed", raised.exception.code)
 
     def test_the_status_listed_for_a_run_is_read_from_task_show(self):
         output = 'noise {"a": 1}\n' + json.dumps(
@@ -305,10 +243,10 @@ class LiveSessionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory)
             claude = base / "claude"
-            claude.write_text(FAKE_CLAUDE)
+            claude.write_text(FAKE_CLAUDE % {"wakes_all": False, "records": directory})
             claude.chmod(0o755)
             session = live.LiveSession(
-                "claude-1", "claude", base, base / "logs", program=str(claude)
+                "claude-1", base, base / "logs", program=str(claude)
             )
             try:
                 asked = session.send("Reply READY")
@@ -344,12 +282,7 @@ class LiveSessionTests(unittest.TestCase):
         )
         self.assertEqual(["Bash", "Read"], argv[argv.index("--allowedTools") + 1 :])
         self.assertEqual("m", argv[argv.index("--model") + 1])
-        argv = live.pi_command("s-1", Path("/tmp/x"))
-        self.assertEqual(["pi", "--mode", "rpc", "--approve"], argv[:4])
-        self.assertEqual("s-1", argv[argv.index("--session-id") + 1])
-        with self.assertRaises(e2e.E2EError) as raised:
-            live.LiveSession("x", "codex", Path("."), Path(tempfile.mkdtemp()))
-        self.assertEqual("unknown_client", raised.exception.code)
+        self.assertEqual(live.LIVE_NOTE, argv[argv.index("--append-system-prompt") + 1])
 
 
 if __name__ == "__main__":

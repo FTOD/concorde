@@ -58,7 +58,7 @@ records and error codes are defined in the [contracts](contracts.md).
 - GIVEN an open task `quiet` whose workspace has no run and an open task `severity` whose workspace ran `concorde task-validation`
 - WHEN the main agent runs `concorde task list --state active` and `concorde task show severity`
 - THEN the list holds exactly the record of `severity`, whose derived state is `active`, while its stored state stays `open`
-- AND show prints the record of `severity` with its derived state, the workspace's runs from its workspace folder with their kind, name, Modules and status, its [delivery commits](../../glossary.json#concept.delivery-commit), its sessions and escalations, who holds its [workspace lock](../../glossary.json#concept.workspace-lock) (null when nobody does) and the absolute paths of its decision log and folder
+- AND show prints the record of `severity` with its derived state, the workspace's runs from its workspace folder with their kind, name, Modules and status, its [delivery commits](../../glossary.json#concept.delivery-commit), its sessions, each with the main session it reports to, and its escalations, who holds its [workspace lock](../../glossary.json#concept.workspace-lock) (null when nobody does) and the absolute paths of its decision log and folder
 - AND show of `quiet` prints no runs, no deliveries and no holder
 
 ## State and runs
@@ -237,14 +237,6 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - AND a run of its workspace recorded anyway leaves the task `closed`
 - BUT starting or recording a [task session](../../glossary.json#concept.task-session) for it fails with `task_closed`
 
-### scenario.tasks.round-closed — No round begins in a task closed meanwhile
-
-- GIVEN a pi task session of an open task whose rounds have all ended
-- AND the task is closed after the session checked it and before the new round is recorded
-- WHEN the round is begun
-- THEN the record update reads the record again, finds the task closed and fails with `task_closed`, leaving the session's rounds unchanged
-- BUT a round that was running when the task closed still records its outcome
-
 ## Merging
 
 ### scenario.tasks.merge — Merge a delivered task
@@ -349,7 +341,6 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - WHEN any main session runs `concorde task open`, `merge`, `close`, `session` or `escalate`, for that task or another
 - THEN the command fails with `merge_incomplete`, naming the task, the commit before the merge, the merge commit and the `--resume` and `--abort` recovery, and changes nothing
 - AND `concorde task list` and `concorde task show` still answer, showing the task as `merging` with the commits before and after the merge and the checked commit
-- BUT `concorde task session <task-id> --stop` is not refused for it
 
 ### scenario.tasks.merge-resume — Resume checks the interrupted merge again
 
@@ -438,10 +429,10 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 
 ### scenario.tasks.close-stops-runs — A failed task is closed only once its runs stopped
 
-- GIVEN a task whose workspace has a run still running in the background and whose pi task session has a running round
+- GIVEN a task whose workspace has a run still running in the background
 - WHEN the main agent closes it with `--failed`, a reason and `--no-error`
-- THEN the run is stopped with `SIGTERM` and ends with its own result, the round is recorded `stopped`, as a Claude Code task session of the task would be stopped with `claude stop` ([scenario.task-session.close-stops](../task-session/scenarios.md#scenario.task-session.close-stops))
-- AND only then, holding the task's workspace lock, the close moves the task's folder to the history, with the stopped run and round in its trace
+- THEN the run is stopped with `SIGTERM` and ends with its own result, as a task session of the task would be stopped with `claude stop` ([scenario.task-session.close-stops](../task-session/scenarios.md#scenario.task-session.close-stops))
+- AND only then, holding the task's workspace lock, the close moves the task's folder to the history, with the stopped run in its trace
 
 ### scenario.tasks.closed-run-refused — A run of a closed task is refused
 

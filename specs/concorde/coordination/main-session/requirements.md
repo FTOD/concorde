@@ -2,13 +2,12 @@
 
 What the [main-session guidance](module.md) must tell the
 [main agent](../../glossary.json#concept.main-agent) and
-[task sessions](../../glossary.json#concept.task-session), and what the pi
-[run view](../../glossary.json#concept.run-view) must do. Most are obligations on the
-content of the guidance: a deterministic check establishes what the rendered guidance says, while
-whether a model follows it is not something such a check can establish. The requirements on the pi
-extension and on what a session holds in its context are obligations on runtime behaviour, checked
-against the extension and the session's context rather than against the guidance's text. The
-[scenarios](scenarios.md) show the intended behaviour.
+[task sessions](../../glossary.json#concept.task-session), and what holds for the sessions it
+guides. Most are obligations on the content of the guidance: a deterministic check establishes what
+the rendered guidance says, while whether a model follows it is not something such a check can
+establish. The requirements on owners and on what a session holds in its context are obligations
+on runtime behaviour, checked against what Concorde records and installs rather than against the
+guidance's text. The [scenarios](scenarios.md) show the intended behaviour.
 
 ## Working method
 
@@ -47,8 +46,7 @@ The guidance SHALL tell the main agent to start a
 [task session](../../glossary.json#concept.task-session) with `concorde task session` for every
 task, even a single one, and never to work inside a task worktree itself.
 
-In pi the main agent starts it with the `concorde_task_session` tool, which runs that command from
-the primary worktree. The main agent keeps what needs the whole project or the developer:
+The main agent keeps what needs the whole project or the developer:
 discussing, opening, merging and closing tasks, starting and answering task sessions,
 [unbound runs](../../glossary.json#concept.unbound-run), reporting, Issues and the worker
 configuration.
@@ -83,12 +81,10 @@ when their Modules and shared files do not overlap.
 
 ### req.main-session.background-operations — Runs start in the background
 
-The guidance SHALL tell the main agent to start each unbound run in the background (background
-Bash in Claude Code, the `concorde_run` tool in pi), and a task session to start each
-[Operation](../../glossary.json#concept.operation) and
+The guidance SHALL tell the main agent to start each unbound run in background Bash, and a task
+session to start each [Operation](../../glossary.json#concept.operation) and
 [execution command](../../glossary.json#concept.execution-command) of its task inside the task
-worktree, without naming the task, in background Bash in Claude Code and in the foreground within
-its round in pi.
+worktree, without naming the task, in background Bash.
 
 The task worktree's [workspace binding](../../glossary.json#concept.workspace-binding) tells the run
 which task's goal, Modules, branch and base it works on, and one workspace runs one thing at a time.
@@ -175,93 +171,49 @@ agent's.
 
 The guidance SHALL tell the main agent and every task session never to wait for a run, a lock, a
 task session or a merge by polling, and give each wait a way that costs no model turns while it
-lasts: being woken by a background run, the run view or a SendMessage, or one command that blocks
-until it is done (`--wait` of a run, of `concorde task session` and of `concorde task merge`).
+lasts: being woken by a background run or a SendMessage, or one command that blocks until it is
+done (`--wait` of a run and of `concorde task merge`).
 
 ### req.main-session.project-terms — Sessions use the project's terms exactly
 
 The guidance SHALL tell the main agent and every task session to use each project term exactly as
 its glossary entry defines it.
 
-## The pi extension and session context
+## Owners and session context
 
-### req.main-session.single-owner — Only a run's or round's owner is woken
+### req.main-session.single-owner — Only a run's owner is woken
 
-Every run and every [session round](../../glossary.json#concept.session-round) SHALL wake at most
-one main session when it ends, its owner, in Claude Code and pi alike: for a run, the main session
-whose own background Bash or `concorde_run` started it; for a round, the main session its task
-session was started for.
+Every run SHALL wake at most one main session when it ends, its owner: the main session whose own
+background Bash started it.
 
 A run a task session starts belongs to that task session and wakes no main session; a run started
-by a command run by hand, or a round of a pi task session started without `--main`, wakes nobody.
-Every other main session may see the state of the run or round, never be woken by it.
+by a command run by hand wakes nobody. What a task session reports reaches only the main session
+its `--main` names. Every other main session may see the state of the run, never be woken by it.
 
 ### req.main-session.owner-recorded-by-coordination — Ownership is kept on the main session's side
 
-The owner of a run SHALL be recorded, where it must be recorded, by the owner's side, never in a
-run's [run progress file](../../glossary.json#concept.run-progress-file) or
+The owner of a run SHALL never be recorded in a run's
+[run progress file](../../glossary.json#concept.run-progress-file) or
 [run result](../../glossary.json#concept.run-result).
 
-A pi main session keeps the runs its `concorde_run` started, and every end it was given, as
-entries of its own session file, so that the same session resumed keeps owning them and is given
-each end once; the owner of a task session's rounds is the `main` its session's
-[trace node](../../glossary.json#concept.trace-node) records.
+A run's owner is the session whose background Bash started it; the main session a task session
+reports to is the `main` its session's [trace node](../../glossary.json#concept.trace-node)
+records.
 
-### req.main-session.claude-sees-by-query — A Claude Code main session sees others' work by asking
+### req.main-session.claude-sees-by-query — A main session sees others' work by asking
 
-A Claude Code main session SHALL see the state of a task's runs and rounds it does not own only by
-asking with `concorde task show <task>`; nothing is pushed into its session.
-
-### req.main-session.pi-run-follow — pi shows every run, wherever it started
-
-In pi, the run view SHALL follow and show every run of the project that is running when the session
-starts or starts afterwards, whoever started it: the `concorde_run` tool, a command run with bash,
-a task session or another main session.
-
-It finds them in the primary worktree's [run store](../../glossary.json#concept.run-store), the
-current tasks' workspace folders, where every task worktree's binding records its runs, and
-`.concorde/unbound/`; a run that started and ended between two looks is
-followed too, and a run that had ended before the session started is not.
-
-### req.main-session.pi-owned-work — Only its own runs are a pi session's background work
-
-In pi, the run view SHALL report to pi-subagents as the session's background work only the
-unfinished runs and task-session rounds the session owns: the runs its `concorde_run` started and
-the rounds of the task sessions started for it.
-
-The runs and rounds it only follows, started with bash, by a task session or by another main
-session, are still shown, but neither `bg_wait` nor the drain of a `pi -p` session before it exits
-waits for them.
-
-### req.main-session.pi-run-wake — pi gives the owner every run's end once
-
-In pi, the run view SHALL give the main agent the result of every run the session owns once, when
-the run ends, and the result of no other run.
-
-A run that has already finished when `concorde_run` finds it is answered in the tool's own result;
-every other run the session owns wakes the main agent with a message, also when it ended while the
-same session was closed and is resumed. Either way a result that carries an
-[error chain](../../glossary.json#concept.error-chain) is given with the whole chain.
-
-### req.main-session.pi-task-session-view — pi shows every running task-session round
-
-In pi, the run view SHALL show every running task-session round.
-
-### req.main-session.pi-task-session-wake — pi wakes the owner on every round
-
-In pi, the run view SHALL wake the main agent with the recorded outcome of each round of the task
-sessions started for its session when the round ends, whoever answered it, and with no other
-round's.
+A main session SHALL see the state of a task's runs and sessions it does not own only by asking
+with `concorde task show <task>`; nothing is pushed into its session.
 
 ### req.main-session.terms-in-context — Sessions start with the glossary
 
-The main agent's session and every task session, in Claude Code or pi, in a worktree whose declared
-glossary can be read SHALL each hold every entry of that glossary in its context from its first
-prompt.
+The main agent's session and every task session in a worktree whose declared glossary can be read
+SHALL each hold every entry of that glossary in its context from its first prompt.
 
-A worktree whose project declares no glossary, or whose declared glossary cannot be read, starts
-its sessions without terms and without an error; Spec validation reports a declared glossary it
-cannot read. A [worker](../../glossary.json#concept.worker) is not such a session: its context is
+The Concorde block of the worktree's `CLAUDE.md` imports the glossary file, which Claude Code loads
+at launch. A worktree whose project declares no glossary, or whose declared glossary cannot be read,
+starts its sessions without terms and without an error; Spec validation reports a declared glossary
+it cannot read. A [worker](../../glossary.json#concept.worker) is not such a session: its context is
 only its brief, as the [Harness](../../harness/module.md) describes.
 
 ## Worker models
@@ -347,8 +299,7 @@ goal and Modules itself.
 The task-session guidance SHALL tell a task session to escalate every other question to the main
 agent with its own link on top of the [error chain](../../glossary.json#concept.error-chain).
 
-A Claude Code task session records every escalation and then sends them together with SendMessage;
-a pi task session records them and names all their numbers in its round's report
+A task session records every escalation and then sends them together with SendMessage
 ([Decisions go up together and come back together](#req.main-session.batched-decisions)).
 
 ### req.main-session.task-session-workflow — A task session runs workflows in its brief's mode

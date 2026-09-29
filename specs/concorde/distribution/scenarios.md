@@ -99,13 +99,14 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - AND every rendered Claude Code workflow is at `.claude/workflows/concorde-<name>.js`
 - AND `.claude/settings.json` allows `Workflow(concorde-brownfield)` and the two `concorde workflow` commands, keeps every setting it had, and the receipt records the added rules
 - AND the receipt records the package as `source`, mode `normal`, and `source_commit` `null` for a package outside a Git checkout
+- AND nothing is placed under `.pi/`, no `AGENTS.md` is created, and a project's own `AGENTS.md` is left as it is and not listed under `amended`
 - BUT no Spec document, registry or [Protocol binding](../glossary.json#concept.protocol-binding) of the project changed
 
 ### scenario.distribution.install-repeat — Installing again repeats no download
 
 - GIVEN a project in which Concorde was installed with the pinned `d2` and the locked pi runtime
 - WHEN the developer runs the installer again with the same package
-- THEN the `d2` release is not downloaded again and `npm` does not run again
+- THEN the `d2` release is not downloaded again and `npm` does not run again, the runtime placed first staying in place
 - AND `CLAUDE.md` still holds exactly one Concorde block
 
 ### scenario.distribution.install-docsite-template — An installed Concorde can scaffold a docsite
@@ -121,13 +122,6 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - WHEN the developer installs it into a project
 - THEN the install is refused with `invalid_docsite_template`, naming the link, whose reason is `input`
 - BUT nothing is written into the project
-
-### scenario.distribution.agents-md — An existing AGENTS.md gets the block, and none is created
-
-- GIVEN a project with an `AGENTS.md` of its own and a project without one
-- WHEN the developer installs Concorde into each, and again
-- THEN the first project's `AGENTS.md` keeps its own content and holds exactly one Concorde block, the same as the `CLAUDE.md` block without the glossary import, and the receipt lists it under `amended`
-- AND the second project has no `AGENTS.md` afterwards
 
 ### scenario.distribution.glossary-import — The CLAUDE.md block imports the project's glossary
 
@@ -181,17 +175,16 @@ Concrete situations that show the [requirements](requirements.md) at work.
 
 ### scenario.distribution.install-busy — Concorde is not replaced while it runs
 
-- GIVEN an installed project in which the runner of an [Operation](../glossary.json#concept.operation) or [execution command](../glossary.json#concept.execution-command) run still holds its [run lock](../glossary.json#concept.run-lock), or a pi [task-session](../glossary.json#concept.task-session) round's supervisor is still running
+- GIVEN an installed project in which the runner of an [Operation](../glossary.json#concept.operation) or [execution command](../glossary.json#concept.execution-command) run still holds its [run lock](../glossary.json#concept.run-lock)
 - AND its [run store](../glossary.json#concept.run-store) also holds the [progress file](../glossary.json#concept.progress-file) of the running Operation's worker and a run whose run lock nobody holds
 - WHEN the developer installs Concorde again or runs `concorde update`
-- THEN the install is refused with `concorde_busy`, naming each running run or round with its process and progress file
+- THEN the install is refused with `concorde_busy`, naming each running run with its run lock, the process holding it and its progress file
 - BUT neither the worker's progress file nor the run whose run lock nobody holds is named, whatever process its recorded identifier names
 - AND nothing in the project changes
 
 ### scenario.distribution.install-after-runs-end — Concorde is replaced once nothing runs
 
 - GIVEN an installed project whose run store holds a finished run, a run whose run lock nobody holds although its recorded process identifier names a live process, and the progress file of an Operation's worker
-- AND no pi task-session round's supervisor is running
 - WHEN the developer installs Concorde again
 - THEN the install succeeds
 
@@ -264,20 +257,13 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - THEN the install succeeds and the receipt names no `d2`
 - BUT no `d2` is placed under `.concorde/tools/`, leaving it to the developer
 
-### scenario.distribution.install-pi — Install for a pi main session as well
-
-- GIVEN a project and a machine with npm
-- WHEN the developer installs Concorde with `--pi`
-- THEN the locked pi runtime is placed under `.concorde/tools/pi-runtime/` with `npm ci --ignore-scripts` from the package's lockfile, as in every install
-- AND the [run view](../glossary.json#concept.run-view) is placed as `.pi/extensions/concorde/` and the skill as `.pi/skills/concorde/SKILL.md`
-- AND every rendered pi [workflow script](../glossary.json#concept.workflow-script) is under `.concorde/workflows/pi/` and the command-runner agents `concorde-step` and `concorde-report` under `.pi/agents/`
-
 ### scenario.distribution.pi-runtime-default — Every install places the runtime pi workers run in
 
 - GIVEN a project and a machine with npm
-- WHEN the developer installs Concorde without `--pi`
+- WHEN the developer installs Concorde
 - THEN the locked pi runtime is placed under `.concorde/tools/pi-runtime/`, since workers run on pi unless configured otherwise
-- AND no file of the pi main session is placed, and the receipt records `pi` false and `pi_runtime` true
+- AND the receipt records `pi_runtime` true
+- BUT no file of a pi main session is placed, since the [main agent](../glossary.json#concept.main-agent) runs on Claude Code
 
 ### scenario.distribution.install-without-pi-runtime — Install without the pi runtime
 
@@ -286,31 +272,23 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - THEN the install succeeds without the runtime under `.concorde/tools/pi-runtime/`
 - AND the receipt records `pi_runtime` false
 
-### scenario.distribution.update-pi — An update adds the pi runtime and, on request, the pi files
+### scenario.distribution.update-pi-runtime — An update adds the pi runtime
 
 - GIVEN a project installed without the pi runtime by an installer that did not record the choice
 - WHEN the developer runs `concorde update`
 - THEN the pi runtime is placed and the receipt records `pi_runtime` true
-- BUT no file of the pi main session is placed
+- AND the next `concorde update` keeps the runtime without installing it again
 
 ### scenario.distribution.install-later-files-bound — Files a later install adds stay bound
 
-- GIVEN a project in which Concorde was installed without `--pi` and then initialized, so that its installation realization binds the files installed then
-- WHEN the developer installs Concorde again with `--pi`, or runs `concorde update` with a Concorde that installs more files
+- GIVEN a project in which Concorde was installed and then initialized, so that its installation realization binds the files installed then
+- WHEN the developer installs Concorde again, or runs `concorde update`, with a Concorde that installs more files, such as a workflow an older Concorde did not install
 - THEN every file the receipt names outside `.concorde/` that the install added is an exact entry of the installation realization
 - AND once the files are committed, `concorde spec-validation` reports no `CHK.binds.unbound` for them
 - BUT a project that is not initialized gets no Spec, and installing again with nothing new leaves the Specs unchanged
 
-### scenario.distribution.update-add-pi — An update adds the pi main session's files on request
+### scenario.distribution.update-keeps-pi-runtime-choice — An update keeps a runtime left out
 
-- GIVEN a project installed without the pi main session's files
-- WHEN the developer runs `concorde update --pi`
-- THEN the skill `.pi/skills/concorde/SKILL.md` and the pi workflow scripts under `.concorde/workflows/pi/` are placed
-- AND the receipt records `pi` true
-
-### scenario.distribution.update-keeps-pi-choices — An update keeps the recorded pi choices
-
-- GIVEN a project whose receipt records whether the pi main session's files and the pi runtime were installed
-- WHEN the developer runs `concorde update` without `--pi`
-- THEN the update installs what the receipt records: the pi files and the runtime when both were chosen, without placing the runtime a second time
-- AND an install made with `--without-pi-runtime` stays without the runtime
+- GIVEN a project installed with `--without-pi-runtime`, whose receipt records `pi_runtime` false
+- WHEN the developer runs `concorde update`
+- THEN the update succeeds without the pi runtime, even on a machine without npm, and the receipt still records `pi_runtime` false

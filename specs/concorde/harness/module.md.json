@@ -61,9 +61,7 @@
       "meaning": "#realization.harness.pi",
       "entries": [
         "src/concorde/harness/pi_permission.ts",
-        "src/concorde/harness/pi_policy.ts",
-        "src/concorde/tasks/pi_session.ts",
-        "src/concorde/tasks/pi_session_policy.ts"
+        "src/concorde/harness/pi_policy.ts"
       ],
       "pending": []
     }
@@ -85,12 +83,6 @@
       "type": "relates",
       "source": "realization.harness.claude",
       "verb": "provides the write hook of",
-      "target": "concept.session-boundary"
-    },
-    {
-      "type": "relates",
-      "source": "realization.harness.pi",
-      "verb": "provides the extension of",
       "target": "concept.session-boundary"
     }
   ],

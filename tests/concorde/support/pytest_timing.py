@@ -166,7 +166,7 @@ def fingerprint(tests: list[str]) -> dict:
         ".concorde/protocol/",
     )
     exact = {
-        "AGENTS.md",
+        "CLAUDE.md",
         "concorde.json",
         "pyproject.toml",
         "uv.lock",

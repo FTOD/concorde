@@ -134,7 +134,7 @@ def skill_header(name: str) -> str:
     """The Agent Skills front matter of a skill.
 
     The description is written as a JSON string, which YAML reads as a double-quoted scalar: its
-    ": " would otherwise make the front matter invalid YAML, and pi drops a skill it cannot parse.
+    ": " would otherwise make the front matter invalid YAML, which skill readers refuse.
     """
     return f"---\nname: {name}\ndescription: {json.dumps(SKILLS[name][1])}\n---\n\n"
 

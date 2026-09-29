@@ -93,8 +93,8 @@ task sessions under `sessions/` and of its merge attempts under `merges/`, and t
 on the task: identity, goal, Modules, branch, worktree path, base commit, stored state, the merge in
 progress and, once the task ended, how it ended ([exact fields](contracts.md#contract.tasks.record)).
 Its history is in its trace instead: the task's node records when it was opened, every change of
-its stored state, every escalation and how it ended; each task session and each round of a pi task
-session is a node below it, and so is each merge attempt with its checks
+its stored state, every escalation and how it ended; each task session is a node below it, and so
+is each merge attempt with its checks
 ([exact content](contracts.md#task-trace)). Neither keeps runs, deliveries or workflow: those are
 recorded by Execution, and a copy could disagree with them after a crash or a run nobody announced. Its goal and Modules are those named at
 open and never change; a run that names further Modules with `--modules` records them in its own
@@ -107,7 +107,7 @@ workspace's [runs](../../glossary.json#concept.run) read from its workspace fold
 directly and those of its workflow's steps (each with its kind, name, Modules and status, `running`
 while its runner lives and `lost` when the runner died without a result), its
 [delivery commits](../../glossary.json#concept.delivery-commit) read from the task branch, its task
-sessions with their rounds and its escalations read from its trace, who holds its workspace lock
+sessions, each with the main session it reports to, and its escalations read from its trace, who holds its workspace lock
 now, and the paths of the decision log and of the task's folder. A closed task is shown from the
 history the same way. `concorde trace show <task-id>` shows the whole trace with its timing and
 cost.
@@ -207,9 +207,8 @@ binding, and moves the task's whole folder to the history, `.concorde/history/<t
 the branch; no run of the task's workspace can start there any more, and a closed or failed task
 stays so whatever happens afterwards. A task closes only once it has really ended: the close holds
 the task's workspace lock, so no run of it is running and none can start, while it moves the
-folder, and a close with `--completed` or `--failed` first stops the task's Claude Code task
-sessions, the runs of the workspace that still run and a running round of the task's pi task
-session, then waits for the lock. Just before the folder moves, [Task
+folder, and a close with `--completed` or `--failed` first stops the task's task sessions and the
+runs of the workspace that still run, then waits for the lock. Just before the folder moves, [Task
 sessions](../task-session/module.md#ending-claude-sessions) copies each Claude Code task session's
 transcript into the session's node, and once the task is closed it removes those sessions from
 Claude's session list; what it could not keep or remove is named in the close's `warnings`, and
@@ -305,8 +304,7 @@ not to be built on. Every task command that changes something therefore looks fo
 task first: while no live process holds the merge lock, `open`, `merge`, `close`, `session` and
 `escalate`, in any main session and for any task, refuse with `merge_incomplete`, naming the task,
 the commit before the merge, the merge commit, where the primary branch is now and the two ways
-out; `task list` and `task show` still answer, showing the task as `merging`, and so does
-`session --stop`, which only ends a round. The main agent finishes the merge with one of:
+out; `task list` and `task show` still answer, showing the task as `merging`. The main agent finishes the merge with one of:
 
 ```text
 concorde task merge severity --resume
@@ -338,8 +336,8 @@ refusing with `workspace_busy` while a run of the task could still write the wor
 
 Only the main agent opens, merges and closes tasks and starts task sessions, only from the primary
 worktree (`not_primary` otherwise); `concorde task session` is dispatched to
-[Task sessions](../task-session/module.md) once that check passed, and every session and round it
-starts is recorded here through the record updates the [contracts](contracts.md#record-updates)
+[Task sessions](../task-session/module.md) once that check passed, and every session it starts is
+recorded here through the record updates the [contracts](contracts.md#record-updates)
 list; a [worker](../../glossary.json#concept.worker) cannot run them, having no Git access.
 Every refusal names its code (`task_exists`, `unknown_module`, `invalid_transition`, `not_merged`,
 ...), what was refused and why, and changes nothing apart from the few refusals that say what they
@@ -362,8 +360,8 @@ same Module at once, meeting only at merge time where Git reports conflicts; a s
 would instead leak one task's half-finished edits into another's checks.
 
 Task worktrees live under `.claude/worktrees/` of the primary worktree because that is where Claude
-Code can switch a session into an existing worktree and back, which is how the main agent works
-inside one task at a time. Git ignores the directory there, so a task's checkout never appears as
+Code keeps a session's worktrees, and a task session is a Claude Code session started in its task
+worktree. Git ignores the directory there, so a task's checkout never appears as
 files of the primary branch; the Workers' [deny rules](../../glossary.json#concept.deny-rules) still
 hide the primary worktree's other files and the other task worktrees from a worker, since those are
 siblings of the path to its own worktree.
@@ -378,8 +376,8 @@ task, organized by the task's lifecycle as [Tracing](../../tracing/module.md) la
 task's record, log, sessions and runs are read in one place and ended in one move; the record
 stays small because the task's history is its trace, which only grows by new nodes.
 
-Several processes may change a task at once, a task session recording a round while the main agent
-escalates, so every change of a task's record or trace is made while holding the task's lock,
+Several processes may change a task at once, a task session escalating while the main agent closes
+the task, so every change of a task's record or trace is made while holding the task's lock,
 `locks/tasks/<task-id>.lock`, and every record write is one
 [file transaction](../../glossary.json#concept.file-transaction) bound to the digest it replaces: a
 change made meanwhile by a process that did not take the lock is detected, Tasks rereads and
@@ -390,7 +388,7 @@ while it moves the task's folder.
 
 The merge lock is held by the process doing the merge rather than recorded as an owner that others
 wait on and that must wake them: a recorded owner that crashed, was closed or forgot to notify
-would leave every waiter stuck, and Claude Code and pi sessions share no messaging channel to
+would leave every waiter stuck, and the sessions that merge share no channel that would reliably
 notify each other. A kernel `flock` is released and wakes waiters whatever happens to its holder,
 the same way for every kind of session. It only works if the whole critical section runs in one
 process, which is why merging, checking, undoing and closing are one command instead of steps the
@@ -520,22 +518,15 @@ names, and the bundle's readiness run is its `Concorde-Readiness` trailer. A hea
 verify is refused with `delivery_unverified`, naming each mismatch, since it may not hold what was
 validated.
 
-- <a id="uses-workers"></a>**Workers** reads the main session's program from the environment,
-  which `concorde task session` needs to start a task session on that program. Tasks relies on
-  it naming exactly one [worker backend](../../glossary.json#concept.worker-backend) program or
-  refusing with the variables it looked at; since the [worker
-  configuration](../../glossary.json#concept.worker-configuration) is tracked, `task open` copies
-  nothing and never reads it.
-- <a id="uses-task-session"></a>**Task sessions** starts, answers and stops
+- <a id="uses-task-session"></a>**Task sessions** starts
   [task sessions](../../glossary.json#concept.task-session) when `concorde task session`
-  hands it a task that passed Tasks' checks. Tasks relies on it recording sessions and
-  [rounds](../../glossary.json#concept.session-round) only through the record updates,
-  and prints its refusals in the shape of every `concorde task` refusal. A close relies on it to
-  stop the task's Claude Code task sessions before a close without a merge, to keep their
+  hands it a task that passed Tasks' checks. Tasks relies on it recording sessions only through
+  the record updates, and prints its refusals in the shape of every `concorde task` refusal. A close relies on it to
+  stop the task's task sessions before a close without a merge, to keep their
   transcripts in their nodes before the folder moves and to remove them from Claude's session
   list afterwards, returning a warning, never a refusal, for what it could not keep or remove.
 - <a id="uses-tracing"></a>**Tracing** lays out the task's folder, its history and the locks, and
-  gives the task, each session and round, each merge attempt and its checks the shape of a
+  gives the task, each session, each merge attempt and its checks the shape of a
   [trace node](../../glossary.json#concept.trace-node). Tasks writes those nodes through Tracing's
   library, takes the task, workspace and merge locks under `.concorde/locks/`, runs Tracing's
   retention at the start of every `task open` and `task close`, and reports in the error contract.
