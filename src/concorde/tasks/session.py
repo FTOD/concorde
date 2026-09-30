@@ -15,14 +15,21 @@ which the close removes, and guards against mistakes, not a malicious session:
   ``.concorde/locks/`` (the locks those runs take) and the user's package caches; reads and the network stay open, since the
   boundary guards against mistakes, not exfiltration (``allowedDomains`` is ``*``, so no command
   has to name the hosts it reaches);
-- the session is given the project MCP server through ``--mcp-config`` (a background session in
-  a folder it never trusted would not load the project's ``.mcp.json``), told that it has no
+- the session is given the project MCP server through ``--mcp-config``, as the running Python and
+  package, told that it has no
   channel (``CONCORDE_CHANNEL=0``): a live probe on 2026-09-29 (Claude Code 2.1.284) found that a
   ``claude --bg`` session started with ``--dangerously-load-development-channels`` is never woken
   by a channel event, so a task session waits with ``concorde task wait`` in background Bash,
   which ``register_wait`` returns to it; the server runs outside the Bash sandbox, as every MCP
   server does, and may change task records, which the developer accepted: it is a management
   tool, not a boundary;
+- nobody answers Claude Code's dialog "New MCP server found in this project" either, which a
+  ``claude --bg`` session in a trusted project shows for a ``.mcp.json`` server nobody approved
+  and then waits on for ever (seen with Claude Code 2.1.285 on 2026-10-01), even for ``concorde``,
+  which ``--mcp-config`` passes as well. So the settings disable the ``.mcp.json`` entry
+  ``concorde``, which the ``--mcp-config`` server replaces (with both, Claude Code loads only the
+  latter), enable every other ``.mcp.json`` server the primary worktree approved and disable every
+  one it never approved, as that dialog's "Continue without using this MCP server" would;
 - nobody answers permission prompts in a background session, so it runs in Claude Code's
   ``auto`` mode, where a classifier approves or refuses each action instead of asking; the hook
   and sandbox stay the boundary, and ``auto`` needs no one-time consent the way
@@ -54,6 +61,10 @@ CACHES = (".cache", ".npm")
 ALL_HOSTS = ("*",)
 # The project MCP server's name in the session's MCP configuration.
 SERVER = "concorde"
+# Claude Code's managed settings folder on Linux, which every session reads.
+MANAGED = Path("/etc/claude-code")
+# The characters Claude Code replaces by ``_`` in an MCP server's name before comparing two names.
+UNSAFE = re.compile(r"[^a-zA-Z0-9_-]")
 STARTED = re.compile(r"backgrounded\s+·\s+(?P<id>[0-9A-Za-z-]+)\s+·")
 # The terminal escapes (colour, dimming) Claude Code puts around parts of that line.
 ESCAPES = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]")
@@ -114,11 +125,104 @@ def hook_source(primary: Path, record: dict) -> str:
     )
 
 
+def _json_object(path: Path) -> dict:
+    """The JSON object in ``path``, or an empty one when it is missing, unreadable or no object:
+    Claude Code takes nothing from such a file either."""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def project_servers(worktree: Path) -> set[str]:
+    """The names of the servers of every ``.mcp.json`` Claude Code loads for a session started in
+    ``worktree``: that of each folder from the worktree up to, not including, the filesystem root,
+    so the primary worktree's too when the task worktree lies inside it. A file that is missing,
+    unreadable or without an ``mcpServers`` object names none, since Claude Code loads none from
+    it and so asks about none."""
+    names: set[str] = set()
+    for folder in (worktree, *worktree.parents):
+        if folder == folder.parent:
+            break
+        servers = _json_object(folder / ".mcp.json").get("mcpServers")
+        if isinstance(servers, dict):
+            names.update(servers)
+    return names
+
+
+def approval_sources(
+    primary: Path, worktree: Path, managed: Path | None = None
+) -> list[dict]:
+    """Every settings object in which Claude Code records an approval of a ``.mcp.json`` server
+    that a session in the primary worktree, or in ``worktree``, reads: the user's settings, the
+    project and local settings of both worktrees, the managed settings and their drop-ins, and the
+    primary worktree's entry in Claude Code's global configuration, whose approvals Claude Code
+    moves into the local settings when it next starts there."""
+    managed = managed or MANAGED
+    configured = os.environ.get("CLAUDE_CONFIG_DIR")
+    user = Path(configured) if configured else Path.home() / ".claude"
+    config = user if configured else Path.home()
+    files = [
+        user / "settings.json",
+        *(
+            folder / ".claude" / name
+            for folder in (primary, worktree)
+            for name in ("settings.json", "settings.local.json")
+        ),
+        managed / "managed-settings.json",
+        *sorted((managed / "managed-settings.d").glob("*.json")),
+    ]
+    projects = _json_object(config / ".claude.json").get("projects")
+    legacy = (
+        projects.get(Path(os.path.realpath(primary)).as_posix())
+        if isinstance(projects, dict)
+        else None
+    )
+    return [
+        *(_json_object(path) for path in files),
+        *([legacy] if isinstance(legacy, dict) else []),
+    ]
+
+
+def _listed(sources: list[dict], key: str, name: str) -> bool:
+    """Whether a source lists ``name`` under ``key``, compared as Claude Code compares names."""
+    wanted = UNSAFE.sub("_", name)
+    return any(
+        isinstance(item, str) and UNSAFE.sub("_", item) == wanted
+        for source in sources
+        if isinstance(source.get(key), list)
+        for item in source[key]
+    )
+
+
+def mcp_approvals(primary: Path, worktree: Path, managed: Path | None = None) -> dict:
+    """The session's ``.mcp.json`` approvals, so that Claude Code never asks about a server: the
+    entry ``concorde`` disabled, since ``--mcp-config`` passes the project MCP server itself; every
+    other server enabled when a source approved it, by name or by ``enableAllProjectMcpServers``,
+    and none rejected it, as Claude Code judges; every other one disabled, as nobody approved it."""
+    sources = approval_sources(primary, worktree, managed)
+    every = any(source.get("enableAllProjectMcpServers") is True for source in sources)
+    enabled, disabled = [], []
+    for name in sorted(project_servers(worktree)):
+        if UNSAFE.sub("_", name) == SERVER:
+            continue
+        approved = (
+            every or _listed(sources, "enabledMcpjsonServers", name)
+        ) and not _listed(sources, "disabledMcpjsonServers", name)
+        (enabled if approved else disabled).append(name)
+    return {
+        "enabledMcpjsonServers": enabled,
+        "disabledMcpjsonServers": [SERVER, *disabled],
+    }
+
+
 def settings(
     primary: Path, record: dict, hook: Path, python: str, home: Path | None = None
 ) -> dict:
     """The complete ``settings.json`` of one task session."""
     return {
+        **mcp_approvals(primary, Path(record["worktree"])),
         "hooks": {
             "PreToolUse": [
                 {

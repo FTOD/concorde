@@ -47,6 +47,18 @@ Code 2.1.284) found a `claude --bg` session started with
 registered. Told so, `register_wait` answers the session with the `concorde task wait` command for
 its background Bash instead of promising an event that never comes.
 
+### req.task-session.mcp-approval — A task session is never asked to approve a project MCP server
+
+The settings Task sessions writes for a task session SHALL disable the project `.mcp.json` entry
+`concorde`, enable every other `.mcp.json` server the session loads that the primary worktree
+approved, and disable every one it never approved.
+
+Nobody answers Claude Code's dialog "New MCP server found in this project" in a background
+session, which otherwise waits on it for ever. The `--mcp-config` server replaces the entry
+`concorde`; a server counts as approved as Claude Code judges it from the settings sources that
+record approvals ([module](module.md#project-mcp-approvals)); and a `.mcp.json` that is missing or
+unusable names no server and does not keep the session from starting.
+
 ### req.task-session.boundary-first — The boundary is written before the session starts
 
 Task sessions SHALL write a task session's boundary before it starts the session.

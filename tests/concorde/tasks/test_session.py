@@ -200,6 +200,121 @@ class TaskSessionTests(unittest.TestCase):
         self.assertEqual("project-mcp", server["args"][-1])
         self.assertTrue(Path(server["args"][0]).is_file())
 
+    def claude_config(self) -> tuple[Path, Path]:
+        """An empty Claude Code configuration folder, which ``CLAUDE_CONFIG_DIR`` names for the
+        rest of the test, and an empty managed settings folder."""
+        config, managed = (
+            self.project.home / "claude-config",
+            self.project.home / "managed",
+        )
+        (managed / "managed-settings.d").mkdir(parents=True)
+        config.mkdir()
+        environ = patch.dict(os.environ, {"CLAUDE_CONFIG_DIR": str(config)})
+        environ.start()
+        self.addCleanup(environ.stop)
+        return config, managed
+
+    @staticmethod
+    def write(path: Path, data) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(data if isinstance(data, str) else json.dumps(data))
+
+    @staticmethod
+    def servers(*names: str) -> dict:
+        return {"mcpServers": {name: {"command": "true"} for name in names}}
+
+    @verifies("scenario.task-session.mcp-approval")
+    def test_the_session_carries_over_the_primary_worktrees_mcp_approvals(self):
+        config, managed = self.claude_config()
+        # The primary worktree's .mcp.json, which a session in the task worktree inside it loads
+        # too, and one server only the task worktree declares.
+        self.write(
+            self.root / ".mcp.json",
+            self.servers("concorde", "local", "rejected", "never", "user.tool"),
+        )
+        self.write(
+            self.worktree / ".mcp.json", self.servers("legacy", "managed", "fresh")
+        )
+        self.write(
+            self.root / ".claude/settings.local.json",
+            {
+                "enabledMcpjsonServers": ["concorde", "local", "rejected"],
+                "disabledMcpjsonServers": ["rejected"],
+            },
+        )
+        # Claude Code compares names with every character but letters, digits, _ and - as _.
+        self.write(config / "settings.json", {"enabledMcpjsonServers": ["user_tool"]})
+        self.write(
+            config / ".claude.json",
+            {
+                "projects": {
+                    os.path.realpath(self.root): {"enabledMcpjsonServers": ["legacy"]}
+                }
+            },
+        )
+        self.write(
+            managed / "managed-settings.d/10-mcp.json",
+            {"enabledMcpjsonServers": ["managed"]},
+        )
+        self.assertEqual(
+            {
+                "enabledMcpjsonServers": ["legacy", "local", "managed", "user.tool"],
+                "disabledMcpjsonServers": ["concorde", "fresh", "never", "rejected"],
+            },
+            session.mcp_approvals(self.root, self.worktree, managed),
+        )
+        # Approving every project server approves all but those rejected, never concorde.
+        self.write(
+            self.root / ".claude/settings.local.json",
+            {"enableAllProjectMcpServers": True, "disabledMcpjsonServers": ["never"]},
+        )
+        self.assertEqual(
+            {
+                "enabledMcpjsonServers": [
+                    "fresh",
+                    "legacy",
+                    "local",
+                    "managed",
+                    "rejected",
+                    "user.tool",
+                ],
+                "disabledMcpjsonServers": ["concorde", "never"],
+            },
+            session.mcp_approvals(self.root, self.worktree, managed),
+        )
+
+    @verifies("scenario.task-session.mcp-approval")
+    def test_the_session_settings_disable_the_project_concorde_entry(self):
+        _, managed = self.claude_config()
+        self.write(self.root / ".mcp.json", self.servers("concorde", "other"))
+        with patch.object(session, "MANAGED", managed):
+            shown = session.start(
+                self.root, "t1", "m", dry_run=True, home=self.project.home
+            )
+        written = json.loads(Path(shown["settings"]).read_text())
+        self.assertEqual([], written["enabledMcpjsonServers"])
+        self.assertEqual(["concorde", "other"], written["disabledMcpjsonServers"])
+
+    @verifies("scenario.task-session.mcp-approval")
+    def test_an_unusable_mcp_json_still_starts_the_session(self):
+        _, managed = self.claude_config()
+        self.write(self.root / ".mcp.json", "{not json")
+        self.write(self.worktree / ".mcp.json", {"mcpServers": ["a list"]})
+        self.write(self.root / ".claude/settings.local.json", "[]")
+        expected = {"enabledMcpjsonServers": [], "disabledMcpjsonServers": ["concorde"]}
+        self.assertEqual(
+            expected, session.mcp_approvals(self.root, self.worktree, managed)
+        )
+        (self.root / ".mcp.json").unlink()
+        (self.worktree / ".mcp.json").unlink()
+        self.assertEqual(
+            expected, session.mcp_approvals(self.root, self.worktree, managed)
+        )
+        claude = FakeClaude()
+        with patch.object(session, "MANAGED", managed):
+            session.start(self.root, "t1", "m", run=claude, home=self.project.home)
+        self.assertEqual(1, len(store.sessions(self.root, "t1")))
+
     @verifies("scenario.task-session.boundary")
     def test_the_boundary_confines_the_session_to_its_task(self):
         shown = session.start(
