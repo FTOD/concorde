@@ -49,8 +49,10 @@ tasks, traces and locks, read afresh on every call. It is a presentation: the `c
 stay the source of truth, and every answer and refusal of a query or short write is the command's
 own. Its one rule of its own is that it never waits for a lock, so `task_merge` answers at once with
 the merge it started, and `register_wait` with the wait it registered, while the merge's result and
-the wait's answer arrive later. Its tools and how it wakes a session are explained
-[below](#the-project-mcp-server).
+the wait's answer arrive later. One tool, `workflow_step`, works on a workspace rather than on
+records: it starts and awaits the [workflow steps](../../glossary.json#concept.workflow-step) of the
+workspace its session works in, so that their runs start outside the session's Bash sandbox. Its
+tools and how it wakes a session are explained [below](#the-project-mcp-server).
 
 <a id="owners"></a>
 
@@ -459,6 +461,20 @@ events are in the [contracts](contracts.md).
   session's work, never to the server, and is released when the merge ends, however it ends,
   even when the session and its server end first. It returns at once with the merge it started,
   not the merge's result, which a channel event or the returned wait command delivers later.
+- **Workflow steps**: `workflow_step`, which the
+  [step agents](../../glossary.json#concept.step-agent) of a [workflow](../../glossary.json#concept.workflow) call, one call per relay, with the step
+  request as an object. It runs `concorde workflow step --json <request> --wait <wait>`, waiting at
+  most 100 seconds, with the `concorde` of the session's worktree, the Git worktree
+  `CLAUDE_PROJECT_DIR` or else the server's working directory lies in, which for a task session is
+  its task worktree, and answers with the step outcome that command printed. It refuses, with
+  `unbound_worktree`, a session whose worktree has no
+  [workspace binding](../../glossary.json#concept.workspace-binding), such as the main agent's in
+  the primary worktree, since a workflow runs only in a bound workspace. It exists because of where
+  the server runs: outside the session's Bash sandbox, so the
+  [detached run](../../glossary.json#concept.detached-run) the step command starts is started
+  outside it too and lives until its run ends, which a run started from a sandboxed Bash call does
+  not ([Execution](../../execution/module.md#long-runs)). The server answers these calls, which
+  wait, each on a thread of its own, so the session's other calls are not held up meanwhile.
 - **Waiting**: `register_wait` asks to be woken when a task becomes `delivered`, `merging`,
   `closed` or `failed`, when a task is rebound to a main agent's session other than a named one,
   when a run ends, or when a lock is released. The server watches without
@@ -499,8 +515,10 @@ Using the server is recommended, not enforced. The kernel's `flock` stays the on
 and the runs of task sessions take the same locks directly, so both paths see each other's
 holders. The server is the better path for the main agent whenever it would otherwise wait:
 `task_merge` instead of a `task merge --wait` that blocks a background command for minutes, and
-`register_wait` instead of watching a task. The CLI remains the way for everything else: `task
-session`, the runs of a task, and anything the server does not present.
+`register_wait` instead of watching a task. For workflow steps the server is the only path a
+sandboxed session has, and the Claude Code workflow adapter always takes it. The CLI remains the
+way for everything else: `task session`, the runs a task session starts itself in background Bash,
+and anything the server does not present.
 
 <a id="channels"></a>
 
@@ -525,8 +543,9 @@ Bash form then.
 
 **Task sessions** receive the server too, with the same tools: a task session may query its task
 or register a wait, which answers it with the `concorde task wait` command for its background Bash
-since it has no channel, and the developer does not consider its reach to other tasks' management a
-problem, so there is no split by role. The guidance still tells a task session never to merge or
+since it has no channel, its workflows' step agents start their steps through `workflow_step`, and
+the developer does not consider its reach to other tasks' management a problem, so there is no split
+by role. The guidance still tells a task session never to merge or
 close its task. [Workers](../../glossary.json#concept.worker) never receive it: they launch with an
 empty MCP configuration.
 

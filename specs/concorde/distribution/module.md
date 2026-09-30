@@ -280,9 +280,9 @@ project where every check passes, it goes through these steps in order:
    `.claude/workflows/concorde-<name>.js`, which Claude Code offers as the command
    `/concorde-<name>`, and the `permissions.allow` of the project's `.claude/settings.json` gains
    the rules the workflow needs to run without a prompt per step: `Workflow(concorde-<name>)` for
-   each workflow and `Bash(.concorde/bin/concorde workflow step:*)` and
-   `Bash(.concorde/bin/concorde workflow report:*)` for its
-   [step agents](../glossary.json#concept.step-agent). It adds only rules that are missing,
+   each workflow and, for its [step agents](../glossary.json#concept.step-agent),
+   `mcp__concorde__workflow_step`, the project MCP server's tool through which they start every
+   step, and `Bash(.concorde/bin/concorde workflow report:*)`. It adds only rules that are missing,
    records them in the receipt, removes on a later install the recorded rules it no longer ships,
    and leaves every other setting untouched
    ([requirements](requirements.md#req.distribution.installer-own-permissions)). It registers the

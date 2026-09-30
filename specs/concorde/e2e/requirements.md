@@ -30,7 +30,7 @@ A headless run SHALL start its `claude -p` session with `CLAUDE_CODE_PRINT_BG_WA
 
 ### req.e2e.headless-granted — A headless run needs no trust
 
-A headless run SHALL grant the workflow and its `concorde workflow step` and `report` commands with `--allowedTools`.
+A headless run SHALL grant the workflow, the [project MCP server](../glossary.json#concept.project-mcp-server)'s `workflow_step` and the `concorde workflow report` command with `--allowedTools`, and give the session the project MCP server with `--mcp-config`.
 
 ### req.e2e.driver-real-steps — A driver run runs the real step commands
 

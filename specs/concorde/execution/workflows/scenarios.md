@@ -35,6 +35,13 @@ shapes are in the [contracts](contracts.md).
 - THEN it prints the step outcome with state `running` and exits with status 3 after at most `--wait` seconds
 - AND running the same command again starts no second run and waits for the recorded one
 
+### scenario.workflows.step-outlives-call — A step's run outlives the call that started it
+
+- GIVEN a Claude Code workflow run in a [task session](../../glossary.json#concept.task-session), whose every Bash call is a PID namespace that ends with the call
+- WHEN the step function asks for a step whose run takes longer than one call
+- THEN its step agent calls the [project MCP server](../../glossary.json#concept.project-mcp-server)'s `workflow_step` with the step request as an object, and runs no Bash command
+- AND the server starts the step's run outside the session's Bash sandbox, so the run lives on after that call and after every later one, until it ends and saves its result, even when the session has ended meanwhile
+
 ### scenario.workflows.step-waits-lock — A step waits for the workspace lock before it starts
 
 - GIVEN a workspace whose [workspace lock](../../glossary.json#concept.workspace-lock) another run holds, and no step `survey` recorded
@@ -116,11 +123,11 @@ shapes are in the [contracts](contracts.md).
 - THEN the workflow result lists `survey` with its run's status `ok`
 - AND lists no lost problem for it, since the record wins over what the step agents relayed
 
-### scenario.workflows.relay-refused — A step agent mistypes the step command
+### scenario.workflows.relay-refused — A step agent mistypes the step request
 
-- GIVEN a Claude Code workflow run whose [step agent](../../glossary.json#concept.step-agent) for `delivery` drops a field while retyping the step command, so that the command refuses the request with `invalid_request`
+- GIVEN a Claude Code workflow run whose [step agent](../../glossary.json#concept.step-agent) for `delivery` drops a field while copying the step request, so that the step command refuses it with `invalid_request`
 - WHEN the step function receives that refusal, which names no step
-- THEN it asks a step agent again with the same command, and goes on with the procedure once an outcome for `delivery` comes back
+- THEN it asks a step agent again with the same request, and goes on with the procedure once an outcome for `delivery` comes back
 - AND after three refusals in a row it reports `delivery` lost, and the script's result carries the last refusal under `relayed`, with the key and the number of attempts
 
 ### scenario.workflows.superseded — A retried step supersedes later steps

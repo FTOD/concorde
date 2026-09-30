@@ -33,6 +33,13 @@
         ]
       },
       {
+        "target": "module.main-session",
+        "meaning": "#uses-main-session",
+        "relies_on": [
+          "concept.project-mcp-server"
+        ]
+      },
+      {
         "target": "module.operations",
         "meaning": "#uses-operations"
       },

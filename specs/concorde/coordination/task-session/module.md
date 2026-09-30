@@ -197,7 +197,9 @@ idle session was never woken. So `register_wait` answers a task session with the
 wait` command, which it runs in background Bash and is woken by when it returns. The server runs as
 every MCP server does, outside the Bash sandbox, and its tools may change any task's record: the
 developer accepted that a task session can reach the task management tools, which are no boundary,
-so the guidance, not the boundary, keeps a task session from merging or closing its task.
+so the guidance, not the boundary, keeps a task session from merging or closing its task. Its
+`workflow_step` starts the runs of the session's workflows from there, outside the sandbox
+([below](#workflow-runs-outside-the-sandbox)).
 
 <a id="project-mcp-approvals"></a>
 
@@ -270,6 +272,30 @@ before `task-validation` and `delivery`, and never wait by polling, whose loop m
 Tools that MCP servers add are outside the write hook, which guards Edit and Write only. A sandbox
 makes only existing paths writable, so Task sessions creates the writable directories that do not
 exist yet, such as the task's `.concorde/locks/`, before a session starts.
+
+<a id="workflow-runs-outside-the-sandbox"></a>
+
+**A task session's workflow runs start outside its Bash sandbox.** The sandbox runs every Bash
+call in a PID namespace of its own that ends with the call, and a run detached from a call dies
+with it ([Execution](../../execution/module.md#detached-namespace)), so no
+[workflow step](../../glossary.json#concept.workflow-step) longer than one call could finish there.
+The [step agents](../../glossary.json#concept.step-agent) of the session's
+[workflows](../../glossary.json#concept.workflow) therefore start and await every step through the
+[project MCP server](../../glossary.json#concept.project-mcp-server)'s `workflow_step`, which runs
+the task worktree's own `concorde workflow step` from the server, a process of the session outside
+its sandbox ([Workflows](../../execution/workflows/module.md#steps-in-claude-code)). Those runs, and
+the checks and workers they start, then work as the main agent's runs do, under no sandbox of the
+session. What still bounds them is Concorde's own: the runner works only on the bound workspace of
+the session's own task worktree, with its trace and locks, and commits, for `delivery`, only on the
+task branch; each worker keeps its [grant](../../glossary.json#concept.grant) and its own
+boundary; each [configured check](../../glossary.json#concept.configured-check) runs in the
+[read-only check boundary](../../glossary.json#concept.read-only-check-boundary). The session
+boundary guards against mistakes, not a malicious session, and this path rests on the task-session
+guidance, as `task_merge` and `task_escalate` of the same server do: the guidance has a task session
+start its workflows as the installed workflows and use the server's tools only as they are meant
+for, not the boundary. Runs a task session starts itself, with `concorde run`, `task-validation` or
+`delivery` in background Bash, stay inside the sandbox, whose background call lives as long as the
+run.
 
 ## When the task ends
 
@@ -360,7 +386,9 @@ names none. An interactive workflow ends at its first
 [decision point](../../glossary.json#concept.decision-point) not yet settled, and since nobody
 answers the session in place, it escalates every pending point of that step at once, with the
 workflow result as the cause, and starts the workflow again with the main agent's answers; a no-ask
-workflow decides those points itself and reports every decision at the end. The session relies on
+workflow decides those points itself and reports every decision at the end. Its workflow's steps
+start through the project MCP server, outside the session's Bash sandbox
+([The session boundary](#workflow-runs-outside-the-sandbox)). The session relies on
 the [workflow result](../../glossary.json#concept.workflow-result) listing those decisions and
 keeping every step's [error chain](../../glossary.json#concept.error-chain) whole. It copies the
 decisions and problems into the task's [decision log](../../glossary.json#concept.decision-log),

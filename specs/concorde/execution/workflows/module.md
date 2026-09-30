@@ -150,11 +150,13 @@ Anyone can run the report command in the workspace again at any time.
 A **[workflow script](../../glossary.json#concept.workflow-script)** holds a workflow's procedure
 once, in plain JavaScript without asynchronous helper functions, kept apart from the step adapter.
 The build wraps it with a `meta` block and the Claude Code step adapter, whose step function's
-**[step agent](../../glossary.json#concept.step-agent)** is a subagent that runs the
-step command once, waiting at most 100 seconds, and returns the JSON it printed, while the step
-function itself asks again as long as the run is still running and treats an outcome that names
-another step or no real run as no answer. A model retypes the command, and a live
-headless run showed one dropping a field of the request,
+**[step agent](../../glossary.json#concept.step-agent)** is a subagent that calls the
+[project MCP server](../../glossary.json#concept.project-mcp-server)'s tool `workflow_step` once
+with the step request, waiting at most 100 seconds, and returns the step outcome it answered, while
+the step function itself asks again as long as the run is still running and treats an outcome that
+names another step or no real run as no answer. The server runs the step command, outside the
+session's Bash sandbox, as [Steps in Claude Code](#steps-in-claude-code) explains. A model copies
+the request, and a live headless run showed one dropping a field of it,
 which the step command then refused as `invalid_request`; so the step function asks again after an
 outcome that is no answer, three times in a row at most, since the same key never starts a run
 twice. A step still without an answer is reported lost, and the script's result carries what its
@@ -233,13 +235,15 @@ execution: Execution
 workflows.commands -> execution: starts runs through
 ```
 
-The script never runs a command itself; its step agents relay each step to the workflow commands,
-which alone start runs, keep the workflow record and read the run results.
+The script never runs a command itself; its step agents relay each step, through the project MCP
+server, to the workflow commands, which alone start runs, keep the workflow record and read the run
+results.
 
 ### One step, from the script to a run and back
 
 A step passes through four participants below the task level. The script asks for a key; a step
-agent relays the step command once, waiting at most 100 seconds; the workflow commands start the
+agent relays it once, through the project MCP server's `workflow_step`, which runs the step command
+outside the session's Bash sandbox, waiting at most 100 seconds; the workflow commands start the
 run only when the key is not yet recorded and otherwise wait for the recorded one; the Execution
 runner runs it and saves its result. While the run is still running the script asks again with the
 same key, which only waits again, so a run that outlives many calls is still started once. The
@@ -272,7 +276,7 @@ agent: "Step agent" {
   grid-columns: 1
   vertical-gap: 40
   g0: "" {style.opacity: 0}
-  relay: "Run concorde workflow\nstep once, waiting at\nmost 100 seconds,\nrelay what it printed"
+  relay: "Call workflow_step of the\nproject MCP server once,\nwaiting at most 100 s,\nrelay what it answered"
   g1: "" {style.opacity: 0}
   g2: "" {style.opacity: 0}
   g3: "" {style.opacity: 0}
@@ -506,14 +510,44 @@ platform workflows or free-form plans.
 
 The procedure lives in Claude Code's workflow runtime because it runs the procedure in the
 background while the task level stays responsive. That runtime has no shell, so each step is
-carried by a step agent. That agent is a model, whose Bash command ends after two
-minutes unless it asks for more, while a run may take much longer. So a step starts a
+carried by a step agent. That agent is a model, whose every tool call is meant to end within two
+minutes, as a Bash call does unless it asks for more, while a run may take much longer. So a step starts a
 [detached run](../../glossary.json#concept.detached-run) and each call waits at most 100
 seconds, and the repetition is the script's, not the model's: a live headless run showed a step
 agent that, handed a longer wait and told to repeat, let its command go to the background and
 returned an invented outcome instead. Because a key maps to one recorded run, repeating a call or
 relaunching the whole workflow never starts a run twice, and a relaunched interactive workflow
 replays its finished steps at once.
+
+<a id="steps-through-the-server"></a>
+
+The detached run must also outlive the call that started it, and a Bash call does not let it. A
+workflow is started by a task session, whose Bash tool runs in Claude Code's sandbox, and the
+sandbox runs every Bash call in a PID namespace of its own that ends with the call: a runner
+detached from it is killed when the call returns
+([Execution](../module.md#detached-namespace)). An end-to-end run on 2026-09-30 lost its survey
+step this way, `step_lost` over `host_ended` with nothing in the runner's output, while the worker
+was still reading. So a step agent does not run the step command with Bash: it calls the
+[project MCP server](../../glossary.json#concept.project-mcp-server)'s tool `workflow_step` with the
+step request as an object, and the server, a process of the session outside its Bash sandbox, runs
+the step command of the session's worktree. The run it starts is started outside the sandbox and
+lives until it ends, whatever becomes of the calls that asked for it, of the session or of the
+server; later calls for the same key only wait for it. The request travels as an object, with
+nothing quoted for a shell. The report is still relayed with Bash: `concorde workflow report`
+starts no run and returns at once.
+
+The rejected alternative kept the run inside the sandbox by anchoring it in background Bash, whose
+call keeps its namespace until its command ends: each step's first relay would have started the step
+command with `run_in_background` to live as long as the run, then asked for the outcome with a
+second, foreground call that only waits, and a later relay that found the step unrecorded and no
+anchor alive would have had to start the anchor again. It was rejected because it asks a small relay
+model for a two-command choreography around a background command, the very kind of instruction a
+live run had seen a relay turn into an invented outcome; because Claude Code ends a background
+command after at most two hours and ends a session's background commands when the session is
+stopped, taking the run down with them; and because Claude Code wakes each step agent again when its
+anchor ends, a turn for nothing. The server path has none of these limits, at the price that a task
+session's workflow runs no longer run inside its Bash sandbox, as
+[Task sessions](../../coordination/task-session/module.md#workflow-runs-outside-the-sandbox) states.
 
 The result is assembled by a deterministic command from what the runs recorded. A step agent might
 drop or paraphrase what it relays; the report reads each saved run result itself. So the chain the
@@ -569,7 +603,8 @@ Code step adapter (`claude.js`) the build wraps it with.
 The **Workflows tests**, under `tests/concorde/workflows/` with the existing-codebase fixture
 `tests/concorde/support/brownfield_project.py`, run the step and report commands in a real bound
 task worktree against stand-in run results, one step through a real detached `task-validation`
-run, and run the rendered script in a small JavaScript sandbox that stands in for Claude Code's
+run, one started inside a PID namespace of its own to show that it dies with it, and run the
+rendered script in a small JavaScript sandbox that stands in for Claude Code's
 workflow runtime, verifying the [requirements](requirements.md) and
 [scenarios](scenarios.md).
 
@@ -604,6 +639,14 @@ unknown argument, and a detached runner that did not start make the step refused
 message or `detach_failed` link as the cause; a run with no result and no living runner makes it
 lost, with the end of the runner's output; a run that the runner refused, such as one for a
 workspace that was busy after all, is an ordinary finished run whose result carries that refusal.
+
+<a id="uses-main-session"></a>
+
+**Main session** provides the [project MCP server](../../glossary.json#concept.project-mcp-server),
+whose `workflow_step` tool the Claude Code step agents call. Workflows relies on it running the
+step command of the session's worktree, from outside the session's Bash sandbox, and answering with
+the step outcome that command printed, or with its refusal unchanged; it relies on nothing else of
+the server.
 
 <a id="uses-operations"></a>
 

@@ -623,7 +623,7 @@
       "id": "concept.step-agent",
       "title": "Step agent",
       "owner": "module.workflows",
-      "definition": "The relay of a workflow step: a small Claude Code subagent that runs `concorde workflow step` once, waiting at most 100 seconds, while the step function asks again until the run has finished.",
+      "definition": "The relay of a workflow step: a small Claude Code subagent that calls the project MCP server's `workflow_step` once, waiting at most 100 seconds, while the step function asks again until the run has finished.",
       "explanation": "specs/concorde/execution/workflows/module.md#concept.step-agent",
       "relates": [
         {

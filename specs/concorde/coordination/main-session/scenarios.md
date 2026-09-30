@@ -332,6 +332,14 @@ This illustrates [conflict handling](requirements.md#req.main-session.issues-con
 - WHEN the session calls `task_merge` and the merge succeeds
 - THEN the answer says the session will be woken, and a `merge_ended` event with exit code 0 arrives whose content carries the merge's output
 
+### scenario.main-session.workflow-step-tool — A workflow step through the server
+
+- GIVEN a server whose session started in a bound task worktree, whose `task-validation` takes several seconds
+- WHEN a [step agent](../../glossary.json#concept.step-agent) calls `workflow_step` for the step `validate` with a wait of 2 seconds
+- THEN the server answers another call while that one waits, and the step call answers the step outcome with state `running` and its run
+- AND after the session and its server end, the run still ends and saves its result, and a new session's `workflow_step` for the same key answers it finished without starting another run
+- BUT the same call from a session in the primary worktree, which has no workspace binding, is refused with `unbound_worktree`, a request the step command rejects is refused with that command's own `invalid_request` link, and a wait above 100 seconds with `invalid_input`
+
 ### scenario.main-session.project-mcp-wait-channel — A registered wait wakes the session
 
 - GIVEN a server whose session listens to it as a channel, and an open task whose workspace lock another process holds

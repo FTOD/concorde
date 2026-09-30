@@ -151,6 +151,12 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 - AND the runner writes the same [run result](../glossary.json#concept.run-result) and trace node as a run started without `--detach`
 - BUT a workspace already running something still gets a `failed` result naming the refusal, written where the printed path says
 
+### scenario.execution.detached-namespace — A detached run dies with its PID namespace
+
+- GIVEN a bound workspace whose `task-validation` takes half a minute
+- WHEN a workflow step starts it detached from a command run in a PID namespace of its own, as Claude Code's Bash sandbox runs each call, and that command returns after two seconds
+- THEN the runner is killed with the namespace: the step asked for again is lost, `step_lost` over `host_ended`, with no result and nothing in the runner's output
+
 ### scenario.execution.cancelled — The run is cancelled
 
 - GIVEN a run whose worker is still working

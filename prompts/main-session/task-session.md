@@ -68,7 +68,10 @@ and `workflow_report` read your task's records, and `task_report` records a repo
 `concorde task report` does. A background session is never woken by channel
 events, so to wait for something you did not start yourself, such as another run of your workspace
 holding its lock, call `register_wait`, which returns the `concorde task wait` command, or run that
-command directly, in background Bash. Its `task_merge` and `task_close` are the main agent's: you
+command directly, in background Bash. Its `workflow_step` belongs to your workflows' step agents,
+which start every step through it, outside your Bash sandbox: every Bash call of yours is a PID
+namespace that dies with the call, killing any run detached from it, so start your own runs in
+background Bash, never with `--detach`. Its `task_merge` and `task_close` are the main agent's: you
 never merge or close your task.
 
 Your settings enforce this boundary: Edit and Write refuse any path outside the task worktree and
