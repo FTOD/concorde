@@ -269,6 +269,13 @@ class GuidanceTests(unittest.TestCase):
             "A defect you saw outside a task",
             "opens no task: keep its report only under `.concorde/runs/defects/`",
             "name that file to the developer",
+            # A defect of the Issue system travels as its error chain, never as an Issue report.
+            "A defect of the Issue system itself** is never written as a defect report",
+            "`concorde issues report --check` refusing a correct report among them",
+            "A refusal whose reason is `environment`, such as `merge_busy`, is no defect",
+            "Hand such a defect over as its error chain alone, with your own link on top",
+            "`.concorde/runs/defects/<name>.error.json`",
+            "never as a report to record as an Issue",
         ):
             self.assertIn(words(fragment), self.skill)
         # The example is a complete Issue report: only its shortened chain stands in.

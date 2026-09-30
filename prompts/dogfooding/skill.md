@@ -114,12 +114,29 @@ Then check it with `concorde issues report --check --file <path>`, which runs ev
 Concorde repository will run when it records the report and records nothing; repair the report
 until the check passes.
 
+**A defect of the Issue system itself** is never written as a defect report. Such a defect is a
+crash or wrong result of Concorde's Issue store, of `concorde issues` or of the project MCP
+server's Issue tools, `concorde issues report --check` refusing a correct report among them; a
+defect report is an Issue report, which the Concorde repository would record with the very Issue
+system that failed. A refusal whose reason is `environment`, such as `merge_busy`, is no defect:
+wait for the lock, or for the merge to finish, and write again. Hand such a defect over as its
+error chain alone, with your own link on top. In a task, `concorde task escalate <task> --code
+concorde_defect --reason scope`, as above, with `--run <run-id>` when a run's result carries the
+failure and otherwise `--error-file <json>` naming a file that holds the failing command's
+`{"error": ...}` output, records that link in the task and prints it as `escalated`; without a
+task, write your link by hand as above, with the failure's error as its only cause. Write that
+chain as one JSON object to `.concorde/runs/defects/<name>.error.json`, a file that is no Issue
+report and that `concorde issues report --check` does not check, and name it to the developer, who
+hands it to the Concorde repository as a failure to fix there, never as a report to record as an
+Issue.
+
 Keep the runs the evidence names. In a task, record the checked report in the task's decision log
 and tell the developer where it is: the developer takes it to a session in the Concorde repository,
 which records it as an Issue there and fixes it in its own task. Leave the work the defect blocks
 open and turn to other work; do not close its task as failed for Concorde's sake. A defect you
 saw outside a task, such as in an unbound run or a refused command, opens no task: keep its report
-only under `.concorde/runs/defects/` and name that file to the developer.
+only under `.concorde/runs/defects/` and name that file to the developer, as you do with the error
+chain of a defect of the Issue system.
 
 ### Take the fix
 

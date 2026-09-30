@@ -20,7 +20,7 @@ A run is requested with:
 | backend | `claude` or `pi`: the [worker backend](../../glossary.json#concept.worker-backend) the worker configuration chooses for the worker, pi when nothing chooses one |
 | worktree | Absolute path of the Git worktree the worker works in: the bound workspace, or for an [unbound run](../../glossary.json#concept.unbound-run) its [unbound checkout](../../glossary.json#concept.unbound-checkout) |
 | parent | The [trace node](../../glossary.json#concept.trace-node) folder of the run that asks for the worker, below which the worker run's node is created |
-| [task type](../../glossary.json#concept.task-type) | One of the seven Protocol task types; it selects the tool set |
+| [task type](../../glossary.json#concept.task-type) | One of the eight Protocol task types; it selects the tool set, the read-only one for a task type that writes nothing, such as `review-architecture` |
 | grant | The frozen grant: every path with its level `rw`, `ro` or `names`, relative to the worktree, and its [context identity](../../glossary.json#concept.context-identity) |
 | instructions | The [Operation](../../glossary.json#concept.operation)'s task-specific part of the brief |
 | checks | The [configured checks](../../glossary.json#concept.configured-check) to run after each round, possibly none |
@@ -284,6 +284,10 @@ unchanged.
 ### req.workers.frozen-grant — One grant for the whole run
 
 The host SHALL generate a run's settings, write hook, tool set and brief from one frozen grant.
+
+### req.workers.every-task-type — A worker of every Protocol task type launches
+
+The host SHALL launch a worker of each of the eight Protocol task types and refuse, before launch, a request naming any other task type.
 
 ### req.workers.malformed-grant — Nothing is generated from a malformed grant
 

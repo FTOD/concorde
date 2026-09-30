@@ -11,7 +11,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from concorde.spec.grants import grant
+from concorde.spec.grants import TASK_TYPES, grant
 from concorde.spec.repository import SpecRepository
 from concorde.spec.errors import ERROR_SCHEMA
 from concorde.spec.schema import validate
@@ -187,6 +187,26 @@ class SpecMcpTests(unittest.TestCase):
         self.assertEqual("ro", levels["specs/a/module.md"])
         self.assertEqual("ro", levels["specs/b/module.md"])
         self.assertEqual(before, self.snapshot())
+
+    @verifies("scenario.spec-mcp.boundary-task-types")
+    def test_boundary_offers_every_task_type(self):
+        client = self.client(root=self.root)
+        [boundary] = [
+            tool
+            for tool in client.request("tools/list")["tools"]
+            if tool["name"] == "boundary"
+        ]
+        self.assertEqual(
+            list(TASK_TYPES),
+            boundary["inputSchema"]["properties"]["task_type"]["enum"],
+        )
+        value, error = client.call(
+            "boundary", modules=["module.a"], task_type="review-architecture"
+        )
+        self.assertFalse(error, value)
+        expected = grant(self.repository(), ["module.a"], "review-architecture").value
+        self.assertEqual(expected["entries"], value["entries"])
+        self.assertNotIn("rw", {entry["level"] for entry in value["entries"]})
 
     @verifies("scenario.spec-mcp.boundary-refused")
     def test_a_refused_grant_is_a_tool_error(self):
