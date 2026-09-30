@@ -230,8 +230,8 @@ project where every check passes, it goes through these steps in order:
    [checked first](requirements.md#req.distribution.installer-docsite-template-first)); a missing
    render of the guidance (`stale_build`,
    [requirements](requirements.md#req.distribution.installer-fresh-guidance)); with
-   `--develop`, a source that Dogfooding's check refuses; a project in which Concorde is still
-   running (`concorde_busy`, described below); a `concorde.json` that names no Python requirement
+   `--develop`, a source that Dogfooding's check refuses; a project in which a run's runner holds
+   its run lock (`concorde_busy`, described below); a `concorde.json` that names no Python requirement
    (`invalid_descriptor`); a `.claude/settings.json` that is not a JSON object (`settings_invalid`,
    [checked first](requirements.md#req.distribution.installer-settings-checked)); a `.mcp.json`
    that is not a JSON object with an optional `mcpServers` object (`mcp_config_invalid`,
@@ -320,16 +320,29 @@ install wrote and this one found in place
 project's own files it only amends: `.gitignore`, `CLAUDE.md`, `.mcp.json` and, once written,
 `.claude/settings.json` ([requirements](requirements.md#req.distribution.receipt-amended)).
 
-A project in which Concorde is still running is refused with `concorde_busy`, since replacing the
-framework copy under a run would change its code halfway
+A project in which a run is still running when the installer checks is refused with
+`concorde_busy`, since replacing the framework copy under that run would change its code halfway
 ([requirements](requirements.md#req.distribution.idle-install)). What counts is a
 [run](../glossary.json#concept.run) of an Operation or of an
-[execution command](../glossary.json#concept.execution-command) whose runner still holds its
-[run lock](../glossary.json#concept.run-lock), found through its
+[execution command](../glossary.json#concept.execution-command) whose runner holds its
+[run lock](../glossary.json#concept.run-lock) at that moment, found through its
 [run progress file](../glossary.json#concept.run-progress-file); the refusal names each
 ([requirements](requirements.md#req.distribution.busy-named)). The
 [progress file](../glossary.json#concept.progress-file) of an Operation's worker, which lies beside
 the Operation's and names the same runner, is not a run of its own.
+
+This check is all the protection there is. The installer makes it once, in step 1, and takes no
+lock that keeps a run from starting afterwards, while it downloads, places the pi runtime,
+replaces the Framework copy and creates Concorde's environment; nor does it see a runner still
+starting at the check, which takes its run lock only once it has loaded its code. **The developer
+must not start a run, `task-validation`, `delivery` or any other `concorde` command, in any
+worktree of the project, while an install or update runs**: such a command may find no
+interpreter or load code partly old and partly new, and fail or misbehave. Long-lived processes the
+check never looks at, such as each session's
+[project MCP server](../glossary.json#concept.project-mcp-server) and
+[Spec MCP server](../spec-tooling/spec-mcp/module.md), keep running
+the code they loaded until they restart. The help of `concorde update` and of the installer says
+so where the developer starts them.
 
 #### When an install fails halfway
 
@@ -386,7 +399,9 @@ its `source` (or `--from <checkout>`); `python3 <checkout>/scripts/install-conco
    installed, always places the pi runtime unless the first install left it out with
    `--without-pi-runtime` (so an update adds it to an install made before the runtime was placed by
    default), creates Concorde's own environment again with uv for the new checkout's Python
-   requirement, and refuses like an install while Concorde runs in the project.
+   requirement, and refuses like an install when a run holds its run lock at the check; nothing
+   else in the project may be started until the update ends, as
+   [the busy check](#installing-into-a-project) explains.
 2. **It binds the new Protocol copy** in the project configuration itself, the one write of the
    project configuration an installer makes.
 3. **It marks the project Concorde unvalidated** by writing `.concorde/update.json`, which Git
@@ -503,7 +518,8 @@ the skill and the `CLAUDE.md` block and records the mode and the checked commit 
 parses it, reads the workspace binding, runs the steps and prints the run result, with its own exit
 codes. Distribution names no Operation or command's meaning and passes no task. The installer also
 reads the [run locks](../glossary.json#concept.run-lock) under `.concorde/locks/runs/` to refuse
-while a run of either kind lives.
+when a run of either kind holds one at its check; it asks nothing of Execution to keep a run from
+starting after that.
 
 <a id="uses-tracing"></a>
 
