@@ -131,7 +131,7 @@
       "id": "concept.decision-point",
       "title": "Decision point",
       "owner": "module.workflows",
-      "definition": "A decision or open question in a run's output that the workflow treats as the developer's to settle: every open question, and every decision of a survey that the worker took rather than the developer.",
+      "definition": "A decision or open question in a run's output that the workflow leaves to be settled above the task, by the main agent when its authority covers it and otherwise by the developer: every open question, and every decision of a survey that the worker took itself rather than following an answer.",
       "explanation": "specs/concorde/execution/workflows/module.md#concept.decision-point"
     },
     {

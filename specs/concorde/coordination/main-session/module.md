@@ -332,7 +332,8 @@ task and name in its brief the workflow, its Module and its
 task worktree, since like every run it works on the workspace of the worktree it starts in and
 never names the task: it runs the installed `/concorde-<name>` workflow. The main agent asks the
 developer which mode to use unless the developer already said; interactive suits a developer who
-wants to settle the decision points, no-ask one who wants the result later. A task session runs the
+wants the decision points settled before the workflow goes on, by the main agent or by the
+developer, no-ask one who wants the result later. A task session runs the
 workflow in the mode its brief names, and in interactive mode when the brief names none
 ([requirements](requirements.md#req.main-session.task-session-workflow)).
 
