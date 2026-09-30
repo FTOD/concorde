@@ -27,6 +27,16 @@ consumed.
 The reading command rolls usage up over a subtree, which counts each token once only because no
 node repeats its children's.
 
+### req.tracing.reported-usage — Usage is what the agent program reported
+
+A trace node's `usage` SHALL hold the figures the agent program reported or recorded for the node's
+work, and null for a figure it did not report, never a figure Concorde computed from prices or
+estimates of its own.
+
+A task session's node takes them from Claude Code's records of the session when its task ends
+([Task sessions](../coordination/task-session/requirements.md#req.task-session.node-finished)), a
+worker round's from its agent process's result.
+
 ### req.tracing.observed-metadata — Metadata is observed, not claimed
 
 A trace node's `metadata` SHALL hold only facts the Concorde code that writes the node observed

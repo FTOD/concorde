@@ -630,7 +630,7 @@ defines them; their contents are these values.
 ```concorde-contract
 {
   "id": "contract.workers.worker-round-trace",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -708,7 +708,7 @@ defines them; their contents are these values.
       }
     }
   },
-  "semantics": "The data of the typed value concorde-worker-round-trace, the content of one worker round's trace node. round is its number from 1; prompt says what the worker was given: the brief (initial), the failing checks (check_failures) or the caller's validation (validation_failures). session is the agent session the round ran in, exit the agent process's exit status (null when it could not be started), audit the verdict of the host's audit after the round (changed paths and violations) or null when the round ended before it, checks the check results of the round in Check execution's shape with their logs as paths relative to this node's folder, and validation the outcome of the caller's validation (clean, the text to repair, or why it did not run), null when none ran. agent is what the agent program reported about the round, as its backend reads it: Claude Code's subtype, error flag, turn count and cost, or pi's last stop reason, turn count and cost. The round's tokens, cost, turns and duration are its usage; its standard error is the artifact stderr.log and its checks are check nodes below it. A behaviour or field change increments the version.",
+  "semantics": "The data of the typed value concorde-worker-round-trace, the content of one worker round's trace node. round is its number from 1; prompt says what the worker was given: the brief (initial), the failing checks (check_failures) or the caller's validation (validation_failures). session is the agent session the round ran in, exit the agent process's exit status (null when it could not be started), audit the verdict of the host's audit after the round (changed paths and violations) or null when the round ended before it, checks the check results of the round in Check execution's shape with their logs as paths relative to this node's folder, and validation the outcome of the caller's validation (clean, the text to repair, or why it did not run), null when none ran. agent is what the agent program reported about the round, as its backend reads it: under claude, the result envelope's subtype, is_error, num_turns, total_cost_usd, permission_denials (the tool calls Claude Code refused, each with its tool name, tool use id and input), modelUsage (each model's tokens and cost) and duration_api_ms, each as the envelope gave it and null when it gave none; or under pi, its last stop reason, turn count and cost. The round's tokens, cost, turns and duration are its usage; its standard error is the artifact stderr.log and its checks are check nodes below it. A behaviour or field change increments the version.",
   "example": {
     "round": 1,
     "prompt": "initial",
@@ -737,7 +737,26 @@ defines them; their contents are these values.
         "subtype": "success",
         "is_error": false,
         "num_turns": 14,
-        "total_cost_usd": 0.41
+        "total_cost_usd": 0.41,
+        "permission_denials": [
+          {
+            "tool_name": "Write",
+            "tool_use_id": "toolu_01",
+            "tool_input": {
+              "file_path": "/work/specs/http/module.md"
+            }
+          }
+        ],
+        "modelUsage": {
+          "claude-sonnet-5-5": {
+            "inputTokens": 42,
+            "outputTokens": 5120,
+            "cacheReadInputTokens": 310422,
+            "cacheCreationInputTokens": 20510,
+            "costUSD": 0.41
+          }
+        },
+        "duration_api_ms": 61240
       }
     }
   }

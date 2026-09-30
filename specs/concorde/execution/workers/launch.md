@@ -232,7 +232,13 @@ model's local id and the model map it came from, is the
 Each round's node is written when the round's worker is launched and again when the round has been
 audited, checked and validated. Its usage holds the tokens, cache reads and writes, cost and turns
 the agent program reported for the round and the round's duration; its content is the
-[worker round trace](contracts.md#contract.workers.worker-round-trace). The checks of a round are
+[worker round trace](contracts.md#contract.workers.worker-round-trace), whose `agent` keeps what
+the agent program reported beyond those fields. On the Claude Code backend that is, besides the
+result envelope's subtype, error flag, turn count and cost, its `permission_denials`, the tool
+calls Claude Code refused under the worker settings, which are evidence for telling a refused
+worker's [boundary case](../../glossary.json#concept.boundary-case), its `modelUsage`, the tokens
+and cost of each model the round used, and its `duration_api_ms`, the time spent waiting for the
+model, each as the envelope gave it and null when it gave none. The checks of a round are
 nodes of Check execution below it. A worker run's own usage records nothing, since its rounds hold
 what it consumed.
 

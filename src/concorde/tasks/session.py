@@ -39,8 +39,10 @@ import shlex
 import shutil
 import subprocess
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 
+from ..spec.typed_data import type_version
 from ..tracing import node as trace
 from . import session_hook, store
 
@@ -265,14 +267,22 @@ def start(
             f"{shown} in {worktree} exited {launched.returncode} without starting a "
             f"background session; its output: {output[-2000:] or '(none)'}",
         )
+    started_at = store.now()
+    # The full session id names the transcript; when Claude Code does not tell it now, the end
+    # of the task asks again, so the start does not fail for it.
+    try:
+        listed = claude_sessions(run).get(found["id"])
+    except LookupError:
+        listed = None
     session = {
         "id": found["id"],
         "reported_id": found["id"],
+        "session_id": _session_id(listed),
         "name": name,
         "main": main.strip(),
         "model": model,
         "settings": path.as_posix(),
-        "started_at": store.now(),
+        "started_at": started_at,
     }
     store.record_session(primary, task_id, session)
     return session
@@ -283,15 +293,28 @@ def start(
 # Task sessions matter to the developer only through their main session, and a finished
 # background session left in Claude's session list is noise there. When the task ends, each of
 # its Claude Code sessions' transcript is copied into its trace node, which moves to the history
-# with the task's folder, and the session is then removed with ``claude rm``, which kills a job
-# that still runs, deletes its job state and removes only a worktree Claude Code created itself,
-# never the task worktree the session was started in.
+# with the task's folder, the node is finished from Claude Code's own records, and the session is
+# then removed with ``claude rm``, which kills a job that still runs, deletes its job state and
+# removes only a worktree Claude Code created itself, never the task worktree the session was
+# started in.
 
 # The transcript's names in the session's trace node: the conversation, and the folder Claude Code
 # keeps beside it (subagent transcripts, long tool results) when there is one.
 TRANSCRIPT = "transcript.jsonl"
 TRANSCRIPT_FILES = "transcript"
 CLAUDE_TIMEOUT = 60
+# Claude Code's list of every session it knows, finished ones included.
+AGENTS = ("agents", "--json", "--all")
+# The states of that list that tell how a session ended, as node statuses: ``done`` when it
+# finished its last turn and waits for its next message, ``failed`` when it ended in an error.
+# Claude Code judges a session by whether its process lives, which it sees only from the
+# session's own process namespace: from inside a task session's sandbox a live session reads
+# ``failed``, so only a close, which runs outside every task session, asks.
+STATES = {"done": "ok", "failed": "failed"}
+# A session id is a file name under ``projects/``: letters, digits and dashes only.
+SESSION_ID = re.compile(r"^[0-9A-Za-z][0-9A-Za-z-]*$")
+# An assistant record Claude Code writes itself, which no model produced.
+SYNTHETIC = "<synthetic>"
 
 
 def claude_directory() -> Path:
@@ -320,6 +343,44 @@ def _said(result: subprocess.CompletedProcess) -> str:
         ESCAPES.sub("", f"{result.stdout}\n{result.stderr}").strip()[-2000:]
         or "(no output)"
     )
+
+
+def claude_sessions(run=None) -> dict[str, dict]:
+    """Every session Claude Code lists, finished ones included, by the short id ``claude --bg``
+    reported: ``claude agents --json --all``, whose entries give each session's full
+    ``sessionId``, its ``cwd`` and its ``state``. ``LookupError`` says what Claude Code answered."""
+    run = run or subprocess.run
+    command = shlex.join(["claude", *AGENTS])
+    try:
+        result = run(
+            ["claude", *AGENTS],
+            capture_output=True,
+            text=True,
+            timeout=CLAUDE_TIMEOUT,
+        )
+    except (OSError, subprocess.SubprocessError) as error:
+        raise LookupError(f"`{command}` could not run: {error}") from error
+    if result.returncode != 0:
+        raise LookupError(f"`{command}` exited {result.returncode}: {_said(result)}")
+    try:
+        listed = json.loads(result.stdout or "")
+    except ValueError as error:
+        raise LookupError(
+            f"`{command}` printed no JSON ({error}): {_said(result)}"
+        ) from error
+    if not isinstance(listed, list):
+        raise LookupError(f"`{command}` printed no JSON list: {_said(result)}")
+    return {
+        str(item["id"]): item
+        for item in listed
+        if isinstance(item, dict) and isinstance(item.get("id"), str)
+    }
+
+
+def _session_id(listed: dict | None) -> str | None:
+    """The full session id of a session's entry in Claude Code's list, when it is one."""
+    found = (listed or {}).get("sessionId")
+    return found if isinstance(found, str) and SESSION_ID.match(found) else None
 
 
 def _gone(result: subprocess.CompletedProcess) -> bool:
@@ -364,66 +425,239 @@ def _project_folder(cwd: str) -> str:
     return re.sub(r"[^A-Za-z0-9]", "-", cwd)
 
 
-def find_transcript(worktree: str, short: str, directory: Path | None = None) -> Path:
-    """The transcript of the session ``short`` started in ``worktree``: exactly one
-    ``<short>*.jsonl`` in the project folder of the worktree, else in any project folder.
+def find_transcript(cwd: str, session_id: str, directory: Path | None = None) -> Path:
+    """The transcript of the session ``session_id`` started in ``cwd``: ``<session_id>.jsonl``
+    of the project folder of ``cwd``, else the one file of that name in any project folder.
     ``LookupError`` says where it looked."""
     projects = (directory or claude_directory()) / "projects"
     if not projects.is_dir():
         raise LookupError(f"Claude Code's projects folder {projects} does not exist")
-    derived = projects / _project_folder(worktree)
-    for where, found in (
-        (derived, sorted(derived.glob(f"{short}*.jsonl")) if derived.is_dir() else []),
-        (projects, sorted(projects.glob(f"*/{short}*.jsonl"))),
-    ):
-        if len(found) == 1:
-            return found[0]
-        if found:
-            raise LookupError(
-                f"{len(found)} transcripts in {where} could be the session's: "
-                + ", ".join(path.as_posix() for path in found)
-            )
+    name = f"{session_id}.jsonl"
+    derived = projects / _project_folder(cwd) / name
+    if derived.is_file():
+        return derived
+    found = sorted(path for path in projects.glob(f"*/{name}") if path.is_file())
+    if len(found) == 1:
+        return found[0]
+    if found:
+        raise LookupError(
+            f"{len(found)} project folders of {projects} hold a transcript {name}: "
+            + ", ".join(path.as_posix() for path in found)
+        )
     raise LookupError(
-        f"no transcript {short}*.jsonl is in any project folder of {projects}"
+        f"no transcript {name} is in {derived.parent} or any other project folder of "
+        f"{projects}"
     )
+
+
+def _records(path: Path):
+    """The JSON objects of a transcript's lines; a line that is not one is skipped."""
+    try:
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return
+    for line in lines:
+        try:
+            value = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(value, dict):
+            yield value
+
+
+def _moment(text) -> datetime | None:
+    if not isinstance(text, str):
+        return None
+    try:
+        moment = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    return moment.astimezone(UTC) if moment.tzinfo else moment.replace(tzinfo=UTC)
+
+
+def _count(value) -> int:
+    return value if isinstance(value, int) and not isinstance(value, bool) else 0
+
+
+def transcript_figures(transcript: Path, subagents: list[Path]) -> dict:
+    """What a session consumed and when it ended, from its transcript and the transcripts of its
+    subagents, as Claude Code recorded them: each API message's tokens, counted once by its
+    ``message.id`` since one message may span several records; the cost of the transcript's last
+    ``cost-state`` record, when no assistant record follows it; the times of the transcript's
+    first and last records. ``usage``, ``ended_at``, ``models`` and ``model_usage``."""
+    messages: dict[str, tuple[str, dict]] = {}
+    times: list[datetime] = []
+    cost_state, stale = None, False
+    for path in [transcript, *subagents]:
+        main = path == transcript
+        for number, record in enumerate(_records(path)):
+            kind = record.get("type")
+            if main:
+                moment = _moment(record.get("timestamp"))
+                if moment is not None:
+                    times.append(moment)
+                if kind == "cost-state":
+                    cost_state, stale = record, False
+            if kind != "assistant":
+                continue
+            stale = stale or (main and cost_state is not None)
+            message = record.get("message")
+            if not isinstance(message, dict) or not isinstance(
+                message.get("usage"), dict
+            ):
+                continue
+            model = message.get("model")
+            if model == SYNTHETIC:
+                continue
+            key = message.get("id") or f"{path.name}:{record.get('uuid') or number}"
+            messages[str(key)] = (str(model or "unknown"), message["usage"])
+    models: dict[str, dict] = {}
+    for model, used in messages.values():
+        sums = models.setdefault(
+            model,
+            {
+                "tokens_in": 0,
+                "tokens_out": 0,
+                "tokens_cache_read": 0,
+                "tokens_cache_write": 0,
+                "messages": 0,
+            },
+        )
+        sums["tokens_in"] += _count(used.get("input_tokens"))
+        sums["tokens_out"] += _count(used.get("output_tokens"))
+        sums["tokens_cache_read"] += _count(used.get("cache_read_input_tokens"))
+        sums["tokens_cache_write"] += _count(used.get("cache_creation_input_tokens"))
+        sums["messages"] += 1
+    reported = cost_state if cost_state is not None and not stale else None
+    cost = (reported or {}).get("totalCostUSD")
+    model_usage = (reported or {}).get("modelUsage")
+
+    def total(field: str) -> int | None:
+        return sum(item[field] for item in models.values()) if models else None
+
+    return {
+        "usage": trace.usage(
+            tokens_in=total("tokens_in"),
+            tokens_out=total("tokens_out"),
+            tokens_cache_read=total("tokens_cache_read"),
+            tokens_cache_write=total("tokens_cache_write"),
+            cost_usd=(
+                float(cost)
+                if isinstance(cost, (int, float))
+                and not isinstance(cost, bool)
+                and cost >= 0
+                else None
+            ),
+            turns=total("messages"),
+            duration_seconds=(
+                (max(times) - min(times)).total_seconds() if times else None
+            ),
+        ),
+        "ended_at": (max(times).strftime("%Y-%m-%dT%H:%M:%S.%fZ") if times else None),
+        "models": models,
+        "model_usage": model_usage if isinstance(model_usage, dict) else None,
+    }
+
+
+def _outcome(state) -> str | None:
+    """Claude Code's state of a session as a node outcome, snake_case."""
+    if not isinstance(state, str):
+        return None
+    text = re.sub(r"[^a-z0-9]+", "_", state.lower()).strip("_")
+    return text if re.match(r"^[a-z][a-z0-9_]*$", text) else None
 
 
 def _kept(record: dict) -> bool:
     return any(item["id"] == "transcript" for item in record.get("artifacts") or [])
 
 
-def keep_transcripts(primary: Path, task_id: str) -> list[str]:
-    """Copy the transcript of every Claude Code session of an ending task into its trace node,
-    as ``transcript.jsonl`` with the folder beside it as ``transcript/``, before the task's
-    folder moves to the history. A warning for each session whose transcript cannot be kept;
-    such a session is then not removed, so nothing of it is lost."""
+def _keep(folder: Path, source: Path) -> dict:
+    """Copy a transcript and the folder beside it into a session's node; its figures."""
+    shutil.copyfile(source, folder / TRANSCRIPT)
+    beside = source.with_suffix("")
+    if beside.is_dir():
+        shutil.copytree(beside, folder / TRANSCRIPT_FILES, dirs_exist_ok=True)
+    return transcript_figures(
+        folder / TRANSCRIPT,
+        sorted((folder / TRANSCRIPT_FILES / "subagents").glob("*.jsonl")),
+    )
+
+
+def _discard(folder: Path) -> None:
+    (folder / TRANSCRIPT).unlink(missing_ok=True)
+    shutil.rmtree(folder / TRANSCRIPT_FILES, ignore_errors=True)
+
+
+def finish_sessions(primary: Path, task_id: str, run=None) -> list[str]:
+    """Finish the trace node of every Claude Code session of an ending task from Claude Code's
+    own records, before the task's folder moves to the history: its full session id and state
+    from ``claude agents --json --all``, asked once, and its transcript, found by that id, copied
+    as ``transcript.jsonl`` with the folder beside it as ``transcript/``, from which its usage and
+    end are derived. A warning for each session whose transcript cannot be kept; such a session
+    is then not removed, so nothing of it is lost, and its node still receives what Claude Code
+    told of it."""
     worktree = store.load_task(primary, task_id)["worktree"]
     warnings = []
+    listed: dict | None = None
+    unlisted = ""
     for found in store.sessions(primary, task_id):
         short, folder = _short(found), Path(found["directory"])
         with store.task_locked(primary, task_id):
             record = trace.read(folder)
             if record is None or _kept(record):
                 continue
+            if listed is None:
+                try:
+                    listed = claude_sessions(run)
+                except LookupError as error:
+                    listed, unlisted = {}, f"; {error}"
+            entry = listed.get(short)
+            data = store.session_content(record["content"]["data"])
+            data["session_id"] = data["session_id"] or _session_id(entry)
+            state = (entry or {}).get("state")
+            data["claude_state"] = state if isinstance(state, str) and state else None
+            record["status"] = STATES.get(data["claude_state"], "unknown")
+            record["outcome"] = _outcome(data["claude_state"])
+            problem = None
             try:
-                source = find_transcript(worktree, short)
-                shutil.copyfile(source, folder / TRANSCRIPT)
-                beside = source.with_suffix("")
-                if beside.is_dir():
-                    shutil.copytree(
-                        beside, folder / TRANSCRIPT_FILES, dirs_exist_ok=True
+                if data["session_id"] is None:
+                    raise LookupError(
+                        "Claude Code did not tell its full session id, which names its "
+                        f"transcript: `{shlex.join(['claude', *AGENTS])}` lists no session "
+                        f"{short}{unlisted}"
                     )
+                cwd = (entry or {}).get("cwd")
+                source = find_transcript(
+                    cwd if isinstance(cwd, str) and cwd else worktree,
+                    data["session_id"],
+                )
+                figures = _keep(folder, source)
                 record["artifacts"] = [
                     *(record.get("artifacts") or []),
                     trace.artifact(folder, "transcript", TRANSCRIPT),
                 ]
+                record["usage"] = figures["usage"]
+                record["ended_at"] = figures["ended_at"]
+                data["models"] = figures["models"]
+                data["model_usage"] = figures["model_usage"]
+            except (LookupError, OSError) as error:
+                _discard(folder)
+                problem = error
+            record["content"] = {
+                "type_id": store.SESSION_TRACE,
+                "schema_version": type_version(store.SESSION_TRACE),
+                "data": data,
+            }
+            try:
                 trace.write(folder, record)
-            except (LookupError, OSError, trace.TraceError) as error:
-                (folder / TRANSCRIPT).unlink(missing_ok=True)
+            except trace.TraceError as error:
+                _discard(folder)
+                problem = error
+            if problem is not None:
                 warnings.append(
                     f"the transcript of the Claude Code task session {short} "
                     f"({found['name']}) of task {task_id} could not be kept in its trace node "
-                    f"{folder}: {error}; the session stays in Claude's session list so that "
+                    f"{folder}: {problem}; the session stays in Claude's session list so that "
                     f"its transcript is not lost: keep what you need of it, then remove it "
                     f"with `claude rm {short}`"
                 )
@@ -458,14 +692,16 @@ def remove_sessions(primary: Path, task_id: str, folder: Path) -> list[str]:
 
 __all__ = [
     "brief",
+    "claude_sessions",
     "find_transcript",
+    "finish_sessions",
     "hook_source",
-    "keep_transcripts",
     "mcp_config",
     "remove_sessions",
     "session_name",
     "settings",
     "start",
     "stop_sessions",
+    "transcript_figures",
     "writable",
 ]

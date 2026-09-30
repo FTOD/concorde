@@ -742,22 +742,66 @@ def _ignored_inside(primary: Path, worktree: Path) -> None:
 
 SESSION_TRACE = "concorde-session-trace"
 _NULLABLE = {"anyOf": [{"type": "null"}, _TEXT]}
-# contract.task-session.session-trace, version 1
+_TOKENS = {"type": "integer", "minimum": 0}
+# The fields a session node's content gained with version 2, null until they are learnt.
+SESSION_LEARNT = ("session_id", "claude_state", "models", "model_usage")
+# contract.task-session.session-trace, version 2
 register(
     SESSION_TRACE,
-    1,
+    2,
     {
         "type": "object",
         "additionalProperties": False,
-        "required": ["name", "main", "model", "reported_id"],
+        "required": ["name", "main", "model", "reported_id", *SESSION_LEARNT],
         "properties": {
             "name": _TEXT,
             "main": _NULLABLE,
             "model": _NULLABLE,
             "reported_id": _NULLABLE,
+            "session_id": _NULLABLE,
+            "claude_state": _NULLABLE,
+            "models": {
+                "anyOf": [
+                    {"type": "null"},
+                    {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "required": [
+                                "tokens_in",
+                                "tokens_out",
+                                "tokens_cache_read",
+                                "tokens_cache_write",
+                                "messages",
+                            ],
+                            "properties": {
+                                "tokens_in": _TOKENS,
+                                "tokens_out": _TOKENS,
+                                "tokens_cache_read": _TOKENS,
+                                "tokens_cache_write": _TOKENS,
+                                "messages": _TOKENS,
+                            },
+                        },
+                    },
+                ]
+            },
+            "model_usage": {"anyOf": [{"type": "null"}, {"type": "object"}]},
         },
     },
 )
+
+
+def session_content(data: dict) -> dict:
+    """A session node's content data in the current version, from ``data`` of any version: a
+    node written before version 2 has none of the learnt fields, which stay null."""
+    return {
+        "name": data["name"],
+        "main": data.get("main"),
+        "model": data.get("model"),
+        "reported_id": data.get("reported_id"),
+        **{key: data.get(key) for key in SESSION_LEARNT},
+    }
 
 
 def sessions_folder(primary: Path, task_id: str, folder: Path | None = None) -> Path:
@@ -784,6 +828,7 @@ def sessions(primary: Path, task_id: str, folder: Path | None = None) -> list[di
                 "main": data["main"],
                 "model": data["model"],
                 "reported_id": data["reported_id"],
+                "session_id": data.get("session_id"),
                 "started_at": record["started_at"],
                 "directory": item.as_posix(),
             }
@@ -799,8 +844,8 @@ def _current_open(primary: Path, task_id: str) -> dict:
 
 def record_session(primary: Path, task_id: str, session: dict) -> dict:
     """Record a started task session as a node of the task's trace, for a task that has not
-    ended. ``session`` names its identity, name, main session, model and the identity Claude
-    Code reported."""
+    ended. ``session`` names its identity, name, main session, model, the identity Claude Code
+    reported and, when Claude Code told it, the full session id."""
     # Checked before taking the lock too, so no lock file is made again for a closed task.
     _current_open(primary, task_id)
     with task_locked(primary, task_id):
@@ -812,15 +857,10 @@ def record_session(primary: Path, task_id: str, session: dict) -> dict:
             "session",
             content_type=SESSION_TRACE,
             metadata={"task": task_id, "model": session.get("model")},
-            content={
-                "name": session["name"],
-                "main": session.get("main"),
-                "model": session.get("model"),
-                "reported_id": session.get("reported_id"),
-            },
+            content=session_content(session),
             started_at=session.get("started_at"),
         )
-        # Concorde never observes when a session ends.
+        # Concorde does not see a session end; the task's end finishes the node.
         node.record["status"] = "unknown"
         node.start()
         if node.failure is not None:
@@ -1360,7 +1400,8 @@ def close_locked(
     ``concorde task merge`` does with the closing dated ``at``; ``key``, the history key, is the
     one that merge chose, and free otherwise, and ``at`` the time the closing names, by default
     now. Before the folder moves, the transcripts of the task's Claude Code task
-    sessions are copied into their nodes, adding to ``warnings`` each one that cannot be, and
+    sessions are copied into their nodes, which are finished from Claude Code's records, adding
+    to ``warnings`` each transcript that cannot be kept, and
     ``before_move`` runs, such as a merge ending its attempt's node.
     """
     from . import session
@@ -1381,7 +1422,7 @@ def close_locked(
         if not _closing_logged(primary, task_id, ended):
             _log_closing(primary, task_id, ended)
         commit_decision_log(primary, task_id, ended, again)
-        warnings.extend(session.keep_transcripts(primary, task_id))
+        warnings.extend(session.finish_sessions(primary, task_id))
         if before_move is not None:
             before_move()
         _move_to_history(primary, task_id, ended["history"], again)
@@ -1458,7 +1499,7 @@ def close_locked(
         ) from error
     _log_closing(primary, task_id, closed["closed"])
     commit_decision_log(primary, task_id, closed["closed"], again)
-    warnings.extend(session.keep_transcripts(primary, task_id))
+    warnings.extend(session.finish_sessions(primary, task_id))
     if before_move is not None:
         before_move()
     _move_to_history(primary, task_id, key, again)
@@ -1715,6 +1756,7 @@ __all__ = [
     "primary_of",
     "record_session",
     "require_primary",
+    "session_content",
     "show_task",
     "task_workspace_locked",
     "unfinished_merge",

@@ -79,8 +79,21 @@ session's [trace node](../../glossary.json#concept.trace-node) before the task's
 moves to the [history](../../glossary.json#concept.history), and never write into the history
 afterwards.
 
-A transcript that cannot be found or copied does not fail the close; it is named in the close's
-warnings.
+The transcript is found by the session's full session id, which Claude Code's own list of sessions
+gives, never by a pattern that could match another session's. A transcript that cannot be found or
+copied does not fail the close; it is named in the close's warnings.
+
+### req.task-session.node-finished — A task session's node receives its figures from Claude Code
+
+When a task ends, Task sessions SHALL write into each task session's
+[trace node](../../glossary.json#concept.trace-node), before the task's folder moves to the
+[history](../../glossary.json#concept.history), the session's full session id, its status from
+Claude Code's state of the session and, from its kept transcript, its usage and its end, taking the
+cost only from Claude Code's own account in the transcript and leaving it null without one.
+
+The figures are written into the node, not computed when a trace is read, because retention later
+removes the transcript they come from while the node stays. A state Claude Code does not report as
+`done` or `failed` leaves the status `unknown`.
 
 ### req.task-session.removed — An ended task leaves no task session in Claude's session list
 

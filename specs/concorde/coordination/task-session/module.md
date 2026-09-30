@@ -165,8 +165,12 @@ under `.concorde/tasks/severity/runtime/`, with an MCP configuration `mcp.json` 
 the session the [project MCP server](../../glossary.json#concept.project-mcp-server), starts
 `claude --bg` in the task worktree with that configuration and the task-session guidance and the
 task's goal, Modules, decision log and the main agent's session name as its first prompt, and
-records the started session as a node `sessions/<id>/` of the task's trace, with status `unknown`,
-since nothing tells Concorde when a Claude Code session ends. `--main` is required: a start without
+records the started session as a node `sessions/<id>/` of the task's trace, named by the short id
+`claude --bg` reported, with status `unknown` until its task ends, since Concorde does not see a
+Claude Code session end. It also asks Claude Code for the session's full session id, the name of
+its transcript, with `claude agents --json --all`, whose entry of that short id gives it as
+`sessionId`, and records it in the node; when Claude Code does not tell it then, the node records
+none and the task's end asks again. `--main` is required: a start without
 it is refused with `invalid_input`. `--dry-run` writes the boundary and prints the command without
 starting anything. A task that is closed or failed, a missing worktree, or a Claude Code that does
 not report a started background session is refused (`task_closed`, `missing_worktree`,
@@ -239,14 +243,19 @@ points:
   session already ended or no longer known to Claude Code (`No job matching`) counts as stopped.
   When a stop cannot be confirmed, the close is refused with `session_stop_failed` before it
   changed the task, naming the session, Claude Code's answer and the command to stop it by hand.
-- Every close, a merge's included, copies each session's transcript into the session's trace node
-  just before the task's folder moves to the history: Claude Code's
-  `projects/<the worktree's path with every character that is no letter or digit as ->/<session
-  uuid>.jsonl` of its configuration folder (`$CLAUDE_CONFIG_DIR`, by default `~/.claude`), found as
-  the only `<id>*.jsonl` of that project folder, or else of any project folder, becomes
-  `transcript.jsonl`, an artifact of the node, and the folder Claude Code keeps beside it, with
-  subagent transcripts and long tool results, becomes `transcript/`. The history thus keeps each
-  session's conversation, and is never written after the move.
+- Every close, a merge's included, finishes each session's trace node just before the task's
+  folder moves to the history. It asks Claude Code once, with `claude agents --json --all`, for
+  every session it still lists, and takes from the session's entry its full session id, when the
+  node does not record it yet, its working directory and its state. It opens the transcript by
+  that exact id: `projects/<the working directory, every character that is no letter or digit as
+  ->/<session id>.jsonl` of Claude Code's configuration folder (`$CLAUDE_CONFIG_DIR`, by default
+  `~/.claude`), or else the file of that name in any project folder; a session whose id Claude
+  Code does not tell, or whose transcript is in neither place, is named in a warning that says
+  what was asked and where it looked. The transcript becomes `transcript.jsonl`, an artifact of
+  the node, and the folder Claude Code keeps beside it, with subagent transcripts and long tool
+  results, becomes `transcript/`. From these records the node receives what the session consumed
+  and when it ended ([below](#finishing-a-session-node)). The history thus keeps each session's
+  conversation and its figures, and is never written after the move.
 - Once the task is closed, `claude rm <id>` removes each session whose transcript was kept from
   Claude's session list. It kills a session that still runs and deletes Claude Code's own state of
   the job, and it removes a worktree only when Claude Code created it for the session, never the
@@ -254,6 +263,34 @@ points:
   a transcript that could not be kept, whose session is then left in the list so nothing of it is
   lost, never fails the close, and the close's `warnings` name the session, the whole reason and
   the command that removes it by hand.
+
+### Finishing a session node
+
+A task session's node is written when the session starts, and Concorde sees nothing of the session
+until its task ends; its figures then come from Claude Code's own records, as
+[Tracing](../../tracing/requirements.md#req.tracing.reported-usage) requires, and are written into
+the node because retention later removes the transcript:
+
+- **usage**: the tokens read, written, and read from and written to the prompt cache, summed over
+  the `assistant` records of the transcript and of the subagent transcripts beside it, counting
+  each API message, by its `message.id`, once, since one message may span several records; the
+  turns are those messages; the duration runs from the earliest time the transcript's records carry
+  to the latest. The cost
+  is the `totalCostUSD` of the transcript's last `cost-state` record, Claude Code's own account,
+  when one is there and no `assistant` record follows it, and null otherwise: a background
+  session's transcript often has none, and Concorde computes no price.
+- **end**: the latest time the transcript's records carry, when a transcript was kept.
+- **status**: from the session's state in `claude agents --json --all`, `ok` for `done`, a session
+  waiting for its next message, `failed` for `failed`, and `unknown` for any other state or when
+  Claude Code no longer lists the session; the state itself is the node's outcome.
+- **content**: the full session id, Claude Code's state, the tokens and messages of each model,
+  and the `modelUsage` of that `cost-state` record, per model with its cost, when there is one.
+
+A session whose transcript was not kept still receives its session id and status when Claude Code
+tells them; its usage stays null. Claude Code judges a session's state by whether its process
+lives, which it can see only from a process namespace in which that process is visible: from inside
+a task session's own sandbox a live session reads `failed`. So Concorde takes the state only at the
+close, which runs outside every task session.
 
 ## Escalating
 
@@ -386,6 +423,6 @@ sessions configures for every task session it starts, without a channel (`CONCOR
 Two Modules call this one, both from level 1's side: the Main session's guidance has the main
 agent start task sessions, and Tasks dispatches `concorde task session` here after its own checks
 and, when it closes a task, has its task sessions ended here. A task session records only its
-start, and its transcript once its task ends: the main agent learns what it did from its
-SendMessage report, and finds one that ended without a message with `claude agents` and
+start, and its transcript and figures once its task ends: the main agent learns what it did from
+its SendMessage report, and finds one that ended without a message with `claude agents` and
 `claude logs` while its task is open.

@@ -32,6 +32,19 @@ ACTOR = "Claude Code process (claude -p)"
 PROXY_VARIABLES = ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy")
 NO_PROXY_VARIABLES = ("NO_PROXY", "no_proxy")
 LOOPBACK_NAMES = {"localhost", "127.0.0.1", "::1", "[::1]"}
+# What a round's content keeps of the result envelope, as Claude Code gave it: besides how the
+# round ended and its turns and cost, the tool calls it refused under the worker settings
+# (evidence for telling a refused worker's boundary case), each model's tokens and cost, and the
+# time spent waiting for the model.
+ENVELOPE_KEPT = (
+    "subtype",
+    "is_error",
+    "num_turns",
+    "total_cost_usd",
+    "permission_denials",
+    "modelUsage",
+    "duration_api_ms",
+)
 
 
 class BackendRefusal(Exception):
@@ -208,10 +221,7 @@ class ClaudeStream:
         if envelope:
             concluded.session = envelope.get("session_id")
             concluded.info = {
-                "claude": {
-                    key: envelope.get(key)
-                    for key in ("subtype", "is_error", "num_turns", "total_cost_usd")
-                }
+                "claude": {key: envelope.get(key) for key in ENVELOPE_KEPT}
             }
             used = (
                 envelope.get("usage") if isinstance(envelope.get("usage"), dict) else {}
