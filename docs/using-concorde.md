@@ -498,6 +498,7 @@ worktree runs one of them at a time.
 
 ```bash
 concorde run understand  --goal "how should retries be limited?" --plan
+concorde run plan_review --plan plan.md --input <plan-run-id>
 concorde run specify     --intent "state the retry limit" --input <plan-run-id>
 concorde run implement   --goal "implement the retry limit"
 concorde run test
@@ -509,6 +510,7 @@ concorde delivery
 | Operation                   | Worker       | What it does                                                                                                                                                         |
 | --------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `understand`                | reads only   | Assesses what the Modules promise and whether the Spec suffices; returns a plan with `--plan`.                                                                       |
+| `plan_review`               | reads only   | Optional: reviews a plan the task session wrote (`--plan`) against the task's goal, the Specs and the code; reports findings and a verdict.                          |
 | `specify`                   | writes Specs | Changes the bound Modules' own Spec documents.                                                                                                                       |
 | `implement`                 | writes code  | Changes the bound Modules' code; the host runs your checks and resumes the worker on failures (`--rounds` limits the rounds).                                        |
 | `test`                      | reads only   | The host runs your checks; the worker interprets the results (`--focus` narrows it).                                                                                 |
@@ -521,11 +523,25 @@ Spec reviews keep a **review memory** per Module in `.concorde/reviews/spec/`, c
 task. A repeated review reports only what is new, what changed and what was fixed, and a Module
 stays `changes_required` while any earlier blocking finding is still open.
 
-A typical task runs `understand`, `specify` when the Spec must change first, `implement` and `test`,
-the reviews when the change deserves them, and then `task-validation` and `delivery`. Steps are
-repeated or skipped as the results tell. `--input <run-id>` passes the output of an earlier
-successful run in the same worktree, such as a plan, to the next worker; `--modules` names the
-Modules one run works on, instead of the task's.
+A **plan review** is optional: nothing requires it before `task-validation` or `delivery`. The task
+session writes the plan itself in a file of its worktree, possibly starting from an `understand`
+plan, and runs `plan_review --plan <file>`; one read-only worker, `reviewer`, whose model comes from
+`.concorde/workers.json` like every worker's, judges it against the task's goal, the bound Modules'
+Specs and the code. The review is a discussion over several runs that the task session leads: while
+the verdict is `changes_required`, it answers every finding, accepting it and revising the plan or
+rejecting it with its reason, and runs `plan_review` again with the previous run as `--input` and
+the answers, `--accept <finding> "<how the plan settles it>"` or `--reject <finding> "<why>"`, until
+the verdict is `accepted`. A finding the reviewer maintains after the task session rejected it goes
+to the main agent. Each run keeps its own copy of the plan it reviewed, so the task session deletes
+the plan file before `task-validation`, since `delivery` commits every uncommitted change.
+`plan_review` judges the plan against a task's goal, so unlike `understand` it never runs outside a
+task.
+
+A typical task runs `understand`, `plan_review` when the plan deserves a second reading, `specify`
+when the Spec must change first, `implement` and `test`, the reviews when the change deserves them,
+and then `task-validation` and `delivery`. Steps are repeated or skipped as the results tell.
+`--input <run-id>` passes the output of an earlier successful run in the same worktree, such as a
+plan, to the next worker; `--modules` names the Modules one run works on, instead of the task's.
 
 Concorde never lets a worker infer a missing promise from the code. When the Spec does not say what
 a change needs, the Operation stops with a **Spec gap**, and the Spec is changed first through

@@ -67,8 +67,8 @@ major impact.
 1. **Discuss and open.** Agree the change and open a task: a branch and worktree for the Modules
    it touches. The main agent starts a task session in that worktree, which carries the task
    through the next steps; the main agent never works inside the worktree itself.
-2. **Understand and specify.** The task session runs `understand` to assess and plan, and
-   `specify` when the Spec must change first.
+2. **Understand and specify.** The task session runs `understand` to assess and plan, optionally
+   `plan_review` to have its plan reviewed, and `specify` when the Spec must change first.
 3. **Implement and test.** It runs `implement` and `test`; the host audits every write and runs
    the configured checks itself.
 4. **Validate, deliver, merge.** `task-validation` previews readiness, `delivery` validates the
@@ -121,6 +121,7 @@ print one JSON result. Run them inside a task's worktree, whose workspace bindin
 | Operation         | Result and boundary                                                                           |
 | ----------------- | --------------------------------------------------------------------------------------------- |
 | `understand`      | An assessment of the Modules and, when asked, a plan; reads Specs and only the names of code. |
+| `plan_review`     | (optional) Findings and a verdict on a plan the task session wrote; reads Specs and code.     |
 | `specify`         | A change of the bound Modules' own Spec documents; structural validation afterwards.          |
 | `implement`       | A code change within the bound Modules' realization; configured checks with resume rounds.    |
 | `test`            | The host's check results interpreted by a read-only worker.                                   |
