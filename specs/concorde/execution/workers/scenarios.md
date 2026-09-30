@@ -72,7 +72,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ### scenario.workers.read-denied — Withheld files cannot be read by file tools
 
-- GIVEN a running worker on the Claude Code backend whose grant leaves a file out and makes another `names`
+- GIVEN a running worker on the Claude Code backend whose grant leaves a file out and makes another `names`, both existing when its deny rules were generated
 - WHEN it uses Read on either file, or Grep over a directory that holds them
 - THEN Read is denied with a generic permission message
 - AND Grep returns matches only from files the grant makes readable

@@ -295,9 +295,9 @@ The host SHALL keep a run's settings, write hook, tool set and brief unchanged f
 
 On the Claude Code backend the write hook SHALL deny every Edit or Write whose target is not in the grant's `rw` list.
 
-### req.workers.read-denials — File tools cannot read what the grant withholds
+### req.workers.read-denials — File tools cannot read what the grant withheld when the rules were generated
 
-On the Claude Code backend the [deny rules](../../glossary.json#concept.deny-rules) SHALL forbid Read, Glob and Grep every worktree path whose level is neither `ro` nor `rw`.
+On the Claude Code backend the [deny rules](../../glossary.json#concept.deny-rules) SHALL forbid Read, Glob and Grep on every worktree path that exists when the host generates them and whose level is neither `ro` nor `rw`.
 
 ### req.workers.bash-sandbox — Bash runs sandboxed without network
 

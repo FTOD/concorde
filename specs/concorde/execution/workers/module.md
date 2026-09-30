@@ -554,6 +554,16 @@ on Claude Code each resume returns a session id the host continues from. Rounds 
 failing checks and what the caller's validation reports; a Spec gap or grant violation is a
 decision for the main agent or developer, not to retry.
 
+On Claude Code the deny rules withhold only the worktree paths that exist when the host generates
+them: a file created later has no rule of its own, and unless a directory rule hides it the file
+tools can read it, a [limit of the Harness](../../harness/claude-code.md#deny-rules). The worker
+cannot use it to reach more than its grant: its own writes outside `rw` are refused, and any other
+file outside `rw` that appears in the worktree during the run and that Git does not ignore fails the
+run through the write audit. What remains is a Git-ignored file another process creates in the
+worktree while the run lasts, which a Claude Code worker may read without anything failing. On pi
+there is no such gap, since the permission extension checks every file tool call against the grant
+itself.
+
 `--safe-mode`/`--bare` are unused since they'd disable the write hook too. Credentials are a copy of
 the user's file in the runtime directory's `config/`, removed with it when the run ends, so the
 traces never retain one; an env-var token was untested, and keeping credentials from the worker
