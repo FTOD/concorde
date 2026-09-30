@@ -1,8 +1,10 @@
-"""Task-type grants of Spec Protocol 16 (``protocol/boundaries.md``, task types).
+"""Task-type grants of Spec Protocol 16.1 (``protocol/boundaries.md``, task types).
 
 Code-phase task types read the whole project's implementation (``ProjectImplementation``): a
 worker runs the code it changes together with the code it uses, and a package is only importable
-whole. Only the bound Modules' own scopes are ever writable.
+whole. ``review-architecture`` reads the whole project's Specs (``ProjectSpecification``) and only
+the names of its code, since architecture is judged between Modules from what they promise. Only
+the bound Modules' own scopes are ever writable.
 
 A grant lists the paths a task of one task type, bound to one or more Modules, may know by name
 (``names``), read (``ro``) or change (``rw``); every other path is denied and omitted. It is
@@ -10,7 +12,8 @@ computed from one worktree's declarations alone and carries the context identity
 Modules, so a harness can freeze it when a worker starts and tell later whether anything inside it
 changed. It also carries the bound Modules' terms, the glossary entries their contexts select, which
 is how a worker learns the definitions its documents link: the glossary file is listed only when
-the task type writes Specs, and which of its entries such a task changed is Workers' audit.
+the task type writes Specs, where which of its entries such a task changed is Workers' audit, or
+reads the whole project's Specs, where it is read only.
 """
 
 from __future__ import annotations
@@ -19,7 +22,13 @@ from dataclasses import dataclass
 from typing import Sequence
 
 from .model import ToolResult
-from .repository_base import SpecError, digest, installed_files, is_directory_entry
+from .repository_base import (
+    SpecError,
+    digest,
+    installed_files,
+    is_directory_entry,
+    read_file,
+)
 
 TASK_TYPES = (
     "understand",
@@ -29,6 +38,7 @@ TASK_TYPES = (
     "review-spec",
     "review-code",
     "code-to-spec",
+    "review-architecture",
 )
 
 # The Protocol's task-type table (protocol/model.yaml ``task_types``) in grant levels: ``read``
@@ -41,6 +51,7 @@ LEVELS: dict[str, dict[str, str | None]] = {
         "SpecScope": None,
         "ExternalContext": "ro",
         "ProjectImplementation": None,
+        "ProjectSpecification": None,
     },
     "specify": {
         "SpecContext": "ro",
@@ -49,6 +60,7 @@ LEVELS: dict[str, dict[str, str | None]] = {
         "SpecScope": "rw",
         "ExternalContext": "ro",
         "ProjectImplementation": None,
+        "ProjectSpecification": None,
     },
     "implement": {
         "SpecContext": "ro",
@@ -57,6 +69,7 @@ LEVELS: dict[str, dict[str, str | None]] = {
         "SpecScope": None,
         "ExternalContext": "ro",
         "ProjectImplementation": "ro",
+        "ProjectSpecification": None,
     },
     "test": {
         "SpecContext": "ro",
@@ -65,6 +78,7 @@ LEVELS: dict[str, dict[str, str | None]] = {
         "SpecScope": None,
         "ExternalContext": "ro",
         "ProjectImplementation": "ro",
+        "ProjectSpecification": None,
     },
     "review-spec": {
         "SpecContext": "ro",
@@ -73,6 +87,7 @@ LEVELS: dict[str, dict[str, str | None]] = {
         "SpecScope": None,
         "ExternalContext": "ro",
         "ProjectImplementation": None,
+        "ProjectSpecification": None,
     },
     "review-code": {
         "SpecContext": "ro",
@@ -81,6 +96,7 @@ LEVELS: dict[str, dict[str, str | None]] = {
         "SpecScope": None,
         "ExternalContext": "ro",
         "ProjectImplementation": "ro",
+        "ProjectSpecification": None,
     },
     "code-to-spec": {
         "SpecContext": "ro",
@@ -89,6 +105,16 @@ LEVELS: dict[str, dict[str, str | None]] = {
         "SpecScope": "rw",
         "ExternalContext": "ro",
         "ProjectImplementation": "ro",
+        "ProjectSpecification": None,
+    },
+    "review-architecture": {
+        "SpecContext": "ro",
+        "ImplementationContext": "names",
+        "ImplementationScope": None,
+        "SpecScope": None,
+        "ExternalContext": "ro",
+        "ProjectImplementation": "names",
+        "ProjectSpecification": "ro",
     },
 }
 RANK = {"names": 1, "ro": 2, "rw": 3}
@@ -141,8 +167,14 @@ def _modules(repository, modules: Sequence[str]) -> list[str]:
     return sorted(modules)
 
 
-def context_identity(repository, modules: Sequence[str]) -> str:
-    """Digest of the bound Modules' selected sources and external material (see contracts)."""
+def context_identity(
+    repository, modules: Sequence[str], project_specification: bool = False
+) -> str:
+    """Digest of the bound Modules' selected sources and external material (see contracts).
+
+    With ``project_specification`` it also covers every file of ``ProjectSpecification``, so
+    that a ``review-architecture`` grant changes identity when any Module's Specs change.
+    """
     items = []
     for module in _modules(repository, modules):
         context = repository.spec_context(module).value
@@ -160,7 +192,13 @@ def context_identity(repository, modules: Sequence[str]) -> str:
                 ),
             }
         )
-    return digest({"modules": items})
+    if not project_specification:
+        return digest({"modules": items})
+    project = [
+        {"path": path, "digest": digest(read_file(repository.root, path))}
+        for path in repository.project_specification()
+    ]
+    return digest({"modules": items, "project_specification": project})
 
 
 def _paths_of(repository, module: str) -> dict[str, tuple[str, ...]]:
@@ -173,6 +211,7 @@ def _paths_of(repository, module: str) -> dict[str, tuple[str, ...]]:
         "SpecScope": sets.spec_scope,
         "ExternalContext": tuple(entry.path for entry in sets.external_context),
         "ProjectImplementation": sets.project_implementation,
+        "ProjectSpecification": sets.project_specification,
     }
 
 
@@ -234,7 +273,11 @@ def grant(repository, modules: Sequence[str], task_type: str) -> Grant:
         {
             "task_type": task_type,
             "modules": bound,
-            "context_identity": context_identity(repository, bound),
+            "context_identity": context_identity(
+                repository,
+                bound,
+                LEVELS[task_type]["ProjectSpecification"] is not None,
+            ),
             "entries": entries,
             "terms": [terms[identity] for identity in sorted(terms)],
             # Named so the write audit can hold a change of it to the bound Modules' entries.

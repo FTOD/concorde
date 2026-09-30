@@ -62,8 +62,9 @@ CODES: dict[str, tuple[str, str]] = {
         "correct the named argument and call again",
     ),
     "invalid_task_type": (
-        "a grant exists only for the seven task types the Protocol defines",
-        "use understand, specify, implement, test, review-spec, review-code or code-to-spec",
+        "a grant exists only for the eight task types the Protocol defines",
+        "use understand, specify, implement, test, review-spec, review-code, code-to-spec or "
+        "review-architecture",
     ),
     "unknown_module": (
         "a grant, boundary or query names only Modules the registry registers",

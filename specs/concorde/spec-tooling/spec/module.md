@@ -49,9 +49,10 @@ the tests' own source, which name the scenarios a test verifies and are parsed, 
 
 <a id="concept.boundary-set"></a><a id="concept.impact-index"></a>
 
-For the Modules a task is bound to, Spec core returns the six
+For the Modules a task is bound to, Spec core returns the seven
 **[boundary sets](../../glossary.json#concept.boundary-set)**: each Module's five, selected one
-level deep, and the project-wide ProjectImplementation. A Module's
+level deep, and the project-wide ProjectImplementation, every file any Module binds, and
+ProjectSpecification, every Module's documents with the glossary. A Module's
 [Spec context](../../glossary.json#concept.spec-context) also holds its terms: the glossary entries
 of the concepts it owns, of the concepts its selected documents link or relate to and of those its
 `relies_on` names, closed over the terms those definitions link and their `narrows`, `supersedes`
@@ -68,7 +69,9 @@ Operations' policy.
 A **[grant](../../glossary.json#concept.grant)** says, from one worktree's Specs, which paths a
 worker of one task type bound to some Modules may change (`rw`), read (`ro`) or only know by name
 (`names`); every other path is denied. A task type that reads code reads the whole project's code,
-the Protocol's ProjectImplementation, but writes only within the bound Modules' scopes. The grant
+the Protocol's ProjectImplementation, but writes only within the bound Modules' scopes;
+`review-architecture` reads every Module's Specs, the Protocol's ProjectSpecification, and knows the
+project's code only by name. The grant
 carries the bound Modules' terms, whole glossary entries, and its
 **[context identity](../../glossary.json#concept.context-identity)**, so a caller can tell later
 whether a Spec source or pinned external material the worker could read has changed; it does not
@@ -362,7 +365,9 @@ granted at most `ro`, because the installer replaces it on every update and the 
 the project are configured by it.
 
 The context identity covers no implementation contents, so a worker's writes to code never make its
-context stale; a task that writes Specs changes its own context identity. Every path a grant lists
+context stale; a task that writes Specs changes its own context identity. A `review-architecture`
+grant's identity also covers every file of ProjectSpecification, since its worker judges every
+Module's Specs, so a change to any of them makes its judgment stale. Every path a grant lists
 from a realization exists, since a realization binds only paths that exist: a new file outside the
 bound directories is created and bound at the task level before the grant is computed, so the grant
 needs no mark for files still to be created.
@@ -378,7 +383,7 @@ levels: "Give each path of the boundary sets\nthe task type's level; a path keep
 shared: "Does an rw entry cover a file\nan unbound Module also binds?" {shape: diamond}
 installed: "Lower installed files\nfrom rw to ro"
 drop: "Drop exact paths a directory entry\nof equal or higher level covers"
-identity: "Compute the context identity over the\nSpec sources, terms and pinned\nexternal material"
+identity: "Compute the context identity over the\nSpec sources, terms and pinned\nexternal material (and every\nModule's Specs for review-architecture)"
 grant: "Grant: sorted entries, terms,\nglossary path, context identity" {shape: page}
 refused: "Refused, no grant:\ninvalid_input, invalid_task_type,\nunknown_module or shared_file" {shape: page}
 

@@ -26,6 +26,8 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from ..spec.grants import LEVELS
+
 TOOL_SETS = {
     "understand": "Read,Glob,Grep",
     "review-spec": "Read,Glob,Grep",
@@ -43,9 +45,13 @@ READ_ONLY_TASK_TYPE = "understand"
 def tool_set(tool_sets: dict, task_type: str, grant: dict | None) -> str:
     """The tool set of one backend for a task type, read-only when the grant writes nothing.
 
-    A harness may give less than a task type assigns, such as a survey's ``code-to-spec`` grant
-    with the Spec side withheld; such a worker gets no tool that changes files.
+    A task type whose Protocol row writes no set gets the read-only set on every backend, which
+    is how ``review-architecture`` gets the tools of ``review-spec`` without a row of its own. A harness may also give less than a
+    task type assigns, such as a survey's ``code-to-spec`` grant with the Spec side withheld; such
+    a worker gets no tool that changes files either.
     """
+    if task_type in LEVELS and "rw" not in LEVELS[task_type].values():
+        return tool_sets[READ_ONLY_TASK_TYPE]
     entries = grant.get("entries") if isinstance(grant, dict) else None
     if isinstance(entries, list) and not any(
         isinstance(entry, dict) and entry.get("level") == "rw" for entry in entries

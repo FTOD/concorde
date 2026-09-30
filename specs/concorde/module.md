@@ -73,7 +73,9 @@ occupy different levels.
 A **[task type](glossary.json#concept.task-type)** fixes access to the
 [boundary sets](glossary.json#concept.boundary-set) of the bound Modules. For example, `specify`
 grants writes to their Specs and `implement` to their code; `code-to-spec` reads existing code to
-describe it in Specs when the code came first. The Protocol defines the complete access table.
+describe it in Specs when the code came first; `review-architecture` reads every Module's Specs,
+and no code, to judge how the Modules divide and share the project. The Protocol defines the
+complete access table.
 
 <a id="concept.boundary"></a>
 
@@ -91,7 +93,10 @@ empty for a given task, but never all five:
   what the Protocol calls the SpecContext of the bound Modules: the documents they own and the
   documents their `contains`, `uses` and `includes` select, one level deep, and the glossary entries
   of the terms they use. It is read only. A provider's Specs arrive here instead of its code. It
-  holds only the project's own documents and terms, never external material.
+  holds only the project's own documents and terms, never external material. Only a
+  `review-architecture` worker reads more: the Protocol's ProjectSpecification, every Module's
+  documents and the whole glossary, since the architecture between Modules shows only when they are
+  read together.
 - <a id="concept.external-context"></a>The
   **[external context](glossary.json#concept.external-context)** is what the Protocol calls the
   ExternalContext of the bound Modules: the documentation and source of external dependencies that
@@ -107,7 +112,8 @@ empty for a given task, but never all five:
   does it also carry contents: the whole project's code, the Protocol's ProjectImplementation, which
   also holds every Module's external material, so that a task reading code reads the code it uses;
   it may change at most the bound Modules' ImplementationScope. An `understand` worker sees only the
-  names.
+  names, and a `review-architecture` worker the names of the whole ProjectImplementation, never its
+  contents.
 - <a id="concept.capability-context"></a>The
   **[capability context](glossary.json#concept.capability-context)** is not a Protocol set. It is
   the list of tools the worker may use, fixed by its Operation and task type, and the contract of the

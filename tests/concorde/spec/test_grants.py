@@ -190,6 +190,37 @@ class GrantTests(unittest.TestCase):
         writable = {path for path, level in levels.items() if level == "rw"}
         self.assertEqual(self.own_documents("a"), writable)
 
+    @verifies("scenario.spec.grant-review-architecture")
+    def test_review_architecture_reads_every_modules_specs_and_names_code(self):
+        value = self.grant(["module.a"], "review-architecture")
+        levels = self.levels(value)
+        repository = self.project.repository()
+        documents = set(repository.project_specification())
+        for module in ("a", "b", "d"):
+            self.assertLessEqual(self.own_documents(module), documents)
+        for path in documents:
+            self.assertEqual("ro", levels[path], path)
+        for path in ("src/a/one.py", "src/a/two.py", "src/b.py", "src/bmod/b.py"):
+            self.assertEqual("names", levels[path], path)
+        self.assertEqual("names", levels["src/shared.py"])
+        self.assertEqual("ro", levels["references/lib/"])
+        self.assertNotIn("rw", levels.values())
+        code = {
+            path: level for path, level in levels.items() if path.startswith("src/")
+        }
+        self.assertEqual({"names"}, set(code.values()))
+
+        before = value["context_identity"]
+        understand = self.grant(["module.a"], "understand")["context_identity"]
+        path = self.root / "specs/d/module.md"
+        path.write_text(path.read_text() + " ")
+        self.assertNotEqual(
+            before, self.grant(["module.a"], "review-architecture")["context_identity"]
+        )
+        self.assertEqual(
+            understand, self.grant(["module.a"], "understand")["context_identity"]
+        )
+
     @verifies("scenario.spec.grant-multi-module")
     def test_several_modules_receive_the_union_at_the_highest_level(self):
         value = self.grant(["module.b", "module.a"], "specify")
@@ -304,7 +335,7 @@ class GrantTests(unittest.TestCase):
                     self.grant(modules, task_type)
                 self.assertEqual(code, raised.exception.code)
         self.assertEqual(before, sorted(str(p) for p in self.root.rglob("*")))
-        self.assertEqual(7, len(TASK_TYPES))
+        self.assertEqual(8, len(TASK_TYPES))
 
     @verifies("scenario.spec.grant-worktree")
     def test_a_grant_comes_from_the_worktree_it_names(self):
@@ -361,6 +392,7 @@ class GrantTests(unittest.TestCase):
     @verifies(
         "scenario.spec.grant-understand",
         "scenario.spec.grant-specify",
+        "scenario.spec.grant-review-architecture",
         "scenario.spec.context-identity",
     )
     def test_a_grant_carries_its_terms_and_writes_the_glossary_only_to_write_specs(
@@ -403,6 +435,13 @@ class GrantTests(unittest.TestCase):
         self.assertEqual(
             "rw",
             self.levels(self.grant(["module.a"], "specify"))["specs/glossary.json"],
+        )
+        # An architecture review reads every term, so the whole glossary is readable.
+        self.assertEqual(
+            "ro",
+            self.levels(self.grant(["module.a"], "review-architecture"))[
+                "specs/glossary.json"
+            ],
         )
 
         def identity():
@@ -459,7 +498,7 @@ class GrantTests(unittest.TestCase):
             (error["code"], error["location"]["field"]),
         )
         self.assertIn("'plan'", error["message"])
-        self.assertIn("seven task types", error["reason"])
+        self.assertIn("eight task types", error["reason"])
         self.assertIn("review-code", error["remediation"])
 
 
