@@ -167,10 +167,10 @@ message and carries every answer.
 
 ## Issues
 
-The project's Issues, its durable records of concrete problems, are kept by the primary worktree,
-which your Bash sandbox cannot write: read and write them only with the project MCP server's
-`issue_list`, `issue_show`, `issue_report`, `issue_close` and `issue_reopen`, which record you as
-the task session of your task. A problem you find that this task will not fix is worth an Issue:
+The project's Issues, its durable records of concrete problems, are kept by the primary worktree:
+read and write them only with the project MCP server's `issue_list`, `issue_show`, `issue_report`,
+`issue_close` and `issue_reopen`, which record you as the task session of your task, never from
+Bash, although your Bash sandbox lets the runs you start report their own findings there. A problem you find that this task will not fix is worth an Issue:
 read `issue_list` and `issue_show` first and append to the Issue that already tracks it, with its
 `issue_id` and the `expected_revision` `issue_show` printed, rather than create another. Every
 report states the problem completely (`description`, `impact`, `basis`, `evidence`) and carries its
@@ -185,6 +185,15 @@ naming it by its identity, with the options and your recommendation. A `suggesti
 Never close an Issue you fixed: add it to your task with `concorde task resolve <task> <issue>…`,
 and the task's merge closes it once the fix is on the primary branch. Say in your report which
 Issues the task resolves.
+
+**After a review.** `spec_review` and `spec_panel` report every finding themselves, as an Issue of
+the Module it concerns, and their result names each finding's Issue (`issue`), the earlier Issues
+that still stand (`earlier_issues.carried`) and those the review found resolved
+(`earlier_issues.resolved`). Handle each by its tier as above: fixing is later `specify` or
+`implement` work of your task, never the review's, and the verdict `changes_required` means a
+blocking Issue still stands. An Issue the review lists as resolved you add to your task with
+`concorde task resolve` when your task fixed it, and otherwise close with `issue_close` as
+`resolved`, the review's run as evidence.
 
 A refusal of the Issue tools whose reason is `environment`, such as `merge_busy` while a merge holds
 the lock, `merge_incomplete` or `commit_failed`, is a failure of the Issue system itself: never

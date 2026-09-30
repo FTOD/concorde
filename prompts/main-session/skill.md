@@ -361,8 +361,8 @@ Issues are the project's durable records of concrete problems: the primary workt
 every session and run sees the same Issues at once. Manage them through the project MCP server's
 Issue tools, which answer as `concorde issues` does: `issue_list` (open and closed Issues, with their
 tier) and `issue_show` to read, `issue_report`, `issue_close` and `issue_reopen` to write, and
-`issue_check` to check the records. A task session has only these tools for Issues: its Bash sandbox
-cannot write the primary worktree. No Issue is created or closed behind your back, apart from a
+`issue_check` to check the records. A task session has only these tools for Issues: it never writes
+an Issue record from Bash, although its sandbox lets the runs it starts report their findings. No Issue is created or closed behind your back, apart from a
 review Operation that reports the problems it finds and a task merge that closes the Issues its task
 resolves; there is no automatic Issue notification.
 
@@ -387,7 +387,12 @@ name the Issues it fixes, `concorde task open <task> … --resolves <issue>[,<is
 `task_resolve`. Tell its session in the brief which tier each Issue has: it fixes `obvious-fix` and
 `preferred-fix` Issues itself, reporting the fix it chose for a `preferred-fix` one, and escalates a
 `decision-needed` Issue, naming it by its identity, for you to decide or to put to the developer.
-Starting, fixing or delivering the task changes no Issue; once `task merge` has merged it and its
+A review
+(`spec_review`, `spec_panel`) reports each of its findings as an Issue with the tier its reviewer or
+chair gave it, and lists in its result the earlier Issues that still stand and those it found
+resolved; the task session fixes the first by their tier in later `specify` or `implement` work and
+closes the resolved ones, through its task when the task fixed them. Starting, fixing or delivering
+the task changes no Issue; once `task merge` has merged it and its
 checks passed, the merge closes each Issue the task resolves as `resolved` with the merge commit as
 evidence and lists them as `resolved`, and names in its warnings any it could not close. A task that
 ends without merging closes none. Close an Issue by hand with `issue_close` only for another reason,
@@ -443,8 +448,8 @@ names must be enabled, or every worker is refused with `model_not_enabled`. The 
 and, per Operation, a `default` and one entry per **worker id** under
 `operations.<operation>.default` and `operations.<operation>.workers.<worker-id>`: the name each
 Operation gives the workers it launches, `worker` for most Operations with one worker, `reviewer`
-for `plan_review`, `reviewer` and `checker` for `spec_review`, `reviewer1` to `reviewer5` and
-`chair` for `spec_panel`. Each entry
+for `plan_review`, `reviewer` and `checker` for `spec_review`, `reviewer1` to `reviewer5`,
+`architect1`, `architect2` and `chair` for `spec_panel`. Each entry
 may set a `backend` (`pi` or `claude`), a `model` and a `reasoning` level, and the most specific
 entry that sets a field wins. Workers run on pi, although you run on Claude Code, unless an entry sets
 `backend: "claude"`; an entry that only chooses a backend keeps the model and level it inherits,

@@ -392,8 +392,9 @@ nowhere else, in a task opened for the root Module, or for a created Module to s
 every session and run sees the same records at once. The guidance tells the main agent and task
 sessions to manage them through the [project MCP server](#the-project-mcp-server)'s Issue tools,
 `issue_list`, `issue_show`, `issue_report`, `issue_close`, `issue_reopen` and `issue_check`, which
-answer as `concorde issues` does; a task session has no other way, since its Bash sandbox cannot
-write the primary worktree, and the command stays for the main agent and for runs.
+answer as `concorde issues` does; a task session never writes an Issue record from Bash, although
+its sandbox lets the runs it starts report their findings, and the command stays for the main agent
+and for runs.
 
 **Recording.** The session that meets a concrete problem it will not fix now decides whether it
 deserves an Issue; a worker finding or an Operation error is input to that decision, and a review
@@ -417,6 +418,14 @@ without such a task, is closed with `issue_close`, `duplicate` naming another op
 `not-actionable`, with a note and evidence whose meaning the closer answers for; recurrence uses
 `issue_reopen`, preserving history. On `stale_issue`, read the record again before deciding to
 retry.
+
+**After a review.** The review Operations, `spec_review` and `spec_panel`, report every finding as
+an Issue with the tier their reviewer or chair gave it, and their result names each finding's Issue,
+the earlier Issues that still stand and those the review found resolved. The guidance tells the task
+session to handle them like any other Issue of its task, by their tier, in later `specify` or
+`implement` work, never in the review, and to close each Issue the review found resolved: through
+its task with `task resolve` when the task fixed it, otherwise with `issue_close` as `resolved`,
+naming the review's run as evidence.
 
 **The Issue system's own failures.** A refusal of the Issue tools or command that is a failure of the
 Issue system itself, such as a busy merge lock, an unfinished merge or a failed commit, is never

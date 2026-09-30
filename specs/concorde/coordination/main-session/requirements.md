@@ -726,8 +726,8 @@ Repeating a creation creates another Issue.
 The guidance SHALL tell the main agent and task sessions to read and write Issues through the
 project MCP server's Issue tools.
 
-A task session's Bash sandbox cannot write the primary worktree, which keeps the Issues; the
-`concorde issues` command stays for the main agent and runs.
+A task session never writes an Issue record from Bash, although its sandbox lets the runs it starts
+report their findings; the `concorde issues` command stays for the main agent and runs.
 
 ### req.main-session.issues-tiers — The tier decides who fixes an Issue
 
@@ -736,6 +736,14 @@ itself, reporting the fix it chose for a `preferred-fix` one, and that it escala
 `decision-needed` Issue, named by its identity, instead of settling it.
 
 A review Operation only reports; fixing is later work of a task. A `suggestion` blocks nothing.
+
+### req.main-session.review-issues — A review's Issues are handled by their tier
+
+The guidance SHALL tell a task session to handle the Issues a review Operation reports by their tier
+in later work of its task, and to close each Issue the review lists as resolved.
+
+It closes such an Issue through its task when the task fixed it, and otherwise by hand as `resolved`
+with the review's run as evidence; the review itself never closes one.
 
 ### req.main-session.issues-close-with-merge — A fixed Issue closes with its task's merge
 
