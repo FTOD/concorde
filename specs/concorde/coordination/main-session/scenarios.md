@@ -76,6 +76,15 @@ guides.
 - AND the main agent's skill says the task session prepares the workers' environment this way
 - AND both name the [delivery commit](../../glossary.json#concept.delivery-commit) as what `delivery` creates, the only commit that marks the task delivered
 
+### scenario.main-session.task-session-plan-review — A task session leads the review of its plan
+
+- GIVEN the rendered task-session guidance and the main agent's skill
+- WHEN a task session wants its plan reviewed before it changes Specs or code
+- THEN the task-session guidance tells it that `plan_review` is optional and that it writes the plan itself
+- AND to answer every finding with `--accept` or `--reject` in the next run, with the previous run as `--input`, until the verdict is `accepted`
+- AND to escalate a finding the reviewer maintains after it rejected it rather than run again on it
+- AND the main agent's skill names `plan_review` among the Operations a task session runs
+
 ### scenario.main-session.task-session-workflow — A task session runs its workflow in its brief's mode
 
 - GIVEN the rendered task-session guidance

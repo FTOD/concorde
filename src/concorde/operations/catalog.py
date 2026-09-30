@@ -7,6 +7,7 @@ import importlib
 # name -> "module:attribute" of the provider object; imported only when the Operation runs.
 CATALOG: dict[str, str] = {
     "understand": "concorde.understanding.operation:UNDERSTAND",
+    "plan_review": "concorde.understanding.plan_review:PLAN_REVIEW",
     "specify": "concorde.specification.operation:SPECIFY",
     "implement": "concorde.implementation.operation:IMPLEMENT",
     "test": "concorde.implementation.operation:TEST",

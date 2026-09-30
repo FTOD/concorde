@@ -27,7 +27,8 @@ prepares a grant and brief, delegates code changes to a worker through Workers, 
 results to check the changes and drive bounded repair rounds; the caller receives one run result
 without managing those rounds. An Operation exists because a model's answer must be checked by a
 program before anyone above relies on it, so the catalog holds exactly the jobs that involve a
-model. A plan is one answer `understand` gives, not a separate Operation; readiness, delivery and
+model. A plan stays one answer `understand` gives, not a separate Operation, and its review is the
+Operation `plan_review`, in which a model judges a plan the caller wrote; readiness, delivery and
 scaffolding are commands of their own Modules, not Operations, and the
 [worker configuration](../../glossary.json#concept.worker-configuration) is a tracked file edited
 directly.
@@ -35,9 +36,9 @@ directly.
 Every worker an Operation may launch has a stable [worker
 id](../../glossary.json#concept.worker-id), which the catalog lists: `spec_review` has a `reviewer`
 and a `checker`, `spec_panel` a `reviewer1` to `reviewer5`, one per seat its panel may have, and a
-`chair`, and every other Operation a single `worker`. The same id keys the worker configuration,
-names the worker in its run record and labels the run's `worker-model` evidence, so each worker may
-have its own backend, model and level.
+`chair`, `plan_review` a single `reviewer`, and every other Operation a single `worker`. The same
+id keys the worker configuration, names the worker in its run record and labels the run's
+`worker-model` evidence, so each worker may have its own backend, model and level.
 
 <a id="concept.operation-catalog"></a>
 
@@ -46,6 +47,7 @@ The **Operation catalog** of this version:
 | Operation | Provider | [Task type](../../glossary.json#concept.task-type) | [Worker ids](../../glossary.json#concept.worker-id) | Unbound | May change | Output |
 | --- | --- | --- | --- | --- | --- | --- |
 | `understand` | [Understanding](understanding/module.md) | `understand` | `worker` | yes | no | [an assessment](understanding/contracts.md#contract.understanding.assessment), with a plan when asked |
+| `plan_review` | [Understanding](understanding/module.md) | `review-code` | `reviewer` | no | no | a [plan review report](understanding/contracts.md#contract.understanding.plan-review) with findings and a verdict |
 | `specify` | [Specification](specification/module.md) | `specify` | `worker` | no | Specs of the bound Modules, including documents it creates, and the registry mirror | a [Spec change](../../glossary.json#concept.spec-change) ([contract](specification/contracts.md#contract.specification.spec-change)) |
 | `implement` | [Implementation](implementation/module.md) | `implement` | `worker` | no | code of the bound Modules | [a code change](implementation/contracts.md#contract.implementation.code-change) |
 | `test` | [Implementation](implementation/module.md) | `test` | `worker` | no | no | a test report ([contract](implementation/contracts.md#contract.implementation.test-report)) |
@@ -173,8 +175,9 @@ such as `--goal` for `understand`. No Operation needs the developer's consent.
 At the task level, the [task session](../../glossary.json#concept.task-session) of a task runs its
 Operations, directly or through a workflow, in its task worktree, and handles their results and
 chooses the next step within its authority, following its decision and escalation rules. A typical
-task runs `understand`, `specify` if needed, `implement`, `test` and the reviews, then the execution
-commands `task-validation` and `delivery`, repeating or skipping steps as the results tell it. The
+task runs `understand`, optionally `plan_review` on the plan it settles on, `specify` if needed,
+`implement`, `test` and the reviews, then the execution commands `task-validation` and `delivery`,
+repeating or skipping steps as the results tell it. The
 [main agent](../../glossary.json#concept.main-agent) never works inside a task worktree: it runs
 only [unbound runs](../../glossary.json#concept.unbound-run) of Operations, from the primary
 worktree, where `understand` or a review answers a question about its `HEAD` before any change is
@@ -241,10 +244,13 @@ its catalog entry.
 
 <a id="contains-understanding"></a>
 
-**Understanding** provides `understand`: a worker reads the bound Modules' Specs and file names and
-returns an assessment, changing nothing; its output is advice to the task level, never an
-instruction to the runner. It may run unbound, which is how the main agent answers a question before
-any change is agreed.
+**Understanding** provides `understand` and `plan_review`. In `understand` a worker reads the bound
+Modules' Specs and file names and returns an assessment, changing nothing; its output is advice to
+the task level, never an instruction to the runner. It may run unbound, which is how the main agent
+answers a question before any change is agreed. In the optional `plan_review` a reviewer reads the
+Specs and the code and judges a plan the task level wrote, changing nothing; the task level answers
+its findings in the next run, with the previous run as `--input`, until the verdict is `accepted`.
+It needs a bound workspace, whose goal the plan is judged against.
 
 <a id="contains-specification"></a>
 

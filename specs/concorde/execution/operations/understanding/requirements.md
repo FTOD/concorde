@@ -81,3 +81,62 @@ audit judges.
 ### req.understanding.single-round — No resume rounds
 
 The understand Operation SHALL NOT resume the worker after it has returned its result.
+
+## Plan review
+
+### req.understanding.plan-review-bound — A plan is reviewed in its workspace
+
+The `plan_review` Operation SHALL brief its reviewer with the goal of the workspace whose
+[workspace binding](../../../glossary.json#concept.workspace-binding) lies in the worktree the run
+starts in.
+
+A worktree without a binding has no goal to review the plan against, so the run is refused there.
+
+### req.understanding.plan-review-kept — The reviewed plan is kept
+
+The `plan_review` Operation SHALL keep an exact copy of the plan file it reviews in the run's
+[trace node](../../../glossary.json#concept.trace-node) and return that copy's path and the
+digest of its bytes in the report.
+
+A plan file that is missing, unreadable, not UTF-8 text or empty ends the run `failed` with
+`plan_unreadable` before any worker launches.
+
+### req.understanding.plan-review-read-only — The reviewer reads Specs and code and writes nothing
+
+The `plan_review` Operation SHALL run one reviewer, [worker id](../../../glossary.json#concept.worker-id)
+`reviewer`, under the bound Modules' `review-code` [grant](../../../glossary.json#concept.grant),
+with no writable path, no [configured check](../../../glossary.json#concept.configured-check) and no
+[resume round](../../../glossary.json#concept.resume-round).
+
+Any violation the [write audit](../../../glossary.json#concept.write-audit) finds ends the run
+`failed`, with the changed paths as host evidence.
+
+### req.understanding.plan-review-answers — Every previous finding is answered once
+
+The `plan_review` Operation SHALL end the run `failed` with `iteration_mismatch`, before any worker
+launches, when more than one admitted input is a `plan_review` run, when a finding of the admitted
+`plan_review` input is not answered exactly once by `--accept` or `--reject`, when an answer names
+no finding of it, or when an answer is given without such an input.
+
+Every problem is listed in the error. The admitted inputs of other Operations are material for the
+reviewer and need no answer.
+
+### req.understanding.plan-review-responses — The reviewer answers the previous iteration
+
+The `plan_review` Operation SHALL end the run `failed` with `inconsistent_review` when the
+reviewer's responses are not exactly one per finding of the previous iteration, when a maintained
+finding is not restated by exactly one finding, when a finding restates a finding that is not
+maintained, or when a finding names a Module that is not bound.
+
+### req.understanding.plan-review-basis — Bases resolve
+
+The `plan_review` Operation SHALL end the run `failed` with `unresolved_basis` when a finding's
+basis does not resolve in the bound Modules' [Spec context](../../../glossary.json#concept.spec-context)
+or a `violation` finding has no basis.
+
+### req.understanding.plan-review-verdict — The verdict follows the findings
+
+The `plan_review` Operation SHALL set the verdict of an `ok` report to `changes_required` exactly
+when one of its findings is blocking and to `accepted` otherwise.
+
+The Operation never changes, drops or adds a finding or a response.

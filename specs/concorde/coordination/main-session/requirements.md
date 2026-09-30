@@ -598,6 +598,16 @@ launches the worker that fills it.
 
 It checks the binding with `concorde spec-validation` and commits the file and the binding together.
 
+### req.main-session.task-session-plan-review — A task session leads its plan's review
+
+The task-session guidance SHALL present `plan_review` as optional and tell a task session that
+runs it to answer every finding of one iteration with `--accept` or `--reject` in the next run,
+with the previous run as `--input`, until the verdict is `accepted`, escalating a disagreement it
+cannot settle within its task instead of iterating on it again.
+
+The session writes the plan itself and keeps it where `delivery` does not commit it: the run keeps
+its own copy of the plan it reviewed.
+
 ### req.main-session.task-session-workflow — A task session runs workflows in its brief's mode
 
 The task-session guidance SHALL tell a task session to run a

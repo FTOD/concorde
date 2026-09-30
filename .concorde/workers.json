@@ -25,6 +25,13 @@
           "reasoning": "medium"
         }
       }
+    },
+    "plan_review": {
+      "workers": {
+        "reviewer": {
+          "model": "gpt-6.1-sol"
+        }
+      }
     }
   },
   "runtime": [

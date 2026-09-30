@@ -58,3 +58,55 @@ is in the [contracts](contracts.md).
 - WHEN Workers' [write audit](../../../glossary.json#concept.write-audit) finds it after the round
 - THEN the result has status `failed` with the changed paths as host evidence
 - BUT the worker is not resumed
+
+## Reviewing a plan
+
+### scenario.understanding.plan-accepted — A sound plan is accepted
+
+- GIVEN a task worktree and a plan file its caller wrote for the workspace's goal
+- WHEN the caller runs `plan_review --plan <file>` in it
+- THEN the reviewer receives the plan, the workspace's goal, the bound Modules' [Spec context](../../../glossary.json#concept.spec-context) and the project's code to read, and nothing to write
+- AND the result has status `ok`, iteration 1 and verdict `accepted` when no finding is blocking
+- AND the report names the plan's kept copy in the run's [trace node](../../../glossary.json#concept.trace-node) and its digest
+
+### scenario.understanding.plan-changes-required — Blocking findings require a revision
+
+- GIVEN a plan whose step would break a promise a bound Module's [Spec](../../../glossary.json#concept.spec) states
+- WHEN the reviewer reports it as a blocking `violation` finding citing that promise
+- THEN the result has status `ok` and verdict `changes_required`
+- AND the finding is kept as the reviewer wrote it
+
+### scenario.understanding.plan-next-iteration — The next iteration answers the previous one
+
+- GIVEN an `ok` `plan_review` run with findings `F1` and `F2`
+- WHEN the caller revises the plan and runs `plan_review` with that run as `--input`, `--accept F1` with how the plan now settles it and `--reject F2` with its reason
+- THEN the reviewer's brief carries the previous findings and both answers
+- AND the report has iteration 2, names the previous run and repeats the answers
+- AND the reviewer responds to `F1` and `F2`, restating a maintained one as a finding of this iteration
+
+### scenario.understanding.plan-unanswered — An unanswered finding stops the next iteration
+
+- GIVEN an `ok` `plan_review` run with findings `F1` and `F2`
+- WHEN the caller runs `plan_review` with that run as `--input` and answers only `F1`
+- THEN the result has status `failed` with `iteration_mismatch` naming `F2`
+- BUT no worker is launched
+
+### scenario.understanding.plan-unreadable — A missing plan stops the run
+
+- GIVEN a `--plan` naming a file that does not exist or is empty
+- WHEN the caller runs `plan_review`
+- THEN the result has status `failed` with `plan_unreadable`
+- BUT no worker is launched
+
+### scenario.understanding.plan-inconsistent — A review that ignores the previous iteration fails
+
+- GIVEN a `plan_review` run whose previous iteration had a finding `F1`
+- WHEN the reviewer's answer has no response to `F1`, or restates a finding it settled
+- THEN the result has status `failed` with `inconsistent_review` listing each inconsistency
+- BUT the reviewer is not resumed
+
+### scenario.understanding.plan-unresolved-basis — A basis must resolve
+
+- GIVEN a reviewer whose finding cites an identity the bound Modules' Spec context does not define, or a `violation` without a basis
+- WHEN the Operation checks the review
+- THEN the result has status `failed` with `unresolved_basis` naming the finding
