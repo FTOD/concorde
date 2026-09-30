@@ -36,11 +36,12 @@ ANCESTORS = 8
 INSTRUCTIONS = (
     "Concorde's project MCP server: the project's tasks, traces and locks, read fresh from the "
     "primary worktree on every call. Queries: task_list, task_show, trace_show, run_result, "
-    "workflow_report, locks. Short writes: task_open, task_escalate, task_close. task_merge "
+    "workflow_report, locks. Short writes: task_open, task_escalate, task_report, task_answer, "
+    "task_rebind, task_close. task_merge "
     "takes the task's workspace lock and the merge lock without waiting (a busy lock is refused "
     "naming its holder) and starts the merge as its own process. register_wait asks to be woken "
-    "when a task reaches a state, a run ends or a lock is released; it never takes a lock for "
-    "you. When this server is loaded as a channel, events arrive as "
+    "when a task reaches a state or is rebound to another main agent's session, a run ends or a "
+    "lock is released; it never takes a lock for you. When this server is loaded as a channel, events arrive as "
     '<channel source="concorde" event="...">: wait_done, wait_failed or merge_ended, with '
     "the task, run or lock in the attributes and the answer or output in the body; act on them "
     "as on a finished background command. Every refusal is an error chain link: read it whole."

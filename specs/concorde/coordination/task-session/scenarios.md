@@ -12,6 +12,7 @@ Commands, the session's [trace node](../../glossary.json#concept.trace-node) and
 - THEN `.concorde/tasks/severity/runtime/` holds a settings file and a [write hook](../../glossary.json#concept.write-hook)
 - AND `claude --bg` is started in the task worktree with those settings and a first prompt naming the task, its goal and `concorde-7d`
 - AND the task's [trace](../../glossary.json#concept.trace) holds the started session as the node `sessions/<id>/` with its identity and name
+- AND the [task record](../../glossary.json#concept.task-record) names `concorde-7d` as its `main`, which the first prompt presents as the main agent's session when the task session started
 - BUT when Claude Code reports no started session, the command fails with `session_failed`, carrying Claude Code's output, and the task is unchanged
 
 ### scenario.task-session.project-mcp — A task session gets the project MCP server without a channel

@@ -37,6 +37,9 @@ TOOLS = {
     "locks",
     "task_open",
     "task_escalate",
+    "task_rebind",
+    "task_report",
+    "task_answer",
     "task_close",
     "task_merge",
     "register_wait",
@@ -240,6 +243,29 @@ class ProjectMcpTests(unittest.TestCase):
         self.assertFalse(error, escalated)
         self.assertEqual(1, escalated["number"])
         self.assertEqual("task-session", escalated["escalated"]["level"])
+        rebound, error = client.call("task_rebind", task="t2", main="concorde-8e")
+        self.assertFalse(error, rebound)
+        self.assertEqual(
+            ("concorde-8e", None), (rebound["record"]["main"], rebound["former"])
+        )
+        listed, _ = client.call("task_list", main="concorde-8e")
+        self.assertEqual(["t2"], [record["id"] for record in listed])
+        reported, error = client.call(
+            "task_report", task="t2", text="Which retry limit?", escalations=[1]
+        )
+        self.assertFalse(error, reported)
+        self.assertEqual(
+            ("concorde-8e", 1, [1]),
+            (
+                reported["main"],
+                reported["report"]["number"],
+                reported["report"]["escalations"],
+            ),
+        )
+        answered, error = client.call("task_answer", task="t2", reports=[1], text="5")
+        self.assertFalse(error, answered)
+        shown, _ = client.call("task_show", task="t2")
+        self.assertEqual("5", shown["record"]["reports"][0]["answer"]["text"])
         closed, error = client.call(
             "task_close", task="t2", outcome="completed", note="answered"
         )
@@ -386,6 +412,16 @@ class ProjectMcpTests(unittest.TestCase):
         answer, _ = client.call("register_wait", task="t1", until=["closed", "failed"])
         self.assertEqual(
             "concorde task wait t1 --until closed,failed", answer["command"]
+        )
+        store.rebind(self.root, "t1", "concorde-7d")
+        answer, _ = client.call("register_wait", task="t1", rebound="concorde-7d")
+        self.assertEqual(
+            "concorde task wait t1 --rebound concorde-7d", answer["command"]
+        )
+        answer, _ = client.call("register_wait", task="t1", rebound="concorde-6c")
+        self.assertEqual(
+            {"task": "t1", "main": "concorde-7d", "former": "concorde-6c"},
+            answer["already"],
         )
 
 

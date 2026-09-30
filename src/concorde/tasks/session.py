@@ -179,7 +179,9 @@ def brief(primary: Path, record: dict, main: str) -> str:
             f"- Modules: {', '.join(record['modules'])}",
             f"- Worktree (your working directory): `{record['worktree']}`",
             f"- Decision log: `{store.decision_log_path(primary, record['id'])}`",
-            f"- Main agent session to report to: `{main}`",
+            f"- Main agent session when this session started: `{main}`; report to the "
+            "`main` that `concorde task report` prints, which the main agent may have rebound "
+            "since",
         ]
     )
     return f"{guidance}\n\n{task}\n"

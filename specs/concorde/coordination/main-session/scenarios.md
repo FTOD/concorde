@@ -68,6 +68,20 @@ guides.
 - AND to report to the main agent when the task is delivered or cannot go further without decisions that are not its own
 - BUT never to merge the task branch into the primary branch or close the task
 
+### scenario.main-session.task-session-report — A task session records its report and follows a rebind
+
+- GIVEN the rendered task-session guidance
+- WHEN a task session has delivered its task or escalated every decision it needs
+- THEN it is told to record the report first with `concorde task report`, naming the escalations it carries, and then to send it with SendMessage to the `main` that command prints
+- AND when SendMessage reaches no session of that name, to run `concorde task wait <task> --rebound <that name>` in background Bash and send the same report to the name it returns
+
+### scenario.main-session.reconcile-after-restart — The main agent rebinds its tasks after its session name changed
+
+- GIVEN the rendered main-session guidance
+- WHEN ListAgents reports for the main agent's session a name other than the one it gave its tasks, as after a resume
+- THEN the main agent is told to run `concorde task list --main <former>`, to rebind each task listed with `concorde task rebind <task> --main <current>` and to read the reports `concorde task show` lists without an answer, before anything else
+- AND to record each answer with `concorde task answer` before sending it
+
 ### scenario.main-session.task-session-prepares-workers — The task session creates and binds new files before a worker fills them
 
 - GIVEN the rendered task-session guidance and the main agent's skill
@@ -276,7 +290,7 @@ This illustrates [conflict handling](requirements.md#req.main-session.issues-con
 - GIVEN a Claude Code session that starts the [project MCP server](../../glossary.json#concept.project-mcp-server), `concorde project-mcp`
 - WHEN it initializes the session and lists the tools
 - THEN the server answers with a protocol version it supports, the tools capability and the experimental `claude/channel` capability
-- AND it lists `task_list`, `task_show`, `trace_show`, `run_result`, `workflow_report`, `locks`, `task_open`, `task_escalate`, `task_close`, `task_merge` and `register_wait`
+- AND it lists `task_list`, `task_show`, `trace_show`, `run_result`, `workflow_report`, `locks`, `task_open`, `task_escalate`, `task_rebind`, `task_report`, `task_answer`, `task_close`, `task_merge` and `register_wait`
 
 ### scenario.main-session.project-mcp-queries — Queries answer the project from any worktree
 
@@ -294,8 +308,8 @@ This illustrates [conflict handling](requirements.md#req.main-session.issues-con
 ### scenario.main-session.project-mcp-short-writes — Short writes take structured arguments
 
 - GIVEN a running server
-- WHEN the session opens a task with `task_open`, escalates in it with `task_escalate` as a task session with two options, and closes it with `task_close` as completed with a note
-- THEN the task is opened, the escalation is recorded as number 1 with the level `task-session`, and the task ends closed, each as the matching `concorde task` command does
+- WHEN the session opens a task with `task_open`, escalates in it with `task_escalate` as a task session with two options, rebinds it with `task_rebind`, reports with `task_report` carrying that escalation, answers the report with `task_answer`, and closes it with `task_close` as completed with a note
+- THEN the task is opened, the escalation is recorded as number 1 with the level `task-session`, the record names the rebound session, the report is recorded as number 1 addressed to it and then answered, and the task ends closed, each as the matching `concorde task` command does
 
 ### scenario.main-session.project-mcp-lock-busy — A busy lock is refused at once, naming its holder
 

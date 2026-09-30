@@ -91,6 +91,40 @@ class WaitTests(unittest.TestCase):
         status, value = self.command("wait", "t1", "--until", "active")
         self.assertEqual("invalid_input", value["error"]["code"])
 
+    @verifies("scenario.tasks.wait-rebound")
+    def test_a_rebind_wait_returns_the_new_main(self):
+        store.rebind(self.root, "t1", "concorde-7d")
+        self.later(0.3, lambda: store.rebind(self.root, "t1", "concorde-8e"))
+        started = time.monotonic()
+        status, value = self.command(
+            "wait", "t1", "--rebound", "concorde-7d", "--timeout", "30"
+        )
+        self.assertEqual(0, status, value)
+        self.assertEqual(
+            ("concorde-8e", "concorde-7d"), (value["main"], value["former"])
+        )
+        self.assertLess(time.monotonic() - started, 20)
+        # Already rebound: it answers at once.
+        status, value = self.command("wait", "t1", "--rebound", "concorde-7d")
+        self.assertEqual((0, "concorde-8e"), (status, value["main"]))
+
+        # A task that ends meanwhile ends the wait once its record is closed, whether or not
+        # the close can then commit its decision log in the fixture's primary worktree.
+        def close():
+            with contextlib.suppress(store.TaskError):
+                store.close_task(self.root, "t1", "completed", note="done", errors=[])
+
+        closing = threading.Timer(0.3, close)
+        closing.start()
+        status, value = self.command(
+            "wait", "t1", "--rebound", "concorde-8e", "--timeout", "30"
+        )
+        closing.join()
+        self.assertEqual(1, status, value)
+        self.assertEqual("wait_unreachable", value["error"]["code"])
+        status, value = self.command("wait", "--rebound", "concorde-8e")
+        self.assertEqual("invalid_input", value["error"]["code"])
+
     @verifies("scenario.tasks.wait-lock")
     def test_a_lock_wait_returns_when_its_holder_dies(self):
         path = store.merge_lock_path(self.root)

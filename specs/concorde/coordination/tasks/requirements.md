@@ -50,7 +50,7 @@ The same close run again commits the log and finishes the close.
 
 ### req.tasks.decision-log-untouched — The decision log belongs to the main agent
 
-Tasks SHALL NOT change a decision log after creating it except by appending a requested escalation or the entry recording how the task ended.
+Tasks SHALL NOT change a decision log after creating it except by appending a requested escalation, report or answer, or the entry recording how the task ended.
 
 Workflow reports and the session's own decisions are written into the log by the session working
 on the task, never by Tasks.
@@ -85,8 +85,9 @@ merges or closes the task, and nothing else in it is written.
 
 ### req.tasks.primary-only — Tasks open, close, merge and start sessions only from the primary
 
-The `concorde task open`, `concorde task close`, `concorde task merge` and `concorde task session`
-commands SHALL refuse to run outside the primary worktree.
+The `concorde task open`, `concorde task close`, `concorde task merge`, `concorde task session`,
+`concorde task rebind` and `concorde task answer` commands SHALL refuse to run outside the primary
+worktree.
 
 ### req.tasks.worktree-ignored — A worktree inside the primary is ignored there
 
@@ -277,16 +278,18 @@ ends.
 
 ### req.tasks.wait-without-polling — A wait is woken, never polls
 
-`concorde task wait` SHALL return when the task reaches one of the named states, the run's runner
-holds no [run lock](../../glossary.json#concept.run-lock), or nobody holds the lock, learning of each
-change from the kernel and blocking on the lock itself rather than reading the records repeatedly.
+`concorde task wait` SHALL return when the task reaches one of the named states, its record names a
+main agent's session other than the one named, the run's runner holds no
+[run lock](../../glossary.json#concept.run-lock), or nobody holds the lock, learning of each change
+from the kernel and blocking on the lock itself rather than reading the records repeatedly.
 
 It answers at once when that is already so.
 
 ### req.tasks.wait-bounded — A wait says why it ended without its answer
 
-A wait SHALL end with `wait_unreachable` when the task ended in a state it does not name, and with
-`wait_timeout` when its `--timeout` passes first, changing nothing.
+A wait SHALL end with `wait_unreachable` when the task ended in a state it does not name, or ended
+at all while it waits for a rebind, and with `wait_timeout` when its `--timeout` passes first,
+changing nothing.
 
 A task wait admits only `delivered`, `merging`, `closed` and `failed`, the states a task reaches
 while its workspace lock is held.
@@ -319,7 +322,8 @@ changing nothing, naming the merging task, the commit before its merge, its merg
 primary branch's head and the `--resume` and `--abort` recovery.
 
 The exceptions are `merge --resume` and `merge --abort` of the merging task itself; `list` and
-`show` read and are never refused. While the merge's
+`show` read and are never refused, and neither are `rebind`, `report` and `answer`, which change no
+Git state. While the merge's
 process still holds the lock, `open`, `merge` and `close` wait for it as for any holder and a
 `session` or `escalate` of the merging task refuses with `merge_busy`.
 
@@ -361,3 +365,41 @@ Every refusal of a `concorde task` command SHALL print an error link that names 
 
 An escalation SHALL record the escalated errors unchanged as the causes of the escalating session's link, in the task record and the decision log, and an escalation that names no error that link alone, with no causes.
 
+## Reports and the main agent's session
+
+### req.tasks.main-named — The record names the main agent's session to report to
+
+Tasks SHALL keep in each task record the [main agent](../../glossary.json#concept.main-agent)'s
+session its task sessions report to, changed only by recording a task session started with
+`--main` and by `concorde task rebind`, with every session named for the task before, in order.
+
+A Claude Code session's name does not survive a restart or resume of the session, so the name a
+task session was started with may no longer reach anyone; the record holds the name that does,
+which the main agent changes once its own name changed.
+
+### req.tasks.report-recorded — A report is recorded before it is sent
+
+`concorde task report` SHALL append the task session's report, with the escalations it carries and
+the main agent's session the record names at that moment, to the task record and decision log
+before it prints that session as the one to message.
+
+The message is then only the wake-up: a message that reaches nobody loses nothing, since
+`concorde task show` lists every report.
+
+### req.tasks.report-answered — An answer marks a report answered, once
+
+`concorde task answer` SHALL record the main agent's answer on each named report of the task
+record and append it to the decision log, refusing with `already_answered` a report that has an
+answer, which it never replaces.
+
+A report without an answer is unanswered; a main agent that lost its messages reads those first.
+
+### req.tasks.old-records-read — A record written before its main is read with one
+
+Tasks SHALL read a task record of `schema_version` 2, written before the record named the main
+agent's sessions and held reports, as naming the sessions its task sessions' nodes name, the latest
+as its main, and holding no reports.
+
+Tasks open across the change keep working: their next change writes the current version, and
+their trace is unchanged, so a task worktree that still runs an earlier Concorde escalates there as
+before.

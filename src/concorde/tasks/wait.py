@@ -5,7 +5,9 @@ the kernel releases however its holder ends. A task wait learns of every new hol
 workspace lock from the kernel (``watch.Changes``), blocks on the lock until that holder lets it
 go, and reads the task's state again: every change of a task to ``delivered``, ``merging``,
 ``closed`` or ``failed`` is made while that lock is held, by a delivery run, a merge or a close,
-so those four are the states a task wait admits. The project MCP server runs the same waits in a
+so those four are the states a task wait admits. A rebind wait learns of every write of the task's
+record from the kernel (``watch.Changes`` on the task's folder, which also reports the folder
+moving to the history) and reads the record again. The project MCP server runs the same waits in a
 thread for ``register_wait``; this command is their form for background Bash.
 """
 
@@ -113,6 +115,59 @@ def wait_task(
                 changes.wait(_remaining(deadline))
 
 
+def rebound(primary: Path, task_id: str, former: str) -> dict | None:
+    """The wait's answer when the task's main agent's session is no longer ``former``, else
+    None; ``wait_unreachable`` when the task ended."""
+    record, _ = store.load_any(primary, task_id)
+    if record["state"] in store.ENDED:
+        raise TaskError(
+            "wait_unreachable",
+            f"task {task_id} ended {record['state']}, and its main agent's session will never "
+            f"change from {record['main'] or 'none'}",
+        )
+    if record["main"] != former:
+        return {"task": task_id, "main": record["main"], "former": former}
+    return None
+
+
+def wait_rebound(
+    primary: Path, task_id: str, former: str, timeout: float | None = None
+) -> dict:
+    """Block until the task's record names a main agent's session other than ``former``."""
+    former = (former or "").strip()
+    if not former:
+        raise TaskError(
+            "invalid_input",
+            "--rebound names the main agent's session to wait away from",
+        )
+    deadline = _deadline(timeout)
+    started = time.monotonic()
+    # Answered before watching too, so that the watch never makes the folder of a task that
+    # already moved to the history.
+    found = rebound(primary, task_id, former)
+    if found is not None:
+        return {**found, "waited_seconds": 0.0}
+    folder = store.task_folder(primary, task_id)
+    try:
+        changes = Changes(folder, {store.RECORD})
+    except WatchError as error:
+        raise TaskError(
+            "wait_failed",
+            f"the wait for task {task_id} cannot watch its record: {error}",
+        ) from error
+    with changes:
+        while True:
+            found = rebound(primary, task_id, former)
+            if found is not None:
+                return {**found, "waited_seconds": round(time.monotonic() - started, 3)}
+            if deadline is not None and time.monotonic() >= deadline:
+                raise _timeout(
+                    f"task {task_id} naming a main agent's session other than {former}",
+                    timeout,
+                )
+            changes.wait(_remaining(deadline))
+
+
 def locate_run(here: Path, run_id: str) -> tuple[Path, Path]:
     """The folder of ``run_id`` and the ``.concorde`` whose ``locks/`` holds its run lock."""
     try:
@@ -191,8 +246,10 @@ __all__ = [
     "lock_answer",
     "lock_path",
     "reached",
+    "rebound",
     "run_answer",
     "wait_lock",
+    "wait_rebound",
     "wait_run",
     "wait_task",
 ]

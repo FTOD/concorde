@@ -20,7 +20,10 @@ server:concorde`, otherwise it returns a `concorde task wait` command for backgr
 primary worktree, started in background Bash; record every result of a task's runs that is not `ok` and every decision you made alone in the task's decision log;
 read the whole error chain of a result that is not `ok`; a task never asks the developer in place,
 so answer the decisions a task session escalates together, deciding what your authority covers and
-asking the developer the rest at once; ask the developer only about decisions with major impact,
+asking the developer the rest at once, recording each answer with `concorde task answer`; when
+ListAgents names your session otherwise than the `--main` you gave your tasks, as after a resume,
+first rebind those tasks (`concorde task list --main <former>`, `concorde task rebind`) and read
+their unanswered reports (the skill's "When your session name changed"); ask the developer only about decisions with major impact,
 adding your own link to the chain with `concorde task escalate` instead of summarizing it, and show
 the developer the whole rendered chain of an unbound run that is not `ok`; merge delivered task
 branches without asking, always with `concorde task merge <task>`, never `git merge`, have the

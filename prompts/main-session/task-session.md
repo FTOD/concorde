@@ -64,7 +64,8 @@ holds the repository's `.git/config.lock`, which blocks your validation and othe
 preparation.
 
 Your session has the project MCP server `concorde`: its `task_show`, `trace_show`, `run_result`
-and `workflow_report` read your task's records. A background session is never woken by channel
+and `workflow_report` read your task's records, and `task_report` records a report as
+`concorde task report` does. A background session is never woken by channel
 events, so to wait for something you did not start yourself, such as another run of your workspace
 holding its lock, call `register_wait`, which returns the `concorde task wait` command, or run that
 command directly, in background Bash. Its `task_merge` and `task_close` are the main agent's: you
@@ -147,8 +148,8 @@ report. When you repaired the cause of a failed step, start the workflow again w
 new label for its base key, such as `{"scaffold": "2"}`, and keep that label on later relaunches.
 
 When `concorde task escalate` itself is refused with `merge_incomplete` or `merge_busy`, a merge in
-the primary worktree is unfinished or still running; send that refusal, unchanged, to the main
-agent instead and wait for its answer.
+the primary worktree is unfinished or still running; report that refusal, unchanged, to the main
+agent instead, as "Report" below says, and wait for its answer.
 
 **A merge conflict.** When the main agent tells you that merging the task failed with
 `merge_conflict`, merge the primary branch it names into your task branch (`git merge <branch>` in
@@ -156,16 +157,33 @@ the task worktree), resolve the conflicts within the task's goal, verify the res
 merge, then run `concorde task-validation` and `concorde delivery` again and report as at the end
 of the task. It is the only merge you make.
 
-Record every escalation the task needs first. Then send the main agent's session one message with
-the SendMessage tool that gives every printed `rendered` chain with its question, and stop until
-the main agent answers: its answer arrives as a message and carries every answer.
+Record every escalation the task needs first. Then report them all at once, as "Report" below
+says, in one report that gives every printed `rendered` chain with its question and names each
+escalation with `--escalation`, and stop until the main agent answers: its answer arrives as a
+message and carries every answer.
 
 ## Report
 
-When the task is delivered, or cannot go further without decisions that are not yours, send the
-main agent's session one message with the SendMessage tool: the delivery commit (or every
-escalation's rendered chain), the decisions you made on
-its behalf and why, with every decision of a workflow you ran, and what is still open, with every
-workflow decision of major impact for the developer. Then stop until the main agent answers. Do
-not merge the task branch into the primary branch, close the task, start other sessions or record
-decisions for other tasks.
+When the task is delivered, or cannot go further without decisions that are not yours, report to
+the main agent: the delivery commit (or every escalation's rendered chain), the decisions you made
+on its behalf and why, with every decision of a workflow you ran, and what is still open, with
+every workflow decision of major impact for the developer. Every message to the main agent is such
+a report, and each goes in two steps:
+
+1. **Record it first**, in the task record and decision log:
+   `concorde task report <task> --text "<the report>" [--escalation <n>…]`, naming each escalation
+   it carries, or the project MCP server's `task_report`, which does the same. Do not also append
+   it to the decision log yourself: the command does. It prints `main`, the main agent's session
+   the task record names now.
+2. **Then send it** with the SendMessage tool, the same text, to that `main`. Take the name from
+   this output every time, never from your first prompt: the main agent's session may have been
+   restarted under another name and have rebound the task since.
+
+When SendMessage fails because no session of that name is reachable, the main agent's session was
+restarted or resumed under another name. The report is recorded already, so nothing is lost: run
+`concorde task wait <task> --rebound <that name>` in background Bash, which returns once the main
+agent has rebound the task, printing its new `main`, and send the same report to that name, without
+recording it again. When the background command ends without that answer, start it again.
+
+Then stop until the main agent answers. Do not merge the task branch into the primary branch, close
+the task, start other sessions or record decisions for other tasks.

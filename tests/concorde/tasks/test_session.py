@@ -118,6 +118,10 @@ class TaskSessionTests(unittest.TestCase):
         self.assertEqual(["claude", "agents", "--json", "--all"], listing)
         self.assertEqual(SESSION_ID, started["session_id"])
         self.recorded(started)
+        # The task record names the session's main, which the prompt gives as the one at start.
+        self.assertEqual("concorde-7d", store.load_task(self.root, "t1")["main"])
+        self.assertIn("Main agent session when this session started", brief)
+        self.assertIn("`concorde task report` prints", brief)
 
     @verifies("scenario.task-session.start")
     def test_a_coloured_start_line_is_recognised(self):

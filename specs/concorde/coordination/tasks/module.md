@@ -48,6 +48,8 @@ boundary configuration of its task session under `runtime/`, the nodes of its ta
 `sessions/` and of its merge attempts under `merges/`, and the workspace folder `workspace/` that
 Execution fills. **The [task record](../../glossary.json#concept.task-record)** holds only what the
 task commands need to act on the task: identity, goal, Modules, branch, worktree path, base commit,
+the [main agent](../../glossary.json#concept.main-agent)'s session its task sessions report to now
+with the ones it named before, the reports task sessions made to it with its answers,
 stored state, the merge in progress and, once the task ended, how it ended
 ([exact fields](contracts.md#contract.tasks.record)). Its history is in its trace instead: the
 task's node records when it was opened, every change of its stored state, every escalation and how
@@ -59,17 +61,17 @@ recorded by Execution, and a copy could disagree with them after a crash or a ru
 
 **The [decision log](../../glossary.json#concept.decision-log)** lives at
 `.concorde/tasks/<task-id>/decisions.md`. Tasks creates it with a heading and the goal at open, then
-only appends escalations and how the task ended; the session working on the task, the main agent
-or the task's task session, appends directly: every uncertainty it decided alone, with options and
-reason, every non-`ok` run result and what it did about it, and the decisions and problems of a
-workflow's report, which Workflows saves beside its own record and never writes here.
-`concorde task open` prints the log's path beside the new record, and `concorde task merge` warns
-when the log still holds only its heading and goal, since a task worked without writing it has lost
-the record of every decision taken alone. The main agent reads the log when it reports to the
-developer at the end of the task. When the task ends, the log is committed to the primary branch as
-`.concorde/decisions/<history key>.md` ([below](#decision-log-in-git)), the one record of a task that
-Git keeps. The log is free Markdown, since its readers are the main agent and the developer; Tasks
-gives it only a fixed place and lifetime.
+only appends escalations, reports and their answers, and how the task ended; the session working on
+the task, the main agent or the task's task session, appends directly: every uncertainty it decided
+alone, with options and reason, every non-`ok` run result and what it did about it, and the
+decisions and problems of a workflow's report, which Workflows saves beside its own record and never
+writes here. `concorde task open` prints the log's path beside the new record, and `concorde task
+merge` warns when the log still holds only its heading and goal, since a task worked without writing
+it has lost the record of every decision taken alone. The main agent reads the log when it reports
+to the developer at the end of the task. When the task ends, the log is committed to the primary
+branch as `.concorde/decisions/<history key>.md` ([below](#decision-log-in-git)), the one record of
+a task that Git keeps. The log is free Markdown, since its readers are the main agent and the
+developer; Tasks gives it only a fixed place and lifetime.
 
 <a id="concept.merge-lock"></a>
 
@@ -235,15 +237,16 @@ how to remove them, and records no task.
 ## Listing and showing tasks
 
 `concorde task list` prints the records of the current tasks and of the tasks in the history with
-their derived state, optionally filtered by `--state`. `concorde task show <task-id>` prints what
-the task level needs to know about one task in one value: the record with its derived state, the
+their derived state, optionally filtered by `--state` or by `--main`, the main agent's session a
+record names. `concorde task show <task-id>` prints what the task level needs to know about one
+task in one value: the record with its derived state, the
 workspace's [runs](../../glossary.json#concept.run) read from its workspace folder, those started
 directly and those of its workflow's steps (each with its kind, name, Modules and status, `running`
 while its runner lives and `lost` when the runner died without a result), its
 [delivery commits](../../glossary.json#concept.delivery-commit) read from the task branch, its task
-sessions, each with the main session it reports to, and its escalations read from its trace, who
-holds its workspace lock now, and the paths of the decision log and of the task's folder. A closed
-task is shown from the history the same way. `concorde trace show <task-id>` shows the whole trace
+sessions, each with the main session it was started for, and its escalations read from its trace,
+who holds its workspace lock now, and the paths of the decision log and of the task's folder. A
+closed task is shown from the history the same way. `concorde trace show <task-id>` shows the whole trace
 with its timing and cost.
 
 The record's Modules are not kept in step with the task worktree's registry: a Module the task
@@ -267,6 +270,50 @@ chain to the escalations of the task's trace node, numbered from 1, and to the d
 the error started. A session that names no error, because what needs deciding is no failure but a
 decision it may not keep alone, such as one a run that ended `ok` took without the developer,
 escalates its own link with no causes as the whole chain.
+
+## Reports and the main agent's session
+
+A task session tells the main agent what it has to say, its delivery or the escalations it needs
+answered, with a Claude Code message to the main agent's session, and that message is only as good
+as the name it is sent to. A Claude Code session's name does not survive a restart or a resume of
+the session, so a name frozen when the task session started may no longer reach anyone: its report
+would be lost, and nothing would wake the main agent to look for it. So Tasks keeps the report and
+the name, and the message is only the wake-up.
+
+**The main agent's session.** The record's `main` names the main agent's session the task's task
+sessions report to now. `concorde task session --main` sets it when it records a session, and the
+main agent changes it with one command once its own session name changed:
+
+```text
+concorde task rebind severity --main concorde-8e
+```
+
+The record keeps every name it had, so a later reader sees whom each report was sent to.
+`concorde task list --main concorde-7d` lists the tasks whose record still names the former session.
+
+**Reports.** Before every message to the main agent, the task session records it:
+
+```text
+concorde task report severity --text "Delivered at 4be1c2d; decisions in the decision log." --escalation 2
+```
+
+Tasks appends the report to the task record, numbered from 1, with the escalations it carries and
+the main agent's session the record names at that moment, appends it to the decision log, and
+prints it with that session, the one the task session then messages. A message that reaches nobody
+loses nothing: `concorde task show` lists every report, and the task session waits for a rebind
+with `concorde task wait severity --rebound concorde-7d`, which returns the new name once the main
+agent has rebound the task. The main agent answers with a message too, and records its answer:
+
+```text
+concorde task answer severity --report 1 --text "Merging it now."
+```
+
+which marks those reports answered in the record and appends the answer to the decision log. A
+report without an answer is unanswered, which is what a main agent that lost its messages reads
+first. The reports live in the record rather than the trace because whether each is answered is
+state the task commands act on, like the name they were sent to. None of these touches Git, so
+none of them is refused for an unfinished merge: a task session reports a `merge_incomplete`
+refusal it met with `report`, and a main agent may rebind its tasks before it finishes the merge.
 
 ## Ending a task
 
@@ -451,12 +498,14 @@ polls:
 
 ```text
 concorde task wait severity --until delivered
+concorde task wait severity --rebound concorde-7d
 concorde task wait --run r-20260929T101500-delivery-5f3a
 concorde task wait --lock merge
 concorde task wait severity --lock workspace
 ```
 
-`--until` returns once the task's derived state is one of the named states, `--run` once the run's
+`--until` returns once the task's derived state is one of the named states, `--rebound` once the
+task's record names a main agent's session other than the one given, `--run` once the run's
 runner holds no [run lock](../../glossary.json#concept.run-lock), with how the run ended, and
 `--lock` once nobody holds the merge lock or the task's workspace lock, with who held it. Each
 answers at once when that is already so and prints one JSON value, and `--timeout` bounds the wait.
@@ -464,15 +513,17 @@ A task reaches `delivered`, `merging`, `closed` and `failed` only while its work
 by a delivery run, a merge or a close, so a task wait learns from the kernel of every new holder of
 that lock, blocks on the lock until that holder lets it go, and reads the state again; those four
 are the states it admits, and a task that ends in another state ends the wait with
+`wait_unreachable`. A rebind wait learns from the kernel of every write of the task's record, and
+of its folder moving to the history, and reads the record again; a task that ended ends it with
 `wait_unreachable`. A lock or run wait blocks on the lock itself, so a holder that dies wakes it
 as surely as one that ends. The project MCP server's `register_wait` runs the same waits for a
 session it can wake through a channel; this command is their form for background Bash.
 
 ## Who runs the commands, and refusals
 
-Only the main agent opens, merges and closes tasks and starts task sessions, only from the primary
-worktree (`not_primary` otherwise); `concorde task session` is dispatched to
-[Task sessions](../task-session/module.md) once that check passed, and every session it starts is
+Only the main agent opens, merges and closes tasks, starts task sessions, rebinds tasks and
+answers reports, only from the primary worktree (`not_primary` otherwise); `concorde task session`
+is dispatched to [Task sessions](../task-session/module.md) once that check passed, and every session it starts is
 recorded here through the record updates the [contracts](contracts.md#record-updates)
 list; a [worker](../../glossary.json#concept.worker) cannot run them, having no Git access.
 Every refusal names its code (`task_exists`, `unknown_module`, `invalid_transition`, `not_merged`,
@@ -590,9 +641,9 @@ would have to know tasks, and every fact would exist twice, in the record and in
 Git. A runner killed between its result and the record update, a delivery commit whose record
 update failed, or a run started by hand in the worktree would each leave the two copies
 disagreeing, and something would have to recover the record. So the record holds only the facts
-the task level alone knows: why the task exists, what it may touch, who escalated what, which
-sessions work it and how it ended. Everything about what happened in the worktree is read where
-Execution recorded it, each time Tasks needs it: a task is active when its workspace has a run or a
+the task level alone knows: why the task exists, what it may touch, who escalated or reported what,
+which sessions work it, whom they report to and how it ended. Everything about what happened in
+the worktree is read where Execution recorded it, each time Tasks needs it: a task is active when its workspace has a run or a
 change, delivered when Git shows a delivery commit of its workspace at the branch head with nothing
 after it and that commit has exactly one parent, and mergeable only then. The subject is a mark, not
 a proof: only the task level and Delivery commit on the branch, and the task level has no reason to
@@ -612,10 +663,11 @@ already released its workspace lock. See the [requirements](requirements.md) and
 
 The **[Task](../../glossary.json#concept.task) store** realization holds the `concorde task`
 commands (`cli.py`), the records, the derived state, the binding written at open and the record
-updates task sessions call (`store.py`), the merge under the merge lock (`merge.py`), and their
-tests, run on real Git repositories with delivery commits and run store entries written the way
-Execution writes them. It is the only writer of task records, writing each decision log once, at
-open, appending only escalations and closings, and committing a copy of it when the task ends. The
+updates task sessions call, the reports and the main agent's session (`store.py`), the merge under
+the merge lock (`merge.py`), and their tests, run on real Git repositories with delivery commits
+and run store entries written the way Execution writes them. It is the only writer of task records,
+writing each decision log once, at open, appending only escalations, reports, answers and closings,
+and committing a copy of it when the task ends. The
 command dispatches `concorde task session` to the code of Task sessions.
 
 ## Providers

@@ -118,7 +118,7 @@
       "id": "concept.decision-log",
       "title": "Decision log",
       "owner": "module.tasks",
-      "definition": "The Markdown file `decisions.md` in a task's folder in which the session working on the task writes the choices it made without the developer, and to which escalations are appended; when the task ends it is committed to the primary branch as `.concorde/decisions/<history key>.md`.",
+      "definition": "The Markdown file `decisions.md` in a task's folder in which the session working on the task writes the choices it made without the developer, and to which escalations, the task sessions' reports and the main agent's answers are appended; when the task ends it is committed to the primary branch as `.concorde/decisions/<history key>.md`.",
       "explanation": "specs/concorde/coordination/tasks/module.md#concept.decision-log",
       "relates": [
         {
@@ -664,7 +664,7 @@
       "id": "concept.task-record",
       "title": "Task record",
       "owner": "module.tasks",
-      "definition": "The JSON file `task.json` in a task's folder of the primary worktree that holds what the task commands need to act on it: its identity, goal, Modules, branch, worktree path, base commit, stored state, the merge in progress and, once it ended, how it ended.",
+      "definition": "The JSON file `task.json` in a task's folder of the primary worktree that holds what the task commands need to act on it: its identity, goal, Modules, branch, worktree path, base commit, the main agent's session its task sessions report to now, stored state, the merge in progress and, once it ended, how it ended.",
       "explanation": "specs/concorde/coordination/tasks/module.md#concept.task-record",
       "relates": [
         {
