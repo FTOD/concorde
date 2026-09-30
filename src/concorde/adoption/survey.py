@@ -6,13 +6,15 @@ Steps (the Survey Operation step table of the Adoption Module Spec):
    surveyed, and list every file it binds with its size in lines.
 2. ``propose``: the standard worker sequence for task type ``code-to-spec`` with every writable
    level withheld, so the worker reads code and writes nothing; the audit fails any change.
-3. ``check``: check the proposal against the worktree and the answers, and add the entries the
-   surveyed Module keeps.
+3. ``check``: write every path inside the worktree relative to it, record each decision with its
+   chosen option's text, check the proposal against the worktree and the answers, and add the
+   entries the surveyed Module keeps.
 """
 
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 from pathlib import Path
 
@@ -34,6 +36,8 @@ from .records import (
     load_answers,
     narrowed_entries,
     proposal_problems,
+    resolved_decisions,
+    worktree_relative,
 )
 
 # How many lines of the inventory the brief lists before it only counts the rest.
@@ -177,10 +181,28 @@ def propose(ctx: RunContext):
     )
 
 
+def relative_proposal(root: Path, claims: dict) -> dict:
+    """The worker's proposal with every path inside the worktree written relative to it."""
+    claims = copy.deepcopy(claims)
+    for child in claims.get("children") or []:
+        child["entries"] = [worktree_relative(root, path) for path in child["entries"]]
+    for item in claims.get("externals") or []:
+        item["path"] = worktree_relative(root, item["path"])
+    for proposed in claims.get("checks") or []:
+        proposed["inputs"] = [
+            worktree_relative(root, path) for path in proposed["inputs"]
+        ]
+    for question in claims.get("open_questions") or []:
+        question["evidence"] = [
+            worktree_relative(root, path) for path in question["evidence"]
+        ]
+    return claims
+
+
 def check(ctx: RunContext):
     """Step 3: the proposal fits the worktree and the answers; add the remaining entries."""
     module = ctx.modules[0]
-    claims = ctx.output or {}
+    claims = relative_proposal(ctx.worktree, ctx.output or {})
     # The configuration names a directory input without the trailing `/` a realization entry
     # carries; the proposal is made to fit the configuration, not the other way round.
     for proposed in claims.get("checks") or []:
@@ -188,9 +210,10 @@ def check(ctx: RunContext):
             path.rstrip("/") if path.rstrip("/") else path
             for path in proposed["inputs"]
         ]
-    repository = repository_of(ctx)
-    problems = proposal_problems(repository, module, claims, set(repository.checks))
     answers = ctx.state.get("answers") or []
+    claims["decisions"], problems = resolved_decisions(claims["decisions"], answers)
+    repository = repository_of(ctx)
+    problems += proposal_problems(repository, module, claims, set(repository.checks))
     problems += answer_problems(
         [item for item in answers if item["id"].startswith("d.")], claims["decisions"]
     )

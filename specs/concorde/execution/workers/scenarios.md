@@ -54,6 +54,13 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - AND it says that only the bound Modules' entries of the glossary may change
 - BUT it lists no entry outside the grant's terms
 
+### scenario.workers.brief-result-paths — The brief asks for relative paths in the result
+
+- GIVEN a worker of any [task type](../../glossary.json#concept.task-type) in the task worktree
+- WHEN the host launches the worker
+- THEN its brief names the task worktree's absolute path and tells it to give its tools absolute paths
+- AND it tells it to write every path of the task worktree in its result relative to the worktree, never as an absolute path
+
 ## The boundary
 
 ### scenario.workers.undeclared-write-denied — A new undeclared file cannot be written

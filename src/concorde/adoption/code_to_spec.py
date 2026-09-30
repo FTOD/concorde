@@ -13,13 +13,15 @@ Steps (the Code to spec Operation step table of the Adoption Module Spec):
 Steps 2 to 4 run as the one host step ``describe_code``, so that ``tidy`` runs in a ``finally``
 however the worker step ends, an exception or a cancellation included.
 5. ``revalidate``: validate again and split the errors into new and pre-existing ones.
-6. ``observe``: the Spec description from the host's observations and the worker's claims, the
-   answers check, and the status.
+6. ``observe``: the Spec description from the host's observations and the worker's claims, with
+   every path inside the worktree written relative to it and each decision recorded with its
+   chosen option's text, the answers check, and the status.
 """
 
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 
 from ..execution.context import (
@@ -44,6 +46,8 @@ from .records import (
     answer_problems,
     load_answers,
     repeated_ids,
+    resolved_decisions,
+    worktree_relative,
 )
 from .survey import answers_failure
 from .test_links import link_tests
@@ -436,6 +440,22 @@ def revalidate(ctx: RunContext):
     )
 
 
+def relative_description(root, claims: dict) -> dict:
+    """The worker's claims with every path inside the worktree written relative to it: the
+    tests a promise names and the evidence of an open question."""
+    claims = copy.deepcopy(claims)
+    for promise in claims.get("promises") or []:
+        if "tests" in promise:
+            promise["tests"] = [
+                worktree_relative(root, test) for test in promise["tests"]
+            ]
+    for question in claims.get("open_questions") or []:
+        question["evidence"] = [
+            worktree_relative(root, path) for path in question["evidence"]
+        ]
+    return claims
+
+
 def observe(ctx: RunContext):
     """Step 6: the Spec description, the consistency of the claims, and the status."""
     stop = ctx.state.get("stop")
@@ -452,7 +472,11 @@ def observe(ctx: RunContext):
     )
     stubs = ctx.state.get("stubs") or {}
     removed = ctx.state.get("removed") or []
-    claims = ((record.get("worker_result") or {}).get("output")) or {}
+    claims = relative_description(
+        ctx.worktree, ((record.get("worker_result") or {}).get("output")) or {}
+    )
+    answers = ctx.state.get("answers") or []
+    decisions, problems = resolved_decisions(claims.get("decisions", []), answers)
     output = {
         "modules": list(ctx.modules),
         "summary": claims.get("summary")
@@ -462,7 +486,7 @@ def observe(ctx: RunContext):
         "created_documents": sorted(path for path in stubs if path not in removed),
         "removed_stubs": removed,
         "promises": claims.get("promises", []),
-        "decisions": claims.get("decisions", []),
+        "decisions": decisions,
         "open_questions": claims.get("open_questions", []),
         "deviations": claims.get("deviations", []),
         "linked_tests": [],
@@ -481,6 +505,10 @@ def observe(ctx: RunContext):
             f"{len(removed)} removed; {len(output['open_questions'])} open question(s)",
         )
     ]
+    if stop is not None or ctx.state["new"]:
+        # The run stops for another reason, so a decision left out of the output is named here;
+        # the worker's claim stays in the result's worker field.
+        found += [evidence("inconsistency", "", item) for item in problems]
     if stop is not None:
         return Stop(stop.status, stop.summary, found, stop.error)
     new = ctx.state["new"]
@@ -514,7 +542,6 @@ def observe(ctx: RunContext):
                 "discard the edits",
             ],
         )
-    problems = []
     for item in (
         output["promises"]
         + output["decisions"]
@@ -532,20 +559,9 @@ def observe(ctx: RunContext):
                 f"promise {item.get('id') or item['description']!r} has source answer but names "
                 "no question"
             )
-    for decision in output["decisions"]:
-        if (
-            decision["decided_by"] == "worker"
-            and decision["chosen"] not in decision["options"]
-        ):
-            problems.append(
-                f"decision {decision['id']} chose {decision['chosen']!r}, which is none of its "
-                "options"
-            )
     problems += repeated_ids(output["decisions"], "decision")
     problems += repeated_ids(output["open_questions"], "open question")
-    problems += answer_problems(
-        ctx.state.get("answers") or [], output["decisions"], output["promises"]
-    )
+    problems += answer_problems(answers, output["decisions"], output["promises"])
     if problems:
         ctx.output = None
         return ctx.fail(

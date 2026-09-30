@@ -215,10 +215,12 @@ class BrownfieldFlowTests(unittest.TestCase):
                                         "id": "d.db-helper",
                                         "module": "module.project",
                                         "question": "Does db.py get a Module?",
-                                        "options": ["yes", "no"],
+                                        "options": [
+                                            {"id": "yes", "text": "yes"},
+                                            {"id": "no", "text": "no"},
+                                        ],
                                         "chosen": "no",
                                         "reason": "two lines",
-                                        "decided_by": "worker",
                                     }
                                 ],
                                 "open_questions": [],

@@ -61,6 +61,13 @@ the environment of one run and would let a worker change files through a command
 
 A survey or code_to_spec worker SHALL NOT be able to add or remove a [Module](../../../glossary.json#concept.module); only the `scaffold` [execution command](../../../glossary.json#concept.execution-command) of [Scaffold](../../commands/scaffold/module.md) does, from an admitted survey.
 
+### req.adoption.relative-paths — A path inside the worktree is made project-relative
+
+The survey and code_to_spec hosts SHALL write every path of their worker's claims that begins with the worktree's absolute path, or its real path, followed by `/`, relative to the worktree before checking it: a survey's child entries, external paths, check inputs and open questions' evidence, and a code_to_spec run's promise `tests` and open questions' evidence.
+
+A worker's tools take absolute paths, and such a path names exactly one project path. Any other path
+is left as the worker wrote it, and the checks report it.
+
 ## Honest description
 
 ### req.adoption.open-questions — Doubtful intent is never a promise
@@ -76,12 +83,26 @@ A survey or code_to_spec worker SHALL list every choice it took between options 
 
 ### req.adoption.answers-followed — Answers are followed
 
-A survey or code_to_spec run given `--answers` SHALL end `failed` when its output does not follow every answer: a decision answer as a decision with the answered choice whose `decided_by` is the answer's `answered_by`, `main-agent` or `developer`, a question answer in a survey by no longer listing the question, and in a code_to_spec run as a promise with source `answer` naming the question.
+A survey or code_to_spec run given `--answers` SHALL end `failed` when its output does not follow every answer: a decision answer as a decision with that identity, a question answer in a survey by no longer listing the question, and in a code_to_spec run as a promise with source `answer` naming the question.
+
+The host records an answered decision's choice itself, by
+[req.adoption.decisions-by-host](#req.adoption.decisions-by-host), so the worker only has to list it.
 
 A deviation never replaces that promise. When the code does otherwise, the run lists the promise
 and, by [req.adoption.deviation-reported](#req.adoption.deviation-reported), a deviation as well:
 the Spec states the intent, and the deviation tells later `implement` work that the code does not
 follow it yet.
+
+### req.adoption.decisions-by-host — The host writes the chosen option
+
+The survey and code_to_spec hosts SHALL record each decision of their output with the texts of the options the worker listed and, as `chosen`, the text of the option whose identity the worker named with `decided_by` `worker`, or, for a decision an answer settles, the answer with `decided_by` the answer's `answered_by`.
+
+The worker never copies an option's text, so a paraphrase cannot make its choice fall outside its
+options.
+
+### req.adoption.unchosen-decision-fails — A decision without a valid choice fails the run
+
+The survey and code_to_spec hosts SHALL end the run `failed`, listing each such decision, when the worker names for a decision an identity none of its options has, or names none for a decision no answer settles.
 
 ### req.adoption.deviation-reported — Intent that the code misses is reported
 
@@ -94,7 +115,7 @@ deviate from.
 
 ### req.adoption.proposal-checked — A proposal fits the worktree
 
-The survey host SHALL end the run `failed` with every inconsistency listed when the proposal names a child identity or title that is already registered or repeated, two children whose documents would share a folder, an entry that the surveyed Module's realizations do not cover or that does not exist, a `uses` target that is neither another child nor a registered Module, a check for a Module that is neither the surveyed Module nor a child, a check that is already configured or proposed twice, a check input that is not a canonical project-relative path, an external that is not a path the surveyed Module binds, is a child's entry or a directory containing one, takes Concorde installation files, is proposed twice or is used by neither the surveyed Module nor a child, a worker decision whose choice is none of its options, or a decision or open question identity used twice.
+The survey host SHALL end the run `failed` with every inconsistency listed when the proposal names a child identity or title that is already registered or repeated, two children whose documents would share a folder, an entry that the surveyed Module's realizations do not cover or that does not exist, a `uses` target that is neither another child nor a registered Module, a check for a Module that is neither the surveyed Module nor a child, a check that is already configured or proposed twice, a check input that is not a canonical project-relative path, an external that is not a path the surveyed Module binds, is a child's entry or a directory containing one, takes Concorde installation files, is proposed twice or is used by neither the surveyed Module nor a child, or a decision or open question identity used twice.
 
 ### req.adoption.inventory — The survey worker gets an inventory
 

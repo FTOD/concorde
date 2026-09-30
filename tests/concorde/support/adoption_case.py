@@ -12,7 +12,20 @@ from concorde.harness.runs import read_record
 from tests.concorde.support.brownfield_project import BrownfieldProject
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
+# A decision as the worker claims it: options named by identities, the choice by one of them.
 DB_HELPER = {
+    "id": "d.db-helper",
+    "module": "module.shop",
+    "question": "Does the shared database helper get a Module of its own?",
+    "options": [
+        {"id": "own-module", "text": "a Module of its own"},
+        {"id": "stay-root", "text": "stay with the root"},
+    ],
+    "chosen": "stay-root",
+    "reason": "it is two lines of connection setup",
+}
+# The same decision as the host records it in the output.
+DB_HELPER_RECORDED = {
     "id": "d.db-helper",
     "module": "module.shop",
     "question": "Does the shared database helper get a Module of its own?",

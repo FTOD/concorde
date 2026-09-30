@@ -4,6 +4,13 @@ The exact shapes [Adoption](module.md) returns and accepts. Each output is the `
 [run result](../../../glossary.json#concept.run-result); the worker proposes the parts it
 claims, and the host steps check them before passing them on.
 
+Two things the host writes itself, so that no worker has to repeat text exactly. A worker's
+decision names each option by a short identity of its own and its choice by that identity, or
+names none when an answer settles the decision; the host records the options' texts and the chosen
+option's text, or the answer, with who decided it. And a worker gives its tools absolute paths, so a
+path it writes that begins with the worktree's own absolute path is written relative to the
+worktree before anything checks it.
+
 ## Decomposition proposal
 
 The `output` of a `survey`. `remaining_entries` is computed by the host, never by the worker.
@@ -11,7 +18,7 @@ The `output` of a `survey`. `remaining_entries` is computed by the host, never b
 ```concorde-contract
 {
   "id": "contract.adoption.decomposition",
-  "version": 5,
+  "version": 6,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -299,7 +306,7 @@ The `output` of a `survey`. `remaining_entries` is computed by the host, never b
       }
     }
   },
-  "semantics": "The decomposition a survey proposes for module. children are the Modules to create: a new identity, a unique title, a purpose paragraph, the entries each binds (existing paths the surveyed Module's realizations cover, a directory ending in /) and the Modules it uses with the reason. remaining_entries are the entries the surveyed Module keeps once every child's entries and every external are removed, computed by the host with the rule of Adoption's shared records that the scaffold applies again: an entry no child entry or external touches stays; an entry a child entry or an external covers goes; and a directory entry that contains a child's entry or an external is replaced by the entries below it that nothing took, a subdirectory staying one entry when nothing inside it was taken and a file being listed exactly. Files the directory exclusion rule skips were never bound and are not listed. checks are proposed checks, in the shape of configured checks, for the surveyed Module or a child, each with the reason it was found; nothing configures them but the developer. decisions are the choices the worker took where the code left several open, each with decided_by worker, or, when it follows an answer, that answer's answered_by: main-agent or developer. open_questions are behaviours whose intent the worker could not tell; the worker wrote no promise about them. A proposed check may carry an env of variable names to strings, and its argv names the project's own interpreter as {python}; its inputs are canonical project-relative paths. externals are third-party code the project vendors, each with its path among the surveyed Module's paths, the Module that uses it and the reason: the scaffold takes them out of the parent's entries and makes each an external inclusion of its user, never a Module, so nobody describes or reviews it as the project's code. A proposed check may carry when: readiness for a full suite that runs only when readiness is decided. A behaviour or field change increments the version.",
+  "semantics": "The decomposition a survey proposes for module. children are the Modules to create: a new identity, a unique title, a purpose paragraph, the entries each binds (existing paths the surveyed Module's realizations cover, a directory ending in /) and the Modules it uses with the reason. remaining_entries are the entries the surveyed Module keeps once every child's entries and every external are removed, computed by the host with the rule of Adoption's shared records that the scaffold applies again: an entry no child entry or external touches stays; an entry a child entry or an external covers goes; and a directory entry that contains a child's entry or an external is replaced by the entries below it that nothing took, a subdirectory staying one entry when nothing inside it was taken and a file being listed exactly. Files the directory exclusion rule skips were never bound and are not listed. checks are proposed checks, in the shape of configured checks, for the surveyed Module or a child, each with the reason it was found; nothing configures them but the developer. decisions are the choices the worker took where the code left several open, written by the host: the worker names each option by an identity of its own and its choice by that identity, and the host records the options' texts, the chosen option's text as chosen and decided_by worker, or, for a decision an answer settles, the answer as chosen and that answer's answered_by, main-agent or developer, as decided_by; the worker never copies an option's text. Every path in children's entries, externals, check inputs and open questions' evidence is relative to the worktree: the host writes a path that begins with the worktree's absolute path, or its real path, relative to it before checking the proposal. open_questions are behaviours whose intent the worker could not tell; the worker wrote no promise about them. A proposed check may carry an env of variable names to strings, and its argv names the project's own interpreter as {python}; its inputs are canonical project-relative paths. externals are third-party code the project vendors, each with its path among the surveyed Module's paths, the Module that uses it and the reason: the scaffold takes them out of the parent's entries and makes each an external inclusion of its user, never a Module, so nobody describes or reviews it as the project's code. A proposed check may carry when: readiness for a full suite that runs only when readiness is decided. A behaviour or field change increments the version.",
   "example": {
     "module": "module.shop",
     "summary": "The shop has a checkout service and an inventory service that share one database helper; they become two Modules and the helper stays with the root.",
@@ -377,12 +384,13 @@ The `output` of a `survey`. `remaining_entries` is computed by the host, never b
 
 The `output` of a `code_to_spec` run. The document lists and `validation` are the host's
 observations; `summary`, `promises`, `decisions`, `open_questions` and `deviations` are the worker's
-claims, checked for consistency only.
+claims, checked for consistency only, with each decision written by the host from the worker's
+choice.
 
 ```concorde-contract
 {
   "id": "contract.adoption.spec-description",
-  "version": 3,
+  "version": 4,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -751,7 +759,7 @@ claims, checked for consistency only.
       }
     }
   },
-  "semantics": "What one code_to_spec run described for modules. changed_documents are the documents whose reading or metadata changed, created_documents the prepared stubs the worker filled, removed_stubs the prepared stubs the host removed because the worker left them unchanged or proposed their deletion. promises are the promises the worker wrote, each with source code when it describes behaviour read in code or answer when it states intent a developer answer gave, and then question naming the answered question. decisions and open_questions have the shapes of the decomposition proposal; no open question is written as a promise. deviations list every answered question whose stated intent differs from the observed code. validation holds in new_errors the structural errors the run counts as its own, those new since the baseline and every error located in a document a described Module owns even when the baseline had it, and in preexisting_errors the count of the other errors, which existed before the run; no error is counted in both. A scenario promise may name, in tests, the existing tests it was taken from (path::name or path::Class::name); linked_tests are the tests the host then marked with a verifies decorator, and unlinked_tests every link it left undone with the reason. A behaviour or field change increments the version.",
+  "semantics": "What one code_to_spec run described for modules. changed_documents are the documents whose reading or metadata changed, created_documents the prepared stubs the worker filled, removed_stubs the prepared stubs the host removed because the worker left them unchanged or proposed their deletion. promises are the promises the worker wrote, each with source code when it describes behaviour read in code or answer when it states intent a developer answer gave, and then question naming the answered question. decisions and open_questions have the shapes of the decomposition proposal, and the host writes the decisions from the worker's claims as it does there; no open question is written as a promise. The host writes a path in a promise's tests or an open question's evidence that begins with the worktree's absolute path, or its real path, relative to the worktree. deviations list every answered question whose stated intent differs from the observed code. validation holds in new_errors the structural errors the run counts as its own, those new since the baseline and every error located in a document a described Module owns even when the baseline had it, and in preexisting_errors the count of the other errors, which existed before the run; no error is counted in both. A scenario promise may name, in tests, the existing tests it was taken from (path::name or path::Class::name); linked_tests are the tests the host then marked with a verifies decorator, and unlinked_tests every link it left undone with the reason. A behaviour or field change increments the version.",
   "example": {
     "modules": [
       "module.checkout"
@@ -906,9 +914,9 @@ and Spec core links below it keep their own codes.
 | `specs_unloadable` | both | `failed` | `scope` | the worktree's Specs cannot be loaded; the cause is Spec core's error |
 | `grant_unavailable` | survey, code_to_spec | `failed` | `scope` | Spec core cannot compute the `code-to-spec` grant; the cause is its error |
 | `unknown_modules` | code_to_spec | `failed` | `input` | a bound Module is not registered, listed with the registered ones |
-| `inconsistent_proposal` | survey | `failed` | `capability` | the proposal does not fit the worktree or does not follow an answer; every problem is listed |
+| `inconsistent_proposal` | survey | `failed` | `capability` | the proposal does not fit the worktree, has a decision whose choice names none of its options or that neither chooses nor follows an answer, or does not follow an answer; every problem is listed |
 | `new_structural_errors` | code_to_spec | `blocked` | `decision` | the description adds structural errors; one cause per finding |
-| `inconsistent_description` | code_to_spec | `failed` | `capability` | the description names another Module, repeats an identity, chooses outside its options or does not follow an answer; every problem is listed |
+| `inconsistent_description` | code_to_spec | `failed` | `capability` | the description names another Module, repeats an identity, has a decision whose choice names none of its options or that neither chooses nor follows an answer, or leaves out an answered decision or question; every problem is listed |
 
 A worker that ended `blocked` or `failed`, a launch error, a timeout and an audit violation keep
 the codes of the [standard worker sequence](../workers.md#errors-of-the-worker-sequence).

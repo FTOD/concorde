@@ -55,6 +55,23 @@ DECISION = obj(
         "decided_by": {"enum": ["worker", "main-agent", "developer"]},
     }
 )
+OPTION_ID = {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$"}
+# A decision as the worker claims it: each option named by an identity of the worker's, and the
+# choice by that identity, so that nobody copies an option's text; the host writes ``DECISION``.
+WORKER_DECISION = obj(
+    {
+        "id": DECISION_ID,
+        "module": MODULE_ID,
+        "question": S,
+        "options": {
+            "type": "array",
+            "minItems": 2,
+            "items": obj({"id": OPTION_ID, "text": S}),
+        },
+        "chosen": {"anyOf": [OPTION_ID, {"type": "null"}]},
+        "reason": S,
+    }
+)
 QUESTION = obj(
     {
         "id": QUESTION_ID,
@@ -112,11 +129,11 @@ SURVEY_WORKER_SCHEMA = obj(
         "children": {"type": "array", "items": CHILD},
         "externals": {"type": "array", "items": EXTERNAL},
         "checks": {"type": "array", "items": CHECK},
-        "decisions": {"type": "array", "items": DECISION},
+        "decisions": {"type": "array", "items": WORKER_DECISION},
         "open_questions": {"type": "array", "items": QUESTION},
     }
 )
-# contract.adoption.decomposition, version 5
+# contract.adoption.decomposition, version 6
 DECOMPOSITION_SCHEMA = obj(
     {
         "module": MODULE_ID,
@@ -163,12 +180,12 @@ DESCRIBE_WORKER_SCHEMA = obj(
     {
         "summary": S,
         "promises": {"type": "array", "items": PROMISE},
-        "decisions": {"type": "array", "items": DECISION},
+        "decisions": {"type": "array", "items": WORKER_DECISION},
         "open_questions": {"type": "array", "items": QUESTION},
         "deviations": {"type": "array", "items": DEVIATION},
     }
 )
-# contract.adoption.spec-description, version 3
+# contract.adoption.spec-description, version 4
 SPEC_DESCRIPTION_SCHEMA = obj(
     {
         "modules": {"type": "array", "minItems": 1, "items": MODULE_ID},
@@ -238,35 +255,90 @@ def load_answers(path: str | None) -> list[dict]:
     return value["answers"]
 
 
+def resolved_decisions(
+    claimed: list[dict], answers: list[dict]
+) -> tuple[list[dict], list[str]]:
+    """The decisions of the output from the worker's claims, and every claim that names no
+    option it lists.
+
+    The worker names each option by an identity and its choice by that identity, so the host
+    alone writes the chosen option's text and ``decided_by``. A decision an answer settles takes
+    the answer as its choice, decided by whoever gave it, whatever the worker named.
+    """
+    by_answer = {item["id"]: item for item in answers if item["id"].startswith("d.")}
+    decisions, problems = [], []
+    for claim in claimed:
+        texts = {option["id"]: option["text"] for option in claim["options"]}
+        identities = [option["id"] for option in claim["options"]]
+        repeated = sorted({item for item in identities if identities.count(item) > 1})
+        if repeated:
+            problems.append(
+                f"decision {claim['id']} gives more than one option the identity "
+                f"{', '.join(repeated)}"
+            )
+        answer = by_answer.get(claim["id"])
+        if answer is not None:
+            chosen, decided_by = answer["answer"], answer["answered_by"]
+        elif claim["chosen"] is None:
+            problems.append(
+                f"decision {claim['id']} chose no option, but no answer settles it"
+            )
+            continue
+        elif claim["chosen"] not in texts:
+            problems.append(
+                f"decision {claim['id']} chose {claim['chosen']!r}, which names none of its "
+                f"options ({', '.join(identities)})"
+            )
+            continue
+        else:
+            chosen, decided_by = texts[claim["chosen"]], "worker"
+        decisions.append(
+            {
+                "id": claim["id"],
+                "module": claim["module"],
+                "question": claim["question"],
+                "options": [option["text"] for option in claim["options"]],
+                "chosen": chosen,
+                "reason": claim["reason"],
+                "decided_by": decided_by,
+            }
+        )
+    return decisions, problems
+
+
+def worktree_relative(root: Path, path: str) -> str:
+    """``path`` relative to the worktree ``root`` when it starts with the worktree's absolute
+    path, as given or as its real path, and otherwise unchanged.
+
+    A worker's tools take absolute paths, so a path it writes into its result may carry the
+    worktree's own path in front; removing that prefix is unambiguous. What follows the path,
+    such as ``::test`` or a line number, and a trailing ``/`` are kept.
+    """
+    for prefix in dict.fromkeys((Path(root).as_posix(), os.path.realpath(root))):
+        if path.startswith(prefix + "/") and len(path) > len(prefix) + 1:
+            return path[len(prefix) + 1 :]
+    return path
+
+
 def answer_problems(
     answers: list[dict], decisions: list[dict], promises: list[dict] = ()
 ) -> list[str]:
     """Every answer an output does not follow, one sentence each.
 
-    A decision answer (``d.``) is followed by a decision with its identity, decided by whoever
-    gave the answer, whose choice is the answer. A question answer (``q.``) is followed by a promise
-    with source ``answer`` naming the question; a deviation naming it never replaces that
-    promise, it only adds that the code does otherwise.
+    A decision answer (``d.``) is followed by a decision with its identity, which
+    ``resolved_decisions`` records with the answer as its choice. A question answer (``q.``) is
+    followed by a promise with source ``answer`` naming the question; a deviation naming it never
+    replaces that promise, it only adds that the code does otherwise.
     """
     problems = []
     by_decision = {item["id"]: item for item in decisions}
     for answer in answers:
         identity = answer["id"]
         if identity.startswith("d."):
-            decision = by_decision.get(identity)
-            if decision is None:
+            if identity not in by_decision:
                 problems.append(
                     f"the answer to {identity} ({answer['answer']!r}) has no decision "
                     f"{identity} in the output"
-                )
-            elif (
-                decision["decided_by"] != answer["answered_by"]
-                or decision["chosen"] != answer["answer"]
-            ):
-                problems.append(
-                    f"decision {identity} chose {decision['chosen']!r}, decided by "
-                    f"{decision['decided_by']}, but the {answer['answered_by']} answered "
-                    f"{answer['answer']!r}"
                 )
         elif not any(
             item.get("source") == "answer" and item.get("question") == identity
@@ -537,6 +609,7 @@ __all__ = [
     "MODULE_ID",
     "SPEC_DESCRIPTION_SCHEMA",
     "SURVEY_WORKER_SCHEMA",
+    "WORKER_DECISION",
     "AnswersError",
     "S",
     "SpecError",
@@ -546,4 +619,6 @@ __all__ = [
     "narrowed_entries",
     "obj",
     "proposal_problems",
+    "resolved_decisions",
+    "worktree_relative",
 ]
