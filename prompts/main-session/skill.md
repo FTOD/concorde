@@ -117,7 +117,8 @@ another session's merge releasing the merge lock, use the project MCP server's `
 
 Other main sessions may work on the same project at the same time. Each run wakes only its
 **owner**: the session whose background Bash started it, and a task session reports only to the
-main session it was started for. You are never woken unasked for the work of another main session,
+main session its task record names, the one it was started for until that main session rebinds
+the task. You are never woken unasked for the work of another main session,
 of a task session or of a command someone ran by hand, and nothing of theirs reaches you unless you
 ask: when you need to know how another session's task stands, ask once with
 `concorde task show <task>`, which lists its runs with their status and its task sessions with the
@@ -259,7 +260,8 @@ session's sandbox keeps `.git/config` and Git's hooks read-only, even though it 
 concorde task session <task> --main <your session name> [--model <model>]
 ```
 
-Your session name is the one the ListAgents tool reports for this session. The command writes the
+Your session name is the one the ListAgents tool reports for this session; the task record keeps
+it as the task's `main`, the session the task session reports to. The command writes the
 session's boundary (its Edit and Write tools may change only the task worktree and decision log,
 and its Bash only the worktree, Git, Concorde's records and package caches; reads and the network
 stay open), starts `claude --bg` with the task's goal and records the session in the task.
@@ -272,8 +274,26 @@ refuses each action, inside the boundary above. Pass `--model` only with a model
 mode; without it the session would wait for answers nobody gives.
 
 A task session messages you with SendMessage when it has delivered, or when it cannot
-go further without decisions beyond its task, all of which that one message gives; answer it with
-SendMessage too.
+go further without decisions beyond its task, all of which that one message gives. It records that
+report first with `concorde task report`, in the task record and decision log, so a message that
+never reached you loses nothing: `concorde task show <task>` lists the task's `reports`, each with
+its `answer`, null while unanswered. Record your answer with
+`concorde task answer <task> --report <n>… --text "<your answer>"`, which appends it to the decision
+log too, then answer the session with SendMessage.
+
+### When your session name changed
+
+A Claude Code session's name does not survive a restart or a resume: after one, the ListAgents
+tool may report another name for your session than the one you gave your tasks with `--main`, and
+a task session that messages the old name reaches nobody. So whenever ListAgents reports a name
+for your session other than the one you gave your tasks, before anything else:
+
+1. List the tasks that still name your former name: `concorde task list --main <former name>`.
+2. Rebind each to your current name: `concorde task rebind <task> --main <current name>`. A task
+   session whose message failed is waiting for exactly that and sends its report again to the new
+   name.
+3. Read each task's unanswered reports with `concorde task show <task>`, those whose `answer` is
+   null, and answer them as above.
 
 A task session decides ordinary questions within its task and escalates the rest with
 `concorde task escalate <task> --by task-session …`. Answer what you may decide yourself, and pass
@@ -488,8 +508,9 @@ merge's result or the wait's answer comes later.
   lock and each task's workspace lock: the holder's command, process, start time, session and
   task.
 - Short writes with structured arguments: `task_open`, `task_escalate` (your link of the error
-  chain as arguments, with the `runs`, `error_files` and `escalations` it adds as causes) and
-  `task_close` with `outcome` `completed` or `failed`.
+  chain as arguments, with the `runs`, `error_files` and `escalations` it adds as causes),
+  `task_rebind`, `task_report`, `task_answer` and `task_close` with `outcome` `completed` or
+  `failed`; `task_list` takes `main` as `--main`.
 - `task_merge`: merges a delivered task without ever waiting for a lock. It takes the task's
   workspace lock and the merge lock at once, or is refused at once with `workspace_busy` or
   `merge_busy` naming who holds the busy one. When it gets both, it starts `concorde task merge`
@@ -500,7 +521,8 @@ merge's result or the wait's answer comes later.
   `register_wait` (or, without a channel, run the `concorde task wait` command it returns in
   background Bash) and call `task_merge` again once you are woken: you may be refused again.
 - `register_wait`: asks to be woken when a task becomes `delivered`, `merging`, `closed` or
-  `failed` (`task` with `until`), when a run ends (`run`), or when a lock is released (`lock`
+  `failed` (`task` with `until`), when a task is rebound to a main agent's session other than one
+  it names (`task` with `rebound`), when a run ends (`run`), or when a lock is released (`lock`
   `merge`, or `workspace` with `task`). It answers at once when that already happened. It only
   notifies: when you are woken for a lock, ask for it again, and you may be refused again.
 

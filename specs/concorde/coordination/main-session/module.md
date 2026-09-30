@@ -65,14 +65,15 @@ session that registered it:
 | Work | Owner | How the owner is woken |
 | --- | --- | --- |
 | A run a main session starts, in background Bash | that session | Claude Code's own notification when the command ends |
-| What a task session reports | the main session its `--main` names | the task session's SendMessage |
+| What a task session reports | the main session its task record names when it reports | the task session's SendMessage, once `concorde task report` recorded the report |
 | A run a task session starts in its worktree | that task session, no main session | Claude Code's own notification in the task session; its main session hears of it in the task session's report |
 | A run started by a command run by hand | no main session | nobody is woken |
 | A wait registered with, or a merge started through, the [project MCP server](../../glossary.json#concept.project-mcp-server) | the session whose server it is | a channel event of that server, or, without a channel, the session's own background Bash running the equivalent `concorde task wait` |
 
 Execution, which knows nothing of main sessions, never records an owner: a run's owner is the
 session whose background Bash started it, and the main session a task session reports to is the
-`main` that the session's [trace node](../../glossary.json#concept.trace-node) records. A main
+`main` that its task's [task record](../../glossary.json#concept.task-record) names, first the
+`--main` its session was started with, then the name the main agent rebound the task to. A main
 session that does not own a run is never woken by it unasked, since nothing it did not ask for is
 pushed into it: it asks with `concorde task show <task>`, which lists the task workspace's runs with
 their status and the task's sessions with the main session each reports to, or it registers a wait
@@ -246,6 +247,19 @@ The installed guidance gives the main agent this working method:
   Code task session whose transcript the close could not keep or that it could not remove, with the
   command that removes it by hand; and on a close's `decision_log_uncommitted`, fix what Git
   refused in the primary worktree and run the same close again.
+- **Keep reports reachable.** A Claude Code session's name does not survive a restart or a resume
+  of the session, so the name a task session was started with may no longer reach the main agent.
+  The task-session guidance therefore has a task session record every report with `concorde task
+  report` before it sends it, to the main agent's session the command prints from the task record
+  at that moment, and, when SendMessage reaches no session of that name, wait in background Bash
+  with `concorde task wait <task> --rebound <name>` and send the same report again to the name it
+  returns ([requirements](requirements.md#req.main-session.task-session-report-recorded)). The main
+  agent records its answer with `concorde task answer` before it sends it. When ListAgents reports
+  for its own session a name other than the one it gave its tasks, such as after a resume, the
+  main agent lists the tasks whose record names its former name with `concorde task list --main
+  <former>`, rebinds each to its current name with `concorde task rebind`, and reads their
+  unanswered reports, those `concorde task show` lists with no answer, before anything else
+  ([requirements](requirements.md#req.main-session.reconcile-after-restart)).
 - **Report.** Close each piece of work with a short summary for the developer: what was merged,
   what was decided on the developer's behalf, and what is still open.
 - **Use the project's terms.** Every session of the project starts with all the terms of its
@@ -431,7 +445,8 @@ events are in the [contracts](contracts.md).
   trace need not be read whole), `run_result`, `workflow_report` and `locks`, which says who holds
   the merge lock and each task's [workspace lock](../../glossary.json#concept.workspace-lock).
 - **Short writes** with structured arguments: `task_open`, `task_escalate`, whose error chain link
-  is typed arguments rather than a command line to quote, and `task_close` without a merge.
+  is typed arguments rather than a command line to quote, `task_report`, `task_answer`,
+  `task_rebind` and `task_close` without a merge.
 - **Long work**: `task_merge`, which never waits for a lock. It takes the task's workspace lock and
   the [merge lock](../../glossary.json#concept.merge-lock) at once or is refused at once, with
   `workspace_busy` or `merge_busy` naming who holds the busy one: the holder's command, process,
@@ -442,7 +457,8 @@ events are in the [contracts](contracts.md).
   even when the session and its server end first. It returns at once with the merge it started,
   not the merge's result, which a channel event or the returned wait command delivers later.
 - **Waiting**: `register_wait` asks to be woken when a task becomes `delivered`, `merging`,
-  `closed` or `failed`, when a run ends, or when a lock is released. The server watches without
+  `closed` or `failed`, when a task is rebound to a main agent's session other than a named one,
+  when a run ends, or when a lock is released. The server watches without
   polling, blocking on the lock itself or on the kernel's notice of each new holder, and wakes its
   session with a [Claude Code channel](#channels) event when it happens. It only notifies: it never
   takes a lock for the session it wakes, which asks again and may be refused again.
@@ -553,36 +569,39 @@ The providers the main agent reaches down the levels of work.
 **Tasks** provides the [task](../../glossary.json#concept.task) — its branch, its worktree bound as
 a workspace, and its record — and the [decision log](../../glossary.json#concept.decision-log): the
 workspace of level 2, which a task session works. `concorde task show` lists the task's runs,
-deliveries and task sessions and the holder of its
-[workspace lock](../../glossary.json#concept.workspace-lock), read from what Execution recorded, so
-the main agent learns a task's progress from one command. Each task's own worktree is what keeps
-parallel tasks from mixing changes; opening, merging and closing tasks are the main agent's
-responsibility, and the log is written by the main agent and the task's session alike. The guidance
-relies on `concorde task merge` holding the merge lock and undoing a merge whose checks fail, and
-tells the main agent to retry a `merge_busy`, to have the task's session resolve a conflict in the
-task worktree, and to treat a failed check as new work rather than discard a change. It also relies
-on Tasks refusing `open`, `merge`, `close`, `session` and `escalate` with `merge_incomplete` after a
-merge was interrupted, all but the merging task's `merge --resume` and `merge --abort`, while `list`
-and `show` stay available to inspect it, and
-tells the main agent to finish that merge first with `--resume` or `--abort` rather than to work
-around the refusal: checking the merge again is the default, since the recorded checks decide as
-they would have, and only a primary branch changed by hand after the merge goes to the developer. A
-task session has no authority to finish a merge, so its guidance sends such a refusal to the main
-agent. The project MCP server presents Tasks' commands unchanged, answering and refusing as each
-command does when it waits for no lock, whose results are the
-[task records](../tasks/contracts.md#contract.tasks.record) and the other results of
-[Tasks' commands](../tasks/contracts.md#commands); it starts
-`concorde task merge` with the two locks it took, and runs the waits of `concorde task wait`, which
-Tasks provides for background Bash too.
+deliveries and task sessions and the holder of its [workspace
+lock](../../glossary.json#concept.workspace-lock), read from what Execution recorded, so the main
+agent learns a task's progress from one command, with the task sessions' reports and their answers.
+The guidance relies on the record naming the main agent's session a task session reports to, which
+`concorde task rebind` changes, on `concorde task report` recording a report before it is sent and
+`concorde task answer` marking it answered, and on `concorde task wait --rebound` returning the new
+name without polling. Each task's own worktree is what keeps parallel tasks from mixing changes;
+opening, merging and closing tasks are the main agent's responsibility, and the log is written by
+the main agent and the task's session alike. The guidance relies on `concorde task merge` holding
+the merge lock and undoing a merge whose checks fail, and tells the main agent to retry a
+`merge_busy`, to have the task's session resolve a conflict in the task worktree, and to treat a
+failed check as new work rather than discard a change. It also relies on Tasks refusing `open`,
+`merge`, `close`, `session` and `escalate` with `merge_incomplete` after a merge was interrupted,
+all but the merging task's `merge --resume` and `merge --abort`, while `list` and `show` stay
+available to inspect it, and tells the main agent to finish that merge first with `--resume` or
+`--abort` rather than to work around the refusal: checking the merge again is the default, since the
+recorded checks decide as they would have, and only a primary branch changed by hand after the merge
+goes to the developer. A task session has no authority to finish a merge, so its guidance sends such
+a refusal to the main agent. The project MCP server presents Tasks' commands unchanged, answering
+and refusing as each command does when it waits for no lock, whose results are the [task
+records](../tasks/contracts.md#contract.tasks.record) and the other results of [Tasks'
+commands](../tasks/contracts.md#commands); it starts `concorde task merge` with the two locks it
+took, and runs the waits of `concorde task wait`, which Tasks provides for background Bash too.
 
 <a id="uses-task-session"></a>
 
 **Task sessions** starts the background Claude Code task sessions the main agent delegates tasks to
-and ends them with their task. It applies to every task. The guidance relies on a task session
-never merging its task into the primary branch or closing it, and on it reporting only to the main
-session its `--main` names. A task session's report or escalation is its result travelling up to
-level 1: the main agent answers the escalations, all at once, or asks for more, with SendMessage,
-reads every error chain it carries like any other, and merges a delivered task itself.
+and ends them with their task. It applies to every task. The guidance relies on a task session never
+merging its task into the primary branch or closing it, and on it reporting only to the main session
+its task record names, which `--main` sets and the main agent rebinds. A task session's report or
+escalation is its result travelling up to level 1: the main agent answers the escalations, all at
+once, or asks for more, with SendMessage, reads every error chain it carries like any other, and
+merges a delivered task itself.
 
 <a id="uses-workflows"></a>
 

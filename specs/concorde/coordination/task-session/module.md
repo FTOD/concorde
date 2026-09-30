@@ -107,11 +107,14 @@ tasks.close -> starter.stop
 
 The main agent starts the session through `concorde task session`, which Tasks checks before it
 hands the start here. Task sessions writes the session's boundary, starts it in the task worktree
-with its first prompt and records it in the task's [trace](../../glossary.json#concept.trace). The
-session then works the task following its guidance and reports to the main agent with SendMessage:
-its delivery, or every decision it needs, which the main agent answers together the same way. When
-the main agent merges or closes the task, Tasks' close has Task sessions stop the task's sessions if
-the task ends without a merge, keep their transcripts and remove them from Claude's session list.
+with its first prompt and records it in the task's [trace](../../glossary.json#concept.trace),
+naming the main agent's session in the [task record](../../glossary.json#concept.task-record). The
+session then works the task following its guidance and reports to the main agent: it records its
+delivery, or every decision it needs, with `concorde task report`, and then wakes the main agent
+with SendMessage to the session the record names at that moment; the main agent answers together
+the same way. When the main agent merges or closes the task, Tasks' close has Task sessions stop
+the task's sessions if the task ends without a merge, keep their transcripts and remove them from
+Claude's session list.
 
 ### Its place in the levels of work
 
@@ -158,24 +161,30 @@ folder, and the session's [trace node](../../glossary.json#concept.trace-node) u
 `sessions/<session>/`, written through Tasks' updates so the task's
 [trace](../../glossary.json#concept.trace) holds every session.
 
-Task sessions writes the session's
-[session boundary](../../glossary.json#concept.session-boundary) — a settings file and the Harness's
-task-session [write hook](../../glossary.json#concept.write-hook) with the task's paths embedded —
-under `.concorde/tasks/severity/runtime/`, with an MCP configuration `mcp.json` there that gives
-the session the [project MCP server](../../glossary.json#concept.project-mcp-server), starts
-`claude --bg` in the task worktree with that configuration and the task-session guidance and the
-task's goal, Modules, decision log and the main agent's session name as its first prompt, and
-records the started session as a node `sessions/<id>/` of the task's trace, named by the short id
-`claude --bg` reported, with status `unknown` until its task ends, since Concorde does not see a
-Claude Code session end. It also asks Claude Code for the session's full session id, the name of
-its transcript, with `claude agents --json --all`, whose entry of that short id gives it as
-`sessionId`, and records it in the node; when Claude Code does not tell it then, the node records
-none and the task's end asks again. `--main` is required: a start without
-it is refused with `invalid_input`. `--dry-run` writes the boundary and prints the command without
-starting anything. A task that is closed or failed, a missing worktree, or a Claude Code that does
-not report a started background session is refused (`task_closed`, `missing_worktree`,
+Task sessions writes the session's [session boundary](../../glossary.json#concept.session-boundary)
+— a settings file and the Harness's task-session [write
+hook](../../glossary.json#concept.write-hook) with the task's paths embedded — under
+`.concorde/tasks/severity/runtime/`, with an MCP configuration `mcp.json` there that gives the
+session the [project MCP server](../../glossary.json#concept.project-mcp-server), starts `claude
+--bg` in the task worktree with that configuration and the task-session guidance and the task's
+goal, Modules, decision log and the main agent's session name as its first prompt, and records the
+started session as a node `sessions/<id>/` of the task's trace, named by the short id `claude --bg`
+reported, with status `unknown` until its task ends, since Concorde does not see a Claude Code
+session end, and has Tasks name the `--main` session as the task's main in its record. The first
+prompt gives that name too, but only as the main agent's session when the task session started: a
+Claude Code session's name does not survive a restart or resume of that session, so the task session
+takes the name to message from the record each time it reports, which the main agent rebinds with
+`concorde task rebind` once its name changed
+([Tasks](../tasks/module.md#reports-and-the-main-agents-session)). It also asks Claude Code for the
+session's full session id, the name of its transcript, with `claude agents --json --all`, whose
+entry of that short id gives it as `sessionId`, and records it in the node; when Claude Code does
+not tell it then, the node records none and the task's end asks again. `--main` is required: a start
+without it is refused with `invalid_input`. `--dry-run` writes the boundary and prints the command
+without starting anything. A task that is closed or failed, a missing worktree, or a Claude Code
+that does not report a started background session is refused (`task_closed`, `missing_worktree`,
 `session_failed`) with Claude Code's output in the detail. The session receives the main agent's
-answers and sends its reports through SendMessage; `claude stop` stops it.
+answers through SendMessage and sends its reports the same way once `concorde task report` recorded
+them; `claude stop` stops it.
 
 The server is passed explicitly because a background session does not load the project-scoped
 `.mcp.json` of a folder nobody trusted. It comes without a channel, and its configuration says so
@@ -298,7 +307,11 @@ A task session escalates what it may not decide with `concorde task escalate --b
 which Tasks records as a link of level `task-session` on top of the failed runs' chains; the main
 agent adds its own link above it when the developer must decide. A task never asks the developer
 in place: the session gathers every decision it needs, records each as an escalation and reports
-them together, in one SendMessage, and the main agent answers them together. Exact commands and
+them together, in one report that `concorde task report` records with the escalations it carries
+and one SendMessage, and the main agent answers them together. When that message reaches no
+session, because the main agent's session was restarted under another name, the report stays
+recorded and the session waits in background Bash with `concorde task wait <task> --rebound <name>`
+until the main agent has rebound the task, then sends it again to the new name. Exact commands and
 error codes are in the [contracts](contracts.md), the obligations in the
 [requirements](requirements.md) and the behaviour in the [scenarios](scenarios.md).
 
@@ -422,7 +435,7 @@ sessions configures for every task session it starts, without a channel (`CONCOR
 
 Two Modules call this one, both from level 1's side: the Main session's guidance has the main
 agent start task sessions, and Tasks dispatches `concorde task session` here after its own checks
-and, when it closes a task, has its task sessions ended here. A task session records only its
-start, and its transcript and figures once its task ends: the main agent learns what it did from
-its SendMessage report, and finds one that ended without a message with `claude agents` and
-`claude logs` while its task is open.
+and, when it closes a task, has its task sessions ended here. A task session records its start, its
+reports, and its transcript and figures once its task ends: the main agent learns what it did from
+its report, recorded in the task record and delivered by SendMessage, and finds one that ended
+without a report with `claude agents` and `claude logs` while its task is open.

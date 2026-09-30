@@ -107,6 +107,38 @@ class GuidanceTests(unittest.TestCase):
             self.assertNotIn("concorde_task_session", text)
             self.assertNotIn("in pi", text)
 
+    @verifies("scenario.main-session.task-session-report")
+    def test_a_task_session_records_its_report_and_follows_a_rebind(self):
+        self.assertIn(
+            "**Record it first**, in the task record and decision log: "
+            '`concorde task report <task> --text "<the report>" [--escalation <n>…]`',
+            self.session,
+        )
+        self.assertIn(
+            "**Then send it** with the SendMessage tool, the same text, to that `main`",
+            self.session,
+        )
+        self.assertIn("never from your first prompt", self.session)
+        self.assertIn(
+            "run `concorde task wait <task> --rebound <that name>` in background Bash",
+            self.session,
+        )
+        self.assertIn("send the same report to that name, without", self.session)
+
+    @verifies("scenario.main-session.reconcile-after-restart")
+    def test_the_main_agent_rebinds_its_tasks_after_its_name_changed(self):
+        self.assertIn("### When your session name changed", self.skill)
+        self.assertIn("`concorde task list --main <former name>`", self.skill)
+        self.assertIn("`concorde task rebind <task> --main <current name>`", self.skill)
+        self.assertIn("whose `answer` is null", self.skill)
+        self.assertIn("before anything else", self.skill.split("### When your", 1)[1])
+        self.assertIn(
+            '`concorde task answer <task> --report <n>… --text "<your answer>"`',
+            self.skill,
+        )
+        self.assertIn("`concorde task rebind`", self.block)
+        self.assertIn("recording each answer with `concorde task answer`", self.block)
+
     @verifies("scenario.main-session.task-session-role")
     def test_a_task_session_stays_within_its_task(self):
         self.assertIn("You are a task session", self.session)
@@ -115,12 +147,11 @@ class GuidanceTests(unittest.TestCase):
         self.assertIn("SendMessage", self.session)
         self.assertIn(
             "When the task is delivered, or cannot go further without decisions that are not "
-            "yours, send the main agent's session one message",
+            "yours, report to the main agent",
             self.session,
         )
         self.assertIn(
-            "Record every escalation the task needs first. Then send the main agent's session "
-            "one message",
+            "Record every escalation the task needs first. Then report them all at once",
             self.session,
         )
         self.assertNotIn("wait for its answer before continuing", self.session)

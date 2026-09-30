@@ -1,5 +1,5 @@
-"""``concorde task open|list|show|session|close|merge|escalate|wait``: print one JSON value;
-refusals exit 1, bad usage 2.
+"""``concorde task open|list|show|session|rebind|close|merge|escalate|report|answer|wait``: print
+one JSON value; refusals exit 1, bad usage 2.
 
 While a merge is unfinished, every one of them that changes something is refused with
 ``merge_incomplete`` apart from ``merge --resume`` and ``merge --abort`` of that task; ``list`` and ``show`` still answer.
@@ -12,6 +12,10 @@ session in a task worktree.
 task session's to the main agent), with the errors of the named runs, files or earlier escalations
 as its causes; naming none records that link alone as the whole chain, as for a decision an ok run
 took that the session may not keep alone.
+``report`` records a task session's report in the task record and decision log before the
+session messages the main agent, and prints the main agent's session the task record names now;
+``answer`` records the main agent's answer to reports, and ``rebind`` names a new main agent's
+session for a task, after the main agent's session name changed.
 """
 
 from __future__ import annotations
@@ -210,8 +214,12 @@ OPTIONS = {
     "decision_log_failed": [
         "make the decision log writable, then run the same close again, which appends the "
         "closing and changes nothing else",
-        "for an escalation, append the chain the message carries to the decision log by "
-        "hand; escalating again would record it twice",
+        "for an escalation, a report or an answer, append the entry the message carries to "
+        "the decision log by hand; recording it again would record it twice",
+    ],
+    "already_answered": [
+        "read the answer with concorde task show <task>; answer only the reports whose "
+        "answer is null",
     ],
     "decision_log_uncommitted": [
         "fix what Git refused in the primary worktree, such as a detached HEAD, an unfinished "
@@ -256,6 +264,7 @@ def parser() -> argparse.ArgumentParser:
     opening.add_argument("--path")
     listing = commands.add_parser("list")
     listing.add_argument("--state", choices=store.STATES)
+    listing.add_argument("--main")
     showing = commands.add_parser("show")
     showing.add_argument("task_id")
     starting = commands.add_parser("session")
@@ -263,6 +272,9 @@ def parser() -> argparse.ArgumentParser:
     starting.add_argument("--main")
     starting.add_argument("--model")
     starting.add_argument("--dry-run", action="store_true")
+    rebinding = commands.add_parser("rebind")
+    rebinding.add_argument("task_id")
+    rebinding.add_argument("--main", required=True)
     closing = commands.add_parser("close")
     closing.add_argument("task_id")
     mode = closing.add_mutually_exclusive_group(required=True)
@@ -298,12 +310,21 @@ def parser() -> argparse.ArgumentParser:
     escalating.add_argument("--attempt", action="append", default=[])
     escalating.add_argument("--option", action="append", default=[])
     escalating.add_argument("--recommendation", default="")
+    reporting = commands.add_parser("report")
+    reporting.add_argument("task_id")
+    reporting.add_argument("--text", required=True)
+    reporting.add_argument("--escalation", action="append", type=int, default=[])
+    answering = commands.add_parser("answer")
+    answering.add_argument("task_id")
+    answering.add_argument("--report", action="append", type=int, required=True)
+    answering.add_argument("--text", required=True)
     waiting = commands.add_parser("wait")
     waiting.add_argument("task_id", nargs="?")
     target = waiting.add_mutually_exclusive_group(required=True)
     target.add_argument("--until")
     target.add_argument("--run")
     target.add_argument("--lock", choices=list(wait.LOCKS))
+    target.add_argument("--rebound")
     waiting.add_argument("--timeout", type=float)
     return root
 
@@ -473,6 +494,15 @@ def wait_for(here: Path, arguments) -> dict:
             )
         return wait.wait_run(here, arguments.run, arguments.timeout)
     primary = store.primary_of(here)
+    if arguments.rebound is not None:
+        if arguments.task_id is None:
+            raise store.TaskError(
+                "invalid_input",
+                "--rebound waits for the main agent's session of a task",
+            )
+        return wait.wait_rebound(
+            primary, arguments.task_id, arguments.rebound, arguments.timeout
+        )
     if arguments.lock is not None:
         if arguments.lock == "merge" and arguments.task_id is not None:
             raise store.TaskError(
@@ -520,13 +550,33 @@ def main(argv, cwd: Path | None = None) -> int:
                 ).as_posix(),
             }
         elif arguments.command == "list":
-            value = store.list_tasks(store.primary_of(here), arguments.state)
+            value = store.list_tasks(
+                store.primary_of(here), arguments.state, arguments.main
+            )
         elif arguments.command == "show":
             value = store.show_task(store.primary_of(here), arguments.task_id)
         elif arguments.command == "session":
             value = start_session(here, arguments)
+        elif arguments.command == "rebind":
+            value = store.rebind(
+                store.require_primary(here), arguments.task_id, arguments.main
+            )
         elif arguments.command == "escalate":
             value = escalate(here, arguments)
+        elif arguments.command == "report":
+            value = store.report(
+                store.primary_of(here),
+                arguments.task_id,
+                arguments.text,
+                arguments.escalation,
+            )
+        elif arguments.command == "answer":
+            value = store.answer(
+                store.require_primary(here),
+                arguments.task_id,
+                arguments.report,
+                arguments.text,
+            )
         elif arguments.command == "wait":
             value = wait_for(here, arguments)
         elif arguments.command == "merge":

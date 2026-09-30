@@ -60,7 +60,7 @@ server's own `component` link of actor `Concorde project MCP server (<tool>)`:
 
 | Tool | Arguments | Result |
 | --- | --- | --- |
-| `task_list` | optional `state`, one of the task states | as `concorde task list [--state]` |
+| `task_list` | optional `state`, one of the task states, and `main`, a main agent's session | as `concorde task list [--state] [--main]` |
 | `task_show` | `task` | as `concorde task show` |
 | `trace_show` | `node`: a task, history key, run or worker run identity or a node's folder; optional `depth` ≥ 0 | as `concorde trace show <node> --depth <depth>` from the primary worktree |
 | `run_result` | `run`: a run identity | `{"run", "running": false, "result": <run result>}` when no runner holds the run's [run lock](../../glossary.json#concept.run-lock) and its result is saved; otherwise `{"run", "running", "result": null, "progress": <run progress file or null>}`, where `running` is `true` while its runner holds the run lock and `false` for a run whose runner ended without writing a result |
@@ -68,9 +68,12 @@ server's own `component` link of actor `Concorde project MCP server (<tool>)`:
 | `locks` | none | `{"merge": <holder line or null>, "workspaces": {"<task>": <holder line or null>}}` for the merge lock and the workspace lock of every task that has not ended |
 | `task_open` | `task`, `goal`, `modules` (nonempty), optional `base` | as `concorde task open`, taking the merge lock without waiting |
 | `task_escalate` | `task`, `code`, `detail`, `reason`, `explanation`; optional `by` (`main-agent`, the default, or `task-session`), `runs`, `error_files`, `escalations`, `attempts`, `options`, `recommendation` | as `concorde task escalate` with the matching options |
+| `task_rebind` | `task`, `main` | as `concorde task rebind <task> --main <main>` |
+| `task_report` | `task`, `text`; optional `escalations`, numbers ≥ 1 | as `concorde task report` with `--escalation` for each |
+| `task_answer` | `task`, `reports` (nonempty numbers ≥ 1), `text` | as `concorde task answer` with `--report` for each |
 | `task_close` | `task`, `outcome` (`completed` or `failed`); `note` for completed; `reason` and either `runs`/`error_files` or `no_error` true for failed; optional `force` | as `concorde task close --completed` or `--failed`, taking the workspace and merge locks without waiting |
 | `task_merge` | `task`; optional `checks`, or `resume` or `abort` true | the start below |
-| `register_wait` | exactly one of `until` (with `task`), `run`, and `lock` (`merge`, or `workspace` with `task`) | the registration below |
+| `register_wait` | exactly one of `until` (with `task`), `rebound` (a [main agent](../../glossary.json#concept.main-agent)'s session, with `task`), `run`, and `lock` (`merge`, or `workspace` with `task`) | the registration below |
 
 A holder line is the object a lock file holds while it is held,
 [Tracing's](../../tracing/contracts.md#locks) `{"holder", "pid", "since"}` with `session` and
@@ -109,7 +112,8 @@ lock, after which the output file holds the merge's JSON.
 ### Registering a wait
 
 `register_wait` first checks whether what it waits for already happened: the task's derived state
-is one of `until`, the run's runner holds no [run lock](../../glossary.json#concept.run-lock), or
+is one of `until`, the task's record names a main agent's session other than `rebound`, the run's
+runner holds no [run lock](../../glossary.json#concept.run-lock), or
 nobody holds the lock. Then it answers `{"registered": false, "already": <answer>}`, the value the
 matching `concorde task wait` would print, and registers nothing. `until` admits `delivered`,
 `merging`, `closed` and `failed` only, the states a task reaches while its workspace lock is held.
@@ -117,7 +121,7 @@ matching `concorde task wait` would print, and registers nothing. `until` admits
 Otherwise, without a channel, it answers
 `{"registered": false, "channel": false, "command": "<concorde task wait …>", "explanation": …}`,
 where the command is `concorde task wait <task> --until <state>[,<state>…]`,
-`concorde task wait --run <run-id>` or `concorde task wait [<task>] --lock merge|workspace`. With a
+`concorde task wait <task> --rebound <session>`, `concorde task wait --run <run-id>` or `concorde task wait [<task>] --lock merge|workspace`. With a
 channel it answers `{"registered": true, "wait": "<n>", "channel": true, "waits_for": "<what>"}` and
 watches, as `concorde task wait` does, until it happens or ends another way; it never takes or
 hands over a lock for the session.
@@ -130,7 +134,7 @@ receives, and `meta`, whose keys become attributes of the `<channel source="conc
 ```concorde-contract
 {
   "id": "contract.main-session.channel-event",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -143,7 +147,7 @@ receives, and `meta`, whose keys become attributes of the `<channel source="conc
         "additionalProperties": {"type": "string"},
         "properties": {
           "event": {"enum": ["wait_done", "wait_failed", "merge_ended"]},
-          "kind": {"enum": ["task", "run", "lock"]},
+          "kind": {"enum": ["task", "rebound", "run", "lock"]},
           "wait": {"type": "string"},
           "task": {"type": "string"},
           "run": {"type": "string"},
@@ -155,7 +159,7 @@ receives, and `meta`, whose keys become attributes of the `<channel source="conc
       }
     }
   },
-  "semantics": "One event of the project MCP server to the Claude Code session that runs it. wait_done: a registered wait is over; kind and wait name it, and content carries the answer concorde task wait would print. wait_failed: the wait ended without it, such as a task that ended in another state (code wait_unreachable); content carries the rendered error chain. merge_ended: the merge task_merge started ended; exit_code and status say how, and content carries its JSON output, cut after 6000 characters with the path of the whole.",
+  "semantics": "One event of the project MCP server to the Claude Code session that runs it. wait_done: a registered wait is over; kind (task for a state, rebound for a rebind, run or lock) and wait name it, and content carries the answer concorde task wait would print. wait_failed: the wait ended without it, such as a task that ended in another state (code wait_unreachable); content carries the rendered error chain. merge_ended: the merge task_merge started ended; exit_code and status say how, and content carries its JSON output, cut after 6000 characters with the path of the whole.",
   "example": {
     "content": "Concorde: task retry becoming delivered happened (wait 1): {\"task\": \"retry\", \"state\": \"delivered\", \"waited_seconds\": 412.3}",
     "meta": {"event": "wait_done", "kind": "task", "task": "retry", "wait": "1"}
@@ -165,6 +169,6 @@ receives, and `meta`, whose keys become attributes of the `<channel source="conc
 
 <a id="channel-event-participation"></a>
 
-**Participation.** The server provides this contract, version 1, to the external Claude Code
+**Participation.** The server provides this contract, version 2, to the external Claude Code
 session it runs in. Claude Code delivers it only to a session started with the server as a
 channel, and drops it silently otherwise.

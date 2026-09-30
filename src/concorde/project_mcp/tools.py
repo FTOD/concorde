@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -77,13 +78,15 @@ def schema(properties: dict, required=()) -> dict:
 TOOLS: dict[str, dict] = {
     "task_list": {
         "description": "Every current and closed task with its derived state, oldest first; "
-        "`state` filters on it. As `concorde task list`.",
-        "inputSchema": schema({"state": {"enum": list(store.STATES)}}),
+        "`state` filters on it and `main` on the main agent's session each record names. As "
+        "`concorde task list`.",
+        "inputSchema": schema({"state": {"enum": list(store.STATES)}, "main": TEXT}),
     },
     "task_show": {
-        "description": "One task: its record with the derived state, its workspace's runs, its "
-        "delivery commits, task sessions, escalations, the holder of its workspace lock and the "
-        "paths of its decision log and folder. As `concorde task show`.",
+        "description": "One task: its record with the derived state, the main agent's sessions "
+        "and the task sessions' reports with their answers (null while unanswered), its "
+        "workspace's runs, its delivery commits, task sessions, escalations, the holder of its "
+        "workspace lock and the paths of its decision log and folder. As `concorde task show`.",
         "inputSchema": schema({"task": TASK}, ["task"]),
     },
     "trace_show": {
@@ -150,6 +153,45 @@ TOOLS: dict[str, dict] = {
             ["task", "code", "detail", "reason", "explanation"],
         ),
     },
+    "task_rebind": {
+        "description": "Name the main agent's session the task's task sessions report to from "
+        "now on, after its session name changed, as `concorde task rebind`; the task record "
+        "keeps every earlier name.",
+        "inputSchema": schema({"task": TASK, "main": TEXT}, ["task", "main"]),
+    },
+    "task_report": {
+        "description": "Record a task session's report to the main agent, before messaging it, "
+        "as `concorde task report`: the text and the escalations it carries go into the task "
+        "record and decision log, and the answer names the main agent's session the task record "
+        "names now, the one to message.",
+        "inputSchema": schema(
+            {
+                "task": TASK,
+                "text": TEXT,
+                "escalations": {
+                    "type": "array",
+                    "items": {"type": "integer", "minimum": 1},
+                },
+            },
+            ["task", "text"],
+        ),
+    },
+    "task_answer": {
+        "description": "Record the main agent's answer to reports of a task, as "
+        "`concorde task answer`; a report without an answer is unanswered.",
+        "inputSchema": schema(
+            {
+                "task": TASK,
+                "reports": {
+                    "type": "array",
+                    "items": {"type": "integer", "minimum": 1},
+                    "minItems": 1,
+                },
+                "text": TEXT,
+            },
+            ["task", "reports", "text"],
+        ),
+    },
     "task_close": {
         "description": "Close a task without merging, as `concorde task close --completed` or "
         "`--failed`: `outcome` completed takes a `note`, failed takes a `reason` and either "
@@ -187,7 +229,8 @@ TOOLS: dict[str, dict] = {
     },
     "register_wait": {
         "description": "Ask to be woken, through this server's Claude Code channel, when a task "
-        "reaches one of the states `until` (delivered, merging, closed, failed), when a run ends "
+        "reaches one of the states `until` (delivered, merging, closed, failed), when a task's "
+        "record names a main agent's session other than `rebound` (with `task`), when a run ends "
         "(`run`), or when a lock is released (`lock` merge, or workspace with `task`). Answers at "
         "once when it already happened. Only notifies: it never takes a lock for you. Without a "
         "channel it says so and returns the blocking `concorde task wait` command to run in "
@@ -202,6 +245,7 @@ TOOLS: dict[str, dict] = {
                 },
                 "run": TEXT,
                 "lock": {"enum": list(wait.LOCKS)},
+                "rebound": TEXT,
             }
         ),
     },
@@ -247,7 +291,9 @@ class Project:
     # --- queries ----------------------------------------------------------------------------
 
     def task_list(self, arguments: dict):
-        return store.list_tasks(self.primary, arguments.get("state"))
+        return store.list_tasks(
+            self.primary, arguments.get("state"), arguments.get("main")
+        )
 
     def task_show(self, arguments: dict):
         return store.show_task(self.primary, arguments["task"])
@@ -372,6 +418,22 @@ class Project:
                 option=arguments.get("options", []),
                 recommendation=arguments.get("recommendation", ""),
             ),
+        )
+
+    def task_rebind(self, arguments: dict):
+        return store.rebind(self.primary, arguments["task"], arguments["main"])
+
+    def task_report(self, arguments: dict):
+        return store.report(
+            self.primary,
+            arguments["task"],
+            arguments["text"],
+            arguments.get("escalations", []),
+        )
+
+    def task_answer(self, arguments: dict):
+        return store.answer(
+            self.primary, arguments["task"], arguments["reports"], arguments["text"]
         )
 
     def task_close(self, arguments: dict):
@@ -565,20 +627,32 @@ class Project:
         tool = "register_wait"
         task, until = arguments.get("task"), arguments.get("until")
         run, lock = arguments.get("run"), arguments.get("lock")
+        former = arguments.get("rebound")
         targets = [
             name
-            for name, value in (("until", until), ("run", run), ("lock", lock))
+            for name, value in (
+                ("until", until),
+                ("rebound", former),
+                ("run", run),
+                ("lock", lock),
+            )
             if value
         ]
         if len(targets) != 1:
             raise own(
                 tool,
                 "invalid_input",
-                "name exactly one of `until` (with `task`), `run` and `lock`; got "
-                + (", ".join(targets) or "none"),
+                "name exactly one of `until` (with `task`), `rebound` (with `task`), `run` and "
+                "`lock`; got " + (", ".join(targets) or "none"),
             )
         if until and not task:
             raise own(tool, "invalid_input", "`until` names the states of a `task`")
+        if former and not task:
+            raise own(
+                tool,
+                "invalid_input",
+                "`rebound` names the former main agent's session of a `task`",
+            )
         if run and task:
             raise own(tool, "invalid_input", "`run` names the run alone, not a task")
         if lock == "workspace" and not task:
@@ -598,6 +672,19 @@ class Project:
                 return wait.wait_task(self.primary, task, until)
 
             meta = {"kind": "task", "task": task}
+        elif former:
+            description = (
+                f"task {task} naming a main agent's session other than {former}"
+            )
+            command = f"concorde task wait {task} --rebound {shlex.quote(former)}"
+            now = wait.rebound(self.primary, task, former)
+            if now is not None:
+                return {"registered": False, "already": now}
+
+            def waiting():
+                return wait.wait_rebound(self.primary, task, former)
+
+            meta = {"kind": "rebound", "task": task}
         elif run:
             description = f"the end of run {run}"
             command = f"concorde task wait --run {run}"
@@ -688,6 +775,9 @@ COMMANDS = {
     "task_open": "open",
     "task_escalate": "escalate",
     "task_close": "close",
+    "task_rebind": "rebind",
+    "task_report": "report",
+    "task_answer": "answer",
     "task_merge": "merge",
     "register_wait": "wait",
     "workflow_report": "show",

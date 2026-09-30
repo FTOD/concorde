@@ -138,8 +138,15 @@ class TaskStoreTests(unittest.TestCase):
         worktree = self.root / ".claude/worktrees/severity"
         self.assertEqual(str(worktree), value["worktree"])
         self.assertEqual(
-            (2, "open", head),
-            (value["schema_version"], value["state"], value["base_commit"]),
+            (3, "open", head, None, [], []),
+            (
+                value["schema_version"],
+                value["state"],
+                value["base_commit"],
+                value["main"],
+                value["mains"],
+                value["reports"],
+            ),
         )
         self.assertNotIn(".claude", git(self.root, "status", "--porcelain"))
         self.assertEqual(head, git(self.root, "rev-parse", "concorde/severity"))
@@ -525,6 +532,234 @@ class TaskStoreTests(unittest.TestCase):
         )
         self.assertEqual((1, "unknown_escalation"), (status, value["error"]["code"]))
 
+    def started(self, task_id="t1", main="concorde-7d", session_id="s1"):
+        """Record a task session of ``task_id`` started for ``main``."""
+        session = {**self.session(task_id, session_id), "main": main}
+        store.record_session(self.root, task_id, {**session, "started_at": store.now()})
+
+    @verifies("scenario.tasks.report")
+    def test_a_report_is_recorded_before_the_message(self):
+        self.project.open_task("t1")
+        worktree = self.project.worktree("t1")
+        self.started()
+        self.assertEqual("concorde-7d", self.record()["main"])
+        status, value = self.command(
+            "escalate",
+            "t1",
+            "--by",
+            "task-session",
+            "--code",
+            "need_choice",
+            "--detail",
+            "which retry limit",
+            "--reason",
+            "decision",
+            "--explanation",
+            "the limit is a promise",
+            cwd=worktree,
+        )
+        self.assertEqual(0, status, value)
+        status, value = self.command(
+            "report",
+            "t1",
+            "--text",
+            "Escalation 1 needs your answer.",
+            "--escalation",
+            "1",
+            cwd=worktree,
+        )
+        self.assertEqual(0, status, value)
+        self.assertEqual("concorde-7d", value["main"])
+        report = value["report"]
+        self.assertEqual(
+            (1, "concorde-7d", "Escalation 1 needs your answer.", [1], None),
+            (
+                report["number"],
+                report["main"],
+                report["text"],
+                report["escalations"],
+                report["answer"],
+            ),
+        )
+        self.assertEqual(
+            [report], store.show_task(self.root, "t1")["record"]["reports"]
+        )
+        self.assertEqual([report], self.record()["reports"])
+        self.assert_contract(self.record())
+        self.assertIn(
+            f"## Report 1 to the main agent (concorde-7d), {report['at']}", self.log()
+        )
+        self.assertIn("Escalation 1 needs your answer.", self.log())
+        before = snapshot(self.folder())
+        self.assertEqual(
+            (1, "unknown_escalation"),
+            self.refusal("report", "t1", "--text", "x", "--escalation", "4"),
+        )
+        self.assertEqual(before, snapshot(self.folder()))
+        # The session is no real Claude Code session, so the close warns of its transcript.
+        self.assertEqual(
+            0, self.command("close", "t1", "--completed", "--note", "done")[0]
+        )
+        self.assertEqual(
+            (1, "task_closed"), self.refusal("report", "t1", "--text", "late")
+        )
+
+    @verifies("scenario.tasks.rebind")
+    def test_the_main_agent_rebinds_its_tasks(self):
+        self.project.open_task("t1")
+        worktree = self.project.worktree("t1")
+        self.started()
+        status, value = self.command("rebind", "t1", "--main", "concorde-8e")
+        self.assertEqual(0, status, value)
+        self.assertEqual(
+            ("concorde-8e", "concorde-7d"), (value["record"]["main"], value["former"])
+        )
+        self.assert_contract(self.record())
+        self.assertEqual(
+            ["concorde-7d", "concorde-8e"],
+            [item["main"] for item in value["record"]["mains"]],
+        )
+        _, former = self.command("list", "--main", "concorde-7d")
+        _, current = self.command("list", "--main", "concorde-8e")
+        self.assertEqual(([], ["t1"]), (former, [item["id"] for item in current]))
+        # The session of the task was started for the former name; its node keeps it.
+        self.assertEqual(
+            ["concorde-7d"],
+            [item["main"] for item in store.show_task(self.root, "t1")["sessions"]],
+        )
+        _, value = self.command("report", "t1", "--text", "done", cwd=worktree)
+        self.assertEqual("concorde-8e", value["main"])
+        # Naming the same session again changes nothing in the trace.
+        _, value = self.command("rebind", "t1", "--main", "concorde-8e")
+        self.assertEqual(2, len(value["record"]["mains"]))
+        self.assertEqual(
+            (1, "not_primary"),
+            self.refusal("rebind", "t1", "--main", "x", cwd=worktree),
+        )
+        self.assertEqual(
+            0, self.command("close", "t1", "--completed", "--note", "done")[0]
+        )
+        self.assertEqual(
+            (1, "task_closed"), self.refusal("rebind", "t1", "--main", "concorde-9f")
+        )
+
+    @verifies("scenario.tasks.answer")
+    def test_an_answer_marks_reports_answered(self):
+        self.project.open_task("t1")
+        self.started()
+        store.report(self.root, "t1", "first", [])
+        store.report(self.root, "t1", "second", [])
+        status, value = self.command(
+            "answer", "t1", "--report", "1", "--report", "2", "--text", "Go on."
+        )
+        self.assertEqual(0, status, value)
+        self.assertEqual([1, 2], [item["number"] for item in value["answered"]])
+        reports = self.record()["reports"]
+        self.assertEqual(
+            ["Go on.", "Go on."], [item["answer"]["text"] for item in reports]
+        )
+        self.assertIn("## Answer to report(s) 1, 2 of the task session", self.log())
+        before = snapshot(self.folder())
+        self.assertEqual(
+            (1, "already_answered"),
+            self.refusal("answer", "t1", "--report", "1", "--text", "Again."),
+        )
+        self.assertEqual(
+            (1, "unknown_report"),
+            self.refusal("answer", "t1", "--report", "3", "--text", "Again."),
+        )
+        self.assertEqual(before, snapshot(self.folder()))
+        self.assertEqual(
+            (1, "not_primary"),
+            self.refusal(
+                "answer",
+                "t1",
+                "--report",
+                "1",
+                "--text",
+                "x",
+                cwd=self.project.worktree("t1"),
+            ),
+        )
+
+    @verifies("scenario.tasks.report-merge-incomplete")
+    def test_reports_and_rebinds_go_on_while_a_merge_is_unfinished(self):
+        self.project.open_task("t1")
+        self.project.open_task("t2")
+        self.started("t2", session_id="s2")
+        head = git(self.root, "rev-parse", "HEAD")
+        store.begin_merge(
+            self.root,
+            "t1",
+            {
+                "before": head,
+                "checked": head,
+                "branch": "main",
+                "after": None,
+                "history": "t1",
+                "checks": [["true"]],
+                "since": store.now(),
+                "pid": 999999,
+            },
+        )
+        worktree = self.project.worktree("t2")
+        status, refused = self.command(
+            "escalate",
+            "t2",
+            "--by",
+            "task-session",
+            "--code",
+            "x",
+            "--detail",
+            "x",
+            "--reason",
+            "decision",
+            "--explanation",
+            "x",
+            cwd=worktree,
+        )
+        self.assertEqual((1, "merge_incomplete"), (status, refused["error"]["code"]))
+        status, value = self.command(
+            "report", "t2", "--text", json.dumps(refused), cwd=worktree
+        )
+        self.assertEqual((0, 1), (status, value["report"]["number"]))
+        status, value = self.command("rebind", "t1", "--main", "concorde-8e")
+        self.assertEqual((0, "concorde-8e"), (status, value["record"]["main"]))
+        self.assertEqual("merging", self.record("t1")["state"])
+
+    @verifies("scenario.tasks.old-record")
+    def test_a_task_opened_before_the_main_was_recorded_keeps_working(self):
+        self.project.open_task("t1")
+        self.started()
+        folder = self.folder()
+        # Write the record back as it was before the main was recorded.
+        record = json.loads((folder / "task.json").read_text())
+        del record["main"], record["mains"], record["reports"]
+        record["schema_version"] = 2
+        (folder / "task.json").write_text(json.dumps(record, indent=2) + "\n")
+        node = trace.read(folder)
+        shown = store.show_task(self.root, "t1")["record"]
+        self.assertEqual("concorde-7d", shown["main"])
+        self.assertEqual(["concorde-7d"], [item["main"] for item in shown["mains"]])
+        self.assertEqual([], shown["reports"])
+        _, listed = self.command("list", "--main", "concorde-7d")
+        self.assertEqual(["t1"], [item["id"] for item in listed])
+        store.report(self.root, "t1", "still reachable", [])
+        store.rebind(self.root, "t1", "concorde-8e")
+        stored = json.loads((folder / "task.json").read_text())
+        self.assertEqual(
+            (3, "concorde-8e", ["concorde-7d", "concorde-8e"], 1),
+            (
+                stored["schema_version"],
+                stored["main"],
+                [item["main"] for item in stored["mains"]],
+                len(stored["reports"]),
+            ),
+        )
+        self.assert_contract(stored)
+        # The trace node keeps the shape an earlier Concorde writes.
+        self.assertEqual(node["content"], trace.read(folder)["content"])
+
     @verifies("scenario.tasks.open-unknown-module")
     def test_an_unknown_module_is_refused(self):
         self.assertEqual(
@@ -553,6 +788,14 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual(
             (1, "not_primary"),
             self.refusal("session", "t1", "--main", "m", "--dry-run", cwd=worktree),
+        )
+        self.assertEqual(
+            (1, "not_primary"),
+            self.refusal("rebind", "t1", "--main", "m", cwd=worktree),
+        )
+        self.assertEqual(
+            (1, "not_primary"),
+            self.refusal("answer", "t1", "--report", "1", "--text", "x", cwd=worktree),
         )
         self.assertEqual(before, self.record())
 

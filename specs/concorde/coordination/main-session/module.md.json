@@ -95,7 +95,7 @@
     "participates": [
       {
         "contract": "contract.main-session.channel-event",
-        "version": 1,
+        "version": 2,
         "role": "provided",
         "peer": "external",
         "meaning": "specs/concorde/coordination/main-session/contracts.md#channel-event-participation"

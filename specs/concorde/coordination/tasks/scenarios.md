@@ -49,7 +49,7 @@ records and error codes are defined in the [contracts](contracts.md).
 ### scenario.tasks.not-primary — Refuse to open, close, merge or start sessions from a linked worktree
 
 - GIVEN a shell whose working directory is inside a task worktree
-- WHEN `concorde task open`, `concorde task close`, `concorde task merge` or `concorde task session` is run there
+- WHEN `concorde task open`, `concorde task close`, `concorde task merge`, `concorde task session`, `concorde task rebind` or `concorde task answer` is run there
 - THEN the command fails with `not_primary`
 - AND nothing changes
 
@@ -58,7 +58,7 @@ records and error codes are defined in the [contracts](contracts.md).
 - GIVEN an open task `quiet` whose workspace has no run and an open task `severity` whose workspace ran `concorde task-validation`
 - WHEN the main agent runs `concorde task list --state active` and `concorde task show severity`
 - THEN the list holds exactly the record of `severity`, whose derived state is `active`, while its stored state stays `open`
-- AND show prints the record of `severity` with its derived state, the workspace's runs from its workspace folder with their kind, name, Modules and status, its [delivery commits](../../glossary.json#concept.delivery-commit), its sessions, each with the main session it reports to, and its escalations, who holds its [workspace lock](../../glossary.json#concept.workspace-lock) (null when nobody does) and the absolute paths of its decision log and folder
+- AND show prints the record of `severity` with its derived state, its main agent's sessions and its reports, the workspace's runs from its workspace folder with their kind, name, Modules and status, its [delivery commits](../../glossary.json#concept.delivery-commit), its sessions, each with the main session it was started for, and its escalations, who holds its [workspace lock](../../glossary.json#concept.workspace-lock) (null when nobody does) and the absolute paths of its decision log and folder
 - AND show of `quiet` prints no runs, no deliveries and no holder
 
 ## State and runs
@@ -455,6 +455,54 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - WHEN the main agent escalates
 - THEN the command fails with `decision_log_failed`, naming the escalation's number and carrying the rendered chain
 - AND the record holds the escalation once, and the refusal says that escalating again would record it twice
+
+## Reports and the main agent's session
+
+### scenario.tasks.report — A report is recorded before the message
+
+- GIVEN a task `severity` whose task session was started with `--main concorde-7d` and has escalated once
+- WHEN the task session runs `concorde task report severity --text "<its report>" --escalation 1`
+- THEN the task record holds report 1 with its time, `main` `concorde-7d`, the text, escalation 1 and `answer` null, and the decision log holds it under `## Report 1 to the main agent (concorde-7d), <time>`
+- AND the command prints the report with `main` `concorde-7d`, the session to message
+- AND `concorde task show severity` prints the record with the report among its `reports`
+- BUT a report naming an escalation the task does not have is refused with `unknown_escalation`, and a report for a closed task with `task_closed`, recording nothing
+
+### scenario.tasks.rebind — The main agent rebinds its tasks to its new session name
+
+- GIVEN a task `severity` whose record names the main agent's session `concorde-7d`
+- WHEN the main agent, whose session is now named `concorde-8e`, runs `concorde task rebind severity --main concorde-8e` in the primary worktree
+- THEN the record's `main` is `concorde-8e`, the command prints the former `concorde-7d`, and the record keeps both names in order in `mains`
+- AND `concorde task list --main concorde-7d` no longer lists the task, while `--main concorde-8e` does
+- AND the task session's next `concorde task report` prints `main` `concorde-8e`
+- BUT rebinding a closed task is refused with `task_closed`, and rebinding from a task worktree with `not_primary`
+
+### scenario.tasks.answer — The main agent's answer marks reports answered
+
+- GIVEN a task with two unanswered reports
+- WHEN the main agent runs `concorde task answer <task> --report 1 --report 2 --text "<its answer>"`
+- THEN both reports hold the answer with its time, and the decision log holds it under `## Answer to report(s) 1, 2 of the task session, <time>`
+- AND answering report 1 again is refused with `already_answered` and a report the task does not have with `unknown_report`, changing nothing
+
+### scenario.tasks.wait-rebound — A task session waits for the main agent to rebind the task
+
+- GIVEN a task whose record names `concorde-7d`, a session that no longer exists
+- WHEN the task session runs `concorde task wait <task> --rebound concorde-7d` and the main agent then rebinds the task to `concorde-8e`
+- THEN the command returns once the record is written, printing `main` `concorde-8e`
+- AND the same wait run again returns at once
+- AND a wait on a task that is closed meanwhile ends with `wait_unreachable`
+
+### scenario.tasks.report-merge-incomplete — Reports and rebinds go on while a merge is unfinished
+
+- GIVEN a task stored as `merging` whose merge process died, so `concorde task escalate` is refused with `merge_incomplete`
+- WHEN a task session of another task runs `concorde task report` with that refusal and the main agent runs `concorde task rebind` for that task
+- THEN both are recorded, since neither touches Git
+
+### scenario.tasks.old-record — A task opened before the main was recorded keeps working
+
+- GIVEN a current task whose record has `schema_version` 2 and no `main`, `mains` or `reports`, with a task session started with `--main concorde-7d`
+- WHEN it is shown, reported to and rebound
+- THEN it is shown with `main` `concorde-7d`, `mains` from its session and no reports, the report is recorded, and after the rebind the record has `schema_version` 3 and satisfies the record contract
+- AND its trace node is unchanged in shape, so an earlier Concorde still writes it
 
 ## History
 

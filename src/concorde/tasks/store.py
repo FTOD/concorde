@@ -4,9 +4,11 @@ A task is a branch ``concorde/<id>``, a worktree checked out on it and bound as 
 ``<id>``, and a folder ``.concorde/tasks/<id>/`` of the primary worktree holding its record
 ``task.json``, its trace node ``trace.json``, its decision log ``decisions.md``, its task session's
 boundary under ``runtime/``, its sessions' and merge attempts' nodes under ``sessions/`` and
-``merges/``, and the workspace folder ``workspace/`` its runs are traced in. Closing moves the whole
-folder to ``.concorde/history/<key>/`` and commits its decision log on the primary branch as
-``.concorde/decisions/<key>.md``, unless the task's merge commit already added it. Only this module
+``merges/``, and the workspace folder ``workspace/`` its runs are traced in. The record names the
+main agent's session the task's task sessions report to now, with every earlier name, and every
+report a task session recorded before messaging it, with the main agent's answer. Closing moves
+the whole folder to ``.concorde/history/<key>/`` and commits its decision log on the primary branch
+as ``.concorde/decisions/<key>.md``, unless the task's merge commit already added it. Only this module
 writes records and task nodes, and nothing below the task level writes them: whether a task is
 active or delivered is derived each time from what the execution core recorded, its runs in its
 workspace folder and its delivery commits on the branch, a delivery counting only when its commit
@@ -129,6 +131,8 @@ STATES = ("open", "active", "delivered", "merging", "closed", "failed")
 # How a task ended: closed when its goal was reached, merged or not; failed when it was not.
 OUTCOMES = ("merged", "completed", "failed")
 ENDED = ("closed", "failed")
+# The version of the task record: 3 names the main agent's sessions and holds the reports.
+RECORD_VERSION = 3
 ATTEMPTS = 3
 # Where task worktrees go by default, relative to the primary worktree; Git must ignore it.
 WORKTREES = ".claude/worktrees"
@@ -377,11 +381,27 @@ def load_any(primary: Path, task_id: str) -> tuple[dict, Path]:
 
 def _read_record(path: Path) -> dict:
     try:
-        return json.loads(path.read_text())
+        return upgraded(json.loads(path.read_text()), path.parent)
     except (OSError, ValueError) as error:
         raise TaskError(
             "record_unreadable", f"the task record {path} cannot be read: {error}"
         ) from error
+
+
+def upgraded(record: dict, folder: Path) -> dict:
+    """``record`` in the current version. A record written before version 3 names no main
+    agent's session and holds no reports: its sessions are those its task sessions were started
+    for, from their nodes in ``folder``, the latest one its main, and it has no reports."""
+    if record.get("schema_version", RECORD_VERSION) < RECORD_VERSION:
+        mains = []
+        for item in sessions(None, record["id"], folder):
+            if item["main"] and (not mains or mains[-1]["main"] != item["main"]):
+                mains.append({"main": item["main"], "at": item["started_at"]})
+        record["schema_version"] = RECORD_VERSION
+        record["main"] = mains[-1]["main"] if mains else None
+        record["mains"] = mains
+        record["reports"] = []
+    return record
 
 
 @contextmanager
@@ -506,7 +526,7 @@ def update(primary: Path, task_id: str, change, *, locked: bool = False) -> dict
             if not path.is_file():
                 raise _unknown(primary, task_id)
             before = path.read_bytes()
-            record = change(json.loads(before))
+            record = change(upgraded(json.loads(before), path.parent))
             record["updated_at"] = now()
             if path.read_bytes() != before:
                 continue
@@ -533,7 +553,7 @@ def _records(primary: Path, *, history: bool = False) -> list[dict]:
     for parent in parents:
         for path in sorted(parent.glob(f"*/{RECORD}")) if parent.is_dir() else []:
             try:
-                records.append(json.loads(path.read_text()))
+                records.append(upgraded(json.loads(path.read_text()), path.parent))
             except (OSError, ValueError) as error:
                 raise TaskError(
                     "record_unreadable",
@@ -844,12 +864,15 @@ def _current_open(primary: Path, task_id: str) -> dict:
 
 def record_session(primary: Path, task_id: str, session: dict) -> dict:
     """Record a started task session as a node of the task's trace, for a task that has not
-    ended. ``session`` names its identity, name, main session, model, the identity Claude Code
-    reported and, when Claude Code told it, the full session id."""
+    ended, and its main session as the task's main. ``session`` names its identity, name, main
+    session, model, the identity Claude Code reported and, when Claude Code told it, the full
+    session id."""
     # Checked before taking the lock too, so no lock file is made again for a closed task.
     _current_open(primary, task_id)
     with task_locked(primary, task_id):
         record = _current_open(primary, task_id)
+        if session.get("main"):
+            record = _bind_main(primary, task_id, session["main"])
         folder = session_folder(primary, task_id, session["id"])
         node = Node(
             folder,
@@ -869,6 +892,164 @@ def record_session(primary: Path, task_id: str, session: dict) -> dict:
                 f"the session node {folder} of task {task_id} cannot be written: {node.failure}",
             )
         return record
+
+
+def _bind_main(primary: Path, task_id: str, main: str) -> dict:
+    """Name ``main`` as the task's main agent's session in its record and, when it changes,
+    append it to the names the record keeps; the caller holds the task's lock and checked that
+    the task has not ended."""
+    stamp = now()
+
+    def change(record):
+        if record["main"] != main:
+            record["main"] = main
+            record["mains"] = [*record["mains"], {"main": main, "at": stamp}]
+        return record
+
+    return update(primary, task_id, change, locked=True)
+
+
+def rebind(primary: Path, task_id: str, main: str) -> dict:
+    """Name ``main`` as the session the task's task sessions report to from now on."""
+    main = (main or "").strip()
+    if not main:
+        raise TaskError(
+            "invalid_input",
+            "--main must name the main agent's session, which the task sessions report to",
+        )
+    purpose = "a task that ended has no task session to report"
+    load_unended(primary, task_id, purpose)
+    with task_locked(primary, task_id):
+        former = load_unended(primary, task_id, purpose)["main"]
+        record = _bind_main(primary, task_id, main)
+    return {"record": record, "former": former}
+
+
+def _append_log(
+    primary: Path, task_id: str, heading: str, body: str, what: str
+) -> None:
+    """Append an entry to the task's decision log; ``decision_log_failed`` when the file system
+    refuses, saying that ``what`` is recorded in the task record already."""
+    path = decision_log_path(primary, task_id)
+    try:
+        with path.open("a", encoding="utf-8") as stream:
+            stream.write(f"\n## {heading}\n\n{body}\n")
+    except OSError as failure:
+        raise TaskError(
+            "decision_log_failed",
+            f"{what} was written to the record of task {task_id} (`concorde task show "
+            f"{task_id}` prints it), but appending it to the decision log {path} failed "
+            f"afterwards: {failure}; recording it again would record it twice, so once the log "
+            f"is writable append it there by hand under the heading `## {heading}`:\n{body}",
+        ) from failure
+
+
+def report(primary: Path, task_id: str, text: str, escalated: list[int]) -> dict:
+    """Record a task session's report to the main agent in the task record and decision log,
+    before the session messages it; the report and the main agent's session to message."""
+    text = (text or "").strip()
+    if not text:
+        raise TaskError("invalid_input", "--text must give the report")
+    purpose = "a task that ended has no main agent waiting for its report"
+    load_unended(primary, task_id, purpose)
+    stamp = now()
+    entry = {}
+    with task_locked(primary, task_id):
+        record = load_unended(primary, task_id, purpose)
+        known = len(escalations(primary, task_id))
+        wrong = [number for number in escalated if not 1 <= number <= known]
+        if wrong:
+            raise TaskError(
+                "unknown_escalation",
+                f"--escalation {', '.join(map(str, wrong))} is not an escalation of task "
+                f"{task_id}, which has {known} (numbered from 1 in record order)",
+            )
+
+        def change(record):
+            entry.update(
+                number=len(record["reports"]) + 1,
+                at=stamp,
+                main=record["main"],
+                text=text,
+                escalations=list(dict.fromkeys(escalated)),
+                answer=None,
+            )
+            record["reports"] = [*record["reports"], dict(entry)]
+            return record
+
+        record = update(primary, task_id, change, locked=True)
+    carried = (
+        f"\n\nIt carries escalation(s) {', '.join(map(str, entry['escalations']))}."
+        if entry["escalations"]
+        else ""
+    )
+    _append_log(
+        primary,
+        task_id,
+        f"Report {entry['number']} to the main agent ({record['main'] or 'no session named'}), "
+        f"{stamp}",
+        f"{text}{carried}",
+        f"report {entry['number']}",
+    )
+    return {
+        "report": entry,
+        "main": record["main"],
+        "decision_log": decision_log_path(primary, task_id).as_posix(),
+    }
+
+
+def answer(primary: Path, task_id: str, numbers: list[int], text: str) -> dict:
+    """Record the main agent's answer to reports of the task in its record and decision log."""
+    text = (text or "").strip()
+    if not text:
+        raise TaskError("invalid_input", "--text must give the answer")
+    if not numbers:
+        raise TaskError("invalid_input", "--report must name the reports answered")
+    numbers = list(dict.fromkeys(numbers))
+    purpose = "a task that ended has no task session to answer"
+    load_unended(primary, task_id, purpose)
+    stamp = now()
+    answered = []
+    with task_locked(primary, task_id):
+        load_unended(primary, task_id, purpose)
+
+        def change(record):
+            known = record["reports"]
+            wrong = [number for number in numbers if not 1 <= number <= len(known)]
+            if wrong:
+                raise TaskError(
+                    "unknown_report",
+                    f"--report {', '.join(map(str, wrong))} is not a report of task {task_id}, "
+                    f"which has {len(known)} (numbered from 1 in record order)",
+                )
+            done = [n for n in numbers if known[n - 1]["answer"] is not None]
+            if done:
+                raise TaskError(
+                    "already_answered",
+                    f"report(s) {', '.join(map(str, done))} of task {task_id} were answered "
+                    "already (`concorde task show` prints each answer); an answer is never "
+                    "replaced",
+                )
+            updated = [dict(item) for item in known]
+            answered.clear()
+            for number in numbers:
+                updated[number - 1]["answer"] = {"at": stamp, "text": text}
+                answered.append(updated[number - 1])
+            record["reports"] = updated
+            return record
+
+        update(primary, task_id, change, locked=True)
+    _append_log(
+        primary,
+        task_id,
+        f"Answer to report(s) {', '.join(map(str, numbers))} of the task session, {stamp}",
+        text,
+        f"the answer to report(s) {', '.join(map(str, numbers))}",
+    )
+    return {
+        "answered": answered,
+        "decision_log": decision_log_path(primary, task_id).as_posix(),
+    }
 
 
 def _registry(root: Path) -> set[str]:
@@ -1022,13 +1203,16 @@ def _open_task(
         ) from error
     stamp = now()
     record = {
-        "schema_version": 2,
+        "schema_version": RECORD_VERSION,
         "id": task_id,
         "goal": goal,
         "modules": list(modules),
         "branch": branch,
         "worktree": os.path.realpath(worktree),
         "base_commit": base_commit,
+        "main": None,
+        "mains": [],
+        "reports": [],
         "state": "open",
         "created_at": stamp,
         "updated_at": stamp,
@@ -1119,10 +1303,13 @@ def derived_state(primary: Path, record: dict, runs: list[dict] | None = None) -
     return "open"
 
 
-def list_tasks(primary: Path, state: str | None = None) -> list[dict]:
+def list_tasks(
+    primary: Path, state: str | None = None, main: str | None = None
+) -> list[dict]:
     """Every current and closed task record with its derived state, oldest first; ``state``
-    filters on it."""
+    filters on it and ``main`` on the main agent's session the record names."""
     records = _records(primary, history=True)
+    records = [item for item in records if main is None or item["main"] == main]
     records.sort(key=lambda item: (item["created_at"], item["id"]))
     for record in records:
         record["state"] = derived_state(primary, record)
@@ -1131,8 +1318,7 @@ def list_tasks(primary: Path, state: str | None = None) -> list[dict]:
 
 def show_task(primary: Path, task_id: str) -> dict:
     """The record with its derived state, the workspace's runs and delivery commits, each with
-    how it fails to verify, the sessions and the escalations from
-    the task's trace, who holds the workspace lock, and the paths of the decision log and of the
+    how it fails to verify, the sessions and the escalations from the task's trace, who holds the workspace lock, and the paths of the decision log and of the
     task's folder, current or in the history."""
     record, folder = load_any(primary, task_id)
     store = workspace_store(primary, record["id"], folder)

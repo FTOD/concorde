@@ -8,7 +8,7 @@ in the [requirements](requirements.md).
 ```concorde-contract
 {
   "id": "contract.tasks.record",
-  "version": 14,
+  "version": 15,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -20,6 +20,9 @@ in the [requirements](requirements.md).
       "branch",
       "worktree",
       "base_commit",
+      "main",
+      "mains",
+      "reports",
       "state",
       "created_at",
       "updated_at",
@@ -28,7 +31,7 @@ in the [requirements](requirements.md).
     ],
     "properties": {
       "schema_version": {
-        "const": 2
+        "const": 3
       },
       "id": {
         "type": "string",
@@ -58,6 +61,44 @@ in the [requirements](requirements.md).
       "base_commit": {
         "type": "string",
         "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
+      },
+      "main": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string",
+            "minLength": 1
+          }
+        ]
+      },
+      "mains": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "main",
+            "at"
+          ],
+          "properties": {
+            "main": {
+              "type": "string",
+              "minLength": 1
+            },
+            "at": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      },
+      "reports": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/report"
+        }
       },
       "state": {
         "enum": [
@@ -99,6 +140,75 @@ in the [requirements](requirements.md).
       }
     },
     "$defs": {
+      "report": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "number",
+          "at",
+          "main",
+          "text",
+          "escalations",
+          "answer"
+        ],
+        "properties": {
+          "number": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "at": {
+            "type": "string",
+            "minLength": 1
+          },
+          "main": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "minLength": 1
+              }
+            ]
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1
+          },
+          "escalations": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "answer": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "at",
+                  "text"
+                ],
+                "properties": {
+                  "at": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "text": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
       "merging": {
         "type": "object",
         "additionalProperties": false,
@@ -345,9 +455,9 @@ in the [requirements](requirements.md).
       }
     }
   },
-  "semantics": "The task record task.json in the task's folder .concorde/tasks/<id>/ of the primary worktree, written only by the Task store while it holds the task's lock; closing the task moves it, with the whole folder, to .concorde/history/<history>/. It holds only what the task commands need to act on the task; the task's history, its state changes, escalations, task sessions and merge attempts, is its trace (contract.tasks.task-trace and the nodes below the task's node). schema_version is 2. id is chosen by the main agent and names the task's workspace: the open wrote the workspace binding (contract.execution.workspace-binding) of the worktree with id as its workspace and the task folder's workspace/ as its workspace folder, and the task's workspace lock and delivery commits are found by that name. branch is concorde/<id>; worktree is the absolute real path of the task's linked worktree; base_commit is the commit the branch was created from. goal and modules are those named at open, each registered in the primary worktree then, and never change, whatever the task branch later does to its registry; a run leaves out a Module the task worktree does not register. The Modules a run worked on are in its run result, not here. The file stores state open until the task ends and then closed or failed, and merging while concorde task merge has, or may have, put a merge of the task into the primary branch that its checks have not decided; it keeps no runs, deliveries or workflow steps, which the workspace folder and the task branch's delivery commits hold. merging is null unless the state is merging; it then records the primary branch's commit before the merge, the delivery commit the merge checked and merges (checked), the primary branch's name, the commit the merge produced (null until the merge commit exists), the history key the task will close under, which names the decision log .concorde/decisions/<history>.md the merge commit adds, the checks the merge runs, each an argument vector, its start time, which also dates the task's closing, and the process of the merging command. concorde task open, list and show print the record with state replaced by the derived task state: merging, closed or failed as stored; otherwise delivered when the branch head is a delivery commit of the workspace that verifies, having exactly one parent as Delivery defines, and the worktree is clean, active when the workspace has a run in its workspace folder, the branch moved past base_commit or the worktree has uncommitted changes, and open before any of these. closed is null until the task ends; it then records the final state (closed or failed), the outcome (merged or completed for closed, failed for failed), the note (null for merged unless given, what the task achieved for completed, why it failed for failed), the error chains that caused a failure exactly as their writers wrote them (empty when no error caused it, and for closed), the time of the closing (for a task that concorde task merge closes, the start time its merging recorded, which the closing its merge commit's copy of the decision log holds already names), the head of the primary branch at closing, whether the worktree was removed and the history key the folder moved to, which also names the decision log .concorde/decisions/<history>.md committed on the primary branch. Timestamps are RFC 3339 in UTC. A behaviour or field change increments the version.",
+  "semantics": "The task record task.json in the task's folder .concorde/tasks/<id>/ of the primary worktree, written only by the Task store while it holds the task's lock; closing the task moves it, with the whole folder, to .concorde/history/<history>/. It holds only what the task commands need to act on the task; the task's history, its state changes, escalations, task sessions and merge attempts, is its trace (contract.tasks.task-trace and the nodes below the task's node). schema_version is 3; a record of schema_version 2, written before main, mains and reports existed, is read as version 3 whose mains are the distinct mains its task sessions' nodes name, in the order they started, each at its session's start, whose main is the last of them, or null without one, and whose reports are none, and is written as version 3 by its next change. id is chosen by the main agent and names the task's workspace: the open wrote the workspace binding (contract.execution.workspace-binding) of the worktree with id as its workspace and the task folder's workspace/ as its workspace folder, and the task's workspace lock and delivery commits are found by that name. branch is concorde/<id>; worktree is the absolute real path of the task's linked worktree; base_commit is the commit the branch was created from. main is the main agent's session the task's task sessions report to now: null at the open, set by concorde task session --main when it records a session and changed by concorde task rebind, never by anything else; concorde task report prints it as the session to message. mains lists every main agent's session named for the task, in order, each with the time it was named: the first a session start named, then each different one a later session start or concorde task rebind named; main is the last. reports lists, numbered from 1 in the order recorded, every report a task session recorded with concorde task report before messaging the main agent: its time, the main the record named then, to which the session sends it, the text, the numbers of the task's escalations it carries and the main agent's answer, null until concorde task answer records it with its time and text, never replaced; a report whose answer is null is unanswered. The reports are kept here, beside the main they were sent to, because whether each is answered is what the task commands act on. goal and modules are those named at open, each registered in the primary worktree then, and never change, whatever the task branch later does to its registry; a run leaves out a Module the task worktree does not register. The Modules a run worked on are in its run result, not here. The file stores state open until the task ends and then closed or failed, and merging while concorde task merge has, or may have, put a merge of the task into the primary branch that its checks have not decided; it keeps no runs, deliveries or workflow steps, which the workspace folder and the task branch's delivery commits hold. merging is null unless the state is merging; it then records the primary branch's commit before the merge, the delivery commit the merge checked and merges (checked), the primary branch's name, the commit the merge produced (null until the merge commit exists), the history key the task will close under, which names the decision log .concorde/decisions/<history>.md the merge commit adds, the checks the merge runs, each an argument vector, its start time, which also dates the task's closing, and the process of the merging command. concorde task open, list and show print the record with state replaced by the derived task state: merging, closed or failed as stored; otherwise delivered when the branch head is a delivery commit of the workspace that verifies, having exactly one parent as Delivery defines, and the worktree is clean, active when the workspace has a run in its workspace folder, the branch moved past base_commit or the worktree has uncommitted changes, and open before any of these. closed is null until the task ends; it then records the final state (closed or failed), the outcome (merged or completed for closed, failed for failed), the note (null for merged unless given, what the task achieved for completed, why it failed for failed), the error chains that caused a failure exactly as their writers wrote them (empty when no error caused it, and for closed), the time of the closing (for a task that concorde task merge closes, the start time its merging recorded, which the closing its merge commit's copy of the decision log holds already names), the head of the primary branch at closing, whether the worktree was removed and the history key the folder moved to, which also names the decision log .concorde/decisions/<history>.md committed on the primary branch. Timestamps are RFC 3339 in UTC. A behaviour or field change increments the version.",
   "example": {
-    "schema_version": 2,
+    "schema_version": 3,
     "id": "severity",
     "goal": "let Issue reports carry a severity",
     "modules": [
@@ -356,9 +466,33 @@ in the [requirements](requirements.md).
     "branch": "concorde/severity",
     "worktree": "/home/dev/project/.claude/worktrees/severity",
     "base_commit": "d460b95e0c1a2b3c4d5e6f708192a3b4c5d6e7f8",
+    "main": "concorde-8e",
+    "mains": [
+      {
+        "main": "concorde-7d",
+        "at": "2026-09-24T09:00:20Z"
+      },
+      {
+        "main": "concorde-8e",
+        "at": "2026-09-24T11:40:00Z"
+      }
+    ],
+    "reports": [
+      {
+        "number": 1,
+        "at": "2026-09-24T11:30:00Z",
+        "main": "concorde-7d",
+        "text": "Delivered at 4be1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9; my decisions are in the decision log.",
+        "escalations": [],
+        "answer": {
+          "at": "2026-09-24T11:45:00Z",
+          "text": "Merging it now."
+        }
+      }
+    ],
     "state": "open",
     "created_at": "2026-09-24T09:00:00Z",
-    "updated_at": "2026-09-24T09:00:30Z",
+    "updated_at": "2026-09-24T11:45:00Z",
     "merging": null,
     "closed": null
   }
@@ -671,10 +805,10 @@ sessions are [Task sessions](../task-session/contracts.md#session-trace)'.
 
 ## Commands
 
-`open`, `close`, `merge` and `session` run only in the primary worktree. `list`, `show`,
-`escalate` and `wait` run in any worktree of the repository, so a task session escalates from its task
-worktree; they find the primary worktree, and with it the task folders, through Git's common
-directory.
+`open`, `close`, `merge`, `session`, `rebind` and `answer` run only in the primary worktree.
+`list`, `show`, `escalate`, `report` and `wait` run in any worktree of the repository, so a task
+session escalates and reports from its task worktree; they find the primary worktree, and with it
+the task folders, through Git's common directory.
 Every command prints one JSON value on standard output and exits with status 0 on success. A
 refusal prints `{"error": <link>}`, where the link is a
 [`component` link](../../tracing/contracts.md#contract.tracing.error) of the actor
@@ -701,14 +835,17 @@ While a task is stored as `merging` and no live process holds the merge lock, `o
 `open`, `merge` and `close` once they hold the merge lock, `session` and `escalate` once they found
 it free. Exempt are `merge --resume` and `merge --abort` of the merging task. While a live process holds the merge lock and a task is `merging`, `session` and
 `escalate` of that task refuse with `merge_busy` at once, and those of other tasks are not refused
-for it. `list` and `show` are never refused for a merge.
+for it. `list`, `show`, `rebind`, `report`, `answer` and `wait` are never refused for a merge:
+they change at most a task's record, never Git, and a report or a rebind is how a
+refusal such as `merge_incomplete` reaches the main agent that must finish the merge.
 
 | Command | Effect | Output |
 | --- | --- | --- |
 | `concorde task open <task-id> --goal <text> --modules <id>[,<id>…] [--base <ref>] [--path <dir>]` | Holding the merge lock, creates branch `concorde/<task-id>` at `--base` (default: the primary worktree's `HEAD`), adds a worktree for it at `--path` (default: `.claude/worktrees/<task-id>` of the primary worktree, which Git must ignore there), first runs Tracing's retention, then creates the task's folder `.concorde/tasks/<task-id>/` with its `workspace/`, writes the worktree's [workspace binding](../../execution/contracts.md#contract.execution.workspace-binding) (workspace `<task-id>`, the worktree's real path as root, the branch, base commit, goal and Modules, the task folder's `workspace/` as workspace folder and the primary worktree's `.concorde`), then the record `task.json` in state `open`, the task's trace node `trace.json` and the [decision log](../../glossary.json#concept.decision-log) `decisions.md` | `{"record": <the new record>, "decision_log": "<absolute path>"}` |
-| `concorde task list [--state <state>]` | None; lists the current tasks and those in the history; `--state` filters on the derived state | An array of records with their derived state, oldest first |
+| `concorde task list [--state <state>] [--main <session>]` | None; lists the current tasks and those in the history; `--state` filters on the derived state and `--main` on the main agent's session the record names | An array of records with their derived state, oldest first |
 | `concorde task show <task-id>` | None; each delivery's `mismatches` lists how it fails Delivery's check, and is empty when it verifies | `{"record": <record with its derived state>, "runs": [{"run_id": "<id>", "kind": "operation\|command", "name": "<Operation or command>", "modules": ["<id>", …], "status": "running\|lost\|ok\|blocked\|failed", "started_at": "<time>", "finished_at": "<time>\|null"}, …], "deliveries": [{"commit": "<commit>", "mismatches": ["<how the commit fails to verify>", …]}, …], "sessions": [{"id": "<session id>", "name": "task-<task-id>", "main": "<main agent's session>\|null", "model": "<model>\|null", "reported_id": "<id Claude Code reported>\|null", "started_at": "<time>", "directory": "<absolute path of the session's trace node>"}, …], "escalations": [<the task trace's escalations>], "busy": "<holder of the workspace lock>\|null", "decision_log": "<absolute path>", "folder": "<absolute path of the task's folder, current or in the history>"}`; a task in the history is shown the same way, with `busy` null |
-| `concorde task session <task-id> …` | Starts, answers or stops a [task session](../../glossary.json#concept.task-session); see [Task session](../task-session/contracts.md#commands) | As stated there |
+| `concorde task session <task-id> …` | Starts a [task session](../../glossary.json#concept.task-session) and names its `--main` as the task's main; see [Task session](../task-session/contracts.md#commands) | As stated there |
+| `concorde task rebind <task-id> --main <session>` | For a task that has not ended (`task_closed` otherwise): stores `<session>` as the record's `main` and, when it differs from the former one, appends it with the time to the record's `mains`; run by the [main agent](../../glossary.json#concept.main-agent) once its own session name changed, such as after a resume | `{"record": <the updated record>, "former": "<the former main>"\|null}` |
 | `concorde task merge <task-id> [--check <command>]… [--wait <seconds>]` | Waiting up to `--wait` seconds (default 300) for the task's [workspace lock](../../glossary.json#concept.workspace-lock) and then, with the rest of that time, for the merge lock, and holding both: checks that the task branch holds a [delivery commit](../../glossary.json#concept.delivery-commit) of the task's workspace, read from Git, that the latest one is the head of its branch and verifies, and that its worktree is clean, and that the primary worktree is on a branch with no uncommitted or untracked path; stores the task as `merging` with the primary branch's name and commit, that head as the checked commit, the history key the task will close under and the checks; runs `git merge --no-ff --no-commit <checked commit>` in the primary worktree, writes the task's decision log as it stands (empty when it is missing), followed by the closing its close will append, `## Closed: merged, <merging.since>`, to `.concorde/decisions/<history key>.md` and stages it, and commits the merge with the message `Merge branch 'concorde/<task-id>' at <checked commit>`, a blank line and the trailer `Concorde-Task: <task-id>`, and records that commit as `merging.after`; when Git refuses that commit, it aborts the merge, removes the log's copy, stores the task `open` again and refuses with `git_failed`; runs each check there, keeping its output as `output.log` of the check's node below the attempt's node `merges/<n>/`; then closes the task as `close --merged` does under the recorded history key, with `merging.since` as the closing's time, clearing `merging`; the primary branch then already holds the task's decision log as the close leaves it, so that close commits nothing, unless the log changed after the merge commit, as it may before a `--resume`, when the close commits it again (below). The default check is `concorde spec-validation` of the merged primary worktree, run by the same Python with the running package on its path; each `--check` is split into words as a shell would and run without a shell, and any `--check` replaces the default; a check still running after 1800 seconds is stopped and counts as failed. A conflict aborts the merge; a check that exits non-zero or cannot run, or checks that leave an uncommitted path, reset the primary branch to the commit the merge started from with `git reset --keep`, so a refusal again leaves the primary branch where it was; the reset leaves the paths the checks created in the primary worktree, and the refusal names them. After a conflict or a reset the task is stored `open` again, with `merging` null. `--wait` (default 300) bounds how long to wait for both locks together; `waited_seconds` is how long it waited | `{"record": <record>, "merge": {"before": "<commit>", "after": "<commit>", "checks": [{"argv": ["<word>", …], "exit_code": 0, "seconds": <number>}], "waited_seconds": <number>, "log": "<absolute path of the attempt's node>"}, "warnings": ["<text>", …]}`; `warnings` names the decision log when it is missing or holds exactly what `open` wrote, read before the close appends to it, and each Claude Code task session the close did not keep or remove as [Task sessions](../task-session/contracts.md#at-the-end-of-a-task) states, and is empty otherwise |
 | `concorde task merge <task-id> --resume [--wait <seconds>]` | For a `merging` task, holding both locks as a merge does: when the primary worktree is clean on the recorded branch and its head is the recorded merge commit (or, with none recorded, a merge commit whose parents are exactly the commit before and the checked commit), reruns the recorded checks there, as a new attempt's node, then closes the task or resets the primary branch exactly as `merge` does after its checks | As `merge` |
 | `concorde task merge <task-id> --abort [--wait <seconds>]` | For a `merging` task, holding both locks as a merge does: runs `git merge --abort` when a merge is in progress; when the primary worktree is on the recorded branch, resets it with `git reset --keep` to the commit before the merge if its head is the merge commit, leaves it if its head already is that commit, and stores the task `open` with `merging` null | `{"record": <record with its derived state>, "abort": {"before": "<commit>", "undone": "<merge commit reset away>\|null", "left": ["<path the reset left in the primary worktree>", …], "waited_seconds": <number>}}` |
@@ -716,7 +853,10 @@ for it. `list` and `show` are never refused for a merge.
 | `concorde task close <task-id> --completed --note <text> [--force] [--wait <seconds>]` | For a task that reached its goal without merging: first stops each task session of the task with `claude stop`, refusing with `session_stop_failed` when one cannot be confirmed stopped, then, with `SIGTERM`, each run of the task's workspace whose [run lock](../../glossary.json#concept.run-lock) a process of this machine holds; then, holding the workspace lock and then the merge lock, waited for as with `--merged`: removes the worktree, discarding uncommitted changes only with `--force`, sets state `closed` with outcome `completed` and the note, ends the trace node, appends the outcome and the note to the decision log, commits the log as with `--merged`, keeps the transcripts, moves the folder to the history and removes the task sessions as with `--merged` | As with `--merged` |
 | `concorde task close <task-id> --failed --reason <text> ((--run <run-id> \| --error-file <path>)… \| --no-error) [--force] [--wait <seconds>]` | For a task that did not reach its goal: stops its task sessions and runs as `--completed` does, then, holding the workspace lock and then the merge lock, waited for as with `--merged`: removes the worktree, discarding uncommitted changes only with `--force`, sets state `failed` with the reason as note and, as errors, the `error` of each named run of the task's workspace, read from its workspace folder, and each error read from a file, unchanged; `--no-error` declares that no error caused the failure; ends the trace node, appends the outcome, the reason and the errors, rendered and as JSON, to the decision log, commits the log as with `--merged`, keeps the transcripts, moves the folder to the history and removes the task sessions as with `--merged` | As with `--merged` |
 | `concorde task escalate <task-id> [--by main-agent\|task-session] [--run <run-id> \| --error-file <path> \| --escalation <n>]… --code <code> --detail <text> --reason <reason> --explanation <text> [--attempt <text>]… [--option <text>]… [--recommendation <text>]` | Builds the escalating session's link, of level `main-agent` (the default, actor `main agent (task <task-id>)`) or `task-session` (actor `task session (task <task-id>)`), whose causes are the `error` of each named run of the task's workspace, read from the [run store](../../glossary.json#concept.run-store), each error read from a file (a link, or a JSON value whose `error` is one) and the error of each named earlier escalation of the task (numbered from 1 in record order), with no causes when it names none (a decision to escalate that no error carries), appends it to the escalations of the task's trace node and to the decision log, rendered and as JSON, under a heading naming the receiver: the [main agent](../../glossary.json#concept.main-agent) for `task-session`, the developer for `main-agent` | `{"escalated": <link>, "number": <its number in the task's trace, from 1>, "decision_log": "<absolute path>", "rendered": "<the chain as indented text>"}` |
+| `concorde task report <task-id> --text <report> [--escalation <n>]…` | For a task that has not ended (`task_closed` otherwise): appends the report, numbered from 1, to the record's `reports`, with its time, the record's `main` at that moment, the text, the named escalations of the task (`unknown_escalation` for a number it does not have) and `answer` null, then to the decision log under the heading `## Report <n> to the main agent (<main>), <time>`, followed by the escalations it carries; the task session runs it before every message to the main agent | `{"report": <the report as recorded>, "main": "<the record's main, the session to message>"\|null, "decision_log": "<absolute path>"}` |
+| `concorde task answer <task-id> --report <n>… --text <answer>` | For a task that has not ended: records `{"at", "text"}` as the `answer` of each named report of the record, refusing a number it does not have (`unknown_report`) and a report already answered (`already_answered`), then appends the answer to the decision log under the heading `## Answer to report(s) <n>, … of the task session, <time>` | `{"answered": [<each report with its answer>], "decision_log": "<absolute path>"}` |
 | `concorde task wait <task-id> --until <state>[,<state>…] [--timeout <seconds>]` | None; blocks until the task's derived state is one of the named states, which must be among `delivered`, `merging`, `closed` and `failed`, learning of each new holder of the task's workspace lock through the kernel's notification of changes to its lock file and blocking on the lock until that holder releases it, then reading the state again; answers at once when the state already is one of them | `{"task": "<task-id>", "state": "<state>", "waited_seconds": <number>}` |
+| `concorde task wait <task-id> --rebound <session> [--timeout <seconds>]` | None; blocks until the task's record names a `main` other than `<session>`, learning of every write of the record, which replaces `task.json` in the task's folder, and of the folder's move to the history through the kernel's notification of changes to that folder, then reading the record again; answers at once when it already names another; a task that ended ends the wait with `wait_unreachable` | `{"task": "<task-id>", "main": "<the main it names now>"\|null, "former": "<session>", "waited_seconds": <number>}` |
 | `concorde task wait --run <run-id> [--timeout <seconds>]` | None; blocks on the run's [run lock](../../glossary.json#concept.run-lock), shared, until its runner releases it, for a run of any task's workspace or an [unbound run](../../glossary.json#concept.unbound-run) a reader finds | `{"run": "<run-id>", "status": "<status of its result, or lost when it has none>", "result": "<absolute path of result.json>\|null", "waited_seconds": <number>}` |
 | `concorde task wait [<task-id>] --lock merge\|workspace [--timeout <seconds>]` | None; blocks on the merge lock, or the workspace lock of the task named, shared, until no process holds it | `{"lock": "merge\|workspace", "task": "<task-id>\|null", "released": true, "held_by": <the holder line when the wait began, or null when the lock was free>, "waited_seconds": <number>}` |
 
@@ -787,6 +927,8 @@ stored it would have, and returns the record unchanged.
 refuses with `decision_log_failed`, naming the escalation's number in the record, the decision
 log, the file system's error and the heading the entry would have had, carrying the rendered
 chain and saying that escalating again would record it twice, so the chain is appended by hand.
+`report` and `answer` likewise write the record first and, when the append fails, refuse
+with `decision_log_failed`, naming the report and carrying the entry to append by hand.
 
 The task's workspace lock is Execution's lock of the workspace named after the task,
 `.concorde/locks/workspaces/<task-id>.lock` (`contract.execution.workspace-binding`); `merge` and
@@ -798,9 +940,9 @@ holds the first two.
 
 | Error code | Raised when |
 | --- | --- |
-| `not_primary` | `open`, `close`, `merge` or `session` runs outside the primary worktree. |
+| `not_primary` | `open`, `close`, `merge`, `session`, `rebind` or `answer` runs outside the primary worktree. |
 | `worktree_not_ignored` | The worktree path lies inside the primary worktree and Git does not ignore it there; the message names the path and how to ignore it. |
-| `invalid_input` | A goal or Module list is missing or repeats a Module, or `close` names not exactly one of `--merged`, `--completed` and `--failed`, `--completed` lacks `--note`, `--failed` lacks `--reason`, `--failed` names both or neither of an error source (`--run`, `--error-file`) and `--no-error`, an option belongs to another outcome, or `--force` accompanies `--merged`, or a `--check` is empty or cannot be split into words, or `--check` accompanies `--resume` or `--abort`, or `--wait` is negative, or `session` starts a task session without `--main`, or `wait` names no target or more than one, `--until` without a task or with a state other than `delivered`, `merging`, `closed` and `failed`, `--run` with a task, `--lock workspace` without one or `--lock merge` with one, or a negative `--timeout`. |
+| `invalid_input` | A goal or Module list is missing or repeats a Module, or `close` names not exactly one of `--merged`, `--completed` and `--failed`, `--completed` lacks `--note`, `--failed` lacks `--reason`, `--failed` names both or neither of an error source (`--run`, `--error-file`) and `--no-error`, an option belongs to another outcome, or `--force` accompanies `--merged`, or a `--check` is empty or cannot be split into words, or `--check` accompanies `--resume` or `--abort`, or `--wait` is negative, or `session` starts a task session without `--main`, or `rebind` names an empty `--main`, `report` an empty `--text` or `answer` an empty `--text`, or `wait` names no target or more than one, `--rebound` without a task or with an empty session, `--until` without a task or with a state other than `delivered`, `merging`, `closed` and `failed`, `--run` with a task, `--lock workspace` without one or `--lock merge` with one, or a negative `--timeout`. |
 | `worktree_failed` | Git refused to add or remove the worktree; the message carries Git's error. |
 | `binding_failed` | `open` added the worktree but could not write its [workspace binding](../../glossary.json#concept.workspace-binding); the message names the file, the worktree and branch left behind and how to remove them. |
 | `invalid_task_id` | The identity does not match the record's `id` pattern. |
@@ -814,15 +956,17 @@ holds the first two.
 | `not_merged` | `close --merged` or `merge` finds that the task branch holds no delivery commit of the task's workspace since the base commit or that its latest delivery commit is not the head of the branch, or `close --merged` finds that head not contained in the primary branch. |
 | `delivery_unverified` | `close --merged` or `merge` finds that the branch head, the latest delivery commit of the task's workspace, does not verify: it has not exactly one parent; the message names the head and the mismatch. |
 | `dirty_worktree` | The worktree has uncommitted changes and the command is `--merged`, or `--completed` or `--failed` without `--force`. |
-| `task_closed` | A session is started or recorded for a task that is closed or failed. |
+| `task_closed` | A session is started or recorded, a main rebound, a report recorded or a report answered for a task that is closed or failed. |
 | `record_conflict` | The record changed concurrently three times in a row. |
 | `record_unreadable` | The [task record](../../glossary.json#concept.task-record) on disk cannot be read as JSON. |
 | `record_unwritable` | The file system refused to write the task record; the message names the record and the file system's error. |
-| `decision_log_failed` | `close` or `escalate` wrote the task record and the file system then refused the append to the [decision log](../../glossary.json#concept.decision-log), or a rerun of a close cannot read it; the message says what was written and how to finish (above). |
+| `decision_log_failed` | `close`, `escalate`, `report` or `answer` wrote the task record and the file system then refused the append to the [decision log](../../glossary.json#concept.decision-log), or a rerun of a close cannot read it; the message says what was written and how to finish (above). |
 | `decision_log_uncommitted` | `close`, or the close a merge runs when the primary branch does not hold the log as it ended, could not commit the task's decision log on the primary branch: its `HEAD` is detached or Git refused the commit; the record is closed and the log holds the closing, the folder is still current, and the message names the log, its path in Git, Git's output and that the same close finishes (above). |
 | `git_failed` | A Git command Tasks needs failed, such as the commit of a merge a hook refused; the message names the command, its exit status and its output, and for a merge that it was aborted and where the primary branch is. |
 | `unknown_run` | `escalate` or `close --failed` names a run whose result cannot be read from the run store, or a run of another workspace or of none, or `wait --run` names a run no reader finds; the message names the workspace the run belongs to, or where it looked. |
-| `unknown_escalation` | `escalate` names an escalation number the task's trace does not have. |
+| `unknown_escalation` | `escalate` or `report` names an escalation number the task's trace does not have. |
+| `unknown_report` | `answer` names a report number the task's trace does not have. |
+| `already_answered` | `answer` names a report that has an answer already; an answer is never replaced. |
 | `merge_busy` | The merge lock stayed held for the whole wait, or `session` or `escalate` names the task a live merge is merging; the message names the holder's command, task, process and start time. |
 | `session_stop_failed` | `close --completed` or `--failed` could not confirm a Claude Code task session of the task stopped with `claude stop`, before it changed the task; the message names the session, Claude Code's answer and the command to stop it ([Task sessions](../task-session/contracts.md#at-the-end-of-a-task)). |
 | `workspace_busy` | `merge` or `close` found the task's workspace lock still held by a run after waiting `--wait` seconds; the message names the holder, the lock file and how long it waited. |
@@ -837,18 +981,18 @@ holds the first two.
 | `nothing_to_escalate` | `escalate` or `close --failed` names a run that ended without an error. |
 | `invalid_error` | An escalated file or escalation is not an error link, or the escalating session's link does not satisfy the error contract. |
 | `wait_timeout` | `wait` did not see what it waits for within `--timeout` seconds; nothing changed. Reason `environment`. |
-| `wait_unreachable` | `wait --until` finds the task ended `closed` or `failed` in a state it does not name; the message names that state. |
+| `wait_unreachable` | `wait --until` finds the task ended `closed` or `failed` in a state it does not name, or `wait --rebound` finds the task ended; the message names that state. |
 | `wait_failed` | The kernel refused to watch the directory of the task's workspace lock; the message carries its error. Reason `environment`. |
 | `invalid_command` | The command line is malformed. |
 
 ## Record updates
 
 Nothing below the task level updates a task: runs, deliveries and workflows are recorded by
-Execution, and Tasks reads them. Besides `open`, `merge`, `close` and `escalate`, a task changes
-only through the update a task session's start makes, which writes a trace node below the task's
-node. It holds the task's lock while it reads, checks its precondition and writes, so the
-precondition holds for what it writes, and refuses with the codes above.
+Execution, and Tasks reads them. Besides `open`, `merge`, `close`, `escalate`, `rebind`, `report`
+and `answer`, a task changes only through the update a task session's start makes, which writes a
+trace node below the task's node. It holds the task's lock while it reads, checks its precondition
+and writes, so the precondition holds for what it writes, and refuses with the codes above.
 
 | Update | Preconditions | Effect |
 | --- | --- | --- |
-| Record session (`task`, `session`) | The task is a current task neither `closed` nor `failed`. Otherwise `unknown_task` or `task_closed`. | Writes the session's node `sessions/<session id>/`. |
+| Record session (`task`, `session`) | The task is a current task neither `closed` nor `failed`. Otherwise `unknown_task` or `task_closed`. | Writes the session's node `sessions/<session id>/` and names the session's `main` as the record's `main`, as `rebind` does. |

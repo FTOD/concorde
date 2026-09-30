@@ -265,7 +265,7 @@ owner, the main session whose own background Bash started it.
 
 A run a task session starts belongs to that task session and wakes no main session unasked; a run
 started by a command run by hand wakes nobody unasked. What a task session reports reaches only the
-main session its `--main` names. This guarantee covers the wakes nobody asked for. A session that
+main session its task record names when it reports. This guarantee covers the wakes nobody asked for. A session that
 registers a wait with the project MCP server's `register_wait`, for a run, a lock or a task it may
 not own, asks for its own wake explicitly, and the server admits that registration as its
 [contracts](contracts.md#registering-a-wait) document; it wakes only the session that registered
@@ -278,8 +278,7 @@ The owner of a run SHALL never be recorded in a run's
 [run result](../../glossary.json#concept.run-result).
 
 A run's owner is the session whose background Bash started it; the main session a task session
-reports to is the `main` its session's [trace node](../../glossary.json#concept.trace-node)
-records.
+reports to is the `main` its [task record](../../glossary.json#concept.task-record) names.
 
 ### req.main-session.claude-sees-by-query — A main session sees others' work by asking
 
@@ -645,6 +644,32 @@ to the developer.
 
 The task-session guidance SHALL tell a task session to report to the main agent when it has
 delivered the task or cannot go further.
+
+### req.main-session.task-session-report-recorded — A task session records every report before sending it
+
+The task-session guidance SHALL tell a task session to record every report to the main agent with
+`concorde task report` before it messages the main agent, to message the main agent's session that
+command prints, and, when the message reaches no session of that name, to wait in background Bash
+with `concorde task wait <task> --rebound <that name>` and send the same report to the name it
+returns.
+
+The name of the main agent's session is read from the task record at each report rather than from
+the first prompt, since a Claude Code session's name does not survive a restart or a resume of the
+session; the recorded report is what the main agent reads when the message was lost.
+
+### req.main-session.answers-recorded — The main agent records its answers
+
+The guidance SHALL tell the main agent to record its answer to a task session's reports with
+`concorde task answer` before it sends the answer.
+
+### req.main-session.reconcile-after-restart — A main agent whose name changed reconciles its tasks first
+
+The guidance SHALL tell the main agent, when ListAgents reports for its session a name other than
+the one it gave its tasks, to list the tasks whose record names its former name, rebind each to its
+current name with `concorde task rebind`, and read their unanswered reports before anything else.
+
+A task session whose message was lost waits for that rebind, and its report is in the task record
+already, so the rebind wakes it and the unanswered reports tell the main agent what it missed.
 
 ### req.main-session.task-session-never-merges — A task session never merges or closes its task
 
