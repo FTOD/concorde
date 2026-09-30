@@ -270,7 +270,7 @@
       "id": "concept.issue",
       "title": "Issue",
       "owner": "module.issues",
-      "definition": "A durable, branch-local record of one concrete problem, holding every report made about it and its disposition history.",
+      "definition": "A durable, project-wide record of one concrete problem, kept by the primary worktree, holding every report made about it, each with its tier, and its disposition history.",
       "explanation": "specs/concorde/issues/module.md#concept.issue",
       "relates": [
         {
@@ -311,7 +311,7 @@
       "id": "concept.merge-lock",
       "title": "Merge lock",
       "owner": "module.tasks",
-      "definition": "The lock `.concorde/locks/merge.lock` of the primary worktree that one process at a time holds while it merges a task into the primary branch, opens a task or closes one; the kernel releases it when that process ends.",
+      "definition": "The lock `.concorde/locks/merge.lock` of the primary worktree that one process at a time holds while it merges a task into the primary branch, opens a task, closes one or writes an Issue; the kernel releases it when that process ends.",
       "explanation": "specs/concorde/coordination/tasks/module.md#concept.merge-lock"
     },
     {

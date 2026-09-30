@@ -253,6 +253,83 @@ class MergeTests(unittest.TestCase):
             self.refusal("answer", "t1", "--report", "1", "--text", "late")["code"],
         )
 
+    def issue(self, key):
+        from concorde.issues import command as issues
+        from tests.concorde.support.issue_reports import report
+
+        answer = issues.report_action(
+            self.root,
+            report=report(report_key=key, owner_target_id="module.a", evidence=[]),
+        )
+        return answer["receipt"]["issue_id"]
+
+    @verifies("scenario.tasks.merge-closes-resolved-issues")
+    def test_a_merge_closes_the_issues_its_task_resolves(self):
+        from concorde.issues import command as issues
+        from concorde.issues.store import read_issue
+
+        fixed, gone, later = (
+            self.issue("fixed"),
+            self.issue("gone"),
+            self.issue("later"),
+        )
+        self.assertEqual(
+            "invalid_issue",
+            self.refusal(
+                "open",
+                "t0",
+                "--goal",
+                "g",
+                "--modules",
+                "module.a",
+                "--resolves",
+                "I-" + "0" * 32,
+            )["code"],
+        )
+        status, value = self.command(
+            "open",
+            "t1",
+            "--goal",
+            "Fix A.",
+            "--modules",
+            "module.a",
+            "--resolves",
+            fixed,
+        )
+        self.assertEqual(0, status, value)
+        self.assertEqual([fixed], value["record"]["resolves"])
+        status, value = self.command("resolve", "t1", gone, later)
+        self.assertEqual(0, status, value)
+        self.assertEqual([fixed, gone, later], value["resolves"])
+        self.assertEqual(
+            "invalid_issue", self.refusal("resolve", "t1", "I-bad")["code"]
+        )
+        # An Issue closed meanwhile is left as it is, with a warning.
+        issues.dispose(
+            self.root, gone, "not-actionable", "no longer needed", ["decided"]
+        )
+        self.deliver()
+        status, value = self.command("merge", "t1", "--check", python(""))
+        self.assertEqual(0, status, value)
+        after = value["merge"]["after"]
+        self.assertEqual(
+            [fixed, later], [item["issue_id"] for item in value["resolved"]]
+        )
+        for issue in (fixed, later):
+            record, _ = read_issue(self.root, issue)
+            self.assertEqual("closed", record["status"])
+            disposition = record["dispositions"][-1]
+            self.assertEqual(
+                ("resolved", "main-agent", [f"merge commit {after}", "task t1"]),
+                (disposition["reason"], disposition["actor"], disposition["evidence"]),
+            )
+        warned = [text for text in value["warnings"] if gone in text]
+        self.assertEqual(1, len(warned), value["warnings"])
+        self.assertIn("closed_issue", warned[0])
+        # Each closure is a commit of its own on the primary branch, after the merge.
+        self.assertEqual(after, git(self.root, "rev-parse", "HEAD~2"))
+        self.assertEqual("", git(self.root, "status", "--porcelain"))
+
     @verifies("scenario.tasks.merge-empty-log")
     def test_a_merge_warns_of_an_unwritten_decision_log(self):
         passing = ["--check", python("")]

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -11,7 +12,7 @@ from pathlib import Path
 
 from concorde.issues.store import dispose_issue, read_issue, report_issue
 from concorde.spec.verification import verifies
-from tests.concorde.support.issue_reports import report, source
+from tests.concorde.support.issue_reports import git_project, report, source
 from tests.concorde.support.spec_project import PACKAGE, project
 
 
@@ -19,7 +20,7 @@ class StoreCheckTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
+        self.root = git_project(Path(os.path.realpath(temporary.name)))
         project(self.root)
         self.check = next(
             item

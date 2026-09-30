@@ -1,9 +1,31 @@
-"""Issue report and provenance values shared by tests that file Issues."""
+"""Issue report and provenance values shared by tests that file Issues, and the Git repository
+whose primary worktree keeps them."""
+
+import subprocess
+from pathlib import Path
+
+
+def git(root: Path, *arguments: str) -> str:
+    return subprocess.run(
+        ["git", *arguments], cwd=root, check=True, capture_output=True, text=True
+    ).stdout
+
+
+def git_project(root: Path) -> Path:
+    """Make ``root`` the primary worktree of a new repository with one commit on ``main``,
+    where Issue writes commit their records."""
+    git(root, "init", "-q", "-b", "main")
+    git(root, "config", "user.name", "t")
+    git(root, "config", "user.email", "t@t")
+    git(root, "config", "commit.gpgsign", "false")
+    git(root, "commit", "-q", "--allow-empty", "-m", "start")
+    return root
 
 
 def report(**changes):
     return {
         "report_key": "missing-retry",
+        "tier": "decision-needed",
         "type": "gap",
         "subtype": "missing-contract",
         "title": "Retry ownership is unspecified",

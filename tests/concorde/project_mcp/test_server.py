@@ -48,6 +48,13 @@ TOOLS = {
     "task_merge",
     "register_wait",
     "workflow_step",
+    "task_resolve",
+    "issue_list",
+    "issue_show",
+    "issue_check",
+    "issue_report",
+    "issue_close",
+    "issue_reopen",
 }
 # How long a test waits for a channel event before it fails.
 EVENT_WAIT = 60
@@ -280,6 +287,79 @@ class ProjectMcpTests(unittest.TestCase):
         )
         self.assertFalse(error, closed)
         self.assertEqual("closed", closed["record"]["state"])
+
+    @verifies("scenario.main-session.project-mcp-issues")
+    def test_issue_tools_manage_the_projects_issues_from_any_worktree(self):
+        from tests.concorde.support.issue_reports import report
+
+        self.project.open_task("t1")
+        worktree = self.project.worktree("t1")
+        # A task session: its reports are the task session's, with its task.
+        session = self.client(cwd=worktree, CLAUDE_PROJECT_DIR=str(worktree))
+        filed = report(owner_target_id="module.a", evidence=[])
+        checked, error = session.call("issue_report", report=filed, check=True)
+        self.assertFalse(error, checked)
+        self.assertEqual(
+            (True, "module.a"), (checked["valid"], checked["reporting_module"])
+        )
+        recorded, error = session.call("issue_report", report=filed)
+        self.assertFalse(error, recorded)
+        issue = recorded["receipt"]["issue_id"]
+        shown, error = session.call("issue_show", issue=issue)
+        self.assertFalse(error, shown)
+        source = shown["issue"]["reports"][0]["source"]
+        self.assertEqual(("task-session", "t1"), (source["agent"], source["change_id"]))
+        self.assertTrue((self.root / recorded["receipt"]["path"]).is_file())
+        self.assertFalse((worktree / recorded["receipt"]["path"]).exists())
+        # The main agent in the primary worktree sees it at once and disposes it.
+        main = self.client()
+        listed, error = main.call("issue_list")
+        self.assertEqual(
+            [(issue, "decision-needed")],
+            [(row["id"], row["tier"]) for row in listed["issues"]],
+        )
+        checked, error = main.call("issue_check")
+        self.assertEqual({"errors": [], "notes": []}, checked)
+        resolved, error = main.call("task_resolve", task="t1", issues=[issue])
+        self.assertFalse(error, resolved)
+        self.assertEqual([issue], resolved["resolves"])
+        closed, error = main.call(
+            "issue_close",
+            issue=issue,
+            reason="not-actionable",
+            note="n",
+            evidence=["e"],
+        )
+        self.assertEqual("closed", closed["status"], closed)
+        self.assertEqual(
+            "main-agent",
+            main.call("issue_show", issue=issue)[0]["issue"]["dispositions"][0][
+                "actor"
+            ],
+        )
+        value, error = main.call(
+            "issue_close", issue=issue, reason="resolved", note="n", evidence=["e"]
+        )
+        link = self.refusal(value, error, "closed_issue")
+        self.assertEqual("Issues (concorde issues)", link["actor"])
+        reopened, error = session.call(
+            "issue_reopen", issue=issue, note="n", evidence=["e"]
+        )
+        self.assertEqual("open", reopened["status"], reopened)
+        # A write never waits for the merge lock.
+        merging = holding(store.merge_lock_path(self.root), "session-other", "t9")
+        self.addCleanup(merging.wait)
+        self.addCleanup(merging.stdin.close)
+        started = time.monotonic()
+        value, error = main.call(
+            "issue_report",
+            report=report(report_key="later", owner_target_id="module.a", evidence=[]),
+        )
+        self.assertLess(time.monotonic() - started, 10)
+        link = self.refusal(value, error, "merge_busy")
+        self.assertIn("a test holder", link["detail"])
+        self.assertEqual("environment", link["unhandled"]["reason"])
+        self.assertTrue(any("never report" in option for option in link["options"]))
 
     @verifies("scenario.main-session.project-mcp-lock-busy")
     def test_busy_locks_are_refused_at_once_naming_the_holder(self):

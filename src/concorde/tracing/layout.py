@@ -28,7 +28,6 @@ IGNORED = tuple(f"{CONCORDE}/{name}/" for name in (TASKS, HISTORY, UNBOUND, LOCK
 # The kinds of lock and the folder of ``locks/`` their files lie in; None: directly in it.
 LOCK_KINDS = {
     "merge": None,
-    "issues": None,
     "task": "tasks",
     "workspace": "workspaces",
     "workflow": "workflows",

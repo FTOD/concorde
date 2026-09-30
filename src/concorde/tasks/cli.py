@@ -142,6 +142,9 @@ HANDLING = {
 OPTIONS = {
     "unknown_task": ["run concorde task list to see the tasks"],
     "unknown_module": ["name registered Modules, or register the Module first"],
+    "invalid_issue": [
+        "run concorde issues list and name open Issues; reopen a closed one first"
+    ],
     "dirty_worktree": [
         "deliver or discard the changes",
         "close with --completed or --failed and --force",
@@ -262,6 +265,7 @@ def parser() -> argparse.ArgumentParser:
     opening.add_argument("--modules", required=True)
     opening.add_argument("--base")
     opening.add_argument("--path")
+    opening.add_argument("--resolves", default="")
     listing = commands.add_parser("list")
     listing.add_argument("--state")
     listing.add_argument("--main")
@@ -272,6 +276,9 @@ def parser() -> argparse.ArgumentParser:
     starting.add_argument("--main")
     starting.add_argument("--model")
     starting.add_argument("--dry-run", action="store_true")
+    resolving = commands.add_parser("resolve")
+    resolving.add_argument("task_id")
+    resolving.add_argument("issues", nargs="+")
     rebinding = commands.add_parser("rebind")
     rebinding.add_argument("task_id")
     rebinding.add_argument("--main", required=True)
@@ -542,6 +549,11 @@ def main(argv, cwd: Path | None = None) -> int:
                 [item.strip() for item in arguments.modules.split(",") if item.strip()],
                 base=arguments.base,
                 path=Path(arguments.path) if arguments.path else None,
+                resolves=[
+                    item.strip()
+                    for item in arguments.resolves.split(",")
+                    if item.strip()
+                ],
             )
             value = {
                 "record": record,
@@ -562,6 +574,10 @@ def main(argv, cwd: Path | None = None) -> int:
             value = store.show_task(store.primary_of(here), arguments.task_id)
         elif arguments.command == "session":
             value = start_session(here, arguments)
+        elif arguments.command == "resolve":
+            value = store.resolve(
+                store.primary_of(here), arguments.task_id, arguments.issues
+            )
         elif arguments.command == "rebind":
             value = store.rebind(
                 store.require_primary(here), arguments.task_id, arguments.main

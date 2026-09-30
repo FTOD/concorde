@@ -1,4 +1,5 @@
-"""The tools of the project MCP server, each a thin call into Tasks, Tracing or Workflows' records.
+"""The tools of the project MCP server, each a thin call into Tasks, Tracing, Workflows' records or
+the project's Issues.
 
 ``workflow_step`` is the one tool that works on a workspace rather than on records: it runs the
 ``concorde workflow step`` of the worktree the session started in as a child of this server, so a
@@ -7,7 +8,9 @@ step's detached runner is started outside the session's Bash sandbox and lives u
 Every call reads the stores afresh from the primary worktree, so an answer is the state when the
 call arrives; the server keeps no copy of any record and adds no rule of its own. A refusal is the
 error link of the component that refused, unchanged: Tasks' own for a task command, the server's
-own (actor ``Concorde project MCP server (<tool>)``) for arguments it cannot take. Locks are never
+own (actor ``Concorde project MCP server (<tool>)``) for arguments it cannot take. The Issue tools
+answer and refuse exactly as ``concorde issues`` does, recording the session as ``main-agent`` in
+the primary worktree and as ``task-session`` with its task in a bound task worktree. Locks are never
 waited for: a tool that needs one is refused at once, naming its holder, when another process holds
 it.
 """
@@ -24,6 +27,7 @@ from argparse import Namespace
 from pathlib import Path
 
 from .. import errors
+from ..issues import command as issues
 from ..tasks import cli as task_cli
 from ..tasks import merge, store, wait
 from ..tasks.store import TaskError
@@ -72,6 +76,8 @@ def tasks_refusal(tool: str, command: str, error: TaskError) -> Refusal:
 TEXT = {"type": "string", "minLength": 1}
 TEXTS = {"type": "array", "items": TEXT}
 TASK = {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,47}$"}
+ISSUE = {"type": "string", "minLength": 1}
+EVIDENCE = {"type": "array", "items": TEXT, "minItems": 1}
 
 
 def schema(properties: dict, required=()) -> dict:
@@ -226,6 +232,70 @@ TOOLS: dict[str, dict] = {
                 "force": {"type": "boolean"},
             },
             ["task", "outcome"],
+        ),
+    },
+    "task_resolve": {
+        "description": "Add open Issues of the project to those the task fixes, as `concorde task "
+        "resolve`; once the task is merged and its checks passed, the merge closes each still "
+        "open as resolved with the merge commit as evidence.",
+        "inputSchema": schema(
+            {"task": TASK, "issues": {"type": "array", "items": ISSUE, "minItems": 1}},
+            ["task", "issues"],
+        ),
+    },
+    "issue_list": {
+        "description": "A summary row per Issue of the project, open and closed, with its tier, "
+        "as `concorde issues list`.",
+        "inputSchema": schema({}),
+    },
+    "issue_show": {
+        "description": "One Issue's complete record and revision, as `concorde issues show`.",
+        "inputSchema": schema({"issue": ISSUE}, ["issue"]),
+    },
+    "issue_check": {
+        "description": "Check every Issue record the primary worktree keeps, as `concorde issues "
+        "check` there: errors and notes, each naming the record.",
+        "inputSchema": schema({}),
+    },
+    "issue_report": {
+        "description": "Record an Issue report, as `concorde issues report`: `report` is the "
+        "report object (contract.issues.report, with its tier), or `file` a report file; "
+        "`check` checks it and records nothing. It creates an Issue, or appends to the one its "
+        "issue_id names at its expected_revision. Evidence paths are checked in the session's "
+        "worktree; the report is recorded as the session's (main-agent in the primary worktree, "
+        "task-session with its task in a task worktree). Refused at once with merge_busy, naming "
+        "the holder, while another process holds the merge lock.",
+        "inputSchema": schema(
+            {
+                "report": {"type": "object"},
+                "file": TEXT,
+                "check": {"type": "boolean"},
+            }
+        ),
+    },
+    "issue_close": {
+        "description": "Close an open Issue at its current revision, as `concorde issues "
+        "close`: `reason` resolved, duplicate (with `duplicate_of`) or not-actionable, a `note` "
+        "and at least one `evidence` item. Refused at once with merge_busy while another "
+        "process holds the merge lock.",
+        "inputSchema": schema(
+            {
+                "issue": ISSUE,
+                "reason": {"enum": list(issues.CLOSING_REASONS)},
+                "note": TEXT,
+                "evidence": EVIDENCE,
+                "duplicate_of": ISSUE,
+            },
+            ["issue", "reason", "note", "evidence"],
+        ),
+    },
+    "issue_reopen": {
+        "description": "Reopen a closed Issue at its current revision, as `concorde issues "
+        "reopen`, with a `note` and at least one `evidence` item. Refused at once with "
+        "merge_busy while another process holds the merge lock.",
+        "inputSchema": schema(
+            {"issue": ISSUE, "note": TEXT, "evidence": EVIDENCE},
+            ["issue", "note", "evidence"],
         ),
     },
     "task_merge": {
@@ -494,6 +564,76 @@ class Project:
                 force=arguments.get("force", False),
                 wait=0.0,
             ),
+        )
+
+    def task_resolve(self, arguments: dict):
+        return store.resolve(self.primary, arguments["task"], arguments["issues"])
+
+    # --- Issues -----------------------------------------------------------------------------
+
+    def _reporter(self) -> tuple[Path, str, str | None]:
+        """The session's worktree, whom its Issue writes are recorded as and its task: a bound
+        task worktree's session is its task's task session, any other the main agent."""
+        from ..execution import binding as binding_file
+
+        try:
+            root = binding_file.toplevel(self.where)
+            bound = binding_file.load(root)
+        except binding_file.BindingError:
+            return self.primary, "main-agent", None
+        if bound is None or root == self.primary:
+            return root, "main-agent", None
+        return root, "task-session", bound["workspace"]
+
+    def issue_list(self, arguments: dict):
+        return issues.list_action(self.primary)
+
+    def issue_show(self, arguments: dict):
+        return issues.show_action(self.primary, arguments["issue"])
+
+    def issue_check(self, arguments: dict):
+        return issues.check(self.primary)[0]
+
+    def issue_report(self, arguments: dict):
+        root, agent, task = self._reporter()
+        if ("report" in arguments) == ("file" in arguments):
+            raise own(
+                "issue_report",
+                "invalid_input",
+                "give the report either as `report`, an object, or as `file`, a path",
+            )
+        file = arguments.get("file")
+        return issues.report_action(
+            root,
+            file=Path(root, file) if file is not None else None,
+            report=arguments.get("report"),
+            task=task,
+            check_only=arguments.get("check", False),
+            agent=agent,
+            wait=0.0,
+        )
+
+    def issue_close(self, arguments: dict):
+        return issues.dispose(
+            self.primary,
+            arguments["issue"],
+            arguments["reason"],
+            arguments["note"],
+            arguments["evidence"],
+            duplicate_of=arguments.get("duplicate_of"),
+            actor=self._reporter()[1],
+            wait=0.0,
+        )
+
+    def issue_reopen(self, arguments: dict):
+        return issues.dispose(
+            self.primary,
+            arguments["issue"],
+            "reopened",
+            arguments["note"],
+            arguments["evidence"],
+            actor=self._reporter()[1],
+            wait=0.0,
         )
 
     # --- long work --------------------------------------------------------------------------
@@ -920,6 +1060,7 @@ COMMANDS = {
     "task_rebind": "rebind",
     "task_report": "report",
     "task_answer": "answer",
+    "task_resolve": "resolve",
     "task_merge": "merge",
     "register_wait": "wait",
     "workflow_report": "show",
@@ -943,6 +1084,9 @@ def call(project: Project, name: str, arguments) -> object:
         return getattr(project, name)(arguments)
     except TaskError as error:
         raise tasks_refusal(name, COMMANDS.get(name, name), error) from None
+    except issues.Refusal as refusal:
+        # The Issues command's own link, unchanged.
+        raise Refusal(refusal.link) from None
 
 
 __all__ = ["ACTOR", "THREADED", "TOOLS", "Project", "Refusal", "call"]

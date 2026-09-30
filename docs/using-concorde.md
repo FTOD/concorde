@@ -809,7 +809,11 @@ Spec.
 ## Record problems as Issues
 
 A problem the current task will not fix, such as a Spec gap in another Module, is recorded as an
-**Issue** under `.concorde/issues/` so that it survives the task:
+**Issue**, a record the primary worktree keeps under `.concorde/issues/` and commits on the primary
+branch, so that it survives the task and every session sees it at once. Every report carries a
+tier: `suggestion`, `obvious-fix`, `preferred-fix` or `decision-needed`, which says whether AI may
+fix it alone or the level above decides. Sessions use the project MCP server's Issue tools; the
+command does the same:
 
 ```bash
 concorde issues report --file report.json [--task retry]
@@ -817,9 +821,9 @@ concorde issues list
 concorde issues show <id>
 ```
 
-Solving an Issue is ordinary work: a task for its Module, the Operations that fix it, and
-`concorde issues close <id> --reason resolved --note <text> --evidence <path>` on that task's branch,
-so the closure is merged together with the fix.
+Solving an Issue is ordinary work: a task for its Module that names it,
+`concorde task open <task> … --resolves <id>`, and the Operations that fix it; merging the task
+closes the Issue as resolved, with the merge commit as evidence.
 
 ## Ask the Specs directly
 

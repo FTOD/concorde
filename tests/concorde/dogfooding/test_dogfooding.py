@@ -310,7 +310,8 @@ class ConcordeRepositoryTests(unittest.TestCase):
         )
         for fragment in (
             "## Defect reports from develop installs",
-            "python3 scripts/issues.py report --file <report> --task <task>",
+            "python3 scripts/issues.py report --file <report>",
+            "--resolves <issue>",
             "Fix a Concorde implementation bug",
             (
                 "escalate to the developer before changing Concorde's design or Protocol or "

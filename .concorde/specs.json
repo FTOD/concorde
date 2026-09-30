@@ -454,6 +454,13 @@
             "concept.history",
             "concept.error-chain"
           ]
+        },
+        {
+          "target": "module.issues",
+          "meaning": "#uses-issues",
+          "relies_on": [
+            "concept.issue"
+          ]
         }
       ],
       "includes": [],
@@ -856,6 +863,14 @@
             "concept.file-transaction",
             "concept.registry"
           ]
+        },
+        {
+          "target": "module.tasks",
+          "meaning": "#uses-tasks",
+          "relies_on": [
+            "concept.merge-lock",
+            "concept.task"
+          ]
         }
       ],
       "includes": [
@@ -863,11 +878,6 @@
           "kind": "document",
           "target": "document.tracing.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
-        },
-        {
-          "kind": "document",
-          "target": "document.tasks.module",
-          "reason": "branch and worktree lifetimes when explaining preservation and merging of Issue records"
         }
       ],
       "participates": []

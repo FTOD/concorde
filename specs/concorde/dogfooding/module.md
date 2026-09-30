@@ -225,15 +225,14 @@ to the developer ([requirements](requirements.md#req.dogfooding.defect-outside-t
 ### Fixing it in the Concorde repository
 
 The developer hands the report's path to a session in
-the Concorde repository. That session follows the repository's own agent instructions: it opens a
-task for the Module it judges at fault, records the report there as an Issue with
-`python3 scripts/issues.py report --file <path> --task <task>`, whose evidence is checked in the
-origin project, and then appends a report to that Issue naming the Module at fault as its
+the Concorde repository. That session follows the repository's own agent instructions: it records
+the report as an Issue of the repository, whose evidence is checked in the origin project, opens a
+task for the Module it judges at fault that names the Issue as one it resolves, and then appends a report to that Issue naming the Module at fault as its
 `owner_target_id`, with the Issue's `issue_id` and current `expected_revision`, since the defect
 report's owner is `null` and the Issue's owner is its latest report's
 ([requirements](requirements.md#req.dogfooding.owner-assigned)). It fixes the defect generally,
-never only for the reporting project, closes the
-Issue on the task branch with the fix as evidence, and delivers and merges the task as usual. A
+never only for the reporting project, and delivers and merges the task as usual, and the merge
+closes the Issue with the merge commit as evidence. A
 report of a Concorde design limitation waits for the developer's decision before anything changes
 Concorde's design or Protocol or loosens a boundary
 ([requirements](requirements.md#req.dogfooding.design-limits-decided)); one that turns out to be

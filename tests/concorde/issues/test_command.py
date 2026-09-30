@@ -15,11 +15,12 @@ from functools import cache
 from pathlib import Path
 
 from concorde.errors import link
+from concorde.issues.command import NOT_AN_ISSUE
 from concorde.issues.store import list_issues, read_issue
 from concorde.spec.repository import digest
 from concorde.spec.verification import verifies
 from tests.concorde.issues.test_store import racing_writer, refused_record_writes
-from tests.concorde.support.issue_reports import report
+from tests.concorde.support.issue_reports import git_project, report
 
 COMMAND = Path(__file__).resolve().parents[3] / "scripts/issues.py"
 REGISTRY = {
@@ -50,7 +51,7 @@ class IssueCommandTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
+        self.root = git_project(Path(os.path.realpath(temporary.name)))
         (self.root / ".concorde").mkdir()
         (self.root / ".concorde/config.json").write_text(
             json.dumps({"profile_version": 19})
@@ -107,8 +108,17 @@ class IssueCommandTests(unittest.TestCase):
         self.assertEqual(before, self.records())
         return value
 
+    def head(self):
+        return subprocess.run(
+            ["git", "-C", str(self.root), "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+
     @verifies("scenario.issues.command-report")
     def test_report_records_the_file_with_provenance_the_command_supplies(self):
+        head = self.head()
         status, value = self.run_command(
             "report", "--file", self.report_file(), "--task", "task-7"
         )
@@ -130,7 +140,7 @@ class IssueCommandTests(unittest.TestCase):
                 "target_id": "module.service",
                 "context_id": digest((self.root / ".concorde/specs.json").read_bytes()),
                 "change_id": "task-7",
-                "head": None,
+                "head": head,
             },
             source,
         )
@@ -141,12 +151,7 @@ class IssueCommandTests(unittest.TestCase):
 
     @verifies("scenario.issues.command-report")
     def test_report_records_the_git_head_of_the_project(self):
-        git = ["git", "-C", str(self.root), "-c", "user.name=t", "-c", "user.email=t@t"]
-        subprocess.run([*git, "init", "-q"], check=True)
-        subprocess.run([*git, "commit", "-q", "--allow-empty", "-m", "x"], check=True)
-        head = subprocess.run(
-            [*git, "rev-parse", "HEAD"], capture_output=True, text=True, check=True
-        ).stdout.strip()
+        head = self.head()
         value = self.recorded()
         record, _ = read_issue(self.root, value["receipt"]["issue_id"])
         self.assertEqual(head, record["reports"][0]["source"]["head"])
@@ -665,8 +670,76 @@ class IssueCommandTests(unittest.TestCase):
             self.report_file("next.json", report_key="next"),
         )
         self.assertEqual("environment", value["error"]["unhandled"]["reason"])
+        self.assertIn(NOT_AN_ISSUE, value["error"]["options"])
         directory.chmod(0o755)
         self.assertEqual(1, len(list_issues(self.root)))
+
+    @verifies("scenario.issues.command-from-any-worktree")
+    def test_a_linked_worktree_reads_and_writes_the_primary_worktrees_issues(self):
+        first = self.recorded()
+        subprocess.run(
+            ["git", "add", "-A"], cwd=self.root, check=True, capture_output=True
+        )
+        subprocess.run(
+            ["git", "commit", "-qm", "project"],
+            cwd=self.root,
+            check=True,
+            capture_output=True,
+        )
+        linked = Path(os.path.realpath(str(self.root) + "-linked"))
+        subprocess.run(
+            ["git", "worktree", "add", "-q", "-b", "task", str(linked)],
+            cwd=self.root,
+            check=True,
+            capture_output=True,
+        )
+        self.addCleanup(
+            subprocess.run,
+            ["git", "worktree", "remove", "--force", str(linked)],
+            cwd=self.root,
+            capture_output=True,
+        )
+        # Evidence that exists only in the linked worktree is checked there.
+        (linked / "specs/service/branch-only.md").write_text("# New\n")
+        path = linked / "later.json"
+        path.write_text(
+            json.dumps(
+                report(
+                    report_key="later",
+                    evidence=[
+                        {"path": "specs/service/branch-only.md", "description": "new"}
+                    ],
+                )
+            )
+        )
+        root = self.root
+        self.root = linked
+        try:
+            status, value = self.run_command("report", "--file", str(path))
+            self.assertEqual(0, status, value)
+            listed = self.run_command("list")[1]["issues"]
+        finally:
+            self.root = root
+        self.assertEqual(
+            sorted([first["receipt"]["issue_id"], value["receipt"]["issue_id"]]),
+            [row["id"] for row in listed],
+        )
+        self.assertTrue((self.root / value["receipt"]["path"]).is_file())
+        self.assertFalse((linked / value["receipt"]["path"]).exists())
+
+    @verifies("scenario.issues.command-commit-failed")
+    def test_a_failed_commit_is_an_environment_error_that_is_no_issue(self):
+        subprocess.run(["git", "checkout", "-q", "--detach"], cwd=self.root, check=True)
+        value = self.assert_refused(
+            1,
+            "commit_failed",
+            ["detached HEAD"],
+            "report",
+            "--file",
+            self.report_file(),
+        )
+        self.assertEqual("environment", value["error"]["unhandled"]["reason"])
+        self.assertIn(NOT_AN_ISSUE, value["error"]["options"])
 
 
 if __name__ == "__main__":

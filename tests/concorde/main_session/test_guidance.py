@@ -500,63 +500,66 @@ class GuidanceTests(unittest.TestCase):
             self.block,
         )
 
-    @verifies("scenario.main-session.solve-issue")
-    def test_issues_are_solved_by_ordinary_work(self):
-        self.assertIn("Solve an Issue like any other work", self.skill)
-        self.assertIn("close the Issue on that task's branch", self.skill)
+    def issues(self):
+        skill = self.skill.split("## Issues", 1)[1].split("## Worker models", 1)[0]
+        session = self.session.split("## Issues", 1)[1].split("## Report", 1)[0]
+        return skill, session
 
     @verifies("scenario.main-session.record-issue")
-    def test_rendered_issue_workflow_distinguishes_inspection_from_writes(self):
-        issues = self.skill.split("## Issues", 1)[1].split("## Worker models", 1)[0]
-        for instruction in (
-            "neither records Issues automatically",
-            "`concorde issues list` (open and closed Issues) and `show <id>` first",
-            "Run every Issue write (`report`, `close`, `reopen`) in a task worktree",
-            "through the session working that task",
-            "concorde issues report --file <report.json> --task <task>",
-            "keep its receipt and revision",
-            "`--task` records provenance only: it does not choose the worktree",
-            "`issue_id` and current `expected_revision` from `show`",
-            "Repeating a creation command creates another Issue",
-            "Reopen a closed match before appending",
-            "`close` and `reopen` take no `--task`",
+    def test_sessions_inspect_before_they_record_through_the_server(self):
+        skill, session = self.issues()
+        for text, instruction in (
+            (skill, "Read `issue_list` and `issue_show` first"),
+            (skill, "reopen a closed match before appending"),
+            (skill, "Repeating a creation creates another Issue"),
+            (skill, "`description`, `impact`, `basis` and `evidence`"),
+            (skill, "its Bash sandbox cannot write the primary worktree"),
+            (session, "read and write them only with the project MCP server's"),
+            (session, "append to the Issue that already tracks it"),
+            (session, "carries its `tier`"),
         ):
             with self.subTest(instruction=instruction):
-                self.assertIn(instruction, issues)
+                self.assertIn(instruction, text)
 
-    @verifies("scenario.main-session.unmerged-issue")
-    def test_rendered_handoff_survives_task_worktree_removal(self):
-        issues = self.skill.split("## Issues", 1)[1].split("## Worker models", 1)[0]
-        for instruction in (
-            "Before ending a task without merging",
-            "record it through the command in a subsequent task",
-            "leave a handoff in the current task's decision log",
-            "Issue identity, branch and commit when available",
-            "remaining work and durable locations of the report and evidence",
-            "Preserve needed uncommitted material before removal",
-            "Closing retains the branch and decision log",
-            "forced removal can discard uncommitted material",
-            "a log entry alone does not publish them",
+    @verifies("scenario.main-session.issue-tiers")
+    def test_the_tier_decides_who_fixes_an_issue(self):
+        skill, session = self.issues()
+        for text, instruction in (
+            (skill, "a review Operation only reports"),
+            (skill, "it fixes `obvious-fix` and `preferred-fix` Issues itself"),
+            (skill, "escalates a `decision-needed` Issue, naming it by its identity"),
+            (skill, "it blocks nothing"),
+            (session, "fix an `obvious-fix` Issue yourself"),
+            (session, "say in your report which fix you chose and why"),
+            (session, "never settle a `decision-needed` Issue: escalate it"),
         ):
             with self.subTest(instruction=instruction):
-                self.assertIn(instruction, issues)
+                self.assertIn(instruction, text)
 
-    @verifies("scenario.main-session.issue-conflict")
-    def test_rendered_conflict_guidance_requires_both_judgment_and_store_check(self):
-        issues = self.skill.split("## Issues", 1)[1].split("## Worker models", 1)[0]
-        for instruction in (
-            "Git conflicts in Issue records are resolved in the task worktree",
-            "preserve accepted reports unchanged",
-            "document the decision about competing dispositions, retaining their evidence",
-            "never to concatenate incompatible closes or invent reopenings",
-            (
-                "run `concorde issues check` explicitly on the resolved records before "
-                "`task-validation` and `delivery`"
-            ),
-            "a passing store check does not prove the closure is justified",
-        ):
-            with self.subTest(instruction=instruction):
-                self.assertIn(instruction, issues)
+    @verifies("scenario.main-session.solve-issue")
+    def test_a_fixed_issue_closes_with_its_tasks_merge(self):
+        skill, session = self.issues()
+        self.assertIn("Solve an Issue like any other work", skill)
+        self.assertIn("--resolves <issue>[,<issue>…]", skill)
+        self.assertIn("`task_resolve`", skill)
+        self.assertIn(
+            "the merge closes each Issue the task resolves as `resolved`", skill
+        )
+        self.assertIn("Starting, fixing or delivering the task changes no Issue", skill)
+        self.assertIn("Never close an Issue you fixed", session)
+        self.assertIn("concorde task resolve <task> <issue>…", session)
+
+    @verifies("scenario.main-session.issue-system-failure")
+    def test_failures_of_the_issue_system_are_never_issues(self):
+        skill, session = self.issues()
+        self.assertIn("Never record a failure of the Issue system itself", skill)
+        self.assertIn(
+            "its error chain in the task's decision log and escalation", skill
+        )
+        self.assertIn(
+            "is a failure of the Issue system itself: never report it as an Issue",
+            session,
+        )
 
     @verifies("scenario.main-session.worker-configuration-required")
     def test_workers_run_only_on_the_models_the_configuration_enables(self):
