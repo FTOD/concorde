@@ -7,7 +7,7 @@ project, outliving the conversation, worker or task that found it: Issue records
 worktree keeps under `.concorde/issues/`, the store that alone writes them and commits each write on
 the primary branch, dispositions closing or reopening one, and the bookkeeping command, which the
 [project MCP server](../glossary.json#concept.project-mcp-server) also presents, that sessions
-record, close, reopen, list, show and check them with. Every report carries a **tier** saying who
+record, close, reopen, list, show and check them with. Every report carries a **[tier](../glossary.json#concept.issue-tier)** saying who
 may handle the problem. Recording never stops the reporter, starts a repair or changes the outcome
 of a task, and it grants nobody read/write access; Issues neither solves problems nor decides who
 may close one — a task fixes an [Issue](../glossary.json#concept.issue) with ordinary work on its
@@ -39,6 +39,8 @@ repository, and carry the whole [error chain](../glossary.json#concept.error-cha
 The observation's origin is distinct from the provenance of the command that records it here.
 
 ### Tiers
+
+<a id="concept.issue-tier"></a>
 
 A report's **tier** says whether AI may handle the problem without the level above it, the main
 agent and then the developer. There are four, weakest first:

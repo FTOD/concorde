@@ -1,6 +1,7 @@
 """A stand-in ``claude`` for Spec panel tests that picks one plan per reviewer seat and chair attempt.
 
-The task goal carries ``FAKE-PLANS: <json>``, an object whose keys are ``"<role> <module> <n>"``,
+The task goal carries ``FAKE-PLANS: <json>``, or, for an unbound run without a goal, the
+environment variable ``FAKE_REVIEW_PLANS`` does, an object whose keys are ``"<role> <module> <n>"``,
 where ``n`` is the reviewer's seat or the chair's attempt, for example ``"reviewer module.a 2"`` or
 ``"chair module.a 1"``, and whose values are plans in the form of the worker tests' fake
 ``claude``. The role, Module and number are read from the Spec panel brief; the chosen plan is
@@ -9,6 +10,7 @@ absolute path taken from the brief.
 """
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -19,7 +21,7 @@ FAKE = Path(__file__).resolve().parents[1] / "harness/workers/fake_claude.py"
 
 def main() -> int:
     prompt = sys.stdin.read()
-    plans = {}
+    plans = json.loads(os.environ.get("FAKE_REVIEW_PLANS", "{}"))
     match = re.search(r"FAKE-PLANS: (.*)", prompt)
     if match:
         plans = json.loads(match.group(1))

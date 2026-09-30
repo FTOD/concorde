@@ -5,40 +5,65 @@ requirement belongs to the [Module](../../glossary.json#concept.module) as a who
 
 ## Scope
 
-### req.spec-review.never-edits — Review changes no file but its memory
+### req.spec-review.never-edits — Review changes no file of the reviewed worktree
 
-Spec review SHALL NOT create, change or delete any file of the worktree it reviews other than the reviewed Modules' review memories and its own run's entries in the [run store](../../glossary.json#concept.run-store).
+Spec review SHALL NOT create, change or delete any file of the worktree it reviews other than its own run's entries in the [run store](../../glossary.json#concept.run-store).
 
-Only a Spec review in a bound workspace writes review memories; an
+Its [Issue](../../glossary.json#concept.issue) reports are written by the Issue store in the
+primary worktree, whichever worktree the run reviews. An
 [unbound run](../../glossary.json#concept.unbound-run) reviews its
 [unbound checkout](../../glossary.json#concept.unbound-checkout) and keeps its run store in the
 worktree it started in.
 
-### req.spec-review.memory — A repeated review builds on the memory
-
-A Spec review in a bound workspace SHALL merge its findings into each reviewed Module's [review memory](../../glossary.json#concept.review-memory), keeping open every open earlier finding it neither updates nor resolves.
-
-An earlier finding that is already resolved keeps its resolution and its reason.
-
 ### req.spec-review.review-spec-grant — Reviewers read under a review-spec grant
 
-Every reviewer, checker and chair SHALL run under the `review-spec` grant of exactly one
-reviewed Module, computed from the Specs of the worktree the run works on.
+Every reviewer and checker SHALL run under the `review-spec` grant of exactly one reviewed Module,
+computed from the Specs of the worktree the run works on.
+
+### req.spec-review.architect-grant — Architects read under a review-architecture grant
+
+Every architect SHALL run under the `review-architecture` grant of exactly one reviewed Module,
+computed from the Specs of the worktree the run works on.
+
+An architect therefore reads every Module's Specs and the names of the project's code, never its
+contents.
 
 ### req.spec-review.own-documents — Only the Module's own documents can block
 
-A finding about a document the reviewed Module does not own SHALL NOT be `blocking`.
+A finding about a document the reviewed Module does not own SHALL NOT have a blocking
+[tier](../../glossary.json#concept.issue-tier).
 
-## Findings and verdict
+## Findings, Issues and verdict
 
 ### req.spec-review.one-pass — Every blocking finding in one pass
 
-The Reviewer brief SHALL instruct a reviewer to report every blocking finding it can establish in
-one run rather than stopping at the first.
+The Reviewer brief SHALL instruct every worker that judges a Module to report every blocking finding
+it can establish in one run rather than stopping at the first.
 
-### req.spec-review.unchanged-not-reviewed — Unchanged Specs are not reviewed again
+### req.spec-review.earlier-issues — Workers receive the earlier Issues
 
-A Spec review SHALL NOT launch a reviewer for a Module whose [context identity](../../glossary.json#concept.context-identity) is the one its review memory records as last reviewed, unless forced.
+Every worker of a Spec review or a Spec panel SHALL receive the reviewed Module's earlier Issues before it judges.
+
+The [definition](operation.md#earlier-issues) says which Issues those are.
+
+### req.spec-review.reports-issues — Every finding that stands becomes an Issue
+
+The Operation SHALL report every finding its checker did not dispute, or its chair merged into the panel report, as an [Issue report](../../glossary.json#concept.issue-report) through the Issue store.
+
+A worker never writes an Issue; the Operation reports in bound and unbound runs alike.
+
+### req.spec-review.never-disposes — Review closes no Issue
+
+Spec review SHALL NOT close or reopen an Issue.
+
+The earlier Issues a review finds resolved are listed in its result for the task to close.
+
+### req.spec-review.issue-failure-not-issue — A failing Issue system is not an Issue
+
+Spec review SHALL NOT report a refusal of the Issue store as an Issue.
+
+The refusal makes the Module's review `incomplete` and travels in the result's
+[error chain](../../glossary.json#concept.error-chain).
 
 ### req.spec-review.host-verdict — The Operation derives the verdict
 
@@ -48,29 +73,28 @@ payload contract, never taken from a worker's statement.
 
 ### req.spec-review.no-structural-substitute — Structural errors stop a Module's review
 
-The Operation SHALL NOT launch a reviewer for a Module whose Specs Spec core reports a structural
+The Operation SHALL NOT launch a worker for a Module whose Specs Spec core reports a structural
 error for.
 
 ### req.spec-review.bound-verdict — The verdict names what was read
 
-Every reviewed Module's outcome SHALL carry the context identity of the grant its reviewer read
+Every reviewed Module's outcome SHALL carry the [context identity](../../glossary.json#concept.context-identity) of the grant its reviewers read
 under.
 
 ### req.spec-review.claims-stay-claims — Worker claims stay claims
 
-The [run result](../../glossary.json#concept.run-result) SHALL keep reviewer findings and checker
-statuses apart from the evidence the Operation produced itself.
+The [run result](../../glossary.json#concept.run-result) SHALL keep worker findings, tiers,
+checker statuses and resolutions apart from the evidence the Operation produced itself.
 
 ## Panel
 
-### req.spec-review.panel-accounted — A panel report accounts for every reviewer finding
+### req.spec-review.panel-accounted — A panel report accounts for every worker finding
 
-A Spec panel SHALL NOT complete a Module whose
-panel report does not account for every reviewer
-finding exactly once or names a label no reviewer finding has.
+A Spec panel SHALL NOT complete a Module whose panel report does not account for every reviewer and
+architect finding exactly once or names a label no such finding has.
 
 The [accounting](panel.md#the-panel-graph) rule says how a report accounts for a finding.
 
-### req.spec-review.panel-independent — Panel reviewers review independently
+### req.spec-review.panel-independent — Panel workers review independently
 
-A panel reviewer's brief SHALL NOT contain another reviewer's findings.
+A panel reviewer's or architect's brief SHALL NOT contain another worker's findings.

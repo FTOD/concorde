@@ -35,6 +35,16 @@
         ]
       },
       {
+        "target": "module.issues",
+        "meaning": "#uses-issues",
+        "relies_on": [
+          "concept.issue",
+          "concept.issue-report",
+          "concept.issue-revision",
+          "concept.issue-tier"
+        ]
+      },
+      {
         "target": "module.operations",
         "meaning": "#uses-operations",
         "relies_on": [
@@ -132,6 +142,12 @@
       "source": "realization.spec-review.operation",
       "verb": "derives",
       "target": "concept.review-verdict"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec-review.operation",
+      "verb": "reports findings as Issues through",
+      "target": "module.issues"
     },
     {
       "type": "relates",

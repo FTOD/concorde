@@ -168,6 +168,16 @@
           ]
         },
         {
+          "target": "module.issues",
+          "meaning": "#uses-issues",
+          "relies_on": [
+            "concept.issue",
+            "concept.issue-report",
+            "concept.issue-revision",
+            "concept.issue-tier"
+          ]
+        },
+        {
           "target": "module.operations",
           "meaning": "#uses-operations",
           "relies_on": [

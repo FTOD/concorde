@@ -23,6 +23,14 @@
         "reviewer3": {
           "model": "gpt-6.1-sol",
           "reasoning": "medium"
+        },
+        "architect1": {
+          "model": "gpt-6-astra",
+          "reasoning": "high"
+        },
+        "architect2": {
+          "model": "gpt-6.1-sol",
+          "reasoning": "high"
         }
       }
     },
