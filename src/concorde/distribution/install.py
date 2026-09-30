@@ -474,13 +474,15 @@ def install(
     except DevelopError as error:
         raise InstallError(error.code, str(error)) from error
     # Replacing the Framework copy under a running Operation or execution command would change
-    # the code it runs halfway through.
+    # the code it runs halfway through. This is checked once and holds no lock: a run started
+    # after it is the developer's to avoid, as Distribution's Spec says.
     running = active_runs(project)
     if running:
         raise InstallError(
             "concorde_busy",
             f"Concorde is still running in {project}: {'; '.join(running)}. Wait until "
-            "these end, or stop them, before installing or updating Concorde",
+            "these end, or stop them, before installing or updating Concorde, and start no "
+            "concorde command in the project until the install or update ends",
         )
     descriptor = json.loads((package / "concorde.json").read_text())
     requirement = _python_requirement(descriptor, package)
@@ -936,7 +938,12 @@ def _python_dependencies(project: Path, package: Path, uv: str, run: Callable) -
 def main(argv) -> int:
     import argparse
 
-    parser = argparse.ArgumentParser(prog="install-concorde")
+    parser = argparse.ArgumentParser(
+        prog="install-concorde",
+        description="Install or update Concorde in a project. Start no concorde command, in any "
+        "worktree of the project, until the install ends: it is refused only for runs already "
+        "running when it checks, and a command started meanwhile may load partly replaced code.",
+    )
     parser.add_argument("project")
     parser.add_argument(
         "--without-d2",

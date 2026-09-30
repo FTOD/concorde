@@ -311,7 +311,13 @@ def update_main(words: list[str]) -> int:
     project was installed from (or ``--from``) in update mode."""
     import subprocess
 
-    parser = argparse.ArgumentParser(prog="concorde update")
+    parser = argparse.ArgumentParser(
+        prog="concorde update",
+        description="Update the installed Concorde from the checkout its receipt names. Start no "
+        "other concorde command, in any worktree of the project, until the update ends: it is "
+        "refused only for runs already running when it checks, and a command started meanwhile "
+        "may load partly replaced code.",
+    )
     parser.add_argument("--from", dest="source")
     parser.add_argument("--project-root", default=".")
     arguments = parser.parse_args(words)

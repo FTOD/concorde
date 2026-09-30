@@ -96,13 +96,15 @@ The refusal is `mcp_config_invalid`.
 
 The installed `concorde` command SHALL run Concorde only with the interpreter of its own environment under `.concorde/framework/python/`, ignoring the caller's Python path settings and user site-packages.
 
-### req.distribution.idle-install — Concorde is never replaced while it runs
+### req.distribution.idle-install — An install is refused while a run holds its run lock
 
 The installer SHALL refuse, before writing anything, to install into a project in which the runner
-process of an [Operation](../glossary.json#concept.operation) or
-[execution command](../glossary.json#concept.execution-command) run is still running.
+of an [Operation](../glossary.json#concept.operation) or
+[execution command](../glossary.json#concept.execution-command) run holds its
+[run lock](../glossary.json#concept.run-lock) when the installer checks.
 
-The update runs the installer, so the same holds for `concorde update`.
+The update runs the installer, so the same holds for `concorde update`. The check is made once,
+before the first write; the installer does not keep a run from starting after it.
 
 ### req.distribution.busy-named — A busy refusal names what runs
 

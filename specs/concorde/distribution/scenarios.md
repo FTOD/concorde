@@ -187,7 +187,7 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - THEN the result is `success` and reports `CONCORDE-UPDATE-002`
 - AND `.concorde/update.json` is removed
 
-### scenario.distribution.install-busy — Concorde is not replaced while it runs
+### scenario.distribution.install-busy — An install is refused while a run holds its run lock
 
 - GIVEN an installed project in which the runner of an [Operation](../glossary.json#concept.operation) or [execution command](../glossary.json#concept.execution-command) run still holds its [run lock](../glossary.json#concept.run-lock)
 - AND its [run store](../glossary.json#concept.run-store) also holds the [progress file](../glossary.json#concept.progress-file) of the running Operation's worker and a run whose run lock nobody holds
@@ -196,7 +196,7 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - BUT neither the worker's progress file nor the run whose run lock nobody holds is named, whatever process its recorded identifier names
 - AND nothing in the project changes
 
-### scenario.distribution.install-after-runs-end — Concorde is replaced once nothing runs
+### scenario.distribution.install-after-runs-end — Concorde is replaced once no run holds its run lock
 
 - GIVEN an installed project whose run store holds a finished run, a run whose run lock nobody holds although its recorded process identifier names a live process, and the progress file of an Operation's worker
 - WHEN the developer installs Concorde again
