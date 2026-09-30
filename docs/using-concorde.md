@@ -757,9 +757,10 @@ The decision log each task commits stays in Git whatever is removed.
 
 ## What workers can and cannot do
 
-Before a worker starts, the host computes its grant from the task worktree's Specs for one of seven
-task types: `understand`, `specify`, `implement`, `test`, `review-spec`, `review-code` and
-`code-to-spec`. You can see any grant yourself:
+Before a worker starts, the host computes its grant from the task worktree's Specs for one of eight
+task types: `understand`, `specify`, `implement`, `test`, `review-spec`, `review-code`,
+`code-to-spec` and `review-architecture`, which reads every Module's Specs but no code. You can see
+any grant yourself:
 
 ```bash
 concorde grant --modules module.payments --type implement

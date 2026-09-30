@@ -211,3 +211,24 @@ bound ones, and the file appeared only when some later task wrote it. Now:
 To migrate, for every realization with a `pending` field, either create each listed file and keep
 its entry, or delete the entry, then delete the field. Metadata that still carries `pending` is
 invalid.
+
+## Version 16.1
+
+Version 16.1 states how a Spec is evaluated and adds a task type that judges the architecture
+between Modules. The criteria a Spec was judged by lived only in the instructions of one tool's
+reviewers, so two tools could judge the same Spec by different standards, and nothing judged the
+division into Modules as a whole: every reviewer saw one Module and the Specs its declarations
+select. Now:
+
+- [Evaluating a Spec](evaluation.md) is the third part of the Spec writing guidelines. It states
+  the criteria of Module quality and of architecture quality between Modules, and when a problem is
+  blocking or advisory. Evaluation is a judgment and not deterministic; it adds no check.
+- The read set `ProjectSpecification` holds both members of every document any Module owns and the
+  whole glossary, the same for every Module.
+- The task type `review-architecture` reads `ProjectSpecification`, the bound Modules'
+  `SpecContext` and external context, and the names of `ProjectImplementation`, and writes
+  nothing. It is the only task type that reads other Modules' Specs beyond what its bound Modules'
+  declarations select, and it never reads code contents.
+
+Every specification valid under 16.0 stays valid; nothing needs to change. A harness that does not
+offer the new task type loses nothing it had.

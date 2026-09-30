@@ -18,9 +18,10 @@ New here? Start with **[Using Concorde](using-concorde.md)**.
 1. **The Specs divide the responsibility.** Every Module states its purpose, its words, how it is
    used, and how it is designed: how it is built, how it works with other Modules and which files
    realize it.
-2. **The division derives the harness.** A task binds some Modules and has one of seven task types:
-   `understand`, `specify`, `implement`, `test`, `review-spec`, `review-code`, and `code-to-spec`
-   for describing code written before its Specs. From those alone
+2. **The division derives the harness.** A task binds some Modules and has one of eight task types:
+   `understand`, `specify`, `implement`, `test`, `review-spec`, `review-code`, `code-to-spec` for
+   describing code written before its Specs, and `review-architecture` for judging how the Modules
+   divide the project from every Module's Specs. From those alone
    Concorde computes the worker's context, the Specs, the pinned documentation and source of the
    external dependencies they include, the implementation files and tools it needs, and its grant,
    every path it may know by name, read or write. Everything else is denied.

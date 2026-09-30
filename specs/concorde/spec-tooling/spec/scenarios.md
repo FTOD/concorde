@@ -507,6 +507,17 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 - AND the documents A selects from other Modules as `ro`
 - BUT no implementation path as `rw`
 
+### scenario.spec.grant-review-architecture — An architecture review reads every Module's Specs and no code
+
+- GIVEN Module A that binds `src/a/`, uses Module B and includes pinned external material under `references/lib/`
+- AND Module D that binds `src/shared.py` and that nothing A declares selects
+- WHEN a grant for task type `review-architecture` and Module A is computed
+- THEN both members of every document of A, B and D and the glossary file are listed as `ro`
+- AND every file any Module binds, such as `src/a/one.py`, `src/bmod/b.py` and `src/shared.py`, is listed as `names`
+- AND `references/lib/` is listed as `ro`
+- AND its context identity changes when a byte of a document of D changes, while an `understand` grant's does not
+- BUT no path is `rw`, and no implementation file is `ro`
+
 ### scenario.spec.grant-multi-module — Several Modules receive the union at the highest level
 
 - GIVEN Module A that uses Module B without `relies_on`

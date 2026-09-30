@@ -1597,6 +1597,7 @@ class DocumentUnitRepository:
             self.spec_scope(target),
             self.implementation_scope(target),
             self.project_implementation(),
+            self.project_specification(),
         )
 
     def project_implementation(self) -> tuple[str, ...]:
@@ -1609,6 +1610,13 @@ class DocumentUnitRepository:
             for external in self.external_context(target):
                 paths[external.path] = None
         return tuple(paths)
+
+    def project_specification(self) -> tuple[str, ...]:
+        """ProjectSpecification: both members of every Module's documents, and the glossary."""
+        paths = {
+            path for identity in self.modules for path in self.spec_scope(identity)
+        }
+        return tuple(sorted(paths))
 
     def missing_entries(self, module: ModuleRef) -> tuple[str, ...]:
         """Entries whose file or directory does not exist yet."""

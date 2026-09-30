@@ -26,8 +26,8 @@ knows nothing of tasks. `task open` binds each task worktree as a workspace
 (`.concorde/workspace.json`), and every run started in that worktree reads the binding instead of
 naming the task. Workers are headless `claude -p` or `pi -p` processes launched by an Operation for
 one bounded job of one task type (understand, specify, implement, test, review-spec, review-code,
-code-to-spec) under a grant computed from the workspace's Specs. Workers never touch Git, never run
-Operations and never start agents; their settings deny everything outside the grant. Deterministic
+code-to-spec, review-architecture) under a grant computed from the workspace's Specs. Workers never
+touch Git, never run Operations and never start agents; their settings deny everything outside the grant. Deterministic
 steps (`task-validation`, `delivery`, `scaffold`) are execution commands, not Operations.
 
 Developing this checkout itself is direct developer-authorized maintenance, done in tasks:

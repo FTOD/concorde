@@ -268,7 +268,8 @@ path.
 
 The [context identity](../../glossary.json#concept.context-identity) SHALL change whenever a byte of
 a selected document member, a selected glossary entry, a selecting declaration, a document's owner
-or pinned external material changes.
+or pinned external material changes, and, for a `review-architecture` grant, whenever a byte of any
+file of ProjectSpecification changes.
 
 It covers no implementation file contents, so a worker's writes to implementation files never
 change it. A task that writes Specs changes it with its own writes to the Module's documents or

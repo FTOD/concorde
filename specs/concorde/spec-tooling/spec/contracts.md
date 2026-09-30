@@ -322,19 +322,20 @@ the glossary file. `glossary` is the project glossary's path, or `null` when no 
 one, so that the [write audit](../../glossary.json#concept.write-audit) can hold a change of it to
 the bound Modules' entries.
 
-`task_type` is one of `understand`, `specify`, `implement`, `test`, `review-spec`, `review-code`
-and `code-to-spec`. `modules` is sorted and without duplicates. Each entry's `level` follows the
+`task_type` is one of `understand`, `specify`, `implement`, `test`, `review-spec`, `review-code`,
+`code-to-spec` and `review-architecture`. `modules` is sorted and without duplicates. Each entry's `level` follows the
 table below, where a dash means the set contributes nothing:
 
-| Task type | Spec context | Implementation context | Implementation scope | Spec scope | External context | ProjectImplementation |
-| --- | --- | --- | --- | --- | --- | --- |
-| `understand` | `ro` | `names` | — | — | `ro` | — |
-| `specify` | `ro` | `names` | — | `rw` | `ro` | — |
-| `implement` | `ro` | `names` | `rw` | — | `ro` | `ro` |
-| `test` | `ro` | `names` | `ro` | — | `ro` | `ro` |
-| `review-spec` | `ro` | `names` | — | — | `ro` | — |
-| `review-code` | `ro` | `names` | `ro` | — | `ro` | `ro` |
-| `code-to-spec` | `ro` | `names` | `ro` | `rw` | `ro` | `ro` |
+| Task type | Spec context | Implementation context | Implementation scope | Spec scope | External context | ProjectImplementation | ProjectSpecification |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `understand` | `ro` | `names` | — | — | `ro` | — | — |
+| `specify` | `ro` | `names` | — | `rw` | `ro` | — | — |
+| `implement` | `ro` | `names` | `rw` | — | `ro` | `ro` | — |
+| `test` | `ro` | `names` | `ro` | — | `ro` | `ro` | — |
+| `review-spec` | `ro` | `names` | — | — | `ro` | — | — |
+| `review-code` | `ro` | `names` | `ro` | — | `ro` | `ro` | — |
+| `code-to-spec` | `ro` | `names` | `ro` | `rw` | `ro` | `ro` | — |
+| `review-architecture` | `ro` | `names` | — | — | `ro` | `names` | `ro` |
 
 The sets contribute these paths:
 
@@ -350,6 +351,9 @@ The sets contribute these paths:
 - ProjectImplementation: the files every registered Module's realizations bind and their external
   inclusions, so a task that reads code reads the code it uses and the
   code that uses it. Only the bound Modules' own scopes are ever `rw`.
+- ProjectSpecification: both members of every document of every registered Module and the project
+  glossary, as exact paths, so that a `review-architecture` task reads every Module's Specs and
+  every term; the glossary is then listed `ro`.
 
 The computation runs in this order. Over every bound Module and every set, a path receives the
 highest level assigned to it, ordered `names`, `ro`, `rw`. If an `rw` entry would then cover a file
@@ -365,7 +369,7 @@ below; its message names the offending value, for `unknown_module` also every re
 | Code | When |
 | --- | --- |
 | `invalid_input` | the Module list is empty or repeats a Module |
-| `invalid_task_type` | the task type is none of the seven |
+| `invalid_task_type` | the task type is none of the eight |
 | `unknown_module` | a Module identity is not registered |
 | `shared_file` | an `rw` entry covers a file that a Module outside `modules` also binds; the message names each such file and Module |
 

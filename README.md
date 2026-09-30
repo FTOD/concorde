@@ -96,7 +96,8 @@ unchecked.
 
 **Workers: one bounded step, inside a harness.** For a bounded step, a task runs an Operation: the
 Operation's deterministic steps launch a headless `claude -p` or `pi -p` worker for one task type
-(`understand`, `specify`, `implement`, `test`, `review-spec`, `review-code` or `code-to-spec`). Its
+(`understand`, `specify`, `implement`, `test`, `review-spec`, `review-code`, `code-to-spec` or
+`review-architecture`). Its
 **harness** comes from the Specs. From the task's Modules and the task type alone, Concorde
 computes the worker's **context**, the Specs, implementation files and tools it needs, and its
 **grant**, every path it may know by name, read or write, and compiles the grant into the worker's

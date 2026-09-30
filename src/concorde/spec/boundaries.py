@@ -1,10 +1,10 @@
 """Boundary-set records of Spec Protocol 16 (``protocol/boundaries.md``).
 
 The repository computes every set from declarations alone (``SpecRepository.boundary_sets``,
-``spec_context``, ``implementation_context``, ``external_context``, ``spec_scope`` and
-``implementation_scope``) and the impact indexes that answer the reverse question, whom a write
-concerns (``selected_by``, ``referenced_by``, ``implemented_by``, ``shared_files`` and
-``impact``). This module holds the immutable records those queries return and the path helper
+``spec_context``, ``implementation_context``, ``external_context``, ``spec_scope``,
+``implementation_scope``, ``project_implementation`` and ``project_specification``) and the
+impact indexes that answer the reverse question, whom a write concerns (``selected_by``,
+``referenced_by``, ``implemented_by``, ``shared_files`` and ``impact``). This module holds the immutable records those queries return and the path helper
 that turns a set of entries into permission roots.
 """
 
@@ -46,6 +46,9 @@ class BoundarySets:
     # The whole project's implementation, the same for every Module: every realization entry and
     # every piece of external material, so that a code task can read and run the code it uses.
     project_implementation: tuple[str, ...] = ()
+    # The whole project's Specs, the same for every Module: both members of every Module's
+    # documents and the glossary, so that an architecture review reads every Module at once.
+    project_specification: tuple[str, ...] = ()
 
     def writable(self, path: str) -> bool:
         """Whether a path lies in one of the two write sets."""

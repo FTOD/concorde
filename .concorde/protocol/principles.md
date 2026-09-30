@@ -1,6 +1,6 @@
 # Spec Protocol principles
 
-Concorde Spec Protocol 16.0.0 defines how a project describes itself as a set of Modules, what each
+Concorde Spec Protocol 16.1.0 defines how a project describes itself as a set of Modules, what each
 Module promises, and how the Modules and their files relate. The Protocol applies to project Specs,
 including those of software implementing the Protocol. The standard's own chapters need not
 describe themselves as Modules.
@@ -189,8 +189,10 @@ substitute for one another:
   checked views and the context reconciliation all hold. This is machine-decidable; see
   [Checks](checks.md). It is what makes boundaries computable.
 - **Semantic sufficiency.** The readable content explains the responsibility, its correct use, its
-  design and its obligations to the intended reader. This is what makes the specification
-  understandable, and it is not machine-decidable.
+  design and its obligations to the intended reader, and the Modules together form an architecture
+  a reader can understand and a task can rely on. This is what makes the specification
+  understandable, and it is not machine-decidable: it is judged, against the criteria of
+  [Evaluating a Spec](evaluation.md).
 - **Implementation conformance.** The realization satisfies the requirements and scenarios. This is
   established by evidence, never by structure.
 
@@ -1011,9 +1013,10 @@ checkout get the same answer.
 | `SpecScope(M)` | both members of every document M owns, including the entry and its `module` block, and the glossary entries M owns | `owns`, glossary `owner` |
 | `ImplementationScope(M)` | every file covered by M's realization entries | `binds` |
 | `ProjectImplementation` | every file any Module's realizations bind and all external material any Module includes; the same for every Module | `binds`, `includes` of kind `external` |
+| `ProjectSpecification` | both members of every document any Module owns, and the whole glossary; the same for every Module | `owns`, the glossary |
 
-`SpecContext`, `ExternalContext`, `ImplementationContext` and `ProjectImplementation` are **read**
-sets, `SpecScope` and `ImplementationScope` are **write** sets. They are deliberately different:
+`SpecContext`, `ExternalContext`, `ImplementationContext`, `ProjectImplementation` and
+`ProjectSpecification` are **read** sets, `SpecScope` and `ImplementationScope` are **write** sets. They are deliberately different:
 M may read a provider's documents because it `uses` the provider, but those documents stay in the
 provider's `SpecScope`, never in M's. Reading never widens what may be written.
 
@@ -1122,7 +1125,8 @@ A harness MUST keep every boundary within these limits:
    `ImplementationScope` of a Module the task is bound to.
 2. **Write implies read.** Anything writable is also readable.
 3. **Read only within read sets.** Specification contents come from the `SpecContext` of the bound
-   Modules; implementation contents from their `ImplementationScope` or, for the task types that
+   Modules or, for the task type that assigns it, from `ProjectSpecification`; implementation
+   contents from their `ImplementationScope` or, for the task types that
    assign it, from `ProjectImplementation`; external material from their `ExternalContext` or
    `ProjectImplementation`. A provider's code may be read and run, never changed, and it never
    replaces the provider's Specs as the statement of what the provider promises.
@@ -1134,15 +1138,16 @@ A harness MUST keep every boundary within these limits:
 Every task has exactly one task type. The type assigns each boundary set of the bound Modules one
 access level:
 
-| Task type | `SpecContext` | `ImplementationContext` | `ImplementationScope` | `SpecScope` | `ExternalContext` | `ProjectImplementation` |
-| --- | --- | --- | --- | --- | --- | --- |
-| `understand` | read | names | none | none | read | none |
-| `specify` | read | names | none | write | read | none |
-| `implement` | read | names | write | none | read | read |
-| `test` | read | names | read | none | read | read |
-| `review-spec` | read | names | none | none | read | none |
-| `review-code` | read | names | read | none | read | read |
-| `code-to-spec` | read | names | read | write | read | read |
+| Task type | `SpecContext` | `ImplementationContext` | `ImplementationScope` | `SpecScope` | `ExternalContext` | `ProjectImplementation` | `ProjectSpecification` |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `understand` | read | names | none | none | read | none | none |
+| `specify` | read | names | none | write | read | none | none |
+| `implement` | read | names | write | none | read | read | none |
+| `test` | read | names | read | none | read | read | none |
+| `review-spec` | read | names | none | none | read | none | none |
+| `review-code` | read | names | read | none | read | read | none |
+| `code-to-spec` | read | names | read | write | read | read | none |
+| `review-architecture` | read | names | none | none | read | names | read |
 
 The task types that read code, `implement`, `test`, `review-code` and `code-to-spec`, read the
 whole `ProjectImplementation`: code is read and run together with the code it uses and the code
@@ -1168,11 +1173,30 @@ types that work on Specs alone never see code contents.
   settle, such as a probable defect or an unexplained special case, MUST NOT be written as a
   promise: the documents state it as an honest unknown and the task reports it as an open question
   for a human to decide.
+- **`review-architecture`** judges the architecture between Modules, how the project is divided
+  into Modules and how they depend on each other, against
+  [Architecture quality](evaluation.md#architecture-quality). It writes nothing. It is bound to the
+  Modules whose place in the architecture it is asked about, and judges them first; since what it
+  reads does not depend on what it is bound to, a task that judges the whole project may be bound
+  to the root Module alone.
+
+`review-architecture` is the only task type that reads `ProjectSpecification`. Every other task
+type reads the Specs its bound Modules' declarations select, which keeps a Module's context small
+and self-sufficient. Architecture is a property between Modules, including Modules that declare no
+relation to each other: an overlap of responsibilities or a promise two Modules state differently
+is visible only when every Module's Specs are read together. The task sees the names of the whole
+project's files, which show where each Module's realization lies, and no code contents, because
+architecture is judged from what the Modules promise and how they rely on each other, not from how
+their code happens to work. A [context identity](context.md#context-identity) of such a task covers
+every member of `ProjectSpecification`, so that a change to any Module's Specs changes what it
+judged.
 
 A `none` in the `SpecScope` column does not hide the Module's own documents: they are in
-`SpecContext`, which every type reads. Each row stays inside rules 1 to 4, and every level can be
-computed exactly from declarations. A harness MUST NOT give a task a level its type does not
-assign; it MAY give less, for example by withholding external material a task does not need.
+`SpecContext`, which every type reads. `ProjectSpecification` holds every Module's documents and
+the whole glossary, and so contains every `SpecContext`. Each row stays inside rules 1 to 4, and
+every level can be computed exactly from declarations. A harness MUST NOT give a task a level its
+type does not assign; it MAY give less, for example by withholding external material a task does
+not need.
 
 A scenario-scoped task is bound to the scenario's owner. A task bound to several Modules receives,
 for each bound Module, that Module's sets at the levels its type assigns. When a path falls into

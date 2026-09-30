@@ -26,7 +26,7 @@
       "id": "concept.boundary-set",
       "title": "Boundary set",
       "owner": "module.spec",
-      "definition": "One of the six sets the Protocol derives for a Module: its Spec context, external context, implementation context, Spec scope or implementation scope, or the project-wide ProjectImplementation shared by every Module.",
+      "definition": "One of the seven sets the Protocol derives for a Module: its Spec context, external context, implementation context, Spec scope or implementation scope, or the project-wide ProjectImplementation or ProjectSpecification shared by every Module.",
       "explanation": "specs/concorde/spec-tooling/spec/module.md#concept.boundary-set"
     },
     {
@@ -111,7 +111,7 @@
       "id": "concept.context-identity",
       "title": "Context identity",
       "owner": "module.spec",
-      "definition": "The digest of the selected Spec sources and pinned external material together with the declarations that selected them.",
+      "definition": "The digest of the selected Spec sources and pinned external material together with the declarations that selected them, and, for a task type that reads every Module's Specs, of all of them.",
       "explanation": "specs/concorde/spec-tooling/spec/module.md#concept.context-identity"
     },
     {
@@ -263,7 +263,7 @@
       "id": "concept.implementation-context",
       "title": "Implementation context",
       "owner": "module.concorde",
-      "definition": "The code side of a worker's context: the names of the bound Modules' implementation files and, when the task type grants it, the contents of the whole project's code, the Protocol's ProjectImplementation.",
+      "definition": "The code side of a worker's context: the names of the bound Modules' implementation files and, when the task type grants it, the whole project's code, the Protocol's ProjectImplementation, whose contents a task that reads code sees and whose names alone a review-architecture task sees.",
       "explanation": "specs/concorde/module.md#concept.implementation-context"
     },
     {
@@ -602,7 +602,7 @@
       "id": "concept.spec-context",
       "title": "Spec context",
       "owner": "module.concorde",
-      "definition": "The read-only documents the bound Modules' declarations select and the glossary entries of their terms: the Protocol's SpecContext of those Modules, which holds no external material.",
+      "definition": "The read-only documents the bound Modules' declarations select and the glossary entries of their terms: the Protocol's SpecContext of those Modules, which holds no external material and which a review-architecture task widens to every Module's documents and the whole glossary.",
       "explanation": "specs/concorde/module.md#concept.spec-context"
     },
     {
@@ -684,7 +684,7 @@
       "id": "concept.task-type",
       "title": "Task type",
       "owner": "module.concorde",
-      "definition": "One of the seven Protocol task types (understand, specify, implement, test, review-spec, review-code, code-to-spec) that fixes the access level of every boundary set a task receives.",
+      "definition": "One of the eight Protocol task types (understand, specify, implement, test, review-spec, review-code, code-to-spec, review-architecture) that fixes the access level of every boundary set a task receives.",
       "explanation": "specs/concorde/module.md#concept.task-type"
     },
     {

@@ -94,12 +94,14 @@ On the Claude Code backend:
 
 | Task type | `--tools` |
 | --- | --- |
-| `understand`, `review-spec`, `review-code`, `test` | `Read,Glob,Grep` |
+| `understand`, `review-spec`, `review-code`, `test`, `review-architecture` | `Read,Glob,Grep` |
 | `specify`, `code-to-spec` | `Read,Glob,Grep,Edit,Write` |
 | `implement` | `Read,Glob,Grep,Edit,Write,Bash` |
 
-A grant with no writable path, such as a survey's `code-to-spec` grant with the
-[Spec](../glossary.json#concept.spec) side withheld, gets the read-only set of the first row
+Every task type whose row in the Protocol's task-type table writes no set gets the read-only set of
+the first row, which is how `review-architecture`, reading every Module's Specs and writing nothing,
+gets the tools of `review-spec` on both backends. A grant with no writable path, such as a survey's
+`code-to-spec` grant with the [Spec](../glossary.json#concept.spec) side withheld, gets that set too
 whatever its task type. WebFetch, WebSearch, the agent tool and notebook editing are never listed. A
 `test` worker runs no command itself: its [Operation](../glossary.json#concept.operation) runs the
 [configured checks](../glossary.json#concept.configured-check) and gives it their results.

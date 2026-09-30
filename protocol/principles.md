@@ -1,6 +1,6 @@
 # Spec Protocol principles
 
-Concorde Spec Protocol 16.0.0 defines how a project describes itself as a set of Modules, what each
+Concorde Spec Protocol 16.1.0 defines how a project describes itself as a set of Modules, what each
 Module promises, and how the Modules and their files relate. The Protocol applies to project Specs,
 including those of software implementing the Protocol. The standard's own chapters need not
 describe themselves as Modules.
@@ -189,8 +189,10 @@ substitute for one another:
   checked views and the context reconciliation all hold. This is machine-decidable; see
   [Checks](checks.md). It is what makes boundaries computable.
 - **Semantic sufficiency.** The readable content explains the responsibility, its correct use, its
-  design and its obligations to the intended reader. This is what makes the specification
-  understandable, and it is not machine-decidable.
+  design and its obligations to the intended reader, and the Modules together form an architecture
+  a reader can understand and a task can rely on. This is what makes the specification
+  understandable, and it is not machine-decidable: it is judged, against the criteria of
+  [Evaluating a Spec](evaluation.md).
 - **Implementation conformance.** The realization satisfies the requirements and scenarios. This is
   established by evidence, never by structure.
 

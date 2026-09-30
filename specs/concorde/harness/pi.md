@@ -88,8 +88,9 @@ and aborts the run.
 
 | [Task type](../glossary.json#concept.task-type) | `--tools` |
 | --- | --- |
-| `understand`, `review-spec`, `review-code`, `test` | `read,grep,find,ls,concorde_result` |
+| `understand`, `review-spec`, `review-code`, `test`, `review-architecture` | `read,grep,find,ls,concorde_result` |
 | `specify`, `code-to-spec` | `read,grep,find,ls,edit,write,concorde_result` |
 | `implement` | `read,grep,find,ls,edit,write,bash,concorde_result` |
 
-A grant with no writable path gets the first row's set whatever its task type, as on Claude Code.
+A task type that writes no set, and a grant with no writable path whatever its task type, get the
+first row's set, as on Claude Code.
