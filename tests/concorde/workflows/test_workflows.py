@@ -458,9 +458,16 @@ class StepTests(unittest.TestCase):
     def test_answers_make_a_new_step_that_admits_the_asking_run(self):
         with self.starter(output=SURVEY_OUTPUT):
             _, first = run_step(self.space, self.request(mode="interactive"))
-        answers = [{"id": "d.db-helper", "question": "own Module?", "answer": "yes"}]
+        answers = [
+            {
+                "id": "d.db-helper",
+                "question": "own Module?",
+                "answer": "yes",
+                "answered_by": "main-agent",
+            }
+        ]
         followed = json.loads(json.dumps(SURVEY_OUTPUT))
-        followed["decisions"][0].update(chosen="yes", decided_by="developer")
+        followed["decisions"][0].update(chosen="yes", decided_by="main-agent")
         with self.starter(output=followed):
             _, second = run_step(
                 self.space, self.request(mode="interactive", answers=answers)
@@ -472,6 +479,11 @@ class StepTests(unittest.TestCase):
         self.assertEqual(self.space.directory / "answers", answers_file.parent)
         self.assertEqual({"answers": answers}, json.loads(answers_file.read_text()))
         self.assertEqual(0, second["decision_points"])
+        # The result credits the decision to whoever gave the answer.
+        decision = report(self.space)["decisions"][0]
+        self.assertEqual(
+            ("d.db-helper", "main-agent"), (decision["id"], decision["decided_by"])
+        )
         # The same answers find the same step again.
         with self.starter(output=followed):
             _, again = run_step(
@@ -494,7 +506,14 @@ class StepTests(unittest.TestCase):
         self.assertEqual(1, len(self.started))
 
     def test_answered_points_are_no_longer_decision_points(self):
-        answers = [{"id": "q.retry", "question": "retries", "answer": "keep"}]
+        answers = [
+            {
+                "id": "q.retry",
+                "question": "retries",
+                "answer": "keep",
+                "answered_by": "developer",
+            }
+        ]
         with self.starter(output=describe_output("module.checkout", [QUESTION])):
             _, value = run_step(
                 self.space,
@@ -512,7 +531,14 @@ class StepTests(unittest.TestCase):
     def test_a_retried_answered_step_still_admits_the_asking_run(self):
         with self.starter(output=SURVEY_OUTPUT):
             _, first = run_step(self.space, self.request(mode="interactive"))
-        answers = [{"id": "d.db-helper", "question": "own Module?", "answer": "yes"}]
+        answers = [
+            {
+                "id": "d.db-helper",
+                "question": "own Module?",
+                "answer": "yes",
+                "answered_by": "developer",
+            }
+        ]
         with self.starter(status="failed"):
             run_step(self.space, self.request(mode="interactive", answers=answers))
         with self.starter(output=SURVEY_OUTPUT):
@@ -878,7 +904,16 @@ class ScriptTests(unittest.TestCase):
 
     @verifies("scenario.workflows.interactive-resume")
     def test_answers_and_retries_reach_their_steps(self):
-        answers = {"survey": [{"id": "d.db-helper", "question": "q", "answer": "yes"}]}
+        answers = {
+            "survey": [
+                {
+                    "id": "d.db-helper",
+                    "question": "q",
+                    "answer": "yes",
+                    "answered_by": "main-agent",
+                }
+            ]
+        }
         run = self.run_script(
             {
                 **self.ARGS,

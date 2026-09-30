@@ -54,7 +54,7 @@ STEP_ROW = obj(
         "summary": {"anyOf": [S, {"type": "null"}]},
     }
 )
-# contract.workflows.result, version 6
+# contract.workflows.result, version 7
 RESULT_SCHEMA: dict = {
     "$defs": copy.deepcopy(errors.DEFS),
     **obj(
@@ -80,7 +80,7 @@ RESULT_SCHEMA: dict = {
                         "options": {"type": "array", "minItems": 2, "items": S},
                         "chosen": S,
                         "reason": S,
-                        "decided_by": {"enum": ["worker", "developer"]},
+                        "decided_by": {"enum": ["worker", "main-agent", "developer"]},
                     }
                 ),
             },

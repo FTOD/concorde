@@ -11,7 +11,7 @@ The `output` of a `survey`. `remaining_entries` is computed by the host, never b
 ```concorde-contract
 {
   "id": "contract.adoption.decomposition",
-  "version": 4,
+  "version": 5,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -231,6 +231,7 @@ The `output` of a `survey`. `remaining_entries` is computed by the host, never b
             "decided_by": {
               "enum": [
                 "worker",
+                "main-agent",
                 "developer"
               ]
             }
@@ -298,7 +299,7 @@ The `output` of a `survey`. `remaining_entries` is computed by the host, never b
       }
     }
   },
-  "semantics": "The decomposition a survey proposes for module. children are the Modules to create: a new identity, a unique title, a purpose paragraph, the entries each binds (existing paths the surveyed Module's realizations cover, a directory ending in /) and the Modules it uses with the reason. remaining_entries are the entries the surveyed Module keeps once every child's entries and every external are removed, computed by the host with the rule of Adoption's shared records that the scaffold applies again: an entry no child entry or external touches stays; an entry a child entry or an external covers goes; and a directory entry that contains a child's entry or an external is replaced by the entries below it that nothing took, a subdirectory staying one entry when nothing inside it was taken and a file being listed exactly. Files the directory exclusion rule skips were never bound and are not listed. checks are proposed checks, in the shape of configured checks, for the surveyed Module or a child, each with the reason it was found; nothing configures them but the developer. decisions are the choices the worker took where the code left several open, each with decided_by worker, or developer when it follows an answer. open_questions are behaviours whose intent the worker could not tell; the worker wrote no promise about them. A proposed check may carry an env of variable names to strings, and its argv names the project's own interpreter as {python}; its inputs are canonical project-relative paths. externals are third-party code the project vendors, each with its path among the surveyed Module's paths, the Module that uses it and the reason: the scaffold takes them out of the parent's entries and makes each an external inclusion of its user, never a Module, so nobody describes or reviews it as the project's code. A proposed check may carry when: readiness for a full suite that runs only when readiness is decided. A behaviour or field change increments the version.",
+  "semantics": "The decomposition a survey proposes for module. children are the Modules to create: a new identity, a unique title, a purpose paragraph, the entries each binds (existing paths the surveyed Module's realizations cover, a directory ending in /) and the Modules it uses with the reason. remaining_entries are the entries the surveyed Module keeps once every child's entries and every external are removed, computed by the host with the rule of Adoption's shared records that the scaffold applies again: an entry no child entry or external touches stays; an entry a child entry or an external covers goes; and a directory entry that contains a child's entry or an external is replaced by the entries below it that nothing took, a subdirectory staying one entry when nothing inside it was taken and a file being listed exactly. Files the directory exclusion rule skips were never bound and are not listed. checks are proposed checks, in the shape of configured checks, for the surveyed Module or a child, each with the reason it was found; nothing configures them but the developer. decisions are the choices the worker took where the code left several open, each with decided_by worker, or, when it follows an answer, that answer's answered_by: main-agent or developer. open_questions are behaviours whose intent the worker could not tell; the worker wrote no promise about them. A proposed check may carry an env of variable names to strings, and its argv names the project's own interpreter as {python}; its inputs are canonical project-relative paths. externals are third-party code the project vendors, each with its path among the surveyed Module's paths, the Module that uses it and the reason: the scaffold takes them out of the parent's entries and makes each an external inclusion of its user, never a Module, so nobody describes or reviews it as the project's code. A proposed check may carry when: readiness for a full suite that runs only when readiness is decided. A behaviour or field change increments the version.",
   "example": {
     "module": "module.shop",
     "summary": "The shop has a checkout service and an inventory service that share one database helper; they become two Modules and the helper stays with the root.",
@@ -381,7 +382,7 @@ claims, checked for consistency only.
 ```concorde-contract
 {
   "id": "contract.adoption.spec-description",
-  "version": 2,
+  "version": 3,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -550,6 +551,7 @@ claims, checked for consistency only.
             "decided_by": {
               "enum": [
                 "worker",
+                "main-agent",
                 "developer"
               ]
             }
@@ -828,7 +830,7 @@ The file `--answers` names. Every answer names a decision (`d.`) or
 ```concorde-contract
 {
   "id": "contract.adoption.answers",
-  "version": 2,
+  "version": 3,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -845,7 +847,8 @@ The file `--answers` names. Every answer names a decision (`d.`) or
           "required": [
             "id",
             "question",
-            "answer"
+            "answer",
+            "answered_by"
           ],
           "properties": {
             "id": {
@@ -859,24 +862,32 @@ The file `--answers` names. Every answer names a decision (`d.`) or
             "answer": {
               "type": "string",
               "minLength": 1
+            },
+            "answered_by": {
+              "enum": [
+                "main-agent",
+                "developer"
+              ]
             }
           }
         }
       }
     }
   },
-  "semantics": "The developer's answers to decisions and open questions of an earlier survey or code_to_spec run, admitted with --input, listing every answer given so far for that step. id names the decision or question, question repeats its text so the file is readable on its own, and answer is the chosen option or the developer's own words. A later run follows every answer: a survey takes the answered choice as a decision decided_by developer, and a code_to_spec run writes every answered question as a promise with source answer naming it, and records a deviation as well when the code does otherwise; a deviation never replaces the promise. A behaviour or field change increments the version.",
+  "semantics": "The answers to decisions and open questions of an earlier survey or code_to_spec run, admitted with --input, listing every answer given so far for that step. id names the decision or question, question repeats its text so the file is readable on its own, answer is the chosen option or the answerer's own words, and answered_by says who settled it: main-agent for an answer the main agent gave within its authority, developer for one the developer gave. A later run follows every answer: a survey or code_to_spec run takes an answered choice as a decision decided_by that answer's answered_by, and a code_to_spec run writes every answered question as a promise with source answer naming it, and records a deviation as well when the code does otherwise; a deviation never replaces the promise. A behaviour or field change increments the version.",
   "example": {
     "answers": [
       {
         "id": "q.payment-retry",
         "question": "retrying a declined payment",
-        "answer": "retry both once; not retrying a timeout is a bug"
+        "answer": "retry both once; not retrying a timeout is a bug",
+        "answered_by": "developer"
       },
       {
         "id": "d.db-helper",
         "question": "Does the shared database helper get a Module of its own?",
-        "answer": "stay with the root"
+        "answer": "stay with the root",
+        "answered_by": "main-agent"
       }
     ]
   }

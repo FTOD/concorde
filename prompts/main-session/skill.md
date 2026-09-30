@@ -142,7 +142,8 @@ already said:
 - `interactive`: the workflow ends at every point that needs a decision, and the task session
   escalates all of that step's pending points to you at once. Decide those your authority covers,
   put the rest to the developer at once, with their options and recommendations (with
-  AskUserQuestion), and answer the task session with every answer; it starts the same workflow
+  AskUserQuestion), and answer the task session with every answer, saying for each whether you or
+  the developer settled it, which the workflow records; it starts the same workflow
   again with them: steps that finished and are neither answered nor retried are not run again,
   while the answered step and every step after it run anew.
 - `no-ask`: the workflow decides those points itself and reports every decision at the end, for

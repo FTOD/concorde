@@ -52,7 +52,7 @@ DECISION = obj(
         "options": {"type": "array", "minItems": 2, "items": S},
         "chosen": S,
         "reason": S,
-        "decided_by": {"enum": ["worker", "developer"]},
+        "decided_by": {"enum": ["worker", "main-agent", "developer"]},
     }
 )
 QUESTION = obj(
@@ -116,7 +116,7 @@ SURVEY_WORKER_SCHEMA = obj(
         "open_questions": {"type": "array", "items": QUESTION},
     }
 )
-# contract.adoption.decomposition, version 4
+# contract.adoption.decomposition, version 5
 DECOMPOSITION_SCHEMA = obj(
     {
         "module": MODULE_ID,
@@ -168,7 +168,7 @@ DESCRIBE_WORKER_SCHEMA = obj(
         "deviations": {"type": "array", "items": DEVIATION},
     }
 )
-# contract.adoption.spec-description, version 2
+# contract.adoption.spec-description, version 3
 SPEC_DESCRIPTION_SCHEMA = obj(
     {
         "modules": {"type": "array", "minItems": 1, "items": MODULE_ID},
@@ -190,7 +190,7 @@ SPEC_DESCRIPTION_SCHEMA = obj(
         ),
     }
 )
-# contract.adoption.answers, version 2
+# contract.adoption.answers, version 3
 ANSWERS_SCHEMA = obj(
     {
         "answers": {
@@ -201,6 +201,7 @@ ANSWERS_SCHEMA = obj(
                     "id": {"type": "string", "pattern": "^[dq]\\.[a-z0-9-]+$"},
                     "question": S,
                     "answer": S,
+                    "answered_by": {"enum": ["main-agent", "developer"]},
                 }
             ),
         }
@@ -242,8 +243,8 @@ def answer_problems(
 ) -> list[str]:
     """Every answer an output does not follow, one sentence each.
 
-    A decision answer (``d.``) is followed by a decision with its identity, decided by the
-    developer, whose choice is the answer. A question answer (``q.``) is followed by a promise
+    A decision answer (``d.``) is followed by a decision with its identity, decided by whoever
+    gave the answer, whose choice is the answer. A question answer (``q.``) is followed by a promise
     with source ``answer`` naming the question; a deviation naming it never replaces that
     promise, it only adds that the code does otherwise.
     """
@@ -259,12 +260,12 @@ def answer_problems(
                     f"{identity} in the output"
                 )
             elif (
-                decision["decided_by"] != "developer"
+                decision["decided_by"] != answer["answered_by"]
                 or decision["chosen"] != answer["answer"]
             ):
                 problems.append(
                     f"decision {identity} chose {decision['chosen']!r}, decided by "
-                    f"{decision['decided_by']}, but the developer answered "
+                    f"{decision['decided_by']}, but the {answer['answered_by']} answered "
                     f"{answer['answer']!r}"
                 )
         elif not any(

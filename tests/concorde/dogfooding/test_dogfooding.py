@@ -256,6 +256,7 @@ class GuidanceTests(unittest.TestCase):
             "`subtype`: `null` for a bug or a limitation",
             "concorde issues report --check --file <path>",
             "run `concorde update`",
+            "Start nothing until the update ends",
             # A run that ended ok reported no error: the link alone is the whole chain, built by
             # task escalate naming no run in a task and written by hand outside one.
             "When the run ended `ok` and still did something wrong",

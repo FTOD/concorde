@@ -152,6 +152,7 @@ class AdoptionTests(AdoptionCase):
             "id": "d.db-helper",
             "question": DB_HELPER["question"],
             "answer": "a Module of its own",
+            "answered_by": "main-agent",
         }
         answers = self.project.answers(answer)
         followed = json.loads(json.dumps(PROPOSAL))
@@ -165,7 +166,7 @@ class AdoptionTests(AdoptionCase):
             }
         )
         followed["decisions"] = [
-            {**DB_HELPER, "chosen": "a Module of its own", "decided_by": "developer"}
+            {**DB_HELPER, "chosen": "a Module of its own", "decided_by": "main-agent"}
         ]
         status, envelope = self.survey(
             followed, "--answers", answers, "--input", first["run_id"]
@@ -174,7 +175,18 @@ class AdoptionTests(AdoptionCase):
         self.assertIn(
             "module.db", [child["id"] for child in envelope["output"]["children"]]
         )
+        self.assertEqual("main-agent", envelope["output"]["decisions"][0]["decided_by"])
         self.assertIn(first["run_id"], self.worker_round(envelope)["prompt"])
+        # The decision is the settler's: crediting the developer with the main agent's answer
+        # fails the run.
+        followed["decisions"][0]["decided_by"] = "developer"
+        status, envelope = self.survey(
+            followed, "--answers", answers, "--input", first["run_id"]
+        )
+        self.assertEqual("failed", envelope["status"])
+        self.assertEqual("inconsistent_proposal", envelope["error"]["code"])
+        self.assertIn("decided by developer", envelope["error"]["detail"])
+        self.assertIn("the main-agent answered", envelope["error"]["detail"])
         # An answer the proposal ignores fails the run.
         status, envelope = self.survey(PROPOSAL, "--answers", answers)
         self.assertEqual("failed", envelope["status"])
@@ -189,7 +201,12 @@ class AdoptionTests(AdoptionCase):
         ]
         _, first = self.survey(asking)
         answers = self.project.answers(
-            {"id": "q.split", "question": "split?", "answer": "keep them together"}
+            {
+                "id": "q.split",
+                "question": "split?",
+                "answer": "keep them together",
+                "answered_by": "developer",
+            }
         )
         _, still = self.survey(asking, "--answers", answers, "--input", first["run_id"])
         self.assertEqual("failed", still["status"])
@@ -409,8 +426,11 @@ class AdoptionTests(AdoptionCase):
         worktree = self.open()
         broken = self.project.base / "broken.json"
         broken.write_text("{not json")
-        missing = self.project.answers({"question": "x", "answer": "y"})
-        for path in (str(broken), missing):
+        missing = self.project.answers(
+            {"question": "x", "answer": "y", "answered_by": "developer"}
+        )
+        unsettled = self.project.answers({"id": "d.x", "question": "x", "answer": "y"})
+        for path in (str(broken), missing, unsettled):
             for run in (
                 lambda path=path: self.survey(PROPOSAL, "--answers", path),
                 lambda path=path: self.describe(
@@ -556,6 +576,7 @@ class AdoptionTests(AdoptionCase):
                 "id": "q.payment-retry",
                 "question": "retrying a declined payment",
                 "answer": "retry every failure once",
+                "answered_by": "developer",
             }
         )
         claims = {

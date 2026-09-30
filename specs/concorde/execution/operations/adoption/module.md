@@ -52,18 +52,21 @@ hiding it in prose:
   it is uncertain, the options and a recommendation.
 
 Neither Operation asks the developer: they have no one to ask. What happens next is the task
-level's or the workflow's choice: go on with the worker's decisions, or seek the developer's
-answers through the existing escalation path.
+level's or the workflow's choice: go on with the worker's decisions, or seek answers through the
+existing escalation path, which settles each in the main agent when its authority covers it and
+otherwise with the developer.
 
 ### Answers and deviations
 
-The developer's answers reach a later run as an **answers** file
+The answers reach a later run as an **answers** file
 ([contract](contracts.md#contract.adoption.answers)) with `--answers`, each naming the decision or
-question it answers, the question's text and the answer; `--input` admits the run that asked, so the
-worker sees the earlier proposal or description. An answers file lists every answer given so far for
-that step, not only the latest. A survey rerun follows every answered decision and no longer lists
+question it answers, the question's text, the answer and who settled it, the main agent or the
+developer; a decision that follows an answer is recorded as decided by that one, so the record
+never credits the developer with a choice the main agent made. `--input` admits the run that asked,
+so the worker sees the earlier proposal or description. An answers file lists every answer given
+so far for that step, not only the latest. A survey rerun follows every answered decision and no longer lists
 an answered open question. A code_to_spec rerun writes an answered question as the promise the
-developer stated. When that intent differs from what the code does, the Spec states the intent, and
+answer states. When that intent differs from what the code does, the Spec states the intent, and
 the result lists a **deviation** with the intended and the observed behaviour, for later
 `implement` work: the Spec is again ahead of the code, as Concorde expects.
 

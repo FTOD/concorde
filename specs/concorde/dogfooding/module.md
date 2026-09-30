@@ -248,7 +248,9 @@ Operation or execution command is still running in the project, re-checks that t
 installs from it again in develop mode
 ([requirements](requirements.md#req.dogfooding.develop-kept)), recording the commit it installed
 ([requirements](requirements.md#req.dogfooding.update-commit-recorded)), and, like every update,
-leaves the project unvalidated until `concorde spec-validation` passes. The main agent then has the
+leaves the project unvalidated until `concorde spec-validation` passes. The main agent starts
+nothing in the project until the update ends, since the update's check does not stop what starts
+after it ([Distribution](../distribution/module.md#installing-into-a-project)). It then has the
 sessions of the open tasks merge the primary branch into their task branches when the update asks
 for it and takes up the blocked work.
 

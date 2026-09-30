@@ -393,12 +393,13 @@ answer under the base key `survey`:
 {"module": "module.shop", "mode": "interactive",
  "answers": {"survey": [{"id": "d.db-helper",
    "question": "Does the shared database helper get a Module of its own?",
-   "answer": "a Module of its own"}]}}
+   "answer": "a Module of its own", "answered_by": "main-agent"}]}}
 ```
 
 The answered survey is a new step, `survey@<digest>`, whose digest is taken from those answers. It
 runs `survey --modules module.shop --answers <file> --input <first survey run>`, so the new survey
-follows the answer to the question the first one asked. It supersedes the step `survey` together
+follows the answer to the question the first one asked and records its decision `d.db-helper` as
+decided by `main-agent`, who gave the answer. It supersedes the step `survey` together
 with every step recorded after it. Here there is none, since the workflow paused right after the
 survey; had later steps been recorded, they would never be found again and would run anew. The
 workflow then goes on from the scaffold as on the normal path, and a relaunch with the same answers
