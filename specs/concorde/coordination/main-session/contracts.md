@@ -60,7 +60,7 @@ server's own `component` link of actor `Concorde project MCP server (<tool>)`:
 
 | Tool | Arguments | Result |
 | --- | --- | --- |
-| `task_list` | optional `state`, one of the task states, and `main`, a main agent's session | as `concorde task list [--state] [--main]` |
+| `task_list` | optional `state`, a nonempty array of task states, and `main`, a main agent's session | as `concorde task list [--state <state>,…] [--main]` |
 | `task_show` | `task` | as `concorde task show` |
 | `trace_show` | `node`: a task, history key, run or worker run identity or a node's folder; optional `depth` ≥ 0 | as `concorde trace show <node> --depth <depth>` from the primary worktree |
 | `run_result` | `run`: a run identity | `{"run", "running": false, "result": <run result>}` when no runner holds the run's [run lock](../../glossary.json#concept.run-lock) and its result is saved; otherwise `{"run", "running", "result": null, "progress": <run progress file or null>}`, where `running` is `true` while its runner holds the run lock and `false` for a run whose runner ended without writing a result |

@@ -665,11 +665,14 @@ The guidance SHALL tell the main agent to record its answer to a task session's 
 ### req.main-session.reconcile-after-restart — A main agent whose name changed reconciles its tasks first
 
 The guidance SHALL tell the main agent, when ListAgents reports for its session a name other than
-the one it gave its tasks, to list the tasks whose record names its former name, rebind each to its
-current name with `concorde task rebind`, and read their unanswered reports before anything else.
+the one it gave its tasks, to list the tasks not ended whose record names its former name, rebind
+each to its current name with `concorde task rebind`, and read their unanswered reports before
+anything else.
 
 A task session whose message was lost waits for that rebind, and its report is in the task record
 already, so the rebind wakes it and the unanswered reports tell the main agent what it missed.
+An ended task cannot be rebound and has no report left unanswered, since its end answered them,
+so listing it would only look like work pending.
 
 ### req.main-session.task-session-never-merges — A task session never merges or closes its task
 

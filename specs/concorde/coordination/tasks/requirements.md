@@ -394,11 +394,30 @@ answer, which it never replaces.
 
 A report without an answer is unanswered; a main agent that lost its messages reads those first.
 
+### req.tasks.end-settles-reports — A task's end answers its unanswered reports
+
+When `concorde task merge` or `concorde task close` ends a task, Tasks SHALL answer every report of
+its record still unanswered, in the write that ends the task, as answered by that merge or close
+and not by the main agent, with an answer saying how the task ended, which the closing entry of
+the decision log names with those reports.
+
+Nobody may answer a report once its task has ended, so a report left unanswered then would look
+pending forever to a main agent reading the task after a restart.
+
+### req.tasks.list-filters-combine — Listing filters combine
+
+`concorde task list` SHALL list only the tasks that satisfy every filter it is given: a derived
+state among those `--state` names, and the main agent's session `--main` names.
+
+A main agent whose session name changed lists with both the tasks it must rebind, those not ended
+that still name its former name.
+
 ### req.tasks.old-records-read — A record written before its main is read with one
 
 Tasks SHALL read a task record of `schema_version` 2, written before the record named the main
 agent's sessions and held reports, as naming the sessions its task sessions' nodes name, the latest
-as its main, and holding no reports.
+as its main, and holding no reports, and a record of `schema_version` 3, written before an answer
+said who gave it, as holding answers the main agent gave.
 
 Tasks open across the change keep working: their next change writes the current version, and
 their trace is unchanged, so a task worktree that still runs an earlier Concorde escalates there as

@@ -319,8 +319,9 @@ run by hand wake nobody. See how any task stands, including another session's, w
 
 The project MCP server gives the main agent, and every task session, the same commands as tools:
 `task_list`, `task_show`, `trace_show`, `run_result`, `workflow_report` and `locks` to read,
-`task_open`, `task_escalate` and `task_close` to change tasks, `task_merge` to merge, and
-`register_wait` to be woken when a task is delivered or closed, a run ends or a lock is released.
+`task_open`, `task_escalate`, `task_report`, `task_answer`, `task_rebind` and `task_close` to
+change tasks, `task_merge` to merge, and `register_wait` to be woken when a task is delivered or
+closed, a task is rebound to another main session, a run ends or a lock is released.
 It never waits for a lock: when another session holds one it needs, it answers at once with who
 holds it (the command, process, start time, Claude Code session and task), and when it gets the
 locks for a merge it hands them to the merge process it starts, so a lock is always released when
@@ -597,6 +598,13 @@ with `concorde task close retry --failed --reason "<why>"`, plus `--run <run-id>
 whose error caused the failure, or `--no-error` when no error did; the reason and the error chains
 stay in the task's record and decision log.
 
+Nobody answers a task session's report once its task has ended, so the end answers them: the merge
+or close that ends a task gives every report still unanswered an answer saying how the task ended,
+such as which delivery commit was merged into which branch, marked as given by that `merge` or
+`close` rather than by the main agent, and writes it into the closing entry of the decision log.
+Merging a delivered task is thus also the answer to its delivery report, and no ended task shows a
+report as pending.
+
 `task merge` and `task close` both print the task's record with a list of `warnings`, and each
 warning asks the main agent to act. A warning about the decision log means nobody wrote in it. A
 warning about a task session names a Claude Code task session whose transcript the close could not
@@ -628,6 +636,52 @@ where a classifier approves or refuses each action within those limits. Ending t
 merge or its close, copies each such session's transcript into the task's trace and removes the
 session from Claude's session list with `claude rm`, first stopping it with `claude stop` when the
 task closes without a merge; you need not remove them yourself.
+
+#### Reports and answers
+
+A task session tells the main agent what it has to say, its delivery or the decisions it needs, in
+a Claude Code message to the main agent's session, the one named with `--main`, which the task's
+record keeps as its `main`. Before every message it records the report in the task's record and
+decision log, and the command prints the session to message:
+
+```bash
+concorde task report retry --text "Delivered at 4be1c2d; decisions in the decision log." --escalation 2
+```
+
+A message that reaches nobody therefore loses nothing: `concorde task show retry` lists every
+report with its `answer`, null while unanswered. The main agent answers with a message too, and
+first records its answer, which marks the reports answered and appends the answer to the decision
+log; an answer is never replaced:
+
+```bash
+concorde task answer retry --report 1 --text "Merging it now."
+```
+
+#### When the main agent's session name changes
+
+A Claude Code session's name does not survive a restart or a resume, so after one the main agent
+may run under another name than the `--main` its tasks name, and a task session's message to the
+old name reaches nobody. The task session then waits, in background Bash, until the task names
+another session, and sends the same report again to the name the command prints:
+
+```bash
+concorde task wait retry --rebound <former name>
+```
+
+The main agent, as soon as it notices its own name changed, reconciles its tasks before anything
+else. It lists the tasks not ended whose record still names its former name, since an ended task has
+no task session left to report and its end answered its reports; rebinds each to its current name,
+which wakes every task session waiting for that; and then reads each task's unanswered reports with
+`concorde task show` and answers them:
+
+```bash
+concorde task list --main <former name> --state open,active,delivered,merging
+concorde task rebind retry --main <current name>
+```
+
+`--state` takes one or more task states separated by commas, and with `--main` lists the tasks that
+satisfy both. The record keeps every session name a task had, so a later reader sees whom each
+report was sent to.
 
 ## Read results
 

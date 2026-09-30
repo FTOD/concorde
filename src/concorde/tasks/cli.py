@@ -263,7 +263,7 @@ def parser() -> argparse.ArgumentParser:
     opening.add_argument("--base")
     opening.add_argument("--path")
     listing = commands.add_parser("list")
-    listing.add_argument("--state", choices=store.STATES)
+    listing.add_argument("--state")
     listing.add_argument("--main")
     showing = commands.add_parser("show")
     showing.add_argument("task_id")
@@ -550,9 +550,14 @@ def main(argv, cwd: Path | None = None) -> int:
                 ).as_posix(),
             }
         elif arguments.command == "list":
-            value = store.list_tasks(
-                store.primary_of(here), arguments.state, arguments.main
+            states = (
+                None
+                if arguments.state is None
+                else [
+                    item.strip() for item in arguments.state.split(",") if item.strip()
+                ]
             )
+            value = store.list_tasks(store.primary_of(here), states, arguments.main)
         elif arguments.command == "show":
             value = store.show_task(store.primary_of(here), arguments.task_id)
         elif arguments.command == "session":

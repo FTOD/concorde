@@ -237,8 +237,9 @@ how to remove them, and records no task.
 ## Listing and showing tasks
 
 `concorde task list` prints the records of the current tasks and of the tasks in the history with
-their derived state, optionally filtered by `--state` or by `--main`, the main agent's session a
-record names. `concorde task show <task-id>` prints what the task level needs to know about one
+their derived state, optionally filtered by `--state`, one or more derived states separated by
+commas, and by `--main`, the main agent's session a record names; given both, it lists the tasks
+that satisfy both. `concorde task show <task-id>` prints what the task level needs to know about one
 task in one value: the record with its derived state, the
 workspace's [runs](../../glossary.json#concept.run) read from its workspace folder, those started
 directly and those of its workflow's steps (each with its kind, name, Modules and status, `running`
@@ -289,7 +290,9 @@ concorde task rebind severity --main concorde-8e
 ```
 
 The record keeps every name it had, so a later reader sees whom each report was sent to.
-`concorde task list --main concorde-7d` lists the tasks whose record still names the former session.
+`concorde task list --main concorde-7d --state open,active,delivered,merging` lists the tasks not
+ended whose record still names the former session: those the main agent rebinds, since an ended
+task has no task session left to report.
 
 **Reports.** Before every message to the main agent, the task session records it:
 
@@ -310,7 +313,12 @@ concorde task answer severity --report 1 --text "Merging it now."
 
 which marks those reports answered in the record and appends the answer to the decision log. A
 report without an answer is unanswered, which is what a main agent that lost its messages reads
-first. The reports live in the record rather than the trace because whether each is answered is
+first. Nobody answers a report once its task has ended, so the end answers the reports still
+unanswered itself: the merge or close that ends the task gives each of them, in the write that
+ends it, an answer saying how the task ended, recorded as given by that `merge` or `close` rather
+than by the main agent, and its closing entry in the decision log names them with that answer. A
+delivery report the main agent acted on by merging is thus answered by the merge, and no ended
+task leaves a report looking pending. The reports live in the record rather than the trace because whether each is answered is
 state the task commands act on, like the name they were sent to. None of these touches Git, so
 none of them is refused for an unfinished merge: a task session reports a `merge_incomplete`
 refusal it met with `report`, and a main agent may rebind its tasks before it finishes the merge.
@@ -333,8 +341,9 @@ A task ends in one of two states, and the record keeps the outcome:
   caused, such as a wrong direction, is declared with `--no-error`; one of the two is required, so
   whether an error caused the failure is never left unsaid.
 
-Closing without a merge refuses uncommitted changes unless `--force`. Closing appends the outcome,
-the note and any error chains to the decision log, commits the log ([below](#decision-log-in-git)),
+Closing without a merge refuses uncommitted changes unless `--force`. Closing answers every report
+still unanswered ([Reports](#reports-and-the-main-agents-session)), appends the outcome, the note,
+any error chains and those answered reports to the decision log, commits the log ([below](#decision-log-in-git)),
 removes the worktree, and with it the workspace binding, and moves the task's whole folder to the
 history, `.concorde/history/<task-id>/`, keeping the branch; no run of the task's workspace can
 start there any more, and a closed or failed task stays so whatever happens afterwards. A task

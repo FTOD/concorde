@@ -215,6 +215,44 @@ class MergeTests(unittest.TestCase):
         self.assertIn("[exit 0 after", log)
         self.assertEqual("", store.merge_lock_path(self.root).read_text())
 
+    @verifies("scenario.tasks.merge-settles-reports")
+    def test_merging_a_task_answers_its_unanswered_reports(self):
+        self.project.open_task("t1")
+        head = self.deliver()
+        branch = git(self.root, "branch", "--show-current")
+        report = store.report(self.root, "t1", "Delivered.", [])["report"]
+        status, value = self.command("merge", "t1", "--check", python(""))
+        self.assertEqual(0, status, value)
+        closed_at = value["record"]["closed"]["at"]
+        answer = store.load_any(self.root, "t1")[0]["reports"][0]["answer"]
+        self.assertEqual(
+            {
+                "at": closed_at,
+                "text": "The task ended before the main agent answered: `concorde task "
+                f"merge` merged its delivery commit {head} into {branch} and closed it as "
+                "merged. Nobody answers a report after that.",
+                "by": "merge",
+            },
+            answer,
+        )
+        self.assertEqual(1, report["number"])
+        # The merge commit's copy already holds the answer, so the close committed nothing.
+        after = value["merge"]["after"]
+        self.assertEqual(after, self.head())
+        copy = git(self.root, "show", f"{after}:.concorde/decisions/t1.md") + "\n"
+        self.assertEqual((self.history() / "decisions.md").read_text(), copy)
+        self.assertTrue(
+            copy.endswith(
+                f"## Closed: merged, {closed_at}\n\nThe merge answered report(s) 1 of the "
+                f"task session, unanswered until then: {answer['text']}\n"
+            ),
+            copy,
+        )
+        self.assertEqual(
+            "task_closed",
+            self.refusal("answer", "t1", "--report", "1", "--text", "late")["code"],
+        )
+
     @verifies("scenario.tasks.merge-empty-log")
     def test_a_merge_warns_of_an_unwritten_decision_log(self):
         passing = ["--check", python("")]

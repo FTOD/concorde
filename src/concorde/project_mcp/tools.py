@@ -78,9 +78,18 @@ def schema(properties: dict, required=()) -> dict:
 TOOLS: dict[str, dict] = {
     "task_list": {
         "description": "Every current and closed task with its derived state, oldest first; "
-        "`state` filters on it and `main` on the main agent's session each record names. As "
-        "`concorde task list`.",
-        "inputSchema": schema({"state": {"enum": list(store.STATES)}, "main": TEXT}),
+        "`state` keeps those in one of the states it lists and `main` those whose record names "
+        "that main agent's session, both when both are given. As `concorde task list`.",
+        "inputSchema": schema(
+            {
+                "state": {
+                    "type": "array",
+                    "items": {"enum": list(store.STATES)},
+                    "minItems": 1,
+                },
+                "main": TEXT,
+            }
+        ),
     },
     "task_show": {
         "description": "One task: its record with the derived state, the main agent's sessions "

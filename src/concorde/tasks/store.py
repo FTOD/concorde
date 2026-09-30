@@ -6,7 +6,8 @@ A task is a branch ``concorde/<id>``, a worktree checked out on it and bound as 
 boundary under ``runtime/``, its sessions' and merge attempts' nodes under ``sessions/`` and
 ``merges/``, and the workspace folder ``workspace/`` its runs are traced in. The record names the
 main agent's session the task's task sessions report to now, with every earlier name, and every
-report a task session recorded before messaging it, with the main agent's answer. Closing moves
+report a task session recorded before messaging it, with its answer: the main agent's, or the one
+the task's end gives every report still unanswered then. Closing moves
 the whole folder to ``.concorde/history/<key>/`` and commits its decision log on the primary branch
 as ``.concorde/decisions/<key>.md``, unless the task's merge commit already added it. Only this module
 writes records and task nodes, and nothing below the task level writes them: whether a task is
@@ -131,8 +132,9 @@ STATES = ("open", "active", "delivered", "merging", "closed", "failed")
 # How a task ended: closed when its goal was reached, merged or not; failed when it was not.
 OUTCOMES = ("merged", "completed", "failed")
 ENDED = ("closed", "failed")
-# The version of the task record: 3 names the main agent's sessions and holds the reports.
-RECORD_VERSION = 3
+# The version of the task record: 3 names the main agent's sessions and holds the reports, 4
+# says who answered each report.
+RECORD_VERSION = 4
 ATTEMPTS = 3
 # Where task worktrees go by default, relative to the primary worktree; Git must ignore it.
 WORKTREES = ".claude/worktrees"
@@ -391,16 +393,25 @@ def _read_record(path: Path) -> dict:
 def upgraded(record: dict, folder: Path) -> dict:
     """``record`` in the current version. A record written before version 3 names no main
     agent's session and holds no reports: its sessions are those its task sessions were started
-    for, from their nodes in ``folder``, the latest one its main, and it has no reports."""
-    if record.get("schema_version", RECORD_VERSION) < RECORD_VERSION:
+    for, from their nodes in ``folder``, the latest one its main, and it has no reports. A record
+    of version 3 does not say who answered a report: only the main agent answered then."""
+    version = record.get("schema_version", RECORD_VERSION)
+    if version < 3:
         mains = []
         for item in sessions(None, record["id"], folder):
             if item["main"] and (not mains or mains[-1]["main"] != item["main"]):
                 mains.append({"main": item["main"], "at": item["started_at"]})
-        record["schema_version"] = RECORD_VERSION
         record["main"] = mains[-1]["main"] if mains else None
         record["mains"] = mains
         record["reports"] = []
+    if version < 4:
+        record["reports"] = [
+            {**item, "answer": {**item["answer"], "by": "main-agent"}}
+            if item["answer"] is not None
+            else item
+            for item in record["reports"]
+        ]
+    record["schema_version"] = RECORD_VERSION
     return record
 
 
@@ -1033,7 +1044,11 @@ def answer(primary: Path, task_id: str, numbers: list[int], text: str) -> dict:
             updated = [dict(item) for item in known]
             answered.clear()
             for number in numbers:
-                updated[number - 1]["answer"] = {"at": stamp, "text": text}
+                updated[number - 1]["answer"] = {
+                    "at": stamp,
+                    "text": text,
+                    "by": "main-agent",
+                }
                 answered.append(updated[number - 1])
             record["reports"] = updated
             return record
@@ -1304,16 +1319,24 @@ def derived_state(primary: Path, record: dict, runs: list[dict] | None = None) -
 
 
 def list_tasks(
-    primary: Path, state: str | None = None, main: str | None = None
+    primary: Path, states: list[str] | None = None, main: str | None = None
 ) -> list[dict]:
-    """Every current and closed task record with its derived state, oldest first; ``state``
-    filters on it and ``main`` on the main agent's session the record names."""
+    """Every current and closed task record with its derived state, oldest first; ``states``
+    keeps the tasks in one of them and ``main`` those whose record names that main agent's
+    session, both when both are given."""
+    wrong = [item for item in states or [] if item not in STATES]
+    if wrong or states == []:
+        raise TaskError(
+            "invalid_input",
+            f"--state names {', '.join(map(repr, wrong)) or 'no state'}; it takes one or more "
+            f"of {', '.join(STATES)}, separated by commas",
+        )
     records = _records(primary, history=True)
     records = [item for item in records if main is None or item["main"] == main]
     records.sort(key=lambda item: (item["created_at"], item["id"]))
     for record in records:
         record["state"] = derived_state(primary, record)
-    return [item for item in records if state is None or item["state"] == state]
+    return [item for item in records if states is None or item["state"] in states]
 
 
 def show_task(primary: Path, task_id: str) -> dict:
@@ -1574,6 +1597,7 @@ def close_locked(
     warnings: list[str] | None = None,
     key: str | None = None,
     at: str | None = None,
+    by: str = "close",
 ) -> dict:
     """``close_task`` for a caller already holding the merge lock and the workspace lock.
 
@@ -1585,10 +1609,11 @@ def close_locked(
     ``.concorde/decisions/<key>.md`` unless that file already holds it, as the merge commit of
     ``concorde task merge`` does with the closing dated ``at``; ``key``, the history key, is the
     one that merge chose, and free otherwise, and ``at`` the time the closing names, by default
-    now. Before the folder moves, the transcripts of the task's Claude Code task
-    sessions are copied into their nodes, which are finished from Claude Code's records, adding
-    to ``warnings`` each transcript that cannot be kept, and
-    ``before_move`` runs, such as a merge ending its attempt's node.
+    now. The closing answers every report still unanswered as ``by``, ``merge`` or ``close``,
+    saying how the task ended. Before the folder moves, the transcripts of the task's Claude Code
+    task sessions are copied into their nodes, which are finished from Claude Code's records,
+    adding to ``warnings`` each transcript that cannot be kept, and ``before_move`` runs, such as
+    a merge ending its attempt's node.
     """
     from . import session
 
@@ -1606,7 +1631,7 @@ def close_locked(
                 "invalid_transition", f"task {task_id} is already {record['state']}"
             )
         if not _closing_logged(primary, task_id, ended):
-            _log_closing(primary, task_id, ended)
+            _log_closing(primary, task_id, record)
         commit_decision_log(primary, task_id, ended, again)
         warnings.extend(session.finish_sessions(primary, task_id))
         if before_move is not None:
@@ -1665,6 +1690,14 @@ def close_locked(
     }
 
     def change(record):
+        record["reports"] = settled(
+            record["reports"],
+            {
+                "at": stamp,
+                "text": settling_answer(record, outcome, closing["note"], by),
+                "by": by,
+            },
+        )
         record["state"] = state
         record["merging"] = None
         record["closed"] = closing
@@ -1683,7 +1716,7 @@ def close_locked(
             f"{task_id} stays {record['state']} without it; once the cause is fixed, {again} "
             "finishes the close",
         ) from error
-    _log_closing(primary, task_id, closed["closed"])
+    _log_closing(primary, task_id, closed)
     commit_decision_log(primary, task_id, closed["closed"], again)
     warnings.extend(session.finish_sessions(primary, task_id))
     if before_move is not None:
@@ -1860,9 +1893,52 @@ def _closing_heading(closed: dict) -> str:
     return f"## Closed: {closed['outcome']}, {closed['at']}"
 
 
-def closing_entry(closed: dict) -> str:
+def settling_answer(record: dict, outcome: str, note: str | None, by: str) -> str:
+    """The answer the end of the task gives each report still unanswered: how the task ended,
+    by ``concorde task merge`` (``by`` merge, with the record's ``merging``) or by
+    ``concorde task close``, with its note or reason."""
+    if by == "merge":
+        merging = record["merging"]
+        how = (
+            f"`concorde task merge` merged its delivery commit {merging['checked']} into "
+            f"{merging['branch']} and closed it as merged"
+        )
+    elif outcome == "merged":
+        how = (
+            "`concorde task close --merged` closed it as merged, its delivery commit being in "
+            "the primary branch"
+        )
+    else:
+        how = f"`concorde task close --{outcome}` closed it as {outcome}"
+        if note and note.strip():
+            how += f": {note.strip()}"
+    return (
+        f"The task ended before the main agent answered: {how}. Nobody answers a report "
+        "after that."
+    )
+
+
+def settled(reports: list[dict], answer: dict) -> list[dict]:
+    """``reports`` with ``answer`` given to each that has none."""
+    return [
+        item if item["answer"] is not None else {**item, "answer": dict(answer)}
+        for item in reports
+    ]
+
+
+def settled_by_end(reports: list[dict]) -> list[dict]:
+    """The reports the task's end answered: those whose answer is not the main agent's."""
+    return [
+        item
+        for item in reports
+        if item["answer"] is not None and item["answer"]["by"] != "main-agent"
+    ]
+
+
+def closing_entry(closed: dict, reports: list[dict] = ()) -> str:
     """The entry a close appends to the decision log: how the task ended, with ``note`` and
-    the error chains of ``errors`` rendered and as JSON, dated ``at``."""
+    the error chains of ``errors`` rendered and as JSON, dated ``at``, and the answer the end
+    gave the ``reports`` it settled."""
     from ..errors import render
 
     lines = [f"\n{_closing_heading(closed)}\n"]
@@ -1872,6 +1948,13 @@ def closing_entry(closed: dict) -> str:
         lines.append(
             f"\n{render(error)}\n\n"
             f"```json\n{json.dumps(error, indent=2, ensure_ascii=False)}\n```\n"
+        )
+    if reports:
+        answer = reports[0]["answer"]
+        numbers = ", ".join(str(item["number"]) for item in reports)
+        lines.append(
+            f"\nThe {answer['by']} answered report(s) {numbers} of the task session, "
+            f"unanswered until then: {answer['text']}\n"
         )
     return "".join(lines)
 
@@ -1892,12 +1975,14 @@ def _closing_logged(primary: Path, task_id: str, closed: dict) -> bool:
     return _closing_heading(closed) in lines
 
 
-def _log_closing(primary: Path, task_id: str, closed: dict) -> None:
-    """Append how the task ended, with any error chains rendered and as JSON."""
+def _log_closing(primary: Path, task_id: str, record: dict) -> None:
+    """Append how the task of the closed ``record`` ended, with any error chains rendered and
+    as JSON, and the reports its end answered."""
+    closed = record["closed"]
     path = decision_log_path(primary, task_id)
     try:
         with path.open("a", encoding="utf-8") as stream:
-            stream.write(closing_entry(closed))
+            stream.write(closing_entry(closed, settled_by_end(record["reports"])))
     except OSError as error:
         raise TaskError(
             "decision_log_failed",
@@ -1943,6 +2028,9 @@ __all__ = [
     "record_session",
     "require_primary",
     "session_content",
+    "settled",
+    "settled_by_end",
+    "settling_answer",
     "show_task",
     "task_workspace_locked",
     "unfinished_merge",

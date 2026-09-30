@@ -256,10 +256,13 @@ The installed guidance gives the main agent this working method:
   returns ([requirements](requirements.md#req.main-session.task-session-report-recorded)). The main
   agent records its answer with `concorde task answer` before it sends it. When ListAgents reports
   for its own session a name other than the one it gave its tasks, such as after a resume, the
-  main agent lists the tasks whose record names its former name with `concorde task list --main
-  <former>`, rebinds each to its current name with `concorde task rebind`, and reads their
-  unanswered reports, those `concorde task show` lists with no answer, before anything else
-  ([requirements](requirements.md#req.main-session.reconcile-after-restart)).
+  main agent lists the tasks not ended whose record names its former name with `concorde task
+  list --main <former> --state open,active,delivered,merging`, rebinds each to its current name
+  with `concorde task rebind`, and reads their unanswered reports, those `concorde task show` lists
+  with no answer, before anything else
+  ([requirements](requirements.md#req.main-session.reconcile-after-restart)). An ended task needs
+  none of this: it has no task session left, and its merge or close answered every report still
+  unanswered when it ended.
 - **Report.** Close each piece of work with a short summary for the developer: what was merged,
   what was decided on the developer's behalf, and what is still open.
 - **Use the project's terms.** Every session of the project starts with all the terms of its
