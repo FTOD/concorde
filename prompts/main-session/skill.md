@@ -279,7 +279,9 @@ report first with `concorde task report`, in the task record and decision log, s
 never reached you loses nothing: `concorde task show <task>` lists the task's `reports`, each with
 its `answer`, null while unanswered. Record your answer with
 `concorde task answer <task> --report <n>… --text "<your answer>"`, which appends it to the decision
-log too, then answer the session with SendMessage.
+log too, then answer the session with SendMessage. Once a task has ended nobody answers its
+reports: its merge or close answers each one still unanswered itself, saying how the task ended,
+so merging a delivered task is also the answer to its delivery report.
 
 ### When your session name changed
 
@@ -288,7 +290,9 @@ tool may report another name for your session than the one you gave your tasks w
 a task session that messages the old name reaches nobody. So whenever ListAgents reports a name
 for your session other than the one you gave your tasks, before anything else:
 
-1. List the tasks that still name your former name: `concorde task list --main <former name>`.
+1. List the tasks not ended that still name your former name:
+   `concorde task list --main <former name> --state open,active,delivered,merging`. A task that
+   ended has no task session left to report and cannot be rebound.
 2. Rebind each to your current name: `concorde task rebind <task> --main <current name>`. A task
    session whose message failed is waiting for exactly that and sends its report again to the new
    name.

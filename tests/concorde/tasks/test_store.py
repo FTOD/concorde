@@ -138,7 +138,7 @@ class TaskStoreTests(unittest.TestCase):
         worktree = self.root / ".claude/worktrees/severity"
         self.assertEqual(str(worktree), value["worktree"])
         self.assertEqual(
-            (3, "open", head, None, [], []),
+            (4, "open", head, None, [], []),
             (
                 value["schema_version"],
                 value["state"],
@@ -656,8 +656,10 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual([1, 2], [item["number"] for item in value["answered"]])
         reports = self.record()["reports"]
         self.assertEqual(
-            ["Go on.", "Go on."], [item["answer"]["text"] for item in reports]
+            [("Go on.", "main-agent")] * 2,
+            [(item["answer"]["text"], item["answer"]["by"]) for item in reports],
         )
+        self.assert_contract(self.record())
         self.assertIn("## Answer to report(s) 1, 2 of the task session", self.log())
         before = snapshot(self.folder())
         self.assertEqual(
@@ -680,6 +682,87 @@ class TaskStoreTests(unittest.TestCase):
                 "x",
                 cwd=self.project.worktree("t1"),
             ),
+        )
+
+    @verifies("scenario.tasks.close-settles-reports")
+    def test_closing_a_task_answers_its_unanswered_reports(self):
+        self.project.open_task("t1")
+        self.started()
+        for text in ("first", "second", "third"):
+            store.report(self.root, "t1", text, [])
+        store.answer(self.root, "t1", [1], "Go on.")
+        status, closed = self.command(
+            "close", "t1", "--completed", "--note", "the probe answered"
+        )
+        self.assertEqual(0, status, closed)
+        reports = self.record()["reports"]
+        at = closed["record"]["closed"]["at"]
+        settling = (
+            "The task ended before the main agent answered: `concorde task close "
+            "--completed` closed it as completed: the probe answered. Nobody answers a "
+            "report after that."
+        )
+        self.assertEqual("main-agent", reports[0]["answer"]["by"])
+        self.assertEqual(
+            [{"at": at, "text": settling, "by": "close"}] * 2,
+            [item["answer"] for item in reports[1:]],
+        )
+        self.assert_contract(self.record())
+        self.assertTrue(
+            self.log().endswith(
+                f"## Closed: completed, {at}\n\nthe probe answered\n\n"
+                f"The close answered report(s) 2, 3 of the task session, unanswered until "
+                f"then: {settling}\n"
+            ),
+            self.log(),
+        )
+        # The committed copy is the log as the task ended.
+        self.assertEqual(
+            self.log(), (self.root / ".concorde/decisions/t1.md").read_text()
+        )
+        self.assertEqual(
+            (1, "task_closed"),
+            self.refusal("answer", "t1", "--report", "2", "--text", "late"),
+        )
+        # A failed close answers them likewise, with its reason.
+        self.project.open_task("t2")
+        self.started("t2", session_id="s2")
+        store.report(self.root, "t2", "stuck", [])
+        status, _ = self.command(
+            "close", "t2", "--failed", "--reason", "wrong direction", "--no-error"
+        )
+        self.assertEqual(0, status)
+        answer = self.record("t2")["reports"][0]["answer"]
+        self.assertEqual("close", answer["by"])
+        self.assertIn(
+            "`concorde task close --failed` closed it as failed: wrong direction",
+            answer["text"],
+        )
+        self.assertIn(
+            "The close answered report(s) 1 of the task session", self.log("t2")
+        )
+
+    @verifies("scenario.tasks.list-not-ended")
+    def test_the_tasks_not_ended_that_name_a_session_are_listed(self):
+        for task_id, main in (("t1", "concorde-7d"), ("t2", "concorde-7d")):
+            self.project.open_task(task_id)
+            self.started(task_id, main=main, session_id=f"s-{task_id}")
+        self.project.open_task("t3")
+        self.started("t3", main="concorde-8e", session_id="s-t3")
+        self.assertEqual(
+            0, self.command("close", "t1", "--completed", "--note", "done")[0]
+        )
+        _, both = self.command("list", "--main", "concorde-7d")
+        self.assertEqual(["t1", "t2"], [item["id"] for item in both])
+        status, listed = self.command(
+            "list", "--main", "concorde-7d", "--state", "open,active,delivered,merging"
+        )
+        self.assertEqual(0, status, listed)
+        self.assertEqual(["t2"], [item["id"] for item in listed])
+        _, ended = self.command("list", "--state", "closed,failed")
+        self.assertEqual(["t1"], [item["id"] for item in ended])
+        self.assertEqual(
+            (1, "invalid_input"), self.refusal("list", "--state", "open,finished")
         )
 
     @verifies("scenario.tasks.report-merge-incomplete")
@@ -748,7 +831,7 @@ class TaskStoreTests(unittest.TestCase):
         store.rebind(self.root, "t1", "concorde-8e")
         stored = json.loads((folder / "task.json").read_text())
         self.assertEqual(
-            (3, "concorde-8e", ["concorde-7d", "concorde-8e"], 1),
+            (4, "concorde-8e", ["concorde-7d", "concorde-8e"], 1),
             (
                 stored["schema_version"],
                 stored["main"],
@@ -759,6 +842,15 @@ class TaskStoreTests(unittest.TestCase):
         self.assert_contract(stored)
         # The trace node keeps the shape an earlier Concorde writes.
         self.assertEqual(node["content"], trace.read(folder)["content"])
+        # A record of version 3 holds answers only the main agent gave.
+        store.answer(self.root, "t1", [1], "Go on.")
+        stored = json.loads((folder / "task.json").read_text())
+        del stored["reports"][0]["answer"]["by"]
+        stored["schema_version"] = 3
+        (folder / "task.json").write_text(json.dumps(stored, indent=2) + "\n")
+        answer = store.show_task(self.root, "t1")["record"]["reports"][0]["answer"]
+        self.assertEqual(("Go on.", "main-agent"), (answer["text"], answer["by"]))
+        self.assertEqual(4, self.record()["schema_version"])
 
     @verifies("scenario.tasks.open-unknown-module")
     def test_an_unknown_module_is_refused(self):

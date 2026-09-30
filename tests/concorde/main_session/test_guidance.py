@@ -128,7 +128,11 @@ class GuidanceTests(unittest.TestCase):
     @verifies("scenario.main-session.reconcile-after-restart")
     def test_the_main_agent_rebinds_its_tasks_after_its_name_changed(self):
         self.assertIn("### When your session name changed", self.skill)
-        self.assertIn("`concorde task list --main <former name>`", self.skill)
+        self.assertIn(
+            "`concorde task list --main <former name> --state open,active,delivered,merging`",
+            self.skill,
+        )
+        self.assertIn("once a task has ended nobody answers its", self.skill.lower())
         self.assertIn("`concorde task rebind <task> --main <current name>`", self.skill)
         self.assertIn("whose `answer` is null", self.skill)
         self.assertIn("before anything else", self.skill.split("### When your", 1)[1])

@@ -79,7 +79,7 @@ guides.
 
 - GIVEN the rendered main-session guidance
 - WHEN ListAgents reports for the main agent's session a name other than the one it gave its tasks, as after a resume
-- THEN the main agent is told to run `concorde task list --main <former>`, to rebind each task listed with `concorde task rebind <task> --main <current>` and to read the reports `concorde task show` lists without an answer, before anything else
+- THEN the main agent is told to run `concorde task list --main <former> --state open,active,delivered,merging`, which lists only the tasks not ended, to rebind each task listed with `concorde task rebind <task> --main <current>` and to read the reports `concorde task show` lists without an answer, before anything else
 - AND to record each answer with `concorde task answer` before sending it
 
 ### scenario.main-session.task-session-prepares-workers — The task session creates and binds new files before a worker fills them

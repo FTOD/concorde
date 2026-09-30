@@ -480,8 +480,31 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 
 - GIVEN a task with two unanswered reports
 - WHEN the main agent runs `concorde task answer <task> --report 1 --report 2 --text "<its answer>"`
-- THEN both reports hold the answer with its time, and the decision log holds it under `## Answer to report(s) 1, 2 of the task session, <time>`
+- THEN both reports hold the answer with its time and `by` `main-agent`, and the decision log holds it under `## Answer to report(s) 1, 2 of the task session, <time>`
 - AND answering report 1 again is refused with `already_answered` and a report the task does not have with `unknown_report`, changing nothing
+
+### scenario.tasks.close-settles-reports — Closing a task answers its unanswered reports
+
+- GIVEN a task with an answered report 1 and unanswered reports 2 and 3
+- WHEN the main agent closes it with `concorde task close <task> --completed --note "<what it achieved>"`
+- THEN reports 2 and 3 hold the answer `by` `close`, dated with the closing, saying that `concorde task close --completed` closed the task with the note, while report 1 keeps the main agent's answer
+- AND the decision log's closing entry ends with `The close answered report(s) 2, 3 of the task session, unanswered until then: <the answer>`
+- AND a failed close answers them likewise with its reason
+
+### scenario.tasks.merge-settles-reports — Merging a task answers its unanswered reports
+
+- GIVEN a delivered task whose task session's delivery report 1 is unanswered
+- WHEN the main agent merges it with `concorde task merge <task>`
+- THEN report 1 holds the answer `by` `merge`, dated with the closing, naming the checked delivery commit and the primary branch
+- AND the merge commit's copy of the decision log already ends with that answer, so the close commits no further copy
+- AND `concorde task answer <task> --report 1` is refused with `task_closed`
+
+### scenario.tasks.list-not-ended — The tasks not ended that name a session are listed
+
+- GIVEN a closed task and an open task whose records both name `concorde-7d`, and an open task naming `concorde-8e`
+- WHEN the main agent runs `concorde task list --main concorde-7d --state open,active,delivered,merging`
+- THEN only the open task naming `concorde-7d` is listed
+- AND `--state` naming a state that does not exist is refused with `invalid_input`
 
 ### scenario.tasks.wait-rebound — A task session waits for the main agent to rebind the task
 
@@ -501,8 +524,9 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 
 - GIVEN a current task whose record has `schema_version` 2 and no `main`, `mains` or `reports`, with a task session started with `--main concorde-7d`
 - WHEN it is shown, reported to and rebound
-- THEN it is shown with `main` `concorde-7d`, `mains` from its session and no reports, the report is recorded, and after the rebind the record has `schema_version` 3 and satisfies the record contract
+- THEN it is shown with `main` `concorde-7d`, `mains` from its session and no reports, the report is recorded, and after the rebind the record has `schema_version` 4 and satisfies the record contract
 - AND its trace node is unchanged in shape, so an earlier Concorde still writes it
+- AND a record of `schema_version` 3 with an answered report is read with that answer `by` `main-agent`
 
 ## History
 

@@ -250,6 +250,10 @@ class ProjectMcpTests(unittest.TestCase):
         )
         listed, _ = client.call("task_list", main="concorde-8e")
         self.assertEqual(["t2"], [record["id"] for record in listed])
+        listed, _ = client.call(
+            "task_list", main="concorde-8e", state=["closed", "failed"]
+        )
+        self.assertEqual([], listed)
         reported, error = client.call(
             "task_report", task="t2", text="Which retry limit?", escalations=[1]
         )

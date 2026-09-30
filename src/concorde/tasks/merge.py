@@ -287,10 +287,21 @@ def _merge(primary: Path, record: dict, merging: dict) -> str:
     target = primary / path
     source = store.decision_log_path(primary, record["id"])
     message = f"Merge branch '{record['branch']}' at {checked}\n\nConcorde-Task: {record['id']}\n"
-    # The closing the close will append once the checks pass, so that the copy equals the log
-    # as the task ends; a log changed after this commit gets a commit of its own at the close.
+    # The closing the close will append once the checks pass, with the answer it gives the
+    # reports still unanswered, so that the copy equals the log as the task ends; a log changed
+    # after this commit, such as by a report recorded meanwhile, gets a commit of its own at the
+    # close.
+    current = store.load_task(primary, record["id"])
+    answer = {
+        "at": merging["since"],
+        "text": store.settling_answer(
+            {**current, "merging": merging}, "merged", None, "merge"
+        ),
+        "by": "merge",
+    }
     closing = store.closing_entry(
-        {"outcome": "merged", "at": merging["since"], "note": None, "errors": []}
+        {"outcome": "merged", "at": merging["since"], "note": None, "errors": []},
+        store.settled_by_end(store.settled(current["reports"], answer)),
     )
     try:
         logged = source.read_bytes() if source.is_file() else b""
@@ -568,6 +579,7 @@ def _checked_close(
             warnings=warnings,
             key=merging.get("history"),
             at=merging["since"],
+            by="merge",
         )
     except TaskError as error:
         if error.code in ("decision_log_failed", "decision_log_uncommitted"):

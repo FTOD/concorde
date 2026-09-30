@@ -75,6 +75,14 @@ major impact.
    whole task again and commits it, and the main agent's `concorde task merge` merges the branch,
    with the task's decision log, and closes the task.
 
+The task session and the main agent talk in Claude Code messages, but each side records what it
+says first, `concorde task report` and `concorde task answer`, in the task's record and decision
+log, so a lost message loses nothing, and a task's merge or close answers every report still
+unanswered. When the main agent's session name changes, as after a resume, it lists the tasks not
+ended that name its former name with `concorde task list --main <former> --state
+open,active,delivered,merging` and rebinds each with `concorde task rebind`; a task session whose
+message reached nobody waits for that with `concorde task wait <task> --rebound <former>`.
+
 A question that changes nothing, such as how a Module works today, needs no task: `understand`,
 `spec_review` and `code_review` also run from the primary worktree without one.
 
@@ -103,20 +111,22 @@ cd /absolute/path/to/project
 In an installed project the command is `.concorde/bin/concorde`; Operations and execution commands
 print one JSON result. Run them inside a task's worktree, whose workspace binding names the task.
 
-| Command                                                 | Use                                                                          |
-| ------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `concorde spec-validation`                              | Check every structural rule of the Specs.                                    |
-| `concorde grant --modules <ids> --type <task type>`     | Print the grant of a task type for some Modules.                             |
-| `concorde spec-mcp`                                     | Run the local stdio MCP server rooted at the project.                        |
-| `concorde project-mcp`                                  | Run the project MCP server: tasks, traces and locks as tools, with waking.   |
-| `concorde task wait`                                    | Block until a task reaches a state, a run ends or a lock is released.        |
-| `concorde task open\|list\|show\|session\|merge\|close` | Manage tasks: branch, worktree, record, decision log, task sessions, merges. |
-| `concorde task escalate`                                | Add the main agent's link on top of an error chain and record it.            |
-| `concorde run <operation>`                              | Run one Operation in the current workspace and print its result.             |
-| `concorde task-validation\|delivery\|scaffold`          | Run one execution command in the current workspace and print its result.     |
-| `concorde issues report\|list\|show\|close`             | Record problems a task will not fix, so they survive it.                     |
-| `concorde init --propose\|--apply`                      | Propose and apply a project's first Spec.                                    |
-| `concorde docsite --propose\|--apply`                   | Scaffold a documentation site for the project's Specs.                       |
+| Command                                                 | Use                                                                                 |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `concorde spec-validation`                              | Check every structural rule of the Specs.                                           |
+| `concorde grant --modules <ids> --type <task type>`     | Print the grant of a task type for some Modules.                                    |
+| `concorde spec-mcp`                                     | Run the local stdio MCP server rooted at the project.                               |
+| `concorde project-mcp`                                  | Run the project MCP server: tasks, traces and locks as tools, with waking.          |
+| `concorde task wait`                                    | Block until a task reaches a state or is rebound, a run ends or a lock is released. |
+| `concorde task open\|list\|show\|session\|merge\|close` | Manage tasks: branch, worktree, record, decision log, task sessions, merges.        |
+| `concorde task escalate`                                | Add the main agent's link on top of an error chain and record it.                   |
+| `concorde task report\|answer`                          | Record a task session's report, or the main agent's answer, before the message.     |
+| `concorde task rebind`                                  | Point a task's task sessions at the main agent's new session name.                  |
+| `concorde run <operation>`                              | Run one Operation in the current workspace and print its result.                    |
+| `concorde task-validation\|delivery\|scaffold`          | Run one execution command in the current workspace and print its result.            |
+| `concorde issues report\|list\|show\|close`             | Record problems a task will not fix, so they survive it.                            |
+| `concorde init --propose\|--apply`                      | Propose and apply a project's first Spec.                                           |
+| `concorde docsite --propose\|--apply`                   | Scaffold a documentation site for the project's Specs.                              |
 
 | Operation         | Result and boundary                                                                           |
 | ----------------- | --------------------------------------------------------------------------------------------- |
