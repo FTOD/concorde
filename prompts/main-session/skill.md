@@ -357,51 +357,51 @@ close again, which commits the log and finishes the close.
 
 ## Issues
 
-A problem the current task will not fix, such as a Spec gap a worker reported about another Module,
-is worth an Issue for later work. You decide what to record after reading the worker or Operation
-result; neither records Issues automatically. Inspect `concorde issues list` (open and closed
-Issues) and `show <id>` first. There is no automatic Issue notification.
+Issues are the project's durable records of concrete problems: the primary worktree keeps them, and
+every session and run sees the same Issues at once. Manage them through the project MCP server's
+Issue tools, which answer as `concorde issues` does: `issue_list` (open and closed Issues, with their
+tier) and `issue_show` to read, `issue_report`, `issue_close` and `issue_reopen` to write, and
+`issue_check` to check the records. A task session has only these tools for Issues: its Bash sandbox
+cannot write the primary worktree. No Issue is created or closed behind your back, apart from a
+review Operation that reports the problems it finds and a task merge that closes the Issues its task
+resolves; there is no automatic Issue notification.
 
-Run every Issue write (`report`, `close`, `reopen`) in a task worktree with its own `concorde`,
-through the session working that task: name the write in the task's brief or in your answer to the
-session. If no task exists, open a task for the owning Module, or the root Module when unknown. Read-only
-`list`, `show` and `check` may run in either worktree and describe that copy. Use the command;
-do not edit accepted reports or flip `status` by hand.
+**Recording.** A problem the current task will not fix, such as a Spec gap a worker reported about
+another Module, is worth an Issue for later work. Read `issue_list` and `issue_show` first: append to
+the Issue that already tracks the problem, with its `issue_id` and the `expected_revision` that
+`issue_show` printed, instead of creating another; reopen a closed match before appending a new
+observation. Repeating a creation creates another Issue, even with the same report key. A report
+states the problem completely, `description`, `impact`, `basis` and `evidence`, because whoever it is
+escalated to acts on its identity alone, and carries its `tier`:
 
-Write a JSON report describing the bug, gap or limitation, its owner Module when known, basis and
-evidence paths, then run `concorde issues report --file <report.json> --task <task>` and keep its
-receipt and revision. `--task` records provenance only: it does not choose the worktree. To append
-to an open Issue, add its `issue_id` and current `expected_revision` from `show` to the new report;
-to create one, omit both. Repeating a creation command creates another Issue, even with the same
-report key. Reopen a closed match before appending a new observation.
+| Tier | The problem | Who handles it |
+| --- | --- | --- |
+| `suggestion` | none today, only a suggestion | nobody need; it blocks nothing |
+| `obvious-fix` | obvious, and so is its fix | the task session fixing it, alone |
+| `preferred-fix` | simple, with several fixes of which one is clearly better | the task session fixing it, which reports the fix it chose to you |
+| `decision-needed` | unclear, or its fix is uncertain | you decide, or put it to the developer, before anyone fixes it |
 
-An Issue has only `open` and `closed` status. Starting, fixing or delivering a task does not change
-it. Solve an Issue like any other work: open a task for the Issue's current Module, whose session runs
-the Operations that fix it and has to close the Issue on that task's branch before delivery with
-`concorde issues close <id> --reason resolved --note <text> --evidence <item>…`, so the closure is
-merged with the fix. `duplicate` (with `--duplicate-of <other-open-id>`) and `not-actionable` are
-other closing reasons, not statuses. For recurrence use
-`concorde issues reopen <id> --note <text> --evidence <item>…`; it retains all previous reports and
-dispositions. Check that the evidence supports every decision: the store checks its form, not its
-truth. `close` and `reopen` take no `--task` and read their own current revisions. On `stale_issue`,
-read the record again and reconsider before retrying.
+**Fixing.** Recording and fixing are separate: a review Operation only reports, and fixing is later
+work of a task. Solve an Issue like any other work: open a task for the Issue's current Module and
+name the Issues it fixes, `concorde task open <task> … --resolves <issue>[,<issue>…]`, or later
+`task_resolve`. Tell its session in the brief which tier each Issue has: it fixes `obvious-fix` and
+`preferred-fix` Issues itself, reporting the fix it chose for a `preferred-fix` one, and escalates a
+`decision-needed` Issue, naming it by its identity, for you to decide or to put to the developer.
+Starting, fixing or delivering the task changes no Issue; once `task merge` has merged it and its
+checks passed, the merge closes each Issue the task resolves as `resolved` with the merge commit as
+evidence and lists them as `resolved`, and names in its warnings any it could not close. A task that
+ends without merging closes none. Close an Issue by hand with `issue_close` only for another reason,
+`duplicate` (with `duplicate_of`, another open Issue) or `not-actionable`, or when it was fixed
+without such a task; for recurrence use `issue_reopen`, which keeps every report and disposition.
+Check that the evidence supports every decision: the store checks its form, not its truth. On
+`stale_issue`, read the record again and reconsider before retrying.
 
-A receipt means the record is on disk in that worktree, not committed or merged. Before ending a
-task without merging, preserve every Issue worth following up: record it through the command in
-a subsequent task with references to its earlier identity and branch, or leave a handoff in the
-current task's decision log. Include the Issue identity, branch and commit when available, the
-remaining work and durable locations of the report and evidence. Preserve needed uncommitted
-material before removal. Closing retains the branch and decision log, so committed records remain
-there; forced removal can discard uncommitted material. Unmerged Issues do not appear on the
-primary branch, and a log entry alone does not publish them.
-
-Git conflicts in Issue records are resolved in the task worktree, by the task's session, while it
-merges the primary branch into it. When you answer it, tell it to preserve accepted reports
-unchanged and to document the decision about competing dispositions, retaining their evidence;
-never to concatenate incompatible closes or invent reopenings to make the history alternate; to
-escalate decisions beyond the task's scope; and to run `concorde issues check` explicitly on the
-resolved records before `task-validation` and `delivery`. Structural Spec validation alone does not
-run the store check, and a passing store check does not prove the closure is justified.
+**When the Issue system fails.** Never record a failure of the Issue system itself, a refusal of the
+Issue tools or command whose reason is `environment`, such as `merge_busy`, `merge_incomplete` or
+`commit_failed`, as an Issue: an Issue system that failed cannot be trusted to record its own
+failure. Treat it as any other failure, its error chain in the task's decision log and escalation.
+`merge_busy` means a merge, task open or close holds the merge lock that every Issue write takes:
+`register_wait` for the merge lock and write again once it is released.
 
 ## Worker models
 

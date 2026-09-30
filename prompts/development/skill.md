@@ -91,14 +91,14 @@ Module (`specs/concorde/dogfooding/module.md`). A develop install and its update
 unless this primary worktree is clean and on its branch. When the developer hands the main agent a
 report, the task that fixes it proceeds as follows:
 
-1. The main agent opens a task for the Module it judges at fault (the report's owner is `null`);
-   in the task worktree, the task session records the report with
-   `python3 scripts/issues.py report --file <report> --task <task>`. Its evidence is checked in the
-   project its `origin` names, and its `concorde_commit` says which Concorde the defect was seen on:
-   check first that it still happens at the head. Then append a report to the recorded Issue naming
-   the Module at fault as its `owner_target_id`, with the Issue's `issue_id` and the
-   `expected_revision` that `python3 scripts/issues.py show <id>` prints, since the Issue's owner
-   is its latest report's.
+1. The main agent records the report as an Issue with the project MCP server's `issue_report`
+   (`file` naming the report) or `python3 scripts/issues.py report --file <report>` in the primary
+   worktree, and opens a task for the Module it judges at fault (the report's owner is `null`) with
+   `--resolves <issue>`. Its evidence is checked in the project its `origin` names, and its
+   `concorde_commit` says which Concorde the defect was seen on: check first that it still happens
+   at the head. Then append a report to the recorded Issue naming the Module at fault as its
+   `owner_target_id`, with the Issue's `issue_id` and the `expected_revision` that `issue_show`
+   prints, since the Issue's owner is its latest report's.
 2. Read its `error_chain` in full and check its `basis`. A blocked boundary is placed in one of
    Dogfooding's four boundary cases. Fix a Concorde implementation bug, where the grant or harness
    applied differs from what the Protocol derives from the Specs, directly. For a Concorde design
@@ -106,9 +106,9 @@ report, the task that fixes it proceeds as follows:
    needs, escalate to the developer before changing Concorde's design or Protocol or loosening any
    boundary. Close a report that turns out to be the project's own problem or overreaching work
    with `--reason not-actionable` and a note the developer can pass back.
-3. Fix the defect generally, never only for the reporting project, close the Issue on the task
-   branch with `--reason resolved` and the fix as evidence, and deliver the task; the main agent
-   merges it as usual. The project takes the fix with `concorde update`.
+3. Fix the defect generally, never only for the reporting project, and deliver the task; the main
+   agent merges it as usual, which closes the Issue as resolved. The project takes the fix with
+   `concorde update`.
 
 ## Source and verification
 

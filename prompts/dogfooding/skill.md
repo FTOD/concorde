@@ -57,6 +57,9 @@ ignores. It is an Issue report, whose fields are all required unless marked opti
 else:
 
 - `report_key`: a short kebab-case name of the defect, the same as the file name;
+- `tier`: who may fix it in the Concorde repository, one of Issues' tiers: `obvious-fix` when the
+  defect and its fix are both obvious, `preferred-fix` when one of several fixes is clearly better,
+  `decision-needed` when the cause or the fix is uncertain, and `suggestion` for no defect today;
 - `type`: `bug` (a failure or wrong result), `limitation` (consistent but insufficient behaviour)
   or `gap`; `subtype`: `null` for a bug or a limitation, and for a gap one of
   `implementation-spec-mismatch`, `spec-conflict` or `missing-contract`;
@@ -89,6 +92,7 @@ For example, with the error chain shortened:
 ```json
 {
   "report_key": "write-hook-refuses-rw-directories",
+  "tier": "decision-needed",
   "type": "bug",
   "subtype": null,
   "title": "The worker write hook refuses files under an rw directory entry",

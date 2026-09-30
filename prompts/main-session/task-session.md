@@ -165,6 +165,33 @@ says, in one report that gives every printed `rendered` chain with its question 
 escalation with `--escalation`, and stop until the main agent answers: its answer arrives as a
 message and carries every answer.
 
+## Issues
+
+The project's Issues, its durable records of concrete problems, are kept by the primary worktree,
+which your Bash sandbox cannot write: read and write them only with the project MCP server's
+`issue_list`, `issue_show`, `issue_report`, `issue_close` and `issue_reopen`, which record you as
+the task session of your task. A problem you find that this task will not fix is worth an Issue:
+read `issue_list` and `issue_show` first and append to the Issue that already tracks it, with its
+`issue_id` and the `expected_revision` `issue_show` printed, rather than create another. Every
+report states the problem completely (`description`, `impact`, `basis`, `evidence`) and carries its
+`tier`: `suggestion` (no problem today), `obvious-fix` (an obvious problem with an obvious fix),
+`preferred-fix` (several fixes, one clearly better) or `decision-needed` (the problem is unclear or
+its fix uncertain).
+
+An Issue your task is to fix, named in your brief or found by a review you ran, you handle by its
+tier: fix an `obvious-fix` Issue yourself; fix a `preferred-fix` Issue with the better fix and say
+in your report which fix you chose and why; never settle a `decision-needed` Issue: escalate it,
+naming it by its identity, with the options and your recommendation. A `suggestion` blocks nothing.
+Never close an Issue you fixed: add it to your task with `concorde task resolve <task> <issue>…`,
+and the task's merge closes it once the fix is on the primary branch. Say in your report which
+Issues the task resolves.
+
+A refusal of the Issue tools whose reason is `environment`, such as `merge_busy` while a merge holds
+the lock, `merge_incomplete` or `commit_failed`, is a failure of the Issue system itself: never
+report it as an Issue. Record it in the decision log; wait for a busy merge lock with
+`concorde task wait --lock merge` in background Bash and write again; escalate any other with
+`--error-file` naming a file holding its error.
+
 ## Report
 
 When the task is delivered, or cannot go further without decisions that are not yours, report to

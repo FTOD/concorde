@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import copy
 import errno
+import json
 import fcntl
 import os
 import tempfile
@@ -15,6 +17,7 @@ from unittest.mock import patch
 
 from concorde.issues.store import (
     IssueError,
+    project_root,
     dispose_issue,
     list_issues,
     read_issue,
@@ -24,7 +27,7 @@ from concorde.issues.store import (
 from concorde.spec.repository import SpecError
 from concorde.spec.typed_data import TypedDataError
 from concorde.spec.verification import verifies
-from tests.concorde.support.issue_reports import report, source
+from tests.concorde.support.issue_reports import git, git_project, report, source
 
 
 @contextmanager
@@ -66,7 +69,7 @@ class IssueStoreTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
+        self.root = git_project(Path(os.path.realpath(self.temp.name)))
 
     def issue_files(self):
         directory = self.root / ".concorde/issues"
@@ -105,7 +108,7 @@ class IssueStoreTests(unittest.TestCase):
     @verifies("scenario.issues.store-empty")
     def test_listing_without_issues_creates_nothing(self):
         self.assertEqual([], list_issues(self.root))
-        self.assertEqual([], list(self.root.iterdir()))
+        self.assertFalse((self.root / ".concorde").exists())
 
     @verifies("scenario.issues.store-key-conflict")
     def test_a_reused_key_with_other_content_is_refused(self):
@@ -177,13 +180,17 @@ class IssueStoreTests(unittest.TestCase):
             )
         )
 
-    @verifies("scenario.issues.store-concurrency")
-    def test_a_write_waits_for_the_worktrees_issue_lock(self):
-        # The one exclusive lock of the worktree lies with every other lock in .concorde/locks/.
-        lock = self.root / ".concorde/locks/issues.lock"
+    @verifies("scenario.issues.store-merge-lock")
+    def test_a_write_waits_for_the_merge_lock_and_is_refused_after_the_wait(self):
+        # The merge lock of the primary worktree, which task merges, opens and closes hold.
+        lock = self.root / ".concorde/locks/merge.lock"
         lock.parent.mkdir(parents=True)
         with lock.open("a+b") as held:
             fcntl.flock(held.fileno(), fcntl.LOCK_EX)
+            with self.assertRaises(IssueError) as raised:
+                report_issue(self.root, report(), source(), wait=0)
+            self.assertEqual("merge_busy", raised.exception.code)
+            self.assertIn(str(lock), str(raised.exception))
             with ThreadPoolExecutor(max_workers=1) as pool:
                 waiting = pool.submit(report_issue, self.root, report(), source())
                 with self.assertRaises(FutureTimeout):
@@ -195,6 +202,69 @@ class IssueStoreTests(unittest.TestCase):
             [receipt["issue_id"]], [row["id"] for row in list_issues(self.root)]
         )
         self.assertFalse((self.root / ".concorde/runs").exists())
+
+    @verifies("scenario.issues.store-committed")
+    def test_every_write_commits_its_record_alone_on_the_primary_branch(self):
+        (self.root / "unrelated.txt").write_text("staged, not the store's\n")
+        git(self.root, "add", "unrelated.txt")
+        receipt = report_issue(self.root, report(), source())
+        identifier = receipt["issue_id"]
+        self.assertEqual(
+            f"{receipt['path']}\n",
+            git(self.root, "show", "--name-only", "--format=", "HEAD"),
+        )
+        self.assertIn(f"Concorde-Issue: {identifier}", git(self.root, "log", "-1"))
+        _, revision = read_issue(self.root, identifier)
+        self.close(identifier, revision)
+        self.assertEqual(
+            (self.root / receipt["path"]).read_bytes(),
+            git(self.root, "show", f"HEAD:{receipt['path']}").encode(),
+        )
+        self.assertEqual("", git(self.root, "status", "--porcelain", receipt["path"]))
+        # What was staged before stays staged and uncommitted.
+        self.assertEqual(
+            "A  unrelated.txt\n",
+            git(self.root, "status", "--porcelain", "unrelated.txt"),
+        )
+
+    @verifies("scenario.issues.store-commit-failed")
+    def test_a_write_git_cannot_commit_is_refused_and_leaves_nothing(self):
+        git(self.root, "checkout", "-q", "--detach")
+        with self.assertRaises(IssueError) as raised:
+            report_issue(self.root, report(), source())
+        self.assertEqual("commit_failed", raised.exception.code)
+        self.assertIn("detached HEAD", str(raised.exception))
+        self.assertEqual({}, self.issue_files())
+        self.assertEqual([], list_issues(self.root))
+
+    @verifies("scenario.issues.store-merge-incomplete")
+    def test_no_write_while_a_merge_is_unfinished(self):
+        task = self.root / ".concorde/tasks/interrupted"
+        task.mkdir(parents=True)
+        head = git(self.root, "rev-parse", "HEAD").strip()
+        (task / "task.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": 4,
+                    "id": "interrupted",
+                    "state": "merging",
+                    "merging": {
+                        "before": head,
+                        "checked": head,
+                        "branch": "main",
+                        "after": None,
+                        "pid": 1,
+                        "since": "2026-10-01T00:00:00Z",
+                    },
+                    "reports": [],
+                }
+            )
+        )
+        with self.assertRaises(IssueError) as raised:
+            report_issue(self.root, report(), source())
+        self.assertEqual("merge_incomplete", raised.exception.code)
+        self.assertIn("interrupted", str(raised.exception))
+        self.assertEqual({}, self.issue_files())
 
     @verifies("scenario.issues.store-disposition")
     def test_a_closing_disposition_keeps_every_report(self):
@@ -497,17 +567,18 @@ class IssueStoreTests(unittest.TestCase):
         self.assertEqual("invalid_issue", raised.exception.code)
         self.assertEqual(malformed, path.read_text())
 
-    @verifies("scenario.issues.branch-local")
-    def test_git_style_branch_copies_have_independent_dispositions(self):
-        import shutil
-
+    @verifies("scenario.issues.project-level")
+    def test_only_the_primary_worktree_writes_and_every_worktree_finds_it(self):
         receipt = report_issue(self.root, report(), source())
-        with tempfile.TemporaryDirectory() as other:
-            branch = Path(other)
-            shutil.copytree(self.root / ".concorde/issues", branch / ".concorde/issues")
-            _, revision = read_issue(branch, receipt["issue_id"])
+        linked = Path(os.path.realpath(self.temp.name + "-linked"))
+        git(self.root, "worktree", "add", "-q", "-b", "task", str(linked))
+        self.addCleanup(git, self.root, "worktree", "remove", "--force", str(linked))
+        self.assertEqual(self.root, project_root(linked))
+        self.assertEqual(self.root, project_root(self.root))
+        _, revision = read_issue(project_root(linked), receipt["issue_id"])
+        with self.assertRaises(IssueError) as raised:
             dispose_issue(
-                branch,
+                linked,
                 receipt["issue_id"],
                 revision,
                 reason="not-actionable",
@@ -515,9 +586,54 @@ class IssueStoreTests(unittest.TestCase):
                 evidence=["contract"],
                 actor="solve",
             )
-            self.assertEqual(
-                "closed", read_issue(branch, receipt["issue_id"])[0]["status"]
-            )
-            self.assertEqual(
-                "open", read_issue(self.root, receipt["issue_id"])[0]["status"]
-            )
+        self.assertEqual("not_primary", raised.exception.code)
+        self.assertEqual(
+            "open", read_issue(self.root, receipt["issue_id"])[0]["status"]
+        )
+
+    @verifies("scenario.issues.store-tier")
+    def test_every_report_carries_a_tier_and_older_records_stay_valid(self):
+        untiered = {key: value for key, value in report().items() if key != "tier"}
+        with self.assertRaises(TypedDataError) as raised:
+            report_issue(self.root, untiered, source())
+        self.assertEqual("/tier", raised.exception.field)
+        with self.assertRaises(TypedDataError):
+            report_issue(self.root, report(tier="blocking"), source())
+        self.assertEqual({}, self.issue_files())
+        receipt = report_issue(self.root, report(tier="suggestion"), source())
+        record, _ = read_issue(self.root, receipt["issue_id"])
+        self.assertEqual(3, record["schema_version"])
+        self.assertEqual("suggestion", list_issues(self.root)[0]["tier"])
+        # A record written before tiers keeps its untiered report and takes tiered ones.
+        from concorde.issues import store
+        from concorde.spec.repository import digest
+
+        older = copy.deepcopy(record)
+        older["schema_version"] = 2
+        observation = older["reports"][0]
+        observation["report"] = untiered
+        observation["id"] = digest(
+            {"report": untiered, "source": observation["source"]}
+        )
+        path = self.root / receipt["path"]
+        path.write_text(store.render(older))
+        git(self.root, "commit", "-qam", "an Issue written before tiers")
+        _, revision = read_issue(self.root, receipt["issue_id"])
+        self.assertIsNone(list_issues(self.root)[0]["tier"])
+        report_issue(
+            self.root,
+            report(
+                issue_id=receipt["issue_id"],
+                expected_revision=revision,
+                report_key="tiered-now",
+                tier="obvious-fix",
+            ),
+            source(invocation_id="worker-2"),
+        )
+        record, _ = read_issue(self.root, receipt["issue_id"])
+        self.assertEqual(2, record["schema_version"])
+        self.assertEqual("obvious-fix", list_issues(self.root)[0]["tier"])
+        # A record of the current version holds only tiered reports.
+        record["schema_version"] = 3
+        with self.assertRaisesRegex(IssueError, "field tier"):
+            store.render(record)

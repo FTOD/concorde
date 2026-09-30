@@ -222,6 +222,7 @@ This illustrates [specific refusals](requirements.md#req.issues.specific-refusal
 - GIVEN a valid report file and a project whose file system refuses to write the record
 - WHEN the main agent runs `report --file` with that file
 - THEN the command prints the error code `io_error` with the reason `environment` and a message naming the file it could not write
+- AND its options say to carry the error chain in the [decision log](../glossary.json#concept.decision-log), escalation or [run result](../glossary.json#concept.run-result) and never to report it as an Issue
 - AND exits with status 1
 - BUT no Issue is recorded
 
@@ -232,6 +233,25 @@ This illustrates [specific refusals](requirements.md#req.issues.specific-refusal
 - THEN the command prints the error code `stale_issue` and a message naming the Issue
 - AND exits with status 1
 - BUT the record keeps the other program's bytes
+
+### scenario.issues.command-from-any-worktree — A linked worktree works on the primary worktree's Issues
+
+- GIVEN an Issue recorded in the primary worktree, and a linked worktree holding a file its branch alone has
+- WHEN a session runs `report --file` in the linked worktree with a report whose evidence is that file, and then `list`
+- THEN the new Issue's record is in the primary worktree, not in the linked worktree
+- AND `list` names both Issues
+
+This illustrates [project-level records](requirements.md#req.issues.project-level).
+
+### scenario.issues.command-commit-failed — A failed commit is an Issue-system failure, never an Issue
+
+- GIVEN a primary worktree whose `HEAD` is detached
+- WHEN the main agent runs `report --file` with a valid report
+- THEN the command prints the error code `commit_failed` with the reason `environment`, naming the detached `HEAD`
+- AND its options say to carry the error chain in the decision log, escalation or run result and never to report it as an Issue
+- BUT writes nothing
+
+This illustrates [the Issue system never reporting itself](requirements.md#req.issues.own-failures).
 
 ## Records
 
@@ -273,17 +293,64 @@ This illustrates [specific refusals](requirements.md#req.issues.specific-refusal
 
 ### scenario.issues.store-concurrency — Concurrent writers never lose a report
 
-- GIVEN several reports, some of them repeated, submitted concurrently to one worktree
+- GIVEN several reports, some of them repeated, submitted concurrently to the primary worktree
 - WHEN the store accepts them
 - THEN every distinct report is saved exactly once
 - BUT no accepted report is lost or duplicated
 
-### scenario.issues.branch-local — Each worktree keeps its own copy
+### scenario.issues.project-level — Only the primary worktree writes the Issues
 
-- GIVEN an Issue recorded in one worktree and the same record copied into another, as a branch copy is
-- WHEN the Issue is closed in the second worktree
-- THEN the second worktree's copy is closed
-- BUT the first worktree's copy stays open
+- GIVEN an Issue recorded in the primary worktree and a linked worktree of the same repository
+- WHEN `project_root` is asked for either worktree
+- THEN it names the primary worktree, whose records every worktree reads
+- BUT a disposition written with the linked worktree as root is refused with `not_primary` and the Issue stays open
+
+This illustrates [project-level records](requirements.md#req.issues.project-level).
+
+### scenario.issues.store-merge-lock — A write waits for the merge lock
+
+- GIVEN another process holding the primary worktree's [merge lock](../glossary.json#concept.merge-lock)
+- WHEN the store is asked to save a report without waiting, and again with its default wait
+- THEN the first is refused with `merge_busy`, naming the lock file, and writes nothing
+- AND the second waits, writes nothing while the lock is held, and saves the report once it is released
+
+This illustrates [Issue writes under the merge lock](requirements.md#req.issues.merge-lock).
+
+### scenario.issues.store-merge-incomplete — No write while a merge is unfinished
+
+- GIVEN a task stored `merging` whose merge process has ended
+- WHEN the store is asked to save a report
+- THEN it refuses with `merge_incomplete`, naming the task
+- BUT no Issue is written
+
+### scenario.issues.store-committed — Every write commits its record alone
+
+- GIVEN a primary worktree with another change staged
+- WHEN the store saves a report and then closes its Issue
+- THEN each write is a commit on the primary branch holding only the record, with the trailer `Concorde-Issue` naming the Issue
+- AND the committed record equals the file, which Git reports unchanged
+- BUT the other staged change stays staged and uncommitted
+
+This illustrates [an Issue commit alone](requirements.md#req.issues.commit-alone) and
+[committed receipts](requirements.md#req.issues.durable-receipt).
+
+### scenario.issues.store-commit-failed — A write Git cannot commit is refused
+
+- GIVEN a primary worktree whose `HEAD` is detached
+- WHEN the store is asked to save a report
+- THEN it refuses with `commit_failed`, saying the `HEAD` is detached
+- BUT no record is left in the directory and no Issue is listed
+
+### scenario.issues.store-tier — Every report carries a tier
+
+- GIVEN a report without a `tier`, or with a tier that is none of the four
+- WHEN the store is asked to save it
+- THEN Spec core's typed-value check refuses it, naming the field `tier`, and no Issue is written
+- AND a report of tier `suggestion` creates a record of `schema_version` 3 listed with that tier
+- AND a record of `schema_version` 2 whose report has no tier stays valid, is listed without a tier and takes a tiered report, which becomes its tier
+- BUT a record of `schema_version` 3 holding an untiered report is refused with `invalid_issue`, naming the field `tier`
+
+This illustrates [required tiers](requirements.md#req.issues.tier-required).
 
 ### scenario.issues.store-disposition — Close with evidence
 

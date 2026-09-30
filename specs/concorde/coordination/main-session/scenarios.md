@@ -237,51 +237,45 @@ guides.
 
 ## Issues
 
-### scenario.main-session.record-issue — The guidance records a deferred problem deliberately
+### scenario.main-session.record-issue — The guidance records a problem deliberately
 
-- GIVEN the rendered main-session guidance
-- WHEN a main agent reads how to retain a worker finding or Operation error that the current task will not fix
-- THEN it is told to inspect `issues list` and `show` for existing open or closed matches before recording
-- AND to decide whether to create an [Issue](../../glossary.json#concept.issue), append to an open one at its current revision, or reopen a closed one
-- AND to have the writing command run in a task worktree by the task's session, with `--task` on `report`, and keep the receipt
-- BUT it is told that neither the worker nor the Operation records the Issue automatically
+- GIVEN the rendered main-session and task-session guidance
+- WHEN a session reads how to retain a problem the current task will not fix
+- THEN it is told to read the open and closed Issues with `issue_list` and `issue_show` before recording, and to append to the matching open [Issue](../../glossary.json#concept.issue) at its current revision or reopen a closed one
+- AND to record through the project MCP server's `issue_report`, with a complete description, impact, basis, evidence and tier
+- BUT it is told that repeating a creation creates another Issue
 
-This illustrates [recording decisions](requirements.md#req.main-session.issues-recording) and
-[task-local writes](requirements.md#req.main-session.issues-worktree).
+This illustrates [inspecting before recording](requirements.md#req.main-session.issues-recording)
+and [the Issue tools](requirements.md#req.main-session.issues-through-server).
 
-### scenario.main-session.solve-issue — The guidance solves Issues through tasks
+### scenario.main-session.issue-tiers — The guidance fixes Issues by their tier
+
+- GIVEN the rendered main-session and task-session guidance
+- WHEN a session reads what it may do with an Issue of each tier
+- THEN a task session may fix an `obvious-fix` Issue alone and a `preferred-fix` one, reporting the fix it chose
+- AND escalates a `decision-needed` Issue by its identity for the main agent or the developer to decide
+- BUT a review Operation only reports, and a `suggestion` blocks nothing
+
+This illustrates [tiers deciding who fixes](requirements.md#req.main-session.issues-tiers).
+
+### scenario.main-session.solve-issue — The guidance closes a fixed Issue with its task's merge
 
 - GIVEN the rendered main-session guidance
 - WHEN a main agent reads how to solve an open Issue owned by a Module
-- THEN it is told to open a task for that Module whose session runs the Operations that fix the problem
-- AND to have the Issue closed on the task branch with the evidence, so the closure is merged with the fix
+- THEN it is told to open a task for that Module naming the Issue with `--resolves`, or to name it later with `task_resolve`
+- AND that the task's merge closes it as `resolved` with the merge commit as evidence
 - BUT starting or delivering the task does not itself close the Issue
 
-This illustrates [ordinary repair](requirements.md#req.main-session.issues-by-operations) and
-[closure with the fix](requirements.md#req.main-session.issues-close-with-fix).
+This illustrates [closing with the merge](requirements.md#req.main-session.issues-close-with-merge).
 
-### scenario.main-session.unmerged-issue — The guidance preserves an unmerged observation
+### scenario.main-session.issue-system-failure — The guidance keeps Issue-system failures out of Issues
 
-- GIVEN the rendered main-session guidance
-- WHEN a main agent reads how to end a task without merging its Issue records
-- THEN it is told to carry worthwhile reports into a subsequent task or record a handoff in the task's decision log
-- AND to preserve the identity, branch and commit when available, remaining work, report and evidence locations before worktree removal
-- AND that committed records remain on the retained branch but are absent from the primary branch's Issue list
-- BUT it is told that forced removal can discard uncommitted material and that a log entry does not publish an Issue
+- GIVEN the rendered main-session and task-session guidance
+- WHEN a session reads what to do when an Issue tool or command fails
+- THEN it is told to carry the error chain in the decision log and escalation, or a run's result
+- BUT never to report that failure as an Issue
 
-This illustrates [handoff before closure](requirements.md#req.main-session.issues-unmerged).
-
-### scenario.main-session.issue-conflict — The guidance reconciles competing Issue histories
-
-- GIVEN the rendered main-session guidance
-- WHEN a main agent reads how to resolve a Git conflict in an Issue record
-- THEN it is told that the task's session resolves it in the task worktree, and to tell it to preserve accepted reports and document the disposition decision with its evidence
-- AND to run `issues check` explicitly before validation and delivery
-- BUT not to concatenate incompatible closes or invent reopenings to satisfy the state rules
-- AND that a passing store check does not establish that the disposition is justified
-
-This illustrates [conflict handling](requirements.md#req.main-session.issues-conflicts) and the
-[store check](requirements.md#req.main-session.issues-store-check).
+This illustrates [failures as error chains](requirements.md#req.main-session.issues-own-failures).
 
 ## The project MCP server
 
@@ -290,7 +284,7 @@ This illustrates [conflict handling](requirements.md#req.main-session.issues-con
 - GIVEN a Claude Code session that starts the [project MCP server](../../glossary.json#concept.project-mcp-server), `concorde project-mcp`
 - WHEN it initializes the session and lists the tools
 - THEN the server answers with a protocol version it supports, the tools capability and the experimental `claude/channel` capability
-- AND it lists `task_list`, `task_show`, `trace_show`, `run_result`, `workflow_report`, `locks`, `task_open`, `task_escalate`, `task_rebind`, `task_report`, `task_answer`, `task_close`, `task_merge` and `register_wait`
+- AND it lists `task_list`, `task_show`, `trace_show`, `run_result`, `workflow_report`, `locks`, `task_open`, `task_escalate`, `task_rebind`, `task_report`, `task_answer`, `task_close`, `task_resolve`, `task_merge`, `register_wait`, `workflow_step`, `issue_list`, `issue_show`, `issue_check`, `issue_report`, `issue_close` and `issue_reopen`
 
 ### scenario.main-session.project-mcp-queries — Queries answer the project from any worktree
 
@@ -310,6 +304,16 @@ This illustrates [conflict handling](requirements.md#req.main-session.issues-con
 - GIVEN a running server
 - WHEN the session opens a task with `task_open`, escalates in it with `task_escalate` as a task session with two options, rebinds it with `task_rebind`, reports with `task_report` carrying that escalation, answers the report with `task_answer`, and closes it with `task_close` as completed with a note
 - THEN the task is opened, the escalation is recorded as number 1 with the level `task-session`, the record names the rebound session, the report is recorded as number 1 addressed to it and then answered, and the task ends closed, each as the matching `concorde task` command does
+
+### scenario.main-session.project-mcp-issues — The Issue tools manage the project's Issues from any worktree
+
+- GIVEN a running server in a task worktree and another in the primary worktree
+- WHEN the task session checks and records a report with `issue_report`, and the main agent lists, checks and shows it, names it with `task_resolve`, closes it with `issue_close` twice, and the task session reopens it with `issue_reopen`
+- THEN the Issue's record lies in the primary worktree, its report is the task session's with its task, and the main agent's list shows it with its tier at once
+- AND the [task record](../../glossary.json#concept.task-record) names the Issue the task resolves, the first close succeeds with `main-agent` as actor and the second is refused with the Issues command's own `closed_issue` link
+- BUT a report made while another process holds the merge lock is refused at once with `merge_busy`, an environment failure whose options say never to report it as an Issue
+
+This illustrates [queries and short writes answering as their commands](requirements.md#req.main-session.project-mcp-presentation).
 
 ### scenario.main-session.project-mcp-lock-busy — A busy lock is refused at once, naming its holder
 

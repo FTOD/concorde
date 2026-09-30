@@ -348,6 +348,20 @@ Tasks cannot tell whether a task needed any decision, so an empty log is a remin
 merges, not a failure: the [main agent](../../glossary.json#concept.main-agent) appends what it
 decided alone before it reports the task.
 
+### req.tasks.resolves-open-issues — A task resolves only open Issues
+
+Tasks SHALL record in a task's `resolves` only open [Issues](../../glossary.json#concept.issue) of
+the project, named at `open` or with `resolve` while the task has not ended.
+
+### req.tasks.merge-closes-resolved — A merge closes the Issues its task resolves
+
+`concorde task merge` SHALL, once its checks passed and while it holds the merge lock, close as
+`resolved`, with the merge commit as evidence, each Issue of the task's `resolves` that is still
+open, and report each it could not close as a warning, never as a refusal of the merge.
+
+The fix is on the primary branch only once the merge stands, so an Issue closes with its merge and
+never earlier; a task that ends without merging closes none.
+
 ### req.tasks.merge-clean-primary — A merge starts from a clean primary
 
 `concorde task merge` SHALL refuse, before merging, a primary worktree with a detached `HEAD` or any
@@ -417,7 +431,8 @@ that still name its former name.
 Tasks SHALL read a task record of `schema_version` 2, written before the record named the main
 agent's sessions and held reports, as naming the sessions its task sessions' nodes name, the latest
 as its main, and holding no reports, and a record of `schema_version` 3, written before an answer
-said who gave it, as holding answers the main agent gave.
+said who gave it, as holding answers the main agent gave, and a record of `schema_version` 4 or
+earlier, written before a task named the Issues it resolves, as resolving none.
 
 Tasks open across the change keep working: their next change writes the current version, and
 their trace is unchanged, so a task worktree that still runs an earlier Concorde escalates there as

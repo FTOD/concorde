@@ -11,6 +11,11 @@ from ..spec.typed_data import DIGEST, PATH, STRING, array, obj, register
 ISSUE_ID = {**STRING, "pattern": r"^I-[0-9a-f]{32}$"}
 NULLABLE_STRING = {"anyOf": [STRING, {"type": "null"}]}
 GAP_KINDS = ("implementation-spec-mismatch", "spec-conflict", "missing-contract")
+# Who may handle a problem without the level above, weakest first: a suggestion (advisory), an
+# obvious fix AI makes alone, a preferred fix AI makes and reports, a decision the level above takes.
+TIERS = ("suggestion", "obvious-fix", "preferred-fix", "decision-needed")
+# The tiers that block: every tier but a suggestion.
+BLOCKING = TIERS[1:]
 EVIDENCE = obj({"path": PATH, "description": STRING})
 # Where a report was observed when that is another project than the one recording it: evidence
 # paths are then relative to that project.
@@ -22,25 +27,29 @@ ORIGIN = obj(
         "task": NULLABLE_STRING,
     }
 )
-REPORT = obj(
-    {
-        "report_key": STRING,
-        "type": {"enum": ["bug", "gap", "limitation"]},
-        "subtype": {"anyOf": [{"enum": list(GAP_KINDS)}, {"type": "null"}]},
-        "title": STRING,
-        "description": STRING,
-        "impact": STRING,
-        "basis": STRING,
-        "owner_target_id": NULLABLE_STRING,
-        "evidence": array(EVIDENCE),
-        "origin": ORIGIN,
-        # An error link of the Framework's error contract, checked against it by the store.
-        "error_chain": {"type": "object", "additionalProperties": {}},
-        "issue_id": ISSUE_ID,
-        "expected_revision": DIGEST,
-    },
-    ("origin", "error_chain", "issue_id", "expected_revision"),
-)
+REPORT_FIELDS = {
+    "report_key": STRING,
+    "tier": {"enum": list(TIERS)},
+    "type": {"enum": ["bug", "gap", "limitation"]},
+    "subtype": {"anyOf": [{"enum": list(GAP_KINDS)}, {"type": "null"}]},
+    "title": STRING,
+    "description": STRING,
+    "impact": STRING,
+    "basis": STRING,
+    "owner_target_id": NULLABLE_STRING,
+    "evidence": array(EVIDENCE),
+    "origin": ORIGIN,
+    # An error link of the Framework's error contract, checked against it by the store.
+    "error_chain": {"type": "object", "additionalProperties": {}},
+    "issue_id": ISSUE_ID,
+    "expected_revision": DIGEST,
+}
+OPTIONAL = ("origin", "error_chain", "issue_id", "expected_revision")
+# What a caller submits: every report carries its tier.
+REPORT = obj(REPORT_FIELDS, OPTIONAL)
+# A report as a record stores it: records of schema version 2, written before tiers, hold reports
+# without one, which the store never rewrites; version 3 requires it of every report.
+STORED_REPORT = obj(REPORT_FIELDS, ("tier", *OPTIONAL))
 PROVENANCE = obj(
     {
         "invocation_id": STRING,
@@ -55,7 +64,7 @@ PROVENANCE = obj(
 )
 RECEIPT = obj({"issue_id": ISSUE_ID, "report_id": DIGEST, "path": PATH})
 OBSERVATION = obj(
-    {"id": DIGEST, "created_at": STRING, "report": REPORT, "source": PROVENANCE}
+    {"id": DIGEST, "created_at": STRING, "report": STORED_REPORT, "source": PROVENANCE}
 )
 DISPOSITION = obj(
     {
@@ -67,9 +76,11 @@ DISPOSITION = obj(
         "created_at": STRING,
     }
 )
+# The version of the records the store creates.
+RECORD_VERSION = 3
 RECORD = obj(
     {
-        "schema_version": {"type": "integer", "const": 2},
+        "schema_version": {"enum": [2, RECORD_VERSION]},
         "id": ISSUE_ID,
         "status": {"enum": ["open", "closed"]},
         "reports": {**array(OBSERVATION), "minItems": 1},
@@ -77,5 +88,5 @@ RECORD = obj(
     }
 )
 
-register("concorde-issue-report", 1, REPORT)
+register("concorde-issue-report", 2, REPORT)
 register("concorde-issue-receipt", 1, RECEIPT)

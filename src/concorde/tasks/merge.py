@@ -595,8 +595,12 @@ def _checked_close(
             f"once the cause is fixed `concorde task merge {task_id} --resume` reruns the "
             "checks and closes it",
         ) from error
+    # Still under the merge lock: the Issues the task fixed close with the merge as evidence.
+    resolved, unresolved = store.close_resolved(primary, closed, after)
+    warnings.extend(unresolved)
     return {
         "record": closed,
+        "resolved": resolved,
         "merge": {
             "before": before,
             "after": after,

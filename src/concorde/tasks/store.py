@@ -134,7 +134,7 @@ OUTCOMES = ("merged", "completed", "failed")
 ENDED = ("closed", "failed")
 # The version of the task record: 3 names the main agent's sessions and holds the reports, 4
 # says who answered each report.
-RECORD_VERSION = 4
+RECORD_VERSION = 5
 ATTEMPTS = 3
 # Where task worktrees go by default, relative to the primary worktree; Git must ignore it.
 WORKTREES = ".claude/worktrees"
@@ -404,6 +404,8 @@ def upgraded(record: dict, folder: Path) -> dict:
         record["main"] = mains[-1]["main"] if mains else None
         record["mains"] = mains
         record["reports"] = []
+    if version < 5:
+        record["resolves"] = []
     if version < 4:
         record["reports"] = [
             {**item, "answer": {**item["answer"], "by": "main-agent"}}
@@ -1100,10 +1102,12 @@ def open_task(
     base: str | None = None,
     path: Path | None = None,
     wait: float = MERGE_WAIT,
+    resolves: list[str] = (),
 ) -> dict:
     """Create the branch, the worktree, the record and the decision log of a new task.
 
     Holds the merge lock, so the task is never based on a merge that may still be undone.
+    ``resolves`` names the open Issues the task fixes, which its merge closes.
     """
     primary = require_primary(primary)
     _prune(primary)
@@ -1111,7 +1115,95 @@ def open_task(
         unfinished = unfinished_merge(primary)
         if unfinished is not None:
             raise incomplete_merge(primary, unfinished)
-        return _open_task(primary, task_id, goal, modules, base=base, path=path)
+        return _open_task(
+            primary,
+            task_id,
+            goal,
+            modules,
+            base=base,
+            path=path,
+            resolves=list(resolves),
+        )
+
+
+def open_issues(primary: Path, issues: list[str], task_id: str) -> None:
+    """Refuse, with ``invalid_issue``, a list of Issues that are not distinct open Issues of the
+    project."""
+    from ..issues.store import IssueError, read_issue
+
+    problems = []
+    repeated = sorted({item for item in issues if issues.count(item) > 1})
+    if repeated:
+        problems.append(f"named twice: {', '.join(repeated)}")
+    for issue in dict.fromkeys(issues):
+        try:
+            record, _ = read_issue(primary, issue)
+        except (IssueError, OSError) as error:
+            problems.append(str(error))
+            continue
+        if record["status"] != "open":
+            problems.append(f"Issue {issue} is closed; reopen it first")
+    if problems:
+        raise TaskError(
+            "invalid_issue",
+            f"task {task_id} can resolve only open Issues of the project: "
+            + "; ".join(problems),
+        )
+
+
+def resolve(primary: Path, task_id: str, issues: list[str]) -> dict:
+    """Add ``issues`` to the open Issues the current task resolves, which its merge closes."""
+    if not issues:
+        raise TaskError("invalid_input", "name at least one Issue the task resolves")
+    guard_merges(primary, task_id)
+    load_unended(primary, task_id, "an ended task resolves no more Issues")
+    open_issues(primary, issues, task_id)
+
+    def change(record):
+        if record["state"] in ENDED:
+            raise TaskError(
+                "invalid_transition", f"task {task_id} is already {record['state']}"
+            )
+        record["resolves"] = list(dict.fromkeys([*record["resolves"], *issues]))
+        return record
+
+    return update(primary, task_id, change)
+
+
+def close_resolved(
+    primary: Path, record: dict, commit: str
+) -> tuple[list[dict], list[str]]:
+    """Close each Issue the merged task resolves and that is still open as ``resolved``, with its
+    merge commit as evidence; the caller holds the merge lock. The answers of the closures made
+    and a warning, carrying the Issues error link, for each that could not be made: the merge
+    stays whatever happens to an Issue."""
+    from .. import errors
+    from ..issues import command as issues
+
+    closed, warnings = [], []
+    for issue in record.get("resolves", []):
+        try:
+            closed.append(
+                issues.dispose(
+                    primary,
+                    issue,
+                    "resolved",
+                    f"Fixed by task {record['id']}, merged into the primary branch at {commit}.",
+                    [f"merge commit {commit}", f"task {record['id']}"],
+                    locked=True,
+                )
+            )
+        except issues.Refusal as refusal:
+            warnings.append(
+                f"task {record['id']} resolves Issue {issue}, but its merge could not close it: "
+                f"{errors.render(refusal.link)}"
+            )
+        except Exception as error:  # noqa: BLE001 -- the merge stands whatever an Issue does
+            warnings.append(
+                f"task {record['id']} resolves Issue {issue}, but its merge could not close it: "
+                f"{errors.render(issues.unexpected(error))}"
+            )
+    return closed, warnings
 
 
 def _open_task(
@@ -1122,6 +1214,7 @@ def _open_task(
     *,
     base: str | None,
     path: Path | None,
+    resolves: list[str] = (),
 ) -> dict:
     if not TASK_ID.match(task_id or ""):
         raise TaskError("invalid_task_id", f"invalid task identity: {task_id!r}")
@@ -1169,6 +1262,7 @@ def _open_task(
         )
     _ignored_inside(primary, worktree)
     registered(primary, modules)
+    open_issues(primary, list(resolves), task_id)
     base_commit = _git(
         primary, "rev-parse", "--verify", f"{base or 'HEAD'}^{{commit}}"
     ).stdout.strip()
@@ -1228,6 +1322,7 @@ def _open_task(
         "main": None,
         "mains": [],
         "reports": [],
+        "resolves": list(resolves),
         "state": "open",
         "created_at": stamp,
         "updated_at": stamp,

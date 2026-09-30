@@ -32,20 +32,22 @@ the report file.
 
 A report file with a provenance field is refused as malformed, because a report has no such field.
 
-### req.issues.main-agent-actor — The command attributes Issue writes to the main agent
+### req.issues.main-agent-actor — The command attributes Issue writes to the session
 
-The bookkeeping command SHALL record `main-agent` as the source agent of each report and the actor
-of each disposition it writes.
+The bookkeeping command SHALL record as the source agent of each report and the actor of each
+disposition it writes `main-agent`, or, called by the [project MCP server](../glossary.json#concept.project-mcp-server)'s Issue tools, the calling
+session: `task-session` in a task worktree bound as a workspace and `main-agent` in any other.
 
-This is attribution by the command, not authentication or a restriction on the store's library
-callers. Workers and Operations do not record or dispose Issues automatically in this version;
-the main agent decides what to record after reading their results.
+This is attribution by the command and the tools, not authentication or a restriction on the
+store's library callers. Workers never record or dispose Issues; an [Operation](../glossary.json#concept.operation)'s host may record
+them through the store with the provenance it vouches for.
 
 ### req.issues.report-checked — A report names a registered owner and existing evidence
 
 The bookkeeping command SHALL refuse a report whose `owner_target_id` is neither `null` nor a
-registered [Module](../glossary.json#concept.module), whose evidence path does not exist in the
-project or, for a report with an origin, in the origin project, or whose
+[Module](../glossary.json#concept.module) of the primary worktree's registry, whose evidence path
+does not exist in the worktree it reports from or, for a report with an origin, in the origin
+project, or whose
 [error chain](../glossary.json#concept.error-chain) is not an error of the Framework's error
 contract.
 
@@ -53,10 +55,27 @@ A `null` owner is accepted: the report's reporting Module is then the registry's
 the command refuses the report with `no_reporting_module` when the registry has no single root
 ([provenance](interface.md#provenance)).
 
-### req.issues.durable-receipt — A receipt means the report is on disk
+### req.issues.durable-receipt — A receipt means the report is committed
 
-The [Issue](../glossary.json#concept.issue) store SHALL return a receipt only after the record
-holding the report is durably published.
+The [Issue](../glossary.json#concept.issue) store SHALL return a receipt, or a disposition's
+revision, only after the record is durably published and committed on the primary branch.
+
+### req.issues.tier-required — Every report carries a tier
+
+The Issue store SHALL accept a report only when it carries one of the [tiers](module.md#tiers)
+`suggestion`, `obvious-fix`, `preferred-fix` and `decision-needed`.
+
+Every record it creates therefore holds only tiered reports; a record written before tiers existed
+keeps its untiered reports unchanged and stays valid.
+
+### req.issues.own-failures — The Issue system never reports itself
+
+The bookkeeping command and the project MCP server's Issue tools SHALL say, in every refusal that is
+a failure of the Issue system itself, that its error chain is carried in the [decision log](../glossary.json#concept.decision-log),
+escalation or [run result](../glossary.json#concept.run-result) and never reported as an Issue.
+
+An Issue system that failed cannot be trusted to record its own failure, so a session relying on it
+to do so would wait for ever ([failures of the Issue system](module.md#failures-of-the-issue-system)).
 
 ### req.issues.specific-refusals — Refusals name what is wrong
 
@@ -78,11 +97,19 @@ The bookkeeping command SHALL NOT write a record for a request it refuses.
 Every program write that creates, appends to or disposes an Issue record SHALL go through
 the Issue store.
 
-Git operations that move committed record files between branches, such as committing on a task
-branch or merging it, are not store writes, and the store never runs Git. Resolving a Git merge
-conflict in a record by hand, as the [branch-local records](module.md#branch-local-records-and-repair)
-describe, is part of such a merge: it keeps accepted reports unchanged, only reconciles the
-disposition history, and `concorde issues check` must pass on the result.
+Nobody edits a record by hand; Git operations that move committed record files, such as merging a
+branch that still carries a record an earlier Concorde wrote there, are not store writes.
+
+### req.issues.project-level — The primary worktree keeps the project's Issues
+
+The Issue store SHALL write records only in the primary worktree of the project's repository.
+
+The bookkeeping command and the project MCP server's Issue tools read and write that worktree's
+records from any worktree of the repository, apart from `check`, which checks the worktree it runs
+in.
+
+Every session and run sees the same Issues at once, and every Issue has one project-wide identity
+from the moment it is reported.
 
 ### req.issues.retention — Reports are never rewritten
 
@@ -102,10 +129,20 @@ The Issue store SHALL write a record only over the exact revision its caller rea
 A creation requires that the record does not exist; an append and a disposition name the revision
 they replace, and a mismatch fails with `stale_issue`.
 
-### req.issues.worktree-lock — One lock serializes the writes into a worktree
+### req.issues.merge-lock — Issue writes take the merge lock
 
-The Issue store SHALL perform every write into a worktree while holding that worktree's one
-exclusive Issue lock.
+The Issue store SHALL perform every write while holding the primary worktree's
+[merge lock](../glossary.json#concept.merge-lock), or while its caller holds it, and only while no
+task's merge into the primary branch is unfinished.
+
+A write so never commits between a merge commit and the checks that decide whether it stays.
+
+### req.issues.commit-alone — An Issue commit commits its record alone
+
+The Issue store SHALL commit each write as a commit of that record alone on the primary branch, or,
+when Git does not commit it, put the record back as it was and refuse the write.
+
+Other changes of the primary worktree, staged or not, stay as they were.
 
 ### req.issues.status-derived — Status agrees with disposition history
 

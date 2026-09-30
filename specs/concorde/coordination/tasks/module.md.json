@@ -55,6 +55,13 @@
           "concept.history",
           "concept.error-chain"
         ]
+      },
+      {
+        "target": "module.issues",
+        "meaning": "#uses-issues",
+        "relies_on": [
+          "concept.issue"
+        ]
       }
     ],
     "includes": [],

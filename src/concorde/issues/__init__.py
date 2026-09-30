@@ -1,1 +1,1 @@
-"""Branch-local, evidence-bound project issues and host-mediated reporting."""
+"""Project-level, evidence-bound Issues kept by the primary worktree, with their tiers."""

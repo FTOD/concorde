@@ -388,49 +388,41 @@ nowhere else, in a task opened for the root Module, or for a created Module to s
 
 ## Issues
 
-The main agent decides whether a concrete problem deserves an
-[Issue](../../glossary.json#concept.issue), typically when the current task will not fix
-it. A worker finding or an Operation error is input to that decision; neither records an Issue
-automatically. The guidance tells the main agent to inspect `concorde issues list` and
-`show <id>` first, including closed matches, then create or append a report through the
-bookkeeping command. It keeps the receipt for follow-up; repeating a creation command would
-create another Issue. Inspecting Issues is explicit, with no automatic notification to sessions.
+[Issues](../../glossary.json#concept.issue) are project-level: the primary worktree keeps them and
+every session and run sees the same records at once. The guidance tells the main agent and task
+sessions to manage them through the [project MCP server](#the-project-mcp-server)'s Issue tools,
+`issue_list`, `issue_show`, `issue_report`, `issue_close`, `issue_reopen` and `issue_check`, which
+answer as `concorde issues` does; a task session has no other way, since its Bash sandbox cannot
+write the primary worktree, and the command stays for the main agent and for runs.
 
-Run every writing command (`report`, `close`, `reopen`) in a task worktree, through the task
-session working that task, which the main agent tells so in the task's brief or its answer, and
-pass that task's identity to `report --task`. If no task exists, open one for the owning Module, or
-the root Module when the owner is unknown. `--task` supplies provenance, not routing; the working
-directory or explicit root selects the Issue files. The command still accepts reports without a
-task; this workflow is a rule of the guidance. Read-only `list`, `show` and `check` may run in
-either worktree and describe its local records. The main agent works through the store's command
-rather than editing report contents or flipping `status` in a file.
+**Recording.** The session that meets a concrete problem it will not fix now decides whether it
+deserves an Issue; a worker finding or an Operation error is input to that decision, and a review
+Operation may report the problems it finds itself. Before recording, the session reads the open
+and closed Issues (`issue_list`, `issue_show`) and appends a report to the Issue that already tracks
+the problem, at the revision `issue_show` printed, rather than create another; it reopens a closed
+match whose closure the observation calls into question. Every report carries a complete
+description, impact, basis and evidence, and a **tier** that says who may handle the problem
+([Issues' tiers](../../issues/module.md#tiers)): `suggestion`, `obvious-fix`, `preferred-fix` or
+`decision-needed`. Recording never stops the reporter and schedules nothing.
 
-An Issue stays open while a task investigates or fixes it. Solve it by ordinary Operations on its
-current owning Module, then `close --reason resolved` on that task's branch with a note and the
-fix's evidence before delivery, so the closure merges with the fix. Other closing reasons are
-`duplicate` (naming another open Issue) and `not-actionable`; recurrence uses `reopen`, preserving
-history. Each disposition needs evidence whose meaning the main agent checks itself. Appending a
-report to an open Issue uses the revision from `show`; closing and reopening read their own
-current revisions. On `stale_issue`, read the record again before deciding to retry. See the
-Issues [lifecycle](../../issues/module.md#lifecycle) for the complete state model.
+**Tiers decide who fixes.** Reporting and fixing are separate: a review Operation only reports, and
+fixing is later work of a task. A task session working a task may fix an `obvious-fix` Issue
+itself, and a `preferred-fix` one too, reporting the fix it chose to the main agent; it never
+settles a `decision-needed` Issue, which it escalates, naming the Issue by its identity, for the
+main agent to decide or put to the developer. A `suggestion` blocks nothing. The main agent decides
+which Issues a task takes up and names them in the task, with `concorde task open --resolves` or
+`task_resolve`, so the task's merge closes them as `resolved` with the merge commit as evidence;
+starting, fixing or delivering a task changes no Issue. An Issue closed for another reason, or fixed
+without such a task, is closed with `issue_close`, `duplicate` naming another open Issue or
+`not-actionable`, with a note and evidence whose meaning the closer answers for; recurrence uses
+`issue_reopen`, preserving history. On `stale_issue`, read the record again before deciding to
+retry.
 
-Before ending a task without merging it, preserve follow-up information for every Issue worth
-keeping. Either record it through the command in a subsequent task, keeping its earlier identity
-and branch as references in the report, or append a handoff to the current task's decision log:
-Issue identity, branch and commit when available, what remains to be done, and durable locations
-of the report and evidence. Preserve uncommitted material needed for the handoff before allowing
-worktree removal. Tasks keeps the branch and decision log after closing; committed Issue changes
-survive there, but the primary branch's list still shows only what has been merged. A log entry
-is a handoff, not a published Issue or an automatic transfer.
-
-If Git reports a conflict in an Issue record, the task session resolves it in the task worktree
-while merging the primary branch into it, as the main agent's answer tells it. Preserve accepted
-reports unchanged and document how competing dispositions are reconciled, retaining their evidence.
-Do not concatenate incompatible closes or invent a reopening just to satisfy the state rules. Run
-`concorde issues check` explicitly on the resolved records before `task-validation` and `delivery`;
-structural Spec validation alone does not run the store check. If the meaning of a competing
-decision cannot be settled within the task's scope, escalate it under the ordinary escalation
-policy.
+**The Issue system's own failures.** A refusal of the Issue tools or command that is a failure of the
+Issue system itself, such as a busy merge lock, an unfinished merge or a failed commit, is never
+recorded as an Issue: the session carries its error chain in the task's decision log and
+escalation, as it would any other failure, and a run carries it in its result. A busy merge lock is
+waited for (`register_wait`) and the write asked again.
 
 ## Develop installs
 
@@ -451,7 +443,13 @@ events are in the [contracts](contracts.md).
   the merge lock and each task's [workspace lock](../../glossary.json#concept.workspace-lock).
 - **Short writes** with structured arguments: `task_open`, `task_escalate`, whose error chain link
   is typed arguments rather than a command line to quote, `task_report`, `task_answer`,
-  `task_rebind` and `task_close` without a merge.
+  `task_rebind`, `task_resolve` and `task_close` without a merge.
+- **Issues**: `issue_list`, `issue_show` and `issue_check` read the project's
+  [Issues](../../glossary.json#concept.issue), and `issue_report`, `issue_close` and
+  `issue_reopen` write them, each as `concorde issues` does and without waiting for the merge lock
+  an Issue write takes, refused at once with `merge_busy` while another process holds it. A report
+  is checked against the session's worktree, where its evidence lies, and recorded as the session's:
+  `task-session` with its task in a task worktree bound as a workspace, `main-agent` otherwise.
 - **Long work**: `task_merge`, which never waits for a lock. It takes the task's workspace lock and
   the [merge lock](../../glossary.json#concept.merge-lock) at once or is refused at once, with
   `workspace_busy` or `merge_busy` naming who holds the busy one: the holder's command, process,
@@ -693,14 +691,15 @@ Two providers serve the main agent without being a level below it.
 
 <a id="uses-issues"></a>
 
-**Issues** provides durable [Issue](../../glossary.json#concept.issue) records and the
-bookkeeping command for [reports](../../issues/interface.md#contract.issues.report) and
-[receipts](../../issues/interface.md#contract.issues.receipt). The guidance relies on
-status following dispositions and
-[revisions](../../glossary.json#concept.issue-revision) detecting concurrent writes. It tells
-the main agent to inspect before recording, make every Issue write in a task, preserve unmerged
-observations for follow-up, and merge closure with the fix. The command records these decisions;
-the main agent remains responsible for their evidence and for resolving conflicting decisions.
+**Issues** provides durable, project-level [Issue](../../glossary.json#concept.issue) records and
+the bookkeeping command for [reports](../../issues/interface.md#contract.issues.report) and
+[receipts](../../issues/interface.md#contract.issues.receipt), whose actions the project MCP server
+presents as its Issue tools, unchanged. The guidance relies on status following dispositions,
+[revisions](../../glossary.json#concept.issue-revision) detecting concurrent writes and every
+report carrying its tier. It tells sessions to inspect before recording, to fix by tier, to have a
+task's merge close the Issues it resolves and never to report a failure of the Issue system as an
+Issue. The command records these decisions; whoever disposes an Issue remains responsible for the
+evidence.
 
 <a id="uses-spec-mcp"></a>
 

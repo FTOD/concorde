@@ -310,8 +310,9 @@ that command does when it waits for no lock, from the
 [task records](../../glossary.json#concept.task-record), traces and locks of the primary worktree
 read afresh for that call, adding no other rule of its own.
 
-Those tools are the queries `task_list`, `task_show` and `trace_show` and the short writes
-`task_open`, `task_escalate` and `task_close`. The primary worktree is that of
+Those tools are the queries `task_list`, `task_show`, `trace_show`, `issue_list`, `issue_show` and
+`issue_check` and the short writes `task_open`, `task_escalate`, `task_close`, `task_resolve`,
+`issue_report`, `issue_close` and `issue_reopen`. The primary worktree is that of
 the repository the server was started in, whichever worktree of the project it was started from.
 
 ### req.main-session.project-mcp-record-queries — The other queries present records read-only
@@ -710,55 +711,43 @@ The task worktree stays checked out on the task branch that `task open` created.
 
 ## Issues
 
-### req.main-session.issues-recording — The main agent decides what to record
+### req.main-session.issues-recording — A session inspects before it records
 
-The guidance SHALL tell the main agent to inspect existing Issues before deciding whether a
-worker finding, Operation error or its own observation calls for a new report.
+The guidance SHALL tell the main agent and task sessions to read the open and closed Issues before
+recording a problem, and to append a report to the Issue that already tracks it instead of creating
+another.
 
-Workers and Operations do not create Issues automatically. Inspection includes closed Issues;
-appending to an open match or reopening a closed one preserves its identity, while repeating a
-creation command creates another [Issue](../../glossary.json#concept.issue).
+Every report carries a complete description, impact, basis and evidence and its tier, so that an
+[Issue](../../glossary.json#concept.issue) escalated by its identity alone can be acted on.
+Repeating a creation creates another Issue.
 
-### req.main-session.issues-worktree — Issue writes belong to a task
+### req.main-session.issues-through-server — Sessions manage Issues through the project MCP server
 
-The guidance SHALL tell the main agent to have every Issue writing command run in a task
-worktree, by the session working that task, passing the task identity on `report`.
+The guidance SHALL tell the main agent and task sessions to read and write Issues through the
+project MCP server's Issue tools.
 
-This applies to creation, append, closure and reopening; read-only inspection may use either
-worktree. Only `report` has a `--task` argument. It supplies provenance and does not select the
-worktree; this is a workflow obligation, not additional CLI admission logic.
+A task session's Bash sandbox cannot write the primary worktree, which keeps the Issues; the
+`concorde issues` command stays for the main agent and runs.
 
-### req.main-session.issues-by-operations — Issues are solved by ordinary work
+### req.main-session.issues-tiers — The tier decides who fixes an Issue
 
-The guidance SHALL tell the main agent to solve an Issue by a task on the Issue's
-[Module](../../glossary.json#concept.module) whose session runs ordinary Operations.
+The guidance SHALL tell a task session that it may fix an `obvious-fix` or a `preferred-fix` Issue
+itself, reporting the fix it chose for a `preferred-fix` one, and that it escalates a
+`decision-needed` Issue, named by its identity, instead of settling it.
 
-### req.main-session.issues-close-with-fix — An Issue closes with its fix
+A review Operation only reports; fixing is later work of a task. A `suggestion` blocks nothing.
 
-The guidance SHALL tell the main agent to have a solved Issue closed on the branch of the task that
-fixed it.
+### req.main-session.issues-close-with-merge — A fixed Issue closes with its task's merge
 
-### req.main-session.issues-unmerged — Unmerged observations retain a handoff
+The guidance SHALL tell the main agent to name the Issues a task fixes in the task, so that the
+task's merge closes them.
 
-The guidance SHALL tell the main agent to preserve the report, evidence locations and follow-up
-for each Issue worth keeping before ending a task without merging it, through a subsequent task
-or a handoff in the task's decision log.
+Starting, fixing or delivering a task changes no Issue; a task that ends without merging closes
+none.
 
-Tasks retains a closed task's branch and log; unmerged committed records remain there, while
-forced worktree removal can discard uncommitted material. A log handoff does not publish an Issue
-on the primary branch.
+### req.main-session.issues-own-failures — Failures of the Issue system travel as error chains
 
-### req.main-session.issues-conflicts — Issue conflicts are reconciled
+The guidance SHALL tell the main agent and task sessions never to report a failure of the Issue
+system as an Issue, and to carry its error chain in the decision log and escalation instead.
 
-The guidance SHALL tell the main agent to have the task's session reconcile conflicting Issue
-records in the task worktree, preserving accepted reports and documenting the disposition
-decision.
-
-Competing closes cannot simply be concatenated or made to alternate with fictitious reopenings.
-
-### req.main-session.issues-store-check — Reconciled Issue records are checked
-
-The guidance SHALL tell the main agent to have `concorde issues check` run on reconciled Issue
-records before validation and delivery.
-
-The store check establishes record consistency, not the truth of a closure's evidence.
+An Issue system that failed cannot be trusted to record its own failure.

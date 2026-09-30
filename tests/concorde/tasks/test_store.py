@@ -138,7 +138,7 @@ class TaskStoreTests(unittest.TestCase):
         worktree = self.root / ".claude/worktrees/severity"
         self.assertEqual(str(worktree), value["worktree"])
         self.assertEqual(
-            (4, "open", head, None, [], []),
+            (5, "open", head, None, [], []),
             (
                 value["schema_version"],
                 value["state"],
@@ -817,7 +817,7 @@ class TaskStoreTests(unittest.TestCase):
         folder = self.folder()
         # Write the record back as it was before the main was recorded.
         record = json.loads((folder / "task.json").read_text())
-        del record["main"], record["mains"], record["reports"]
+        del record["main"], record["mains"], record["reports"], record["resolves"]
         record["schema_version"] = 2
         (folder / "task.json").write_text(json.dumps(record, indent=2) + "\n")
         node = trace.read(folder)
@@ -831,7 +831,7 @@ class TaskStoreTests(unittest.TestCase):
         store.rebind(self.root, "t1", "concorde-8e")
         stored = json.loads((folder / "task.json").read_text())
         self.assertEqual(
-            (4, "concorde-8e", ["concorde-7d", "concorde-8e"], 1),
+            (5, "concorde-8e", ["concorde-7d", "concorde-8e"], 1),
             (
                 stored["schema_version"],
                 stored["main"],
@@ -850,7 +850,7 @@ class TaskStoreTests(unittest.TestCase):
         (folder / "task.json").write_text(json.dumps(stored, indent=2) + "\n")
         answer = store.show_task(self.root, "t1")["record"]["reports"][0]["answer"]
         self.assertEqual(("Go on.", "main-agent"), (answer["text"], answer["by"]))
-        self.assertEqual(4, self.record()["schema_version"])
+        self.assertEqual(5, self.record()["schema_version"])
 
     @verifies("scenario.tasks.open-unknown-module")
     def test_an_unknown_module_is_refused(self):

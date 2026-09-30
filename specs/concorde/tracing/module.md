@@ -204,8 +204,7 @@ trace or a task folder, and its file holds only who holds it now:
 
 | Lock | Taken by | Kept |
 | --- | --- | --- |
-| [merge lock](../glossary.json#concept.merge-lock) `merge.lock` | a task merge, open or close | always |
-| [Issue](../glossary.json#concept.issue) lock `issues.lock` | an Issue write in its worktree | always |
+| [merge lock](../glossary.json#concept.merge-lock) `merge.lock` | a task merge, open or close, and an [Issue](../glossary.json#concept.issue) write | always |
 | task lock `tasks/<task>.lock` | a change of the task's record | until the task is closed |
 | [workspace lock](../glossary.json#concept.workspace-lock) `workspaces/<workspace>.lock` | a run of the workspace, a merge or close of its task | until the task is closed |
 | workflow lock `workflows/<workspace>.lock` | a workflow step of the workspace | until the task is closed |

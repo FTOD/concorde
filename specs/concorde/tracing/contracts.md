@@ -524,8 +524,7 @@ runs name the workspace in `holder` only, and a task is named only by Tasks and 
 
 | Lock | File | Taken by | Lifetime |
 | --- | --- | --- | --- |
-| [merge lock](../glossary.json#concept.merge-lock) | `merge.lock` | `task merge`, `task open`, `task close` | permanent |
-| Issue lock | `issues.lock` of the worktree | an Issue write in that worktree | permanent |
+| [merge lock](../glossary.json#concept.merge-lock) | `merge.lock` | `task merge`, `task open`, `task close` and every write of an [Issue](../glossary.json#concept.issue) | permanent |
 | task lock | `tasks/<task>.lock` | every change of the task's record | removed by the close that moves the task, while it holds the lock |
 | [workspace lock](../glossary.json#concept.workspace-lock) | `workspaces/<workspace>.lock` | every bound run, and `task merge` and `task close` of its task | removed by the close, while it holds the lock |
 | workflow lock | `workflows/<workspace>.lock` | a [workflow step](../glossary.json#concept.workflow-step) or report while it reads and writes the workflow node | removed by the close, while it holds the workspace lock |

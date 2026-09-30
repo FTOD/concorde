@@ -498,8 +498,9 @@ uses no other Module.
 
 <a id="contains-issues"></a>
 
-**Issues** keeps durable, branch-local [Issue](glossary.json#concept.issue) records so a problem
-worth keeping survives the task that found it; solving one is ordinary work run through Operations.
+**Issues** keeps durable, project-level [Issue](glossary.json#concept.issue) records, each report
+with its tier, so a problem worth keeping survives the task that found it; solving one is ordinary
+work of a task, whose merge closes it.
 
 <a id="contains-distribution"></a>
 

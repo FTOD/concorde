@@ -4,8 +4,9 @@ The exact session, tools and events of the
 [project MCP server](../../glossary.json#concept.project-mcp-server), described in the
 [Main session](module.md#the-project-mcp-server). Every tool is a presentation of a command
 that already exists; where a row says "as" a command, the result and every refusal are that
-command's when it waits for no lock, as [Tasks](../tasks/contracts.md#commands) and
-[Tracing](../../tracing/contracts.md) define them. `run_result`, `workflow_report` and `locks`
+command's when it waits for no lock, as [Tasks](../tasks/contracts.md#commands),
+[Tracing](../../tracing/contracts.md) and [Issues](../../issues/interface.md#bookkeeping-command)
+define them. `run_result`, `workflow_report` and `locks`
 present records no command prints in that shape: their rows define their results, and their
 refusals are the codes below. `task_merge` and `register_wait` answer at once with the start and the
 registration defined [below](#starting-a-merge): the merge's own result and refusals, and the
@@ -51,8 +52,8 @@ an organization policy that disables channels leaves it believing it has one.
 Every tool returns one text content item holding one JSON value. A refusal sets `isError: true`
 and its value is `{"error": <link>}`, a link of the
 [error contract](../../tracing/contracts.md#contract.tracing.error): the link of the component that
-refused, unchanged, which is `Tasks (concorde task <command>)` for a refusal of Tasks, or the
-server's own `component` link of actor `Concorde project MCP server (<tool>)`:
+refused, unchanged, which is `Tasks (concorde task <command>)` for a refusal of Tasks,
+`Issues (concorde issues)` for a refusal of the Issues command, or the server's own `component` link of actor `Concorde project MCP server (<tool>)`:
 
 | Code | Reason | When |
 | --- | --- | --- |
@@ -64,7 +65,7 @@ server's own `component` link of actor `Concorde project MCP server (<tool>)`:
 | `step_failed` | `environment` | `concorde workflow step` printed no JSON object, or gave no answer within its wait and 60 seconds more; the detail carries the command, its exit status and the end of its output |
 | `unknown_run` | `input` | `run_result` names a run no reader finds |
 | `no_report` | `input` | `workflow_report` finds no saved [workflow result](../../glossary.json#concept.workflow-result), or not the one named |
-| any Tasks or Tracing code | as there | the command the tool presents refused, such as `unknown_task`, `merge_busy` from `task_open` or `workspace_busy` from `task_close` |
+| any Tasks, Tracing or Issues code | as there | the command the tool presents refused, such as `unknown_task`, `merge_busy` from `task_open` or `workspace_busy` from `task_close` |
 | any Workflows code | as there | `concorde workflow step` refused the request or the workspace with `{"error": <link>}` and no step outcome, such as `invalid_request`; that link unchanged |
 | any other code | `environment` | an unexpected error of the server, as a link built from the exception |
 
@@ -84,6 +85,13 @@ server's own `component` link of actor `Concorde project MCP server (<tool>)`:
 | `task_report` | `task`, `text`; optional `escalations`, numbers ≥ 1 | as `concorde task report` with `--escalation` for each |
 | `task_answer` | `task`, `reports` (nonempty numbers ≥ 1), `text` | as `concorde task answer` with `--report` for each |
 | `task_close` | `task`, `outcome` (`completed` or `failed`); `note` for completed; `reason` and either `runs`/`error_files` or `no_error` true for failed; optional `force` | as `concorde task close --completed` or `--failed`, taking the workspace and merge locks without waiting |
+| `task_resolve` | `task`, `issues` (nonempty) | as `concorde task resolve <task> <issue>…` |
+| `issue_list` | none | as `concorde issues list` |
+| `issue_show` | `issue` | as `concorde issues show <issue>` |
+| `issue_check` | none | as `concorde issues check` in the primary worktree, without its exit status |
+| `issue_report` | exactly one of `report`, a [report](../../issues/interface.md#contract.issues.report) as an object, and `file`, a report file's path relative to the session's worktree; optional `check` | as `concorde issues report --file <file> [--check]` run in the session's worktree, never waiting for the merge lock, with the session's provenance: `task-session` and its task in a task worktree bound as a workspace, `main-agent` without a task otherwise; a call naming both or neither of `report` and `file` is refused with `invalid_input` |
+| `issue_close` | `issue`, `reason` (`resolved`, `duplicate` or `not-actionable`), `note`, `evidence` (nonempty); optional `duplicate_of` | as `concorde issues close`, never waiting for the merge lock, with the session as actor as for `issue_report` |
+| `issue_reopen` | `issue`, `note`, `evidence` (nonempty) | as `concorde issues reopen`, never waiting for the merge lock, with the session as actor |
 | `task_merge` | `task`; optional `checks`, or `resume` or `abort` true | the start below |
 | `register_wait` | exactly one of `until` (with `task`), `rebound` (a [main agent](../../glossary.json#concept.main-agent)'s session, with `task`), `run`, and `lock` (`merge`, or `workspace` with `task`) | the registration below |
 | `workflow_step` | `request`, a [step request](../../execution/workflows/contracts.md#contract.workflows.step-request) as an object; optional `wait`, whole seconds from 0 to 100 (default 100) | the [step outcome](../../execution/workflows/contracts.md#contract.workflows.step) below |

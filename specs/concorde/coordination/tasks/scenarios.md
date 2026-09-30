@@ -263,6 +263,17 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - AND the merge commit is the primary branch's head, its copy of the decision log the same as the log in the history
 - AND the output names the commits before and after the merge, each check with its exit status, and how long the command waited for the lock
 
+### scenario.tasks.merge-closes-resolved-issues — A merge closes the Issues its task resolves
+
+- GIVEN open [Issues](../../glossary.json#concept.issue) A, B and C of the project, a task opened with `--resolves A` to which `concorde task resolve` added B and C, and B closed by hand meanwhile
+- WHEN the main agent merges the delivered task and its checks pass
+- THEN A and C are closed as `resolved` by `main-agent`, with the merge commit and the task as evidence, each in a commit of its own on the primary branch after the merge commit
+- AND the merge prints them as `resolved` and names B, with the Issues error chain `closed_issue`, in its warnings
+- BUT `open --resolves` or `resolve` naming an Issue that does not exist or is not open is refused with `invalid_issue`
+
+This illustrates [resolving open Issues](requirements.md#req.tasks.resolves-open-issues) and
+[closing them with the merge](requirements.md#req.tasks.merge-closes-resolved).
+
 ### scenario.tasks.merge-empty-log — A merge warns of an unwritten decision log
 
 - GIVEN a delivered task whose decision log holds only the heading and goal `open` wrote

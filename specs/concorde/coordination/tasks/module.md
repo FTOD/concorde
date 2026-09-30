@@ -18,7 +18,9 @@ merge into the primary branch under a lock, so several main sessions never merge
 it if the checks that follow fail; it records the merge in the task until the checks decided, so a
 merge interrupted halfway stops every task command that would build on it until it is resumed or
 aborted. When a task ends, merged or not, Tasks commits its decision log to the primary branch, so
-the reasons behind its choices travel with the code after the local records are gone.
+the reasons behind its choices travel with the code after the local records are gone. A task may name
+the [Issues](../../glossary.json#concept.issue) it resolves, which its merge closes once the fix is on
+the primary branch.
 
 Tasks is independent of the sessions that work in its tasks: it does not start or follow them,
 which [Task sessions](../task-session/module.md) does, and it does not decide how work is split,
@@ -234,6 +236,14 @@ writes the binding once and never again; closing removes it with the worktree. A
 system refuses ends the open with `binding_failed`, naming the worktree and branch left behind and
 how to remove them, and records no task.
 
+**Resolving Issues.** A task that fixes recorded problems names them: `--resolves <id>,<id>` on
+`task open`, or later `concorde task resolve <task> <id>...`, which the project MCP server presents as
+`task_resolve`, adds them to the record's `resolves`. Each must be an open Issue of the project,
+read from the primary worktree, or the command is refused with `invalid_issue`, naming each that is
+not; an ended task resolves nothing more (`task_closed`). Naming an Issue changes neither it nor the
+work: the task still fixes it by ordinary work, and only its merge closes it, as
+[Merging](#merging) says.
+
 ## Listing and showing tasks
 
 `concorde task list` prints the records of the current tasks and of the tasks in the history with
@@ -424,9 +434,14 @@ first. A failed check, or checks that leave uncommitted paths, returns the prima
 status, its log in the merge attempt's node, and any paths the checks created, which the reset
 leaves in the primary worktree. Every merge attempt, whether it merged, conflicted, failed a check
 or was undone, is a node `merges/<n>/` of the task's trace, each check a node below it with its
-`output.log`. When everything passed, Tasks closes the task as merged and prints the record with the
-commits before and after, each check, how long it waited and its warnings, such as a decision log
-nobody wrote in. A merge thus ends with the task closed on a checked merge commit or delivered again
+`output.log`. When everything passed, Tasks closes the task as merged, then, still holding the merge lock, closes
+each Issue the task resolves that is still open as `resolved`, with the note that the task fixed it
+and the merge commit and task as evidence, each closure a commit of its own on the primary branch
+after the merge; it prints the record with the Issues it closed (`resolved`), the commits before and
+after, each check, how long it waited and its warnings, such as a decision log nobody wrote in or an
+Issue it could not close. An Issue it cannot close, because it was closed meanwhile or the Issue
+store refused, is a warning carrying the Issues error chain, never a refusal: the merge and the
+close stand, and the main agent disposes that Issue itself. A merge thus ends with the task closed on a checked merge commit or delivered again
 on the commit the primary branch had; after a conflict or a failed check the task is delivered
 again.
 
@@ -594,7 +609,8 @@ process, which is why merging, checking, undoing and closing are one command ins
 main agent issues one by one, and why conflicts are resolved in the task worktree: the lock is then
 held for the seconds a merge and its checks take, not for however long a resolution takes. Holding
 it also for `open` and `close` keeps both from reading a primary branch whose merge might still be
-reset.
+reset, and every write of the project's Issues, which [Issues](../../issues/module.md) commits on the
+primary branch, takes it too, so no Issue commit lands between a merge commit and its checks.
 
 The lock alone cannot cover a merge whose process dies: the kernel releases the lock at once, and
 the next command would build on a merge commit no check accepted. So the merge writes `merging`
@@ -730,6 +746,13 @@ retention at the start of every `task open` and `task close`, and reports in the
 It relies on the [layout](../../tracing/contracts.md#layout), the
 [locks](../../tracing/contracts.md#locks) and the
 [node contract](../../tracing/contracts.md#contract.tracing.node).
+
+<a id="uses-issues"></a>
+
+**Issues** keeps the project's [Issues](../../glossary.json#concept.issue) in the primary worktree.
+Tasks relies on its store to read whether each Issue a task names as resolving exists and is open,
+and on its bookkeeping command to close them after the merge, for a caller that already holds the
+merge lock, answering or refusing with its own error link, which Tasks passes on in a warning.
 
 <a id="uses-spec"></a>
 

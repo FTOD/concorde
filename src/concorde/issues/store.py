@@ -1,16 +1,24 @@
-"""Git-versioned Issue records; only this store writes this directory.
+"""Project-level Issue records; only this store writes them.
 
-One Markdown file carries one closed JSON record. The JSON fence is the sole content authority,
-not a second rendering of prose elsewhere. Reports are immutable observations; dispositions are
-separate history. No store operation controls a worker, resolves a task blocker or executes Git.
+The records live in the primary worktree's ``.concorde/issues/``, one Markdown file carrying one
+closed JSON record. The JSON fence is the sole content authority, not a second rendering of prose
+elsewhere. Reports are immutable observations; dispositions are separate history. Every write holds
+the primary worktree's merge lock, publishes the record and commits that one file on the primary
+branch before it acknowledges, so every worktree of the project reads the same Issues at once and a
+write never lands between a task's merge commit and its checks. No store operation controls a
+worker or resolves a task blocker, and none runs Git for anything but committing its record.
+
+A failure of this store is never itself reported as an Issue: the Issue system that failed could not
+be trusted to record it. It travels as an error chain, in a task's decision log and escalation or a
+run's result.
 """
 
 from __future__ import annotations
 
 import copy
-import fcntl
 import os
 import re
+import subprocess
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -20,11 +28,14 @@ from ..errors import ERROR_SCHEMA
 from ..spec.changes import apply_files
 from ..spec.schema import ContractError, validate
 from ..spec.typed_data import checked_path
+from ..tasks import store as tasks
+from ..tracing import locks
 from .shapes import (
     ISSUE_ID,
     PROVENANCE,
     RECEIPT,
     RECORD,
+    RECORD_VERSION,
     REPORT,
 )
 from ..spec.repository import SpecError, digest
@@ -61,6 +72,33 @@ class IssueError(SpecError):
             "one report key identifies one Issue",
             "use the existing Issue with that key, or change the report's key",
         ),
+        "not_a_repository": (
+            "Issues are kept by the primary worktree of the project's Git repository",
+            "run the command inside a worktree of the project's Git repository",
+        ),
+        "not_primary": (
+            "Issue records are written only in the primary worktree, which commits them on the "
+            "primary branch",
+            "pass the primary worktree, which project_root() finds from any worktree",
+        ),
+        "merge_busy": (
+            "an Issue write commits on the primary branch and so waits for the merge lock, which "
+            "one merge, task open or task close holds at a time",
+            "wait until the holder named has ended, then repeat the write; carry this error "
+            "chain, never an Issue, if it cannot be written",
+        ),
+        "merge_incomplete": (
+            "no Issue is committed on the primary branch while a task's merge there is "
+            "unfinished",
+            "have the main agent resume or abort the unfinished merge, then repeat the write",
+        ),
+        "commit_failed": (
+            "an Issue write is acknowledged only once its record is committed on the primary "
+            "branch",
+            "fix what Git reports in the primary worktree, then repeat the write; report this "
+            "failure as an error chain in the decision log, escalation or run result, never as "
+            "an Issue",
+        ),
     }
 
 
@@ -85,7 +123,13 @@ def _now() -> str:
 
 
 def validate_report(report: dict) -> None:
+    """A report a caller submits: of the report contract, with its tier."""
     check_schema(report, REPORT)
+    _check_report(report)
+
+
+def _check_report(report: dict) -> None:
+    """The rules of a report beyond its schema, also of a stored report written before tiers."""
     if (report["type"] == "gap") != (report["subtype"] is not None):
         raise IssueError(
             "field subtype: a gap report requires a gap subtype, a bug or limitation report null",
@@ -118,7 +162,13 @@ def validate_record(record: dict) -> None:
     keys = []
     for observation in record["reports"]:
         report, source = observation["report"], observation["source"]
-        validate_report(report)
+        _check_report(report)
+        if record["schema_version"] >= RECORD_VERSION and "tier" not in report:
+            raise IssueError(
+                f"field tier: a report of a record of schema version {RECORD_VERSION} "
+                "carries its tier",
+                "invalid_issue",
+            )
         if report.get("issue_id", record["id"]) != record["id"]:
             raise IssueError("report belongs to another issue", "invalid_issue")
         if observation["id"] != digest({"report": report, "source": source}):
@@ -244,6 +294,7 @@ def list_issues(
         result.append(
             {
                 "id": record["id"],
+                "tier": report.get("tier"),
                 "type": report["type"],
                 "subtype": report["subtype"],
                 "title": report["title"],
@@ -256,22 +307,69 @@ def list_issues(
     return result
 
 
+def project_root(path: Path) -> Path:
+    """The primary worktree of the Git repository ``path`` lies in, which keeps the project's
+    Issues; ``not_a_repository`` outside one."""
+    try:
+        return tasks.primary_of(Path(path))
+    except tasks.TaskError as error:
+        raise IssueError(
+            f"{path} is not inside a Git repository, whose primary worktree keeps the "
+            f"project's Issues: {error}",
+            "not_a_repository",
+        ) from error
+
+
+def _git(root: Path, *arguments: str, stdin: str | None = None):
+    return subprocess.run(
+        ["git", *arguments],
+        cwd=root,
+        input=stdin,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
 @contextmanager
-def _lock(root: Path):
-    # Every lock is host-local, Git-ignored state under .concorde/locks/ (Tracing's layout). No
-    # mutable allocation index enters Git history.
-    lock = checked_path(root, ".concorde/locks/issues.lock")
-    lock.parent.mkdir(parents=True, exist_ok=True)
-    with lock.open("a+b") as stream:
-        fcntl.flock(stream.fileno(), fcntl.LOCK_EX)
-        try:
+def _writing(root: Path, what: str, wait: float, locked: bool):
+    """Hold the merge lock of the primary worktree ``root`` for one write.
+
+    ``locked`` says the caller, such as a task merge closing the Issues its task resolves, holds
+    it already. Refused with ``not_primary``, ``merge_busy`` or ``merge_incomplete``.
+    """
+    try:
+        primary = tasks.require_primary(root)
+    except tasks.TaskError as error:
+        raise IssueError(
+            f"{root} is not the primary worktree of its repository, which alone writes Issue "
+            f"records: {error}",
+            "not_primary",
+        ) from error
+    if locked:
+        yield
+        return
+    path = tasks.merge_lock_path(primary)
+    try:
+        with locks.hold(path, f"an Issue write ({what})", wait=wait):
+            unfinished = tasks.unfinished_merge(primary)
+            if unfinished is not None:
+                raise IssueError(
+                    f"{what} was not written: {tasks.incomplete_merge(primary, unfinished)}",
+                    "merge_incomplete",
+                )
             yield
-        finally:
-            fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+    except locks.LockBusy as busy:
+        raise IssueError(
+            f"{what} waited {wait:g} s for the merge lock {path} of the primary worktree "
+            f"{primary}, which is still held by {busy.holder}, and wrote nothing",
+            "merge_busy",
+        ) from None
 
 
-def _publish(root: Path, record: dict, before: str | None) -> None:
+def _publish(root: Path, record: dict, before: str | None, message: str) -> None:
     _publish_text(root, record["id"], render(record), before)
+    _commit(root, record["id"], before, message)
 
 
 def _publish_text(root: Path, identifier: str, text: str, before: str | None) -> None:
@@ -308,6 +406,56 @@ def _publish_text(root: Path, identifier: str, text: str, before: str | None) ->
         os.close(descriptor)
 
 
+def _commit(root: Path, identifier: str, before: str | None, message: str) -> None:
+    """Commit the record of ``identifier`` alone on the primary branch; on failure put back the
+    bytes it replaced, so a refused write leaves the record as it was."""
+    path = issue_path(identifier)
+    target = checked_path(root, path)
+    branch = _git(root, "symbolic-ref", "-q", "--short", "HEAD")
+    if branch.returncode != 0:
+        problem = "the primary worktree has a detached HEAD, so there is no branch to commit on"
+    else:
+        added = _git(root, "add", "-f", "--", path)
+        done = (
+            _git(
+                root,
+                "commit",
+                "-q",
+                "--only",
+                "-F",
+                "-",
+                "--",
+                path,
+                stdin=f"{message}\n\nConcorde-Issue: {identifier}\n",
+            )
+            if added.returncode == 0
+            else added
+        )
+        if done.returncode == 0:
+            return
+        output = (done.stdout + done.stderr).strip() or "(no output)"
+        problem = (
+            f"git {'commit' if added.returncode == 0 else 'add'} exited {done.returncode} on "
+            f"{branch.stdout.strip()}: {output[-2000:]}"
+        )
+    _restore(root, target, path, before)
+    raise IssueError(
+        f"Issue {identifier} was not written: committing {path} on the primary branch of "
+        f"{root} failed: {problem}; the record is back as it was",
+        "commit_failed",
+        path=path,
+    )
+
+
+def _restore(root: Path, target: Path, path: str, before: str | None) -> None:
+    """Put back the record the failed commit left: the committed one, or none."""
+    if _git(root, "cat-file", "-e", f"HEAD:{path}").returncode == 0:
+        _git(root, "checkout", "-q", "HEAD", "--", path)
+    else:
+        _git(root, "rm", "-q", "--cached", "--ignore-unmatch", "--", path)
+        target.unlink(missing_ok=True)
+
+
 def _allocated_id(report: dict, source: dict) -> str:
     return (
         "I-"
@@ -317,9 +465,18 @@ def _allocated_id(report: dict, source: dict) -> str:
     )
 
 
-def report_issue(root: Path, report: dict, source: dict) -> dict:
-    """Persist before replying. Identity is idempotent per trusted invocation and report key.
+def report_issue(
+    root: Path,
+    report: dict,
+    source: dict,
+    *,
+    wait: float = tasks.MERGE_WAIT,
+    locked: bool = False,
+) -> dict:
+    """Commit before replying. Identity is idempotent per trusted invocation and report key.
 
+    ``root`` is the primary worktree (``project_root``); the write waits up to ``wait`` seconds
+    for its merge lock unless the caller holds it (``locked``).
     Source is the provenance the caller supplies, never part of the report. Reusing a key with changed
     contents is an error, not an overwrite. An append needs a current byte digest; retrying the
     exact accepted append returns its immutable receipt even after later updates.
@@ -334,7 +491,7 @@ def report_issue(root: Path, report: dict, source: dict) -> dict:
         "report_id": observation_id,
         "path": issue_path(identifier),
     }
-    with _lock(root):
+    with _writing(root, f"a report to Issue {identifier}", wait, locked):
         path = checked_path(root, receipt["path"])
         record, revision = (
             read_issue(root, identifier) if path.exists() else (None, None)
@@ -376,7 +533,7 @@ def report_issue(root: Path, report: dict, source: dict) -> dict:
             )
         else:
             record = {
-                "schema_version": 2,
+                "schema_version": RECORD_VERSION,
                 "id": identifier,
                 "status": "open",
                 "reports": [],
@@ -390,7 +547,12 @@ def report_issue(root: Path, report: dict, source: dict) -> dict:
                 "source": source,
             }
         )
-        _publish(root, record, revision)
+        _publish(
+            root,
+            record,
+            revision,
+            f"concorde: {'record' if revision is None else 'report to'} Issue {identifier}",
+        )
     return receipt
 
 
@@ -433,6 +595,8 @@ def dispose_issue(
     duplicate_of: str | None = None,
     duplicate_revision: str | None = None,
     created_at: str | None = None,
+    wait: float = tasks.MERGE_WAIT,
+    locked: bool = False,
 ) -> str:
     """Append the caller's disposition at exactly ``expected_revision``.
 
@@ -450,7 +614,7 @@ def dispose_issue(
             "duplicate disposition names another Issue",
             "invalid_issue",
         )
-    with _lock(root):
+    with _writing(root, f"a disposition of Issue {identifier}", wait, locked):
         record, revision = read_issue(root, identifier)
         if revision != expected_revision:
             raise IssueError(
@@ -491,7 +655,13 @@ def dispose_issue(
             duplicate_of=duplicate_of,
             created_at=created_at,
         )
-        _publish(root, updated, revision)
+        _publish(
+            root,
+            updated,
+            revision,
+            f"concorde: {'reopen' if reason == 'reopened' else 'close'} Issue {identifier}"
+            + ("" if reason == "reopened" else f" ({reason})"),
+        )
         return digest(render(updated).encode())
 
 
