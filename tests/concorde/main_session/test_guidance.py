@@ -152,6 +152,29 @@ class GuidanceTests(unittest.TestCase):
             self.assertIn("creates the delivery commit on the task branch", text)
             self.assertNotIn("commits the result on the task branch", text)
 
+    @verifies("scenario.main-session.task-session-plan-review")
+    def test_a_task_session_leads_the_review_of_its_plan(self):
+        session = self.session
+        self.assertIn("**Have your plan reviewed when it deserves it.**", session)
+        self.assertIn("`plan_review` is optional", session)
+        self.assertIn("Write the plan yourself", session)
+        self.assertIn("delete that file before `task-validation`", session)
+        self.assertIn("answer **every** finding", session)
+        self.assertIn(
+            "run it again with the previous run as `--input` and the answers", session
+        )
+        self.assertIn("until the verdict is `accepted`", session)
+        self.assertIn(
+            "A finding the reviewer maintains after you rejected it, and that you still "
+            "reject, is a disagreement: do not run again on it, escalate it",
+            session,
+        )
+        self.assertIn("concorde run plan_review --plan <file>", self.skill)
+        self.assertIn(
+            "optionally `plan_review` of the plan the task session writes", self.skill
+        )
+        self.assertIn("`reviewer` for `plan_review`", self.skill)
+
     @verifies("scenario.main-session.task-session-workflow")
     def test_a_task_session_runs_workflows_in_the_mode_of_its_brief(self):
         session = self.session

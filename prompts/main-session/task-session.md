@@ -35,6 +35,18 @@ by default (`concorde task show <task>` prints its path):
   content its format needs to be valid (empty where an empty file is valid), add it to the
   `entries` of the right realization in the metadata of the Module it realizes, check it with
   `concorde spec-validation` and commit both together.
+- **Have your plan reviewed when it deserves it.** `plan_review` is optional: nothing requires it
+  before `task-validation` or `delivery`; run it when your brief asks for it or a change deserves
+  a second reading before any Spec or code changes. Write the plan yourself, possibly starting
+  from an `understand` plan, in a file of your task worktree such as `plan.md`, and delete that
+  file before `task-validation`, since `delivery` commits every uncommitted change and each run
+  keeps its own copy of the plan it reviewed. Run `concorde run plan_review --plan plan.md`. While
+  its verdict is `changes_required`, answer **every** finding: accept it and revise the plan, or
+  reject it with your reason, then run it again with the previous run as `--input` and the
+  answers, `--accept <finding> "<how the plan settles it>"` or `--reject <finding> "<why>"`, until
+  the verdict is `accepted`. A finding the reviewer maintains after you rejected it, and that you
+  still reject, is a disagreement: do not run again on it, escalate it with both positions, and
+  state the answer you receive in your next `--reject` or `--accept`.
 - **Deliver.** `concorde task-validation` shows what would block; `concorde delivery` validates
   the whole workspace again and creates the delivery commit on the task branch, which alone marks
   the task delivered: the steps you commit yourself before it do not. Never rebase or switch

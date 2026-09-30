@@ -51,11 +51,12 @@
     {
       "id": "realization.understanding.operation",
       "type": "realization",
-      "title": "Understand Operation",
+      "title": "Understanding Operations",
       "meaning": "#realization.understanding.operation",
       "entries": [
         "src/concorde/understanding/",
         "prompts/workers/understand.md",
+        "prompts/workers/plan-review.md",
         "tests/concorde/understanding/"
       ]
     }

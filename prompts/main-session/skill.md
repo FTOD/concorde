@@ -80,6 +80,7 @@ workspace inside its own process instead.
 
 ```bash
 concorde run understand  --goal "<question>" [--plan]
+concorde run plan_review --plan <file> [--input <run-id> --accept|--reject <finding> "<text>"…]
 concorde run specify     --intent "<what the Spec should say>"
 concorde run implement   --goal "<what to build>" [--input <run-id>]
 concorde run test
@@ -89,8 +90,10 @@ concorde task-validation
 concorde delivery
 ```
 
-A typical order is `understand` to assess and plan, `specify` when the Spec must change first,
-`implement` and `test`, the reviews when the change deserves them, then `task-validation` and
+A typical order is `understand` to assess and plan, optionally `plan_review` of the plan the
+task session writes, which the session answers finding by finding over several runs until the
+verdict is `accepted`, `specify` when the Spec must change first, `implement` and `test`, the
+reviews when the change deserves them, then `task-validation` and
 `delivery`, which validates the whole workspace again and creates the delivery commit on the task
 branch; only that commit marks the task delivered, while the task session may commit verified
 steps before it. The task session prepares the workers' environment: a worker writes only the
@@ -415,8 +418,9 @@ run on by its project model name, each `{}` or with its own `reasoning` level. E
 names must be enabled, or every worker is refused with `model_not_enabled`. The file holds a `default`
 and, per Operation, a `default` and one entry per **worker id** under
 `operations.<operation>.default` and `operations.<operation>.workers.<worker-id>`: the name each
-Operation gives the workers it launches, `worker` for an Operation with one worker, `reviewer` and
-`checker` for `spec_review`, `reviewer1` to `reviewer5` and `chair` for `spec_panel`. Each entry
+Operation gives the workers it launches, `worker` for most Operations with one worker, `reviewer`
+for `plan_review`, `reviewer` and `checker` for `spec_review`, `reviewer1` to `reviewer5` and
+`chair` for `spec_panel`. Each entry
 may set a `backend` (`pi` or `claude`), a `model` and a `reasoning` level, and the most specific
 entry that sets a field wins. Workers run on pi, although you run on Claude Code, unless an entry sets
 `backend: "claude"`; an entry that only chooses a backend keeps the model and level it inherits,
