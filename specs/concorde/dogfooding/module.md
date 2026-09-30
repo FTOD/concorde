@@ -222,6 +222,26 @@ to the developer ([requirements](requirements.md#req.dogfooding.defect-outside-t
 }
 ```
 
+### A defect of the Issue system
+
+A defect of Concorde's Issue system itself, a crash or wrong result of the Issue store, of
+`concorde issues` or of the [project MCP server](../glossary.json#concept.project-mcp-server)'s
+Issue tools, `concorde issues report --check` refusing a correct report among them, is never written
+as a defect report ([requirements](requirements.md#req.dogfooding.issue-system-defect)). A defect report is an Issue
+report, which the Concorde repository records with its own Issue system, and a failure of the Issue
+system is never recorded as an Issue, since the system that failed cannot be trusted to record it
+([Issues](../issues/module.md#failures-of-the-issue-system)). Such a defect travels as every other
+failure does, as its [error chain](../glossary.json#concept.error-chain): the main agent puts its
+own link, reason `scope`, on top of the failure's chain, in a task with `concorde task escalate`
+(`--run` naming the run whose result carries it, or `--error-file` naming the failing command's
+`{"error": ...}` output), which also records it in the task, and outside a task by hand; it writes
+that chain to `.concorde/runs/defects/<name>.error.json` and names the file to the developer. A
+refusal whose reason is `environment`, such as a busy merge lock, is no defect: the main agent waits
+and writes again. The developer hands the chain to the Concorde repository as a failure, which the
+main agent there takes up as it takes up any error chain the developer shows it: it opens a task for
+the Issues Module and escalates in it with `--error-file` naming the chain, so the chain stays whole
+in that task's record, and no Issue is recorded.
+
 ### Fixing it in the Concorde repository
 
 The developer hands the report's path to a session in
@@ -320,7 +340,9 @@ records, solves and closes it with the Issue machinery it already has, and the e
 the structured value every level of Concorde passes on. It is written in the project and recorded
 in the Concorde repository, where the Module at fault is known, the fix is made and the closure
 merges with it. The project never writes into the Concorde repository, whose primary worktree must
-stay clean to be installed from.
+stay clean to be installed from. The one defect Issues cannot carry is a defect of the Issue system
+itself, which could not be trusted to record it; it travels as its bare error chain, the value every
+report would have carried anyway.
 
 **Only a clean primary worktree is a source.** The receipt's `source` is where every later update
 installs from, so it must outlive any single task and name a line of development; `source_commit`
