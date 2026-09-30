@@ -26,7 +26,9 @@ function broken(outcome) {
   return !outcome || unrecorded(outcome) || outcome.state === "running"
 }
 
-function needsDeveloper(outcome) {
+// Whether an interactive run ends here, to have the step repaired or its decision points settled
+// above the task.
+function interactiveStop(outcome) {
   return INTERACTIVE && (!ok(outcome) || outcome.decision_points > 0)
 }
 
@@ -66,7 +68,7 @@ function providersFirst(created) {
 
 note("Surveying " + args.module)
 const survey = await step("survey", ["survey", "--modules", args.module])
-if (broken(survey) || !ok(survey) || needsDeveloper(survey)) return await finish(survey, "survey")
+if (broken(survey) || !ok(survey) || interactiveStop(survey)) return await finish(survey, "survey")
 
 note("Scaffolding the proposed Modules")
 const scaffold = await step("scaffold", ["scaffold", "--input", survey.run_id])
@@ -76,7 +78,7 @@ const described = providersFirst(scaffold.created_modules).concat([args.module])
 for (const id of described) {
   note("Describing " + id)
   const outcome = await step("describe:" + id, ["code_to_spec", "--modules", id])
-  if (broken(outcome) || needsDeveloper(outcome)) return await finish(outcome, "describe:" + id)
+  if (broken(outcome) || interactiveStop(outcome)) return await finish(outcome, "describe:" + id)
 }
 
 note("Reviewing the Specs")

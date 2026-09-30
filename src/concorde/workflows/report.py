@@ -415,7 +415,7 @@ def build(space: Workspace, lost: list[str] = ()) -> dict:
             "failed": "the workflow stopped at a step that failed, was refused or was lost",
             "blocked": "the workflow stopped at a blocked step",
             "awaiting_decision": f"the workflow stopped for {len(pending)} decision point(s) "
-            "the developer must settle",
+            "to be settled above the task",
         }[status]
         if code == "incomplete":
             detail = (
@@ -430,8 +430,8 @@ def build(space: Workspace, lost: list[str] = ()) -> dict:
             f"{detail}: {summary}",
             reason=reason,
             explanation={
-                "decision": "whether to answer, repair, retry or give up is the task level's "
-                "or the developer's decision",
+                "decision": "whether to answer, repair, retry or give up is decided above the "
+                "workflow, by the task level or those it escalates to",
                 "environment": "a step ended without a result the workflow could read",
                 "capability": "the workflow's record does not show the procedure reaching its "
                 "end, and it cannot run the missing steps from a report",
@@ -448,8 +448,9 @@ def build(space: Workspace, lost: list[str] = ()) -> dict:
             options={
                 "awaiting_decision": [
                     (
-                        "ask the developer every pending point and start the workflow again "
-                        "with the answers keyed by step"
+                        "have every pending point settled above the task, by the main agent "
+                        "where its authority covers it and otherwise by the developer, and start "
+                        "the workflow again with the answers keyed by step"
                     )
                 ],
             }.get(

@@ -74,7 +74,7 @@ shapes are in the [contracts](contracts.md).
 
 ### scenario.workflows.interactive-resume — The answered workflow goes on
 
-- GIVEN that paused interactive workflow and the developer's answer to `d.db-helper`
+- GIVEN that paused interactive workflow and an answer to `d.db-helper`, given by the [main agent](../../glossary.json#concept.main-agent) or by the developer
 - WHEN the workflow is started again with the answer keyed by `survey`
 - THEN the first survey is not run again
 - AND a new survey step with the answers' digest in its key runs with `--answers` and with `--input` naming the first survey run

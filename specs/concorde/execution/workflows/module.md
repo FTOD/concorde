@@ -47,20 +47,24 @@ the runs in that workspace proceed.
 <a id="concept.workflow-mode"></a><a id="concept.decision-point"></a>
 
 The **[workflow mode](../../glossary.json#concept.workflow-mode)** decides what happens at a
-**decision point**, an item in a run's output that is the developer's to settle: every
-[open question](../../glossary.json#concept.open-question), because only the developer knows what
-behaviour is intended, and every decision of a survey that
-the worker took rather than the developer, because how a project splits into Modules shapes all
-later work. A code_to_spec decision, such as a concept's name, is ordinary: the workflow never stops
-for it and reports it.
+**decision point**, an item in a run's output that is not the worker's to settle but is settled
+above the task: every [open question](../../glossary.json#concept.open-question), because the
+worker could not tell what behaviour is intended, and every decision of a survey that
+the worker took itself rather than following an answer, because how a project splits into Modules
+shapes all later work. A code_to_spec decision, such as a concept's name, is ordinary: the workflow
+never stops for it and reports it. Workflows does not say who settles a point: in Concorde the
+[main agent](../../glossary.json#concept.main-agent) settles those its authority covers and puts to
+the developer those with a major impact, as its guidance's decision policy says, and Workflows
+counts an answer the same whoever gave it.
 
 - **Interactive.** The decision points are to be settled before the workflow goes on, so it ends
   right after any step that needs them: a step whose output has decision points its answers did
   not settle, with status `awaiting_decision` and each pending point with its options and
   recommendation; and any step that did not end `ok`, with that step's status. Whoever started it
   has every pending point settled at once, in Concorde by a task session that escalates them all
-  together to the main agent, which asks the developer, never by asking in place; then it writes the
-  answers or repairs what failed, and starts the same workflow again. Steps that finished return
+  together to the main agent, which decides those its authority covers and puts the rest to the
+  developer, never by asking in place; then it writes the answers or repairs what failed, and
+  starts the same workflow again. Steps that finished return
   their recorded runs immediately, an answered or retried step runs again, and the workflow
   continues.
 - **No-ask.** The workflow never stops for a decision point. It keeps each worker's decision, leaves
@@ -377,11 +381,12 @@ did not end `ok` with its error chain. The task level copies the decisions into 
 log; merging the task stays its own step.
 
 Started with `"mode": "interactive"` instead, the same workflow pauses right after the survey when
-the survey took a decision the developer has not settled, such as `d.db-helper`, where the worker
-chose to keep the shared database helper with the root. The workflow result has status
+the survey took a decision nobody above the task has settled, such as `d.db-helper`, where the
+worker chose to keep the shared database helper with the root. The workflow result has status
 `awaiting_decision` and lists `d.db-helper` with its options and recommendation, and the record
 holds the one step `survey`. Whoever started the workflow has the question settled, in Concorde by
-escalating it to the main agent, which puts it to the developer, and starts it again with the
+escalating it to the main agent, which settles it when its authority covers it and otherwise puts
+it to the developer, and starts it again with the
 answer under the base key `survey`:
 
 ```json
@@ -403,7 +408,7 @@ finds `survey@<digest>` again instead of running it once more.
 
 Every workflow takes `mode`, `answers`, `retry` and `restart`, plus its own arguments such
 as `module`. `answers` maps a step's base key, such as `survey` or `describe:module.checkout`, to
-the list of every answer the developer has given for that step so far, in the shape of
+the list of every answer given for that step so far, by the main agent or the developer, in the shape of
 answers; a relaunch passes all of them again, not only the
 newest. `retry` lists the base keys to run again after a failure. `restart` maps a base key to a
 short generation label, such as `{"scaffold": "2"}`, to run that step again whatever its outcome,

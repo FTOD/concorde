@@ -296,7 +296,8 @@ route, the Protocol's `code-to-spec` task type, which the
 [Adoption](execution/operations/adoption/module.md) Operations use together with the `scaffold`
 command that writes what a survey proposed. It writes down the behaviour it reads as it is, never
 changes code, and turns every behaviour whose intent the code does not settle into an
-[open question](glossary.json#concept.open-question) for the developer rather than a promise. Once
+[open question](glossary.json#concept.open-question) rather than a promise, for the main agent or
+the developer to settle. Once
 a Module is described, work on it is Spec first again.
 
 ### Two halves, one seam

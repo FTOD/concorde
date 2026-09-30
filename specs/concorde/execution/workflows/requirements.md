@@ -94,6 +94,16 @@ No part of Workflows SHALL open, merge, close or escalate a task, or read or wri
 
 A workflow in interactive mode SHALL end right after a step that did not end `ok` or whose output has [decision points](../../glossary.json#concept.decision-point) its answers did not settle, before starting another step.
 
+### req.workflows.answers-any-settler — An answer settles its point whoever gave it
+
+A step's answers SHALL settle the [decision points](../../glossary.json#concept.decision-point) they name, whoever gave them.
+
+### req.workflows.settler-open — The result leaves who settles a point to the level above
+
+The workflow result SHALL NOT assign a pending decision point to the developer or to anyone else, leaving that to whoever started the workflow.
+
+In Concorde the [main agent](../../glossary.json#concept.main-agent) settles the points its authority covers and puts the rest to the developer.
+
 ### req.workflows.no-ask-continues — No-ask runs never stop for a decision
 
 A workflow in no-ask mode SHALL NOT end at a decision point.
