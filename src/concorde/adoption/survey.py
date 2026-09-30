@@ -139,7 +139,7 @@ def instructions(ctx: RunContext, answers: list[dict]) -> str:
     )
     if answers:
         parts.append(
-            "\nThe developer's answers, which you must follow:\n\n```json\n"
+            "\nThe answers to earlier decisions and questions, which you must follow:\n\n```json\n"
             + json.dumps(answers, indent=2, ensure_ascii=False)
             + "\n```\n"
         )
@@ -159,7 +159,7 @@ def answers_failure(ctx: RunContext, error: AnswersError):
         "The answers file could not be used.",
         f"the answers given with --answers cannot be used: {error}",
         reason="input",
-        explanation="answers are the developer's; the Operation never repairs or guesses them",
+        explanation="answers are settled above the task; the Operation never repairs or guesses them",
         evidence=[evidence("answers", error.path, str(error))],
         options=["correct the answers file and run the Operation again"],
     )

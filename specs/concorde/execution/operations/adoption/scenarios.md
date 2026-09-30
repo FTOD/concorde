@@ -47,13 +47,14 @@ shapes are in the [contracts](contracts.md).
 - AND the [Operation](../../../glossary.json#concept.operation)'s link lists both inconsistencies with `capability` as its reason
 - AND the worker's proposal stays in the result's `worker` field only
 
-### scenario.adoption.survey-answers — A survey follows the developer's answers
+### scenario.adoption.survey-answers — A survey follows the answers and records who settled them
 
 - GIVEN an `ok` survey run whose decision `d.db-helper` chose to keep the database helper with the root
-- AND an answers file answering `d.db-helper` with "a Module of its own"
+- AND an answers file answering `d.db-helper` with "a Module of its own", answered by the [main agent](../../../glossary.json#concept.main-agent)
 - WHEN the caller runs the survey again with `--answers` and `--input` naming the first run
 - THEN the new proposal has a child for the database helper
-- AND its decision `d.db-helper` is decided by the developer with that answer
+- AND its decision `d.db-helper` is decided by the main agent with that answer
+- BUT a proposal that records that decision as decided by the developer fails with `inconsistent_proposal`
 
 ## Code to spec
 
@@ -126,7 +127,7 @@ shapes are in the [contracts](contracts.md).
 
 ### scenario.adoption.invalid-answers — Answers that cannot be used
 
-- GIVEN an answers file that is not valid JSON, or whose answer has no `id`
+- GIVEN an answers file that is not valid JSON, or whose answer has no `id` or does not say who gave it
 - WHEN a survey or code_to_spec run is given it with `--answers`
 - THEN the result is `failed` with `invalid_answers` naming the file and what is wrong
 - AND no worker ran and no file changed

@@ -256,7 +256,7 @@ def instructions(ctx: RunContext) -> str:
     answers = ctx.state.get("answers") or []
     if answers:
         parts.append(
-            "\nThe developer's answers, which you must follow:\n\n```json\n"
+            "\nThe answers to earlier decisions and questions, which you must follow:\n\n```json\n"
             + json.dumps(answers, indent=2, ensure_ascii=False)
             + "\n```\n"
         )

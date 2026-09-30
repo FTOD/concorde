@@ -53,8 +53,8 @@ run anything.
 - `promises`: one entry per promise you wrote, with its `module`, the `kind` (`requirement`,
   `scenario`, `contract`, `concept`, `realization`, `relation` or `explanation`), its stable `id`
   (or `null`), a short `description`, the `source` (`code` when you read it in the code, `answer`
-  when a developer answer stated it) and the answered `question` identity (or `null`). For a
-  scenario you took from existing tests, add `tests`: each such test as `path::name` or
+  when an answer stated it) and the answered `question` identity (or `null`). For a scenario you
+  took from existing tests, add `tests`: each such test as `path::name` or
   `path::Class::name`, for example `tests/test_config.py::test_config_from_file_json`. You never
   edit a test yourself; the host marks each named test as verifying the scenario.
 - `decisions`: every choice you took where the code left several open, each with an `id`
@@ -70,11 +70,12 @@ The host observes which files changed and whether the Specs still validate; do n
 
 ## Answers
 
-When this brief lists the developer's answers, follow every one; the run that asked is among the
-admitted inputs. An answer to a question `q.<name>` states the intended behaviour: write it as a
-promise with `source` `answer` and `question` `q.<name>`. When the code does otherwise, the Spec
-still states the intent, and you also list a deviation. An answer to a decision `d.<name>` means the
-decision appears with `chosen` equal to the answer and `decided_by` `developer`.
+When this brief lists answers, follow every one; the run that asked is among the admitted inputs.
+Each says in `answered_by` who settled it, `main-agent` or `developer`. An answer to a question
+`q.<name>` states the intended behaviour: write it as a promise with `source` `answer` and
+`question` `q.<name>`. When the code does otherwise, the Spec still states the intent, and you also
+list a deviation. An answer to a decision `d.<name>` means the decision appears with `chosen` equal
+to the answer and `decided_by` equal to the answer's `answered_by`.
 
 ## When to return `blocked`
 

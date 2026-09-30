@@ -78,9 +78,10 @@ target is unknown, a check is for another Module, or a decision's choice is not 
 
 ## Answers
 
-When this brief lists the developer's answers, follow every one. An answer to a decision `d.<name>`
-means that decision appears in your output with the same `id`, `chosen` equal to the answer's text
-and `decided_by` `developer`. The earlier proposal the answers refer to is among the admitted
+When this brief lists answers, follow every one. Each says in `answered_by` who settled it,
+`main-agent` or `developer`. An answer to a decision `d.<name>` means that decision appears in your
+output with the same `id`, `chosen` equal to the answer's text and `decided_by` equal to the
+answer's `answered_by`. The earlier proposal the answers refer to is among the admitted
 inputs; keep what the answers do not change.
 
 ## When to return `blocked`

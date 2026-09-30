@@ -42,14 +42,15 @@ KEY_PATTERN = "^[a-z][a-z0-9_:.-]*$"
 ANSWER = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["id", "question", "answer"],
+    "required": ["id", "question", "answer", "answered_by"],
     "properties": {
         "id": {"type": "string", "pattern": "^[dq]\\.[a-z0-9-]+$"},
         "question": {"type": "string", "minLength": 1},
         "answer": {"type": "string", "minLength": 1},
+        "answered_by": {"enum": ["main-agent", "developer"]},
     },
 }
-# contract.workflows.step-request, version 4
+# contract.workflows.step-request, version 5
 REQUEST_SCHEMA: dict = {
     "type": "object",
     "additionalProperties": False,

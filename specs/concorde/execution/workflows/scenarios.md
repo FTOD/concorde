@@ -79,6 +79,7 @@ shapes are in the [contracts](contracts.md).
 - THEN the first survey is not run again
 - AND a new survey step with the answers' digest in its key runs with `--answers` and with `--input` naming the first survey run
 - AND its step outcome counts no [decision point](../../glossary.json#concept.decision-point) for the answered `d.db-helper`
+- AND the workflow result lists `d.db-helper` as decided by whoever gave the answer, `main-agent` or `developer`
 - AND the scaffold then admits that new survey run
 
 ### scenario.workflows.no-ask-complete — A no-ask run reports everything at the end

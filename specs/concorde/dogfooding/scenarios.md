@@ -81,7 +81,7 @@ worktree whose `HEAD` is detached is refused as a linked worktree.
 - AND for a run that ended `ok` and still did something wrong to make its own link, without causes, the whole chain, citing the run: in a task built by `concorde task escalate` naming no run, and outside a task written by hand in the shape of the [error contract](../tracing/contracts.md#contract.tracing.error)
 - AND for a defect seen outside a task to keep the report only under `.concorde/runs/defects/` and name it to the developer, opening no task for it
 - AND to check it with `concorde issues report --check` before handing it over
-- AND to take the fix with `concorde update` while nothing runs
+- AND to take the fix with `concorde update` while nothing runs, and to start nothing until the update ends
 
 ## Concorde repository
 
