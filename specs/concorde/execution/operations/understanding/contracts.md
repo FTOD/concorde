@@ -116,7 +116,7 @@ passed, with `goal` set to the run's own `--goal` argument.
     "modules": [
       {
         "module": "module.issues",
-        "promises": "Issues keeps branch-local Issue records whose reports have a type, a title, a description, an impact and evidence; reports are never rewritten."
+        "promises": "Issues keeps the project's Issue records in the primary worktree, committing each write on the primary branch; each report has a tier, a type, a title, a description, an impact, a basis and evidence, and is never rewritten."
       }
     ],
     "sufficient": true,

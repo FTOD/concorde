@@ -119,7 +119,7 @@ task-session write hook and the Bash sandbox of its
   for the decision log of a task whose folder has moved to the history; any failure denies;
 - the sandbox enabled, with sandboxed Bash commands approved without asking and unsandboxed
   commands disabled, `allowWrite` the task worktree, the
-  repository's Git directory, the task's folder `.concorde/tasks/<task>/` and `.concorde/locks/` of
-  the primary worktree, and
+  repository's Git directory, the task's folder `.concorde/tasks/<task>/`, `.concorde/locks/` and
+  `.concorde/issues/` of the primary worktree, and
   the user's package caches, and the network open to every host (`allowedDomains` is `*`);
 - no deny rules: reads stay open.

@@ -1402,7 +1402,8 @@
           "target": "module.main-session",
           "meaning": "#uses-main-session",
           "relies_on": [
-            "concept.main-session-guidance"
+            "concept.main-session-guidance",
+            "concept.project-mcp-server"
           ]
         },
         {
@@ -1491,7 +1492,8 @@
           "relies_on": [
             "concept.task",
             "concept.task-record",
-            "concept.decision-log"
+            "concept.decision-log",
+            "concept.merge-lock"
           ]
         },
         {
@@ -1499,6 +1501,13 @@
           "meaning": "#uses-harness",
           "relies_on": [
             "concept.session-boundary"
+          ]
+        },
+        {
+          "target": "module.issues",
+          "meaning": "#uses-issues",
+          "relies_on": [
+            "concept.issue"
           ]
         },
         {

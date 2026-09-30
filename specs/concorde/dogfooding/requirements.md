@@ -87,6 +87,19 @@ only under `.concorde/runs/defects/` and named to the developer, without opening
 Its error chain is the main agent's link written by hand, with the failure's own error, if any, as
 its only cause.
 
+### req.dogfooding.issue-system-defect — A defect of the Issue system travels as its error chain
+
+The develop guidance SHALL require a [Concorde defect](../glossary.json#concept.concorde-defect) of
+Concorde's Issue system itself to be handed over as the failure's whole
+[error chain](../glossary.json#concept.error-chain) with the main agent's own link on top, written
+to `.concorde/runs/defects/` and named to the developer, and never as a
+[defect report](../glossary.json#concept.defect-report).
+
+A defect report is an [Issue report](../glossary.json#concept.issue-report), and a failure of the
+Issue system is never recorded as an Issue
+([Issues](../issues/requirements.md#req.issues.own-failures)): the Concorde repository would record
+it with the very Issue system that failed.
+
 ### req.dogfooding.report-checked — A defect report is checked before the hand-off
 
 The develop guidance SHALL require a defect report to be checked with

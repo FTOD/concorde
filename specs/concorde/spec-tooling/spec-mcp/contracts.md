@@ -31,7 +31,7 @@ argument as `field`, the path or identity concerned), the reason, the remediatio
 
 | Tool | Arguments | Result |
 | --- | --- | --- |
-| `boundary` | `modules`: nonempty array of [Module](../../glossary.json#concept.module) identities; `task_type`: one of the seven [task types](../../glossary.json#concept.task-type) | the boundary result below |
+| `boundary` | `modules`: nonempty array of [Module](../../glossary.json#concept.module) identities; `task_type`: one of the eight [task types](../../glossary.json#concept.task-type) | the boundary result below |
 | `modules` | none | `{"modules": [{"id", "title", "entry", "parent"}]}` in registry order; `parent` is `null` for a root |
 | `module` | `id`: a Module identity | `{"id", "title", "entry", "documents", "contains", "uses", "includes", "participates", "realizations", "checks"}`, where `realizations` lists `{"id", "title", "entries"}` and `checks` the [configured check](../../glossary.json#concept.configured-check) identities |
 | `context` | `id`: a Module or scenario identity | `{"module", "context_identity", "sources", "terms"}`, with Spec core's [source and term records](../spec/contracts.md#spec-context-records) for the Module, or for the scenario's owner |

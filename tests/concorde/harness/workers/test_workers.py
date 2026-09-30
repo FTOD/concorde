@@ -434,6 +434,32 @@ class WorkerRunTests(unittest.TestCase):
         self.project = WorkerProject(self)
         self.root = self.project.root
 
+    @verifies("scenario.workers.every-task-type")
+    def test_a_worker_of_a_task_type_that_writes_nothing_runs_read_only(self):
+        reviewing = grant(
+            SpecRepository(self.root, REPOSITORY_ROOT),
+            ["module.a"],
+            "review-architecture",
+        ).value
+        record = self.project.run(
+            [{}],
+            task_type="review-architecture",
+            grant=reviewing,
+            check_modules=None,
+        )
+        self.assertEqual("ok", record["status"], record["error"])
+        self.assertEqual("Read,Glob,Grep", record["tools"])
+        [call] = self.project.rounds(record)
+        self.assertEqual(
+            "Read,Glob,Grep", call["argv"][call["argv"].index("--tools") + 1]
+        )
+        unknown = self.project.run(
+            [{}], task_type="review-everything", grant=reviewing, check_modules=None
+        )
+        self.assertEqual("failed", unknown["status"])
+        self.assertEqual("grant_unavailable", unknown["error"]["code"])
+        self.assertIn("a known task type", unknown["error"]["detail"])
+
     def test_the_progress_file_follows_a_claude_run(self):
         command = f"pytest -q {self.root}/tests\nsecond line"
         record = self.project.run([{"actions": [["Bash", {"command": command}]]}])

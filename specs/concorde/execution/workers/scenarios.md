@@ -105,6 +105,13 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - THEN it refuses before launch with `run_directory_denied`
 - AND it still writes the run record
 
+### scenario.workers.every-task-type — A worker of a task type that writes nothing launches read-only
+
+- GIVEN a `review-architecture` grant, whose task type reads every Module's Specs and writes nothing
+- WHEN the host is asked to start its worker
+- THEN the worker runs and ends `ok` with the read-only tool set
+- BUT a request naming a task type the Protocol does not define is refused before launch with `grant_unavailable`, naming a known task type as missing
+
 ### scenario.workers.malformed-grant-refused — A malformed grant is refused before launch
 
 - GIVEN a grant whose entries are not a list, or with an entry that is not an object, has no path, an absolute path or one leaving the task worktree through `..`, or a level other than `rw`, `ro` and `names`
