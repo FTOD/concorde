@@ -539,6 +539,19 @@ class WorkerRunTests(unittest.TestCase):
         self.assertIn(f"- {self.root}/src/a/", call["prompt"])
         self.assertFalse(runtime.exists())
 
+    @verifies("scenario.workers.brief-result-paths")
+    def test_the_brief_asks_for_relative_paths_in_the_result(self):
+        record = self.project.run([{}], check_modules=None)
+        [call] = self.project.rounds(record)
+        self.assertIn(f"The task worktree is {self.root.as_posix()};", call["prompt"])
+        self.assertIn("give your tools absolute paths", call["prompt"])
+        self.assertIn(
+            "In your structured result, write every path in the task worktree relative to "
+            "it, such as `src/app.py`, never as an absolute path.",
+            call["prompt"],
+        )
+        self.assertNotIn("always use absolute paths", call["prompt"])
+
     @verifies("scenario.workers.session-proxy")
     def test_a_worker_in_a_task_session_gets_the_session_proxy(self):
         with patch.dict(os.environ, SESSION_PROXY):

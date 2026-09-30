@@ -45,7 +45,9 @@ hiding it in prose:
 
 - A **decision** is a choice the code leaves open, such as whether two directories are one Module
   or two, or which name a concept gets. The worker takes it, with its options and reason, and goes
-  on.
+  on. It names each option by a short identity of its own and its choice by that identity; the host
+  records the chosen option's text and that the worker decided it, so no worker has to repeat an
+  option word for word.
 - An **open question** is about intent: the code does something, such as swallowing an error or
   treating one input specially, and nothing shows whether it is meant. The worker writes no promise
   about it. The Spec states it as an honest unknown, and the result reports what was observed, why
@@ -61,8 +63,9 @@ otherwise with the developer.
 The answers reach a later run as an **answers** file
 ([contract](contracts.md#contract.adoption.answers)) with `--answers`, each naming the decision or
 question it answers, the question's text, the answer and who settled it, the main agent or the
-developer; a decision that follows an answer is recorded as decided by that one, so the record
-never credits the developer with a choice the main agent made. `--input` admits the run that asked,
+developer; the worker lists an answered decision without choosing, and the host records the answer
+as its choice, decided by whoever gave it, so the record never credits the developer with a choice
+the main agent made. `--input` admits the run that asked,
 so the worker sees the earlier proposal or description. An answers file lists every answer given
 so far for that step, not only the latest. A survey rerun follows every answered decision and no longer lists
 an answered open question. A code_to_spec rerun writes an answered question as the promise the
@@ -190,6 +193,13 @@ The survey and code_to_spec results hold decisions and open questions as structu
 prose, because a workflow must count them to decide whether to stop in interactive mode, and must
 copy them unchanged into its report in no-ask mode.
 
+Wherever a worker would otherwise have to repeat something exactly, the host writes it instead. A
+worker restating an option in its own words is not a wrong choice, so the worker names options by
+identities and the host copies the text. Its tools take absolute paths, since its working directory
+is not the worktree, while the outputs name project-relative paths; the brief asks for relative
+paths in the result, and a path that begins with the worktree's own path is unambiguous, so the host
+writes it relative instead of failing the run.
+
 The code_to_spec host writes Specs itself before its worker runs, when it prepares the stubs. So it
 checks the answers first, and removes every stub left unchanged on every way out of the run, a
 failed grant or a stopped worker included: a run that ends early leaves behind only what its worker
@@ -227,7 +237,7 @@ The **Survey Operation** realization declares the `SURVEY` provider and its step
 | 3 | Generate settings, tools and the brief with inventory, answers and inputs | Workers | — |
 | 4 | Launch the worker and wait for its result | Workers, worker | launch error or timeout (`failed`); worker `blocked` or `failed` (passed on) |
 | 5 | Audit: nothing is writable, so any change is a violation | Workers | any change (`failed`) |
-| 6 | Check the proposal against the worktree and the answers; add the remaining entries | host | an inconsistency or an answer not followed (`failed`, `inconsistent_proposal`) |
+| 6 | Write the paths inside the worktree relative to it and record the decisions; check the proposal against the worktree and the answers; add the remaining entries | host | an inconsistency, a decision without a valid choice or an answer not followed (`failed`, `inconsistent_proposal`) |
 | 7 | Return the run result | host | — |
 
 <a id="realization.adoption.code-to-spec"></a>
@@ -244,7 +254,7 @@ The **Code to spec Operation** realization declares the `CODE_TO_SPEC` provider:
 | 6 | Audit and write the [run record](../../../glossary.json#concept.run-record) | Workers | a write outside the grant (`failed`, after step 7) |
 | 7 | Remove the stubs left unchanged or deleted through the worker's proposed deletions from their Modules' documents, whatever steps 3 to 6 found; reconcile the registry mirror | host, Spec core | — |
 | 8 | Validate again and compare with the baseline | host, Spec core | an error the run counts as its own, left after the last round (`blocked`, `new_structural_errors`) |
-| 9 | Check the description against the answers and the bound Modules | host | an inconsistency or an answer not followed (`failed`, `inconsistent_description`) |
+| 9 | Write the paths inside the worktree relative to it and record the decisions; check the description against the answers and the bound Modules | host | an inconsistency, a decision without a valid choice or an answer not followed (`failed`, `inconsistent_description`) |
 | 10 | Link the existing tests each scenario was taken from | host | — (a link it cannot make is reported in `unlinked_tests`) |
 | 11 | Return the run result | host | — |
 

@@ -51,10 +51,26 @@ shapes are in the [contracts](contracts.md).
 
 - GIVEN an `ok` survey run whose decision `d.db-helper` chose to keep the database helper with the root
 - AND an answers file answering `d.db-helper` with "a Module of its own", answered by the [main agent](../../../glossary.json#concept.main-agent)
+- AND a survey worker that follows the answer and lists `d.db-helper` without naming a choice
 - WHEN the caller runs the survey again with `--answers` and `--input` naming the first run
 - THEN the new proposal has a child for the database helper
-- AND its decision `d.db-helper` is decided by the main agent with that answer
-- BUT a proposal that records that decision as decided by the developer fails with `inconsistent_proposal`
+- AND its decision `d.db-helper` chose "a Module of its own", decided by the main agent, as the host records it
+- BUT a proposal that leaves `d.db-helper` out fails with `inconsistent_proposal` naming the answer
+
+### scenario.adoption.decision-by-option — A decision names its choice, the host writes it
+
+- GIVEN a survey or code_to_spec worker whose decision `d.db-helper` lists the options `own-module` "a Module of its own" and `stay-root` "stay with the root" and names `stay-root` as chosen
+- WHEN the run ends
+- THEN the output's decision has the options "a Module of its own" and "stay with the root", chosen "stay with the root" and `decided_by` `worker`
+- AND the worker's claim stays as it was in the result's `worker` field
+- BUT a decision that names an identity none of its options has, or names none while no answer settles it, fails the run naming the decision
+
+### scenario.adoption.survey-absolute-paths — Absolute paths in a proposal become project-relative
+
+- GIVEN a survey worker that writes a child entry, a check input and an open question's evidence as absolute paths inside the task worktree, one of them through the worktree's real path
+- WHEN the host checks the proposal
+- THEN the result is `ok` and each of them is the project-relative path, a directory keeping its trailing `/`
+- BUT an absolute path outside the worktree is left as written and fails the survey with `inconsistent_proposal` naming it
 
 ## Code to spec
 
@@ -102,6 +118,13 @@ shapes are in the [contracts](contracts.md).
 - THEN `tests/test_checkout.py` has a `verifies` decorator naming `scenario.checkout.submit` above `test_submit` and a no-op `verifies` definition, and nothing else changed in it
 - AND `linked_tests` names that test, and `unlinked_tests` names the other two with their reasons
 - AND the decorated file imports nothing of Concorde, and linking the same test again adds nothing
+
+### scenario.adoption.describe-absolute-paths — Absolute test paths in a description still link
+
+- GIVEN a code_to_spec worker whose scenario promise names `<task worktree>/tests/test_checkout.py::test_submit` as its test and whose open question names `<task worktree>/src/checkout/payment.py` as evidence
+- WHEN the run ends
+- THEN the promise names `tests/test_checkout.py::test_submit`, which `linked_tests` lists
+- AND the open question's evidence is `src/checkout/payment.py`
 
 ### scenario.adoption.foreign-verifies — A test file with its own `verifies` stays as it is
 

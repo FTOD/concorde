@@ -313,6 +313,13 @@ On the Claude Code backend every Bash command of a worker SHALL run in Claude Co
 
 A worker's working directory SHALL be its runtime directory's `work/` directory, which is never the worktree, lies outside the run directory, and lies outside every path a deny rule names.
 
+### req.workers.result-paths-relative — Tools take absolute paths, results relative ones
+
+The host SHALL tell every worker in its brief to give its tools absolute paths and to write every path in the task worktree that its result names relative to the worktree.
+
+The working directory is not the worktree, so a tool needs the absolute path; every Operation's
+output names project paths relative to the worktree, so a result must not copy the tools' form.
+
 ### req.workers.clean-environment — Nothing ambient reaches the worker
 
 The host SHALL start every worker round with only the environment variables listed in [Launch](#launch), or on the pi backend in [the pi launch](pi.md#launch).

@@ -66,23 +66,27 @@ change together.
   runs with `-p no:cacheprovider`.
 - `decisions`: every choice the code left open and you took, such as whether two directories are
   one Module or two, or where a shared helper belongs. Give each an `id` `d.<name>`, the `module`
-  it concerns, the `question`, at least two `options`, the `chosen` option, the `reason` and
-  `decided_by` `worker`. Routine choices with only one sensible answer are not decisions.
+  it concerns, the `question`, at least two `options`, each with a short `id` of your own
+  (lowercase letters, digits and hyphens, such as `stay-root`) and its `text`, then
+  `chosen`: the `id` of the option you chose, and the `reason`. Never repeat an option's text in
+  `chosen`: the host records the chosen option's text and that you decided it. Routine choices
+  with only one sensible answer are not decisions.
 - `open_questions`: behaviour whose intent you cannot tell and that matters for the split, each
   with an `id` `q.<name>`, the `module`, the `subject`, what you `observed`, the files that show it
   (`evidence`), `why_uncertain`, the `options` and a `recommendation`. Most surveys have none.
 
 The host adds the entries the surveyed Module keeps. It fails the run when a child identity or
 title already exists, an entry is not bound by the surveyed Module or does not exist, a `uses`
-target is unknown, a check is for another Module, or a decision's choice is not one of its options.
+target is unknown, a check is for another Module, or a decision's `chosen` names none of its
+options.
 
 ## Answers
 
 When this brief lists answers, follow every one. Each says in `answered_by` who settled it,
-`main-agent` or `developer`. An answer to a decision `d.<name>` means that decision appears in your
-output with the same `id`, `chosen` equal to the answer's text and `decided_by` equal to the
-answer's `answered_by`. The earlier proposal the answers refer to is among the admitted
-inputs; keep what the answers do not change.
+`main-agent` or `developer`. An answer to a decision `d.<name>` settles it: build your proposal on
+the answer, and list that decision with the same `id`, its question, its options and `chosen`
+null; the host records the answer as its choice, decided by whoever gave it. The earlier proposal
+the answers refer to is among the admitted inputs; keep what the answers do not change.
 
 ## When to return `blocked`
 

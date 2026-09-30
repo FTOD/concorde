@@ -286,8 +286,10 @@ def brief(request: WorkerRequest, worktree: Path) -> str:
 
     return (
         f"# Concorde worker task ({request.task_type})\n\n"
-        f"You are a Concorde worker. The task worktree is {worktree.as_posix()}; always use "
-        "absolute paths. Your working directory is a private scratch directory outside it.\n\n"
+        f"You are a Concorde worker. The task worktree is {worktree.as_posix()}; your working "
+        "directory is a private scratch directory outside it, so give your tools absolute "
+        "paths. In your structured result, write every path in the task worktree relative to "
+        "it, such as `src/app.py`, never as an absolute path.\n\n"
         "## Task\n\n"
         f"{request.instructions.strip()}\n\n"
         "## Your boundary\n\n"

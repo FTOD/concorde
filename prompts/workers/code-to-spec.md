@@ -58,8 +58,10 @@ run anything.
   `path::Class::name`, for example `tests/test_config.py::test_config_from_file_json`. You never
   edit a test yourself; the host marks each named test as verifying the scenario.
 - `decisions`: every choice you took where the code left several open, each with an `id`
-  `d.<name>`, the `module`, the `question`, at least two `options`, the `chosen` one, the `reason`
-  and `decided_by` `worker`.
+  `d.<name>`, the `module`, the `question`, at least two `options`, each with a short `id` of your
+  own (lowercase letters, digits and hyphens, such as `one-document`) and its `text`, then
+  `chosen`: the `id` of the option you chose, and the `reason`. Never repeat an option's text in
+  `chosen`: the host records the chosen option's text and that you decided it.
 - `open_questions`: every behaviour whose intent you could not tell, each with an `id` `q.<name>`,
   the `module`, the `subject`, what you `observed`, the files that show it (`evidence`),
   `why_uncertain`, the `options` and your `recommendation`.
@@ -74,8 +76,9 @@ When this brief lists answers, follow every one; the run that asked is among the
 Each says in `answered_by` who settled it, `main-agent` or `developer`. An answer to a question
 `q.<name>` states the intended behaviour: write it as a promise with `source` `answer` and
 `question` `q.<name>`. When the code does otherwise, the Spec still states the intent, and you also
-list a deviation. An answer to a decision `d.<name>` means the decision appears with `chosen` equal
-to the answer and `decided_by` equal to the answer's `answered_by`.
+list a deviation. An answer to a decision `d.<name>` settles it: follow the answer in the Spec, and
+list that decision with the same `id`, its question, its options and `chosen` null; the host
+records the answer as its choice, decided by whoever gave it.
 
 ## When to return `blocked`
 

@@ -273,7 +273,9 @@ the system's temporary-file cleaning, as the Execution runner leaves its unbound
 
 `CLAUDE.md`, auto memory and user settings are disabled, so the brief is all the worker is told. To
 the Operation's task instructions Workers appends the boundary: `rw`/`ro`/`names` as absolute paths
-(its working directory isn't the worktree); the definitions of the terms its grant carries, and,
+(its working directory isn't the worktree), with the rule that its tools take absolute paths while
+every path it writes in its result is relative to the worktree, the form every Operation's output
+uses; the definitions of the terms its grant carries, and,
 when the glossary is writable, that only the bound Modules' entries may change; that it can't
 delete, only propose deletions; that a Bash-created file outside `rw` is silently lost; that a read
 denial means the path is outside its grant; and that a promise the

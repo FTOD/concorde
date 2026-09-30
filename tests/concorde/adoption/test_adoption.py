@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import unittest
 from pathlib import Path
 
@@ -15,6 +16,7 @@ from concorde.harness.runs import read_record
 from concorde.spec.verification import verifies
 from tests.concorde.support.adoption_case import (
     DB_HELPER,
+    DB_HELPER_RECORDED,
     PROPOSAL,
     RETRY_QUESTION,
     AdoptionCase,
@@ -165,9 +167,8 @@ class AdoptionTests(AdoptionCase):
                 "uses": [],
             }
         )
-        followed["decisions"] = [
-            {**DB_HELPER, "chosen": "a Module of its own", "decided_by": "main-agent"}
-        ]
+        # The worker lists the answered decision without choosing: the host records the answer.
+        followed["decisions"] = [{**DB_HELPER, "chosen": None}]
         status, envelope = self.survey(
             followed, "--answers", answers, "--input", first["run_id"]
         )
@@ -175,23 +176,102 @@ class AdoptionTests(AdoptionCase):
         self.assertIn(
             "module.db", [child["id"] for child in envelope["output"]["children"]]
         )
-        self.assertEqual("main-agent", envelope["output"]["decisions"][0]["decided_by"])
+        self.assertEqual(
+            [
+                {
+                    **DB_HELPER_RECORDED,
+                    "chosen": "a Module of its own",
+                    "decided_by": "main-agent",
+                }
+            ],
+            envelope["output"]["decisions"],
+        )
         self.assertIn(first["run_id"], self.worker_round(envelope)["prompt"])
-        # The decision is the settler's: crediting the developer with the main agent's answer
-        # fails the run.
-        followed["decisions"][0]["decided_by"] = "developer"
+        # Whatever option the worker names, the decision is the answer's and its settler's.
+        followed["decisions"] = [DB_HELPER]
         status, envelope = self.survey(
             followed, "--answers", answers, "--input", first["run_id"]
         )
+        self.assertEqual(0, status, envelope)
+        [decision] = envelope["output"]["decisions"]
+        self.assertEqual(
+            ("a Module of its own", "main-agent"),
+            (decision["chosen"], decision["decided_by"]),
+        )
+        # An answer whose decision the proposal leaves out fails the run.
+        omitted = {**PROPOSAL, "decisions": []}
+        status, envelope = self.survey(omitted, "--answers", answers)
         self.assertEqual("failed", envelope["status"])
         self.assertEqual("inconsistent_proposal", envelope["error"]["code"])
-        self.assertIn("decided by developer", envelope["error"]["detail"])
-        self.assertIn("the main-agent answered", envelope["error"]["detail"])
-        # An answer the proposal ignores fails the run.
-        status, envelope = self.survey(PROPOSAL, "--answers", answers)
-        self.assertEqual("failed", envelope["status"])
+        self.assertIn(
+            "the answer to d.db-helper ('a Module of its own') has no decision",
+            envelope["error"]["detail"],
+        )
+
+    @verifies("scenario.adoption.decision-by-option")
+    def test_a_decision_names_its_choice_by_the_options_identity(self):
+        self.open()
+        status, envelope = self.survey()
+        self.assertEqual(0, status, envelope)
+        self.assertEqual([DB_HELPER_RECORDED], envelope["output"]["decisions"])
+        self.assertEqual([DB_HELPER], envelope["worker"]["output"]["decisions"])
+        prompt = self.worker_round(envelope)["prompt"]
+        self.assertIn("`chosen`: the `id` of the option you chose", prompt)
+        unknown = {**PROPOSAL, "decisions": [{**DB_HELPER, "chosen": "a-module"}]}
+        _, envelope = self.survey(unknown)
         self.assertEqual("inconsistent_proposal", envelope["error"]["code"])
-        self.assertIn("d.db-helper", envelope["error"]["detail"])
+        self.assertIn(
+            "decision d.db-helper chose 'a-module', which names none of its options "
+            "(own-module, stay-root)",
+            envelope["error"]["detail"],
+        )
+        unsettled = {**PROPOSAL, "decisions": [{**DB_HELPER, "chosen": None}]}
+        _, envelope = self.survey(unsettled)
+        self.assertEqual("inconsistent_proposal", envelope["error"]["code"])
+        self.assertIn(
+            "decision d.db-helper chose no option, but no answer settles it",
+            envelope["error"]["detail"],
+        )
+
+    @verifies("scenario.adoption.survey-absolute-paths")
+    def test_absolute_paths_inside_the_worktree_become_project_relative(self):
+        worktree = self.open()
+        absolute = json.loads(json.dumps(PROPOSAL))
+        absolute["children"][0]["entries"] = [f"{worktree}/src/checkout/"]
+        absolute["children"][1]["entries"] = [
+            f"{os.path.realpath(worktree)}/src/inventory/"
+        ]
+        absolute["checks"][0]["inputs"] = [f"{worktree}/src/checkout/", "tests"]
+        absolute["open_questions"] = [
+            {
+                **RETRY_QUESTION,
+                "module": "module.shop",
+                "evidence": [f"{worktree}/src/checkout/api.py:3"],
+            }
+        ]
+        status, envelope = self.survey(absolute)
+        self.assertEqual(0, status, envelope)
+        output = envelope["output"]
+        self.assertEqual(
+            [["src/checkout/"], ["src/inventory/"]],
+            [child["entries"] for child in output["children"]],
+        )
+        self.assertEqual(["src/checkout", "tests"], output["checks"][0]["inputs"])
+        self.assertEqual(
+            ["src/checkout/api.py:3"], output["open_questions"][0]["evidence"]
+        )
+        self.assertNotIn("src/checkout/", output["remaining_entries"])
+        # The worker's own claim is kept as it was.
+        self.assertEqual(
+            [f"{worktree}/src/checkout/"],
+            envelope["worker"]["output"]["children"][0]["entries"],
+        )
+        # A path outside the worktree is left as it is and still refused.
+        outside = json.loads(json.dumps(PROPOSAL))
+        outside["children"][0]["entries"] = [f"{worktree.parent}/src/checkout/"]
+        _, envelope = self.survey(outside)
+        self.assertEqual("inconsistent_proposal", envelope["error"]["code"])
+        self.assertIn(f"{worktree.parent}/src/checkout/", envelope["error"]["detail"])
 
     def test_an_answered_survey_question_must_be_settled(self):
         self.open()
@@ -345,6 +425,108 @@ class AdoptionTests(AdoptionCase):
         namespace: dict = {}
         exec(compile(source, "test_checkout.py", "exec"), namespace)
         self.assertIsNone(namespace["test_submit"]())
+
+    @verifies("scenario.adoption.describe-absolute-paths")
+    @verifies("scenario.adoption.decision-by-option")
+    def test_a_description_is_recorded_in_the_hosts_terms(self):
+        self.scaffolded()
+        entry = self.worktree / "specs/project/checkout/module.md"
+        layout = {
+            "id": "d.layout",
+            "module": "module.checkout",
+            "question": "Where do the submit cases go?",
+            "options": [
+                {"id": "one-document", "text": "Keep them in module.md."},
+                {"id": "scenarios", "text": "Write them as scenarios."},
+            ],
+            "chosen": "scenarios",
+            "reason": "a test asserts each case",
+        }
+        claims = {
+            "summary": "Described submit.",
+            "promises": [
+                {
+                    "module": "module.checkout",
+                    "kind": "scenario",
+                    "id": "scenario.checkout.submit",
+                    "description": "a basket becomes one order",
+                    "source": "code",
+                    "question": None,
+                    "tests": [f"{self.worktree}/tests/test_checkout.py::test_submit"],
+                }
+            ],
+            "decisions": [layout],
+            "open_questions": [
+                {
+                    **RETRY_QUESTION,
+                    "evidence": [f"{self.worktree}/src/checkout/payment.py"],
+                }
+            ],
+            "deviations": [],
+        }
+        status, envelope = self.describe(
+            [
+                {
+                    "writes": {
+                        str(entry): self.described_entry(),
+                        str(
+                            self.worktree / "specs/project/checkout/scenarios.md"
+                        ): self.SCENARIOS,
+                    },
+                    "result": {"output": claims},
+                }
+            ]
+        )
+        self.assertEqual(0, status, envelope)
+        output = envelope["output"]
+        self.assertEqual(
+            [
+                {
+                    "id": "d.layout",
+                    "module": "module.checkout",
+                    "question": "Where do the submit cases go?",
+                    "options": ["Keep them in module.md.", "Write them as scenarios."],
+                    "chosen": "Write them as scenarios.",
+                    "reason": "a test asserts each case",
+                    "decided_by": "worker",
+                }
+            ],
+            output["decisions"],
+        )
+        self.assertEqual(
+            ["tests/test_checkout.py::test_submit"], output["promises"][0]["tests"]
+        )
+        self.assertEqual(
+            [
+                {
+                    "scenario": "scenario.checkout.submit",
+                    "test": "tests/test_checkout.py::test_submit",
+                }
+            ],
+            output["linked_tests"],
+        )
+        self.assertEqual(
+            ["src/checkout/payment.py"], output["open_questions"][0]["evidence"]
+        )
+        # A choice that names no option of the decision fails the run.
+        _, envelope = self.describe(
+            [
+                {
+                    "result": {
+                        "output": {
+                            **claims,
+                            "decisions": [{**layout, "chosen": "write-scenarios"}],
+                        }
+                    }
+                }
+            ]
+        )
+        self.assertEqual("inconsistent_description", envelope["error"]["code"])
+        self.assertIn(
+            "decision d.layout chose 'write-scenarios', which names none of its "
+            "options (one-document, scenarios)",
+            envelope["error"]["detail"],
+        )
 
     @verifies("scenario.adoption.describe-own-errors")
     def test_errors_already_in_the_described_documents_reach_the_worker(self):
