@@ -86,8 +86,11 @@ writes only the task worktree, the repository's Git directory (for commits on th
 task's own folder `.concorde/tasks/<task>/` of the primary worktree (which holds the workspace
 folder that the task worktree's [workspace binding](../glossary.json#concept.workspace-binding)
 names for every run started there, and the [task record](../glossary.json#concept.task-record) in which escalations are recorded), the
-primary worktree's `.concorde/locks/` (where those runs take their locks) and the user's package
-caches, with every network host allowed. Once the task is closed its folder has moved to the
+primary worktree's `.concorde/locks/` (where those runs take their locks) and `.concorde/issues/`
+(where those runs write the project's [Issues](../glossary.json#concept.issue), each write taking
+the [merge lock](../glossary.json#concept.merge-lock) and committing its record through the Git
+directory) and the user's package caches, with every network host allowed. The write hook still
+refuses an Issue record, so the session's own Edit and Write never write one. Once the task is closed its folder has moved to the
 [history](../glossary.json#concept.history), and the write hook refuses every write to the decision
 log, whose folder no longer exists, rather than recreate it. The open network is reached through the sandbox's
 proxy on `localhost`, because the sandboxed commands have a network namespace of their own; a worker

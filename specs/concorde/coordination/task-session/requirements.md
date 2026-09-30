@@ -25,15 +25,18 @@ The file-writing tools are Edit and Write, checked by the
 
 ### req.task-session.shell-boundary — A task session's shell writes only what its task needs
 
-The boundary Task sessions writes for a task session SHALL let the session's shell commands write only the task worktree, the repository's Git directory, the task's own folder `.concorde/tasks/<task>/` and `.concorde/locks/` of the primary worktree and the user's package caches.
+The boundary Task sessions writes for a task session SHALL let the session's shell commands write only the task worktree, the repository's Git directory, the task's own folder `.concorde/tasks/<task>/`, `.concorde/locks/` and `.concorde/issues/` of the primary worktree and the user's package caches.
 
 The shell is Bash in Claude Code's sandbox, which leaves reads and the network open, allowing every
 host, through the sandbox's proxy on `localhost`, which the workers of the runs the session starts
 pass on ([req.workers.proxy-passed](../../execution/workers/launch.md#req.workers.proxy-passed)).
 The task's folder is writable because the task worktree's
 [workspace binding](../../glossary.json#concept.workspace-binding) names its `workspace/` as the
-workspace folder of every run started there, and `.concorde/locks/` because those runs take their
-locks there.
+workspace folder of every run started there, `.concorde/locks/` because those runs take their
+locks there, and `.concorde/issues/` because those runs write the project's
+[Issues](../../glossary.json#concept.issue), each write taking the
+[merge lock](../../glossary.json#concept.merge-lock) and committing its record on the primary branch
+through the Git directory. The file-writing tools still never write an Issue record.
 
 ### req.task-session.project-mcp — A task session gets the project MCP server without a channel
 

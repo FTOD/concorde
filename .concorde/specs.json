@@ -1481,7 +1481,8 @@
           "relies_on": [
             "concept.task",
             "concept.task-record",
-            "concept.decision-log"
+            "concept.decision-log",
+            "concept.merge-lock"
           ]
         },
         {
@@ -1489,6 +1490,13 @@
           "meaning": "#uses-harness",
           "relies_on": [
             "concept.session-boundary"
+          ]
+        },
+        {
+          "target": "module.issues",
+          "meaning": "#uses-issues",
+          "relies_on": [
+            "concept.issue"
           ]
         },
         {

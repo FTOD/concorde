@@ -12,7 +12,9 @@ which the close removes, and guards against mistakes, not a malicious session:
 - the Bash sandbox lets commands write only the task worktree, the repository's Git directory
   (commits on the task branch), the task's own folder (the workspace folder its binding names,
   where its runs and workflow are traced, and its record and trace, for escalations),
-  ``.concorde/locks/`` (the locks those runs take) and the user's package caches; reads and the network stay open, since the
+  ``.concorde/locks/`` (the locks those runs take, the merge lock of an Issue write among them),
+  ``.concorde/issues/`` (where the runs it starts write the project's Issues, committing each record
+  through the Git directory) and the user's package caches; reads and the network stay open, since the
   boundary guards against mistakes, not exfiltration (``allowedDomains`` is ``*``, so no command
   has to name the hosts it reaches);
 - the session is given the project MCP server through ``--mcp-config``, as the running Python and
@@ -49,6 +51,7 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
+from ..issues.store import DIRECTORY as ISSUES
 from ..spec.typed_data import type_version
 from ..tracing import node as trace
 from . import session_hook, store
@@ -93,6 +96,9 @@ def writable(primary: Path, record: dict, home: Path | None = None) -> list[str]
         Path(os.path.realpath(common)),
         store.task_folder(primary, record["id"]),
         store.concorde(primary) / "locks",
+        # The project's Issues, which the runs the session starts write and commit on the
+        # primary branch under the merge lock; the write hook still keeps Edit and Write out.
+        primary / ISSUES,
         *(home / name for name in CACHES),
     ]
     return sorted({Path(os.path.realpath(path)).as_posix() for path in paths})

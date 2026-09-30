@@ -14,10 +14,12 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from concorde.issues.store import project_root, report_issue
 from concorde.spec.verification import verifies
 from concorde.tasks import cli, session, store
 from concorde.tracing import layout
 from concorde.tracing import node as trace
+from tests.concorde.support.issue_reports import git, report, source
 from tests.concorde.support.operation_project import OperationProject, commit
 from tests.concorde.tasks.deliveries import deliver
 
@@ -325,6 +327,8 @@ class TaskSessionTests(unittest.TestCase):
         self.assertIsNone(self.hook(self.folder / "decisions.md"))
         # The task's record and trace are Tasks' own: the hook denies them.
         self.assertIsNotNone(self.hook(self.folder / "task.json"))
+        # Issues are written through the Issue command or tools, never by Edit or Write.
+        self.assertIsNotNone(self.hook(self.root / ".concorde/issues/I-0.md"))
         denied = self.hook(self.root / "src/a/calc.py")
         self.assertEqual("deny", denied["hookSpecificOutput"]["permissionDecision"])
         self.assertIn(
@@ -344,6 +348,7 @@ class TaskSessionTests(unittest.TestCase):
                     self.root / ".git",
                     self.folder,
                     self.root / ".concorde/locks",
+                    self.root / ".concorde/issues",
                     home / ".cache",
                     home / ".npm",
                 )
@@ -352,6 +357,48 @@ class TaskSessionTests(unittest.TestCase):
         )
         # A dry run records no session.
         self.assertEqual([], store.sessions(self.root, "t1"))
+
+    @verifies("scenario.task-session.issue-write")
+    def test_an_issue_write_from_the_task_worktree_stays_inside_the_boundary(self):
+        subprocess.run(
+            ["git", "config", "commit.gpgsign", "false"], cwd=self.root, check=True
+        )
+        allowed = session.writable(self.root, store.load_task(self.root, "t1"))
+        session.create_writable(allowed)
+        before = snapshot(self.root)
+        # A run the session starts writes from the task worktree, into the primary worktree.
+        receipt = report_issue(project_root(self.worktree), report(), source())
+        after = snapshot(self.root)
+        changed = sorted(
+            path
+            for path in before.keys() | after.keys()
+            if before.get(path) != after.get(path)
+        )
+        self.assertIn(self.root / receipt["path"], changed)
+        outside = [
+            path
+            for path in changed
+            if not any(
+                path == Path(root) or Path(root) in path.parents for root in allowed
+            )
+        ]
+        self.assertEqual([], outside)
+        self.assertIn(receipt["path"], git(self.root, "show", "--name-only", "HEAD"))
+
+
+def snapshot(root: Path) -> dict:
+    """Every path below ``root`` (the task worktree's too) with what a write changes of it."""
+    found = {}
+    for folder, names, files in os.walk(root):
+        for name in (*names, *files):
+            path = Path(folder) / name
+            status = path.lstat()
+            found[Path(os.path.realpath(path.parent)) / name] = (
+                status.st_mtime_ns,
+                status.st_size,
+                status.st_ino,
+            )
+    return found
 
 
 # Stands in for Claude Code's ``claude stop``, ``claude rm`` and ``claude agents --json --all``:

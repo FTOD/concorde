@@ -242,7 +242,12 @@ there, including the [workflow record](../../glossary.json#concept.workflow-reco
 record and trace, where `concorde task escalate` records its escalations, the primary worktree's
 `.concorde/locks/`, where those runs take the
 [workspace lock](../../glossary.json#concept.workspace-lock) and their
-[run locks](../../glossary.json#concept.run-lock), and the user's package caches. Reads and the
+[run locks](../../glossary.json#concept.run-lock), the primary worktree's `.concorde/issues/`, where
+those runs write the project's [Issues](../../glossary.json#concept.issue), and the user's package
+caches. An Issue write takes the [merge lock](../../glossary.json#concept.merge-lock) in
+`.concorde/locks/` and commits its record on the primary branch through the Git directory, so these
+paths are all it needs; the file tools still never write an Issue record, which the session itself
+writes only through the Issue command or the project MCP server's Issue tools. Reads and the
 network stay open. The shell's sandbox reaches the network through a proxy of its own on
 `localhost`, named in the proxy variables of the commands it runs, since those commands have a
 network namespace holding only a loopback interface; the workers of the Operations a session starts
@@ -271,7 +276,8 @@ before `task-validation` and `delivery`, and never wait by polling, whose loop m
 
 Tools that MCP servers add are outside the write hook, which guards Edit and Write only. A sandbox
 makes only existing paths writable, so Task sessions creates the writable directories that do not
-exist yet, such as the task's `.concorde/locks/`, before a session starts.
+exist yet, such as the primary worktree's `.concorde/locks/` and `.concorde/issues/`, before a
+session starts.
 
 <a id="workflow-runs-outside-the-sandbox"></a>
 
@@ -472,6 +478,14 @@ that carry the Bash sandbox. Task sessions relies on them confining the session'
 shell to those paths and leaving reads and the network open; it never widens the paths it hands
 over. The boundary is written before the session starts, and `--dry-run` writes it without starting
 anything, so no session runs without its boundary.
+
+<a id="uses-issues"></a>
+
+**Issues** keeps the project's [Issues](../../glossary.json#concept.issue) in the primary worktree's
+`.concorde/issues/`, each write holding the [merge lock](../../glossary.json#concept.merge-lock) and
+committing its record alone on the primary branch. Task sessions relies on that place and on those
+being all an Issue write touches, so that the runs a task session starts may write Issues from
+inside its shell's sandbox.
 
 <a id="uses-workers"></a>
 
