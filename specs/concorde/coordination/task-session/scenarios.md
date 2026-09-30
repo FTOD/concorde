@@ -22,6 +22,16 @@ Commands, the session's [trace node](../../glossary.json#concept.trace-node) and
 - THEN `.concorde/tasks/t1/runtime/mcp.json` configures the [project MCP server](../../glossary.json#concept.project-mcp-server) `concorde` with `CONCORDE_CHANNEL` `0`
 - AND `claude --bg` is started with `--mcp-config` naming that file and without any channel flag, since a background session is never woken by channel events
 
+### scenario.task-session.mcp-approval — A task session is never asked to approve a project MCP server
+
+- GIVEN an open task `t1` whose task worktree lies inside the primary worktree, the primary worktree's `.mcp.json` declaring `concorde`, `local`, `rejected`, `never` and `user.tool`, and the task worktree's `.mcp.json` declaring `legacy`, `managed` and `fresh`
+- AND the primary worktree's local settings enable `concorde`, `local` and `rejected` and disable `rejected`, the user's settings enable `user_tool`, Claude Code's global configuration enables `legacy` for the primary worktree and a managed settings drop-in enables `managed`
+- WHEN the main agent starts its task session
+- THEN the session's settings enable `legacy`, `local`, `managed` and `user.tool`
+- AND they disable `concorde`, which the `--mcp-config` server replaces, and `fresh`, `never` and `rejected`, which the primary worktree never approved
+- AND when the primary worktree's local settings approve every project server, all but `concorde` and the servers some source disables are enabled
+- BUT a `.mcp.json` that is missing, not JSON or without an `mcpServers` object names no server, and the session starts with only `concorde` disabled
+
 ### scenario.task-session.boundary — The session's boundary confines its writes
 
 - GIVEN the settings written for a [task session](../../glossary.json#concept.task-session)

@@ -186,8 +186,9 @@ that does not report a started background session is refused (`task_closed`, `mi
 answers through SendMessage and sends its reports the same way once `concorde task report` recorded
 them; `claude stop` stops it.
 
-The server is passed explicitly because a background session does not load the project-scoped
-`.mcp.json` of a folder nobody trusted. It comes without a channel, and its configuration says so
+The server is passed explicitly, as the running Python with the running package, so a task session
+has it whatever the project's `.mcp.json` holds and whoever approved it. It comes without a channel,
+and its configuration says so
 (`CONCORDE_CHANNEL=0`): Claude Code does not wake a background session with channel events. A
 probe on 2026-09-29 (Claude Code 2.1.284) started a `claude --bg` session with
 `--dangerously-load-development-channels server:concorde`; the server loaded and registered a wait
@@ -197,6 +198,36 @@ wait` command, which it runs in background Bash and is woken by when it returns.
 every MCP server does, outside the Bash sandbox, and its tools may change any task's record: the
 developer accepted that a task session can reach the task management tools, which are no boundary,
 so the guidance, not the boundary, keeps a task session from merging or closing its task.
+
+<a id="project-mcp-approvals"></a>
+
+Nobody answers Claude Code's dialog "New MCP server found in this project" in a background session
+either: a `claude --bg` session in a trusted project shows it for each server of the project's
+`.mcp.json` that nobody approved and waits on it for ever, even for the entry `concorde` that
+`--mcp-config` passes as well (seen with Claude Code 2.1.285 on 2026-10-01). So the session's
+settings answer it beforehand, server by server, from what Claude Code itself would read:
+
+- The servers are those of every `.mcp.json` Claude Code loads for a session in the task worktree:
+  that of each folder from the task worktree up to the filesystem root, the primary worktree's
+  included when the task worktree lies inside it. A file that is missing, unreadable or without an
+  `mcpServers` object names no server, since Claude Code loads none from it and so asks about none;
+  the session starts all the same.
+- The entry `concorde` is disabled (`disabledMcpjsonServers`): the `--mcp-config` server replaces
+  it, and with both Claude Code loads only the latter, so nothing is lost.
+- Every other server is enabled (`enabledMcpjsonServers`) when the primary worktree approved it,
+  and disabled otherwise, as the dialog's "Continue without using this MCP server" would. Claude
+  Code 2.1.285 judges a server rejected when any settings source lists it in
+  `disabledMcpjsonServers`, and otherwise approved when any lists it in `enabledMcpjsonServers` or
+  sets `enableAllProjectMcpServers`, comparing names with every character but letters, digits, `_`
+  and `-` read as `_`. Task sessions judges the same way over every source that records such an
+  approval for the primary worktree or the task worktree: the user's settings, both worktrees'
+  `.claude/settings.json` and `.claude/settings.local.json`, the managed settings with their
+  drop-ins, and the primary worktree's entry in Claude Code's global configuration, whose
+  approvals Claude Code moves into the local settings when it next starts there. A source that is
+  missing or unreadable approves nothing.
+
+The dialog records its answer in the local settings of the folder it was shown in; these settings
+only reach the session through `--settings`, so they change no approval anywhere else.
 
 ## The session boundary
 
