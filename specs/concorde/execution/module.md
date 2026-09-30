@@ -128,6 +128,25 @@ the run is the same. The run progress file names what runs, in which workspace a
 runner still lives. [Following a long run](#following-a-long-run) explains how an observer uses
 both.
 
+<a id="detached-namespace"></a>
+
+**A detached run lives only as long as the PID namespace it started in.** The runner is a new
+session and process group, which frees it from the command and its terminal, but no process leaves
+the PID namespace it was started in, and when the first process of a PID namespace ends, the kernel
+kills every other one in it at once. Claude Code's Bash sandbox runs every call of a session's Bash
+tool, foreground or background, in a PID namespace of its own whose first process is the sandbox's
+own wrapper around the call's shell: the call's namespace ends when its command ends. So a runner
+detached from a sandboxed Bash call is killed, without a word, when that call returns, and leaves a
+run with no result whose run lock nobody holds; the same holds for any process that call started.
+A sandboxed command cannot hand the run to a process outside either, since the sandbox refuses it
+even Unix sockets. Whoever needs a run to outlive a sandboxed call starts it from a process outside
+the sandbox, as a [workflow step](../glossary.json#concept.workflow-step) does through the
+[project MCP server](../glossary.json#concept.project-mcp-server)
+([Workflows](workflows/module.md#steps-in-claude-code)), or keeps the call alive as long as the run,
+as a [task session](../glossary.json#concept.task-session) does when it runs a run in background
+Bash. Execution itself does not see which namespace it was started in and promises no more than
+this.
+
 ### The run store
 
 <a id="concept.run-store"></a>

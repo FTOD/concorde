@@ -66,9 +66,10 @@ CLAUDE_SETTINGS = ".claude/settings.json"
 # The project's Claude Code MCP configuration, where the project MCP server is registered.
 MCP_CONFIG = ".mcp.json"
 MCP_SERVER = "concorde"
-# The Bash commands every workflow's Claude Code step agents run.
+# What every workflow's Claude Code step agents use: the project MCP server's step tool, which
+# starts each step outside the session's Bash sandbox, and the report command.
 STEP_RULES = (
-    f"Bash({COMMAND} workflow step:*)",
+    f"mcp__{MCP_SERVER}__workflow_step",
     f"Bash({COMMAND} workflow report:*)",
 )
 RECEIPT = ".concorde/install.json"

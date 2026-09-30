@@ -238,7 +238,13 @@ class E2ETests(unittest.TestCase):
         self.assertEqual("0", environment["CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS"])
         tools = command[command.index("--allowedTools") + 1 :]
         self.assertIn("Workflow(concorde-brownfield)", tools)
-        self.assertIn("Bash(.concorde/bin/concorde workflow step:*)", tools)
+        self.assertIn("mcp__concorde__workflow_step", tools)
+        # Its step agents reach the project MCP server, which starts every step's run.
+        config = json.loads(command[command.index("--mcp-config") + 1])
+        self.assertEqual(
+            {"command": ".concorde/bin/concorde", "args": ["project-mcp"]},
+            config["mcpServers"]["concorde"],
+        )
         self.assertIn('"restart": {"scaffold": "2"}', command[2])
         # The session works in the task's worktree and reads the report the workflow saved.
         self.assertIn("`adopt`", command[2])

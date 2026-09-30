@@ -340,6 +340,25 @@ event, or in the output file once the returned `concorde task wait` command retu
 start, the call is refused only by its arguments, by a busy lock
 ([The server never waits for a lock](#req.main-session.project-mcp-no-wait)) or by a failed start.
 
+### req.main-session.project-mcp-workflow-step — `workflow_step` runs the worktree's own step command
+
+`workflow_step` SHALL run `concorde workflow step --json <request> --wait <wait>` with the
+`concorde` of the session's worktree, from that worktree's root, as a child of the server, and
+answer with the step outcome it printed.
+
+The server runs outside the session's Bash sandbox, so the
+[detached run](../../glossary.json#concept.detached-run) the command starts lives until its run ends ([contracts](contracts.md#starting-a-workflow-step)).
+
+### req.main-session.project-mcp-workflow-step-bound — `workflow_step` works only in a bound workspace
+
+`workflow_step` SHALL refuse with `unbound_worktree`, running nothing, when the session's worktree
+has no usable [workspace binding](../../glossary.json#concept.workspace-binding).
+
+### req.main-session.project-mcp-workflow-step-threads — A waiting step holds up no other call
+
+The server SHALL answer each `workflow_step` call on a thread of its own, so that its other calls
+are answered while a step call waits.
+
 ### req.main-session.project-mcp-wait-as-command — `register_wait` waits for what the command waits for
 
 `register_wait` SHALL wait for exactly what the matching `concorde task wait` waits for.

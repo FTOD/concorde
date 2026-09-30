@@ -26,7 +26,7 @@ from typing import IO
 
 from .. import errors
 from ..tasks import store
-from .tools import ACTOR, TOOLS, Project, Refusal, call
+from .tools import ACTOR, THREADED, TOOLS, Project, Refusal, call
 
 NAME = "concorde"
 SUPPORTED_VERSIONS = ("2025-06-18", "2025-03-26", "2024-11-05")
@@ -37,7 +37,9 @@ INSTRUCTIONS = (
     "Concorde's project MCP server: the project's tasks, traces and locks, read fresh from the "
     "primary worktree on every call. Queries: task_list, task_show, trace_show, run_result, "
     "workflow_report, locks. Short writes: task_open, task_escalate, task_report, task_answer, "
-    "task_rebind, task_close. task_merge "
+    "task_rebind, task_close. workflow_step starts or awaits a workflow step of the bound "
+    "workspace the session started in, outside the session's Bash sandbox, for step agents. "
+    "task_merge "
     "takes the task's workspace lock and the merge lock without waiting (a busy lock is refused "
     "naming its holder) and starts the merge as its own process. register_wait asks to be woken "
     "when a task reaches a state or is rebound to another main agent's session, a run ends or a "
@@ -136,6 +138,7 @@ class Session:
                 environment.get("CLAUDE_CODE_SESSION_ID") or None,
                 detect_channel(name, environment),
                 self.notify,
+                Path(environment.get("CLAUDE_PROJECT_DIR") or cwd or Path.cwd()),
             )
             if primary is not None
             else None
@@ -198,9 +201,18 @@ class Session:
             )
         elif method == "tools/call":
             params = message.get("params") or {}
-            self.reply(
-                identity, self.tool_result(params.get("name"), params.get("arguments"))
-            )
+            name, arguments = params.get("name"), params.get("arguments")
+            if name in THREADED:
+                # A workflow step waits up to its bound: answer the other calls meanwhile.
+                threading.Thread(
+                    target=lambda: self.reply(
+                        identity, self.tool_result(name, arguments)
+                    ),
+                    name=f"call {identity}",
+                    daemon=True,
+                ).start()
+            else:
+                self.reply(identity, self.tool_result(name, arguments))
         else:
             self.send(
                 {

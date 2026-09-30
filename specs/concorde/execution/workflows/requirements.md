@@ -153,8 +153,17 @@ level's decision.
 Each workflow's procedure SHALL be written once, apart from the step adapter, and rendered by the build into a Claude Code workflow without change to its steps, run arguments, branches, admitted inputs or decision points.
 
 The adapter decides only how a step is invoked and awaited and how the report is requested: through
-relay subagents that run the same run command lines a developer could run, with the report
+relay subagents that have the same step command a developer could run run for them, with the report
 assembled from the recorded runs.
+
+### req.workflows.steps-through-server — Claude Code steps start outside the Bash sandbox
+
+The Claude Code step function SHALL start and await every step through the
+[project MCP server](../../glossary.json#concept.project-mcp-server)'s `workflow_step` tool, never
+through a Bash command.
+
+A run started from a sandboxed Bash call dies when the call returns
+([Steps in Claude Code](module.md#steps-in-claude-code)).
 
 ### req.workflows.script-repeats — The script, not a model, waits for a run
 
@@ -174,7 +183,7 @@ The Claude Code step function SHALL report a step lost after three outcomes in a
 
 ### req.workflows.step-agent-relays — Step agents only relay
 
-A step agent SHALL run nothing but `concorde workflow step` or `concorde workflow report`.
+A step agent SHALL call nothing but the project MCP server's `workflow_step` tool, or run nothing but `concorde workflow report`.
 
 It does not perform the worker's job or bypass the run's grant, audit and result handling.
 

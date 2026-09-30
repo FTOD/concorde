@@ -224,7 +224,10 @@ node folder, with exit status 0. A runner that ends or has
 not written its run progress file within the announcement wait, 60 seconds from its start, is
 killed, with its process group, and the command prints the same fields with an `error` link
 `detach_failed` naming the end of the runner's output, with exit status 1, so an unannounced runner
-never starts its run later.
+never starts its run later. The new session frees the runner from the command, not from the PID
+namespace the command runs in: a runner detached inside a namespace that ends, such as that of a
+sandboxed Bash call, is killed with it
+([A detached run lives only as long as the PID namespace it started in](module.md#detached-namespace)).
 
 ## Run progress file
 

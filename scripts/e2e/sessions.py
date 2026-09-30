@@ -103,9 +103,12 @@ def command(
     note: str | None = NOTE,
     claude: str = "claude",
     procedure: str | None = MAIN_PROCEDURE,
+    mcp_config: str | None = None,
 ) -> list[str]:
     """The ``claude -p`` argument list of one round; a main session's rounds carry the test
-    procedure after the note, a workflow run's (``procedure`` None) only the note."""
+    procedure after the note, a workflow run's (``procedure`` None) only the note. ``mcp_config``
+    is passed as ``--mcp-config``, for a session that needs an MCP server its untrusted project's
+    ``.mcp.json`` would not give it."""
     appended = "\n\n".join(part for part in (note, procedure) if part)
     return [
         claude,
@@ -116,6 +119,7 @@ def command(
         "--output-format",
         "stream-json",
         "--verbose",
+        *(["--mcp-config", mcp_config] if mcp_config else []),
         "--allowedTools",
         *tools,
     ]
@@ -348,6 +352,7 @@ def start(
     wait_limit: float = WAIT_SECONDS,
     poll: float = 2.0,
     procedure: str | None = MAIN_PROCEDURE,
+    mcp_config: str | None = None,
 ) -> dict:
     """Run a headless session in ``project`` until it ends with nothing left to wake it for."""
     directory.mkdir(parents=True, exist_ok=True)
@@ -390,6 +395,7 @@ def start(
             note=NOTE if note is None else note,
             claude=claude,
             procedure=procedure,
+            mcp_config=mcp_config,
         )
         with log.open("w") as out, errors.open("w") as err:
             completed = subprocess.run(

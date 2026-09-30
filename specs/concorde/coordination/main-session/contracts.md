@@ -9,7 +9,9 @@ command's when it waits for no lock, as [Tasks](../tasks/contracts.md#commands) 
 present records no command prints in that shape: their rows define their results, and their
 refusals are the codes below. `task_merge` and `register_wait` answer at once with the start and the
 registration defined [below](#starting-a-merge): the merge's own result and refusals, and the
-wait's answer, are the commands' and arrive later.
+wait's answer, are the commands' and arrive later. `workflow_step` answers with what
+`concorde workflow step` of the session's worktree printed, as defined
+[below](#starting-a-workflow-step).
 
 ## Session
 
@@ -27,7 +29,14 @@ records, traces and locks of that primary worktree afresh. Outside a Git reposit
 refused with `no_project`.
 
 It takes the **session** it serves from `CLAUDE_CODE_SESSION_ID`, the identity Claude Code gives
-the processes of a session, and writes it into the holder line of every lock it takes.
+the processes of a session, and writes it into the holder line of every lock it takes. The
+**session's worktree** is the Git worktree that `CLAUDE_PROJECT_DIR`, or else its working
+directory, lies in: the folder the session started in, a task worktree for a
+[task session](../../glossary.json#concept.task-session).
+
+It answers the calls of `workflow_step`, which may wait up to 100 seconds, each on a thread of its
+own, and every other call in the order it arrives, so a waiting step never holds up the session's
+other calls.
 
 It decides once whether the session **listens to it as a channel**: `CONCORDE_CHANNEL` `1` or `0`
 when set; otherwise whether one of its ancestor processes, up to eight levels up, has its standard
@@ -51,9 +60,12 @@ server's own `component` link of actor `Concorde project MCP server (<tool>)`:
 | `invalid_input` | `input` | the tool is unknown, or its arguments do not satisfy its input schema or name a combination it does not take; the detail names the argument |
 | `workspace_busy`, `merge_busy` | `environment` | `task_merge` found the lock held; the detail names the lock file and the holder's command, process, start time, session and task, and the evidence of kind `lock` carries the holder line as JSON |
 | `start_failed` | `environment` | the operating system refused to start the merge process; both locks were released |
+| `unbound_worktree` | `environment` | `workflow_step` in a session whose worktree has no usable [workspace binding](../../glossary.json#concept.workspace-binding), such as the primary worktree; the detail names the worktree and, for a binding that cannot be read, its code |
+| `step_failed` | `environment` | `concorde workflow step` printed no JSON object, or gave no answer within its wait and 60 seconds more; the detail carries the command, its exit status and the end of its output |
 | `unknown_run` | `input` | `run_result` names a run no reader finds |
 | `no_report` | `input` | `workflow_report` finds no saved [workflow result](../../glossary.json#concept.workflow-result), or not the one named |
 | any Tasks or Tracing code | as there | the command the tool presents refused, such as `unknown_task`, `merge_busy` from `task_open` or `workspace_busy` from `task_close` |
+| any Workflows code | as there | `concorde workflow step` refused the request or the workspace with `{"error": <link>}` and no step outcome, such as `invalid_request`; that link unchanged |
 | any other code | `environment` | an unexpected error of the server, as a link built from the exception |
 
 ## Tools
@@ -74,6 +86,7 @@ server's own `component` link of actor `Concorde project MCP server (<tool>)`:
 | `task_close` | `task`, `outcome` (`completed` or `failed`); `note` for completed; `reason` and either `runs`/`error_files` or `no_error` true for failed; optional `force` | as `concorde task close --completed` or `--failed`, taking the workspace and merge locks without waiting |
 | `task_merge` | `task`; optional `checks`, or `resume` or `abort` true | the start below |
 | `register_wait` | exactly one of `until` (with `task`), `rebound` (a [main agent](../../glossary.json#concept.main-agent)'s session, with `task`), `run`, and `lock` (`merge`, or `workspace` with `task`) | the registration below |
+| `workflow_step` | `request`, a [step request](../../execution/workflows/contracts.md#contract.workflows.step-request) as an object; optional `wait`, whole seconds from 0 to 100 (default 100) | the [step outcome](../../execution/workflows/contracts.md#contract.workflows.step) below |
 
 A holder line is the object a lock file holds while it is held,
 [Tracing's](../../tracing/contracts.md#locks) `{"holder", "pid", "since"}` with `session` and
@@ -108,6 +121,25 @@ With a channel, the server sends a `merge_ended` event when the process ends. Wi
 is `{"channel": false, "command": "concorde task wait <task> --lock workspace", "explanation": …}`:
 the command to run in background Bash, which returns when the merge released the task's workspace
 lock, after which the output file holds the merge's JSON.
+
+### Starting a workflow step
+
+`workflow_step` works on the session's worktree. When that worktree has no workspace binding, or
+one that cannot be read, it is refused with `unbound_worktree` and runs nothing. Otherwise it runs
+that worktree's own `concorde`, its `.concorde/bin/concorde` or, in Concorde's source checkout,
+its `scripts/concorde.py` with the server's Python, as
+`concorde workflow step --json <request> --wait <wait>` from the worktree's root, as a child of the
+server with the server's environment and no standard input, and waits for it at most `wait` plus
+60 seconds. The server runs outside every Bash sandbox of the session, so the
+[detached run](../../glossary.json#concept.detached-run) that command starts for a new step is
+started outside them too and lives until its run ends, whatever becomes of the calls that asked
+for it or of the session and its server.
+
+The answer is the JSON object the command printed, unchanged, whatever its exit status: a
+[step outcome](../../execution/workflows/contracts.md#contract.workflows.step), finished, running,
+lost or refused. An object without a step outcome's `key` whose `error` is a link is the step
+command's refusal and is returned as the tool's refusal, that link unchanged; output that is no
+JSON object is refused with `step_failed`.
 
 ### Registering a wait
 

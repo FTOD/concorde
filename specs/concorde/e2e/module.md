@@ -234,14 +234,19 @@ its [workflow record](../glossary.json#concept.workflow-record), under
   asked to run the installed workflow there and report with `concorde workflow report`. Both
   testing conditions are handled for it: the session keeps
   `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0`, so that `claude -p` does not stop the background
-  workflow after ten idle minutes, and the workflow and its step commands are granted with
-  `--allowedTools`, since the untrusted project ignores its allow rules.
+  workflow after ten idle minutes, and the workflow, the project MCP server's `workflow_step`, through
+  which its step agents start every step, and its report command are granted with
+  `--allowedTools`, since the untrusted project ignores its allow rules. For the same reason the
+  session is given the [project MCP server](../glossary.json#concept.project-mcp-server) itself with
+  `--mcp-config`, started as the installer registers it: the untrusted project's `.mcp.json` entry
+  is not loaded without an approval.
 - A **driver run** (`--via driver`) runs the rendered Claude Code script of the workflow from the
   runtime the installer places under `.concorde/framework/`, which every install carries, and
   refuses with `script_missing` when that script is absent. It runs the script under the stand-in
   for Claude Code's workflow runtime of the Workflows tests, whose step agents execute, without a
-  model, the real `concorde workflow step` and `concorde workflow report` command lines the script
-  hands them in the task's worktree, so every workflow step is a real one. It has no model between
+  model, the real `concorde workflow step` command that the `workflow_step` call the script hands
+  them would run, and the real `concorde workflow report` command line, in the task's worktree, so
+  every workflow step is a real one. It has no model between
   steps, while its Operations still launch real workers, so it tests Concorde's side without Claude
   Code's workflow runtime.
 

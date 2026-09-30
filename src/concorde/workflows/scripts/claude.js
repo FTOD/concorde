@@ -1,19 +1,24 @@
-// Claude Code adapter: every step is carried by small subagents, each running `concorde workflow
-// step` once with Bash and returning the step outcome it printed. One call waits at most
-// WAIT_SECONDS, under the Bash tool's default two-minute limit, and the script itself, not a
-// model, asks again while the run is still going: the same key only waits, it never starts the
-// run twice. An outcome that does not match the step it asked for counts as no answer, and the
-// script asks again, a few times at most: a relay that retyped the command wrongly or returned
-// nothing is not the step's result. What counts is what the hosts recorded: the final report is
-// built by `concorde workflow report`, and a step left without an answer carries what its agents
-// relayed last.
+// Claude Code adapter: every step is carried by small subagents, each calling the project MCP
+// server's tool `workflow_step` once and returning the step outcome it answered. The server runs
+// the workspace's own `concorde workflow step` as a process of its own, outside the session's Bash
+// sandbox, whose every call is a PID namespace that dies with the call: a run started from a Bash
+// call would be killed with it, a run started by the server lives until it ends. One call waits at
+// most WAIT_SECONDS, and the script itself, not a model, asks again while the run is still going:
+// the same key only waits, it never starts the run twice. An outcome that does not match the step
+// it asked for counts as no answer, and the script asks again, a few times at most: a relay that
+// copied the request wrongly or returned nothing is not the step's result. What counts is what the
+// hosts recorded: the final report is built by `concorde workflow report`, and a step left without
+// an answer carries what its agents relayed last.
 
-// The workflow runs in the bound workspace it is started in: every command runs from the current
-// working directory, whose workspace binding names the workspace.
+// The workflow runs in the bound workspace it is started in: the step tool works on the worktree
+// the session started in, and the report command runs from the current working directory, whose
+// workspace binding names the workspace.
 if (!args || !args.module || !args.mode) {
   throw new Error("concorde workflow needs args { module, mode } and optionally answers, retry and restart")
 }
 const CONCORDE = args.concorde || ".concorde/bin/concorde"
+// The project MCP server's tool, as Claude Code names it for the server registered as `concorde`.
+const STEP_TOOL = "mcp__concorde__workflow_step"
 const WAIT_SECONDS = 100
 // At most this many calls for one step, about five and a half hours of waiting.
 const MAX_CALLS = 200
@@ -55,6 +60,20 @@ function relay(command, lines, label, schema) {
   )
 }
 
+// A step agent's prompt: one call of the step tool with these arguments, nothing else.
+function stepPrompt(argumentsText) {
+  return [
+    "Call the MCP tool " + STEP_TOOL + " exactly once, with exactly these arguments:",
+    "",
+    argumentsText,
+    "",
+    "If the tool is not loaded yet, load it first with ToolSearch and the query",
+    "\"select:" + STEP_TOOL + "\". Copy the arguments character for character. The tool answers",
+    "within two minutes with one JSON object, or with an error. Return the fields of that object",
+    "exactly as answered. Do not call it again, use no other tool and change no file.",
+  ].join("\n")
+}
+
 // A relayed outcome is used only when it names the step asked for and a real run (or none, for a
 // refused step); anything else is treated as no answer, and the report says the step was lost.
 function checked(outcome, key) {
@@ -70,24 +89,18 @@ function step(key, argv) {
   if (args.answers && args.answers[key]) request.answers = args.answers[key]
   if (args.retry && args.retry.indexOf(key) >= 0) request.retry = true
   if (args.restart && args.restart[key]) request.restart = args.restart[key]
-  // Only the request is quoted, so that the permission rule for `concorde workflow step` matches.
-  const command =
-    CONCORDE + " workflow step --json " + quote(JSON.stringify(request)) + " --wait " + WAIT_SECONDS
+  // The request travels as an object: nothing is quoted for a shell.
+  const argumentsText = JSON.stringify({ request: request, wait: WAIT_SECONDS })
   let calls = 0
   let misses = 0
   function once() {
     calls += 1
-    return relay(
-      command,
-      [
-        "Copy the command character for character, quotes included. Run it once, in the",
-        "foreground: it returns within two minutes. It prints one JSON object, whatever its exit",
-        "status. Return the fields of that object exactly as printed. Do not run it again, run no",
-        "other command and change no file.",
-      ],
-      "step " + key + (calls > 1 ? " (" + calls + ")" : ""),
-      STEP_SCHEMA
-    ).then(function (outcome) {
+    return agent(stepPrompt(argumentsText), {
+      label: "step " + key + (calls > 1 ? " (" + calls + ")" : ""),
+      schema: STEP_SCHEMA,
+      model: "haiku",
+      effort: "low",
+    }).then(function (outcome) {
       const answer = checked(outcome, key)
       if (!answer) {
         misses += 1
