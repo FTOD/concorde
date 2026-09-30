@@ -3,11 +3,13 @@
 // Standard input: {"script": <path>, "args": {...},
 //                  "outcomes": {<key>: <step outcome> | null}, "report": {status, summary}}
 // A step whose key has no outcome gets null (its agent "returned nothing"). With
-// "execute": {"cwd": <dir>} every agent runs the command its prompt names in that directory, as a
-// step agent would with its Bash tool, and returns what it printed: the step outcome, or the
-// status and summary of the report. Standard output:
-// {"meta": <Claude meta>, "calls": [{"key", "request" | "lost", "options", "prompt"}],
-//  "notes": [...], "result": <what the script returned>, "error": <message or null>}.
+// "execute": {"cwd": <dir>, "concorde": <command>} every agent does what its prompt asks in that
+// directory and returns what came back: a step agent's call of the project MCP server's
+// `workflow_step` is played by the command that tool runs, `<concorde> workflow step --json
+// <request> --wait <wait>` (`concorde` defaults to the script's args.concorde), and the report
+// agent runs the command its prompt names, as it would with its Bash tool. Standard output:
+// {"meta": <Claude meta>, "calls": [{"key", "request", "tool", "arguments" | "lost", "options",
+//  "prompt"}], "notes": [...], "result": <what the script returned>, "error": <message or null>}.
 
 import { spawnSync } from "node:child_process"
 import { readFileSync } from "node:fs"
@@ -27,9 +29,14 @@ function next(key) {
   return outcome[index]
 }
 
-function requestOf(text) {
-  const match = text.match(/--json '((?:[^']|'\\'')*)'/)
-  return match ? JSON.parse(match[1].replace(/'\\''/g, "'")) : null
+// A step prompt names the tool on its first line and its arguments, as JSON, on its third.
+function toolOf(text) {
+  const match = text.split("\n")[0].match(/^Call the MCP tool (\S+) /)
+  return match ? match[1] : null
+}
+
+function argumentsOf(text) {
+  return JSON.parse(text.split("\n")[2])
 }
 
 function lostOf(text) {
@@ -42,17 +49,28 @@ function commandOf(text) {
   return text.split("\n")[2]
 }
 
-// Runs the prompt's command through the shell and returns the JSON object it printed, or null.
-function executed(prompt) {
-  const done = spawnSync("/bin/sh", ["-c", commandOf(prompt)], {
-    cwd: input.execute.cwd,
-    encoding: "utf-8",
-  })
+function parsed(done) {
   try {
     return JSON.parse(done.stdout)
   } catch (error) {
     return null
   }
+}
+
+// Runs the prompt's command through the shell and returns the JSON object it printed, or null.
+function executed(prompt) {
+  return parsed(
+    spawnSync("/bin/sh", ["-c", commandOf(prompt)], { cwd: input.execute.cwd, encoding: "utf-8" })
+  )
+}
+
+// Plays the step tool: runs the step command it runs and answers what that printed, or null.
+function stepped(values) {
+  const concorde = input.execute.concorde || (input.args && input.args.concorde) || ".concorde/bin/concorde"
+  const command =
+    concorde + " workflow step --json '" + JSON.stringify(values.request).replace(/'/g, "'\\''") +
+    "' --wait " + values.wait
+  return parsed(spawnSync("/bin/sh", ["-c", command], { cwd: input.execute.cwd, encoding: "utf-8" }))
 }
 
 const match = source.match(/^export const meta = (\{[\s\S]*?\n\})\n/)
@@ -71,9 +89,10 @@ try {
       const value = executed(prompt)
       return Promise.resolve(value && { status: value.status, summary: value.summary })
     }
-    const request = requestOf(prompt)
-    calls.push({ key: request.key, request, options, prompt })
-    if (input.execute) return Promise.resolve(executed(prompt))
+    const values = argumentsOf(prompt)
+    const request = values.request
+    calls.push({ key: request.key, request, tool: toolOf(prompt), arguments: values, options, prompt })
+    if (input.execute) return Promise.resolve(stepped(values))
     const outcome = next(request.key)
     return Promise.resolve(outcome === undefined ? null : outcome)
   }

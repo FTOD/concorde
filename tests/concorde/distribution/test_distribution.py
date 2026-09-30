@@ -940,7 +940,8 @@ class InstallTests(unittest.TestCase):
         allow = value["permissions"]["allow"]
         self.assertEqual(["Bash(ls:*)", mine], allow[:2])
         self.assertIn("Workflow(concorde-brownfield)", allow)
-        self.assertIn("Bash(.concorde/bin/concorde workflow step:*)", allow)
+        self.assertIn("mcp__concorde__workflow_step", allow)
+        self.assertNotIn("Bash(.concorde/bin/concorde workflow step:*)", allow)
         self.assertEqual(1, allow.count(mine))
         # The developer's own rule was there first, so Concorde does not own it.
         self.assertNotIn(mine, receipt["permissions"])

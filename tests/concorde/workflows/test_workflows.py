@@ -7,6 +7,7 @@ import json
 import re
 import secrets
 import subprocess
+import sys
 import time
 import unittest
 from datetime import UTC, datetime
@@ -31,6 +32,7 @@ from concorde.workflows.step import (
     step_key,
 )
 from tests.concorde.support.brownfield_project import BrownfieldProject
+from tests.concorde.support.brownfield_project import commit as commit_all
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 HARNESS = Path(__file__).with_name("run_script.mjs")
@@ -583,6 +585,105 @@ class StepTests(unittest.TestCase):
         self.assertEqual("record_conflict", value["error"]["causes"][0]["code"])
 
 
+def _pid_sandbox() -> list[str] | None:
+    """A bubblewrap command prefix that runs a command in a PID namespace of its own, as Claude
+    Code's Bash sandbox runs each call, or None where bubblewrap cannot make one."""
+    prefix = [
+        "bwrap",
+        "--unshare-pid",
+        "--die-with-parent",
+        "--bind",
+        "/",
+        "/",
+        "--dev",
+        "/dev",
+        "--proc",
+        "/proc",
+    ]
+    try:
+        done = subprocess.run(
+            [*prefix, "true"], capture_output=True, timeout=30, check=False
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return prefix if done.returncode == 0 else None
+
+
+class SandboxTests(unittest.TestCase):
+    """Why a step's run must not be started from a sandboxed Bash call."""
+
+    def setUp(self):
+        self.sandbox = _pid_sandbox()
+        if self.sandbox is None:
+            self.skipTest("bubblewrap cannot make a PID namespace here")
+        self.project = BrownfieldProject(self)
+        checks = self.project.root / ".concorde/checks/module.shop.json"
+        checks.parent.mkdir(parents=True, exist_ok=True)
+        checks.write_text(
+            json.dumps(
+                {
+                    "checks": [
+                        {
+                            "id": "check.shop.slow",
+                            "argv": ["sleep", "30"],
+                            "timeout_seconds": 120,
+                            "inputs": ["src"],
+                        }
+                    ]
+                }
+            )
+        )
+        commit_all(self.project.root, "a slow check")
+        self.project.open_task()
+        self.worktree = self.project.worktree()
+
+    @verifies("scenario.execution.detached-namespace")
+    def test_a_run_detached_inside_a_pid_namespace_dies_with_it(self):
+        request = json.dumps(
+            {
+                "workflow": "brownfield",
+                "mode": "no-ask",
+                "key": "validate",
+                "argv": ["task-validation"],
+            }
+        )
+        command = [
+            sys.executable,
+            str(REPOSITORY_ROOT / "scripts/concorde.py"),
+            "workflow",
+            "step",
+            "--json",
+            request,
+        ]
+        first = subprocess.run(
+            [*self.sandbox, *command, "--wait", "2"],
+            cwd=self.worktree,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        started = json.loads(first.stdout)
+        self.assertEqual("running", started["state"], first.stdout + first.stderr)
+        # The call is over and its namespace with it: the runner was killed without a word.
+        again = subprocess.run(
+            [*command, "--wait", "5"],
+            cwd=self.worktree,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        lost = json.loads(again.stdout)
+        self.assertEqual(
+            ("lost", started["run_id"], "step_lost", "host_ended"),
+            (
+                lost["state"],
+                lost["run_id"],
+                lost["error"]["code"],
+                lost["error"]["causes"][0]["code"],
+            ),
+        )
+
+
 class CliTests(unittest.TestCase):
     """``concorde workflow step|report`` work only in a bound workspace."""
 
@@ -999,7 +1100,21 @@ class ScriptTests(unittest.TestCase):
         self.assertEqual(3, keys.count("describe:module.inventory"))
         self.assertIn("delivery", keys)
         first = next(c for c in run["calls"] if c["key"] == "describe:module.inventory")
-        self.assertIn("--wait 100", first["prompt"])
+        self.assertEqual(100, first["arguments"]["wait"])
+
+    @verifies("scenario.workflows.step-outlives-call")
+    def test_step_agents_call_the_project_mcp_servers_step_tool(self):
+        run = self.run_script(self.ARGS, self.full())
+        steps = [c for c in run["calls"] if c["key"] != "report"]
+        self.assertTrue(steps)
+        for call in steps:
+            with self.subTest(key=call["key"]):
+                # One call of the server's tool with the request as an object, never a Bash
+                # command, whose sandbox would take the run down with it.
+                self.assertEqual("mcp__concorde__workflow_step", call["tool"])
+                self.assertEqual({"request", "wait"}, set(call["arguments"]))
+                self.assertNotIn("Bash", call["prompt"])
+                self.assertNotIn("workflow step", call["prompt"])
 
     @verifies("scenario.workflows.lost")
     def test_a_relayed_outcome_that_names_no_real_run_counts_as_none(self):

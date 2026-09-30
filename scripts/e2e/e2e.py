@@ -85,9 +85,19 @@ WORKER_FIELDS = ("schema_version", "enabled_models", "default", "operations", "l
 # given on the command line, they apply whether or not the folder is trusted.
 WORKFLOW_TOOLS = (
     "Workflow(concorde-{workflow})",
-    "Bash(.concorde/bin/concorde workflow step:*)",
+    "mcp__concorde__workflow_step",
     "Bash(.concorde/bin/concorde workflow report:*)",
     "Read",
+)
+# The project MCP server, whose workflow_step tool the step agents call: the untrusted project's
+# `.mcp.json` entry is not loaded without an approval, so the headless session is given it
+# explicitly, started as the installer registers it, from the task's worktree.
+MCP_CONFIG = json.dumps(
+    {
+        "mcpServers": {
+            "concorde": {"command": ".concorde/bin/concorde", "args": ["project-mcp"]}
+        }
+    }
 )
 
 
@@ -298,7 +308,8 @@ def claude_command(workflow: str, args: dict, task: str) -> tuple[list[str], dic
         "questions, the review verdict and the proposed checks. Do not merge the task."
     )
     tools = [tool.format(workflow=workflow) for tool in WORKFLOW_TOOLS]
-    return sessions.command(prompt, tools, procedure=None), sessions.environment()
+    command = sessions.command(prompt, tools, procedure=None, mcp_config=MCP_CONFIG)
+    return command, sessions.environment()
 
 
 def driver_input(project: Path, worktree: Path, workflow: str, args: dict) -> dict:
@@ -363,6 +374,7 @@ def run_workflow(
             log,
             tools=command[command.index("--allowedTools") + 1 :],
             procedure=None,
+            mcp_config=MCP_CONFIG,
         )
         if session["end"] not in ("idle", "rounds_exhausted"):
             raise E2EError(

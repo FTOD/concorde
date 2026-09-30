@@ -14,14 +14,18 @@ import threading
 import time
 import unittest
 from pathlib import Path
+from typing import ClassVar
 
 from concorde.errors import ERROR_SCHEMA
-from concorde.execution.runs import workspace_lock
+from concorde.execution.runs import load_result, run_state, workspace_lock
 from concorde.project_mcp.server import channel_from, detect_channel
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
 from concorde.tasks import store
 from concorde.tracing import layout, locks
+from concorde.workflows import store as workflow_store
+from tests.concorde.support.brownfield_project import BrownfieldProject
+from tests.concorde.support.brownfield_project import commit as commit_all
 from tests.concorde.support.environment import child_environment
 from tests.concorde.support.operation_project import OperationProject, commit
 from tests.concorde.support.paths import REPOSITORY_ROOT
@@ -43,6 +47,7 @@ TOOLS = {
     "task_close",
     "task_merge",
     "register_wait",
+    "workflow_step",
 }
 # How long a test waits for a channel event before it fails.
 EVENT_WAIT = 60
@@ -427,6 +432,115 @@ class ProjectMcpTests(unittest.TestCase):
             {"task": "t1", "main": "concorde-7d", "former": "concorde-6c"},
             answer["already"],
         )
+
+
+class WorkflowStepToolTests(unittest.TestCase):
+    """``workflow_step`` on a bound task worktree whose ``task-validation`` runs a slow check."""
+
+    SECONDS = 4
+
+    def setUp(self):
+        self.project = BrownfieldProject(self)
+        checks = self.project.root / ".concorde/checks/module.shop.json"
+        checks.parent.mkdir(parents=True, exist_ok=True)
+        checks.write_text(
+            json.dumps(
+                {
+                    "checks": [
+                        {
+                            "id": "check.shop.slow",
+                            "argv": ["sleep", str(self.SECONDS)],
+                            "timeout_seconds": 120,
+                            "inputs": ["src"],
+                        }
+                    ]
+                }
+            )
+        )
+        commit_all(self.project.root, "a slow check")
+        self.project.open_task()
+        self.worktree = self.project.worktree()
+
+    def client(self, where: Path) -> Client:
+        return Client(
+            self,
+            where,
+            CONCORDE_CHANNEL="0",
+            CLAUDE_CODE_SESSION_ID="session-task",
+            CLAUDE_PROJECT_DIR=str(where),
+        )
+
+    REQUEST: ClassVar[dict] = {
+        "workflow": "brownfield",
+        "mode": "no-ask",
+        "key": "validate",
+        "argv": ["task-validation"],
+    }
+
+    @verifies("scenario.main-session.workflow-step-tool")
+    @verifies("scenario.workflows.step-outlives-call")
+    def test_a_step_started_through_the_server_outlives_the_call_and_the_session(self):
+        client = self.client(self.worktree)
+        # Another call is answered while a step call waits: step calls have threads of their own.
+        client.send(
+            {
+                "jsonrpc": "2.0",
+                "id": 900,
+                "method": "tools/call",
+                "params": {
+                    "name": "workflow_step",
+                    "arguments": {"request": self.REQUEST, "wait": 2},
+                },
+            }
+        )
+        listed, error = client.call("task_list")
+        self.assertFalse(error, listed)
+        with client.arrived:
+            self.assertTrue(
+                client.arrived.wait_for(lambda: 900 in client.responses, timeout=60)
+            )
+        answer = client.responses.pop(900)["result"]
+        outcome = json.loads(answer["content"][0]["text"])
+        self.assertFalse(answer["isError"], outcome)
+        self.assertEqual(("validate", "running"), (outcome["key"], outcome["state"]))
+        run_id = outcome["run_id"]
+        # The session ends: the server goes, the run it started does not.
+        client.close()
+        space = workflow_store.workspace(self.worktree)
+        deadline = time.monotonic() + 120
+        while run_state(space.store, run_id) == "running":
+            self.assertLess(time.monotonic(), deadline, "the run never ended")
+            time.sleep(0.2)
+        self.assertEqual("finished", run_state(space.store, run_id))
+        self.assertIsNotNone(load_result(space.store, run_id))
+        # A new session finds the same step finished: the key never starts a run twice.
+        again, error = self.client(self.worktree).call(
+            "workflow_step", request=self.REQUEST, wait=5
+        )
+        self.assertFalse(error, again)
+        self.assertEqual((run_id, "finished"), (again["run_id"], again["state"]))
+
+    @verifies("scenario.main-session.workflow-step-tool")
+    def test_a_worktree_without_a_binding_or_a_bad_request_is_refused(self):
+        value, error = self.client(self.project.root).call(
+            "workflow_step", request=self.REQUEST
+        )
+        self.assertTrue(error, value)
+        validate(value["error"], ERROR_SCHEMA)
+        self.assertEqual("unbound_worktree", value["error"]["code"])
+        value, error = self.client(self.worktree).call(
+            "workflow_step", request={"workflow": "brownfield"}, wait=0
+        )
+        self.assertTrue(error, value)
+        # The step command's own refusal, unchanged.
+        self.assertEqual(
+            ("invalid_request", "Workflows (concorde workflow)"),
+            (value["error"]["code"], value["error"]["actor"]),
+        )
+        value, error = self.client(self.worktree).call(
+            "workflow_step", request=self.REQUEST, wait=101
+        )
+        self.assertEqual("invalid_input", value["error"]["code"])
 
 
 class ChannelDetectionTests(unittest.TestCase):
