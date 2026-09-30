@@ -30,6 +30,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..errors import WORKER_ERROR_SCHEMA, evidence, link
+from ..spec.grants import TASK_TYPES
 from ..spec.repository_base import SpecError
 from ..spec.schema import ContractError, validate
 from .audit import audit, rw_allows, snapshot
@@ -40,7 +41,7 @@ from ..tracing import layout
 from ..tracing.node import Node
 from .progress import Progress
 from .runs import create_run, now, remove_runtime
-from .settings import TOOL_SETS, SettingsError, grant_view
+from .settings import SettingsError, grant_view
 
 BACKENDS = {"claude": ClaudeBackend, "pi": PiBackend}
 
@@ -520,7 +521,7 @@ def run_worker(request: WorkerRequest) -> dict:
         "settings_digest": None,
         "brief_digest": None,
         "tools": backend.tools(request.task_type, request.grant)
-        if backend and request.task_type in TOOL_SETS
+        if backend and request.task_type in TASK_TYPES
         else None,
         "started_at": now(),
         "ended_at": None,
@@ -622,7 +623,7 @@ def run_worker(request: WorkerRequest) -> dict:
                 "names and Workers does not choose",
             )
         if (
-            request.task_type not in TOOL_SETS
+            request.task_type not in TASK_TYPES
             or not isinstance(request.grant, dict)
             or not request.grant.get("context_identity")
             or not isinstance(request.grant.get("entries"), list)
@@ -630,7 +631,7 @@ def run_worker(request: WorkerRequest) -> dict:
             missing = [
                 name
                 for name, present in (
-                    ("a known task type", request.task_type in TOOL_SETS),
+                    ("a known task type", request.task_type in TASK_TYPES),
                     ("a grant object", isinstance(request.grant, dict)),
                     (
                         "a context identity",
