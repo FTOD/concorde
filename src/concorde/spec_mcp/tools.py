@@ -41,6 +41,7 @@ TOOLS: dict[str, dict] = {
                         "review-spec",
                         "review-code",
                         "code-to-spec",
+                        "review-architecture",
                     ]
                 },
             },

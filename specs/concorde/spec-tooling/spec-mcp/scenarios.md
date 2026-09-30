@@ -34,6 +34,13 @@ Concrete situations of the [Spec MCP server](module.md). Exact tools and results
 - AND `src/a/` is listed as `rw` and A's and B's selected documents as `ro`
 - BUT no file is written and no grant is stored
 
+### scenario.spec-mcp.boundary-task-types — Every task type is offered
+
+- GIVEN a root whose [Module](../../glossary.json#concept.module) A uses Module B
+- WHEN the client lists the tools
+- THEN `boundary` offers exactly the eight [task types](../../glossary.json#concept.task-type) for `task_type`
+- AND a `boundary` call with task type `review-architecture` returns Spec core's grant for the same root, Module and task type, which writes nothing
+
 ### scenario.spec-mcp.boundary-refused — A grant Spec core refuses
 
 - GIVEN a root in which Modules A and D both bind `src/shared.py`
