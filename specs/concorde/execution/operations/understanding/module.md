@@ -2,14 +2,18 @@
 
 ## Purpose
 
-Understanding lets callers learn what one or more Modules promise before anything changes. It
-provides the `understand` [Operation](../../../glossary.json#concept.operation): a worker reads the
-bound Modules' Specs and only the names of their code files, and answers a stated goal with what the
+Understanding lets callers learn what one or more Modules promise before anything changes, and have
+a plan for changing them reviewed before it is followed. It provides two
+[Operations](../../../glossary.json#concept.operation). In `understand` a worker reads the bound
+Modules' Specs and only the names of their code files, and answers a stated goal with what the
 Modules promise, whether their [Spec](../../../glossary.json#concept.spec) suffices, the
-[Spec gaps](../../../glossary.json#concept.spec-gap) if not, and, when asked, a plan. The caller
-relies on it to plan work and confirm a Spec repair closed a gap. Understanding never changes a Spec
-or code file, never reads code contents and never fills a missing promise by guessing from code; a
-plan is a proposal the caller may follow, change or reject.
+[Spec gaps](../../../glossary.json#concept.spec-gap) if not, and, when asked, a plan. In the
+optional `plan_review` a reviewer reads the Specs and the code and judges a plan the caller wrote
+against the workspace's goal, reporting findings the caller answers in a next run. The caller relies
+on them to plan work, to confirm a Spec repair closed a gap and to catch a wrong plan before it
+costs a change. Understanding never changes a Spec or code file and never fills a missing promise
+by guessing from code; `understand` never reads code contents; a plan is a proposal the caller may
+follow, change or reject, and a review of it is advice the caller answers.
 
 ## Core concepts
 
@@ -24,8 +28,10 @@ to change, the new files the change needs, which the task level creates and bind
 that fills them, the ordered next runs — the
 Operations `understand`, `specify`, `implement`, `test`, `spec_review` and `code_review`, and the
 [execution commands](../../../glossary.json#concept.execution-command) `task-validation` and
-`delivery` that end a task's work — and the open decisions left to the task level. The plan has
-no separate Operation: breaking work into steps is one use of understanding.
+`delivery` that end a task's work — and the open decisions left to the task level. Making the plan
+has no separate Operation: breaking work into steps is one use of understanding. Reviewing a plan
+has one, `plan_review` (see [Reviewing a plan](#reviewing-a-plan)), because it judges a plan the
+caller wrote, which may start from this one, against the code as well as the Specs.
 
 The Spec is sufficient when it states every promise the goal relies on. For a goal that asks what
 the Modules promise, that is every promise the answer needs. For a goal that changes them, the
@@ -113,9 +119,119 @@ names a Module that is not bound): the Operation's own link then has the code `u
 relaunches the worker. A failed or blocked result carries no `output`; the worker's own answer
 stays in the `worker` field. Running the Operation again with the same inputs is safe.
 
-## How it is built
+## Reviewing a plan
 
-The Operation is worker-backed, run with [task type](../../../glossary.json#concept.task-type)
+`plan_review` is optional: nothing requires it before a task's validation or delivery, and the
+caller runs it when a change deserves a second reading of its plan before any Spec or code changes.
+The caller writes the plan itself, in its own words and shape, possibly starting from an
+`understand` plan; one reviewer, [worker id](../../../glossary.json#concept.worker-id) `reviewer`, reads it with the bound Modules' Specs and
+the project's code and reports every problem it can establish, in one pass, as findings. The
+reviewer changes nothing and its model comes from the
+[worker configuration](../../../glossary.json#concept.worker-configuration) like every worker's.
+
+### The discussion
+
+A plan is discussed over several runs, which the caller leads; the Operation never loops. Each run
+is one **iteration**: the caller answers every finding of the previous iteration, accepting it and
+revising the plan or rejecting it with its reason, and runs `plan_review` again with the revised
+plan, the previous run as `--input` and the answers. The reviewer then sees its earlier findings
+and the answers, says for each earlier finding whether it is **settled**, by the revision or by the
+reason given, or **maintained**, restating a maintained one as a finding of this iteration, and
+reports what else it finds. The discussion ends when the **verdict** is `accepted`, which it is
+exactly when no finding of the iteration is blocking; the caller takes a disagreement it cannot
+settle itself, such as a finding the reviewer maintains after the caller rejected it, to whoever
+decides above it, and states that decision in its next answer.
+
+```d2 illustrative
+direction: down
+write: "Caller writes the plan"
+review: "plan_review: the reviewer judges the plan\nagainst goal, Specs and code"
+verdict: "Verdict" {shape: diamond}
+follow: "Follow the plan" {shape: oval}
+answer: "Caller answers every finding:\naccept and revise, or reject with a reason"
+escalate: "Caller takes a maintained disagreement\nto whoever decides above it"
+write -> review
+review -> verdict
+verdict -> follow: accepted
+verdict -> answer: changes_required
+answer -> review: "next iteration: --input the previous run,\n--accept / --reject"
+answer -> escalate: "cannot settle it itself" {style.stroke-dash: 3}
+escalate -> answer: "the decision, stated in the answer" {style.stroke-dash: 3}
+```
+
+### Findings
+
+Each finding of the [plan review report](contracts.md#contract.understanding.plan-review) is
+blocking, when following the plan unchanged would miss the goal or break a promise, or advisory,
+and names its kind: the plan misses the goal or part of it (`goal`), a planned step would break a
+promise a Spec states (`violation`), the plan relies on a promise the Specs do not state or adds one
+without a step that states it (`spec-gap`), the plan misjudges the existing code (`code`), the plan
+changes something outside the bound Modules or the goal (`scope`), or its steps are missing, in an
+order that cannot work or leave a new file uncreated before the worker that fills it (`sequence`).
+A finding may name its **basis**, a stable identity or Spec passage of the bound Modules'
+[Spec context](../../../glossary.json#concept.spec-context); a `violation` always does. The
+reviewer judges the plan against the goal, the Specs and the code as they are, never against taste.
+
+### Running plan_review
+
+```text
+concorde run plan_review --plan <file> [--modules <module-id>[,<module-id>…]] [--input <run-id>]…
+                         [--accept <finding> "<how the plan settles it>"]… [--reject <finding> "<why>"]…
+```
+
+The run needs a [workspace](../../../glossary.json#concept.workspace): it reviews the plan against
+the goal of the workspace whose binding lies in the worktree it starts in, so it never runs
+unbound. `--plan` names the plan file, relative to that worktree or absolute; the Operation keeps an
+exact copy of it as `plan.md` in the run's [trace node](../../../glossary.json#concept.trace-node),
+so the file may be changed or removed afterwards. `--modules` names the bound Modules (default: the
+binding's). `--input` admits earlier `ok` runs of the workspace as material: at most one of them is
+a `plan_review` run, the **previous iteration**, and every other, such as the `understand` run the
+plan started from, is given to the reviewer as it is. `--accept` and `--reject` answer the previous
+iteration's findings, each once, by their ids. For example, after a first review found `F1` and
+`F2`, `--plan plan.md --input <first run> --accept F1 "step 3 now creates the file first" --reject
+F2 "the Spec already states the retry limit in req.payments.retry"` starts the second iteration.
+
+| Status | Code | Reason | Detail |
+| --- | --- | --- | --- |
+| `ok` | — | — | review completed, any verdict |
+| `blocked` | `worker_blocked` | `decision` | the reviewer could not judge the plan at all, such as a plan about Modules it cannot read |
+| `failed` | a code of the [worker sequence](../workers.md#errors-of-the-worker-sequence) | as that table gives | the grant could not be computed, the reviewer could not be run, or the audit found a change |
+| `failed` | `plan_unreadable` | `input` | the plan file is missing, unreadable, not UTF-8 text or empty |
+| `failed` | `iteration_mismatch` | `input` | more than one `plan_review` input, a previous finding not answered exactly once, an answer to no previous finding, or an answer without a previous iteration; lists every problem |
+| `failed` | `unresolved_basis` | `capability` | a basis that does not resolve in the bound Modules' Spec context, or a `violation` without one; names every such finding |
+| `failed` | `inconsistent_review` | `capability` | responses not exactly one per previous finding, a maintained finding not restated exactly once, a restated finding that continues no maintained one, or a finding about a Module that is not bound; lists every inconsistency |
+
+The two `input` failures stop the run before the reviewer launches. Only an `ok` run carries a
+report; the reviewer's own answer stays in the `worker` field of every run it reached.
+
+### How plan_review is built
+
+The Operation is worker-backed with [task type](../../../glossary.json#concept.task-type)
+`review-code`, which gives the reviewer the bound Modules' Spec context and external material and
+the whole project's implementation to read, and nothing to write. The plan, the previous
+iteration's findings with the answers and the other inputs are
+[task context](../../../glossary.json#concept.task-context) in the brief; they add no source.
+
+| # | Step | Actor | Stops the run when |
+| --- | --- | --- | --- |
+| 1 | Read the plan, keep its copy in the run's trace node and record its digest | Operation | unreadable or empty plan (`failed`) |
+| 2 | Settle the iteration: the previous `plan_review` input and the answers to its findings | Operation | `iteration_mismatch` (`failed`) |
+| 3 | Compute and freeze the `review-code` [grant](../../../glossary.json#concept.grant); generate settings, tools and the [brief](../../../glossary.json#concept.brief) | Operation, Spec core, Workers | Specs cannot load or unknown Module (`failed`) |
+| 4 | Launch the reviewer and wait for its [worker result](../../../glossary.json#concept.worker-result) | Workers, worker | launch error or timeout (`failed`); `blocked` passed on |
+| 5 | [Audit](../../../glossary.json#concept.write-audit): read-only grant, so any change is a violation; write the [run record](../../../glossary.json#concept.run-record) | Workers | any change (`failed`) |
+| 6 | Resolve every basis, check the responses and findings against the previous iteration, derive the verdict | Operation, Spec core | unresolved basis or inconsistency (`failed`) |
+| 7 | Return the report as the run's output | Operation, Execution runner | — |
+
+The reviewer has the same reading tools as the understand worker. No
+[configured check](../../../glossary.json#concept.configured-check) runs and the
+reviewer is never resumed: a plan changes no code, and every blocking finding is due in one pass,
+as in a code review. The Operation keeps the findings and responses as the reviewer's claims,
+verifying only what it can decide: the bases, the consistency with the previous iteration and the
+verdict that follows.
+
+## How understand is built
+
+`understand` is worker-backed, run with [task type](../../../glossary.json#concept.task-type)
 `understand`, which gives the worker the bound Modules'
 [Spec context](../../../glossary.json#concept.spec-context) and external material to read, only the
 file names of their implementation context, and nothing to write.
@@ -138,29 +254,34 @@ The Operation treats the assessment as the worker's claim, verifying only what i
 declarations and the assessment's own shape, then adds its own evidence, the **host evidence** of
 the run result: grant, [context identity](../../../glossary.json#concept.context-identity), audit
 and transcript path, and every unknown Module or inconsistency it finds. Whether a plan is good is
-for the caller and later Operations to find out. See the [requirements](requirements.md) and
+for the caller and later Operations, such as `plan_review`, to find out. See the [requirements](requirements.md) and
 [scenarios](scenarios.md).
 
 <a id="realization.understanding.operation"></a>
 
-The **Understand Operation** realization holds the Operation's steps, worker instructions and result
-schema in `src/concorde/understanding/` (`operation.py` declares the `UNDERSTAND` provider) with
-prompt `prompts/workers/understand.md`, tested against a fake worker.
+The **Understanding Operations** realization holds both Operations' steps, worker instructions and
+result schemas in `src/concorde/understanding/` (`operation.py` declares the `UNDERSTAND` provider,
+`plan_review.py` the `PLAN_REVIEW` provider) with the prompts `prompts/workers/understand.md` and
+`prompts/workers/plan-review.md`, tested against a fake worker.
 
 ## What it relies on
 
 <a id="uses-operations"></a>
 
 **Operations** lists `understand` in its catalog as an Operation that may run unbound and writes
-nothing, and names this Module as its provider; Understanding never calls another Operation.
+nothing, and `plan_review` as one that needs a workspace and writes nothing, and names this Module
+as the provider of both; Understanding never calls another Operation, and neither of its Operations
+calls the other.
 
 <a id="uses-execution"></a>
 
 **Execution**'s [runner](../../../glossary.json#concept.execution-runner) runs the Operation's
 steps: it reads the [workspace binding](../../../glossary.json#concept.workspace-binding), settles
-the Modules and inputs, and wraps the assessment in the run result. Understanding relies on it for
-the workspace's goal and Modules, and for refusing an input that is not an `ok` run of the same
-workspace, or, for an unbound run, of no workspace.
+the Modules and inputs, and wraps the assessment or the plan review report in the run result.
+Understanding relies on it for the workspace's goal and Modules, for the run's trace node, where
+`plan_review` keeps its copy of the plan, for refusing a `plan_review` run without a workspace
+binding, and for refusing an input that is not an `ok` run of the same workspace, or, for an
+unbound run, of no workspace.
 
 <a id="uses-workers"></a>
 
@@ -170,9 +291,11 @@ failed run. The brief Workers appends tells the understand worker never to infer
 does not state but to report it as a Spec gap and end `ok`; this Module's instructions say the same,
 since for this worker a missing promise is the finding itself: it reports the promise in an `ok`,
 insufficient assessment, which infers nothing, and returns `blocked` only when it cannot assess the
-goal at all.
+goal at all. For the `plan_review` reviewer, whose task type is `review-code`, the appended brief
+says to report such behaviour as a `spec-gap` finding, which this Module's instructions repeat.
 
 <a id="uses-spec"></a>
 
-**Spec core** computes the `understand` grant and resolves Module identities for step 5, always from
-the Specs of the worktree the run works on.
+**Spec core** computes the `understand` and `review-code` grants, resolves Module identities for
+`understand`'s step 5 and the bases of `plan_review`'s findings, always from the Specs of the
+worktree the run works on.

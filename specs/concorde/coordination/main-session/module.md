@@ -216,6 +216,16 @@ The installed guidance gives the main agent this working method:
   which decides those its authority covers, puts the rest to the developer at once, and answers
   the session once with every answer
   ([requirements](requirements.md#req.main-session.batched-decisions)).
+- **Have a plan reviewed when it deserves it.** The task-session guidance presents `plan_review` as
+  optional: nothing requires it before `task-validation` or `delivery`, and a task session runs it
+  when it chooses or its brief asks for it. The session writes the plan itself, possibly starting
+  from an `understand` plan, and leads the discussion over several runs: it answers every finding
+  of an iteration, accepting it and revising the plan or rejecting it with its reason, and runs
+  `plan_review` again with the previous run as `--input` and the answers as `--accept` and
+  `--reject`, until the verdict is `accepted`. A finding the reviewer maintains after the session
+  rejected it, and that the session still rejects, is a disagreement it does not iterate on again
+  but escalates to the main agent, stating the answer in its next run
+  ([requirements](requirements.md#req.main-session.task-session-plan-review)).
 - **Keep the decision log.** Record every non-`ok` result of the task's runs and every
   unsupervised choice, with its reason, in the task's
   [decision log](../../glossary.json#concept.decision-log), including the decisions and problems of
