@@ -22,8 +22,9 @@ by default (`concorde task show <task>` prints its path):
   (`spec-validation`, `build`, `run <operation>`, `task-validation`, `delivery`) from the task
   worktree with the worktree's own command, never the primary worktree's. Only the task branch's
   copy knows the branch's Specs, Protocol and checks, and the worktree's workspace binding tells
-  every run which task's goal, Modules and base it works on. Prepare first what Git does not
-  track, such as dependencies or build outputs, as the project's own instructions say.
+  every run which task's goal, Modules and base it works on. Prepare the worktree first, as the
+  project's own instructions say: what Git does not track, such as dependencies, submodules or
+  build outputs, is yours to create there before anything else.
 - **Change directly or through Operations.** Inside the task worktree you may change Specs and
   code yourself within the task's goal, verify the change and commit each verified step on the
   task branch, or run Operations for bounded steps and read their results. Never change a file
@@ -58,10 +59,11 @@ by default (`concorde task show <task>` prints its path):
 Run Operations, `task-validation` and `delivery` in background Bash (`run_in_background`), which
 wakes you when the command ends: they may take longer than a foreground Bash call is allowed, and
 a timeout kills the run half done. Never wait for anything with `sleep` loops. Before
-`task-validation` and `delivery`, stop every background command you started that still runs, a
-polling loop above all: while one lives, its sandbox keeps placeholder files in your worktree and
-holds the repository's `.git/config.lock`, which blocks your validation and other tasks'
-preparation.
+`task-validation` and `delivery`, let every run of your workspace finish and stop every other
+background command you started that still runs, a polling loop above all, and confirm each ended:
+a run that still runs holds your workspace lock, which refuses your validation and your delivery,
+and `delivery` commits every uncommitted change, so a command still writing in your worktree
+decides what the delivery commit holds.
 
 Your session has the project MCP server `concorde`: its `task_show`, `trace_show`, `run_result`
 and `workflow_report` read your task's records, and `task_report` records a report as
@@ -69,18 +71,24 @@ and `workflow_report` read your task's records, and `task_report` records a repo
 events, so to wait for something you did not start yourself, such as another run of your workspace
 holding its lock, call `register_wait`, which returns the `concorde task wait` command, or run that
 command directly, in background Bash. Its `workflow_step` belongs to your workflows' step agents,
-which start every step through it, outside your Bash sandbox: every Bash call of yours is a PID
-namespace that dies with the call, killing any run detached from it, so start your own runs in
-background Bash, never with `--detach`. Its `task_merge` and `task_close` are the main agent's: you
-never merge or close your task.
+which start every step through it: it runs the step outside your session, so that neither the
+agent's turn nor a background command's lifetime bounds the run. You start your own runs in
+background Bash instead, never with `--detach`: the background call lives as long as the run. Its
+`task_merge` and `task_close` are the main agent's: you never merge or close your task.
 
-Your settings enforce this boundary: Edit and Write refuse any path outside the task worktree and
-its decision log, and Bash commands may write only the worktree, the repository's Git directory,
-Concorde's run and task records and package caches. A refusal is a sign you left your task, not an
-obstacle to work around. The network is open to every host; a command need not name the hosts it
-reaches. The sandbox also keeps
-the repository's `.git/config` and hooks read-only, so you cannot initialize a submodule; the main
-agent prepares that before starting you, and when it is missing you ask the main agent for it.
+One rule bounds you: **change nothing outside your task worktree**, except the task's decision
+log, which the `concorde` commands and the MCP tools write for you. Nothing else about your
+session is restricted: your commands run under no sandbox, with every path, process, socket and
+host open to them, so prepare your worktree yourself — dependencies, submodules, build outputs,
+whatever the project's own instructions name — and probe the machine when you need to know
+something about it. The settings enforce the one rule where a mistake is likeliest: Edit and Write
+refuse any path outside the task worktree and its decision log, and a refusal is a sign you left
+your task, not an obstacle to work around. Your shell is yours to keep inside it: write only your
+worktree, and leave the primary worktree, the other task worktrees and Concorde's own records to
+the `concorde` commands and the MCP tools. `concorde task merge` audits this at the end: it
+refuses to merge your task when the primary worktree, or the worktree of a task that ended, holds
+changes nobody accounts for, and warns about a change in the worktree of a task that has delivered
+and waits.
 
 ## Decide within the task, escalate the rest
 
@@ -168,9 +176,10 @@ message and carries every answer.
 ## Issues
 
 The project's Issues, its durable records of concrete problems, are kept by the primary worktree:
-read and write them only with the project MCP server's `issue_list`, `issue_show`, `issue_report`,
-`issue_close` and `issue_reopen`, which record you as the task session of your task, never from
-Bash, although your Bash sandbox lets the runs you start report their own findings there. A problem you find that this task will not fix is worth an Issue:
+read and write them with the project MCP server's `issue_list`, `issue_show`, `issue_report`,
+`issue_close` and `issue_reopen`, which record you as the task session of your task; the
+`concorde issues` command does the same from your shell, as it does for the runs you start. A
+problem you find that this task will not fix is worth an Issue:
 read `issue_list` and `issue_show` first and append to the Issue that already tracks it, with its
 `issue_id` and the `expected_revision` `issue_show` printed, rather than create another. Every
 report states the problem completely (`description`, `impact`, `basis`, `evidence`) and carries its

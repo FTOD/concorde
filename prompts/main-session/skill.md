@@ -260,9 +260,8 @@ Once you have dispatched tasks, opened them and started their sessions, show the
 name of every task you dispatched with its goal in one line, and use those names whenever you
 report on the tasks afterwards, so the developer can follow, ask about or stop each one.
 
-Before starting one, do in the task worktree the preparation that writes the repository's shared
-Git configuration, such as initializing submodules, as the project's own instructions say: the
-session's sandbox keeps `.git/config` and Git's hooks read-only, even though it may commit.
+The session prepares its own worktree — dependencies, submodules, build outputs, whatever the
+project's own instructions name — so start it as soon as its task is open and its brief recorded.
 
 ```bash
 concorde task session <task> --main <your session name> [--model <model>]
@@ -270,9 +269,10 @@ concorde task session <task> --main <your session name> [--model <model>]
 
 Your session name is the one the ListAgents tool reports for this session; the task record keeps
 it as the task's `main`, the session the task session reports to. The command writes the
-session's boundary (its Edit and Write tools may change only the task worktree and decision log,
-and its Bash only the worktree, Git, Concorde's records and package caches; reads and the network
-stay open), starts `claude --bg` with the task's goal and records the session in the task.
+session's boundary (its Edit and Write tools may change only the task worktree and decision log;
+its shell runs under no sandbox, since a task session must change nothing outside its task
+worktree and nothing else about it is restricted), starts `claude --bg` with the task's goal and
+records the session in the task.
 `claude agents` lists them, `claude logs <id>` shows one's recent output and `claude stop <id>`
 stops one; wait for its message rather than watching them. Ending the task, by its merge or its
 close, stops its Claude Code task sessions and removes them from Claude's session list, keeping
@@ -335,6 +335,14 @@ the primary branch, which you name, into the task branch, resolve the conflicts,
 fails after merging (`check_failed`) is new work, in the task or a new one, never a reason to
 discard someone's change.
 
+Before it merges, `concorde task merge` audits what lies outside the task's worktree, since a task
+changes nothing outside it. `primary_dirty` names uncommitted or untracked paths of the primary
+worktree, and `changed_outside` the worktree of a task that ended and outlived it, which no task
+will ever validate or deliver. A worktree of a task that has delivered and waits only warns, since
+its own session may have written there after delivering. Nothing of this is undone blindly: find
+out what wrote the paths, revert what a task wrote outside its worktree, and have the session of
+the task they belong to commit and deliver what is really its own.
+
 When any `concorde task` command fails with `merge_incomplete`, a merge (yours or another main
 session's) ended before its checks decided whether it stays, and nothing may build on the primary
 branch until it is finished. Finish it before anything else, without asking the developer: run
@@ -369,8 +377,8 @@ Issues are the project's durable records of concrete problems: the primary workt
 every session and run sees the same Issues at once. Manage them through the project MCP server's
 Issue tools, which answer as `concorde issues` does: `issue_list` (open and closed Issues, with their
 tier) and `issue_show` to read, `issue_report`, `issue_close` and `issue_reopen` to write, and
-`issue_check` to check the records. A task session has only these tools for Issues: it never writes
-an Issue record from Bash, although its sandbox lets the runs it starts report their findings. No Issue is created or closed behind your back, apart from a
+`issue_check` to check the records. A task session reaches the same Issues, through these tools or
+the `concorde issues` command, as the runs it starts do. No Issue is created or closed behind your back, apart from a
 review Operation that reports the problems it finds and a task merge that closes the Issues its task
 resolves; there is no automatic Issue notification.
 

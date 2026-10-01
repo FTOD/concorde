@@ -37,10 +37,10 @@ shapes are in the [contracts](contracts.md).
 
 ### scenario.workflows.step-outlives-call — A step's run outlives the call that started it
 
-- GIVEN a Claude Code workflow run in a [task session](../../glossary.json#concept.task-session), whose every Bash call is a PID namespace that ends with the call
+- GIVEN a Claude Code workflow run in a [task session](../../glossary.json#concept.task-session), whose step agents each relay one short turn
 - WHEN the step function asks for a step whose run takes longer than one call
 - THEN its step agent calls the [project MCP server](../../glossary.json#concept.project-mcp-server)'s `workflow_step` with the step request as an object, and runs no Bash command
-- AND the server starts the step's run outside the session's Bash sandbox, so the run lives on after that call and after every later one, until it ends and saves its result, even when the session has ended meanwhile
+- AND the server starts the step's run as a process of its own, so the run lives on after that call and after every later one, until it ends and saves its result, even when the session has ended meanwhile
 
 ### scenario.workflows.step-waits-lock — A step waits for the workspace lock before it starts
 

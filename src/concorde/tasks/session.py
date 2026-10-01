@@ -9,20 +9,19 @@ Its boundary is generated here, in the task's folder under ``.concorde/tasks/<ta
 which the close removes, and guards against mistakes, not a malicious session:
 
 - a PreToolUse hook lets Edit and Write change only the task worktree and its decision log;
-- the Bash sandbox lets commands write only the task worktree, the repository's Git directory
-  (commits on the task branch), the task's own folder (the workspace folder its binding names,
-  where its runs and workflow are traced, and its record and trace, for escalations),
-  ``.concorde/locks/`` (the locks those runs take, the merge lock of an Issue write among them),
-  ``.concorde/issues/`` (where the runs it starts write the project's Issues, committing each record
-  through the Git directory) and the user's package caches; reads and the network stay open, since the
-  boundary guards against mistakes, not exfiltration (``allowedDomains`` is ``*``, so no command
-  has to name the hosts it reaches);
+- nothing else is restricted. The session's shell runs under no operating-system sandbox: it
+  reaches every path, process, socket and host its commands need, and what keeps it inside its
+  task is the task-session guidance, Claude Code's ``auto`` mode and, at the end, the audit
+  ``concorde task merge`` runs over everything outside the task worktree. The developer chose
+  this after a sandbox had cost fourteen problems in a week, most of them answered by a
+  workaround rather than by a rule: a task session must change nothing outside its task worktree,
+  and nothing else about it is restricted;
 - the session is given the project MCP server through ``--mcp-config``, as the running Python and
   package, told that it has no
   channel (``CONCORDE_CHANNEL=0``): a live probe on 2026-09-29 (Claude Code 2.1.284) found that a
   ``claude --bg`` session started with ``--dangerously-load-development-channels`` is never woken
   by a channel event, so a task session waits with ``concorde task wait`` in background Bash,
-  which ``register_wait`` returns to it; the server runs outside the Bash sandbox, as every MCP
+  which ``register_wait`` returns to it; the server runs outside the session, as every MCP
   server does, and may change task records, which the developer accepted: it is a management
   tool, not a boundary;
 - nobody answers Claude Code's dialog "New MCP server found in this project" either, which a
@@ -34,7 +33,7 @@ which the close removes, and guards against mistakes, not a malicious session:
   one it never approved, as that dialog's "Continue without using this MCP server" would;
 - nobody answers permission prompts in a background session, so it runs in Claude Code's
   ``auto`` mode, where a classifier approves or refuses each action instead of asking; the hook
-  and sandbox stay the boundary, and ``auto`` needs no one-time consent the way
+  stays the boundary of the file tools, and ``auto`` needs no one-time consent the way
   ``bypassPermissions`` does for a background session. A model without ``auto`` mode falls back
   to asking and stalls, so ``--model`` must name one that has it.
 """
@@ -58,10 +57,6 @@ from . import session_hook, store
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[3]
 PROMPT = "generated/main-session/task-session.md"
-# Package caches outside the worktree that ordinary builds write, such as uv, pip and npm.
-CACHES = (".cache", ".npm")
-# Every host: the sandbox's proxy otherwise admits only hosts a command names.
-ALL_HOSTS = ("*",)
 # The project MCP server's name in the session's MCP configuration.
 SERVER = "concorde"
 # Claude Code's managed settings folder on Linux, which every session reads.
@@ -80,38 +75,6 @@ def session_name(task_id: str) -> str:
 def session_directory(primary: Path, task_id: str) -> Path:
     """The task's ``runtime/``: its task session's boundary configuration, which is no trace."""
     return store.task_folder(primary, task_id) / "runtime"
-
-
-def writable(primary: Path, record: dict, home: Path | None = None) -> list[str]:
-    """Every path the session's Bash commands may write."""
-    home = Path(os.path.realpath(home or Path.home()))
-    # The repository's Git directory, where commits on the task branch are written.
-    common = Path(
-        store._git(
-            primary, "rev-parse", "--path-format=absolute", "--git-common-dir"
-        ).stdout.strip()
-    )
-    paths = [
-        Path(record["worktree"]),
-        Path(os.path.realpath(common)),
-        store.task_folder(primary, record["id"]),
-        store.concorde(primary) / "locks",
-        # The project's Issues, which the runs the session starts write and commit on the
-        # primary branch under the merge lock; the write hook still keeps Edit and Write out.
-        primary / ISSUES,
-        *(home / name for name in CACHES),
-    ]
-    return sorted({Path(os.path.realpath(path)).as_posix() for path in paths})
-
-
-def create_writable(paths: list[str]) -> None:
-    """Create the writable paths that do not exist yet, such as a first run's ``.concorde/locks``.
-
-    A sandbox makes only existing paths writable, so a directory it lists but that is missing
-    would stay read-only for the whole session.
-    """
-    for path in paths:
-        Path(path).mkdir(parents=True, exist_ok=True)
 
 
 def hook_source(primary: Path, record: dict) -> str:
@@ -223,10 +186,13 @@ def mcp_approvals(primary: Path, worktree: Path, managed: Path | None = None) ->
     }
 
 
-def settings(
-    primary: Path, record: dict, hook: Path, python: str, home: Path | None = None
-) -> dict:
-    """The complete ``settings.json`` of one task session."""
+def settings(primary: Path, record: dict, hook: Path, python: str) -> dict:
+    """The complete ``settings.json`` of one task session: its MCP approvals and its write hook.
+
+    It carries no sandbox. A task session must change nothing outside its task worktree and
+    nothing else about it is restricted, so the hook guards the file tools and the shell is left
+    as the developer's own, with every path, process, socket and host open to it.
+    """
     return {
         **mcp_approvals(primary, Path(record["worktree"])),
         "hooks": {
@@ -241,13 +207,6 @@ def settings(
                     ],
                 }
             ]
-        },
-        "sandbox": {
-            "enabled": True,
-            "autoAllowBashIfSandboxed": True,
-            "allowUnsandboxedCommands": False,
-            "filesystem": {"allowWrite": writable(primary, record, home)},
-            "network": {"allowedDomains": list(ALL_HOSTS)},
         },
     }
 
@@ -305,7 +264,6 @@ def start(
     model: str | None = None,
     dry_run: bool = False,
     run=None,
-    home: Path | None = None,
 ) -> dict:
     """Write the session's boundary and, unless ``dry_run``, start it with ``claude --bg``."""
     run = run or subprocess.run
@@ -330,8 +288,7 @@ def start(
     hook.write_text(hook_source(primary, record), encoding="utf-8")
     path = directory / "settings.json"
     path.write_text(
-        json.dumps(settings(primary, record, hook, sys.executable, home), indent=2)
-        + "\n",
+        json.dumps(settings(primary, record, hook, sys.executable), indent=2) + "\n",
         encoding="utf-8",
     )
     servers = directory / "mcp.json"
@@ -361,7 +318,6 @@ def start(
             "settings": path.as_posix(),
             "mcp_config": servers.as_posix(),
         }
-    create_writable(writable(primary, record, home))
     try:
         launched = run(
             command, cwd=worktree, capture_output=True, text=True, timeout=120
@@ -419,9 +375,8 @@ CLAUDE_TIMEOUT = 60
 AGENTS = ("agents", "--json", "--all")
 # The states of that list that tell how a session ended, as node statuses: ``done`` when it
 # finished its last turn and waits for its next message, ``failed`` when it ended in an error.
-# Claude Code judges a session by whether its process lives, which it sees only from the
-# session's own process namespace: from inside a task session's sandbox a live session reads
-# ``failed``, so only a close, which runs outside every task session, asks.
+# Claude Code judges a session by whether its process lives, so the state is taken at the close,
+# when the task has ended and every state it reads is final.
 STATES = {"done": "ok", "failed": "failed"}
 # A session id is a file name under ``projects/``: letters, digits and dashes only.
 SESSION_ID = re.compile(r"^[0-9A-Za-z][0-9A-Za-z-]*$")
@@ -815,5 +770,4 @@ __all__ = [
     "start",
     "stop_sessions",
     "transcript_figures",
-    "writable",
 ]

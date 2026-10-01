@@ -23,7 +23,7 @@ levels need very different amounts of each:
 | | Main session | Task session | Worker |
 | --- | --- | --- | --- |
 | Context | the installed [guidance](../glossary.json#concept.main-session-guidance) and whatever the developer's own configuration adds | the developer's configuration, the task-session guidance and the task's goal, Modules and decision log | only its brief: the [Operation](../glossary.json#concept.operation)'s instructions and the grant's `rw`, `ro` and `names` lists, from which it reads its [Spec context](../glossary.json#concept.spec-context), [external context](../glossary.json#concept.external-context), [implementation context](../glossary.json#concept.implementation-context) and [task context](../glossary.json#concept.task-context); its tool set is its [capability context](../glossary.json#concept.capability-context) |
-| Permission | none | file tools and shell write only the task worktree, its decision log and what commits and runs need; reads and the network open | the grant: `rw` writable, `ro` readable, `names` named only, everything else hidden; no network, no Git |
+| Permission | none | the file tools write only the task worktree and its decision log; the shell and everything else are open, and the merge audits that nothing outside the task worktree changed | the grant: `rw` writable, `ro` readable, `names` named only, everything else hidden; no network, no Git |
 | Environment | the developer's | the developer's Claude Code configuration | its own configuration directory, a cleared environment, its own working directory and limits |
 | Applied by | Distribution, which installs the guidance | the [session boundary](../glossary.json#concept.session-boundary), for Task sessions | [worker settings](../glossary.json#concept.worker-settings) or the [permission extension](../glossary.json#concept.permission-extension), for Workers |
 
@@ -79,28 +79,32 @@ Exact tables: [pi mechanics](pi.md).
 
 <a id="concept.session-boundary"></a>
 
-The **session boundary** confines what a task session writes and nothing else.
-A task session runs on Claude Code, so its boundary is a settings file with a write hook of its own, which lets Edit and Write change
-only the task worktree and its decision log instead of a grant's `rw` list, and a Bash sandbox that
-writes only the task worktree, the repository's Git directory (for commits on the task branch), the
-task's own folder `.concorde/tasks/<task>/` of the primary worktree (which holds the workspace
-folder that the task worktree's [workspace binding](../glossary.json#concept.workspace-binding)
-names for every run started there, and the [task record](../glossary.json#concept.task-record) in which escalations are recorded), the
-primary worktree's `.concorde/locks/` (where those runs take their locks) and `.concorde/issues/`
-(where those runs write the project's [Issues](../glossary.json#concept.issue), each write taking
-the [merge lock](../glossary.json#concept.merge-lock) and committing its record through the Git
-directory) and the user's package caches, with every network host allowed. The write hook still
-refuses an Issue record, so the session's own Edit and Write never write one. Once the task is closed its folder has moved to the
+The **session boundary** restricts one thing about a task session: that it change nothing outside
+its task. A task session runs on Claude Code, so its boundary is a settings file with a write hook
+of its own, which lets Edit and Write change only the task worktree and its
+[decision log](../glossary.json#concept.decision-log) instead of a grant's `rw` list and refuses
+every other path, an [Issue](../glossary.json#concept.issue) record among them, so the session's
+own Edit and Write never write one. Once the task is closed its folder has moved to the
 [history](../glossary.json#concept.history), and the write hook refuses every write to the decision
-log, whose folder no longer exists, rather than recreate it. The open network is reached through the sandbox's
-proxy on `localhost`, because the sandboxed commands have a network namespace of their own; a worker
-those commands start passes that proxy on to its own process (Workers'
-[proxy rule](../execution/workers/launch.md#proxy)), never to its tools, whose sandbox stays without
-network. The session's MCP servers are not inside the boundary: Claude Code runs them outside the
-Bash sandbox, and the [project MCP server](../glossary.json#concept.project-mcp-server) that every
-task session receives can change task records and take locks for any task. The developer chose not
-to confine it: it is a management tool, the task-session guidance says what a task session may do
-with it, and the boundary stays a guard against a session's mistakes in its files and shell.
+log, whose folder no longer exists, rather than recreate it.
+
+Nothing else of the session is restricted, and the settings carry no sandbox: its shell reaches
+every path, process, socket, home-state file and network host, so it prepares its own worktree,
+probes the machine it runs on and runs anything the work needs. The developer decided this after a
+sandbox had cost fourteen problems in one week, of which only four were answered by changing a rule
+and the rest by a workaround: a PID namespace per Bash call that killed every
+[detached run](../glossary.json#concept.detached-run), a network
+namespace reached only through a proxy, blocked Unix sockets that broke a nested sandbox inside a pi
+worker, protected paths no setting could open, placeholder files visible to the host, and only
+paths existing at the start made writable. What keeps the shell inside the task is now the
+task-session guidance and Claude Code's `auto` mode, and `concorde task merge` audits at the end
+what lies outside the task worktree
+([Tasks](../coordination/tasks/module.md#nothing-changed-outside-the-task)). The session's MCP servers were never inside the
+boundary either: the [project MCP server](../glossary.json#concept.project-mcp-server) that every
+task session receives can change any [task record](../glossary.json#concept.task-record) and take
+locks for any task, and the developer chose
+not to confine it, since it is a management tool. The boundary guards against a session's mistakes
+in its file tools, where a wrong path is likeliest and cheapest to catch.
 Exact shapes: [Claude Code mechanics](claude-code.md#task-session-settings).
 
 ## Overview
@@ -378,9 +382,10 @@ Module that applies it, and the tests that verify those requirements exercise th
   [req.workers.pi-sandbox](../execution/workers/pi.md#req.workers.pi-sandbox),
   [req.workers.pi-only-extension](../execution/workers/pi.md#req.workers.pi-only-extension),
   [req.workers.pi-limits](../execution/workers/pi.md#req.workers.pi-limits)).
-- A task session's harness, in Task sessions: the session boundary's file tools and shell
-  ([req.task-session.boundary](../coordination/task-session/requirements.md#req.task-session.boundary),
-  [req.task-session.shell-boundary](../coordination/task-session/requirements.md#req.task-session.shell-boundary))
+- A task session's harness, in Task sessions: the session boundary's file tools
+  ([req.task-session.boundary](../coordination/task-session/requirements.md#req.task-session.boundary)),
+  the shell left unrestricted
+  ([req.task-session.no-sandbox](../coordination/task-session/requirements.md#req.task-session.no-sandbox))
   and the boundary written before the session starts
   ([req.task-session.boundary-first](../coordination/task-session/requirements.md#req.task-session.boundary-first)).
 

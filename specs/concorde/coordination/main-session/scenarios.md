@@ -82,6 +82,20 @@ guides.
 - THEN the main agent is told to run `concorde task list --main <former> --state open,active,delivered,merging`, which lists only the tasks not ended, to rebind each task listed with `concorde task rebind <task> --main <current>` and to read the reports `concorde task show` lists without an answer, before anything else
 - AND to record each answer with `concorde task answer` before sending it
 
+### scenario.main-session.task-session-unrestricted — The task-session guidance gives one rule and no restriction besides
+
+- GIVEN the rendered task-session guidance
+- WHEN a task session reads what it may do
+- THEN it is told that its one rule is to change nothing outside its task worktree, the task's [decision log](../../glossary.json#concept.decision-log) excepted, and that nothing else about it is restricted
+- AND that its commands run under no sandbox, so it prepares its own worktree — dependencies, submodules, build outputs — and probes the machine it runs on itself
+- AND that `concorde task merge` audits at the end that nothing outside the task worktree changed
+- AND to let every run of its workspace finish and to stop every other background command it started, confirming each ended, before `task-validation` and `delivery`
+- BUT that Edit and Write still refuse every path outside the task worktree and its decision log
+
+This illustrates [the task session's one rule](requirements.md#req.main-session.task-session-guidance),
+[runs in the background](requirements.md#req.main-session.task-session-background-runs) and
+[the quiet before validating](requirements.md#req.main-session.task-session-quiet-before-validation).
+
 ### scenario.main-session.task-session-prepares-workers — The task session creates and binds new files before a worker fills them
 
 - GIVEN the rendered task-session guidance and the main agent's skill
@@ -242,7 +256,7 @@ guides.
 - GIVEN the rendered main-session and task-session guidance
 - WHEN a session reads how to retain a problem the current task will not fix
 - THEN it is told to read the open and closed Issues with `issue_list` and `issue_show` before recording, and to append to the matching open [Issue](../../glossary.json#concept.issue) at its current revision or reopen a closed one
-- AND to record through the project MCP server's `issue_report`, with a complete description, impact, basis, evidence and tier
+- AND to record through the project MCP server's `issue_report`, with a complete description, impact, basis, evidence and tier, or with the `concorde issues` command, which answers the same way
 - BUT it is told that repeating a creation creates another Issue
 
 This illustrates [inspecting before recording](requirements.md#req.main-session.issues-recording)

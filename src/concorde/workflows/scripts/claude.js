@@ -1,8 +1,8 @@
 // Claude Code adapter: every step is carried by small subagents, each calling the project MCP
 // server's tool `workflow_step` once and returning the step outcome it answered. The server runs
-// the workspace's own `concorde workflow step` as a process of its own, outside the session's Bash
-// sandbox, whose every call is a PID namespace that dies with the call: a run started from a Bash
-// call would be killed with it, a run started by the server lives until it ends. One call waits at
+// the workspace's own `concorde workflow step` as a process of its own, so no run depends on a
+// relaying agent's turn or on a background command the session may end: a run started by the
+// server lives until it ends. One call waits at
 // most WAIT_SECONDS, and the script itself, not a model, asks again while the run is still going:
 // the same key only waits, it never starts the run twice. An outcome that does not match the step
 // it asked for counts as no answer, and the script asks again, a few times at most: a relay that

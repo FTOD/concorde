@@ -138,10 +138,10 @@ that worktree's own `concorde`, its `.concorde/bin/concorde` or, in Concorde's s
 its `scripts/concorde.py` with the server's Python, as
 `concorde workflow step --json <request> --wait <wait>` from the worktree's root, as a child of the
 server with the server's environment and no standard input, and waits for it at most `wait` plus
-60 seconds. The server runs outside every Bash sandbox of the session, so the
-[detached run](../../glossary.json#concept.detached-run) that command starts for a new step is
-started outside them too and lives until its run ends, whatever becomes of the calls that asked
-for it or of the session and its server.
+60 seconds. The command is the server's own child, so the
+[detached run](../../glossary.json#concept.detached-run) it starts for a new step is a process of
+its own and lives until its run ends, whatever becomes of the calls that asked for it or of the
+session and its server.
 
 The answer is the JSON object the command printed, unchanged, whatever its exit status: a
 [step outcome](../../execution/workflows/contracts.md#contract.workflows.step), finished, running,

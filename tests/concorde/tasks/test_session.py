@@ -14,12 +14,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.issues.store import project_root, report_issue
 from concorde.spec.verification import verifies
 from concorde.tasks import cli, session, store
 from concorde.tracing import layout
 from concorde.tracing import node as trace
-from tests.concorde.support.issue_reports import git, report, source
 from tests.concorde.support.operation_project import OperationProject, commit
 from tests.concorde.tasks.deliveries import deliver
 
@@ -91,9 +89,7 @@ class TaskSessionTests(unittest.TestCase):
     @verifies("scenario.task-session.start")
     def test_start_a_task_session(self):
         claude = FakeClaude()
-        started = session.start(
-            self.root, "t1", "concorde-7d", run=claude, home=self.project.home
-        )
+        started = session.start(self.root, "t1", "concorde-7d", run=claude)
         directory = self.folder / "runtime"
         self.assertTrue((directory / "settings.json").is_file())
         self.assertTrue((directory / "write_hook.py").is_file())
@@ -133,9 +129,7 @@ class TaskSessionTests(unittest.TestCase):
             "\x1b[2m  claude agents             list sessions\x1b[22m\n"
             "\x1b[2m  claude attach e3b90936    open in this terminal\x1b[22m\n"
         )
-        started = session.start(
-            self.root, "t1", "m", run=claude, home=self.project.home
-        )
+        started = session.start(self.root, "t1", "m", run=claude)
         self.assertEqual("e3b90936", started["id"])
         # Claude Code does not list it yet: the task's end asks again.
         self.assertIsNone(started["session_id"])
@@ -148,7 +142,7 @@ class TaskSessionTests(unittest.TestCase):
         )
         before = store.load_task(self.root, "t1")
         with self.assertRaises(store.TaskError) as raised:
-            session.start(self.root, "t1", "m", run=claude, home=self.project.home)
+            session.start(self.root, "t1", "m", run=claude)
         self.assertEqual("session_failed", raised.exception.code)
         self.assertIn("Workspace not trusted", str(raised.exception))
         self.assertEqual(before, store.load_task(self.root, "t1"))
@@ -159,9 +153,7 @@ class TaskSessionTests(unittest.TestCase):
     def test_a_closed_task_starts_no_session(self):
         store.close_task(self.root, "t1", "completed", note="tried it")
         with self.assertRaises(store.TaskError) as raised:
-            session.start(
-                self.root, "t1", "m", run=FakeClaude(), home=self.project.home
-            )
+            session.start(self.root, "t1", "m", run=FakeClaude())
         self.assertEqual("task_closed", raised.exception.code)
         # No boundary is written into the task's folder in the history.
         self.assertFalse((self.root / ".concorde/history/t1/runtime").exists())
@@ -188,9 +180,7 @@ class TaskSessionTests(unittest.TestCase):
     @verifies("scenario.task-session.project-mcp")
     def test_a_task_session_gets_the_project_mcp_server_without_a_channel(self):
         claude = FakeClaude()
-        session.start(
-            self.root, "t1", "concorde-7d", run=claude, home=self.project.home
-        )
+        session.start(self.root, "t1", "concorde-7d", run=claude)
         (command, _), _ = claude.calls
         path = self.folder / "runtime" / "mcp.json"
         self.assertEqual(str(path), command[command.index("--mcp-config") + 1])
@@ -290,9 +280,7 @@ class TaskSessionTests(unittest.TestCase):
         _, managed = self.claude_config()
         self.write(self.root / ".mcp.json", self.servers("concorde", "other"))
         with patch.object(session, "MANAGED", managed):
-            shown = session.start(
-                self.root, "t1", "m", dry_run=True, home=self.project.home
-            )
+            shown = session.start(self.root, "t1", "m", dry_run=True)
         written = json.loads(Path(shown["settings"]).read_text())
         self.assertEqual([], written["enabledMcpjsonServers"])
         self.assertEqual(["concorde", "other"], written["disabledMcpjsonServers"])
@@ -314,14 +302,12 @@ class TaskSessionTests(unittest.TestCase):
         )
         claude = FakeClaude()
         with patch.object(session, "MANAGED", managed):
-            session.start(self.root, "t1", "m", run=claude, home=self.project.home)
+            session.start(self.root, "t1", "m", run=claude)
         self.assertEqual(1, len(store.sessions(self.root, "t1")))
 
     @verifies("scenario.task-session.boundary")
     def test_the_boundary_confines_the_session_to_its_task(self):
-        shown = session.start(
-            self.root, "t1", "m", dry_run=True, home=self.project.home
-        )
+        shown = session.start(self.root, "t1", "m", dry_run=True)
         self.assertEqual(str(self.worktree), shown["cwd"])
         self.assertIsNone(self.hook(self.worktree / "src/a/calc.py"))
         self.assertIsNone(self.hook(self.folder / "decisions.md"))
@@ -335,70 +321,15 @@ class TaskSessionTests(unittest.TestCase):
             str(self.worktree), denied["hookSpecificOutput"]["permissionDecisionReason"]
         )
         settings = json.loads(Path(shown["settings"]).read_text())
-        sandbox = settings["sandbox"]
-        self.assertTrue(sandbox["enabled"])
-        self.assertFalse(sandbox["allowUnsandboxedCommands"])
-        self.assertEqual({"allowedDomains": ["*"]}, sandbox["network"])
-        home = Path(os.path.realpath(self.project.home))
+        # Nothing but the hook restricts the session: no sandbox, no deny rules.
+        self.assertNotIn("sandbox", settings)
+        self.assertNotIn("permissions", settings)
         self.assertEqual(
-            sorted(
-                str(Path(os.path.realpath(path)))
-                for path in (
-                    self.worktree,
-                    self.root / ".git",
-                    self.folder,
-                    self.root / ".concorde/locks",
-                    self.root / ".concorde/issues",
-                    home / ".cache",
-                    home / ".npm",
-                )
-            ),
-            sandbox["filesystem"]["allowWrite"],
+            {"enabledMcpjsonServers", "disabledMcpjsonServers", "hooks"},
+            set(settings),
         )
         # A dry run records no session.
         self.assertEqual([], store.sessions(self.root, "t1"))
-
-    @verifies("scenario.task-session.issue-write")
-    def test_an_issue_write_from_the_task_worktree_stays_inside_the_boundary(self):
-        subprocess.run(
-            ["git", "config", "commit.gpgsign", "false"], cwd=self.root, check=True
-        )
-        allowed = session.writable(self.root, store.load_task(self.root, "t1"))
-        session.create_writable(allowed)
-        before = snapshot(self.root)
-        # A run the session starts writes from the task worktree, into the primary worktree.
-        receipt = report_issue(project_root(self.worktree), report(), source())
-        after = snapshot(self.root)
-        changed = sorted(
-            path
-            for path in before.keys() | after.keys()
-            if before.get(path) != after.get(path)
-        )
-        self.assertIn(self.root / receipt["path"], changed)
-        outside = [
-            path
-            for path in changed
-            if not any(
-                path == Path(root) or Path(root) in path.parents for root in allowed
-            )
-        ]
-        self.assertEqual([], outside)
-        self.assertIn(receipt["path"], git(self.root, "show", "--name-only", "HEAD"))
-
-
-def snapshot(root: Path) -> dict:
-    """Every path below ``root`` (the task worktree's too) with what a write changes of it."""
-    found = {}
-    for folder, names, files in os.walk(root):
-        for name in (*names, *files):
-            path = Path(folder) / name
-            status = path.lstat()
-            found[Path(os.path.realpath(path.parent)) / name] = (
-                status.st_mtime_ns,
-                status.st_size,
-                status.st_ino,
-            )
-    return found
 
 
 # Stands in for Claude Code's ``claude stop``, ``claude rm`` and ``claude agents --json --all``:

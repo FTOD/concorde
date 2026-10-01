@@ -108,18 +108,20 @@ whatever its task type. WebFetch, WebSearch, the agent tool and notebook editing
 
 ## Task-session settings
 
-A task session's settings, `.concorde/tasks/<task>/runtime/settings.json`, hold the
-task-session write hook and the Bash sandbox of its
-[session boundary](../glossary.json#concept.session-boundary):
+A task session's settings, `.concorde/tasks/<task>/runtime/settings.json`, hold the task-session
+write hook of its [session boundary](../glossary.json#concept.session-boundary) and nothing that
+restricts the session besides:
 
 - a PreToolUse hook on Edit, Write, MultiEdit and NotebookEdit, `session_hook.py` copied beside the
   settings with the task worktree and [decision log](../glossary.json#concept.decision-log)
   embedded, which allows a path inside the task worktree, or the decision log while its folder
   exists, and denies any other with a reason naming the task worktree, or naming the closed task
   for the decision log of a task whose folder has moved to the history; any failure denies;
-- the sandbox enabled, with sandboxed Bash commands approved without asking and unsandboxed
-  commands disabled, `allowWrite` the task worktree, the
-  repository's Git directory, the task's folder `.concorde/tasks/<task>/`, `.concorde/locks/` and
-  `.concorde/issues/` of the primary worktree, and
-  the user's package caches, and the network open to every host (`allowedDomains` is `*`);
+- no `sandbox`: the session's Bash runs as the developer's own shell does, with every path,
+  process, socket and host open to it;
 - no deny rules: reads stay open.
+
+What the settings carry besides is no part of the boundary: the
+[approvals](../coordination/task-session/module.md#project-mcp-approvals) that keep Claude Code
+from asking a background session about a
+[project MCP server](../glossary.json#concept.project-mcp-server).

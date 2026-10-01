@@ -1525,8 +1525,7 @@
           "meaning": "#uses-workers",
           "relies_on": [
             "concept.worker-backend",
-            "concept.worker-configuration",
-            "req.workers.proxy-passed"
+            "concept.worker-configuration"
           ]
         },
         {

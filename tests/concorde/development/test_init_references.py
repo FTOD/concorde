@@ -100,7 +100,7 @@ class InitReferencesTests(unittest.TestCase):
         message = str(refused.exception.code)
         self.assertIn("references/r", message)
         self.assertIn(self.lock.as_posix(), message)
-        self.assertIn("sandbox", message)
+        self.assertIn("writing the shared configuration", message)
         self.assertIn("never delete the lock", message)
         self.assertTrue(self.lock.exists())
         self.assertEqual(self.config.read_bytes(), before)

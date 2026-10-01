@@ -21,22 +21,24 @@ and may run on pi.
 The boundary Task sessions writes for a task session SHALL let the session's file-writing tools change only the task worktree and its [decision log](../../glossary.json#concept.decision-log).
 
 The file-writing tools are Edit and Write, checked by the
-[write hook](../../glossary.json#concept.write-hook), which leaves reads open.
+[write hook](../../glossary.json#concept.write-hook), which leaves reads open. An
+[Issue](../../glossary.json#concept.issue) record is outside the task worktree, so these tools
+never write one; the session writes Issues through the Issue tools or the Issue command, as the
+runs it starts do.
 
-### req.task-session.shell-boundary — A task session's shell writes only what its task needs
+### req.task-session.no-sandbox — A task session's shell is not restricted
 
-The boundary Task sessions writes for a task session SHALL let the session's shell commands write only the task worktree, the repository's Git directory, the task's own folder `.concorde/tasks/<task>/`, `.concorde/locks/` and `.concorde/issues/` of the primary worktree and the user's package caches.
+The boundary Task sessions writes for a task session SHALL restrict nothing but its file-writing
+tools, carrying no sandbox, so that the session's commands reach every path, process, socket and
+network host the machine offers.
 
-The shell is Bash in Claude Code's sandbox, which leaves reads and the network open, allowing every
-host, through the sandbox's proxy on `localhost`, which the workers of the runs the session starts
-pass on ([req.workers.proxy-passed](../../execution/workers/launch.md#req.workers.proxy-passed)).
-The task's folder is writable because the task worktree's
-[workspace binding](../../glossary.json#concept.workspace-binding) names its `workspace/` as the
-workspace folder of every run started there, `.concorde/locks/` because those runs take their
-locks there, and `.concorde/issues/` because those runs write the project's
-[Issues](../../glossary.json#concept.issue), each write taking the
-[merge lock](../../glossary.json#concept.merge-lock) and committing its record on the primary branch
-through the Git directory. The file-writing tools still never write an Issue record.
+A task session must change nothing outside its task worktree and nothing else about it is
+restricted. What keeps its shell inside the task is the task-session
+[guidance](../../glossary.json#concept.main-session-guidance) and Claude Code's `auto` mode, and
+`concorde task merge` audits at the end that nothing outside the task worktree changed
+([req.tasks.merge-nothing-outside](../tasks/requirements.md#req.tasks.merge-nothing-outside)). So
+the session prepares its own worktree, probes the machine it runs on and runs whatever the work
+needs, and no workaround is owed to a restriction that is not there.
 
 ### req.task-session.project-mcp — A task session gets the project MCP server without a channel
 

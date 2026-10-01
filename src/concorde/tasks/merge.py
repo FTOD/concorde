@@ -10,6 +10,10 @@ commit it checked, always as a merge commit that also adds the task's decision l
 before its checks decided leaves that state behind, which refuses every other mutating task
 command until ``--resume`` reruns the checks or ``--abort`` resets the primary branch.
 
+Before it merges, it audits what lies outside the task's worktree: the primary worktree, which
+must be clean, and the worktree of every other task that is not working in it, which must hold no
+change, since a task changes nothing outside its own worktree.
+
 Every attempt, a merge, a ``--resume`` or an ``--abort``, is a trace node ``merges/<n>/`` of the
 task, ended with how the attempt ended; each check it runs is a node ``checks/<i>/`` below it with
 the check's output as ``output.log``.
@@ -222,9 +226,109 @@ def _primary_branch(primary: Path) -> str:
             "primary_dirty",
             f"the primary worktree {primary} has {len(paths)} uncommitted or untracked "
             f"path(s): {_listed(paths)}; a merge starts only from a clean primary worktree, "
-            "so that undoing it cannot touch anyone's work",
+            "so that undoing it cannot touch anyone's work, and a task changes nothing "
+            "outside its own worktree, so check whether these paths are the task's before "
+            "committing them",
         )
     return branch.stdout.strip()
+
+
+# --- what a task changed outside its worktree --------------------------------------------------
+#
+# A task session works only inside its task worktree, and since it runs under no sandbox nothing
+# but its guidance and Claude Code's `auto` mode holds it there. The merge, the gate into the
+# primary branch, therefore looks outside the task's worktree before it merges. What it can judge
+# is bounded by what the filesystem says, since nothing in it records who wrote a change:
+#
+# - the primary worktree must be clean (``primary_dirty`` above). Nothing changes there while
+#   tasks run except Concorde's own records, which are either paths Git does not version (the task
+#   folders, locks, runs, history and unbound runs, all ignored by the installed .gitignore) or
+#   committed by the command that writes them (Issue records, decision logs).
+# - a worktree of a task that has ended, and outlived it, is nobody's: a change in it is refused
+#   as ``changed_outside``.
+# - a worktree of a task that has delivered and waits may hold a change of its own session, which
+#   went on working after delivering, or of another task's: a warning names it, since refusing
+#   this merge for it would block a task that has nothing to do with it.
+#
+# The worktree of a task that is still working is not judged at all: its own session changes it
+# constantly, and what is written there is not lost, since it becomes that task's content, which
+# its own validation, delivery and merge judge -- its merge refuses an uncommitted change as
+# ``dirty_worktree``. Worktrees of no task, such as one a developer's own session made, are not
+# the project's to judge. The audit judges working trees and not commits: the primary branch
+# legitimately moves while a task runs, as other tasks merge, Issues are recorded and the
+# developer commits.
+
+
+def _settled(primary: Path, record: dict) -> bool:
+    """Whether a task has delivered and waits: its branch head is a delivery commit of its
+    workspace that verifies, so its session has reported and waits for an answer."""
+    delivered = store.deliveries(primary, record)
+    head = store._git(
+        primary, "rev-parse", "--verify", "--quiet", record["branch"], check=False
+    ).stdout.strip()
+    return bool(
+        delivered
+        and head
+        and delivered[-1]["commit"] == head
+        and not store.delivery_mismatches(primary, delivered[-1])
+    )
+
+
+def _elsewhere(primary: Path, task_id: str):
+    """Every other task's worktree that still exists, with its task, whether that task ended and
+    whether it has delivered and waits.
+
+    A task that ended whose worktree path a task that has not ended now uses, as after a task of
+    the same name was opened again at the same path, is left to that task: the path is the live
+    task's, not the ended one's.
+    """
+    live = {
+        Path(os.path.realpath(record["worktree"]))
+        for record in store._records(primary)
+        if record["id"] != task_id
+    }
+    for record in store._records(primary, history=True):
+        if record["id"] == task_id:
+            continue
+        worktree = Path(record["worktree"])
+        ended = record["state"] in store.ENDED
+        if not worktree.is_dir() or (
+            ended and Path(os.path.realpath(worktree)) in live
+        ):
+            continue
+        yield record["id"], worktree, ended, _settled(primary, record)
+
+
+def _changed_outside(primary: Path, task_id: str) -> list[str]:
+    """Refuse as ``changed_outside`` a change no task will account for; the warnings about a
+    change that a delivered task's own session may have written."""
+    nobodys, warnings = [], []
+    for other, worktree, ended, settled in _elsewhere(primary, task_id):
+        paths = [entry[3:] for entry in store._changes(worktree)]
+        if not paths:
+            continue
+        held = (
+            f"the worktree {worktree} of task {other} has {len(paths)} uncommitted or "
+            f"untracked path(s): {_listed(paths)}"
+        )
+        if ended:
+            nobodys.append(f"{held}, and that task has ended")
+        elif settled:
+            warnings.append(
+                f"{held}, and that task has delivered and waits: its own session may have "
+                "written them after delivering, which no other task's session may do; the task "
+                "is active again and delivers again before it merges"
+            )
+    if nobodys:
+        raise TaskError(
+            "changed_outside",
+            f"task {task_id} changes nothing outside its own worktree, and "
+            + "; ".join(nobodys)
+            + "; nothing accounts for these paths, since no task will validate or deliver "
+            "them: find out what wrote them before merging, then revert them or remove the "
+            "worktree they are in",
+        )
+    return warnings
 
 
 def _head(primary: Path) -> str:
@@ -497,6 +601,7 @@ def merge_task(
 def _merge_new(primary: Path, task_id: str, commands: list[list[str]], waited) -> dict:
     record, checked = store.mergeable(primary, task_id)
     branch = _primary_branch(primary)
+    outside = _changed_outside(primary, task_id)
     before = _head(primary)
     merging = {
         "before": before,
@@ -517,22 +622,32 @@ def _merge_new(primary: Path, task_id: str, commands: list[list[str]], waited) -
         raise
     attempt.merged(after)
     merging = store.merged_at(primary, task_id, after)["merging"]
-    return _check_and_close(primary, record, merging, attempt, waited)
+    return _check_and_close(primary, record, merging, attempt, waited, outside)
 
 
 def _check_and_close(
-    primary: Path, record: dict, merging: dict, attempt: Attempt, waited
+    primary: Path,
+    record: dict,
+    merging: dict,
+    attempt: Attempt,
+    waited,
+    outside: list[str] | None = None,
 ) -> dict:
     """Run the merge's checks on its commit; close the task, or undo the merge and refuse."""
     try:
-        return _checked_close(primary, record, merging, attempt, waited)
+        return _checked_close(primary, record, merging, attempt, waited, outside)
     except TaskError as refusal:
         attempt.refused(refusal)
         raise
 
 
 def _checked_close(
-    primary: Path, record: dict, merging: dict, attempt: Attempt, waited
+    primary: Path,
+    record: dict,
+    merging: dict,
+    attempt: Attempt,
+    waited,
+    outside: list[str] | None = None,
 ) -> dict:
     task_id, branch = record["id"], merging["branch"]
     before, after = merging["before"], merging["after"]
@@ -568,6 +683,7 @@ def _checked_close(
         for text in (store.unwritten_decision_log(primary, record),)
         if text is not None
     ]
+    warnings.extend(outside or [])
     try:
         folder = attempt.folder
         closed = store.close_locked(

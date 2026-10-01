@@ -413,8 +413,9 @@ to the end. It waits for them inside its own process, up to `--wait` seconds in 
 run still holding the workspace lock after that time refuses the merge with `workspace_busy`,
 naming the run. It refuses, before touching anything, a task that could not be closed as merged
 apart from not being merged yet (`not_merged`, `delivery_unverified`, `dirty_worktree`), reading the
-task's delivery commits from Git, and a primary worktree with uncommitted or untracked paths or a
-detached `HEAD` (`primary_dirty`). The branch head those checks accepted, the task's latest delivery
+task's delivery commits from Git, a primary worktree with uncommitted or untracked paths or a
+detached `HEAD` (`primary_dirty`), and anything changed outside the task's worktree
+([below](#nothing-changed-outside-the-task)). The branch head those checks accepted, the task's latest delivery
 commit, is the commit it merges: it records the task as **merging**, with the primary branch's
 commit before the merge, that checked commit, the history key the task will close under and the
 checks it will run, and only then runs `git merge --no-ff --no-commit <checked commit>` there, never
@@ -445,20 +446,58 @@ close stand, and the main agent disposes that Issue itself. A merge thus ends wi
 on the commit the primary branch had; after a conflict or a failed check the task is delivered
 again.
 
+<a id="nothing-changed-outside-the-task"></a>
+
+**The merge audits what lies outside the task's worktree.** A
+[task session](../../glossary.json#concept.task-session) changes nothing outside its task worktree,
+and since its shell runs under no sandbox
+([Task sessions](../task-session/module.md#the-session-boundary)) nothing but its guidance holds it
+there. The merge, the gate into the primary branch, therefore looks outside the task's worktree
+before it merges, at each place whose state no task working in it accounts for:
+
+- the **primary worktree**, which must be clean: nothing changes there while tasks run but
+  Concorde's own records, which are either paths Git does not version — the task folders, locks,
+  runs, history and [unbound runs](../../glossary.json#concept.unbound-run), all ignored by the
+  `.gitignore` the installer writes — or
+  committed by the command that writes them, as an [Issue](../../glossary.json#concept.issue)
+  record and a [decision log](../../glossary.json#concept.decision-log) are. Uncommitted or
+  untracked paths there refuse the merge as `primary_dirty`, whose detail also says that a task
+  changes nothing outside its worktree, since the paths may be a task's and not the developer's;
+- the **worktree of a task that has ended** and outlived it, which the close normally removes. No
+  task will ever validate or deliver what is in it, so a change there refuses the merge as
+  `changed_outside`, naming each such worktree, its task and its paths;
+- the **worktree of a task that has delivered and waits**, its branch head a
+  [delivery commit](../../glossary.json#concept.delivery-commit) that verifies. A change there may
+  be its own session's, which went on working after delivering, or another task's; the merge warns,
+  naming the worktree and the paths, and does not refuse, since refusing would block a task that
+  has nothing to do with it.
+
+What the audit judges is bounded by what the filesystem says, since nothing in it records who wrote
+a change. The worktree of a task that is still working is not judged at all: its own session
+changes it constantly, and what is written there is not lost either, since it becomes that task's
+content, which its own validation, delivery and merge judge — its merge refuses an uncommitted
+change as `dirty_worktree`. So a change another task writes into a working task's worktree is
+caught, by that task rather than by the one that wrote it. Worktrees of no task, such as one a
+developer's own session made, are not the project's to judge. And the audit judges working trees
+and not commits: the primary branch legitimately moves while a task runs, as other tasks merge,
+Issues are recorded and the developer commits, so a commit there is no evidence of a task having
+overstepped. Nothing it names is undone blindly: each refusal and warning says what changed, for
+the main agent to find out what wrote it.
+
 The flow of one `concorde task merge`, with where each way out leaves the primary branch and the
 task; a task left `merging` is finished as the next passage explains:
 
 ```d2 illustrative
 direction: down
 locks: "Take the workspace lock, then the merge lock"
-preflight: "Check the task and the primary worktree"
+preflight: "Check the task, the primary worktree and what lies outside the task worktree"
 record: "Record the task merging"
 merge: "git merge the checked commit, add the decision log, commit"
 checks: "Run the checks on the merge commit"
 reset: "git reset --keep to the commit before"
 close: "Close the task as merged"
 busy: "workspace_busy or merge_busy: nothing changed"
-refused: "A refusal such as not_merged, delivery_unverified, dirty_worktree, primary_dirty or merge_incomplete: nothing changed"
+refused: "A refusal such as not_merged, delivery_unverified, dirty_worktree, primary_dirty, changed_outside or merge_incomplete: nothing changed"
 conflict: "merge_conflict: merge aborted, primary branch at its commit, task delivered"
 failed: "check_failed: primary branch at its commit, task delivered, left paths named"
 merged: "Task closed as merged on the checked merge commit"

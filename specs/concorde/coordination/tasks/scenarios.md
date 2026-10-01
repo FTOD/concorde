@@ -129,6 +129,15 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - WHEN the main agent merges the task inside that sandbox
 - THEN the merge is not refused as `primary_dirty`, since a new path Git cannot version is no change of the primary worktree, and the task is closed as merged
 
+### scenario.tasks.merge-nothing-outside — A merge judges what changed outside the task's worktree
+
+- GIVEN a delivered task `severity`, a task `labels` that has delivered and waits and a task `quiet` that ended and whose worktree outlived it
+- AND an uncommitted change in the worktree of `quiet`
+- WHEN the main agent merges `severity`
+- THEN the merge is refused with `changed_outside` before anything is merged, naming the worktree of `quiet`, the task and the changed paths
+- AND once that change is reverted, the merge runs and closes `severity` as merged
+- BUT an uncommitted change in the worktree of `labels` only warns, naming the worktree and the paths, since that task's own session may have written it after delivering
+
 ### scenario.tasks.delivery-unverified — A delivery commit that does not verify is not delivered
 
 - GIVEN a task whose branch head has the subject of a delivery commit of its workspace
