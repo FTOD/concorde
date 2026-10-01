@@ -8,6 +8,7 @@ import re
 import secrets
 import subprocess
 import sys
+import tempfile
 import time
 import unittest
 from datetime import UTC, datetime
@@ -587,14 +588,23 @@ class StepTests(unittest.TestCase):
 
 def _pid_sandbox() -> list[str] | None:
     """A bubblewrap command prefix that runs a command in a PID namespace of its own, as Claude
-    Code's Bash sandbox runs each call, or None where bubblewrap cannot make one."""
+    Code's Bash sandbox runs each call, or None where bubblewrap cannot make one.
+
+    As in that sandbox, the system is read-only and only the temporary directory, which holds
+    the test project, is writable: the read-only check boundary trusts the system bubblewrap
+    that a user namespace shows with an unmapped owner only on a read-only mount, so the run's
+    checks can still start inside this namespace."""
+    temporary = tempfile.gettempdir()
     prefix = [
         "bwrap",
         "--unshare-pid",
         "--die-with-parent",
+        "--ro-bind",
+        "/",
+        "/",
         "--bind",
-        "/",
-        "/",
+        temporary,
+        temporary,
         "--dev",
         "/dev",
         "--proc",
