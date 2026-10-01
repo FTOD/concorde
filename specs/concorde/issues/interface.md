@@ -206,7 +206,7 @@ The bookkeeping command reports a `TypedDataError` as `invalid_issue`, and a `sy
 | --- | --- |
 | `report_issue(root, report, source, wait, locked)` | Validates, then under the merge lock: returns the existing receipt when the same `(invocation_id, report_key)` already holds identical content; fails with `issue_key_conflict` for different content; otherwise creates the record or, for an append, checks that the Issue exists (`unknown_issue`), `expected_revision` (`stale_issue`) and open status (`closed_issue`) and appends. |
 | `read_issue(root, id)` | Returns the record and its revision; `invalid_issue` for a malformed identity, `unknown_issue` when absent, `invalid_issue` when malformed or oversized. |
-| `list_issues(root, target_id, status)` | Returns one summary row per Issue, sorted by identity: `{id, tier, type, subtype, title, status, target_id, owner_target_id, revision}`, where `tier` (or `null` without one), `type`, `subtype`, `title` and `owner_target_id` are the latest report's, `target_id` is that report's reporting Module and `revision` the record's. A `target_id` keeps only the Issues whose latest report has that reporting Module or owner, whether or not it is a registered Module; a `status` keeps only the Issues with that status; `null` for either filters nothing. An absent directory yields an empty list and is not created. |
+| `list_issues(root, target_id, status, tiers)` | Returns one summary row per Issue, sorted by identity: `{id, tier, type, subtype, title, status, target_id, owner_target_id, revision}`, where `tier` (or `null` without one), `type`, `subtype`, `title` and `owner_target_id` are the latest report's, `target_id` is that report's reporting Module and `revision` the record's. A `target_id` keeps only the Issues whose latest report has that reporting Module or owner, whether or not it is a registered Module; a `status` keeps only the Issues with that status, `invalid_issue` for one that is neither `open` nor `closed`; `tiers` keeps only the Issues whose latest report has one of those tiers, so never one without a tier, `invalid_issue` when it names one that is not a tier; `null` for any of them filters nothing, and the filters given combine, an Issue passing each. An absent directory yields an empty list and is not created. |
 | `resolve_report(root, receipt)` | Returns the exact report the receipt names, never the latest one; `stale_issue` when it is absent. |
 | `disposition_record(record, ...)` | Prepares and validates a disposed record without writing. |
 | `dispose_issue(root, id, expected_revision, reason, note, evidence, actor, duplicate_of, duplicate_revision, created_at, wait, locked)` | Refuses a `duplicate` without `duplicate_of`, naming the Issue itself, or another reason with `duplicate_of` (`invalid_issue`). Under the lock, checks the revision (`stale_issue`), refuses closing a closed Issue (`closed_issue`) and reopening an open one (`open_issue`), and for `duplicate` that the other Issue exists (`unknown_issue`), is open (`invalid_issue`) and, when the caller gives `duplicate_revision`, the revision it read of that other Issue, still has it (`stale_issue`); appends the disposition and returns the new revision. `duplicate_of` and `duplicate_revision` default to `null`; `created_at` defaults to the time of acceptance; the bookkeeping command never gives `duplicate_revision`. |
@@ -238,7 +238,8 @@ Modules. `--task` supplies provenance only; the CLI neither requires nor looks u
 unified CLI, `python3 scripts/concorde.py issues` in a source checkout and `concorde issues` in an
 installed project route to this command. The actions live in `concorde.issues.command`, which the
 project MCP server's Issue tools call with the same arguments, so each tool answers exactly what the
-action prints and refuses with the same link: `issue_list`, `issue_show`, `issue_check` (the
+action prints and refuses with the same link: `issue_list` (`status`, `module` and `tier`, a
+nonempty list, as `list`'s options), `issue_show`, `issue_check` (the
 primary worktree's `check`), `issue_report` (the report as an object `report` or a `file` relative to
 the session's worktree, and `check`), `issue_close` and `issue_reopen`. Their writes never wait for
 the merge lock (`wait` 0), and they record the session as the provenance above says and as a
@@ -246,7 +247,7 @@ disposition's actor.
 
 | Action | Effect and output |
 | --- | --- |
-| `list` | `{"issues": [...]}`: the summary rows of `list_issues`, unfiltered |
+| `list [--status open\|closed] [--module <module>] [--tier <tier>]...` | `{"issues": [...]}`: the summary rows of `list_issues` with `--status` as `status`, `--module` as `target_id` and the `--tier` values, which may be repeated, as `tiers`; without an option, every Issue |
 | `show <id>` | `{"issue": <record>, "revision": <digest>}` |
 | `check` | `{"errors": [...], "notes": [...]}`, exit status 1 when `errors` is nonempty and 0 otherwise |
 | `report --file <report.json> [--task <task-id>]` | Records the report in the file with the provenance above and prints `{"receipt": <receipt>, "revision": <digest>}` |

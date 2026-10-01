@@ -178,14 +178,15 @@ message and carries every answer.
 The project's Issues, its durable records of concrete problems, are kept by the primary worktree:
 read and write them with the project MCP server's `issue_list`, `issue_show`, `issue_report`,
 `issue_close` and `issue_reopen`, which record you as the task session of your task; the
-`concorde issues` command does the same from your shell, as it does for the runs you start. A
-problem you find that this task will not fix is worth an Issue:
-read `issue_list` and `issue_show` first and append to the Issue that already tracks it, with its
-`issue_id` and the `expected_revision` `issue_show` printed, rather than create another. Every
-report states the problem completely (`description`, `impact`, `basis`, `evidence`) and carries its
-`tier`: `suggestion` (no problem today), `obvious-fix` (an obvious problem with an obvious fix),
-`preferred-fix` (several fixes, one clearly better) or `decision-needed` (the problem is unclear or
-its fix uncertain).
+`concorde issues` command does the same from your shell, as it does for the runs you start. A problem
+you find that this task will not fix is worth an Issue: first read the Issues of the Module concerned with
+`issue_list` filtered by `module` and `status` `open` (and `closed` when it may have been fixed
+before), never the whole project's list, and `issue_show` for a possible match, and append to the
+Issue that already tracks it, with its `issue_id` and the `expected_revision` `issue_show` printed,
+rather than create another. Every report states the problem completely (`description`, `impact`,
+`basis`, `evidence`) and carries its `tier`: `suggestion` (no problem today), `obvious-fix` (an
+obvious problem with an obvious fix), `preferred-fix` (several fixes, one clearly better) or
+`decision-needed` (the problem is unclear or its fix uncertain).
 
 An Issue your task is to fix, named in your brief or found by a review you ran, you handle by its
 tier: fix an `obvious-fix` Issue yourself; fix a `preferred-fix` Issue with the better fix and say

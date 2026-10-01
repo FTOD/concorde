@@ -530,9 +530,13 @@ class GuidanceTests(unittest.TestCase):
 
     @verifies("scenario.main-session.record-issue")
     def test_sessions_inspect_before_they_record_through_the_server(self):
-        skill, session = self.issues()
+        skill, session = (" ".join(text.split()) for text in self.issues())
         for text, instruction in (
-            (skill, "Read `issue_list` and `issue_show` first"),
+            (skill, "with `issue_list` filtered by `module` and `status` `open`"),
+            (session, "with `issue_list` filtered by `module` and `status` `open`"),
+            (skill, "never the whole project's list"),
+            (session, "never the whole project's list"),
+            (skill, "and `issue_show` for a possible match"),
             (skill, "reopen a closed match before appending"),
             (skill, "Repeating a creation creates another Issue"),
             (skill, "`description`, `impact`, `basis` and `evidence`"),

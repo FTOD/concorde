@@ -318,6 +318,19 @@ class ProjectMcpTests(unittest.TestCase):
             [(issue, "decision-needed")],
             [(row["id"], row["tier"]) for row in listed["issues"]],
         )
+        # Filters keep only the Issues they name.
+        for filters, expected in (
+            ({"status": "open", "module": "module.a"}, [issue]),
+            ({"tier": ["suggestion", "decision-needed"]}, [issue]),
+            ({"status": "closed"}, []),
+            ({"module": "module.b"}, []),
+            ({"tier": ["suggestion"]}, []),
+        ):
+            listed, error = main.call("issue_list", **filters)
+            self.assertFalse(error, listed)
+            self.assertEqual(expected, [row["id"] for row in listed["issues"]])
+        value, error = main.call("issue_list", tier=["urgent"])
+        self.refusal(value, error, "invalid_input")
         checked, error = main.call("issue_check")
         self.assertEqual({"errors": [], "notes": []}, checked)
         resolved, error = main.call("task_resolve", task="t1", issues=[issue])

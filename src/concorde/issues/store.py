@@ -37,6 +37,7 @@ from .shapes import (
     RECORD,
     RECORD_VERSION,
     REPORT,
+    TIERS,
 )
 from ..spec.repository import SpecError, digest
 from ..spec.typed_data import TypedDataError, canonical, check_schema, decode
@@ -271,11 +272,17 @@ def read_issue(root: Path, identifier: str) -> tuple[dict, str]:
 
 
 def list_issues(
-    root: Path, *, target_id: str | None = None, status: str | None = None
+    root: Path,
+    *,
+    target_id: str | None = None,
+    status: str | None = None,
+    tiers: list[str] | tuple[str, ...] | None = None,
 ) -> list[dict]:
     """Read-only metadata; an absent collection is empty and is never created by a query."""
     if status not in {None, "open", "closed"}:
         raise IssueError("unknown issue status", "invalid_issue")
+    if tiers is not None and not set(tiers) <= set(TIERS):
+        raise IssueError("unknown issue tier", "invalid_issue")
     directory = checked_path(root, DIRECTORY)
     if not directory.exists():
         return []
@@ -290,6 +297,8 @@ def list_issues(
             source["target_id"],
             report["owner_target_id"],
         }:
+            continue
+        if tiers is not None and report.get("tier") not in tiers:
             continue
         result.append(
             {

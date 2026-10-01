@@ -375,19 +375,21 @@ close again, which commits the log and finishes the close.
 
 Issues are the project's durable records of concrete problems: the primary worktree keeps them, and
 every session and run sees the same Issues at once. Manage them through the project MCP server's
-Issue tools, which answer as `concorde issues` does: `issue_list` (open and closed Issues, with their
-tier) and `issue_show` to read, `issue_report`, `issue_close` and `issue_reopen` to write, and
-`issue_check` to check the records. A task session reaches the same Issues, through these tools or
+Issue tools, which answer as `concorde issues` does: `issue_list` (a row per Issue with its tier,
+open and closed, filtered by `status`, `module` and `tier`) and `issue_show` to read,
+`issue_report`, `issue_close` and `issue_reopen` to write, and `issue_check` to check the records. A task session reaches the same Issues, through these tools or
 the `concorde issues` command, as the runs it starts do. No Issue is created or closed behind your back, apart from a
 review Operation that reports the problems it finds and a task merge that closes the Issues its task
 resolves; there is no automatic Issue notification.
 
 **Recording.** A problem the current task will not fix, such as a Spec gap a worker reported about
-another Module, is worth an Issue for later work. Read `issue_list` and `issue_show` first: append to
-the Issue that already tracks the problem, with its `issue_id` and the `expected_revision` that
-`issue_show` printed, instead of creating another; reopen a closed match before appending a new
-observation. Repeating a creation creates another Issue, even with the same report key. A report
-states the problem completely, `description`, `impact`, `basis` and `evidence`, because whoever it is
+another Module, is worth an Issue for later work. Read first the Issues it could duplicate, those of
+the Module concerned, with `issue_list` filtered by `module` and `status` `open` (and `closed` too
+when the problem may have been fixed before), never the whole project's list, and `issue_show` for a
+possible match: append to the Issue that already tracks the problem, with its `issue_id` and the
+`expected_revision` that `issue_show` printed, instead of creating another; reopen a closed match
+before appending a new observation. Repeating a creation creates another Issue, even with the same
+report key. A report states the problem completely, `description`, `impact`, `basis` and `evidence`, because whoever it is
 escalated to acts on its identity alone, and carries its `tier`:
 
 | Tier | The problem | Who handles it |

@@ -732,9 +732,10 @@ The task worktree stays checked out on the task branch that `task open` created.
 
 ### req.main-session.issues-recording — A session inspects before it records
 
-The guidance SHALL tell the main agent and task sessions to read the open and closed Issues before
-recording a problem, and to append a report to the Issue that already tracks it instead of creating
-another.
+The guidance SHALL tell the main agent and task sessions to read, before recording a problem, the
+open Issues of the Module concerned, and its closed ones when the problem may have been fixed
+before, through `issue_list`'s filters rather than the whole project's list, and to append a report
+to the Issue that already tracks it instead of creating another.
 
 Every report carries a complete description, impact, basis and evidence and its tier, so that an
 [Issue](../../glossary.json#concept.issue) escalated by its identity alone can be acted on.

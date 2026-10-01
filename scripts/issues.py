@@ -33,7 +33,20 @@ def parser() -> Parser:
     )
     top = Parser(description=__doc__)
     actions = top.add_subparsers(dest="action", required=True, metavar="action")
-    actions.add_parser("list", parents=[common], help="summary row per Issue")
+    listing = actions.add_parser("list", parents=[common], help="summary row per Issue")
+    listing.add_argument(
+        "--status", choices=("open", "closed"), help="only Issues with this status"
+    )
+    listing.add_argument(
+        "--module",
+        help="only Issues whose latest report has this owner or reporting Module",
+    )
+    listing.add_argument(
+        "--tier",
+        choices=command.TIERS,
+        action="append",
+        help="only Issues whose latest report has this tier; may be repeated",
+    )
     show = actions.add_parser("show", parents=[common], help="one record")
     show.add_argument("issue_id")
     actions.add_parser(
@@ -68,7 +81,11 @@ def main(argv=None) -> int:
         args = parser().parse_args(argv)
         root = Path(args.root)
         if args.action == "list":
-            emit(command.list_action(root))
+            emit(
+                command.list_action(
+                    root, status=args.status, module=args.module, tiers=args.tier
+                )
+            )
         elif args.action == "show":
             emit(command.show_action(root, args.issue_id))
         elif args.action == "check":
