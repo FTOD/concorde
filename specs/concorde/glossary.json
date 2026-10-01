@@ -12,8 +12,14 @@
       "id": "concept.boundary",
       "title": "Boundary",
       "owner": "module.concorde",
-      "definition": "The read and write limits one task receives, fixed by its task type and its bound Modules.",
-      "explanation": "specs/concorde/module.md#concept.boundary"
+      "definition": "The read and write limits one worker's job receives, fixed by its task type and its bound Modules.",
+      "explanation": "specs/concorde/module.md#concept.boundary",
+      "contrasts": [
+        {
+          "target": "concept.session-boundary",
+          "reason": "a worker's boundary comes from its task type's grant; a task session has no task type and receives only the session boundary, which keeps its writes inside its task"
+        }
+      ]
     },
     {
       "id": "concept.boundary-case",
@@ -60,7 +66,7 @@
       "id": "concept.capability-context",
       "title": "Capability context",
       "owner": "module.concorde",
-      "definition": "The tools a worker may use and the contracts those tools reach, which tell it what it can do and never what the project promises.",
+      "definition": "The tools a worker may use, the contracts those tools reach and the contract of the worker result it must end with, which tell it what it can do and never what the project promises.",
       "explanation": "specs/concorde/module.md#concept.capability-context"
     },
     {
@@ -697,8 +703,14 @@
       "id": "concept.task-type",
       "title": "Task type",
       "owner": "module.concorde",
-      "definition": "One of the eight Protocol task types (understand, specify, implement, test, review-spec, review-code, code-to-spec, review-architecture) that fixes the access level of every boundary set a task receives.",
-      "explanation": "specs/concorde/module.md#concept.task-type"
+      "definition": "One of the eight Protocol task types (understand, specify, implement, test, review-spec, review-code, code-to-spec, review-architecture), each the kind of one worker's job, that fixes the access level of every boundary set the job receives.",
+      "explanation": "specs/concorde/module.md#concept.task-type",
+      "contrasts": [
+        {
+          "target": "concept.task",
+          "reason": "a task type is the kind of one worker's job in the Protocol's sense; a Task is the main agent's unit of work, a branch and worktree that has no task type"
+        }
+      ]
     },
     {
       "id": "concept.test-project",
