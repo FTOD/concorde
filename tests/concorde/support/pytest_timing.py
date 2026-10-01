@@ -8,6 +8,8 @@ plugin keeps the evidence the retired subprocess runner recorded:
   and what it repeats; legacy callers pass none of them and get ``manual``/``unspecified``;
 - ``--json=PATH`` writes one summary with whitelisted input/test/runtime/lock/environment
   fingerprints, per-unit queue/execution intervals, discovery/total intervals and layer "C" spans;
+- ``--prior=PATH`` names an earlier summary: the report records its ``run_id`` and whether the
+  declared inputs are the same; a summary that cannot be read is a usage error before any test runs;
 - every process that executes tests gets its own ``CONCORDE_DIAGNOSTIC_TIMING_DIR`` and each unit
   its own subdirectory, so runtime spans written by ``concorde.harness.timing.timed`` fixtures are
   nested under the unit that produced them and the controller aggregates them from the workers.
@@ -21,6 +23,12 @@ A unit is one collected test. Its queue interval is measured against the collect
 process that ran it; clocks of different processes are never subtracted. Fixture setup stays
 unknown unless runtime spans measure it: ``unittest.setUp`` runs inside pytest's call phase, so
 the observed pytest phase durations are reported separately and never as setup time.
+
+The totals count units, so they sum to the collected count. A unit's status is its first verdict
+other than passed, and subtest reports add none of their own beyond a failure: a unit with a
+failed ``subTest`` is one failed unit. pytest's terminal line counts otherwise, listing each
+failed subtest separately and the parent as passed, so its numbers may differ from the totals;
+the summary's ``counting_note`` says so.
 """
 
 from __future__ import annotations
@@ -63,6 +71,11 @@ TIMING_NOTE = (
     "and observed pytest phase durations are reported separately. Runtime fixture spans are "
     "nested, never additive wall time. Unit time is summed concurrent work, not elapsed wall "
     "time. Critical unit is last to finish, not a dependency-graph proof."
+)
+COUNTING_NOTE = (
+    "Totals count units, one per collected test: a unit fails when any of its subtests fails, "
+    "and subtests are not counted on their own. pytest's terminal line lists each failed subtest "
+    "separately and counts its parent as passed, so its numbers may differ."
 )
 
 # Scheduling hint only: node-id prefixes of the units whose own duration would otherwise decide
@@ -142,13 +155,17 @@ def digest(value) -> str:
     return hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
 
 
-def fingerprint(tests: list[str]) -> dict:
-    """Whitelisted input membership and nonsecret runtime facts, not ambient env serialization."""
+def fingerprint(tests: list[str], root: Path = ROOT) -> dict:
+    """Whitelisted input membership and nonsecret runtime facts, not ambient env serialization.
+
+    The inputs are the files below ``root`` that Git tracks or would track, restricted to the
+    prefixes and exact paths named here.
+    """
     complete = True
     try:
         listing = subprocess.run(
             ["git", "ls-files", "-co", "--exclude-standard", "-z"],
-            cwd=ROOT,
+            cwd=root,
             capture_output=True,
             timeout=10,
         )
@@ -176,7 +193,7 @@ def fingerprint(tests: list[str]) -> dict:
     entries = {}
     for name in sorted(set(files)):
         if name in exact or name.startswith(prefixes):
-            path = ROOT / name
+            path = root / name
             if path.is_file() and not path.is_symlink():
                 try:
                     entries[name] = hashlib.sha256(path.read_bytes()).hexdigest()
@@ -243,6 +260,7 @@ class ConcordeTiming:
         self.collected: list[str] = []
         self.summary: dict | None = None
         self.messages: list[str] = []
+        self.prior = read_prior(config.option.prior) if config.option.prior else None
 
     # -- every process -------------------------------------------------------------------------
 
@@ -385,8 +403,8 @@ class ConcordeTiming:
         from concorde.harness.timing import interval_record
 
         option = self.config.option
-        prior = json.loads(Path(option.prior).read_text()) if option.prior else None
-        inputs = fingerprint(self.collected)
+        prior = self.prior
+        inputs = fingerprint(self.collected, self.config.rootpath)
         same_input = (
             prior.get("fingerprint", {}).get("digest") == inputs["digest"]
             if prior
@@ -469,12 +487,30 @@ class ConcordeTiming:
             "elapsed_seconds": (ended_ns - self.started_ns) / 1e9,
             "critical_unit": critical.nodeid if critical else None,
             "timing_note": TIMING_NOTE,
+            "counting_note": COUNTING_NOTE,
             "python": sys.executable,
             "distribution": getattr(option, "dist", "no") if workers else "no",
             "exit_status": exitstatus,
             "totals": totals,
             "units": [asdict(unit) for unit in units],
         }
+
+
+def read_prior(path: str) -> dict:
+    """The prior run's summary, or a usage error before any test runs."""
+    try:
+        prior = json.loads(Path(path).read_text())
+    except (OSError, ValueError) as error:
+        raise pytest.UsageError(
+            f"--prior={path} must name a readable JSON summary: {error}"
+        ) from error
+    if not isinstance(prior, dict) or not isinstance(
+        prior.get("fingerprint", {}), dict
+    ):
+        raise pytest.UsageError(
+            f"--prior={path} must name a JSON summary object written by --json"
+        )
+    return prior
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
