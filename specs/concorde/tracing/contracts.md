@@ -427,7 +427,7 @@ directory for the three roots.
 | `merge-check` | Tasks | `checks/<n>/` of a merge | the check's number | none | `concorde-merge-check-trace` |
 | `workflow` | [Workflows](../execution/workflows/module.md) | `workflow/` of a workspace folder | the workflow name | `workspace`, `workflow`, `mode` | `concorde-workflow-trace` |
 | `step` | Workflows | `steps/<seq>-<key>/` of the workflow | the [step key](../glossary.json#concept.step-key) | `workspace`, `workflow`, `operation` or `command` | `concorde-step-trace` |
-| `run` | [Execution](../execution/module.md) | `runs/<run>/` of a workspace folder, `run/` of a step, or `unbound/<run>/` | the run identity | `workspace`, `modules`, `operation` or `command`, `commit`, `base_commit`, `concorde_commit`, `protocol_version` | `concorde-run-trace` |
+| `run` | [Execution](../execution/module.md) | `runs/<run>/` of a workspace folder, `run/` of a step, `unbound/<run>/`, or `lobby/<run>/` until a bound run enters its workspace | the run identity | `workspace`, `modules`, `operation` or `command`, `commit`, `base_commit`, `concorde_commit`, `protocol_version` | `concorde-run-trace` |
 | `check` | [Check execution](../execution/checks/module.md) | `checks/<check>/` of a run or a worker round | the check identity | `check`, `module` | `concorde-check-trace` |
 | `worker-run` | [Workers](../execution/workers/module.md) | `workers/<worker run>/` of a run | the worker run identity | `modules`, `operation`, `worker`, `task_type`, `backend`, `model`, `reasoning`, `context_identity`, `grant_digest`, `brief_digest`, `settings_digest` | `concorde-worker-run-trace` |
 | `worker-round` | Workers | `rounds/<n>/` of a worker run | the round number | `backend`, `model` | `concorde-worker-round-trace` |
@@ -474,7 +474,7 @@ its content type.
 
 Everything is under the `.concorde` directory of the project's primary worktree, except the unbound
 runs and the [Issue](../glossary.json#concept.issue) lock, which are under the `.concorde` of the worktree they belong to. Git
-ignores `tasks/`, `history/`, `unbound/` and `locks/`.
+ignores `tasks/`, `history/`, `unbound/`, `lobby/` and `locks/`.
 
 ```text
 .concorde/
@@ -492,8 +492,17 @@ ignores `tasks/`, `history/`, `unbound/` and `locks/`.
 │     ├─ workflow/               the workflow node, answers/, reports/, steps/<seq>-<key>/run/
 │     └─ runs/<run>/             runs started directly
 ├─ history/<key>/                a closed task, the same structure
-└─ unbound/<run>/                runs without a workspace
+├─ unbound/<run>/                runs without a workspace
+└─ lobby/<run>/                  bound runs that do not hold their workspace's lock yet, and those
+                                 refused before they held it
 ```
+
+A bound run's node lies in the **lobby** until the run holds its workspace's lock, and then moves,
+whole, to its place in the workspace folder, so that nothing of a run that may never be admitted is
+written into a workspace folder, which a close moves to the history while it holds that lock
+([Execution's lobby](../execution/runner.md#the-lobby)). A run refused or cancelled before it held
+the lock keeps its node in the lobby; it is no run of the workspace's folder and is found by its
+identity.
 
 A run's folder holds `trace.json`, `status.json`, `result.json`, for a [detached run](../glossary.json#concept.detached-run) the runner's
 output `host.out`, what its steps keep (such as `readiness.json` of `task-validation` and `delivery`
@@ -526,7 +535,7 @@ runs name the workspace in `holder` only, and a task is named only by Tasks and 
 | --- | --- | --- | --- |
 | [merge lock](../glossary.json#concept.merge-lock) | `merge.lock` | `task merge`, `task open`, `task close` and every write of an [Issue](../glossary.json#concept.issue) | permanent |
 | task lock | `tasks/<task>.lock` | every change of the task's record | removed by the close that moves the task, while it holds the lock |
-| [workspace lock](../glossary.json#concept.workspace-lock) | `workspaces/<workspace>.lock` | every bound run, and `task merge` and `task close` of its task | removed by the close, while it holds the lock |
+| [workspace lock](../glossary.json#concept.workspace-lock) | `workspaces/<workspace>.lock` | every bound run, and `task merge` and `task close` of its task | removed by the close, while it holds the lock; a run that waited for it takes the removed file and is refused, never the file a later taker creates |
 | workflow lock | `workflows/<workspace>.lock` | a [workflow step](../glossary.json#concept.workflow-step) or report while it reads and writes the workflow node | removed by the close, while it holds the workspace lock |
 | [run lock](../glossary.json#concept.run-lock) | `runs/<run>.lock` | the run's runner only, from before its first progress file until after its result | the runner removes it as it exits; a file left by a runner killed with `SIGKILL` is not held |
 
@@ -563,7 +572,7 @@ run lies under `locks/` of the `.concorde` its binding names, that of an unbound
 ```concorde-contract
 {
   "id": "contract.tracing.configuration",
-  "version": 2,
+  "version": 3,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -620,7 +629,7 @@ run lies under `locks/` of the `.concorde` its binding names, that of an unbound
       }
     }
   },
-  "semantics": "The optional, Git-tracked file .concorde/tracing.json of the primary worktree. retention.unbound_days is how many days after it ended an unbound run is kept; retention.history_days how many days after its close a task stays in the history; retention.conversation_days, which may be left out, how many days after its close a task in the history keeps its conversation records (the layout names them), everything else of it staying as long as history_days allows; null keeps them without removal. Without the file, or for a period it leaves out, unbound runs are kept 7 days, the history without removal and its conversation records 30 days. A malformed file refuses the command that reads it with config_invalid, naming the field. A behaviour or field change increments the version.",
+  "semantics": "The optional, Git-tracked file .concorde/tracing.json of the primary worktree. retention.unbound_days is how many days after it ended an unbound run, or a run that never left the lobby, is kept; retention.history_days how many days after its close a task stays in the history; retention.conversation_days, which may be left out, how many days after its close a task in the history keeps its conversation records (the layout names them), everything else of it staying as long as history_days allows; null keeps them without removal. Without the file, or for a period it leaves out, unbound runs and the runs of the lobby are kept 7 days, the history without removal and its conversation records 30 days. A malformed file refuses the command that reads it with config_invalid, naming the field. A behaviour or field change increments the version.",
   "example": {
     "schema_version": 1,
     "retention": {
@@ -632,9 +641,9 @@ run lies under `locks/` of the `.concorde` its binding names, that of an unbound
 }
 ```
 
-Retention removes only what has ended: an unbound run whose run lock is not held and whose node has
-an end, a history folder whose task node has one, and the conversation records of such a history
-folder. It runs when `concorde trace prune` is run and at the start of every `task open` and
+Retention removes only what has ended: an unbound run or a run of the lobby whose run lock is not
+held and whose node has an end, after `unbound_days`, a history folder whose task node has one, and
+the conversation records of such a history folder. It runs when `concorde trace prune` is run and at the start of every `task open` and
 `task close`, and never removes anything of a current task.
 
 ## Reading traces
@@ -649,8 +658,8 @@ concorde trace prune [--dry-run]
   node's folder, absolute or relative to a `.concorde` directory. Without it, `show` shows the task
   whose [workspace binding](../glossary.json#concept.workspace-binding) the current worktree holds. The command looks in the `.concorde` of the
   worktree it runs in, the `.concorde` its workspace binding names and the `.concorde` of the
-  primary worktree, in that order, and in each among the current tasks, the history and the unbound
-  runs. A node it cannot find is refused with `unknown_node`, naming what it searched.
+  primary worktree, in that order, and in each among the current tasks, the history, the unbound
+  runs and the lobby. A node it cannot find is refused with `unknown_node`, naming what it searched.
 - `--depth` limits how many levels below the node are shown (default: all); the roll-up always
   covers the whole subtree.
 - `list` lists the current tasks, with `--history` also the history and with `--unbound` also the

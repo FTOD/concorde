@@ -9,6 +9,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -1599,6 +1600,58 @@ class TaskStoreTests(unittest.TestCase):
         for kind in ("task", "workspace", "workflow", "run"):
             name = run_id if kind == "run" else "t1"
             self.assertFalse(self.lock(kind, name).exists(), kind)
+
+    @verifies("scenario.tasks.close-retires-waiting-run")
+    def test_a_run_waiting_for_a_closing_tasks_workspace_is_refused_outside_it(self):
+        from concorde.execution.runner import detach
+
+        self.project.open_task("t1")
+        worktree = self.project.worktree("t1")
+        announced = {}
+        original = store.unfinished_merge
+
+        def meanwhile(primary):
+            # The close holds the workspace lock now, and its stopping of the task's runs is
+            # over: a run started in the worktree meanwhile waits for the lock, as one the
+            # close cannot see would.
+            status, value = detach(
+                "command", "task-validation", ["--wait", "600"], cwd=worktree
+            )
+            self.assertEqual(0, status, value)
+            announced.update(value)
+            progress = Path(value["lobby"]) / "status.json"
+            deadline = time.monotonic() + 30
+            while time.monotonic() < deadline:
+                try:
+                    if json.loads(progress.read_text()).get("step") == "workspace-lock":
+                        break
+                except (OSError, ValueError):
+                    pass
+                time.sleep(0.05)
+            return original(primary)
+
+        with patch.object(store, "unfinished_merge", meanwhile):
+            status, value = self.close(
+                "t1", "--failed", "--reason", "abandoned", "--no-error"
+            )
+        self.assertEqual(0, status, value)
+        closed = snapshot(self.history())
+        run_id = announced["run_id"]
+        lobby = Path(announced["lobby"])
+        self.assertEqual(self.root / ".concorde/lobby" / run_id, lobby)
+        # Once the close released the lock it had removed, the run took it and was refused:
+        # its workspace was retired.
+        self.assertTrue(locks.wait_released(self.lock("run", run_id), 60))
+        result = json.loads((lobby / "result.json").read_text())
+        self.assertEqual(
+            ["refused", "workspace_retired"], codes(result["error"]), result["error"]
+        )
+        self.assertIn(str(self.lock("workspace", "t1")), json.dumps(result["error"]))
+        # Nothing of it was ever written into the task's folder, which is in the history.
+        self.assertEqual(closed, snapshot(self.history()))
+        self.assertFalse(any(run_id in str(path) for path in self.history().rglob("*")))
+        self.assertFalse(self.folder().exists())
+        self.assertFalse(self.lock("workspace", "t1").exists())
 
     @verifies("scenario.tasks.closed-run-refused")
     def test_a_run_in_the_worktree_of_a_closed_task_is_refused(self):

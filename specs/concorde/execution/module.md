@@ -164,9 +164,13 @@ of the checks it ran and of the worker runs it launched, each worker run with it
 folders lie: a run started directly lies in `runs/<run-id>/` of the workspace folder, a run a
 [workflow step](../glossary.json#concept.workflow-step) started inside that step's node of
 [Workflows](workflows/module.md)' workflow node in the same folder, and an unbound run in
-`.concorde/unbound/<run-id>/` of the worktree it started in, never in its checkout. Git ignores all
-of them. Whoever prepared a workspace reads its runs in its workspace folder to know what happened
-in it, and `concorde trace` finds any run by its identity.
+`.concorde/unbound/<run-id>/` of the worktree it started in, never in its checkout. A bound run that
+does not hold its workspace's lock yet lies in the lobby, `.concorde/lobby/<run-id>/` of the
+`.concorde` its binding names, and stays there when it is refused before it holds it, so that
+nothing is written into a workspace folder by a run that has not entered it. Git ignores all of
+them. Whoever prepared a workspace reads its runs in its workspace folder, and the runs waiting in
+the lobby for its lock, to know what happened in it, and `concorde trace` finds any run by its
+identity.
 
 ## Overview
 
@@ -230,8 +234,10 @@ child's part.
 ### The life of a run
 
 The Execution runner runs one run per process. It parses the command line, reads the binding,
-creates the run's trace node and takes its run lock, takes the workspace lock for a bound run or
-checks out the worktree's `HEAD` for an unbound one, checks the Modules and inputs, runs the
+creates the run's trace node, in the lobby for a bound run, and takes its run lock, takes the
+workspace lock for a bound run, checks that the workspace was not retired meanwhile and moves the
+node into the workspace folder, or checks out the worktree's `HEAD` for an unbound one, checks the
+Modules and inputs, runs the
 definition's steps in their declared order until one stops the run, removes an unbound run's
 checkout, composes the run result, checks it against its contract and, when it is `ok`, the
 definition's output contract, and writes it while it still holds the lock, so that a run that takes
@@ -246,8 +252,9 @@ written result with the runner's link on top. Its exact behaviour is in
 direction: down
 parse: "Parse the command line"
 bind: "Read the workspace binding"
-node: "Create the run's trace node,\ntake its run lock"
+node: "Create the run's trace node\n(in the lobby when bound),\ntake its run lock"
 lock: "Take the workspace lock\n(or wait for it with --wait)"
+enter: "Check the binding again,\nmove the node into\nthe workspace folder"
 checkout: "Check out HEAD detached:\nthe unbound checkout"
 admit: "Check the Modules and inputs"
 work: "Run the definition's steps in order\nuntil one stops the run"
@@ -258,7 +265,7 @@ end: "Write the trace node's end"
 parse -> bind -> node
 node -> lock: bound
 node -> checkout: unbound
-lock -> admit
+lock -> enter -> admit
 checkout -> admit
 admit -> work
 work -> compose: bound
@@ -266,6 +273,7 @@ work -> remove: unbound
 remove -> compose
 compose -> write -> end
 lock -> compose: "busy: workspace_busy" {style.stroke-dash: 3}
+enter -> compose: "retired: workspace_retired" {style.stroke-dash: 3}
 admit -> compose: "refused: the runner's link on top" {style.stroke-dash: 3}
 ```
 
@@ -303,7 +311,11 @@ before it starts its run. `--wait <seconds>` queues any run instead: the runner 
 inside its own process, its run progress file naming the run it waits for, starts the moment that
 run ends, and is refused with `workspace_busy` only when the lock is still held after that many
 seconds. A caller that wants a `delivery` after an `implement` thus asks once, and never polls the
-lock. The lock is a file lock held by the runner's process, so the kernel releases it however the
+lock. The run waits in the lobby, outside the workspace folder, and enters the workspace only once
+it holds the lock and finds the binding it started from unchanged: a task closed meanwhile has
+removed the binding and, holding the lock, its lock file, and the run is refused with
+`workspace_retired` in the lobby instead of writing into the folder the close moved to the
+history. The lock is a file lock held by the runner's process, so the kernel releases it however the
 run ends. The runner writes a run's result before it releases the lock, so a run admitted after it
 finds that result written, unless the runner was killed before it could write one and the run is
 lost; a result on disk, though, does not mean the lock is free yet.

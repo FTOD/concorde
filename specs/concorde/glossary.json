@@ -562,7 +562,7 @@
       "id": "concept.run-store",
       "title": "Run store",
       "owner": "module.execution",
-      "definition": "Where Execution keeps its runs as [trace nodes](#concept.trace-node): `runs/` of a workspace folder, the step nodes of its workflow, and `.concorde/unbound/` of a worktree for unbound runs.",
+      "definition": "Where Execution keeps its runs as [trace nodes](#concept.trace-node): `runs/` of a workspace folder, the step nodes of its workflow, `.concorde/unbound/` of a worktree for unbound runs, and the lobby `.concorde/lobby/` for a bound run until it holds its workspace's lock, and for good when it never does.",
       "explanation": "specs/concorde/execution/module.md#concept.run-store",
       "relates": [
         {

@@ -135,7 +135,25 @@ run or a run whose binding it refused, writing its `trace.json` before its first
 after its result.
 
 The node lies in `runs/<run-id>/` of the workspace folder, or in the folder `--trace-at` names inside
-it, and every file of the run, its result, run progress file, checks and worker runs, lies in it.
+it, and every file of the run, its result, run progress file, checks and worker runs, lies in it. A
+bound run's node lies in the [lobby](runner.md#the-lobby) until the run enters its workspace, and
+stays there when the run never does.
+
+### req.execution.lobby — Nothing enters a workspace folder before its lock
+
+The runner SHALL NOT create or write any file or folder in a bound run's workspace folder before
+the run holds the [workspace lock](../glossary.json#concept.workspace-lock) and the binding read
+again matches the binding read at the parse.
+
+Until then, and for good when the run is refused or cancelled before, the run's node lies in
+`lobby/<run-id>/` of the binding's `.concorde`, so whoever retires a workspace while holding its
+lock, as closing a task does, never moves a folder some run is writing.
+
+### req.execution.workspace-retired — A run never works in a retired workspace
+
+Once it holds the workspace lock, the runner SHALL refuse with `workspace_retired` a run whose lock
+file was removed or replaced while it waited, or whose worktree's binding is now absent,
+untrusted or different from the binding it read at the parse.
 
 ### req.execution.locks-apart — A run's locks lie under the locks directory
 
@@ -154,9 +172,9 @@ A run started with `--detach` SHALL check, record and report exactly as the same
 
 ### req.execution.detached-announced — A detached run is announced once it exists
 
-A command started with `--detach` SHALL announce the run, printing its run identity and result path
-with exit status 0, only once the run's
-[run progress file](../glossary.json#concept.run-progress-file) exists.
+A command started with `--detach` SHALL announce the run, printing its run identity, its node and
+result path in its workspace folder and its lobby folder with exit status 0, only once the run's
+[run progress file](../glossary.json#concept.run-progress-file) exists, in the lobby or in its node.
 
 When the runner ends or stays silent until the announcement wait runs out, the command reports
 `detach_failed` instead, as [How a run is executed](runner.md#detached-runs) describes.

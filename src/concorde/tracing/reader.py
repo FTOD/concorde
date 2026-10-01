@@ -327,9 +327,12 @@ def locate(
             if found is not None:
                 return found, _owner(found, searched)
         for root in searched:
-            unbound = layout.unbound_run_folder(root, address)
-            if unbound.is_dir():
-                return unbound, root
+            for folder in (
+                layout.unbound_run_folder(root, address),
+                layout.lobby_run_folder(root, address),
+            ):
+                if folder.is_dir():
+                    return folder, root
             for task in _task_like(root):
                 found = find_run(layout.workspace_folder(task), address)
                 if found is not None:
@@ -352,8 +355,8 @@ def locate(
                     return folder, root
     raise ReadError(
         "unknown_node",
-        f"no trace node {address!r} was found; searched the current tasks, the history and the "
-        "unbound runs of "
+        f"no trace node {address!r} was found; searched the current tasks, the history, the "
+        "unbound runs and the lobby of "
         + ", ".join(root.as_posix() for root in searched)
         + (
             " and the workspace folders " + ", ".join(w.as_posix() for w in extra)

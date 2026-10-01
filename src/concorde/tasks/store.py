@@ -39,6 +39,7 @@ from ..execution.runs import (
     RunError,
     Store,
     lock_holder,
+    waiting_runs,
     workspace_lock,
     workspace_runs,
 )
@@ -1672,15 +1673,16 @@ def stop_task(primary: Path, task_id: str) -> list[str]:
     """Stop what still runs for a task: first its Claude Code task sessions, with
     ``claude stop``, so none starts another run or keeps working in the worktree the close
     removes, then each run of its workspace whose runner holds its run lock and is visible to
-    this process, with ``SIGTERM``. The runs end with their own results; the close then waits
-    for the workspace lock. What was stopped, described."""
+    this process, with ``SIGTERM``, those still waiting in the lobby for its workspace lock
+    included. The runs end with their own results; the close then waits for the workspace lock.
+    What was stopped, described."""
     import signal
 
     from . import session
 
     stopped = session.stop_sessions(primary, task_id)
     store = workspace_store(primary, task_id)
-    for folder in store.folders():
+    for folder in [*store.folders(), *waiting_runs(store, task_id)]:
         progress = load_progress_of(folder)
         run_id = (progress or {}).get("run_id") or folder.name
         lock = store.run_lock(run_id)

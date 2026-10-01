@@ -44,8 +44,11 @@ its whole folder is moved to the **[history](../glossary.json#concept.history)**
 `.concorde/history/<task>/`, where it stays as it was when the task ended: nothing in the history is
 ever changed, and retention only removes a history folder whole or, sooner, its conversation
 records; it may be copied out. An unbound run, which belongs to no task, is
-kept in `.concorde/unbound/<run>/` of the worktree it started in. The
-[layout](contracts.md#layout) gives every path.
+kept in `.concorde/unbound/<run>/` of the worktree it started in. A run of a task's workspace that
+does not hold the workspace's lock yet lies in the lobby, `.concorde/lobby/<run>/`, outside the
+task's folder, so that a close moving that folder while it holds the lock never races it; it moves
+into the workspace folder once it holds the lock, and stays in the lobby when it is refused before.
+The [layout](contracts.md#layout) gives every path.
 
 ### The error chain
 
@@ -108,12 +111,14 @@ slim: "History folder without\nits conversation records"
 removed: "Removed" {shape: oval}
 git: "Git, with the code\n.concorde/decisions/"
 unbound: "Unbound run\n.concorde/unbound/<run>/"
+lobby: "Run refused before it held\nits workspace's lock\n.concorde/lobby/<run>/"
 open -> current
 current -> history: "task close,\nmerged or not"
 current -> git: "task close: Tasks commits\nthe decision log" {style.stroke-dash: 3}
 history -> slim: "closed more than\n30 days ago (default)"
 slim -> removed: "closed longer ago than\nthe project configures,\nif it does"
 unbound -> removed: "ended more than\n7 days ago (default)"
+lobby -> removed: "ended more than\n7 days ago (default)"
 ```
 
 ### Tracing and its producers
@@ -185,8 +190,8 @@ concorde trace prune [--dry-run]
 `show` takes a task name, a run identity, a worker run identity or a node's folder, and prints the
 node with its subtree: each node's status, times and own usage, and the usage rolled up over its
 subtree, so the cost of a whole task, of one of its workflows or of one run is read in one place. It
-finds a node among the current tasks, the [history](../glossary.json#concept.history) and the
-unbound runs of the worktree it runs in and of the primary worktree. A node that says it is still
+finds a node among the current tasks, the [history](../glossary.json#concept.history), the
+unbound runs and the lobby of the worktree it runs in and of the primary worktree. A node that says it is still
 running although the process that writes it has ended is shown `lost`. `list` lists the current
 tasks, and with its options the history and the unbound runs, with their status and rolled-up usage.
 A result's error chain names the node that reported it, as evidence of kind `trace` whose reference
@@ -223,7 +228,7 @@ release blocks on the lock itself, so the kernel wakes it when the holder ends o
 
 Traces are removed only at defined points, never by a process running in the
 background: `concorde trace prune`, and the start of every `task open` and `task close`, remove
-each unbound run that ended more than 7 days ago; from each history folder of a task closed more
+each unbound run and each run of the lobby that ended more than 7 days ago; from each history folder of a task closed more
 than 30 days ago, its **conversation records**, the transcripts of its task sessions and worker
 runs and their event streams, which make up most of the history's size and are read mostly while
 the task is fresh; and, when the project configures it, each history folder of a task closed longer

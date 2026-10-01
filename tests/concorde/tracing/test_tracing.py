@@ -230,11 +230,18 @@ class TracingTests(unittest.TestCase):
             self.concorde, "r-20260927T100300-understand-00000004"
         )
         ended(unbound, unbound.name, "run")
+        lobby = layout.lobby_run_folder(
+            self.concorde, "r-20260927T100500-implement-00000005"
+        )
+        ended(lobby, lobby.name, "run", status="failed")
         roots = [self.concorde]
         found, _ = reader.locate("r-20260927T100200-survey-00000003", roots)
         self.assertEqual(step / "run", found)
         found, _ = reader.locate(unbound.name, roots)
         self.assertEqual(unbound, found)
+        found, _ = reader.locate(lobby.name, roots)
+        self.assertEqual(lobby, found)
+        self.assertEqual("run", reader.view(found, self.concorde)["kind"])
         found, _ = reader.locate("w-20260927T100101-aaaaaa", roots)
         self.assertEqual(task.worker, found)
         with self.assertRaises(reader.ReadError) as refused:
@@ -314,12 +321,22 @@ class TracingTests(unittest.TestCase):
             self.concorde, "r-20260920T000000-understand-00000003"
         )
         ended(running, running.name, "run", status="running", ended_at=None)
+        refused = layout.lobby_run_folder(
+            self.concorde, "r-20260920T000000-implement-00000004"
+        )
+        ended(refused, refused.name, "run", ended_at=at(timedelta(days=8)))
         history = layout.history_folder(self.concorde) / "done"
         ended(history, "done", "task", ended_at=at(timedelta(days=365)))
         conversations = [
             history / "sessions" / "s1" / "transcript.jsonl",
             history / "sessions" / "s1" / "transcript" / "subagents" / "a.jsonl",
-            history / "workspace" / "runs" / "r-1" / "workers" / "w-1" / "transcript.jsonl",
+            history
+            / "workspace"
+            / "runs"
+            / "r-1"
+            / "workers"
+            / "w-1"
+            / "transcript.jsonl",
             history / "sessions" / "s2" / "rounds" / "1" / "events.jsonl",
         ]
         for path in conversations:
@@ -332,6 +349,7 @@ class TracingTests(unittest.TestCase):
         (recent / "sessions" / "s3" / "transcript.jsonl").write_text("{}\n")
         removed = [
             str(old),
+            str(refused),
             str(history / "sessions" / "s1" / "transcript"),
             *(str(conversations[index]) for index in (0, 3, 2)),
         ]

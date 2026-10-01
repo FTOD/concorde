@@ -3,8 +3,11 @@
 A run is a trace node of Tracing (``specs/concorde/tracing``): a folder holding its ``trace.json``,
 its progress file ``status.json``, kept current by the process running it, and once it ended its run
 result ``result.json``. A bound run's folder lies in the workspace folder its binding names, in
-``runs/<run_id>/`` or, for a run a workflow step started, in ``run/`` of that step's node; an unbound
-run's in ``.concorde/unbound/<run_id>/`` of the worktree it started in. Its locks are files under
+``runs/<run_id>/`` or, for a run a workflow step started, in ``run/`` of that step's node, once the
+run holds the workspace lock; until then it lies in the lobby, ``lobby/<run_id>/`` of the binding's
+``.concorde``, where a run refused before it held that lock stays, so that nothing of a run that has
+not entered its workspace is ever written into the workspace folder, which a close moves. An unbound
+run's folder lies in ``.concorde/unbound/<run_id>/`` of the worktree it started in. Its locks are files under
 ``locks/`` of the binding's ``.concorde``, or of that worktree's own: the runner holds the run lock
 ``locks/runs/<run_id>.lock`` from before its first progress file until after its result and removes
 it as it exits, so whether a run still runs is read from that lock, which the kernel releases
@@ -149,13 +152,25 @@ class Store:
             return layout.unbound_run_folder(self.concorde, run_id)
         return layout.run_folder(self.workspace, run_id)
 
+    def lobby_folder(self, run_id: str) -> Path:
+        """Where a bound run's node lies until it holds its workspace's lock."""
+        return layout.lobby_run_folder(self.concorde, run_id)
+
     def find(self, run_id: str) -> Path | None:
-        """The folder of ``run_id``, started directly or by a workflow step; None if unknown."""
+        """The folder of ``run_id``, started directly or by a workflow step, or still or for good
+        in the lobby; None if unknown."""
         if not run_id or not RUN_ID.match(run_id):
             return None
         if self.workspace is None:
             folder = layout.unbound_run_folder(self.concorde, run_id)
             return folder if folder.is_dir() else None
+        found = reader.find_run(self.workspace, run_id)
+        if found is not None:
+            return found
+        lobby = self.lobby_folder(run_id)
+        if lobby.is_dir():
+            return lobby
+        # The run may have entered its workspace between the two reads.
         return reader.find_run(self.workspace, run_id)
 
     def folders(self) -> list[Path]:
@@ -272,14 +287,36 @@ def run_state(store: Store, run_id: str | None) -> str:
     return "finished" if load_result(store, run_id) is not None else "lost"
 
 
+def waiting_runs(store: Store, workspace: str | None) -> list[Path]:
+    """The lobby folders of the runs of ``workspace`` whose runner still runs: the runs waiting
+    for its lock. A run refused before it held the lock never entered the workspace and is not
+    one of its runs; it is found by its identity."""
+    if store.workspace is None or workspace is None:
+        return []
+    lobby = layout.lobby_folder(store.concorde)
+    try:
+        folders = sorted(item for item in lobby.iterdir() if item.is_dir())
+    except OSError:
+        return []
+    found = []
+    for folder in folders:
+        progress = load_progress(folder) or {}
+        if progress.get("workspace") != workspace or not RUN_ID.match(folder.name):
+            continue
+        if runner_alive(store, folder.name) and not (folder / layout.RESULT).exists():
+            found.append(folder)
+    return found
+
+
 def workspace_runs(store: Store, workspace: str | None) -> list[dict]:
-    """Every run recorded for ``workspace`` (None: unbound runs), oldest first.
+    """Every run recorded for ``workspace`` (None: unbound runs), oldest first, with the runs
+    waiting in the lobby for its lock.
 
     Each entry has the run identity, kind, name, Modules, status (``running``, ``lost`` or the
     result's status) and start time, from the result when there is one, else the progress file.
     """
     found = []
-    for folder in store.folders():
+    for folder in [*store.folders(), *waiting_runs(store, workspace)]:
         result = _json(folder / layout.RESULT)
         progress = load_progress(folder)
         source = result or progress
@@ -359,18 +396,30 @@ def workspace_lock(
     wait: float = 0.0,
     waiting: Callable[[str], None] | None = None,
     task: str | None = None,
+    retake: bool = True,
 ):
     """Hold the lock of ``workspace`` or raise ``workspace_busy`` naming its holder.
 
     A busy lock is waited for up to ``wait`` seconds inside this process, so a caller that
     wants to queue behind the running run asks once instead of polling; ``waiting`` is told
     the holder when the wait begins. ``task`` is the caller's word for its holder line, which
-    Execution passes on without reading; its own runs never give one.
+    Execution passes on without reading; its own runs never give one. With ``retake`` False, a
+    lock file its holder removed while this process waited, as the close that retires the
+    workspace does, raises ``workspace_retired`` instead of being taken again.
     """
     path = lock_path(store, workspace)
     try:
-        with locks.hold(path, holder, wait=wait, waiting=waiting, task=task):
+        with locks.hold(
+            path, holder, wait=wait, waiting=waiting, task=task, retake=retake
+        ):
             yield
+    except locks.LockGone as gone:
+        raise RunError(
+            "workspace_retired",
+            f"the workspace {workspace} was retired while this run waited {gone.waited:.0f} s "
+            f"for its lock: its holder removed the lock file {path}, as the close that retires a "
+            "workspace does, so the lock this run took is no longer the workspace's",
+        ) from None
     except locks.LockBusy as busy:
         after = f" after waiting {busy.waited:.0f} s" if wait > 0 else ""
         raise RunError(
@@ -405,6 +454,7 @@ __all__ = [
     "run_state",
     "runner_alive",
     "store_of",
+    "waiting_runs",
     "workspace_lock",
     "workspace_runs",
 ]

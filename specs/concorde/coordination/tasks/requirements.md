@@ -163,10 +163,15 @@ one task runs one thing at a time by Execution's
 
 Tasks SHALL move a closed task's folder to the history only while it holds the task's workspace
 lock, after it stopped, for a close without a merge, every task session of the task and every run
-of the workspace still running.
+of the workspace still running or waiting for its lock, and after it removed the worktree with its
+binding.
+
+Still holding the lock, the close then removes the workspace lock file.
 
 A run of the task therefore never writes into a folder that has moved: none runs while the close
-holds the lock, and none starts after it, since its binding names a folder that no longer exists.
+holds the lock, one waiting for it writes only in Execution's lobby and is refused with
+`workspace_retired` once it takes the removed lock file or finds the binding gone, and none starts
+after it, since its binding is gone or names a folder that no longer exists.
 
 ### req.tasks.history-unique — No closed task replaces another
 
