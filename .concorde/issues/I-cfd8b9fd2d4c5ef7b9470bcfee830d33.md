@@ -1,0 +1,43 @@
+# I-cfd8b9fd2d4c5ef7b9470bcfee830d33
+
+```json
+{
+  "schema_version": 3,
+  "id": "I-cfd8b9fd2d4c5ef7b9470bcfee830d33",
+  "status": "open",
+  "reports": [
+    {
+      "id": "sha256:9621e56570560fd20912b5b0ece26ab575e0986cb52d6f533824d39bbbde3fe2",
+      "created_at": "2026-10-01T04:49:45.227059+00:00",
+      "report": {
+        "report_key": "module.issues/14",
+        "tier": "suggestion",
+        "type": "gap",
+        "subtype": "spec-conflict",
+        "title": "Remove Tracing's obsolete worktree-local Issue-lock description",
+        "description": "Tracing retains a worktree-local Issue-lock exception inconsistent with its own lock table and the Issues contract.\n\nSuggested repair: Remove the Issue-lock exception and state that Issue writes use the primary worktree's merge lock. Keep the unbound run and its run lock as the worktree-local case described by the Locks section.\n\nOther Modules concerned: module.issues, module.tasks",
+        "impact": "A reader can infer a worktree-local Issue lock that would not serialize writes with primary-worktree merges.",
+        "basis": "spec_panel run r-20261001T044130-spec_panel-5cc8e2f7 judged specs/concorde/tracing/contracts.md at layout, line 475 by the consistency criterion of the Protocol's Evaluating a Spec; the Specs read: Tracing's Layout says everything is in the primary worktree except \"the unbound runs and the Issue lock\", which are worktree-local. Its Locks table assigns every Issue write to merge.lock, agreeing with Issues' \"primary worktree's merge lock, `.concorde/locks/merge.lock`\".\n\nThe panel's chair merged a1.4 and verified: Verified Tracing's Layout and Locks sections against Issues. The correction belongs to another Module, so this report is advisory under the chair's boundary.",
+        "owner_target_id": "module.tracing",
+        "evidence": [
+          {
+            "path": "specs/concorde/tracing/contracts.md",
+            "description": "layout, cited by the consistency finding"
+          }
+        ]
+      },
+      "source": {
+        "invocation_id": "r-20261001T044130-spec_panel-5cc8e2f7",
+        "agent": "operation",
+        "operation": "spec_panel",
+        "phase": "report",
+        "target_id": "module.issues",
+        "context_id": "sha256:6291b55fcdd800b51ef5485b3ec772ac4ef0b52e4fcc70c31492b4ad2b64c074",
+        "change_id": "panel-architects",
+        "head": "aa79fa2f3cacda1ac2f53dcc9dc8dce677ee824a"
+      }
+    }
+  ],
+  "dispositions": []
+}
+```
