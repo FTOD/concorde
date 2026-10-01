@@ -35,10 +35,11 @@ directly.
 
 Every worker an Operation may launch has a stable [worker
 id](../../glossary.json#concept.worker-id), which the catalog lists: `spec_review` has a `reviewer`
-and a `checker`, `spec_panel` a `reviewer1` to `reviewer5`, one per seat its panel may have, and a
-`chair`, `plan_review` a single `reviewer`, and every other Operation a single `worker`. The same
-id keys the worker configuration, names the worker in its run record and labels the run's
-`worker-model` evidence, so each worker may have its own backend, model and level.
+and a `checker`, `spec_panel` a `reviewer1` to `reviewer5`, one per seat its panel may have, an
+`architect1` and an `architect2`, one per architect it may have, and a `chair`, `plan_review` a
+single `reviewer`, and every other Operation a single `worker`. The same id keys the worker
+configuration, names the worker in its run record and labels the run's `worker-model` evidence, so
+each worker may have its own backend, model and level.
 
 <a id="concept.operation-catalog"></a>
 
@@ -51,8 +52,8 @@ The **Operation catalog** of this version:
 | `specify` | [Specification](specification/module.md) | `specify` | `worker` | no | Specs of the bound Modules, including documents it creates, and the registry mirror | a [Spec change](../../glossary.json#concept.spec-change) ([contract](specification/contracts.md#contract.specification.spec-change)) |
 | `implement` | [Implementation](implementation/module.md) | `implement` | `worker` | no | code of the bound Modules | [a code change](implementation/contracts.md#contract.implementation.code-change) |
 | `test` | [Implementation](implementation/module.md) | `test` | `worker` | no | no | a test report ([contract](implementation/contracts.md#contract.implementation.test-report)) |
-| `spec_review` | [Spec review](../../spec-tooling/spec-review/module.md) | `review-spec` | `reviewer`, `checker` | yes | a bound run: the reviewed Modules' [review memory](../../glossary.json#concept.review-memory); unbound: no | [review findings](../../glossary.json#concept.review-finding) and a verdict ([contract](../../spec-tooling/spec-review/operation.md#contract.spec-review.payload)) |
-| `spec_panel` | [Spec review](../../spec-tooling/spec-review/module.md) | `review-spec` | `reviewer1` … `reviewer5`, `chair` | yes | no | a panel report merged from independent reviews, and a verdict ([contract](../../spec-tooling/spec-review/panel.md#contract.spec-review.panel-payload)) |
+| `spec_review` | [Spec review](../../spec-tooling/spec-review/module.md) | `review-spec` | `reviewer`, `checker` | yes | no | [review findings](../../glossary.json#concept.review-finding) and a verdict ([contract](../../spec-tooling/spec-review/operation.md#contract.spec-review.payload)) |
+| `spec_panel` | [Spec review](../../spec-tooling/spec-review/module.md) | `review-spec`; `review-architecture` for its architects, and for its chair when it has an architect | `reviewer1` … `reviewer5`, `architect1`, `architect2`, `chair` | yes | no | a panel report merged from independent reviews, and a verdict ([contract](../../spec-tooling/spec-review/panel.md#contract.spec-review.panel-payload)) |
 | `code_review` | [Code review](code-review/module.md) | `review-code` | `worker` | yes (`--base`) | no | a code review report with findings and a verdict ([contract](code-review/contracts.md#contract.code-review.review)) |
 | `survey` | [Adoption](adoption/module.md) | `code-to-spec`, Specs withheld | `worker` | yes | no | a [decomposition proposal](adoption/contracts.md#contract.adoption.decomposition) |
 | `code_to_spec` | [Adoption](adoption/module.md) | `code-to-spec` | `worker` | no | Specs of the bound Modules, the registry mirror and the `verifies` links of the existing tests it describes | a [Spec description](adoption/contracts.md#contract.adoption.spec-description) |
@@ -289,10 +290,11 @@ two, and `code-to-spec` workers describe each Module's code. The
 **Spec review** provides `spec_review` and `spec_panel` from Spec tooling: reviewers read the bound
 Modules' Specs and return findings, listed in the catalog like a contained provider
 but living in Spec tooling because it maintains Specs rather than changing a project. Its workers,
-`spec_review`'s `reviewer` and `checker` and `spec_panel`'s reviewers and `chair`, run like any
-other provider's and change nothing. The findings stay the reviewers' claims, while the provider
-derives the verdict from them and, in a bound `spec_review` run, keeps them in the reviewed
-Modules' review memory. `spec_panel` is the one provider whose steps run a LangGraph graph inside
+`spec_review`'s `reviewer` and `checker` and `spec_panel`'s reviewers, architects and `chair`, run
+like any other provider's and change nothing. The findings stay the workers' claims, while the
+provider derives the verdict from them and reports each as an
+[Issue](../../glossary.json#concept.issue) from its own host, in bound and unbound runs alike; the primary worktree keeps those Issues, so the
+workspace does not change. `spec_panel` is the one provider whose steps run a LangGraph graph inside
 the run, which the runner neither knows nor needs: the provider still returns one run result
 through the ordinary steps.
 
