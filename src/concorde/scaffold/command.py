@@ -182,7 +182,7 @@ def recheck(ctx: RunContext):
     ctx.state["baseline"] = {
         (f.rule_id, f.source, f.message)
         for f in result.findings
-        if f.severity == "error"
+        if f.strictness == "error"
     }
     ctx.state["repository"] = repository
     return Continue(
@@ -503,7 +503,7 @@ def apply(ctx: RunContext):
         new[:] = [
             f
             for f in result.findings
-            if f.severity == "error"
+            if f.strictness == "error"
             and (f.rule_id, f.source, f.message) not in ctx.state["baseline"]
         ]
         if new:

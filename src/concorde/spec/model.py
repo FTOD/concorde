@@ -9,7 +9,7 @@ from typing import Any, Mapping
 @dataclass(frozen=True)
 class Finding:
     rule_id: str
-    severity: str
+    strictness: str
     source: str
     message: str
     remediation: str

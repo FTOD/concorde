@@ -21,12 +21,14 @@ class StructuredResultTests(unittest.TestCase):
         )
         encoded = canonical_json(result)
         decoded = json.loads(encoded)
-        self.assertEqual(decoded["schema_version"], 3)
+        self.assertEqual(decoded["schema_version"], 4)
         self.assertIsNone(decoded["error"])
         self.assertEqual(decoded["tool"], "validate")
         self.assertNotIn("operation", decoded)
         self.assertEqual(decoded["artifacts"], ["a.md", "z.md"])
         self.assertEqual(decoded["findings"][0]["rule_id"], "CONCORDE-REF-001")
+        self.assertEqual(decoded["findings"][0]["strictness"], "error")
+        self.assertNotIn("severity", decoded["findings"][0])
         self.assertTrue(encoded.endswith("\n"))
 
     def test_status_exit_codes(self):
@@ -60,7 +62,7 @@ class StructuredResultTests(unittest.TestCase):
                 "error",
             },
         )
-        self.assertEqual(payload["schema_version"], 3)
+        self.assertEqual(payload["schema_version"], 4)
         self.assertEqual(
             set(payload["result"]),
             {"summary", "source_digest", "claims", "semantic_completeness"},

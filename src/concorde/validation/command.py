@@ -310,7 +310,7 @@ def validate_structure(ctx: RunContext):
             reported
         ):
             continue
-        if item.severity == "error":
+        if item.strictness == "error":
             if (
                 item.rule_id == "CHK.binds.unbound"
                 and item.source in changed
@@ -319,7 +319,7 @@ def validate_structure(ctx: RunContext):
                 continue  # reported once, as an unbound change, by require_accounted
             value = _structural(item)
             block(state, "structural", value["ref"], value["detail"])
-        elif item.severity == "warning":
+        elif item.strictness == "warning":
             state.warnings.append(_structural(item))
     summary = result.result.get("summary", {})
     return Continue(

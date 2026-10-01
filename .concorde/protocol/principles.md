@@ -1519,7 +1519,7 @@ prescribe coverage declarations.
 
 # Checks
 
-Every check has a stable identity, a decidable statement and a severity. The identities listed
+Every check has a stable identity, a decidable statement and a strictness. The identities listed
 here are exactly those referenced by [`model.yaml`](model.yaml) and the other chapters.
 
 Checks serve boundaries directly: a harness can only compute a trustworthy boundary from a
@@ -1527,11 +1527,12 @@ specification whose ownership, declaration sites and selections are structurally
 understanding only indirectly, by keeping explanations attached to what they explain; no check
 proves that an explanation is understandable.
 
-Severities: **error** blocks structural conformance. **warning** is reported and does not block.
+Strictness: a violation of an **error** check blocks structural conformance; a violation of a
+**warning** check is reported and does not block.
 
 ## Nodes
 
-| Identity | Statement | Severity |
+| Identity | Statement | Strictness |
 | --- | --- | --- |
 | `CHK.node.id` | Every node identity matches the grammar, is project-wide unique and, for requirements and scenarios, carries its prefix. | error |
 | `CHK.node.type` | Every `defines` record has type `realization`. | error |
@@ -1550,7 +1551,7 @@ Severities: **error** blocks structural conformance. **warning** is reported and
 
 ## Documents
 
-| Identity | Statement | Severity |
+| Identity | Statement | Strictness |
 | --- | --- | --- |
 | `CHK.document.pair` | Both members exist and agree with the owner's `owns` on identity and owner; `role` is declared. | error |
 | `CHK.document.path` | Paths are canonical project-relative POSIX, with no alias, traversal or symlink. | error |
@@ -1562,7 +1563,7 @@ Severities: **error** blocks structural conformance. **warning** is reported and
 
 ## Relations
 
-| Identity | Statement | Severity |
+| Identity | Statement | Strictness |
 | --- | --- | --- |
 | `CHK.relation.type` | Every relation has a registered type. | error |
 | `CHK.relation.endpoints` | Source and target resolve and have permitted types. | error |
@@ -1608,7 +1609,7 @@ Modules, never a concept with its own Module.
 
 ## Views
 
-| Identity | Statement | Severity |
+| Identity | Statement | Strictness |
 | --- | --- | --- |
 | `CHK.view.marked` | Every diagram in reading is a `d2` block; a checked one lies in `module` reading, and every other is marked `illustrative`. A Mermaid block is an error. | error |
 | `CHK.view.subset` | A checked diagram uses only the semantic subset of D2. | error |
@@ -1618,7 +1619,7 @@ Modules, never a concept with its own Module.
 
 ## Reconciliation
 
-| Identity | Statement | Severity |
+| Identity | Statement | Strictness |
 | --- | --- | --- |
 | `CHK.context.reconciled` | For every Module M and every `q ∈ Requires(M)`, `satisfied(q, Spec(M))` holds. | error |
 

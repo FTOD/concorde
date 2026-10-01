@@ -80,7 +80,9 @@ WARNING_CHECKS = frozenset(
 )
 
 
-def severity(check: str) -> str:
+def strictness(check: str) -> str:
+    """A check's strictness: ``warning`` when a violation does not block structural
+    conformance, ``error`` when it does."""
     return "warning" if check in WARNING_CHECKS else "error"
 
 
@@ -334,7 +336,7 @@ class DocumentUnitRepository:
     ) -> None:
         finding = Finding(
             check,
-            severity(check),
+            strictness(check),
             source,
             message,
             remediation,
@@ -1876,7 +1878,7 @@ class DocumentUnitRepository:
         """Run every check; raise on the first error. Establishes structure, never sufficiency."""
         from .validation import spec_findings
 
-        errors = [item for item in spec_findings(self) if item.severity == "error"]
+        errors = [item for item in spec_findings(self) if item.strictness == "error"]
         if errors:
             first = errors[0]
             raise SpecError(

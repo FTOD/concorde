@@ -22,7 +22,7 @@ from concorde.execution.runs import workspace_lock
 from concorde.spec.schema import validate
 from concorde.spec.typed_data import TypedDataError, validate_typed
 from concorde.spec.verification import verifies
-from concorde.tasks import cli, store
+from concorde.tasks import cli, merge, store
 from concorde.tracing import layout
 from concorde.tracing import node as trace
 from tests.concorde.support.operation_project import OperationProject, commit
@@ -329,6 +329,38 @@ class MergeTests(unittest.TestCase):
         # Each closure is a commit of its own on the primary branch, after the merge.
         self.assertEqual(after, git(self.root, "rev-parse", "HEAD~2"))
         self.assertEqual("", git(self.root, "status", "--porcelain"))
+
+    @verifies("scenario.tasks.merge-issues-unavailable")
+    def test_a_merge_that_cannot_load_the_issues_still_closes_and_answers(self):
+        import concorde.issues
+        from concorde.issues.store import read_issue
+
+        fixed = self.issue("fixed")
+        self.project.open_task("t1")
+        status, value = self.command("resolve", "t1", fixed)
+        self.assertEqual(0, status, value)
+        self.deliver()
+        # Without the attribute and with None in sys.modules, importing the Issues command
+        # fails, as an import between two versions of Concorde did.
+        loaded = concorde.issues.command
+        del concorde.issues.command
+        self.addCleanup(setattr, concorde.issues, "command", loaded)
+        with (
+            patch.dict(sys.modules, {"concorde.issues.command": None}),
+            patch.object(store, "end_sessions", wraps=store.end_sessions) as ending,
+        ):
+            status, value = self.command("merge", "t1", "--check", python(""))
+        self.assertEqual(0, status, value)
+        self.assertEqual("closed", value["record"]["state"])
+        self.assertEqual([], value["resolved"])
+        self.assertEqual(self.head(), value["merge"]["after"])
+        warned = [text for text in value["warnings"] if fixed in text]
+        self.assertEqual(1, len(warned), value["warnings"])
+        self.assertIn("issues_unavailable", warned[0])
+        self.assertIn("concorde.issues.command", warned[0])
+        ending.assert_called_once()
+        record, _ = read_issue(self.root, fixed)
+        self.assertEqual("open", record["status"])
 
     @verifies("scenario.tasks.merge-empty-log")
     def test_a_merge_warns_of_an_unwritten_decision_log(self):
@@ -1045,6 +1077,68 @@ class MergeTests(unittest.TestCase):
             release.set()
             holder.join()
         self.assertEqual("delivered", self.state())
+
+
+class FrozenSourcesTests(unittest.TestCase):
+    """A merge's process keeps the sources of the package it started with."""
+
+    def package(self, name: str) -> Path:
+        """A package ``name`` whose ``command`` imports from ``shapes``, its ``shapes``
+        imported, on ``sys.path`` until the test ends."""
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+        package = root / name
+        package.mkdir()
+        (package / "__init__.py").write_text("")
+        (package / "shapes.py").write_text("SHAPES = ('old',)\n")
+        (package / "command.py").write_text("from .shapes import SHAPES\n")
+        sys.path.insert(0, str(root))
+        self.addCleanup(sys.path.remove, str(root))
+        self.addCleanup(
+            lambda: [
+                sys.modules.pop(module)
+                for module in list(sys.modules)
+                if module == name or module.startswith(name + ".")
+            ]
+        )
+        __import__(f"{name}.shapes")
+        return package
+
+    def merged(self, package: Path) -> None:
+        """What a merge does to the package's files: ``command`` now needs a name that only
+        the new ``shapes`` has."""
+        (package / "shapes.py").write_text("SHAPES = ('old',)\nNEW = 1\n")
+        (package / "command.py").write_text("from .shapes import NEW, SHAPES\n")
+
+    @verifies("scenario.tasks.merge-own-sources")
+    def test_a_module_imported_after_the_merge_is_the_one_the_merge_started_with(self):
+        package = self.package("concorde_frozen_probe")
+        merge.freeze_sources("concorde_frozen_probe")
+        self.addCleanup(
+            lambda: sys.meta_path.remove(
+                next(
+                    finder
+                    for finder in sys.meta_path
+                    if getattr(finder, "name", None) == "concorde_frozen_probe"
+                )
+            )
+        )
+        merge.freeze_sources("concorde_frozen_probe")  # a second freeze changes nothing
+        self.merged(package)
+        from concorde_frozen_probe import command
+
+        self.assertEqual(("old",), command.SHAPES)
+        self.assertFalse(hasattr(command, "NEW"))
+        self.assertEqual(str(package / "command.py"), command.__file__)
+        # The kept source is never cached as the file's new contents.
+        self.assertEqual([], list(package.glob("__pycache__/command.*")))
+
+    @verifies("scenario.tasks.merge-own-sources")
+    def test_without_the_freeze_the_two_versions_do_not_import(self):
+        package = self.package("concorde_unfrozen_probe")
+        self.merged(package)
+        with self.assertRaises(ImportError):
+            __import__("concorde_unfrozen_probe.command")
 
 
 if __name__ == "__main__":

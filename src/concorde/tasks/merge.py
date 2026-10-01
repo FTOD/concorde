@@ -17,10 +17,17 @@ change, since a task changes nothing outside its own worktree.
 Every attempt, a merge, a ``--resume`` or an ``--abort``, is a trace node ``merges/<n>/`` of the
 task, ended with how the attempt ended; each check it runs is a node ``checks/<i>/`` below it with
 the check's output as ``output.log``.
+
+The process imports Concorde's own modules from a snapshot of their sources taken when the merge
+starts (``freeze_sources``), so a merge that changes Concorde itself never leaves it running a mix
+of the two versions in the steps after the merge.
 """
 
 from __future__ import annotations
 
+import importlib
+import importlib.abc
+import importlib.util
 import os
 import shlex
 import subprocess
@@ -90,6 +97,71 @@ REFUSED = {
     "rollback_failed": "rollback_failed",
     "git_failed": "git_failed",
 }
+
+
+class _Source(importlib.abc.SourceLoader):
+    """Loads one module from the source bytes a snapshot kept, never from its file now. It
+    reports no file times, so it neither reads nor writes a bytecode cache: a cache written from
+    the kept source would be taken for the file's new contents."""
+
+    def __init__(self, path: Path, source: bytes):
+        self.path, self.source = path, source
+
+    def get_filename(self, fullname: str) -> str:
+        return str(self.path)
+
+    def get_data(self, path: str) -> bytes:
+        if path == str(self.path):
+            return self.source
+        return Path(path).read_bytes()
+
+
+class _Snapshot(importlib.abc.MetaPathFinder):
+    """The source of every module of one package, as its files were when it was taken."""
+
+    def __init__(self, name: str, root: Path):
+        self.name = name
+        self.modules: dict[str, tuple[Path, bytes, bool]] = {}
+        for path in sorted(root.rglob("*.py")):
+            if "__pycache__" in path.parts:
+                continue
+            parts = path.relative_to(root).with_suffix("").parts
+            package = parts[-1] == "__init__"
+            module = ".".join((name, *(parts[:-1] if package else parts)))
+            self.modules[module] = (path, path.read_bytes(), package)
+
+    def find_spec(self, fullname, path=None, target=None):
+        found = self.modules.get(fullname)
+        if found is None:
+            return None
+        file, source, package = found
+        return importlib.util.spec_from_file_location(
+            fullname,
+            file,
+            loader=_Source(file, source),
+            submodule_search_locations=[str(file.parent)] if package else None,
+        )
+
+
+def freeze_sources(name: str = __name__.partition(".")[0]) -> None:
+    """Serve every module of the package ``name`` that this process imports from now on from its
+    source as it is now, for the rest of the process.
+
+    A merge changes the primary worktree's files while its process runs, and Concorde's own
+    sources are among them when the merged task changed Concorde. A module imported after the
+    merge, such as one a post-merge step imports when it needs it, would otherwise be the merged
+    version, mixed with the modules imported before: an import between the two versions can fail,
+    or the mix behave as neither. Frozen, the process stays on the one Concorde it started with,
+    while the checks, processes of their own, run the merged one. Only module sources are kept: a
+    data file is read as it is when it is read.
+    """
+    if any(
+        isinstance(finder, _Snapshot) and finder.name == name
+        for finder in sys.meta_path
+    ):
+        return
+    package = importlib.import_module(name)
+    sys.meta_path.insert(0, _Snapshot(name, Path(package.__file__).parent))
 
 
 class Attempt:
@@ -558,6 +630,7 @@ def merge_task(
     """Merge a delivered task into the primary branch, check it, and close the task; or, with
     ``resume`` or ``abort``, finish a merge of it whose process ended before its checks decided.
     """
+    freeze_sources()
     primary = store.require_primary(here)
     if resume and abort:
         raise TaskError("invalid_input", "--resume and --abort exclude each other")
@@ -712,7 +785,11 @@ def _checked_close(
             "checks and closes it",
         ) from error
     # Still under the merge lock: the Issues the task fixed close with the merge as evidence.
-    resolved, unresolved = store.close_resolved(primary, closed, after)
+    # Whatever happens to them, the sessions still end and the merge still answers.
+    try:
+        resolved, unresolved = store.close_resolved(primary, closed, after)
+    except Exception as error:  # noqa: BLE001 -- the merge stands whatever an Issue does
+        resolved, unresolved = [], [store.unclosed(closed, error)]
     warnings.extend(unresolved)
     return {
         "record": closed,

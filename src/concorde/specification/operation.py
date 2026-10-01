@@ -225,7 +225,7 @@ def baseline(ctx: RunContext):
             causes=[spec_cause(error)],
             options=["repair the configuration, registry or Protocol binding by hand"],
         )
-    errors = {key(f) for f in result.findings if f.severity == "error"}
+    errors = {key(f) for f in result.findings if f.strictness == "error"}
     current.baseline_errors = errors
     current.repository = repository
     current.documents = tuple(documents)
@@ -270,7 +270,7 @@ def validation_repair(ctx: RunContext) -> str | None:
     errors = [
         finding
         for finding in validate_repository(ctx.worktree).findings
-        if finding.severity == "error"
+        if finding.strictness == "error"
         and key(finding) not in state(ctx).baseline_errors
     ]
     return spec_repair_prompt(errors)
@@ -459,10 +459,10 @@ def revalidate(ctx: RunContext):
 
     current = state(ctx)
     result = validate_repository(ctx.worktree)
-    errors = [f for f in result.findings if f.severity == "error"]
+    errors = [f for f in result.findings if f.strictness == "error"]
     new = [f for f in errors if key(f) not in current.baseline_errors]
     old = [f for f in errors if key(f) in current.baseline_errors]
-    warnings = [f for f in result.findings if f.severity == "warning"]
+    warnings = [f for f in result.findings if f.strictness == "warning"]
     current.validation = {
         "new_errors": [finding_value(f) for f in new],
         "pre_existing_errors": [finding_value(f) for f in old],

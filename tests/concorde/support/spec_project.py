@@ -768,8 +768,10 @@ class SpecProject:
 
         return validate_repository(self.root, package_root=PACKAGE)
 
-    def rules(self, severity="error"):
-        return {f.rule_id for f in self.validate().findings if f.severity == severity}
+    def rules(self, strictness="error"):
+        return {
+            f.rule_id for f in self.validate().findings if f.strictness == strictness
+        }
 
     def findings(self, rule):
         return [f for f in self.validate().findings if f.rule_id == rule]

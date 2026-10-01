@@ -1178,10 +1178,15 @@ def close_resolved(
     and a warning, carrying the Issues error link, for each that could not be made: the merge
     stays whatever happens to an Issue."""
     from .. import errors
-    from ..issues import command as issues
 
+    if not record.get("resolves"):
+        return [], []
+    try:
+        from ..issues import command as issues
+    except Exception as error:  # noqa: BLE001 -- the merge stands whatever an Issue does
+        return [], [unclosed(record, error)]
     closed, warnings = [], []
-    for issue in record.get("resolves", []):
+    for issue in record["resolves"]:
         try:
             closed.append(
                 issues.dispose(
@@ -1204,6 +1209,23 @@ def close_resolved(
                 f"{errors.render(issues.unexpected(error))}"
             )
     return closed, warnings
+
+
+def unclosed(record: dict, error: BaseException) -> str:
+    """The warning of a merge that could not close the Issues its task resolves at all."""
+    from .. import errors
+
+    link = errors.from_exception(
+        "Tasks (closing resolved Issues)",
+        error,
+        code="issues_unavailable",
+        explanation="the merge could not reach the Issues component, so it closed none of the "
+        "task's Issues; the merge stands and the main agent closes them",
+    )
+    return (
+        f"task {record['id']} resolves Issue(s) {', '.join(record.get('resolves', []))}, but its "
+        f"merge could not close them: {errors.render(link)}"
+    )
 
 
 def _open_task(

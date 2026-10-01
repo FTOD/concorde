@@ -442,7 +442,12 @@ after the merge; it prints the record with the Issues it closed (`resolved`), th
 after, each check, how long it waited and its warnings, such as a decision log nobody wrote in or an
 Issue it could not close. An Issue it cannot close, because it was closed meanwhile or the Issue
 store refused, is a warning carrying the Issues error chain, never a refusal: the merge and the
-close stand, and the main agent disposes that Issue itself. A merge thus ends with the task closed on a checked merge commit or delivered again
+close stand, and the main agent disposes that Issue itself. Even a merge that cannot reach the
+Issues at all warns with `issues_unavailable` and still ends the task's sessions and prints its
+result. The merge's process imports Concorde's own modules from a snapshot of their sources taken
+when it starts, so a task that changes Concorde itself never leaves the steps after its merge
+running a mix of the old and the merged code; its checks, processes of their own, run the merged
+code. A merge thus ends with the task closed on a checked merge commit or delivered again
 on the commit the primary branch had; after a conflict or a failed check the task is delivered
 again.
 

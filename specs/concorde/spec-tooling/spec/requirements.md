@@ -67,10 +67,10 @@ running Concorde package.
 
 Validation SHALL evaluate every check listed in the Protocol's Checks chapter.
 
-### req.spec.check-finding-identity — A violation carries its check's identity and severity
+### req.spec.check-finding-identity — A violation carries its check's identity and strictness
 
 Validation SHALL report each violation of a Protocol check as a finding whose rule identity is that
-check's identity and whose severity is the severity the Checks chapter gives it.
+check's identity and whose strictness is the strictness the Checks chapter gives it.
 
 ### req.spec.all-findings — One run reports everything it can
 
@@ -81,7 +81,7 @@ A test file that cannot be parsed is reported, and the other bound test files ar
 
 ### req.spec.status-from-errors — Only errors make a result invalid
 
-The validation status SHALL be `invalid` exactly when at least one finding has severity error.
+The validation status SHALL be `invalid` exactly when at least one finding has strictness error.
 
 ### req.spec.no-structural-proof — Structural checks are not semantic proof
 

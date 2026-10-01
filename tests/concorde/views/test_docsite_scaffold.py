@@ -452,7 +452,7 @@ class DocsiteScaffoldTests(unittest.TestCase):
         self.assertEqual(len(rule_ids), 2)
         self.assertEqual(
             {
-                finding.severity
+                finding.strictness
                 for finding in patched.findings
                 if finding.rule_id == "CONCORDE-DOCSITE-007"
             },

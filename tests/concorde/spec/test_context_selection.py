@@ -152,7 +152,7 @@ class ContextSelectionTests(unittest.TestCase):
         report = validate_repository(self.root, package_root=PACKAGE)
         self.assertIn(
             "CHK.includes.redundant",
-            {f.rule_id for f in report.findings if f.severity == "warning"},
+            {f.rule_id for f in report.findings if f.strictness == "warning"},
         )
 
     @verifies("scenario.spec.reference-resolution")

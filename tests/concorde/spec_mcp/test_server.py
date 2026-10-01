@@ -263,7 +263,7 @@ class SpecMcpTests(unittest.TestCase):
         self.assertEqual(
             ("spec-validation", "invalid"), (value["tool"], value["status"])
         )
-        self.assertTrue(any(f["severity"] == "error" for f in value["findings"]))
+        self.assertTrue(any(f["strictness"] == "error" for f in value["findings"]))
         self.assertEqual(before, self.snapshot())
 
     @verifies("scenario.spec-mcp.current-specs")

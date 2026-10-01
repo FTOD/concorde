@@ -45,7 +45,7 @@ def envelope(
     error: SpecError | None = None,
 ) -> dict[str, Any]:
     return {
-        "schema_version": 3,
+        "schema_version": 4,
         "tool": tool,
         "target": target,
         "status": status,

@@ -656,7 +656,7 @@
       "id": "concept.structural-check",
       "title": "Structural check",
       "owner": "module.spec",
-      "definition": "One decidable rule of the Spec Protocol or of Concorde's Spec conventions, named by a rule identity and carrying the severity error or warning.",
+      "definition": "One decidable rule of the Spec Protocol or of Concorde's Spec conventions, named by a rule identity and carrying the strictness error or warning.",
       "explanation": "specs/concorde/spec-tooling/spec/module.md#concept.structural-check"
     },
     {
