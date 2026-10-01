@@ -415,7 +415,7 @@
       "id": "concept.project-mcp-server",
       "title": "Project MCP server",
       "owner": "module.main-session",
-      "definition": "The project's one stdio MCP server, `concorde project-mcp` registered as `concorde`, of which each Claude Code session runs its own process, that serves the project's tasks, traces and locks from the primary worktree, takes locks without waiting and hands a granted lock to the detached process doing the work, and wakes its session through a Claude Code channel when a registered wait is over.",
+      "definition": "The project's one stdio MCP server, `concorde project-mcp` registered as `concorde`, of which each Claude Code session runs its own process, that serves the project's tasks, traces and locks from the primary worktree, answers each call with a fresh process of the Concorde the primary worktree's `concorde` runs at that moment, takes locks without waiting and hands a granted lock to the detached process doing the work, and wakes its session through a Claude Code channel when a registered wait is over.",
       "explanation": "specs/concorde/coordination/main-session/module.md#concept.project-mcp-server",
       "contrasts": [
         {

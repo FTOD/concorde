@@ -6,10 +6,12 @@ import json
 import os
 import queue
 import shlex
+import shutil
 import signal
 import subprocess
 import sys
 import tempfile
+import textwrap
 import threading
 import time
 import unittest
@@ -84,6 +86,7 @@ class Client:
         self.next = 0
         self.responses: dict = {}
         self.events: queue.Queue = queue.Queue()
+        self.notices: queue.Queue = queue.Queue()
         self.arrived = threading.Condition()
         threading.Thread(target=self.read, daemon=True).start()
         self.initialized = self.request(
@@ -101,6 +104,9 @@ class Client:
             message = json.loads(line)
             if message.get("method") == "notifications/claude/channel":
                 self.events.put(message["params"])
+                continue
+            if "method" in message and "id" not in message:
+                self.notices.put(message["method"])
                 continue
             with self.arrived:
                 self.responses[message.get("id")] = message
@@ -164,6 +170,23 @@ def open_inodes(pid: int) -> set[int]:
         except OSError:
             pass
     return found
+
+
+def children(pid: int) -> list[int]:
+    """The processes the process ``pid`` started that still run."""
+    found = []
+    for thread in Path(f"/proc/{pid}/task").iterdir():
+        found += [int(word) for word in (thread / "children").read_text().split()]
+    return found
+
+
+def alive(pid: int) -> bool:
+    """Whether the process ``pid`` exists and is no zombie."""
+    try:
+        state = Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[0]
+    except OSError:
+        return False
+    return state != "Z"
 
 
 class ProjectMcpTests(unittest.TestCase):
@@ -233,6 +256,70 @@ class ProjectMcpTests(unittest.TestCase):
         self.assertIn("project MCP server", link["actor"])
         value, error = client.call("no_such_tool")
         self.refusal(value, error, "invalid_input")
+
+    @verifies("scenario.main-session.project-mcp-fresh-code")
+    def test_each_call_answers_with_the_primary_worktrees_current_concorde(self):
+        self.project.open_task("t1")
+        # The primary worktree's `concorde` runs a copy of Concorde that the test changes.
+        source = Path(tempfile.mkdtemp()) / "src"
+        self.addCleanup(shutil.rmtree, source.parent, True)
+        shutil.copytree(
+            REPOSITORY_ROOT / "src/concorde",
+            source / "concorde",
+            ignore=shutil.ignore_patterns("__pycache__"),
+        )
+        launcher = self.root / ".concorde/bin/concorde"
+        launcher.parent.mkdir(parents=True, exist_ok=True)
+        launcher.write_text(
+            "#!/bin/sh\n"
+            f"PYTHONPATH={shlex.quote(str(source))} "
+            f'exec {shlex.quote(sys.executable)} -m concorde "$@"\n'
+        )
+        launcher.chmod(0o755)
+        client = self.client()
+        self.assertTrue(client.initialized["capabilities"]["tools"]["listChanged"])
+        self.assertEqual(
+            TOOLS, {tool["name"] for tool in client.request("tools/list")["tools"]}
+        )
+        listed, error = client.call("task_list")
+        self.assertFalse(error, listed)
+        self.assertEqual(["t1"], [record["id"] for record in listed])
+        # Concorde changes while the session runs, as a merge or `concorde update` changes it: a
+        # tool answers otherwise and another tool is added.
+        tools = source / "concorde/project_mcp/tools.py"
+        tools.write_text(
+            tools.read_text()
+            + textwrap.dedent(
+                """
+                TOOLS["fresh_probe"] = {"description": "added later", "inputSchema": schema({})}
+                Project.fresh_probe = lambda self, arguments: {"code": "new"}
+                _listed = Project.task_list
+                Project.task_list = lambda self, arguments: {
+                    "code": "new", "tasks": _listed(self, arguments)
+                }
+                """
+            )
+        )
+        changed, error = client.call("task_list")
+        self.assertFalse(error, changed)
+        self.assertEqual("new", changed["code"])
+        self.assertEqual(["t1"], [record["id"] for record in changed["tasks"]])
+        # The server noticed that the session's tools are no longer the current code's.
+        self.assertEqual(
+            "notifications/tools/list_changed", client.notices.get(timeout=10)
+        )
+        names = {tool["name"] for tool in client.request("tools/list")["tools"]}
+        self.assertEqual(TOOLS | {"fresh_probe"}, names)
+        probe, error = client.call("fresh_probe")
+        self.assertEqual(({"code": "new"}, False), (probe, error))
+        self.assertTrue(client.notices.empty())
+        # A Concorde that gives no answer is refused, naming the command and what it said.
+        launcher.write_text("#!/bin/sh\necho 'concorde is broken' >&2\nexit 3\n")
+        value, error = client.call("task_list")
+        link = self.refusal(value, error, "call_failed")
+        self.assertIn("concorde is broken", link["detail"])
+        self.assertIn("status 3", link["detail"])
+        self.assertEqual("environment", link["unhandled"]["reason"])
 
     @verifies("scenario.main-session.project-mcp-short-writes")
     def test_open_escalate_close(self):
@@ -505,6 +592,27 @@ class ProjectMcpTests(unittest.TestCase):
         self.assertEqual(
             {"registered": False, "already": {"task": "t1", "state": "delivered"}}, now
         )
+        # A wait still watched ends with its server, however the server ends.
+        holder = holding(self.workspace_lock(), "session-other", "t1")
+        self.addCleanup(holder.wait)
+        self.addCleanup(holder.stdin.close)
+        registered, error = client.call("register_wait", lock="workspace", task="t1")
+        self.assertTrue(registered["registered"], registered)
+        waiting = children(client.process.pid)
+        self.assertEqual(1, len(waiting), waiting)
+        command = Path(f"/proc/{waiting[0]}/cmdline")
+        deadline = time.monotonic() + 20
+        while (
+            b"-c" in command.read_bytes().split(b"\0") and time.monotonic() < deadline
+        ):
+            time.sleep(0.05)
+        self.assertIn(b"task\0wait\0t1\0--lock\0workspace", command.read_bytes())
+        client.process.send_signal(signal.SIGKILL)
+        client.process.wait(10)
+        deadline = time.monotonic() + 20
+        while alive(waiting[0]) and time.monotonic() < deadline:
+            time.sleep(0.05)
+        self.assertFalse(alive(waiting[0]), "the wait outlived its server")
 
     @verifies("scenario.main-session.project-mcp-wait-fallback")
     def test_without_a_channel_the_wait_names_the_command(self):
