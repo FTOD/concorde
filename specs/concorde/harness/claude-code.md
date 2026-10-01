@@ -30,7 +30,7 @@ absolute, `<runtime>` being the runtime directory:
     "enabled": true,
     "allowUnsandboxedCommands": false,
     "filesystem": {
-      "denyRead": ["<worktree>", "<user home>", "<runtime>/control", "<runtime>/config"],
+      "denyRead": ["<worktree>", "<user home>", "<primary worktree>", "<each Git administrative path>", "<runtime>/control", "<runtime>/config"],
       "allowRead": ["<each ro and rw path>", "<runtime paths>", "<runtime>/work", "<runtime>/home", "<runtime>/tmp"],
       "allowWrite": ["<each rw path>", "<runtime>/work", "<runtime>/home", "<runtime>/tmp"]
     },
@@ -54,12 +54,16 @@ directories. They are generated from the grant and the file tree:
 | a `rw` file | none |
 | a task-worktree directory with no `ro` or `rw` path below it | one `Read` and one `Edit` rule on `<dir>/**` instead of rules per file |
 | a directory covered by a `ro` directory entry with no `rw` path below it | one `Edit` rule on `<dir>/**` |
-| the task worktree's `.git` | `Read` and `Edit` on the path and below |
-| inside the user's home, every entry that leads neither to the task worktree, to the runtime directory's `work/` or `home/`, nor to a runtime path | `Read` and `Edit` on the entry and below; a home that holds none of them is denied as a whole |
+| a `.git` entry of the task worktree met by the walk, at any depth | `Read` and `Edit` on the path and below |
+| each Git administrative path Workers hands over: the common Git directory, the worktree's Git directory, every `.git` entry of the worktree and the Git directories they point to | `Read` and `Edit` on the path and below |
+| inside the user's home and inside the primary worktree, every entry that leads neither to the task worktree, to the runtime directory's `work/` or `home/`, nor to a runtime path | `Read` and `Edit` on the entry and below; a home that holds none of them is denied as a whole |
 | `<runtime>/control/` and `<runtime>/config/` | `Read` and `Edit` on the path and below |
 
-The home rule hides other projects, other task worktrees, the primary worktree's `.git` and other
-runs, and `~/.claude`. Paths below a runtime path are left alone. Glob and Grep are governed by the
+The home and primary-worktree rule hides other projects, other task worktrees, the primary
+worktree's sources and `.git` and other runs, and `~/.claude`, with the primary worktree inside the
+user's home or outside it, such as under `/tmp`. The Git path rule hides the repository's metadata
+even where it lies outside both, such as a Git directory a `.git` file points to elsewhere, and
+inside a `ro` or `rw` directory of the grant, which the walk does not enter. Paths below a runtime path are left alone. Glob and Grep are governed by the
 `Read` rules. A file created after the rules were generated has no rule of its own: the write hook
 still refuses to change it unless it is `rw`, and a directory rule hides it when its directory has
 no `ro` or `rw` path below it, but otherwise the file tools can read it. The worker cannot create
@@ -78,7 +82,7 @@ to.
 | Target | Decision | Reason given to the worker |
 | --- | --- | --- |
 | outside the task worktree | deny | the path is outside the task worktree |
-| the task worktree's `.git` or below it | deny | Git metadata is not available to workers |
+| a `.git` entry of the task worktree at any depth, or below one | deny | Git metadata is not available to workers |
 | in the `rw` list | none (the hook exits 0 without output) | — |
 | a `ro` path | deny | the path is read-only for this task |
 | a `names` path | deny | only the path's name is visible to this task |

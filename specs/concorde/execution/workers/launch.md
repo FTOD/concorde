@@ -1,7 +1,7 @@
 # Run mechanics
 
 The exact files, command lines, environment, audit, rounds and records of one worker run, and the
-requirements they serve. Inputs, the [run directory](../../glossary.json#concept.run-directory) and
+requirements they serve. Inputs, the placement, the [run directory](../../glossary.json#concept.run-directory) and
 the [runtime directory](../../glossary.json#concept.runtime-directory), the
 [progress file](../../glossary.json#concept.progress-file), the audit, rounds, the run record and
 errors hold for both backends; the launch below is the Claude Code backend's, and
@@ -18,7 +18,7 @@ A run is requested with:
 | Input | Meaning |
 | --- | --- |
 | backend | `claude` or `pi`: the [worker backend](../../glossary.json#concept.worker-backend) the worker configuration chooses for the worker, pi when nothing chooses one |
-| worktree | Absolute path of the Git worktree the worker works in: the bound workspace, or for an [unbound run](../../glossary.json#concept.unbound-run) its [unbound checkout](../../glossary.json#concept.unbound-checkout) |
+| worktree | Absolute path of the Git worktree the worker works in: the bound workspace, or for an [unbound run](../../glossary.json#concept.unbound-run) its [unbound checkout](../../glossary.json#concept.unbound-checkout), lying directly in `.claude/worktrees/` of its repository's primary worktree ([Placement](#placement)) |
 | parent | The [trace node](../../glossary.json#concept.trace-node) folder of the run that asks for the worker, below which the worker run's node is created |
 | [task type](../../glossary.json#concept.task-type) | One of the eight Protocol task types; it selects the tool set, the read-only one for a task type that writes nothing, such as `review-architecture` |
 | grant | The frozen grant: every path with its level `rw`, `ro` or `names`, relative to the worktree, and its [context identity](../../glossary.json#concept.context-identity) |
@@ -31,6 +31,30 @@ A run is requested with:
 | local model, model map | The model's local id on the backend, which the [model map](../../glossary.json#concept.model-map) gives it and which is passed with `--model`, and the path of that map, recorded only |
 | operation, worker | The Operation and the [worker id](../../glossary.json#concept.worker-id) the model was chosen for, recorded only |
 | reasoning | Optionally the reasoning level from the same configuration, passed with `--effort` on the Claude Code backend and `--thinking` on the pi backend |
+
+## Placement
+
+Every worktree a worker runs in lies directly in `.claude/worktrees/` of its repository's primary
+worktree, the first worktree `git worktree list` names: a task worktree
+`.claude/worktrees/<task>`, an [unbound checkout](../../glossary.json#concept.unbound-checkout)
+`.claude/worktrees/unbound-<run-id>`. Before it generates anything the host checks this with
+read-only Git and refuses any other placement, the primary worktree itself included, with
+`worktree_misplaced`. Once the placement holds it collects the repository's **Git administrative
+paths**, as real paths:
+
+| Path | Found by |
+| --- | --- |
+| the common Git directory, with its `worktrees/` and `modules/` | `git rev-parse --git-common-dir` in the worktree |
+| the worktree's own Git directory | `git rev-parse --git-dir` in the worktree |
+| every `.git` entry of the worktree, file or directory: its own and each submodule's or nested repository's | a walk of the worktree that enters no `.git`, no symbolic link and no runtime path |
+| for each `.git` file, the Git directory its `gitdir:` line names and that directory's `commondir` | reading the file |
+
+It hands the Harness the primary worktree and these paths with the grant, and the Harness hides
+them from every tool ([Claude Code mechanics](../../harness/claude-code.md#deny-rules),
+[pi mechanics](../../harness/pi.md#read-table)), wherever the repository lies. Since every worktree
+a worker runs in lies in the primary worktree, the Harness also hides the primary worktree as a
+whole but for the way to the worktree, the runtime paths and what the grant makes readable, as it
+hides the user's home.
 
 ## Run directory and runtime directory
 
@@ -258,6 +282,7 @@ by every code whose round had one, even when the round also timed out or failed 
 | --- | --- | --- | --- |
 | `grant_unavailable` | which of the task type, grant, context identity or entries is missing | `input` | none |
 | `grant_malformed` | the first grant entry that is not an object with a worktree-relative path and a level of `rw`, `ro` or `names`, and what is wrong with it | `input` | none |
+| `worktree_misplaced` | the worktree, the primary worktree's `.claude/worktrees/` where it must lie directly, or what Git said when it found no primary worktree | `environment` | none |
 | `run_directory_denied` | the deny rule that would cover the worker's own directories of the runtime directory | `environment` | none |
 | `snapshot_failed` | the Git command that failed and its output | `environment` | none |
 | `launch_failed` | the command that could not be started and the operating system's error | `environment` | none |
@@ -356,9 +381,17 @@ The refusal of a worker whose model the map gives no id for its backend SHALL na
 
 On both backends the host SHALL pass on to every worker round exactly the proxy variables that [Proxy](#proxy) derives from its own environment.
 
+### req.workers.placement — A worker runs only inside `.claude/worktrees/`
+
+The host SHALL refuse, before it generates any settings, write hook or [permission extension](../../glossary.json#concept.permission-extension), a worker whose worktree does not lie directly in `.claude/worktrees/` of its repository's primary worktree.
+
 ### req.workers.no-git — Workers never see Git
 
 A worker SHALL have no access to Git metadata through any tool.
+
+### req.workers.git-paths-denied — Every Git administrative path is hidden
+
+On both backends the host SHALL have every Git administrative path that [Placement](#placement) lists denied to the worker's file tools and to its sandbox, wherever the repository lies.
 
 ### req.workers.audit-every-round — Every round is audited
 

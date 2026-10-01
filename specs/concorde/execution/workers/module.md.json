@@ -50,7 +50,8 @@
           "concept.run-store",
           "concept.run-progress-file",
           "concept.unbound-run",
-          "req.execution.no-writing-worker"
+          "req.execution.no-writing-worker",
+          "concept.unbound-checkout"
         ]
       },
       {
@@ -116,6 +117,7 @@
         "src/concorde/harness/progress.py",
         "src/concorde/harness/audit.py",
         "src/concorde/harness/runs.py",
+        "src/concorde/harness/placement.py",
         "tests/concorde/harness/workers/",
         "prompts/workers/common/"
       ]

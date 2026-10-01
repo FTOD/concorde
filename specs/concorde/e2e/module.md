@@ -25,10 +25,13 @@ the way a user's project is set up: a repository SWE-bench names, or another tha
 fetched at a pinned revision into the **end-to-end root**, with the Concorde of this checkout
 installed and initialized, a [worker configuration](../glossary.json#concept.worker-configuration)
 written and a task open, bound to the root [Module](../glossary.json#concept.module). The end-to-end root is `CONCORDE_E2E_ROOT` when it
-is set, and otherwise `concorde-e2e` in the system's temporary directory (`/tmp/concorde-e2e` on
-Linux), never the developer's home: test projects are throwaway, and Claude Code keeps no trust for
-the home directory itself. The developer reads a test project's Specs, runs and records, and removes
-the directory, or prepares the next one under another name.
+is set, and otherwise this checkout's `.claude/worktrees/`, which Git ignores; each test project is
+the directory `test-<name>` there, `<name>` being the repository's name or the one `--name` gives.
+Test projects lie there for the reason every worktree a worker runs in lies in a `.claude/worktrees/`:
+one known placement, where nothing of the developer's home but the checkout is involved, and the
+Harness hides every Git administrative path of the project from its workers wherever it lies. Test
+projects are throwaway: the developer reads a test project's Specs, runs and records, and removes
+its directory when the test is done, or prepares the next one under another name.
 
 **Headless run and driver run.** A test project runs a workflow in one of two ways, which answer
 different questions. A **headless run** is what a user's task session does: a real
@@ -146,16 +149,16 @@ print:
 
 ```text
 $ python3 scripts/e2e/e2e.py prepare psf/requests --rev v2.31.0
-{"project": "/tmp/concorde-e2e/requests", "repository": "psf/requests", "revision": "v2.31.0",
- "task": "adopt", "worktree": "/tmp/concorde-e2e/requests/.claude/worktrees/adopt"}
+{"project": "…/.claude/worktrees/test-requests", "repository": "psf/requests", "revision": "v2.31.0",
+ "task": "adopt", "worktree": "…/.claude/worktrees/test-requests/.claude/worktrees/adopt"}
 
-$ python3 scripts/e2e/e2e.py run /tmp/concorde-e2e/requests --via claude
+$ python3 scripts/e2e/e2e.py run .claude/worktrees/test-requests --via claude
 {"workflow": "brownfield", "workspace": "adopt", "mode": "no-ask", "status": "ok",
  "steps": [{"key": "survey", "status": "ok", …}, {"key": "scaffold", …}, …,
            {"key": "delivery", "status": "ok", …}],
  "decisions": […], "open_questions": […], "problems": […], …}
 
-$ python3 scripts/e2e/e2e.py watch /tmp/concorde-e2e/requests
+$ python3 scripts/e2e/e2e.py watch .claude/worktrees/test-requests
 {"runs": [{"run": "r-…-survey-…", "workspace": "adopt", "phase": "finished", "status": "ok", …}, …],
  "workflows": {"adopt": [{"key": "survey", "run": "r-…-survey-…", "superseded": false}, …]}}
 ```

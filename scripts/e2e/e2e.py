@@ -13,32 +13,32 @@ step agents running the commands they are given without a model.
 
 A test project's worker configuration names project model names, resolved on this machine through
 the developer's own model map, which prepare checks first; ``--worker-model`` takes such a name.
-    python3 scripts/e2e/e2e.py trust /tmp/concorde-e2e/requests
-    python3 scripts/e2e/e2e.py run /tmp/concorde-e2e/requests --via claude
-    python3 scripts/e2e/e2e.py watch /tmp/concorde-e2e/requests
+    python3 scripts/e2e/e2e.py trust .claude/worktrees/test-requests
+    python3 scripts/e2e/e2e.py run .claude/worktrees/test-requests --via claude
+    python3 scripts/e2e/e2e.py watch .claude/worktrees/test-requests
 
 Any headless main session, with a prompt of the developer's, and the dogfood scenarios, in which a
 develop install from a Concorde clone with a known fault must be reported, not worked around:
 
-    python3 scripts/e2e/e2e.py session start /tmp/concorde-e2e/requests --prompt-file ask.md
+    python3 scripts/e2e/e2e.py session start .claude/worktrees/test-requests --prompt-file ask.md
     python3 scripts/e2e/e2e.py session show <session directory>
     python3 scripts/e2e/e2e.py dogfood list
     python3 scripts/e2e/e2e.py dogfood prepare write-hook-rw-directories [--worker-model <model>]
-    python3 scripts/e2e/e2e.py dogfood run /tmp/concorde-e2e/write-hook-rw-directories
-    python3 scripts/e2e/e2e.py dogfood evaluate /tmp/concorde-e2e/write-hook-rw-directories
+    python3 scripts/e2e/e2e.py dogfood run .claude/worktrees/test-write-hook-rw-directories
+    python3 scripts/e2e/e2e.py dogfood evaluate .claude/worktrees/test-write-hook-rw-directories
 
 Several live Claude Code main sessions at once in one project, checking that a run wakes only its
 owner while the others can see it:
 
     python3 scripts/e2e/e2e.py prepare psf/requests --rev v2.31.0 --name owners --task t1
-    python3 scripts/e2e/e2e.py owners /tmp/concorde-e2e/owners --task t1
+    python3 scripts/e2e/e2e.py owners .claude/worktrees/test-owners --task t1
 
 A SWE-bench case is prepared at its base commit under its own name, and a delivered change is
 graded with the case's tests, which Concorde's workers never see:
 
     python3 scripts/e2e/e2e.py prepare psf/requests --rev <base_commit> --name psf__requests-3362
-    python3 scripts/e2e/e2e.py grade /tmp/concorde-e2e/psf__requests-3362 --instance case.json \
-        --python /tmp/concorde-e2e/psf__requests-3362/.venv/bin/python
+    python3 scripts/e2e/e2e.py grade .claude/worktrees/test-psf__requests-3362 --instance case.json \
+        --python .claude/worktrees/test-psf__requests-3362/.venv/bin/python
 
 Every command prints one JSON object; a failure prints ``{"error": ...}`` with what failed, the
 command and its output, and exits 1.
@@ -66,6 +66,7 @@ from common import (  # noqa: E402
     E2EError,
     clone,
     e2e_root,
+    test_directory,
     repository_url,
     run,
 )
@@ -160,7 +161,8 @@ def prepare(
     python: str | None = None,
     worker_model: str | None = None,
 ) -> dict:
-    """Clone ``repo`` at ``rev`` under ``root`` as ``name`` (the repository's name by default),
+    """Clone ``repo`` at ``rev`` under ``root`` as ``test-<name>`` (``name`` being the
+    repository's name by default),
     install and initialize Concorde, recording ``python`` as the project's interpreter when given,
     write its worker configuration (every worker on ``worker_model``, or this checkout's models)
     and open ``task``."""
@@ -172,7 +174,7 @@ def prepare(
             known=", ".join(repositories()),
         )
     require_mapped(workers)
-    project = root / (name or repo.split("/")[-1])
+    project = test_directory(root, name or repo.split("/")[-1])
     if project.exists():
         raise E2EError(
             "project_exists",

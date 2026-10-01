@@ -90,12 +90,19 @@ class E2ETests(unittest.TestCase):
         with self.assertRaises(e2e.E2EError) as raised:
             e2e.prepare("someone/else", "v1", Path(tempfile.mkdtemp()), "adopt")
         self.assertEqual("unknown_repository", raised.exception.code)
-        # Test projects are throwaway: they never land in the developer's home.
+        # Test projects lie in this checkout's .claude/worktrees/, which Git ignores, as
+        # test-<name>.
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("CONCORDE_E2E_ROOT", None)
             root = e2e.e2e_root()
-        self.assertEqual(Path(tempfile.gettempdir()) / "concorde-e2e", root)
-        self.assertFalse(root.is_relative_to(Path.home()))
+        self.assertEqual(REPOSITORY_ROOT / ".claude/worktrees", root)
+        self.assertEqual(root / "test-requests", e2e.test_directory(root, "requests"))
+        ignored = subprocess.run(
+            ["git", "check-ignore", "-q", ".claude/worktrees/test-requests/"],
+            cwd=REPOSITORY_ROOT,
+            check=False,
+        )
+        self.assertEqual(0, ignored.returncode)
 
     def prepare_committing(self, worker_model: str | None) -> tuple[dict, dict]:
         """Prepare a test project with the clone and every command stood in for; what `prepare`

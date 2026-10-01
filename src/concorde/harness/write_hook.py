@@ -28,7 +28,8 @@ def decide(data: dict, grant: dict) -> str | None:
     if resolved != worktree and not resolved.startswith(worktree + "/"):
         return f"{target} is outside the task worktree"
     relative = resolved[len(worktree) + 1 :]
-    if relative == ".git" or relative.startswith(".git/"):
+    # The worktree's own .git and every submodule's, at any depth.
+    if ".git" in relative.split("/"):
         return "Git metadata is not available to workers"
 
     def listed(level: str) -> bool:

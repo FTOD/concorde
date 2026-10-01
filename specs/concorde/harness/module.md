@@ -40,8 +40,9 @@ environment are what the Harness generates.
 `CLAUDE_CONFIG_DIR`) and hold three layers from the same grant.
 **[Deny rules](../glossary.json#concept.deny-rules)** cover the file tools. They deny Read and Edit
 for every grant-omitted task-worktree path and every `names` path, Edit for every `ro` path, and
-Read and Edit for each ungranted directory as a whole, the primary worktree, `.git`,
-`~/.claude` and the runtime directory's `control/` and `config/`; the
+Read and Edit for each ungranted directory as a whole, the primary worktree but for the way to the
+task worktree, every Git administrative path of the repository, `~/.claude` and the runtime
+directory's `control/` and `config/`; the
 [Claude Code mechanics](claude-code.md#deny-rules) list them exactly. They hold under
 `bypassPermissions` and make Grep silently omit denied files. Since Claude Code applies `Read`
 denials to Bash too, they never cover system directories or the **runtime paths**: the paths Bash
@@ -51,8 +52,8 @@ The **[write hook](../glossary.json#concept.write-hook)** makes `rw` the exact w
 denying any other Edit or Write with a reason naming the path's level; for a path outside the
 grant the reason says both that a file no Module declares needs a `specify` task first and that a
 file another Module declares needs that Module bound. It says nothing about `rw` and never governs
-reads. The Bash sandbox denies reading the worktree and `$HOME` except `ro` and `rw` files and
-runtime paths, allows writing only the `rw` files and the run's `work/`, `home/` and temporary
+reads. The Bash sandbox denies reading the worktree, `$HOME`, the primary worktree and every Git
+administrative path, except `ro` and `rw` files and runtime paths outside those Git paths, allows writing only the `rw` files and the run's `work/`, `home/` and temporary
 directory, allows no network, and ignores unsandboxed-command requests. `names` files are readable
 by no tool, only named in the brief. The tool set of each [task type](../glossary.json#concept.task-type) is chosen here too.
 Exact shapes: [Claude Code mechanics](claude-code.md).
@@ -245,7 +246,14 @@ inputs, including a worker's runtime directory and runtime paths from Workers.
 <a id="uses-spec"></a>
 
 **Spec core** computes the [grant](../glossary.json#concept.grant) a worker's
-harness is generated from. The Harness relies on the grant listing every path's level (`rw`, `ro`,
+harness is generated from. From Workers the Harness also receives, besides the grant, the run's
+runtime directory and runtime paths, the primary worktree of the task worktree's repository and
+the repository's **Git administrative paths**: its common Git directory, the worktree's own Git
+directory, every `.git` entry inside the worktree and the Git directories those point to, which
+Workers finds once it has checked that the worktree lies directly in the primary worktree's
+`.claude/worktrees/` ([placement](../execution/workers/launch.md#placement)). The Harness hides
+each of them, and the primary worktree as it hides the user's home, wherever the repository lies;
+it never looks for Git paths itself beyond the `.git` entries it meets in the task worktree. The Harness relies on the grant listing every path's level (`rw`, `ro`,
 `names`, ungranted omitted); it never computes or widens a grant, only receives it frozen from
 Workers. It generates nothing from a malformed grant: one that has no `entries` list, or an entry
 that is not an object with a non-empty path relative to the task worktree, never absolute and never
@@ -300,15 +308,15 @@ flags and environment listed here; the Harness generates everything the settings
 
 | Surface | Mechanism | What it stops |
 | --- | --- | --- |
-| Read, Glob, Grep | `permissions.deny` for the grant's complement in the task worktree; the primary worktree; `.git`, `~/.claude` with Claude Code's credential file | Ungranted/`names` reads; Grep silently omits them |
+| Read, Glob, Grep | `permissions.deny` for the grant's complement in the task worktree; the primary worktree and the user's home but for the way to the task worktree and the runtime paths; every Git administrative path; `~/.claude` with Claude Code's credential file | Ungranted/`names` reads; Grep silently omits them |
 | Edit, Write | Same deny rules, plus a write-only PreToolUse hook denying non-`rw` paths, reason naming the level | `ro` edits or new files — deny alone can't, since deny beats allow |
-| Bash | Sandbox: `denyRead` worktree/`$HOME`, `allowRead` granted files + runtime paths, `allowWrite` `rw` files + the runtime directory's `work/`, `home/`, `tmp/`, no network, `allowUnsandboxedCommands: false` | Ungranted reads, `ro` writes, network, `dangerouslyDisableSandbox` |
+| Bash | Sandbox: `denyRead` worktree/`$HOME`/primary worktree/Git paths, `allowRead` granted files + runtime paths, `allowWrite` `rw` files + the runtime directory's `work/`, `home/`, `tmp/`, no network, `allowUnsandboxedCommands: false` | Ungranted reads, `ro` writes, network, `dangerouslyDisableSandbox` |
 | Permission mode | `bypassPermissions` via `--allow-dangerously-skip-permissions`; deny rules/hook/sandbox are the boundary | Nothing alone; `dontAsk` denies writes outside the working dir even when allowed |
 | Working directory | The runtime directory's `work/`, never the task worktree | Claude Code adding the worktree to the Bash sandbox's read/write set |
 | Tool set | `--tools` per task type, never WebFetch/WebSearch, no agent tool | Web access via tools, workers starting other agents |
 | MCP | `--strict-mcp-config` with no servers | Any tool beyond the listed ones |
 | Claude state/instructions | Own `CLAUDE_CONFIG_DIR`, cleared env, `CLAUDE_CODE_DISABLE_CLAUDE_MDS=1`, `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` | User settings, memory, skills, plugins, transcripts, project instructions |
-| Git | No tool reads `.git`; diffs belong to Workers and commits to Delivery | A worker inspecting or rewriting history |
+| Git | No tool reads or writes a Git administrative path, inside or outside the user's home; diffs belong to Workers and commits to Delivery | A worker inspecting or rewriting history |
 | Changes | Workers audits `git diff`/untracked files against the grant each round | Any remaining write outside `rw` counting as a result |
 | Limits | Timeout, `--max-turns`, `--max-budget-usd`, kill of the process group at round end | Runaway runs and leftover processes |
 
@@ -317,8 +325,10 @@ flags and environment listed here; the Harness generates everything the settings
 - The Claude or pi process, the write hooks and the extensions are not sandboxed. The file-tool
   boundary is only as good as the generated deny rules, hooks and extensions are complete and
   correct.
-- Deny rules cover the task worktree and home directory; system directories and other paths outside
-  the home stay readable to every tool, since Bash needs them to run anything.
+- Deny rules cover the task worktree, the primary worktree, the Git administrative paths and the
+  home directory; system directories and other paths outside them stay readable to every tool,
+  since Bash needs them to run anything. A primary worktree outside the home is therefore hidden
+  like one inside it, and so is its Git metadata.
 - A read denial's message is Claude Code's generic "denied by your permission settings", so the
   brief states the grant; write denials explain themselves via the hook.
 - A single `rw` file granted to Bash is bind-mounted, so it can't be deleted or renamed from Bash,
@@ -375,7 +385,11 @@ Module that applies it, and the tests that verify those requirements exercise th
   the deny rules
   ([req.workers.read-denials](../execution/workers/launch.md#req.workers.read-denials)), the Bash
   sandbox ([req.workers.bash-sandbox](../execution/workers/launch.md#req.workers.bash-sandbox)),
-  no Git ([req.workers.no-git](../execution/workers/launch.md#req.workers.no-git)), the same grant
+  no Git ([req.workers.no-git](../execution/workers/launch.md#req.workers.no-git)) through every
+  Git administrative path
+  ([req.workers.git-paths-denied](../execution/workers/launch.md#req.workers.git-paths-denied)),
+  only in a worktree of `.claude/worktrees/`
+  ([req.workers.placement](../execution/workers/launch.md#req.workers.placement)), the same grant
   on pi ([req.workers.pi-same-grant](../execution/workers/pi.md#req.workers.pi-same-grant)), the
   permission extension's file tools, sandbox, configuration and limits
   ([req.workers.pi-file-tools](../execution/workers/pi.md#req.workers.pi-file-tools),

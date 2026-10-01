@@ -87,9 +87,13 @@ def git(root, *arguments):
 
 class WorkerProject:
     """A committed fixture project: A binds ``src/a/`` and ``src/new.py``; B binds ``src/bmod/``;
-    A's configured check passes while ``src/a/flag`` is absent or says ``ok``."""
+    A's configured check passes while ``src/a/flag`` is absent or says ``ok``.
 
-    def __init__(self, test, *, check=True):
+    ``linked`` makes ``root`` a linked worktree on the branch ``work`` at
+    ``.claude/worktrees/w`` of the primary worktree ``primary``, where a worker may run; otherwise
+    ``root`` is the primary worktree itself, where tasks open their worktrees."""
+
+    def __init__(self, test, *, check=True, linked=False):
         directory = tempfile.TemporaryDirectory()
         test.addCleanup(directory.cleanup)
         # The host running the tests may set proxy variables the worker would pass on; the
@@ -171,6 +175,10 @@ class WorkerProject:
             "-qm",
             "init",
         )
+        self.primary = self.root
+        if linked:
+            self.root = self.primary / ".claude/worktrees/w"
+            git(self.primary, "worktree", "add", "-q", "-b", "work", str(self.root))
         self.grant = grant(
             SpecRepository(self.root, REPOSITORY_ROOT), ["module.a"], "implement"
         ).value
@@ -228,7 +236,7 @@ class WorkerProject:
 
 class SettingsTests(unittest.TestCase):
     def setUp(self):
-        self.project = WorkerProject(self)
+        self.project = WorkerProject(self, linked=True)
         self.run = RunPaths(
             self.project.base / "runtime", self.project.trace / "workers/x", "x"
         )
@@ -255,7 +263,7 @@ class SettingsTests(unittest.TestCase):
         )
         self.assertIn(f"Edit(/{root}/src/bmod/secret.py)", rules)
         self.assertIn(f"Read(/{root}/checks/**)", rules)
-        self.assertIn(f"Read(/{root}/.git/**)", rules)
+        self.assertIn(f"Read(/{root}/.git)", rules)
         self.assertNotIn(f"Read(/{root}/src/a/calc.py)", rules)
         # A home that holds neither the worktree nor the run is hidden as a whole.
         self.assertIn(f"Read(/{self.project.home}/**)", rules)
@@ -269,7 +277,78 @@ class SettingsTests(unittest.TestCase):
         home = self.project.base
         rules = outside_rules(home, (self.project.root, self.run.work))
         self.assertIn(f"Read(/{home}/home/**)", rules)
-        self.assertFalse(any("/project" in rule for rule in rules))
+        # The directories leading to the worktree stay, their other entries do not.
+        self.assertFalse(
+            any(rule.startswith(f"Read(/{self.project.root}") for rule in rules)
+        )
+        self.assertNotIn(f"Read(/{home}/project/**)", rules)
+        self.assertIn(f"Read(/{home}/project/.git/**)", rules)
+        self.assertIn(f"Read(/{home}/project/src/**)", rules)
+
+    @verifies("scenario.workers.git-hidden-outside-home")
+    def test_every_git_path_is_hidden_with_the_primary_outside_home(self):
+        from concorde.harness.placement import place
+
+        root, primary = self.project.root, self.project.primary
+        # A nested repository's .git inside a writable directory, such as a vendored checkout.
+        nested = root / "src/a/vendor"
+        nested.mkdir()
+        (nested / ".git").write_text(f"gitdir: {self.project.base}/vendor-git\n")
+        (self.project.base / "vendor-git").mkdir()
+        self.assertFalse(primary.is_relative_to(self.project.home))
+        placement = place(root)
+        self.assertEqual(primary, placement.primary)
+        for path in (
+            primary / ".git",
+            root / ".git",
+            nested / ".git",
+            self.project.base / "vendor-git",
+        ):
+            self.assertIn(path, placement.git)
+        rules = deny_rules(
+            root,
+            self.project.grant,
+            self.run,
+            home=self.project.home,
+            primary=placement.primary,
+            git=placement.git,
+        )
+        for path in (primary / ".git", self.project.base / "vendor-git"):
+            self.assertIn(f"Read(/{path}/**)", rules)
+            self.assertIn(f"Edit(/{path}/**)", rules)
+        for path in (root / ".git", nested / ".git"):
+            self.assertIn(f"Read(/{path})", rules)
+            self.assertIn(f"Edit(/{path})", rules)
+        # The primary worktree is hidden but for the way to the task worktree.
+        self.assertIn(f"Read(/{primary}/src/**)", rules)
+        self.assertIn(f"Read(/{primary}/.concorde/**)", rules)
+        self.assertFalse(any(rule == f"Read(/{primary}/**)" for rule in rules))
+        self.assertFalse(
+            any(rule.startswith(f"Read(/{root}/src/a/calc.py") for rule in rules)
+        )
+        filesystem = worker_settings(
+            root,
+            self.project.grant,
+            self.run,
+            python=sys.executable,
+            home=self.project.home,
+            primary=placement.primary,
+            git=placement.git,
+        )["sandbox"]["filesystem"]
+        for path in (primary, *placement.git):
+            self.assertIn(path.as_posix(), filesystem["denyRead"])
+        # The writable directory is allowed whole; its nested .git stays denied, a narrower
+        # denyRead winning inside a wider allowRead.
+        self.assertIn((root / "src/a").as_posix(), filesystem["allowRead"])
+        data = json.loads(
+            write_hook_source(root, self.project.grant)
+            .split("GRANT: dict = ", 1)[1]
+            .split("\n", 1)[0]
+        )
+        self.assertEqual(
+            "Git metadata is not available to workers",
+            write_hook.decide({"tool_input": {"file_path": f"{nested}/.git"}}, data),
+        )
 
     @verifies("scenario.workers.ro-edit-denied")
     def test_ro_files_are_denied_for_edit_but_not_read(self):
@@ -432,7 +511,7 @@ class WorkerRunTests(unittest.TestCase):
     maxDiff = None
 
     def setUp(self):
-        self.project = WorkerProject(self)
+        self.project = WorkerProject(self, linked=True)
         self.root = self.project.root
 
     @verifies("scenario.workers.every-task-type")
@@ -619,7 +698,7 @@ class WorkerRunTests(unittest.TestCase):
 
     @verifies("scenario.workers.run-directory-denied")
     def test_a_run_the_deny_rules_would_disable_is_refused(self):
-        def covering(worktree, grant, run, runtime=(), home=None):
+        def covering(worktree, grant, run, runtime=(), home=None, primary=None, git=()):
             return [f"Read(/{run.root.as_posix()}/**)"]
 
         with patch("concorde.harness.settings.deny_rules", covering):
@@ -628,6 +707,25 @@ class WorkerRunTests(unittest.TestCase):
         self.assertEqual("run_directory_denied", record["error"]["code"])
         self.assertTrue((Path(record["run_directory"]) / "trace.json").exists())
         self.assertEqual([], record["rounds"])
+
+    @verifies("scenario.workers.misplaced-worktree-refused")
+    def test_a_worker_outside_the_primary_worktrees_directory_is_refused(self):
+        elsewhere = self.project.base / "elsewhere"
+        git(self.project.primary, "worktree", "add", "-q", "--detach", str(elsewhere))
+        for worktree in (self.project.primary, elsewhere):
+            with self.subTest(worktree=worktree):
+                record = self.project.run([{}], worktree=worktree)
+                self.assertEqual("failed", record["status"])
+                error = record["error"]
+                self.assertEqual("worktree_misplaced", error["code"])
+                self.assertEqual("environment", error["unhandled"]["reason"])
+                self.assertIn(str(worktree), error["detail"])
+                self.assertIn(
+                    f"{self.project.primary}/.claude/worktrees", error["detail"]
+                )
+                self.assertEqual([], record["rounds"])
+                runtime = self.project.runtime(record)
+                self.assertFalse((runtime / "control/settings.json").exists())
 
     @verifies("scenario.workers.malformed-grant-refused")
     def test_a_run_with_a_malformed_grant_is_refused(self):
@@ -1100,7 +1198,7 @@ class GlossaryTests(unittest.TestCase):
     brief carries the definitions of its terms."""
 
     def setUp(self):
-        self.project = WorkerProject(self)
+        self.project = WorkerProject(self, linked=True)
         root = self.project.root
         for module, anchor in (
             ("a", "realization.a.code"),

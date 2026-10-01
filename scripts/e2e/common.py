@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import os
 import subprocess
-import tempfile
 from pathlib import Path
 
 CHECKOUT = Path(__file__).resolve().parents[2]
-# Where prepared projects live unless CONCORDE_E2E_ROOT says otherwise: under the system's
-# temporary directory, never in the developer's home, since test projects are throwaway.
-DEFAULT_ROOT = Path(tempfile.gettempdir()) / "concorde-e2e"
+# Where prepared projects live unless CONCORDE_E2E_ROOT says otherwise: in this checkout's
+# .claude/worktrees/, which Git ignores and where every worktree a worker runs in lies, each as
+# test-<name>, removed when its test is done.
+DEFAULT_ROOT = CHECKOUT / ".claude/worktrees"
+# The prefix of every test project's directory, and of every scratch clone the tools make there.
+TEST_PREFIX = "test-"
 
 
 class E2EError(Exception):
@@ -38,6 +40,11 @@ def run(command: list[str], cwd: Path, **options) -> subprocess.CompletedProcess
 
 def e2e_root() -> Path:
     return Path(os.environ.get("CONCORDE_E2E_ROOT") or DEFAULT_ROOT).expanduser()
+
+
+def test_directory(root: Path, name: str) -> Path:
+    """The directory of the test project ``name`` under the end-to-end root ``root``."""
+    return root / f"{TEST_PREFIX}{name}"
 
 
 def repository_url(repo: str) -> str:

@@ -89,6 +89,11 @@ class ScenarioTests(unittest.TestCase):
                 )
         self.assertEqual(workers, committed["workers"])
         self.assertEqual(["fast"], prepared["worker_models"])
+        # The scenario lies in the end-to-end root as test-<name>, like every test project.
+        self.assertEqual(
+            str(Path(directory) / "test-write-hook-rw-directories"),
+            prepared["directory"],
+        )
 
     @verifies("scenario.dogfood-scenarios.unmapped-model")
     def test_a_model_the_model_map_cannot_resolve_is_refused_before_preparing(self):

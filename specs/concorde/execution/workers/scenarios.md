@@ -105,6 +105,23 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - THEN it refuses before launch with `run_directory_denied`
 - AND it still writes the run record
 
+### scenario.workers.misplaced-worktree-refused — A worker outside `.claude/worktrees/` is refused
+
+- GIVEN a grant and a worktree that is the primary worktree itself, or a linked worktree of the same repository lying outside the primary worktree's `.claude/worktrees/`
+- WHEN the host is asked to start a worker there
+- THEN it refuses before launch with `worktree_misplaced` and the reason `environment`, naming the worktree and the primary worktree's `.claude/worktrees/`
+- AND it generates no settings, write hook or permission extension
+- AND it still writes the run record
+
+### scenario.workers.git-hidden-outside-home — Every Git path is hidden wherever the repository lies
+
+- GIVEN a primary worktree outside the user's home with a task worktree in its `.claude/worktrees/`, and in a writable directory of the grant a nested repository whose `.git` file points to a Git directory elsewhere
+- WHEN the host prepares a worker in the task worktree
+- THEN the Git administrative paths it hands the Harness are the primary worktree's `.git`, the task worktree's `.git` file, the nested `.git` file and the Git directory it points to
+- AND on the Claude Code backend deny rules forbid Read and Edit of each, and of every entry of the primary worktree that does not lead to the task worktree, while the task worktree's granted files stay readable
+- AND the Bash sandbox denies reading the primary worktree and each Git path, the nested `.git` included although its writable directory is readable
+- AND the write hook refuses the nested `.git` with "Git metadata is not available to workers"
+
 ### scenario.workers.every-task-type — A worker of a task type that writes nothing launches read-only
 
 - GIVEN a `review-architecture` grant, whose task type reads every Module's Specs and writes nothing
@@ -232,7 +249,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 ### scenario.workers.pi-file-tools-denied — pi file tools explain every denial
 
 - GIVEN a running pi worker
-- WHEN it reads a `names` file, an ungranted file, `.git` or a file of its runtime directory's `config/`, or writes a `ro` file or an undeclared file
+- WHEN it reads a `names` file, an ungranted file, the task worktree's `.git`, a submodule's `.git`, a file of the common Git directory, a source file of the primary worktree outside the task worktree, with that primary worktree outside the user's home, or a file of its runtime directory's `config/`, or writes a `ro` file, an undeclared file or a submodule's `.git`
 - THEN each call is denied with the reason the Harness's read or write table gives, prefixed `Concorde grant:`
 - AND no file changes
 

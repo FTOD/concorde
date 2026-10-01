@@ -36,11 +36,12 @@ Concrete situations that show the [requirements](requirements.md) of
 - THEN preparation is refused with `model_unmapped`, naming the entry the map lacks
 - AND nothing is cloned
 
-### scenario.e2e.default-root — Test projects live in the temporary directory
+### scenario.e2e.default-root — Test projects live in the checkout's `.claude/worktrees/`
 
 - GIVEN an environment without `CONCORDE_E2E_ROOT`
-- WHEN the tool resolves the end-to-end root
-- THEN it is `concorde-e2e` in the system's temporary directory, outside the developer's home
+- WHEN the tool resolves the end-to-end root and the directory of the test project `requests`
+- THEN the root is this checkout's `.claude/worktrees/` and the project's directory `test-requests` there
+- AND Git ignores that directory in this checkout
 
 ### scenario.e2e.trust — Trusting a test project
 

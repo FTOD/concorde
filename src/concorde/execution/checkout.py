@@ -2,9 +2,12 @@
 
 An unbound run never works in the worktree it starts in, such as the primary worktree, where main
 sessions merge tasks while it runs: a merge there would change the Specs and code under its workers
-and fail their audit. The runner checks out that worktree's ``HEAD`` detached in a private
-temporary directory with ``git worktree add --detach``, which shares the repository's objects and
-costs no clone, and the run's steps and workers work there. Each submodule the starting worktree
+and fail their audit. The runner checks out that worktree's ``HEAD`` detached as
+``.claude/worktrees/unbound-<run-id>`` of the repository's primary worktree with ``git worktree add
+--detach``, which shares the repository's objects and costs no clone, and the run's steps and
+workers work there: every worktree a worker runs in lies in ``.claude/worktrees/``, where Workers
+knows the repository's Git metadata to hide. A run identity always holds an upper-case ``T``, which
+no task name may, so the name never clashes with a task worktree. Each submodule the starting worktree
 has checked out at the commit ``HEAD`` records, such as a vendored external reference, is checked
 out the same way from its own repository, with the same sparse patterns. The environments the
 project configuration names as runtime paths and Git ignores, such as ``.venv`` and
@@ -14,7 +17,8 @@ submodule checkouts and the checkout itself are removed, and a removal Git refus
 host evidence.
 
 Nothing here writes a file of the starting worktree or its index: ``git worktree add`` and
-``git worktree remove`` change only the repository's administrative files.
+``git worktree remove`` change only the repository's administrative files, and the checkout lies
+in a directory Git ignores, which the runner checks before it creates anything.
 """
 
 from __future__ import annotations
@@ -22,7 +26,6 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
-import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -33,7 +36,9 @@ from .runs import RunError
 # Git never runs a hook of the repository for the checkout: it is the runner's, not a checkout a
 # developer made.
 GIT = ("git", "-c", "core.hooksPath=/dev/null")
-PREFIX = "concorde-unbound-"
+# Where the checkout lies, relative to the primary worktree, and the prefix of its name.
+WORKTREES = ".claude/worktrees"
+PREFIX = "unbound-"
 
 
 def _git(cwd: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
@@ -83,7 +88,7 @@ class Checkout:
         for path in reversed(self.submodules):
             problems += _remove(self.origin / path, self.path / path)
         problems += _remove(self.origin, self.path)
-        shutil.rmtree(self.path.parent, ignore_errors=True)
+        shutil.rmtree(self.path, ignore_errors=True)
         return problems
 
 
@@ -105,12 +110,33 @@ def _remove(repository: Path, path: Path) -> list[dict]:
     ]
 
 
+def _primary(origin: Path) -> Path:
+    """The primary worktree of ``origin``'s repository: the first worktree Git lists."""
+    listed = _git(origin, "worktree", "list", "--porcelain")
+    first = listed.stdout.splitlines()[:2]
+    if (
+        listed.returncode != 0
+        or not first
+        or not first[0].startswith("worktree ")
+        or "bare" in first[1:]
+    ):
+        raise RunError(
+            "checkout_unavailable",
+            f"the repository of {origin} has no primary worktree to hold the checkout of an "
+            f"unbound run in its {WORKTREES}/ (git worktree list --porcelain exited "
+            f"{listed.returncode}: {_said(listed)})",
+        )
+    return Path(os.path.realpath(first[0][len("worktree ") :]))
+
+
 def open_checkout(origin: Path, run_id: str) -> Checkout:
-    """Check out ``origin``'s ``HEAD`` detached in a new private temporary directory.
+    """Check out ``origin``'s ``HEAD`` detached as ``.claude/worktrees/unbound-<run_id>`` of the
+    repository's primary worktree.
 
     Each relative runtime path of the checked-out worker configuration (``runtime`` of
     ``.concorde/workers.json``, by default ``.venv`` and ``node_modules``) that exists in ``origin`` and that Git ignores is linked
-    into the checkout. ``RunError`` ``checkout_unavailable`` when ``HEAD`` names no commit or Git
+    into the checkout. ``RunError`` ``checkout_unavailable`` when ``HEAD`` names no commit, the
+    primary worktree's Git does not ignore the checkout's place, the place is taken or Git
     refuses the checkout, which is then left nowhere.
     """
     head = _git(origin, "rev-parse", "--verify", "--quiet", "HEAD^{commit}")
@@ -121,20 +147,37 @@ def open_checkout(origin: Path, run_id: str) -> Checkout:
             f"(git rev-parse --verify HEAD^{{commit}} exited {head.returncode}: {_said(head)})",
         )
     commit = head.stdout.strip()
+    primary = _primary(origin)
+    relative = f"{WORKTREES}/{PREFIX}{run_id}"
+    path = primary / relative
+    ignored = _git(primary, "check-ignore", "--quiet", relative + "/")
+    if ignored.returncode != 0:
+        raise RunError(
+            "checkout_unavailable",
+            f"the checkout of {commit} for an unbound run belongs at {path}, but Git does not "
+            f"ignore {relative}/ in the primary worktree {primary} (git check-ignore exited "
+            f"{ignored.returncode}), so it would appear there as untracked files; add "
+            f"{WORKTREES}/ to .gitignore",
+        )
+    if os.path.lexists(path):
+        raise RunError(
+            "checkout_unavailable",
+            f"the place {path} of the checkout of {commit} for the unbound run {run_id} is "
+            "already taken",
+        )
     try:
-        parent = Path(os.path.realpath(tempfile.mkdtemp(prefix=PREFIX)))
+        path.parent.mkdir(parents=True, exist_ok=True)
     except OSError as error:
         raise RunError(
             "checkout_unavailable",
-            f"no private temporary directory could be created for the checkout of {commit}: "
+            f"the directory {path.parent} for the checkout of {commit} cannot be created: "
             f"{error}",
         ) from error
-    path = parent / run_id
     added = _git(
         origin, "worktree", "add", "--detach", "--quiet", path.as_posix(), commit
     )
     if added.returncode != 0:
-        shutil.rmtree(parent, ignore_errors=True)
+        shutil.rmtree(path, ignore_errors=True)
         _git(origin, "worktree", "prune")
         raise RunError(
             "checkout_unavailable",

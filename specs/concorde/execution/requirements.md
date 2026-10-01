@@ -115,7 +115,8 @@ worktree the run started in.
 ### req.execution.unbound-origin-untouched — An unbound run leaves its worktree as it was
 
 An unbound run SHALL NOT change any file of the worktree it started in outside that worktree's
-`.concorde/unbound/` and `.concorde/locks/`, nor that worktree's index.
+`.concorde/unbound/` and `.concorde/locks/` and, while the run lasts, its unbound checkout in the
+primary worktree's `.claude/worktrees/`, nor that worktree's index.
 
 ### req.execution.checkout-removed — The checkout does not outlive the run
 

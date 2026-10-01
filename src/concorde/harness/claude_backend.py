@@ -257,7 +257,9 @@ class ClaudeBackend:
     def executable(self, request) -> str:
         return request.claude or os.environ.get("CONCORDE_CLAUDE") or "claude"
 
-    def prepare(self, request, worktree: Path, paths, schema: dict) -> Path:
+    def prepare(
+        self, request, worktree: Path, paths, schema: dict, placement=None
+    ) -> Path:
         """Write the settings and the write hook; return the file whose digest the record keeps."""
         try:
             settings = worker_settings(
@@ -267,6 +269,8 @@ class ClaudeBackend:
                 python=sys.executable,
                 runtime=request.runtime,
                 home=request.home,
+                primary=placement.primary if placement else None,
+                git=placement.git if placement else (),
             )
         except SettingsError as error:
             raise BackendRefusal(
