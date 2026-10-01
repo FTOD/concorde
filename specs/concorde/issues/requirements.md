@@ -60,6 +60,9 @@ the command refuses the report with `no_reporting_module` when the registry has 
 The [Issue](../glossary.json#concept.issue) store SHALL return a receipt, or a disposition's
 revision, only after the record is durably published and committed on the primary branch.
 
+A repeated report returns its earlier receipt only when the committed record holds it, so every
+receipt names a committed report.
+
 ### req.issues.tier-required — Every report carries a tier
 
 The Issue store SHALL accept a report only when it carries one of the [tiers](module.md#tiers)
@@ -94,9 +97,14 @@ The exit status is 2 for an unusable request (codes `usage`, `not_a_project` and
 `unreadable_file`) and 1 for every other refusal, as the
 [bookkeeping command](interface.md#bookkeeping-command) defines.
 
-### req.issues.refusal-writes-nothing — A refused request writes no record
+### req.issues.refusal-writes-nothing — A refused request records nothing
 
-The bookkeeping command SHALL NOT write a record for a request it refuses.
+The bookkeeping command SHALL NOT commit a record, or leave one a read shows, for a request it
+refuses.
+
+It writes none either, except that a write refused with `recovery_failed`, because the record it
+had published could not be put back, leaves that record uncommitted until the next recovery puts
+it back ([recovery](#req.issues.uncommitted-recovered)).
 
 ## Records
 
@@ -126,7 +134,9 @@ reopened.
 
 ### req.issues.closed-kept — Closed Issues stay recorded
 
-The Issue store SHALL NOT delete an Issue record file.
+The Issue store SHALL NOT delete a committed Issue record file.
+
+Recovery removes only a record file no commit holds, which no read ever showed.
 
 A closed Issue keeps its reports and dispositions, so it can be shown and reopened.
 
@@ -152,6 +162,34 @@ tier after every one with it.
 Without that request they list the Issues by identity. Every row shows the Issue's severity, or
 none when its latest report has none, beside its tier, so that whoever chooses what to fix next can
 start from the most severe problems.
+
+### req.issues.committed-visible — Reads show only committed records
+
+The Issue store's reads SHALL return only the records the primary worktree's last commit holds,
+never a record file that is not committed or differs from its committed version.
+
+A record is visible exactly when its write is acknowledged, and a reader during a write, or after
+one that failed or was killed, sees the records as they were committed.
+
+### req.issues.uncommitted-recovered — Uncommitted records are put back before any write
+
+Before it reads the record it changes, every Issue write SHALL put back to its committed version,
+or remove when no commit holds it, every record an earlier write published but did not commit,
+and remove the temporary files of an interrupted
+[file transaction](../glossary.json#concept.file-transaction) there, under the
+[merge lock](../glossary.json#concept.merge-lock) and committing nothing.
+
+A write that left such a record gave no receipt, so putting it back loses nothing acknowledged,
+and its writer may repeat it. A write that fails after publishing its record puts it back itself
+before it refuses.
+
+### req.issues.foreign-change-kept — A record change no write made is kept
+
+Recovery SHALL leave as it is a record change that no Issue write leaves.
+
+While such a change stands, the Issue store refuses every write of that Issue with
+`uncommitted_change`, and writes of other Issues go on. Recovery touches only records an earlier
+write left and temporary files, never another change of the primary worktree.
 
 ### req.issues.revision-checked — Writes never overwrite a newer record
 

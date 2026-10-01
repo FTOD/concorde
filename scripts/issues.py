@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""List, show and check the project's Issues, and record reports and dispositions for the main
-agent; never launch a model.
+"""List, show and check the project's Issues, record reports and dispositions for the main
+agent, and recover records Issue writes published but did not commit; never launch a model.
 
 Every action but ``check`` works on the Issues the primary worktree keeps, from any worktree of the
 project; ``check`` checks the record files of ``--root`` itself. Every refusal prints
@@ -64,6 +64,11 @@ def parser() -> Parser:
     actions.add_parser(
         "check", parents=[common], help="validate every record of --root"
     )
+    actions.add_parser(
+        "recover",
+        parents=[common],
+        help="put back the records Issue writes published but did not commit",
+    )
     report = actions.add_parser("report", parents=[common], help="record a report")
     report.add_argument("--file", required=True, help="Issue report JSON file")
     report.add_argument("--task", help="the task the report belongs to")
@@ -109,6 +114,8 @@ def main(argv=None) -> int:
             answer, status = command.check(root)
             emit(answer)
             return status
+        elif args.action == "recover":
+            emit(command.recover_action(root))
         elif args.action == "report":
             emit(
                 command.report_action(
