@@ -168,7 +168,28 @@ and every file directly in `prompts/workers/`, `prompts/main-session/`, `prompts
 reports what is stale, writing nothing
 ([requirements](requirements.md#req.distribution.build-check-read-only)). `generated/` is
 Git-ignored, so a checkout always rebuilds. `protocol-manifest --write --bind-project` accepts a
-Protocol change's fresh digests, binds the configuration and refreshes this checkout's own copy.
+Protocol change's fresh digests, binds the configuration and refreshes this checkout's own copy, as
+described next.
+
+### Reconciling the Protocol manifest
+
+`protocol-manifest` compares the digests the tracked manifest `protocol/manifest.json`, whose shape
+[Spec core](../spec-tooling/spec/contracts.md#protocol-manifest) defines, records for the rendered
+Protocol assets with those of the current build. It first requires a fresh build and a readable
+tracked manifest whose every asset the build holds; otherwise it reports `invalid` with
+`CONCORDE-PROTOCOL-MANIFEST-001` naming the problem and writes nothing, whatever its flags. Then
+each combination of its two flags does the following, its result's `differences` naming the assets
+whose digests differed from the build's and its `artifacts` what it wrote:
+
+| Flags | Writes | Status |
+| --- | --- | --- |
+| none | nothing | `success` when no digest differs, otherwise `invalid` with `CONCORDE-PROTOCOL-MANIFEST-001` naming the assets that differ |
+| `--write` | the tracked manifest with the build's digests, only when one differs | `success` |
+| `--bind-project` | the configuration's [Protocol binding](../glossary.json#concept.protocol-binding), set to the tracked manifest's version and the digest of its bytes, then this checkout's Protocol copy under `.concorde/protocol/` | `success` when no digest differs; otherwise the binding is written and the copy, which would no longer match the build, is refused with `protocol_mismatch` in a `failed` result, the copy left as it was |
+| `--write --bind-project` | the tracked manifest when a digest differs, then the binding to it and the Protocol copy | `success` |
+
+A Protocol change in this checkout is therefore accepted with both flags; `--write` alone suits a
+checkout whose own configuration is bound otherwise, such as a package a project installs from.
 
 ### The command line
 
@@ -185,7 +206,7 @@ dependencies; an installed copy has no `.venv` and runs on Concorde's own enviro
 | `grant --modules <ids> --type <task type> [--root <worktree>]` | prints a [task type](../glossary.json#concept.task-type)'s grant | [Spec core](../spec-tooling/spec/module.md) |
 | `spec-mcp` | runs the stdio MCP server rooted at `CLAUDE_PROJECT_DIR` or the client's root; it prints no envelope | [Spec MCP server](../spec-tooling/spec-mcp/module.md) |
 | `project-mcp [--name <name>]` | runs the stdio [project MCP server](../glossary.json#concept.project-mcp-server) of the primary worktree; it prints no envelope | [Main session](../coordination/main-session/module.md) |
-| `init --propose --name <name>` or `--apply --proposal <file>` | proposes or applies a project's first [Spec](../glossary.json#concept.spec) | [Spec core](../spec-tooling/spec/module.md) |
+| `init --propose --name <name>` or `--apply --proposal <file>` | proposes or applies a project's first [Spec](../glossary.json#concept.spec); after an apply Distribution adds the glossary import to the `CLAUDE.md` block | [Spec core](../spec-tooling/spec/module.md), with Distribution's glossary import |
 | `task open`, `list`, `show`, `close`, `merge`, `escalate` or `wait` | opens, lists, shows, closes, merges or escalates tasks, or waits for a task, run or lock; prints the task command's own JSON | [Tasks](../coordination/tasks/module.md) |
 | `run <operation>` | runs one [Operation](../glossary.json#concept.operation) in the workspace of the current worktree or, when the Operation allows it, unbound; prints the [run result](../glossary.json#concept.run-result) | [Execution](../execution/module.md), with the catalog of [Operations](../execution/operations/module.md) |
 | `task-validation`, `delivery` or `scaffold` | runs one execution command in the workspace of the current worktree; prints the run result | [Execution](../execution/module.md), with the catalog of [Commands](../execution/commands/module.md) |
@@ -193,14 +214,14 @@ dependencies; an installed copy has no `.venv` and runs on Concorde's own enviro
 | `issues list`, `show`, `check`, `report`, `close` or `reopen` | the Issues bookkeeping command `scripts/issues.py`; prints its own JSON | [Issues](../issues/module.md) |
 | `trace show`, `list` or `prune` | shows a [trace](../glossary.json#concept.trace) with its timing and cost rolled up, lists traces, or removes what retention allows; prints its own JSON | [Tracing](../tracing/module.md) |
 | `build [--check]` | renders or checks the generated files | Distribution |
-| `protocol-manifest [--write] [--bind-project]` | reconciles the Protocol manifest | Distribution |
-| `update [--from <checkout>]` | updates the installed Concorde, as described below; prints the installer's own JSON | Distribution |
+| `protocol-manifest [--write] [--bind-project]` | [reconciles the Protocol manifest](#reconciling-the-protocol-manifest) | Distribution |
+| `update [--from <checkout>]` | updates the installed Concorde, as described below; prints its [update result](contracts.md#contract.distribution.update-result) | Distribution |
 
 Every command but `spec-mcp`, `project-mcp`, `task`, `run`, the execution commands, `workflow`, `issues`, `trace`
 and `update` prints exactly one JSON envelope and exits with its
 status, even when refused ([requirements](requirements.md#req.distribution.one-envelope)); those
 route to their owners, which define their own output and exit codes, except `update`, which prints
-the installer's result or its
+its [update result](contracts.md#contract.distribution.update-result) or its
 [error link](requirements.md#req.distribution.installer-error-links).
 
 The standalone Workers entry point `scripts/available_models.py --backend pi|claude [--json]`
@@ -272,9 +293,10 @@ project where every check passes, it goes through these steps in order:
    `.claude/skills/concorde/SKILL.md`, the build's rendered skill as it is, and a block between
    `<!-- concorde:start -->` and `<!-- concorde:end -->` in the project's `CLAUDE.md`, replaced in
    place on a later install, leaving the rest of the file untouched, and ending with an `@<path>`
-   import of the project's glossary once one is declared, which `concorde init --apply` also adds
-   when it creates the first glossary
-   ([requirements](requirements.md#req.distribution.glossary-import)). The guidance is for Claude
+   import of the project's glossary once one is declared
+   ([requirements](requirements.md#req.distribution.glossary-import)). Distribution's `init` entry
+   point also adds that import after an `init --apply` that created the first glossary, as
+   [the command entry points](#realization.distribution.command) describe. The guidance is for Claude
    Code alone, since the main agent and its task sessions run on Claude Code for now; nothing is
    placed for a pi session, and a project's own `AGENTS.md` is left as it is.
 7. **It installs the workflows.** Every rendered workflow for Claude Code becomes
@@ -309,7 +331,9 @@ project where every check passes, it goes through these steps in order:
    that cannot be read are left as they are for `spec-validation` to report, and a binding Spec
    core refuses is reported in the result, as [below](#when-an-install-fails-halfway).
 
-The receipt names Concorde's own environment under `python` (its path, the requirement it was
+The installer prints the receipt as its result, which
+[the install result](contracts.md#contract.distribution.install-result) defines exactly. The
+receipt names Concorde's own environment under `python` (its path, the requirement it was
 created for, the interpreter uv chose and that interpreter's version), the installed dependencies
 under `dependencies` (the requirements file, the digest of the `uv.lock` they came from and the
 number of packages, or `null` without them), `d2` and the pi runtime under `tools`, the checkout
@@ -421,6 +445,11 @@ its `source` (or `--from <checkout>`); `python3 <checkout>/scripts/install-conco
    validation findings `CONCORDE-UPDATE-001` and `CONCORDE-UPDATE-002` described next name the
    commits too, since between two commits of a
    [Concorde repository](../glossary.json#concept.concorde-repository) the version seldom changes.
+   The mark is replaced whole, so until this write an earlier mark stays as it was. When the
+   project is still marked by an earlier update it has not validated since, the new mark keeps that
+   mark's version, commit and Protocol binding from before, since everything installed since then
+   is still to be validated, and names this update's as the ones after
+   ([requirements](requirements.md#req.distribution.update-mark-kept)).
 
 The mark then decides what validation says. While it is there, `concorde spec-validation` in the
 primary worktree reports `CONCORDE-UPDATE-001` as an error, which also stops a `task merge`; a
@@ -440,7 +469,9 @@ unvalidated -> unvalidated: "spec-validation with\nerrors: CONCORDE-UPDATE-001"
 unvalidated -> unmarked: "spec-validation without\nother errors: CONCORDE-UPDATE-002"
 ```
 
-Open tasks are a separate matter. The result lists them and, when the Protocol copy changed, asks
+Open tasks are a separate matter. The
+[update result](contracts.md#contract.distribution.update-result) lists them and, when the Protocol
+copy changed, asks
 for the primary branch to be merged into each, since their worktrees keep the previous copy until
 then; validation does not wait for that merge.
 
@@ -448,8 +479,11 @@ An update that fails or is interrupted before its install wrote the new receipt 
 rebinds or marks anything, with the previous receipt in place, so running it again updates from
 that install. One that stops after the new receipt, in step 9 of the install or while it rebinds
 or writes the mark ([a failed write](requirements.md#req.distribution.failed-write-reported)), leaves
-the new Concorde installed with the Protocol binding old or new and no mark; running it again
-completes it, but its mark then names the Concorde just installed as the one before. When the
+the new Concorde installed with the Protocol binding old or new and without this update's mark:
+a project that was not marked before has no mark, and running the update again completes it, but
+its mark then names the Concorde just installed as the one before; a project already marked keeps
+its earlier mark, whose before-state the completed update keeps too. A killed update may leave
+`.concorde/update.json.partial` behind. When the
 installed command no longer runs because the failure left its Framework copy or environment
 incomplete, the update is run again with `install-concorde.py --update` from the checkout.
 
@@ -645,7 +679,11 @@ file at a repository-relative path without a symbolic link, never a Spec documen
 prompt includes and is included only by Protocol prompts. A root must be `worker` or `shared` and is
 resolved as instructions an agent reads, so it is audience-consistent when every prompt it includes
 is `worker` or `shared`; text meant for another audience (`ambient`) is never pulled in. Within one
-root a prompt is reached at most once. A leftover is removed only when its bytes still match the
+root a prompt is reached at most once, whatever values its include lines give: a second include line
+reaching it, whether in the same prompt or through a diamond of two prompts that both include it,
+stops the build with `CONCORDE-PROMPT-DIAMOND-001`, naming both include chains from the root, and
+nothing is deduplicated. A text needed twice in one root is therefore kept in two prompts. A
+leftover is removed only when its bytes still match the
 previous manifest; an edited leftover, a link or an unknown file stops the build first.
 
 The build also renders each **skill**, a prompt root that agents load as an Agent Skill, a second
@@ -662,11 +700,22 @@ checkout and every installed project load the very same file.
 The **command entry points** are thin: they parse the command line, call the owning Module's
 function, and, for the distribution and Spec tooling commands other than `spec-mcp` and `update`,
 wrap the outcome in Spec core's shared envelope, so a command's meaning changes only in its owner.
-The commands routed to other owners keep their owners' output unchanged. `spec-validation` is the
-one exception: Spec core still decides every structural finding, but Distribution's entry point
-adds the findings of [an update not yet validated](#updating-an-installed-concorde) to its result
-and removes the update mark `.concorde/update.json` after a result with no other error, as the
-[installer program](#realization.distribution.installer) describes.
+The commands routed to other owners keep their owners' output unchanged. Two Spec core commands
+are the exceptions, where Distribution adds a step of its own to its owner's work:
+
+- `spec-validation`: Spec core still decides every structural finding, but Distribution's entry
+  point adds the findings of [an update not yet validated](#updating-an-installed-concorde) to its
+  result and removes the update mark `.concorde/update.json` after a result with no other error, as
+  the [installer program](#realization.distribution.installer) describes.
+- `init --apply`: Spec core's initialization writes only the project's Specs and configuration,
+  never `CLAUDE.md`. Once it has succeeded, the entry point brings the glossary import of the
+  installed `CLAUDE.md` block up to date, so that the first glossary is imported
+  ([requirements](requirements.md#req.distribution.glossary-import)); a project without that block
+  is left as it is. When that write fails, the result is `failed` with `guidance_failed`, which
+  keeps the initialization's result and has the operating system's error as its cause. The project
+  is initialized then, so the developer repairs the cause and runs `concorde update` or the
+  installer again, which install the block with the import, and never `init --apply` again, which
+  refuses an initialized project.
 
 <a id="realization.distribution.protocol-copy-writer"></a>
 

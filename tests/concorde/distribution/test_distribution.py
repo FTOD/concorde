@@ -70,6 +70,16 @@ def strict_frontmatter(test, text: str) -> dict:
 UV = shutil.which("uv")
 
 
+def contract_schema(identity: str) -> dict:
+    """The schema of one of Distribution's contracts, read from its Spec."""
+    text = (REPOSITORY_ROOT / "specs/concorde/distribution/contracts.md").read_text()
+    for fence in re.findall(r"```concorde-contract\n(.*?)\n```", text, re.DOTALL):
+        body = json.loads(fence)
+        if body["id"] == identity:
+            return body["schema"]
+    raise AssertionError(f"{identity} is not in Distribution's contracts")
+
+
 def which(**found):
     """A stand-in for ``shutil.which`` that finds the real uv and the programs named here."""
     programs = {"uv": UV, **found}
@@ -272,6 +282,35 @@ class BuildTests(unittest.TestCase):
             write_build(root)
         self.assertEqual(before, (root / "generated/build-manifest.json").read_bytes())
 
+    @verifies("scenario.distribution.build-refuses-repeated-include")
+    def test_a_prompt_reached_twice_is_refused(self):
+        root = package_copy(self)
+        before = (root / "generated/build-manifest.json").read_bytes()
+        prompts = root / "prompts"
+        for name, body in (
+            ("left.md", "@prompts/shared-part.md SIDE=left\n"),
+            ("right.md", "@prompts/shared-part.md SIDE=right\n"),
+            ("shared-part.md", "The {SIDE} side.\n"),
+        ):
+            (prompts / name).write_text("---\naudience: shared\n---\n\n" + body)
+        skill = prompts / "main-session/skill.md"
+        skill.write_text(
+            skill.read_text() + "\n@prompts/left.md\n\n@prompts/right.md\n"
+        )
+        with self.assertRaises(BuildError) as raised:
+            write_build(root)
+        message = str(raised.exception)
+        self.assertIn("prompts/shared-part.md is reached twice", message)
+        self.assertIn(
+            "prompts/main-session/skill.md -> prompts/left.md -> prompts/shared-part.md",
+            message,
+        )
+        self.assertIn(
+            "prompts/main-session/skill.md -> prompts/right.md -> prompts/shared-part.md",
+            message,
+        )
+        self.assertEqual(before, (root / "generated/build-manifest.json").read_bytes())
+
     @verifies(
         "scenario.distribution.build-removes-own-leftover",
         "scenario.distribution.build-keeps-edited-leftover",
@@ -305,6 +344,7 @@ class ProtocolTests(unittest.TestCase):
     @verifies(
         "scenario.distribution.protocol-manifest-bind",
         "scenario.distribution.protocol-manifest-report",
+        "scenario.distribution.protocol-manifest-single-flag",
     )
     def test_a_changed_protocol_is_accepted_explicitly(self):
         root = package_copy(self)
@@ -319,6 +359,37 @@ class ProtocolTests(unittest.TestCase):
         report = command("--project-root", str(root), "protocol-manifest")
         self.assertEqual(1, report.returncode)
         self.assertIn("generated/protocol/principles.md", report.stdout)
+        tracked = (root / "protocol/manifest.json").read_bytes()
+        # Binding alone binds the tracked manifest, whose digests no longer match the build, so
+        # refreshing the Protocol copy fails and leaves the copy as it was.
+        alone = command(
+            "--project-root", str(root), "protocol-manifest", "--bind-project"
+        )
+        self.assertNotEqual(0, alone.returncode, alone.stdout)
+        refused = json.loads(alone.stdout)
+        self.assertEqual("failed", refused["status"])
+        self.assertEqual("protocol_mismatch", refused["error"]["code"])
+        self.assertEqual(
+            "sha256:" + hashlib.sha256(tracked).hexdigest(),
+            json.loads((root / ".concorde/config.json").read_text())["protocol"][
+                "digest"
+            ],
+        )
+        self.assertFalse((root / ".concorde/protocol").exists())
+        # Writing alone accepts the digests and binds nothing.
+        written = command("--project-root", str(root), "protocol-manifest", "--write")
+        self.assertEqual(0, written.returncode, written.stdout)
+        self.assertEqual(
+            ["generated/protocol/principles.md"],
+            json.loads(written.stdout)["result"]["differences"],
+        )
+        self.assertNotEqual(tracked, (root / "protocol/manifest.json").read_bytes())
+        self.assertEqual(
+            "sha256:" + hashlib.sha256(tracked).hexdigest(),
+            json.loads((root / ".concorde/config.json").read_text())["protocol"][
+                "digest"
+            ],
+        )
         bound = command(
             "--project-root",
             str(root),
@@ -329,8 +400,6 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(0, bound.returncode, bound.stdout)
         config = json.loads((root / ".concorde/config.json").read_text())
         manifest = (root / "protocol/manifest.json").read_bytes()
-        import hashlib
-
         self.assertEqual(
             "sha256:" + hashlib.sha256(manifest).hexdigest(),
             config["protocol"]["digest"],
@@ -526,6 +595,48 @@ class InstallTests(unittest.TestCase):
         self.assertEqual(
             1, (project / "CLAUDE.md").read_text().count("@specs/project/glossary.json")
         )
+
+    @verifies("scenario.distribution.glossary-import-failed")
+    def test_a_glossary_import_that_cannot_be_written_after_init_is_reported(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        project.mkdir()
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+        install(project, package, d2=False, pi_runtime=False, dependencies=False)
+        concorde = str(project / ".concorde/bin/concorde")
+        proposed = subprocess.run(
+            [concorde, "init", "--propose", "--name", "Demo"],
+            cwd=project,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(0, proposed.returncode, proposed.stdout + proposed.stderr)
+        proposal = package.parent / "proposal.json"
+        proposal.write_text(json.dumps(json.loads(proposed.stdout)["result"]))
+        claude = project / "CLAUDE.md"
+        claude.chmod(0o444)
+        self.addCleanup(claude.chmod, 0o644)
+        applied = subprocess.run(
+            [concorde, "init", "--apply", "--proposal", str(proposal)],
+            cwd=project,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertNotEqual(0, applied.returncode, applied.stdout)
+        refused = json.loads(applied.stdout)
+        self.assertEqual("failed", refused["status"])
+        self.assertEqual("guidance_failed", refused["error"]["code"])
+        self.assertEqual("system_error", refused["error"]["causes"][0]["code"])
+        self.assertIn("concorde update", refused["error"]["remediation"])
+        self.assertTrue(refused["result"])
+        self.assertTrue((project / "specs/project/glossary.json").is_file())
+        self.assertNotIn("@specs/project/glossary.json", claude.read_text())
+        claude.chmod(0o644)
+        with which():
+            update(project, package)
+        self.assertEqual(1, claude.read_text().count("@specs/project/glossary.json"))
 
     @verifies(
         "scenario.distribution.install-busy",
@@ -1157,6 +1268,46 @@ class InstallTests(unittest.TestCase):
             update(project, package)
         self.assertEqual(bound, metadata.read_bytes())
 
+    @verifies("scenario.distribution.install")
+    def test_install_and_update_print_their_contracted_results(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        project.mkdir()
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+        installed = subprocess.run(
+            [sys.executable, str(package / "scripts/install-concorde.py"), str(project)]
+            + ["--without-d2", "--without-pi-runtime", "--without-dependencies"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(0, installed.returncode, installed.stdout + installed.stderr)
+        result = json.loads(installed.stdout)
+        validate(result, contract_schema("contract.distribution.install-result"))
+        self.assertEqual(
+            json.loads((project / ".concorde/install.json").read_text()), result
+        )
+        updated = subprocess.run(
+            [str(project / ".concorde/bin/concorde"), "update"],
+            cwd=project,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(0, updated.returncode, updated.stdout + updated.stderr)
+        report = json.loads(updated.stdout)
+        validate(report, contract_schema("contract.distribution.update-result"))
+        validate(
+            report["receipt"], contract_schema("contract.distribution.install-result")
+        )
+        self.assertEqual(
+            json.loads((project / ".concorde/update.json").read_text()),
+            report["update"],
+        )
+        # Nothing was installed before from a Git checkout, so no commit names either side.
+        self.assertEqual({"from": None, "to": None}, report["update"]["commits"])
+        self.assertEqual([], report["open_tasks"])
+
     @verifies("scenario.distribution.install-binding-failed")
     def test_a_failed_binding_is_reported_and_the_install_kept(self):
         package = package_copy(self)
@@ -1173,6 +1324,7 @@ class InstallTests(unittest.TestCase):
             result = install(
                 project, package, d2=False, pi_runtime=False, dependencies=False
             )
+        validate(result, contract_schema("contract.distribution.install-result"))
         self.assertEqual("system_error", result["binding_error"]["code"])
         self.assertEqual(
             "specs/project/module.md.json",
@@ -1312,9 +1464,44 @@ class InstallTests(unittest.TestCase):
         self.assertEqual(first["files"], receipt["files"])
         self.assertFalse((project / ".concorde/install.json.partial").exists())
         self.assertFalse(mark.is_file())
+        self.assertFalse((project / ".concorde/update.json.partial").exists())
         mark.rmdir()
         update(project, package)
         self.assertEqual("unvalidated", json.loads(mark.read_text())["state"])
+
+    @verifies("scenario.distribution.update-marked-again")
+    def test_an_update_of_a_marked_project_keeps_the_earlier_before_state(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+        install(project, package, d2=False, pi_runtime=False, dependencies=False)
+        update(project, package)
+        mark = project / ".concorde/update.json"
+        # As if the first update had come from an older Concorde and rebound its Protocol.
+        earlier = json.loads(mark.read_text())
+        earlier.update(
+            {
+                "from": "0.0.1",
+                "commits": {"from": "a" * 40, "to": None},
+                "protocol": {
+                    "from": {"version": "1.0.0", "digest": "sha256:old"},
+                    "to": {"version": "2.0.0", "digest": "sha256:new"},
+                },
+            }
+        )
+        mark.write_text(json.dumps(earlier, indent=2) + "\n")
+        # An update that fails before its own mark leaves the earlier one as it was.
+        (project / ".concorde/update.json.partial").mkdir()
+        with self.assertRaises(InstallError) as refused:
+            update(project, package)
+        self.assertEqual("install_failed", refused.exception.code)
+        self.assertEqual(earlier, json.loads(mark.read_text()))
+        (project / ".concorde/update.json.partial").rmdir()
+        state = update(project, package)["update"]
+        self.assertEqual(state, json.loads(mark.read_text()))
+        self.assertEqual("0.0.1", state["from"])
+        self.assertEqual("a" * 40, state["commits"]["from"])
+        self.assertEqual(earlier["protocol"], state["protocol"])
 
     @verifies("scenario.distribution.install-docsite-template")
     def test_an_installed_concorde_proposes_the_docsite_scaffold(self):

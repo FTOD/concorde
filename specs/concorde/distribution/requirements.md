@@ -147,6 +147,13 @@ core's error under `binding_error`.
 
 The mark is the file `.concorde/update.json`, which the project ignores; only an update writes it.
 
+### req.distribution.update-mark-kept — An earlier mark is kept until replaced
+
+`concorde update` of a project still marked by an earlier update SHALL write its own mark with the earlier mark's version, installed commit and Protocol binding from before, and leave the earlier mark as it was until then.
+
+What has not been validated then reaches back to the earlier update, so a second update before a
+validation never hides it.
+
 ### req.distribution.unvalidated-reported — Validation reports an unvalidated update
 
 While the project is Concorde unvalidated, a `concorde spec-validation` in its primary worktree that finds an error SHALL also report `CONCORDE-UPDATE-001` as an error.
@@ -200,7 +207,7 @@ When a file operation of the installer or of `concorde update` fails after the f
 Nothing is rolled back: what the earlier steps wrote stays. The receipt is replaced whole after
 every other installed file, so a failure before it leaves the previous receipt, and a failure
 after it, while the installed files are bound or an update rebinds the Protocol and writes its
-mark, leaves the new receipt without the update's mark. Running the same command again repeats
+mark, leaves the new receipt without this update's mark, an earlier mark staying as it was. Running the same command again repeats
 every step.
 
 ### req.distribution.uv-owns-python — uv creates Concorde's own environment

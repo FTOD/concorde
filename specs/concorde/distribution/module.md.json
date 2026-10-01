@@ -9,6 +9,7 @@
     "title": "Distribution",
     "owns": [
       "specs/concorde/distribution/module.md",
+      "specs/concorde/distribution/contracts.md",
       "specs/concorde/distribution/requirements.md",
       "specs/concorde/distribution/scenarios.md"
     ],
