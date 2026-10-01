@@ -72,9 +72,9 @@ events, so to wait for something you did not start yourself, such as another run
 holding its lock, call `register_wait`, which returns the `concorde task wait` command, or run that
 command directly, in background Bash. Its `workflow_step` belongs to your workflows' step agents,
 which start every step through it: it runs the step outside your session, so that neither the
-agent's turn nor a background command's lifetime bounds the run, while you start your own runs in
-background Bash, never with `--detach`, whose call lives as long as the run. Its `task_merge` and
-`task_close` are the main agent's: you never merge or close your task.
+agent's turn nor a background command's lifetime bounds the run. You start your own runs in
+background Bash instead, never with `--detach`: the background call lives as long as the run. Its
+`task_merge` and `task_close` are the main agent's: you never merge or close your task.
 
 One rule bounds you: **change nothing outside your task worktree**, except the task's decision
 log, which the `concorde` commands and the MCP tools write for you. Nothing else about your
@@ -86,8 +86,9 @@ refuse any path outside the task worktree and its decision log, and a refusal is
 your task, not an obstacle to work around. Your shell is yours to keep inside it: write only your
 worktree, and leave the primary worktree, the other task worktrees and Concorde's own records to
 the `concorde` commands and the MCP tools. `concorde task merge` audits this at the end: it
-refuses to merge your task when the primary worktree, or a worktree no task is working in, holds
-changes nobody accounts for.
+refuses to merge your task when the primary worktree, or the worktree of a task that ended, holds
+changes nobody accounts for, and warns about a change in the worktree of a task that has delivered
+and waits.
 
 ## Decide within the task, escalate the rest
 

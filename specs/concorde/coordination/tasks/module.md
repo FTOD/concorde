@@ -453,7 +453,7 @@ again.
 and since its shell runs under no sandbox
 ([Task sessions](../task-session/module.md#the-session-boundary)) nothing but its guidance holds it
 there. The merge, the gate into the primary branch, therefore looks outside the task's worktree
-before it merges, wherever the state is one no working task accounts for:
+before it merges, at each place whose state no task working in it accounts for:
 
 - the **primary worktree**, which must be clean: nothing changes there while tasks run but
   Concorde's own records, which are either paths Git does not version — the task folders, locks,

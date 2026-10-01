@@ -276,19 +276,27 @@ def _settled(primary: Path, record: dict) -> bool:
 
 def _elsewhere(primary: Path, task_id: str):
     """Every other task's worktree that still exists, with its task, whether that task ended and
-    whether it has delivered and waits."""
+    whether it has delivered and waits.
+
+    A task that ended whose worktree path a task that has not ended now uses, as after a task of
+    the same name was opened again at the same path, is left to that task: the path is the live
+    task's, not the ended one's.
+    """
+    live = {
+        Path(os.path.realpath(record["worktree"]))
+        for record in store._records(primary)
+        if record["id"] != task_id
+    }
     for record in store._records(primary, history=True):
         if record["id"] == task_id:
             continue
         worktree = Path(record["worktree"])
-        if not worktree.is_dir():
+        ended = record["state"] in store.ENDED
+        if not worktree.is_dir() or (
+            ended and Path(os.path.realpath(worktree)) in live
+        ):
             continue
-        yield (
-            record["id"],
-            worktree,
-            record["state"] in store.ENDED,
-            _settled(primary, record),
-        )
+        yield record["id"], worktree, ended, _settled(primary, record)
 
 
 def _changed_outside(primary: Path, task_id: str) -> list[str]:
@@ -308,7 +316,7 @@ def _changed_outside(primary: Path, task_id: str) -> list[str]:
         elif settled:
             warnings.append(
                 f"{held}, and that task has delivered and waits: its own session may have "
-                "written them after delivering, and no other task's session may have; the task "
+                "written them after delivering, which no other task's session may do; the task "
                 "is active again and delivers again before it merges"
             )
     if nobodys:
