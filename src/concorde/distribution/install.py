@@ -109,6 +109,7 @@ INPUT_CODES = frozenset(
         "stale_build",
         "invalid_docsite_template",
         "settings_invalid",
+        "mcp_config_invalid",
         "not_installed",
         "update_source_missing",
         "develop_source_not_repository",
@@ -168,8 +169,8 @@ def _source_commit(package: Path) -> str | None:
 
 
 def _run_progress(concorde: Path) -> dict[str, tuple[Path, dict]]:
-    """The progress file of every run of the current tasks' workspace folders and of the unbound
-    runs, with what it holds, by run identity."""
+    """The progress file of every run of the current tasks' workspace folders, of the unbound
+    runs and of the bound runs in the lobby, with what it holds, by run identity."""
     folders: list[Path] = []
     try:
         tasks = sorted(
@@ -179,16 +180,12 @@ def _run_progress(concorde: Path) -> dict[str, tuple[Path, dict]]:
         tasks = []
     for task in tasks:
         folders.extend(reader.workspace_runs(layout.workspace_folder(task)))
-    try:
-        folders.extend(
-            sorted(
-                item
-                for item in layout.unbound_folder(concorde).iterdir()
-                if item.is_dir()
-            )
-        )
-    except OSError:
-        pass
+    # A bound run keeps its node in the lobby until it holds its workspace's lock.
+    for store in (layout.unbound_folder(concorde), layout.lobby_folder(concorde)):
+        try:
+            folders.extend(sorted(item for item in store.iterdir() if item.is_dir()))
+        except OSError:
+            pass
     found: dict[str, tuple[Path, dict]] = {}
     for folder in folders:
         progress = folder / layout.PROGRESS
@@ -677,9 +674,11 @@ def _place(
     # An initialized project keeps every installed file bound, those this install added too.
     try:
         bind_installation(project)
-    except SpecError:
-        # The Specs changed under the install; validation reports what is left unbound.
-        pass
+    except SpecError as error:
+        # Everything else is installed, so the install still succeeds; the result keeps Spec
+        # core's account, which names any file a failed restore left with new content, and
+        # validation reports what is left unbound.
+        return {**receipt, "binding_error": error.record()}
     return receipt
 
 

@@ -7,6 +7,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -562,6 +563,24 @@ class InstallTests(unittest.TestCase):
         held.enter_context(
             run_lock(Store(concorde, workspace), "r-1", "Execution runner")
         )
+        # A bound run waiting for its workspace's lock keeps its progress file in the lobby.
+        waiting = concorde / "lobby/r-2/status.json"
+        waiting.parent.mkdir(parents=True)
+        waiting.write_text(
+            json.dumps(
+                {
+                    "kind": "command",
+                    "run_id": "r-2",
+                    "name": "delivery",
+                    "workspace": "t1",
+                    "phase": "waiting",
+                    "host_pid": live.pid,
+                }
+            )
+        )
+        held.enter_context(
+            run_lock(Store(concorde, workspace), "r-2", "Execution runner")
+        )
         # A finished run, a run whose runner is gone (its process identifier, recorded in a
         # sandbox's PID namespace, names a live unrelated process here, and its lock file was
         # left behind held by nobody) and the progress file of the running Operation's own
@@ -600,6 +619,9 @@ class InstallTests(unittest.TestCase):
                 f"held by Execution runner (process {os.getpid()}",
                 ".concorde/locks/runs/r-1.lock",
                 ".concorde/tasks/t1/workspace/runs/r-1/status.json",
+                "command run r-2 (delivery, workspace t1",
+                ".concorde/locks/runs/r-2.lock",
+                ".concorde/lobby/r-2/status.json",
             ):
                 self.assertIn(fragment, message)
             self.assertNotIn("r-0", message)
@@ -1135,6 +1157,33 @@ class InstallTests(unittest.TestCase):
             update(project, package)
         self.assertEqual(bound, metadata.read_bytes())
 
+    @verifies("scenario.distribution.install-binding-failed")
+    def test_a_failed_binding_is_reported_and_the_install_kept(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+        refused = SpecError(
+            "specs/project/module.md.json was not restored",
+            "system_error",
+            path="specs/project/module.md.json",
+        )
+        with patch(
+            "concorde.distribution.install.bind_installation", side_effect=refused
+        ):
+            result = install(
+                project, package, d2=False, pi_runtime=False, dependencies=False
+            )
+        self.assertEqual("system_error", result["binding_error"]["code"])
+        self.assertEqual(
+            "specs/project/module.md.json",
+            result["binding_error"]["location"]["path"],
+        )
+        receipt = json.loads((project / ".concorde/install.json").read_text())
+        self.assertNotIn("binding_error", receipt)
+        self.assertEqual(
+            receipt, {k: v for k, v in result.items() if k != "binding_error"}
+        )
+
     @verifies("scenario.distribution.update-keeps-pi-runtime-choice")
     def test_an_update_keeps_a_runtime_that_was_left_out(self):
         package = package_copy(self)
@@ -1186,6 +1235,34 @@ class InstallTests(unittest.TestCase):
         self.assertEqual(
             "environment", refusal("concorde_busy", "busy")["unhandled"]["reason"]
         )
+
+    def test_the_refusal_table_lists_every_refusal_with_its_reason(self):
+        text = (REPOSITORY_ROOT / "specs/concorde/distribution/module.md").read_text()
+        section = text.split("\n### Refusals\n", 1)[1].split("\n### ", 1)[0]
+        table = {}
+        for row in section.splitlines():
+            if row.startswith("| `"):
+                cells = [cell.strip() for cell in row.strip("|").split("|")]
+                for code in re.findall(r"`([a-z0-9_]+)`", cells[0]):
+                    table[code] = cells[2].strip("`")
+        for code, reason in table.items():
+            self.assertEqual(
+                reason, refusal(code, "refused")["unhandled"]["reason"], code
+            )
+        raised = set()
+        for source in (
+            "src/concorde/distribution/install.py",
+            "src/concorde/distribution/tools.py",
+            "src/concorde/distribution/cli.py",
+            "src/concorde/dogfooding/develop.py",
+        ):
+            raised.update(
+                re.findall(
+                    r'(?:InstallError|ToolError|DevelopError|refusal)\(\s*"([a-z0-9_]+)"',
+                    (REPOSITORY_ROOT / source).read_text(),
+                )
+            )
+        self.assertEqual(raised, set(table))
 
     @verifies("scenario.distribution.install-write-failed")
     def test_a_write_failing_after_the_first_write_is_refused(self):

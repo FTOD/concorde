@@ -88,9 +88,9 @@ installer -> project: places
 
 ### An install, step by step
 
-The installer decides everything that could refuse the install before its first write, so a
-refusal leaves the project as it was. The steps drawn dashed run programs and can fail after
-something was written, as any write can, which [When an install fails
+The installer makes its checks and the pinned download before its first write, so a refusal at one
+of them leaves the project as it was. Not every refusal does: the steps drawn dashed run programs
+and can fail after something was written, as any write can, which [When an install fails
 halfway](#when-an-install-fails-halfway) explains.
 
 ```d2 illustrative
@@ -179,7 +179,7 @@ dependencies; an installed copy has no `.venv` and runs on Concorde's own enviro
 
 | Command | Does | Owned by |
 | --- | --- | --- |
-| `spec-validation [target]` | runs the structural checks | [Spec core](../spec-tooling/spec/module.md) |
+| `spec-validation [target]` | runs the structural checks; Distribution adds the findings of [an update not yet validated](#updating-an-installed-concorde) and removes its mark | [Spec core](../spec-tooling/spec/module.md), with Distribution's update findings |
 | `registry --write` or `--check` | regenerates or checks the registry mirror | [Spec core](../spec-tooling/spec/module.md) |
 | `docsite --propose` or `--apply` | proposes or applies the docsite scaffold | [Views](../spec-tooling/views/module.md) |
 | `grant --modules <ids> --type <task type> [--root <worktree>]` | prints a [task type](../glossary.json#concept.task-type)'s grant | [Spec core](../spec-tooling/spec/module.md) |
@@ -232,7 +232,8 @@ project where every check passes, it goes through these steps in order:
    [requirements](requirements.md#req.distribution.installer-fresh-guidance)); with
    `--develop`, a source that Dogfooding's check refuses; a project in which a run's runner holds
    its run lock (`concorde_busy`, described below); a `concorde.json` that names no Python requirement
-   (`invalid_descriptor`); a `.claude/settings.json` that is not a JSON object (`settings_invalid`,
+   (`invalid_descriptor`); a `.claude/settings.json` that is not a JSON object with an optional
+   `permissions.allow` list (`settings_invalid`,
    [checked first](requirements.md#req.distribution.installer-settings-checked)); a `.mcp.json`
    that is not a JSON object with an optional `mcpServers` object (`mcp_config_invalid`,
    [checked as early](requirements.md#req.distribution.installer-mcp-checked)); a machine
@@ -305,7 +306,8 @@ project where every check passes, it goes through these steps in order:
    binds by its exact path becomes an exact entry, and an entry whose file is gone is removed, so the files a newer Concorde adds are bound like those
    initialization bound
    ([requirements](requirements.md#req.distribution.installer-keeps-installation-bound)). Specs
-   that cannot be read are left as they are for `spec-validation` to report.
+   that cannot be read are left as they are for `spec-validation` to report, and a binding Spec
+   core refuses is reported in the result, as [below](#when-an-install-fails-halfway).
 
 The receipt names Concorde's own environment under `python` (its path, the requirement it was
 created for, the interpreter uv chose and that interpreter's version), the installed dependencies
@@ -326,7 +328,9 @@ A project in which a run is still running when the installer checks is refused w
 [run](../glossary.json#concept.run) of an Operation or of an
 [execution command](../glossary.json#concept.execution-command) whose runner holds its
 [run lock](../glossary.json#concept.run-lock) at that moment, found through its
-[run progress file](../glossary.json#concept.run-progress-file); the refusal names each
+[run progress file](../glossary.json#concept.run-progress-file) wherever the
+[run store](../glossary.json#concept.run-store) keeps it, in the lobby too while a bound run waits
+for its workspace's lock; the refusal names each
 ([requirements](requirements.md#req.distribution.busy-named)). The
 [progress file](../glossary.json#concept.progress-file) of an Operation's worker, which lies beside
 the Operation's and names the same runner, is not a run of its own.
@@ -362,11 +366,19 @@ stays, and what the project holds depends on where the install stopped:
 - **At the receipt**: the receipt is replaced whole, so it is either the previous one or the new
   one; a killed installer may leave `.concorde/install.json.partial` behind.
 - **After the receipt**, in step 9: every installed file and the new receipt are in place, and
-  only the installation realization may still lag behind the receipt, since Spec core writes it
-  completely or not at all.
+  only the installation realization may lag behind the receipt. Spec core writes its metadata
+  member, and the root entry's paragraph explaining it when it creates the realization, as one
+  [file transaction](../glossary.json#concept.file-transaction), which it restores when a write
+  fails while the installer runs. When Spec core refuses the binding, the install still succeeds and
+  its result carries Spec core's error under `binding_error`, naming every file a restore the
+  operating system refused left with its new content. An installer killed between the two writes
+  of a new realization, or such a failed restore, can leave the metadata naming the realization
+  without the paragraph that explains it, which `spec-validation` reports.
 
 Running the same install again repeats every step, keeping the `d2` and pi runtime already in
-place, and completes it.
+place, and completes it, with one exception: it does not write a missing paragraph of a
+realization that already exists. The developer then removes that realization from the root
+Module's metadata, after which the next install creates it whole.
 
 ### The pi runtime
 
@@ -452,6 +464,31 @@ project, Concorde checkout or argument corrects it and `environment` otherwise
 ([requirements](requirements.md#req.distribution.installer-error-links)). The caller can therefore
 forward it as the cause of its own link like any other refusal.
 
+Every refusal, with when it happens, its reason and whether it can come after the installer wrote
+something:
+
+| Code | Refused when | Reason | After a write |
+| --- | --- | --- | --- |
+| `invalid_project` | the project is not a directory | `input` | no |
+| `stale_build` | the build is stale, or a render the install places, such as the guidance, is missing | `input` | no |
+| `invalid_docsite_template` | Views' inventory rule rejects the package's docsite template | `input` | no |
+| `develop_source_not_repository`, `develop_source_not_primary`, `develop_source_detached`, `develop_source_dirty` | [Dogfooding's](#uses-dogfooding) source check refuses the checkout of a develop install | `input` | no |
+| `develop_source_unreadable` | Git cannot run to check the checkout of a develop install | `environment` | no |
+| `concorde_busy` | a run's runner holds its run lock | `environment` | no |
+| `invalid_descriptor` | `concorde.json` names no Python requirement or pins no `d2` release, or the pi runtime's lockfile pins no runtime | `input` | no |
+| `settings_invalid` | `.claude/settings.json` is not a JSON object with an optional `permissions.allow` list | `input` | no |
+| `mcp_config_invalid` | `.mcp.json` is not a JSON object with an optional `mcpServers` object | `input` | no |
+| `uv_missing` | `uv` is not on `PATH` | `environment` | no |
+| `npm_missing` | `npm` is not on `PATH` and the pi runtime is still to be placed | `environment` | no |
+| `unsupported_platform` | `concorde.json` pins no `d2` archive for this platform | `environment` | no |
+| `d2_unavailable`, `d2_digest_mismatch`, `d2_archive_invalid` | the pinned `d2` archive cannot be downloaded, does not match its SHA-256 or holds no readable program | `environment` | no |
+| `pi_runtime_failed` | `npm ci` fails to place the pi runtime | `environment` | yes |
+| `python_env_failed` | `uv venv` cannot create Concorde's own environment | `environment` | yes |
+| `python_dependencies_failed` | a step installing the Python dependencies fails | `environment` | yes |
+| `install_failed` | a file operation of the installer or of `concorde update` fails | `environment` | yes |
+| `not_installed` | `concorde update` finds no readable receipt | `input` | no |
+| `update_source_missing` | `concorde update` finds no checkout to update from | `input` | no |
+
 ### After installing
 
 The installer never writes Specs or the registry, except the installation realization of step 9,
@@ -481,7 +518,11 @@ it by updating the binding; `concorde update` does that itself.
 Spec core refusal of such a command prints unchanged in that envelope. The installer calls Spec
 core only to read the Protocol copy and to bind the installed files: the first refuses as a stale
 build before any write, and a Spec core refusal of the second leaves the Specs to `spec-validation`
-and the install successful.
+and the install successful, its result carrying Spec core's
+[error](../spec-tooling/spec/errors.md#contract.spec.error). The binding is one
+[file transaction](../glossary.json#concept.file-transaction), whose limits decide what an
+interrupted binding leaves, as [When an install fails halfway](#when-an-install-fails-halfway)
+explains.
 
 <a id="uses-views"></a>
 
@@ -500,7 +541,11 @@ package's template, so a project's scaffold always finds the template it expects
 **Main session** owns the guidance the main agent receives. Distribution renders it as a prompt
 root and the installer places the rendered
 [main-session guidance](../glossary.json#concept.main-session-guidance) unchanged, and
-refuses to install it missing or stale rather than fall back to an old copy.
+refuses to install it missing or stale rather than fall back to an old copy. Main session also owns
+the [project MCP server](../glossary.json#concept.project-mcp-server): `project-mcp` only starts it,
+and the installer registers it in the project's `.mcp.json`, as step 7 of
+[the install](#installing-into-a-project) says, so that Claude Code starts one process of it for
+each session from the project root; Distribution answers none of its calls.
 
 <a id="uses-dogfooding"></a>
 
@@ -541,6 +586,45 @@ adapter, and the `concorde workflow` command that `workflow` routes to. Distribu
 places them: the build renders each script for Claude Code unchanged in its steps, and the installer places the Claude Code renders and the permission rules
 their step agents need, refusing stale renders like any other build output.
 
+<a id="uses-tasks"></a>
+
+**Tasks** owns `task`: the entry point hands it the rest of the command line, and the task command
+prints its own JSON and sets its own exit status. `concorde update` reads the
+[task records](../glossary.json#concept.task-record) under `.concorde/tasks/`, in the shape of their
+[contract](../coordination/tasks/contracts.md#contract.tasks.record), to
+list each [task](../glossary.json#concept.task) that has not ended, by its identity, branch and
+worktree, skipping a record it cannot read, and asks for the primary branch to be merged into each
+when the Protocol copy changed; it writes no task record. A `task merge` runs `concorde
+spec-validation` in the primary worktree as its default check, which is how an update's mark stops
+a merge until the project validates.
+
+<a id="uses-issues"></a>
+
+**Issues** owns `issues`: the entry point runs Issues' bookkeeping command `scripts/issues.py` with
+the rest of the command line, and its output, such as the
+[receipt](../issues/interface.md#contract.issues.receipt) of a report, and its exit status reach the
+caller unchanged. Distribution itself neither reads nor writes an
+[Issue](../glossary.json#concept.issue).
+
+<a id="uses-spec-mcp"></a>
+
+**Spec MCP server** owns `spec-mcp`: the entry point starts its server, which answers from
+[one root](../spec-tooling/spec-mcp/requirements.md#req.spec-mcp.one-root) and speaks
+[only on standard input and output](../spec-tooling/spec-mcp/requirements.md#req.spec-mcp.stdio-only),
+so the entry point prints no envelope; Distribution resolves no root and answers no query itself.
+
+<a id="uses-workers"></a>
+
+**Workers** owns how a worker runs on its [backend](../glossary.json#concept.worker-backend), the
+[worker configuration](../glossary.json#concept.worker-configuration) and the
+[model map](../glossary.json#concept.model-map). Distribution ships what Workers needs from an
+install: the pi runtime, the sandbox engine in which
+[pi commands run](../execution/workers/pi.md#req.workers.pi-sandbox), whose absence Workers
+refuses with `pi_runtime_missing`, and Workers' discovery entry point
+`scripts/available_models.py` with the Framework runtime. It writes neither the configuration nor
+the map, and its busy check leaves out a worker's [progress
+file](../glossary.json#concept.progress-file), which is not a run of its own.
+
 ### Inside
 
 <a id="realization.distribution.descriptor"></a>
@@ -578,7 +662,11 @@ checkout and every installed project load the very same file.
 The **command entry points** are thin: they parse the command line, call the owning Module's
 function, and, for the distribution and Spec tooling commands other than `spec-mcp` and `update`,
 wrap the outcome in Spec core's shared envelope, so a command's meaning changes only in its owner.
-The commands routed to other owners keep their owners' output unchanged.
+The commands routed to other owners keep their owners' output unchanged. `spec-validation` is the
+one exception: Spec core still decides every structural finding, but Distribution's entry point
+adds the findings of [an update not yet validated](#updating-an-installed-concorde) to its result
+and removes the update mark `.concorde/update.json` after a result with no other error, as the
+[installer program](#realization.distribution.installer) describes.
 
 <a id="realization.distribution.protocol-copy-writer"></a>
 

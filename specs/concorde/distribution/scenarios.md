@@ -23,7 +23,7 @@ Concrete situations that show the [requirements](requirements.md) at work.
 
 ### scenario.distribution.build-workflows — Render every workflow for Claude Code
 
-- GIVEN a workflow catalog with the [brownfield workflow](../glossary.json#concept.brownfield-workflow)
+- GIVEN a workflow catalog whose only workflow is the [brownfield workflow](../glossary.json#concept.brownfield-workflow)
 - WHEN the developer runs `build`
 - THEN `generated/workflows/claude/concorde-brownfield.js` starts with a `meta` block naming `concorde-brownfield`, followed by the Claude Code step adapter and the procedure
 - AND it is the only workflow render under `generated/workflows/`
@@ -97,7 +97,7 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - AND the `d2` release pinned in `concorde.json` for this platform is at `.concorde/tools/d2`, ignored by Git and named in the receipt
 - AND `.gitignore` ignores `.claude/worktrees/`, where task worktrees go, and `.concorde/workspace.json`, their [workspace binding](../glossary.json#concept.workspace-binding)
 - AND every rendered Claude Code workflow is at `.claude/workflows/concorde-<name>.js`
-- AND `.claude/settings.json` allows `Workflow(concorde-brownfield)` and the two `concorde workflow` commands, keeps every setting it had, and the receipt records the added rules
+- AND `.claude/settings.json` allows `Workflow(concorde-brownfield)`, `mcp__concorde__workflow_step` and `Bash(.concorde/bin/concorde workflow report:*)`, keeps every setting it had, and the receipt records the added rules
 - AND the receipt records the package as `source`, mode `normal`, and `source_commit` `null` for a package outside a Git checkout
 - AND nothing is placed under `.pi/`, no `AGENTS.md` is created, and a project's own `AGENTS.md` is left as it is and not listed under `amended`
 - BUT no Spec document, registry or project configuration with its [Protocol binding](../glossary.json#concept.protocol-binding) is created, which only initialization creates
@@ -190,6 +190,7 @@ Concrete situations that show the [requirements](requirements.md) at work.
 ### scenario.distribution.install-busy — An install is refused while a run holds its run lock
 
 - GIVEN an installed project in which the runner of an [Operation](../glossary.json#concept.operation) or [execution command](../glossary.json#concept.execution-command) run still holds its [run lock](../glossary.json#concept.run-lock)
+- AND a bound run still waiting for its workspace's lock holds its run lock, with its [run progress file](../glossary.json#concept.run-progress-file) in the lobby
 - AND its [run store](../glossary.json#concept.run-store) also holds the [progress file](../glossary.json#concept.progress-file) of the running Operation's worker and a run whose run lock nobody holds
 - WHEN the developer installs Concorde again or runs `concorde update`
 - THEN the install is refused with `concorde_busy`, naming each running run with its run lock, the process holding it and its progress file
@@ -227,7 +228,7 @@ Concrete situations that show the [requirements](requirements.md) at work.
 
 ### scenario.distribution.own-python — Concorde ignores the caller's Python
 
-- GIVEN a project where Concorde is installed
+- GIVEN a project where Concorde is installed and that has no task, open or ended
 - AND a caller whose `python3` on `PATH` fails and whose `PYTHONPATH` names a package called `concorde` that fails on import
 - WHEN the caller runs `.concorde/bin/concorde task list`
 - THEN it prints the project's empty task list `[]` and exits with status 0, run by the interpreter of `.concorde/framework/python/`
@@ -269,7 +270,7 @@ Concrete situations that show the [requirements](requirements.md) at work.
 
 ### scenario.distribution.task-worktree-command — The command works in a task worktree
 
-- GIVEN a project where Concorde is installed and committed, and a linked worktree of it, which has no Framework copy of its own
+- GIVEN a project where Concorde is installed and committed, that has no task, open or ended, and a linked worktree of it, which has no Framework copy of its own
 - WHEN `.concorde/bin/concorde task list` of the linked worktree runs
 - THEN it runs the primary worktree's Framework copy, prints the empty task list `[]` and exits with status 0
 
@@ -316,6 +317,13 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - THEN every file the receipt names outside `.concorde/` that the install added is an exact entry of the installation realization
 - AND once the files are committed, `concorde spec-validation` reports no `CHK.binds.unbound` for them
 - BUT a project that is not initialized gets no Spec, and installing again with nothing new leaves the Specs unchanged
+
+### scenario.distribution.install-binding-failed — A failed binding is reported and the install kept
+
+- GIVEN an initialized project in which Spec core refuses to bind the installation, for instance because writing the root [Module](../glossary.json#concept.module)'s metadata fails
+- WHEN the developer installs Concorde
+- THEN the install succeeds with the new receipt in place, and its result carries Spec core's error under `binding_error`, naming the file concerned
+- BUT the receipt written to `.concorde/install.json` holds no `binding_error`
 
 ### scenario.distribution.update-keeps-pi-runtime-choice — An update keeps a runtime left out
 
