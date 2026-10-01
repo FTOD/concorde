@@ -36,6 +36,40 @@
         "change_id": null,
         "head": "eb6687427361c480d7a7eb0d9a022b0c2c9f5dbb"
       }
+    },
+    {
+      "id": "sha256:b4ae461ec38567761f62e3baee8e20c976ef90bbfe9dfec9eb3c04d6821b36aa",
+      "created_at": "2026-10-01T14:48:06.208598+00:00",
+      "report": {
+        "report_key": "module.workers/6--severity",
+        "tier": "preferred-fix",
+        "type": "bug",
+        "subtype": null,
+        "title": "Pre-launch configuration refusals lack a canonical error-link contract",
+        "description": "Workers names its pre-launch configuration refusals but does not define the resolver's error-link actor, reasons and cause rules. The consumer expects a component link, while the published Workers error table covers only runs.\n\nSuggested repair: Add a resolver failure contract covering all configuration, map and backend refusal codes, including level, actor, reason, detail, causes and caller wrapping. Make clear that resolution fails before creation of a worker run or run record, and align it with Operations' worker_model_unavailable rule.\n\nOther Modules concerned: module.operations, module.tracing",
+        "impact": "The configuration reader and its callers cannot derive a complete, consistent resolver error link from Workers' selected specification.",
+        "basis": "spec_panel run r-20261001T051011-spec_panel-91e80034 judged specs/concorde/execution/workers/module.md at resolving-the-backend, line 324 by the interfaces criterion of the Protocol's Evaluating a Spec; the Specs read: module.md says backend_missing occurs before Workers is called and is a cause of the step's error. It also names config_missing, config_invalid, model_not_enabled, model_unresolved, model_map_missing, model_map_invalid and model_unmapped. launch.md's Errors section applies to worker runs and defines none of those resolver links. Operations' workers.md expects \"the `component` link of Workers' model configuration, with its code and the file\".\n\nThe panel's chair merged r1.1 and verified: Narrowed r1.1: successful resolution inputs and values are already explained, and Operations does specify caller-side wrapping. The remaining gap is Workers' canonical resolver error contract, not complete absence of all error guidance. Severity medium assessed by the main agent on 2026-10-01: Pre-launch configuration refusals lack a defined error link, so resolver errors may be inconsistent though they are still reported.",
+        "owner_target_id": "module.workers",
+        "evidence": [
+          {
+            "path": "specs/concorde/execution/workers/module.md",
+            "description": "resolving-the-backend, cited by the interfaces finding"
+          }
+        ],
+        "severity": "medium",
+        "issue_id": "I-d6cb5b62ea545caba030578b7cc3afb5",
+        "expected_revision": "sha256:6d67150ab6963d350dc4b3e47cff912a466da756bbb0e8578c514445cb3a71d4"
+      },
+      "source": {
+        "invocation_id": "cli-edf63d2d-34be-4abc-8488-d6bd3b2954fb",
+        "agent": "main-agent",
+        "operation": "issues",
+        "phase": "report",
+        "target_id": "module.workers",
+        "context_id": "sha256:faf611ab5bdd47f3ab93968932072ec605e527fb468e96a4f6c20a419e8f0f8c",
+        "change_id": null,
+        "head": "dae63c727a6e0b99cb809d4af336fdbbff6c0ffc"
+      }
     }
   ],
   "dispositions": []
