@@ -536,22 +536,22 @@ runs name the workspace in `holder` only, and a task is named only by Tasks and 
 | [merge lock](../glossary.json#concept.merge-lock) | `merge.lock` | `task merge`, `task open`, `task close` and every write of an [Issue](../glossary.json#concept.issue) | permanent |
 | task lock | `tasks/<task>.lock` | every change of the task's record | removed by the close that moves the task, while it holds the lock |
 | [workspace lock](../glossary.json#concept.workspace-lock) | `workspaces/<workspace>.lock` | every bound run, and `task merge` and `task close` of its task | removed by the close, while it holds the lock; a run that waited for it takes the removed file and is refused, never the file a later taker creates |
-| workflow lock | `workflows/<workspace>.lock` | a [workflow step](../glossary.json#concept.workflow-step) or report while it reads and writes the workflow node | removed by the close, while it holds the workspace lock |
+| workflow lock | `workflows/<workspace>.lock` | a [workflow step](../glossary.json#concept.workflow-step) or report while it reads and writes the workflow node, and `task close` of its task and the close that ends its `task merge`, each after the workspace and merge locks | removed by the close, while it holds the lock; a step or report that waited for it takes the removed file and is refused, never the file a later taker creates |
 | [run lock](../glossary.json#concept.run-lock) | `runs/<run>.lock` | the run's runner only, from before its first progress file until after its result | the runner removes it as it exits; a file left by a runner killed with `SIGKILL` is not held |
 
 <a id="handing-a-lock-on"></a>
 
-**Handing a lock on.** A process that holds a lock may hand it to a process it starts: it passes
-the locked descriptor to that process, which inherits the same open file description and with it
-the `flock`, and names it in that process's environment variable `CONCORDE_INHERITED_LOCKS`, a JSON
-object `{"<lock file>": <descriptor>}`. The library in that process reads and removes the variable
+**Handing a lock on.** A process that holds a lock may hand it to a process it starts, or to the
+program it replaces itself with by `exec`: it passes the locked descriptor to that process, which
+inherits the same open file description and with it the `flock`, and names it in that process's
+environment variable `CONCORDE_INHERITED_LOCKS`, a JSON object `{"<lock file>": <descriptor>}`. The library in that process reads and removes the variable
 once, so that no process it starts in turn believes it inherited the locks; when it takes a lock
 named there, it adopts the descriptor without waiting, provided the descriptor refers to the lock
 file there now and holds its lock, marks it not inherited by the processes it starts, and writes
 its own holder line; otherwise it closes it and takes the lock as usual. Once the process that
-handed the lock on closes its own descriptor, the lock is released exactly when the process it
-started ends. The kernel's lock table keeps naming the process that first took the lock, so
-the holder line, not `/proc/locks`, says who holds a handed lock.
+handed the lock on closes its own descriptor, or replaced itself, the lock is released exactly when
+the process it started, or became, ends. The kernel's lock table keeps naming the process that
+first took the lock, so the holder line, not `/proc/locks`, says who holds a handed lock.
 
 **Waiting for a release.** A process that waits for a lock to be released opens its file and asks
 for a shared `flock`, blocking, in a thread of its own, and lets go of it at once; the kernel grants

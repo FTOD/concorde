@@ -60,7 +60,8 @@
         "target": "module.issues",
         "meaning": "#uses-issues",
         "relies_on": [
-          "concept.issue"
+          "concept.issue",
+          "req.issues.uncommitted-recovered"
         ]
       }
     ],

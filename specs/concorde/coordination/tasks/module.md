@@ -196,14 +196,14 @@ concorde task open severity --goal "let Issue reports carry a severity" --module
 Tasks checks the identity is new and every named [Module](../../glossary.json#concept.module) exists
 in the [registry](../../glossary.json#concept.registry), creates branch `concorde/severity` from the
 primary worktree's commit (or `--base <ref>`), adds a worktree at `.claude/worktrees/severity`
-inside the primary worktree by default (or `--path <dir>`), creates the task's folder
+inside the primary worktree, the only place a task worktree may be, creates the task's folder
 `.concorde/tasks/severity/` in the primary worktree, binds the worktree as a workspace, writes the
 record, the task's [trace node](../../glossary.json#concept.trace-node) and the log, and prints the
 record. The [worker configuration](../../glossary.json#concept.worker-configuration) is tracked by
 Git, so the task carries the one of its base commit: its workers keep the models chosen then,
 whatever the primary branch chooses later, and a change the task makes to its own copy merges with
-the task. A worktree path inside the primary worktree must be ignored by Git there, or the open is
-refused with `worktree_not_ignored`; the installer adds `.claude/worktrees/` to `.gitignore`.
+the task. The worktree path must be ignored by Git in the primary worktree, or the open is refused
+with `worktree_not_ignored`; the installer adds `.claude/worktrees/` to `.gitignore`.
 
 **The binding.** Binding the worktree is what makes it a place where Execution can work. Tasks
 writes its [workspace binding](../../glossary.json#concept.workspace-binding),
@@ -424,7 +424,8 @@ run still holding the workspace lock after that time refuses the merge with `wor
 naming the run. It refuses, before touching anything, a task that could not be closed as merged
 apart from not being merged yet (`not_merged`, `delivery_unverified`, `dirty_worktree`), reading the
 task's delivery commits from Git, a primary worktree with uncommitted or untracked paths or a
-detached `HEAD` (`primary_dirty`), and anything changed outside the task's worktree
+detached `HEAD` (`primary_dirty`), once it has put back there what Issue writes left
+([below](#nothing-changed-outside-the-task)), and anything changed outside the task's worktree
 ([below](#nothing-changed-outside-the-task)). The branch head those checks accepted, the task's latest delivery
 commit, is the commit it merges: it records the task as **merging**, with the primary branch's
 commit before the merge, that checked commit, the history key the task will close under and the
@@ -475,9 +476,14 @@ before it merges, at each place whose state no task working in it accounts for:
   runs, history and [unbound runs](../../glossary.json#concept.unbound-run), all ignored by the
   `.gitignore` the installer writes — or
   committed by the command that writes them, as an [Issue](../../glossary.json#concept.issue)
-  record and a [decision log](../../glossary.json#concept.decision-log) are. Uncommitted or
-  untracked paths there refuse the merge as `primary_dirty`, whose detail also says that a task
-  changes nothing outside its worktree, since the paths may be a task's and not the developer's;
+  record and a [decision log](../../glossary.json#concept.decision-log) are. An Issue write killed
+  between publishing its record and committing it leaves that record behind, so the merge first
+  runs the Issues' recovery, holding the merge lock as every Issue write does, which puts back
+  such records and nothing else. Uncommitted or untracked paths left after it refuse the merge as
+  `primary_dirty`, whose detail also says that a task changes nothing outside its worktree, since
+  the paths may be a task's and not the developer's, and names each Issue record whose change the
+  recovery left as no Issue write's, to be inspected and reverted, or the recovery's own failure,
+  after which `concorde issues recover` puts the records back once its cause is fixed;
 - the **worktree of a task that has ended** and outlived it, which the close normally removes. No
   task will ever validate or deliver what is in it, so a change there refuses the merge as
   `changed_outside`, naming each such worktree, its task and its paths;
@@ -624,10 +630,11 @@ their own checkout until Delivery commits and the main agent merges, so two task
 same Module at once, meeting only at merge time where Git reports conflicts; a shared checkout
 would instead leak one task's half-finished edits into another's checks.
 
-Task worktrees live under `.claude/worktrees/` of the primary worktree because that is where Claude
-Code keeps a session's worktrees, and a task session is a Claude Code session started in its task
-worktree. Git ignores the directory there, so a task's checkout never appears as files of the
-primary branch; the Workers' [deny rules](../../glossary.json#concept.deny-rules) still hide the
+Task worktrees live under `.claude/worktrees/` of the primary worktree, at
+`.claude/worktrees/<task-id>` and nowhere else, because that is where Claude Code keeps a session's
+worktrees, a task session is a Claude Code session started in its task worktree, and every worktree
+Concorde's workers work in lives there. Git ignores the directory there, so a task's checkout never
+appears as files of the primary branch; the Workers' [deny rules](../../glossary.json#concept.deny-rules) still hide the
 primary worktree's other files and the other task worktrees from a worker, since those are siblings
 of the path to its own worktree.
 
@@ -805,8 +812,10 @@ It relies on the [layout](../../tracing/contracts.md#layout), the
 
 **Issues** keeps the project's [Issues](../../glossary.json#concept.issue) in the primary worktree.
 Tasks relies on its store to read whether each Issue a task names as resolving exists and is open,
-and on its bookkeeping command to close them after the merge, for a caller that already holds the
-merge lock, answering or refusing with its own error link, which Tasks passes on in a warning.
+and to put back, before a merge judges the primary worktree clean, what Issue writes left
+uncommitted there, for a caller that already holds the merge lock; and on its bookkeeping command
+to close them after the merge, for such a caller too, answering or refusing with its own error
+link, which Tasks passes on in a warning.
 
 <a id="uses-spec"></a>
 

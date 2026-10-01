@@ -91,13 +91,13 @@ worktree.
 
 ### req.tasks.worktree-ignored — A worktree inside the primary is ignored there
 
-Tasks SHALL refuse to open a task whose worktree path lies inside the primary worktree unless Git
-ignores that path in the primary worktree.
+Tasks SHALL refuse to open a task unless Git ignores its worktree path in the primary worktree.
 
 ### req.tasks.one-worktree — One branch and one worktree per task
 
 Opening a task SHALL create exactly one new branch `concorde/<task-id>` and one new worktree
-checked out on it.
+checked out on it, at `.claude/worktrees/<task-id>` of the primary worktree and nowhere else, where
+every worktree workers work in lives.
 
 Opening refuses when the identity, the branch or the worktree path is already taken, so no two
 tasks ever share a branch or a worktree.
@@ -223,7 +223,9 @@ leaves the worktree and branch it had added, naming them and how to remove them;
 restore the primary branch and the task stays `merging`; a `check_failed` whose checks created
 paths, which the reset leaves in the primary worktree and the refusal names; and a close that
 failed after the merge and its checks succeeded, which leaves the checked merge in place and the
-task `merging`.
+task `merging`. A `concorde task merge` refused after its
+[Issue recovery](#req.tasks.merge-clean-primary) leaves the Issue records that recovery put back as
+it put them back: that recovery changes nothing any Issue read shows.
 
 `concorde task close` and `concorde task escalate` are not atomic either: each changes Git, the
 task record and the decision log in steps that cannot be one transaction. Their refusals after a
@@ -399,6 +401,10 @@ A new path Git cannot version, such as a sandbox's `/dev/null` mount of `.bashrc
 path here, by the same rule as a task worktree's changes. The refusal says that a task changes
 nothing outside its worktree as well as that a merge starts from a clean primary worktree, since
 the paths may be a task's and not the developer's.
+
+Before it judges the primary worktree, holding the merge lock, the merge puts back what Issue
+writes published there and never committed, by the Issues' own recovery, as the next Issue write
+would; the refusal names what that recovery could not put back or left as no Issue write's.
 
 ### req.tasks.merge-nothing-outside — A merge refuses what changed outside every task's reach
 

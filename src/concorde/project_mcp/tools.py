@@ -80,6 +80,14 @@ TEXTS = {"type": "array", "items": TEXT}
 TASK = {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,47}$"}
 ISSUE = {"type": "string", "minLength": 1}
 EVIDENCE = {"type": "array", "items": TEXT, "minItems": 1}
+# What every Issue write tool says of the recovery the write runs first.
+RECOVERY = (
+    " Before writing, it puts back what a killed Issue write left uncommitted; refused with "
+    "recovery_failed when that fails, the record staying uncommitted until the cause is fixed "
+    "and `concorde issues recover` (no tool) puts it back, and with uncommitted_change when the "
+    "Issue's record holds a change no Issue write made, to be inspected and reverted in the "
+    "primary worktree, never committed by hand."
+)
 
 
 def schema(properties: dict, required=()) -> dict:
@@ -288,7 +296,7 @@ TOOLS: dict[str, dict] = {
         "issue_id names at its expected_revision. Evidence paths are checked in the session's "
         "worktree; the report is recorded as the session's (main-agent in the primary worktree, "
         "task-session with its task in a task worktree). Refused at once with merge_busy, naming "
-        "the holder, while another process holds the merge lock.",
+        "the holder, while another process holds the merge lock." + RECOVERY,
         "inputSchema": schema(
             {
                 "report": {"type": "object"},
@@ -301,7 +309,7 @@ TOOLS: dict[str, dict] = {
         "description": "Close an open Issue at its current revision, as `concorde issues "
         "close`: `reason` resolved, duplicate (with `duplicate_of`) or not-actionable, a `note` "
         "and at least one `evidence` item. Refused at once with merge_busy while another "
-        "process holds the merge lock.",
+        "process holds the merge lock." + RECOVERY,
         "inputSchema": schema(
             {
                 "issue": ISSUE,
@@ -316,7 +324,7 @@ TOOLS: dict[str, dict] = {
     "issue_reopen": {
         "description": "Reopen a closed Issue at its current revision, as `concorde issues "
         "reopen`, with a `note` and at least one `evidence` item. Refused at once with "
-        "merge_busy while another process holds the merge lock.",
+        "merge_busy while another process holds the merge lock." + RECOVERY,
         "inputSchema": schema(
             {"issue": ISSUE, "note": TEXT, "evidence": EVIDENCE},
             ["issue", "note", "evidence"],

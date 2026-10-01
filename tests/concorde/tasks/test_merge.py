@@ -628,6 +628,39 @@ class MergeTests(unittest.TestCase):
         self.assert_untouched(before)
         self.assertFalse((self.root / ".concorde/tasks/t1/merges").exists())
 
+    @verifies("scenario.tasks.merge-recovers-issue-records")
+    def test_a_merge_puts_back_what_a_killed_issue_write_left(self):
+        from concorde.issues import store as issues
+
+        edited = issues.issue_path(self.issue("edited"))
+        self.project.open_task("t1")
+        self.deliver()
+        records = self.root / issues.DIRECTORY
+        before = set(records.iterdir())
+        # The write dies after publishing its record and before Git commits it, so nothing puts
+        # the record back.
+        with (
+            patch("concorde.issues.store._commit", side_effect=SystemExit("killed")),
+            patch("concorde.issues.store._put_back", return_value="killed"),
+            self.assertRaises(SystemExit),
+        ):
+            self.issue("killed")
+        (killed,) = set(records.iterdir()) - before
+        (self.root / edited).write_text(
+            (self.root / edited).read_text() + "edited by hand\n"
+        )
+        head = self.head()
+        error = self.refusal("merge", "t1")
+        self.assertEqual("primary_dirty", error["code"])
+        self.assertIn(edited, error["detail"])
+        self.assertIn("no Issue write made", error["detail"])
+        self.assertFalse(killed.exists())
+        self.assertEqual(head, self.head())
+        git(self.root, "checkout", "--", edited)
+        status, value = self.command("merge", "t1", "--check", python(""))
+        self.assertEqual(0, status, value)
+        self.assertEqual("closed", self.state())
+
     @verifies("scenario.tasks.merge-nothing-outside")
     def test_a_change_outside_every_tasks_reach_refuses_the_merge(self):
         self.project.open_task("t1")

@@ -321,6 +321,16 @@ This illustrates [closing with the merge](requirements.md#req.main-session.issue
 
 This illustrates [failures as error chains](requirements.md#req.main-session.issues-own-failures).
 
+### scenario.main-session.issue-recovery — The guidance says how Issue records are put back
+
+- GIVEN the rendered main-session and task-session guidance
+- WHEN a session reads what to do on `recovery_failed`, `uncommitted_change` or a merge's `primary_dirty`
+- THEN the main agent is told to run `concorde issues recover` once the cause of `recovery_failed` is fixed, and to inspect and revert a record no Issue write changed, never to commit it by hand
+- AND that a merge first puts back what a killed Issue write left
+- BUT a task session is told to leave both refusals to the main agent
+
+This illustrates [Issue recovery](requirements.md#req.main-session.issues-recovery).
+
 ## The project MCP server
 
 ### scenario.main-session.project-mcp-session — The server declares its tools and the channel capability

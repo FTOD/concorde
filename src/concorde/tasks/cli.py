@@ -217,7 +217,6 @@ OPTIONS = {
     ],
     "worktree_not_ignored": [
         "add .claude/worktrees/ to .gitignore",
-        "pass --path outside the primary worktree",
     ],
     "session_failed": [
         "have the developer run claude once in the task worktree and accept the trust prompt",
@@ -273,7 +272,6 @@ def parser() -> argparse.ArgumentParser:
     opening.add_argument("--goal", required=True)
     opening.add_argument("--modules", required=True)
     opening.add_argument("--base")
-    opening.add_argument("--path")
     opening.add_argument("--resolves", default="")
     listing = commands.add_parser("list")
     listing.add_argument("--state")
@@ -557,7 +555,6 @@ def main(argv, cwd: Path | None = None) -> int:
                 arguments.goal,
                 [item.strip() for item in arguments.modules.split(",") if item.strip()],
                 base=arguments.base,
-                path=Path(arguments.path) if arguments.path else None,
                 resolves=[
                     item.strip()
                     for item in arguments.resolves.split(",")

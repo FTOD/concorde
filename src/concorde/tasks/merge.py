@@ -282,8 +282,32 @@ def _status(primary: Path) -> list[str]:
     return [entry[3:] for entry in store._changes(primary)]
 
 
-def _primary_branch(primary: Path) -> str:
-    """The primary worktree's branch, refused as ``primary_dirty`` unless it is clean."""
+def _recover_issues(primary: Path) -> str:
+    """Put back, as every Issue write does first, what Issue writes left uncommitted in the
+    primary worktree, so that such a leftover never refuses a merge; the caller holds the merge
+    lock. What the recovery could not put back or left as no write's, for ``primary_dirty``."""
+    try:
+        from ..issues import store as issues
+
+        recovery = issues.recover_issues(primary, locked=True)
+    except Exception as error:  # noqa: BLE001 -- a failed recovery only leaves the paths dirty
+        code = getattr(error, "code", type(error).__name__)
+        return (
+            f"; recovering the Issue records Issue writes left there failed ({code}: {error}), "
+            "so run `concorde issues recover` once its cause is fixed"
+        )
+    if not recovery["left"]:
+        return ""
+    left = "; ".join(f"{item['path']} ({item['reason']})" for item in recovery["left"])
+    return (
+        f"; Issue recovery left these Issue records, whose changes no Issue write made: {left}, "
+        "so inspect and revert each"
+    )
+
+
+def _primary_branch(primary: Path, recovered: str = "") -> str:
+    """The primary worktree's branch, refused as ``primary_dirty`` unless it is clean;
+    ``recovered`` is what Issue recovery said of the paths it did not put back."""
     branch = store._git(primary, "symbolic-ref", "-q", "--short", "HEAD", check=False)
     if branch.returncode != 0:
         head = store._git(primary, "rev-parse", "HEAD").stdout.strip()
@@ -300,7 +324,7 @@ def _primary_branch(primary: Path) -> str:
             f"path(s): {_listed(paths)}; a merge starts only from a clean primary worktree, "
             "so that undoing it cannot touch anyone's work, and a task changes nothing "
             "outside its own worktree, so check whether these paths are the task's before "
-            "committing them",
+            f"committing them{recovered}",
         )
     return branch.stdout.strip()
 
@@ -315,7 +339,9 @@ def _primary_branch(primary: Path) -> str:
 # - the primary worktree must be clean (``primary_dirty`` above). Nothing changes there while
 #   tasks run except Concorde's own records, which are either paths Git does not version (the task
 #   folders, locks, runs, history and unbound runs, all ignored by the installed .gitignore) or
-#   committed by the command that writes them (Issue records, decision logs).
+#   committed by the command that writes them (Issue records, decision logs). An Issue write
+#   killed before its commit leaves its record behind, which the merge puts back first, as the
+#   next Issue write would (``_recover_issues`` above).
 # - a worktree of a task that has ended, and outlived it, is nobody's: a change in it is refused
 #   as ``changed_outside``.
 # - a worktree of a task that has delivered and waits may hold a change of its own session, which
@@ -673,7 +699,7 @@ def merge_task(
 
 def _merge_new(primary: Path, task_id: str, commands: list[list[str]], waited) -> dict:
     record, checked = store.mergeable(primary, task_id)
-    branch = _primary_branch(primary)
+    branch = _primary_branch(primary, _recover_issues(primary))
     outside = _changed_outside(primary, task_id)
     before = _head(primary)
     merging = {

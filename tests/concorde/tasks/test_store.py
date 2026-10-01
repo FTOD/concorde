@@ -284,20 +284,10 @@ class TaskStoreTests(unittest.TestCase):
             (1, "branch_exists"),
             self.refusal("open", "t2", "--goal", "g", "--modules", "module.a"),
         )
-        taken = self.root.parent / "taken"
-        taken.mkdir()
+        (self.root / ".claude/worktrees/t3").mkdir(parents=True)
         self.assertEqual(
             (1, "path_exists"),
-            self.refusal(
-                "open",
-                "t3",
-                "--goal",
-                "g",
-                "--modules",
-                "module.a",
-                "--path",
-                str(taken),
-            ),
+            self.refusal("open", "t3", "--goal", "g", "--modules", "module.a"),
         )
         self.assertEqual(before, self.record())
         self.assertFalse(self.folder("t3").exists())

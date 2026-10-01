@@ -828,3 +828,14 @@ The guidance SHALL tell the main agent and task sessions never to report a failu
 system as an Issue, and to carry its error chain in the decision log and escalation instead.
 
 An Issue system that failed cannot be trusted to record its own failure.
+
+### req.main-session.issues-recovery — The guidance knows how Issue records are put back
+
+The guidance SHALL tell the main agent that a record a `recovery_failed` refusal left uncommitted is
+put back by `concorde issues recover` once the cause the refusal names is fixed; that an Issue record
+whose change no Issue write made, which `uncommitted_change` or a merge's `primary_dirty` names, is
+inspected and reverted, never committed by hand; and that a merge puts back by itself what a killed
+Issue write left; and tell task sessions to leave both refusals to the main agent.
+
+Recovery is the Issue system's own repair of its records in the primary worktree; a session that
+commits or discards such a record by hand may record what no write made, or lose what one did.

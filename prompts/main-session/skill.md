@@ -336,12 +336,17 @@ fails after merging (`check_failed`) is new work, in the task or a new one, neve
 discard someone's change.
 
 Before it merges, `concorde task merge` audits what lies outside the task's worktree, since a task
-changes nothing outside it. `primary_dirty` names uncommitted or untracked paths of the primary
-worktree, and `changed_outside` the worktree of a task that ended and outlived it, which no task
-will ever validate or deliver. A worktree of a task that has delivered and waits only warns, since
-its own session may have written there after delivering. Nothing of this is undone blindly: find
-out what wrote the paths, revert what a task wrote outside its worktree, and have the session of
-the task they belong to commit and deliver what is really its own.
+changes nothing outside it. It first puts back the Issue records a killed Issue write left in the
+primary worktree, as any Issue write does. `primary_dirty` names the uncommitted or untracked paths
+of the primary worktree still left, and `changed_outside` the worktree of a task that ended and
+outlived it, which no task will ever validate or deliver. An Issue record `primary_dirty` names as
+changed by no Issue write was edited by hand: inspect it with `git diff` and revert it. When it says
+the Issue recovery itself failed, fix the cause it names, then run `concorde issues recover`, which
+puts the records back and says what it did and left, and merge again. A worktree of a task that
+has delivered and waits only warns, since its own session may have written there after delivering.
+Nothing of this is undone blindly: find out what wrote the paths, revert what a task wrote outside
+its worktree, and have the session of the task they belong to commit and deliver what is really its
+own.
 
 When any `concorde task` command fails with `merge_incomplete`, a merge (yours or another main
 session's) ended before its checks decided whether it stays, and nothing may build on the primary
@@ -431,11 +436,18 @@ Check that the evidence supports every decision: the store checks its form, not 
 `stale_issue`, read the record again and reconsider before retrying.
 
 **When the Issue system fails.** Never record a failure of the Issue system itself, a refusal of the
-Issue tools or command whose reason is `environment`, such as `merge_busy`, `merge_incomplete` or
-`commit_failed`, as an Issue: an Issue system that failed cannot be trusted to record its own
-failure. Treat it as any other failure, its error chain in the task's decision log and escalation.
-`merge_busy` means a merge, task open or close holds the merge lock that every Issue write takes:
-`register_wait` for the merge lock and write again once it is released.
+Issue tools or command whose reason is `environment`, such as `merge_busy`, `merge_incomplete`,
+`commit_failed`, `recovery_failed` or `uncommitted_change`, as an Issue: an Issue system that failed
+cannot be trusted to record its own failure. Treat it as any other failure, its error chain in the
+task's decision log and escalation. `merge_busy` means a merge, task open or close holds the merge
+lock that every Issue write takes: `register_wait` for the merge lock and write again once it is
+released. `recovery_failed` means a record an Issue write published could not be put back and stays
+uncommitted in the primary worktree, shown by no read: fix the cause the refusal names, such as a
+stale `index.lock` or a refusing commit hook, then run `concorde issues recover` (it has no MCP
+tool), which puts it back, and write again. `uncommitted_change` means the record of the Issue you
+wrote holds a change no Issue write made, such as an edit by hand, which the Issue system neither
+overwrites nor discards: inspect it with `git diff` in the primary worktree, revert it, and write
+again; writes of other Issues are not held up. Never commit such a record by hand.
 
 ## Worker models
 
