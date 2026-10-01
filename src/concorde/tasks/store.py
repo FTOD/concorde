@@ -1703,7 +1703,26 @@ def load_progress_of(folder: Path) -> dict | None:
     return value if isinstance(value, dict) else None
 
 
-def close_locked(
+def close_locked(primary: Path, task_id: str, outcome: str, **options) -> dict:
+    """``close_task`` for a caller already holding the workspace lock and the merge lock, taking
+    the task's workflow lock for the whole close (see ``_close_held``).
+
+    The workflow lock comes last: a workflow step holds it only for work that waits for no other
+    lock, so the close always gets it soon, and a step that took it before the close wrote into the
+    workspace folder before the folder moves, while one that waited for it finds its file removed
+    or its binding gone and writes nothing.
+    """
+    by = options.get("by", "close")
+    with locks.hold(
+        layout.lock_file(concorde(primary), "workflow", task_id),
+        f"`concorde task {by}` of task {task_id}",
+        wait=None,
+        task=task_id,
+    ):
+        return _close_held(primary, task_id, outcome, **options)
+
+
+def _close_held(
     primary: Path,
     task_id: str,
     outcome: str,
@@ -1718,7 +1737,7 @@ def close_locked(
     at: str | None = None,
     by: str = "close",
 ) -> dict:
-    """``close_task`` for a caller already holding the merge lock and the workspace lock.
+    """``close_task`` for a caller holding the workspace, merge and workflow locks.
 
     Removing the worktree, writing the record, ending the trace node, appending to the decision
     log and moving the folder to the history cannot be one transaction, so a refusal after one of
@@ -1895,7 +1914,8 @@ def _end_task_node(primary: Path, task_id: str, closing: dict, ended: str) -> No
 
 def _move_to_history(primary: Path, task_id: str, key: str, again: str) -> None:
     """Move the closed task's folder to the history and remove its task, workspace and
-    workflow locks; the caller holds the workspace lock, so no run of the task runs."""
+    workflow locks; the caller holds the workspace and workflow locks, so no run of the task runs
+    and no workflow step writes, and each waiting for one finds its file removed."""
     folder = task_folder(primary, task_id)
     target = history_folder(primary, key)
     base = concorde(primary)

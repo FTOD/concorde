@@ -9,6 +9,7 @@ import os
 import shutil
 import subprocess
 import sys
+import threading
 import time
 import unittest
 from pathlib import Path
@@ -71,6 +72,19 @@ def snapshot(folder: Path) -> dict:
         for path in sorted(folder.rglob("*"))
         if path.is_file()
     }
+
+
+def wait_blocked(path: Path, timeout: float = 30) -> None:
+    """Return once some process waits for the ``flock`` of ``path``, as ``/proc/locks`` shows."""
+    inode = os.stat(path).st_ino
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        for line in Path("/proc/locks").read_text().splitlines():
+            fields = line.split()
+            if "->" in fields and fields[fields.index("->") + 5].endswith(f":{inode}"):
+                return
+        time.sleep(0.02)
+    raise AssertionError(f"nothing waited for the lock {path}")
 
 
 def git(root, *arguments):
@@ -1652,6 +1666,49 @@ class TaskStoreTests(unittest.TestCase):
         self.assertFalse(any(run_id in str(path) for path in self.history().rglob("*")))
         self.assertFalse(self.folder().exists())
         self.assertFalse(self.lock("workspace", "t1").exists())
+
+    @verifies("scenario.tasks.close-takes-workflow-lock")
+    def test_a_close_waits_for_a_workflow_step_holding_its_lock(self):
+        from concorde.workflows import store as workflows
+
+        self.project.open_task("t1")
+        space = workflows.workspace(self.project.worktree("t1"))
+        holding, release = threading.Event(), threading.Event()
+
+        def step():
+            with workflows.step_lock(space):
+                holding.set()
+                release.wait(30)
+                # What a step writes under the lock moves with the task's folder.
+                space.directory.mkdir(parents=True, exist_ok=True)
+                (space.directory / "written").write_text("step")
+
+        stepping = threading.Thread(target=step)
+        stepping.start()
+        self.assertTrue(holding.wait(30))
+        closing = {}
+        closer = threading.Thread(
+            target=lambda: closing.update(
+                outcome=self.close("t1", "--completed", "--note", "done")
+            )
+        )
+        closer.start()
+        # The close, holding the workspace and merge locks, waits for the workflow lock and has
+        # removed or moved nothing yet.
+        wait_blocked(self.lock("workflow", "t1"))
+        self.assertTrue(self.project.worktree("t1").exists())
+        self.assertTrue(self.folder().exists())
+        self.assertTrue(locks.held(self.lock("workspace", "t1")))
+        release.set()
+        stepping.join(30)
+        closer.join(120)
+        status, value = closing["outcome"]
+        self.assertEqual(0, status, value)
+        self.assertEqual(
+            "step", (self.history() / "workspace/workflow/written").read_text()
+        )
+        self.assertFalse(self.folder().exists())
+        self.assertFalse(self.lock("workflow", "t1").exists())
 
     @verifies("scenario.tasks.closed-run-refused")
     def test_a_run_in_the_worktree_of_a_closed_task_is_refused(self):

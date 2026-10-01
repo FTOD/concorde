@@ -17,7 +17,7 @@ from .. import errors
 from ..spec.schema import ContractError
 from .report import report
 from .step import WAIT, StepError, check_request, run_step
-from .store import WorkflowError, workspace
+from .store import WorkflowError, WorkspaceRetired, workspace
 
 
 class UsageError(Exception):
@@ -92,16 +92,32 @@ def step_request(arguments) -> dict:
 
 
 def refused(error: WorkflowError, command: str) -> int:
-    link = errors.link(
-        "component",
-        f"Workflows (concorde workflow {command})",
-        error.code,
-        str(error),
-        reason="input",
-        explanation="a workflow runs and reports only in a bound workspace whose workflow "
-        "record admits the request",
-        options=["run it in the workspace the workflow belongs to"],
-    )
+    if isinstance(error, WorkspaceRetired):
+        link = errors.link(
+            "component",
+            f"Workflows (concorde workflow {command})",
+            error.code,
+            str(error),
+            reason="environment",
+            explanation="a workflow writes its records only into the folder of a workspace "
+            "that is still bound, and a retired workspace's folder has moved where nothing "
+            "writes any more",
+            options=[
+                "read the workflow's records where the workspace's folder went, such as the "
+                "history of a closed task"
+            ],
+        )
+    else:
+        link = errors.link(
+            "component",
+            f"Workflows (concorde workflow {command})",
+            error.code,
+            str(error),
+            reason="input",
+            explanation="a workflow runs and reports only in a bound workspace whose workflow "
+            "record admits the request",
+            options=["run it in the workspace the workflow belongs to"],
+        )
     sys.stdout.write(json.dumps({"error": link}, indent=2) + "\n")
     return 1
 

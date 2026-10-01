@@ -584,6 +584,13 @@ This illustrates [a merge running the Concorde it started with](requirements.md#
 - AND the waiting run, which wrote only in Execution's lobby, then takes the removed lock file and is refused with `workspace_retired`, its result kept in the lobby and found by its identity
 - AND the history holds nothing of the waiting run and is never written afterwards
 
+### scenario.tasks.close-takes-workflow-lock — A close waits for a workflow step's writes
+
+- GIVEN a task whose workflow lock a [workflow step](../../glossary.json#concept.workflow-step) of its workspace holds while it records its step
+- WHEN the main agent closes the task with `--completed`
+- THEN the close, holding the task's workspace lock and then the merge lock, waits for the workflow lock, and only once the step released it removes the worktree and moves the task's folder to the history, with what the step wrote
+- AND it removes the workflow lock file while still holding the lock, so a step that waited for that lock meanwhile is refused with `workspace_retired` and writes nothing
+
 ### scenario.tasks.closed-run-refused — A run of a closed task is refused
 
 - GIVEN a closed task whose worktree was left in place by hand with its binding

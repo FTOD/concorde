@@ -365,7 +365,12 @@ lock. A run that waits for the lock meanwhile writes nothing into the task's fol
 lobby, outside it, and when it takes the lock after the close, Execution refuses it with
 `workspace_retired`, since the close removed the worktree with its binding and, while still holding
 the lock, the lock file, so its result stays in the lobby and the history stays as the close left
-it. Just before the folder moves,
+it. A [workflow step](../../glossary.json#concept.workflow-step) of the workspace writes its records under the task's workflow lock, which the
+close, and the close that ends a merge, takes last, after the workspace and merge locks, and holds
+from before it removes the worktree until it has removed that lock's file: a step that holds it
+first finishes its writes, which move with the folder, and one that waits for it is refused with
+`workspace_retired` and writes nothing. Since a step never waits for another lock while holding the
+workflow lock, the close waits for it only briefly. Just before the folder moves,
 [Task sessions](../task-session/module.md#ending-claude-sessions) copies each Claude Code task
 session's transcript into the session's node and finishes the node with the session's status, end
 and usage from Claude Code's records, and once the task is closed it removes those sessions

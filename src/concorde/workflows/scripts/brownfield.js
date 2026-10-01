@@ -13,11 +13,11 @@ function ok(outcome) {
   return Boolean(outcome) && outcome.state === "finished" && outcome.status === "ok"
 }
 
-// A step its workflow record refused: the report cannot see it, so its refusal travels with the
-// result.
+// A step its workflow record refused, or refused because its workspace was retired: the report
+// cannot see it, so its refusal travels with the result.
 function unrecorded(outcome) {
   return Boolean(outcome && outcome.error) &&
-    (outcome.error.code === "step_rejected" || outcome.error.code === "step_unrecorded")
+    ["step_rejected", "step_unrecorded", "workspace_retired"].includes(outcome.error.code)
 }
 
 // Whether the procedure must end here whatever the mode: nothing came back, the step is not

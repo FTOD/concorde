@@ -546,10 +546,12 @@ def rendered(result: dict) -> str:
 
 
 def report(space: Workspace, lost: list[str] = ()) -> dict:
-    """Build, check and save the workflow result of a workspace with its rendering."""
-    result = build(space, lost)
-    validate(result, RESULT_SCHEMA)
-    store.record_report(space, result, rendered(result))
+    """Build, check and save the workflow result of a workspace with its rendering, holding its
+    workflow lock; ``WorkspaceRetired`` when the workspace was retired meanwhile."""
+    with store.step_lock(space):
+        result = build(space, lost)
+        validate(result, RESULT_SCHEMA)
+        store.record_report(space, result, rendered(result))
     return result
 
 
