@@ -4,7 +4,7 @@
 {
   "schema_version": 3,
   "id": "I-cbde7d00eba65a7bbdacf14d8b458844",
-  "status": "open",
+  "status": "closed",
   "reports": [
     {
       "id": "sha256:7882a0688eb1886a13d3ee93c78a941adc2767b6907e71a783efbf85e5cd0adc",
@@ -50,6 +50,18 @@
       }
     }
   ],
-  "dispositions": []
+  "dispositions": [
+    {
+      "reason": "resolved",
+      "note": "Fixed by task stale-text-cleanup, merged into the primary branch at b57399d25133e63239c7fa185d146b58dd8d9abd.",
+      "evidence": [
+        "merge commit b57399d25133e63239c7fa185d146b58dd8d9abd",
+        "task stale-text-cleanup"
+      ],
+      "duplicate_of": null,
+      "actor": "main-agent",
+      "created_at": "2026-10-01T12:44:02.012657+00:00"
+    }
+  ]
 }
 ```
