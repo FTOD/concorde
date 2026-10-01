@@ -31,7 +31,9 @@ dimension for an architect, or `context` for a document or promise the worker ne
 given; a short title, the problem, its impact, its evidence and a suggested
 repair, and its [tier](../../glossary.json#concept.issue-tier): `suggestion` when the Spec can be
 relied upon but could serve its reader better, and otherwise the blocking tier that says who may fix
-it, `obvious-fix`, `preferred-fix` or `decision-needed`. A worker reports every blocking finding it
+it, `obvious-fix`, `preferred-fix` or `decision-needed`; and its
+[severity](../../glossary.json#concept.issue-severity), how much the problem matters to a reader or
+a task relying on the Spec, from `critical` down to `low`. A worker reports every blocking finding it
 can establish in one pass, so one round of changes can address them all. `--check-findings` has a
 second worker mark each finding of a Spec review `confirmed` or `disputed` with a reason; a Module
 without findings needs no checker.
@@ -237,14 +239,15 @@ happened not to notice this time. The project's Issues are the state that carrie
 problems from one review to the next: they are project-level, kept by the primary worktree and seen
 at once by every task, session and run, bound and unbound alike, and they are the same records a
 session reads when it looks for work. A problem a review finds is therefore recorded where every
-other concrete problem of the project is, with a tier that says who may fix it, and nothing
+other concrete problem of the project is, with a tier that says who may fix it and a severity that
+says how much it matters, and nothing
 review-specific has to be merged, carried by a delivery or kept in step with them.
 
 The worker, not the Operation, matches a finding with an earlier Issue. Two reviews describe the
 same problem in other words, at another anchor or with other evidence, and only a reader of the
 Specs can tell that it is the same problem; a textual comparison would keep duplicates or merge
-distinct problems. So every worker receives the earlier Issues, with their identity, tier and
-latest report, and names the Issue a finding updates or the Issue the Specs no longer have. The
+distinct problems. So every worker receives the earlier Issues, with their identity, severity, tier
+and latest report, and names the Issue a finding updates or the Issue the Specs no longer have. The
 Operation keeps what no worker may decide: it accepts a match only with an earlier Issue it offered,
 ignoring and listing any other, reports nothing a checker disputed, records the Issues itself with
 the run's provenance, and derives the outcome from the Issues that stand, so a blocking Issue
@@ -392,7 +395,8 @@ whichever worktree the run works in. Spec review relies on its store to list the
 Module with their latest [report](../../glossary.json#concept.issue-report) and
 [revision](../../glossary.json#concept.issue-revision), to record a new Issue or append a report at
 the revision read, committing it before it answers, and to refuse a stale append rather than
-overwrite it; and on its [tiers](../../glossary.json#concept.issue-tier) for what a finding blocks.
+overwrite it; on its [tiers](../../glossary.json#concept.issue-tier) for what a finding blocks; and on its
+[severities](../../glossary.json#concept.issue-severity) for how much a finding matters.
 The Operation supplies each report's provenance itself, as an Operation's host may. A refusal of
 the store makes the Module's review `incomplete`, with the store's error as the cause; the
 Operation never retries it and never records it as an Issue.

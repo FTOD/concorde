@@ -58,8 +58,8 @@ A reviewer SHALL report every blocking finding it can establish in a single run.
 
 The code review Operation SHALL give each reviewer, before it judges, the open
 [Issues](../../../glossary.json#concept.issue) of its reviewed Modules one of whose reports a
-`code_review` run made, each with its identity, tier, title, description and evidence as its latest
-report states them.
+`code_review` run made, each with its identity, severity, tier, title, description and evidence as
+its latest report states them.
 
 ## Findings
 
@@ -90,7 +90,8 @@ beyond that file's end.
 
 The code review Operation SHALL report every finding of a Module whose evidence resolved through the
 Issue store as one [Issue report](../../../glossary.json#concept.issue-report) with the finding's
-[tier](../../../glossary.json#concept.issue-tier), owned by the finding's Module, appending a
+[tier](../../../glossary.json#concept.issue-tier) and
+[severity](../../../glossary.json#concept.issue-severity), owned by the finding's Module, appending a
 finding that names an offered earlier Issue to that Issue at the
 [revision](../../../glossary.json#concept.issue-revision) read just before, and creating an Issue
 for every other finding.

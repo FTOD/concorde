@@ -57,8 +57,8 @@ position or a second status for the same finding is ignored, and a finding witho
 A Module's **earlier Issues** are the open [Issues](../../glossary.json#concept.issue) of the
 project whose owner is the Module and one of whose reports a `spec_review` or `spec_panel` run
 made, read from the primary worktree of the worktree the run started in, in the order of their
-identities. A worker receives each with its identity, tier, title, description and evidence as its
-latest report states them.
+identities. A worker receives each with its identity, severity, tier, title, description and evidence as
+its latest report states them.
 
 Settling them follows the worker's claims under these rules. A finding whose `earlier` names an
 earlier Issue is that Issue's new report; a finding whose `earlier` names any other Issue, or one
@@ -81,6 +81,7 @@ creates a new Issue. The report is:
 | --- | --- |
 | `report_key` | `<module>/<n>`: the reviewed Module and the finding's position among its findings |
 | `tier` | the finding's tier |
+| `severity` | the finding's severity |
 | `type`, `subtype` | `gap` and `missing-contract` for the dimension `context`, `gap` and `spec-conflict` for `consistency`, `bug` and `null` for every other dimension |
 | `title` | the finding's title |
 | `description` | the finding's problem, then its suggested repair |
@@ -134,13 +135,14 @@ the numbered list the checker received, starting at 1, and `status` is `confirme
 Both end `ok` when they could do their work; a `blocked` or `failed` worker still returns an empty
 `findings` or `checks` array.
 
-A finding is `{module, path, anchor, line, dimension, tier, title, problem, impact, evidence,
-suggestion}`, plus `earlier` when it is an earlier Issue's problem, naming that Issue. `module` is
+A finding is `{module, path, anchor, line, dimension, severity, tier, title, problem, impact,
+evidence, suggestion}`, plus `earlier` when it is an earlier Issue's problem, naming that Issue. `module` is
 the reviewed Module, or the provider whose selected document the finding concerns; `path` is a
 document member in the grant; `anchor` and `line` are optional; `dimension` is one of the Module
 quality dimensions `readability`, `obligations`, `design`, `views`, `terminology` and `context`;
-`tier` is one of `suggestion`, `obvious-fix`, `preferred-fix` and `decision-needed`. A finding about
-another Module's document is always a `suggestion`.
+`severity` is one of `critical`, `high`, `medium` and `low`; `tier` is one of `suggestion`,
+`obvious-fix`, `preferred-fix` and `decision-needed`. A finding about another Module's document is
+always a `suggestion`, whatever its severity.
 
 ## Review payload
 

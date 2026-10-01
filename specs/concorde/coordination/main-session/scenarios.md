@@ -256,7 +256,7 @@ This illustrates [the task session's one rule](requirements.md#req.main-session.
 - GIVEN the rendered main-session and task-session guidance
 - WHEN a session reads how to retain a problem the current task will not fix
 - THEN it is told to read the Issues of the Module concerned with `issue_list` filtered by `module` and `status`, open and, when the problem may have been fixed before, closed, and `issue_show` before recording, never the whole project's list, and to append to the matching open [Issue](../../glossary.json#concept.issue) at its current revision or reopen a closed one
-- AND to record through the project MCP server's `issue_report`, with a complete description, impact, basis, evidence and tier, or with the `concorde issues` command, which answers the same way
+- AND to record through the project MCP server's `issue_report`, with a complete description, impact, basis, evidence, tier and severity, or with the `concorde issues` command, which answers the same way
 - BUT it is told that repeating a creation creates another Issue
 
 This illustrates [inspecting before recording](requirements.md#req.main-session.issues-recording)
@@ -271,6 +271,16 @@ and [the Issue tools](requirements.md#req.main-session.issues-through-server).
 - BUT a review Operation only reports, and a `suggestion` blocks nothing
 
 This illustrates [tiers deciding who fixes](requirements.md#req.main-session.issues-tiers).
+
+### scenario.main-session.issue-severity — The guidance rates every Issue and fixes the most severe first
+
+- GIVEN the rendered main-session and task-session guidance
+- WHEN a session reads how to record an Issue and the main agent how to choose which Issues to fix
+- THEN every report is to carry a severity, `critical`, `high`, `medium` or `low`, each with what it means, beside its tier
+- AND the main agent is told to choose what to fix first from the open Issues listed with `issue_list` sorted by `severity`
+- BUT the severity is not said to decide who fixes an Issue, which stays the tier's
+
+This illustrates [severity deciding what is fixed first](requirements.md#req.main-session.issues-severity).
 
 ### scenario.main-session.review-issues — The guidance acts on a review's Issues
 
@@ -343,7 +353,7 @@ This illustrates [failures as error chains](requirements.md#req.main-session.iss
 
 - GIVEN a running server in a task worktree and another in the primary worktree
 - WHEN the task session checks and records a report with `issue_report`, and the main agent lists, checks and shows it, names it with `task_resolve`, closes it with `issue_close` twice, and the task session reopens it with `issue_reopen`
-- THEN the Issue's record lies in the primary worktree, its report is the task session's with its task, and the main agent's list shows it with its tier at once
+- THEN the Issue's record lies in the primary worktree, its report is the task session's with its task, and the main agent's list shows it with its severity and tier at once
 - AND the [task record](../../glossary.json#concept.task-record) names the Issue the task resolves, the first close succeeds with `main-agent` as actor and the second is refused with the Issues command's own `closed_issue` link
 - BUT a report made while another process holds the merge lock is refused at once with `merge_busy`, an environment failure whose options say never to report it as an Issue
 

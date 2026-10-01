@@ -65,7 +65,8 @@
           "concept.issue",
           "concept.issue-revision",
           "contract.issues.report",
-          "contract.issues.receipt"
+          "contract.issues.receipt",
+          "concept.issue-severity"
         ]
       },
       {

@@ -64,7 +64,7 @@ chair -> chair: "a label unaccounted\nand an attempt remains"
   a report must never silently lack a review.
 - **chair** receives every labelled finding and every claimed resolution, grouped by worker, with
   the earlier Issues, and returns the report: merged findings, each with the labels it merges as
-  `sources`, a `note` and the tier the chair gives it, rejections, each with a label and a reason,
+  `sources`, a `note` and the severity and tier the chair gives it, rejections, each with a label and a reason,
   and the earlier Issues it finds resolved, each with a reason. The Operation normalizes the merged
   findings as well.
 - **accounting**, part of the chair node, is the Operation's check that the report accounts for
@@ -104,12 +104,12 @@ An architect finding has the same shape, except that its `dimension` is one of t
 quality dimensions `responsibilities`, `ownership`, `interfaces`, `dependencies`,
 `failure-containment` and `consistency`, or `context`, and that it may add `related`, the other
 registered Modules the problem concerns. A chair finding has either shape and adds `sources`, a
-non-empty list of labels, and `note`, what the chair verified and why it chose the tier. A
+non-empty list of labels, and `note`, what the chair verified and why it chose the severity and tier. A
 rejection is `{source, reason}` and a resolution `{issue, reason}`, both optional lists but for
 `findings`. A result that does not match its role's shape is an **invalid result** and stops the
 Module; a report that matches but accounts badly goes back to the chair as rule 3 says.
 
-The chair may change a merged finding's wording, evidence, suggestion and tier, and names the
+The chair may change a merged finding's wording, evidence, suggestion, severity and tier, and names the
 earlier Issue it is when any of its sources named one. It may not add a problem that no reviewer or
 architect reported: every report finding has sources. Each worker's findings stay in the payload as
 the Operation normalized them, so the chair's changes can be compared with them.

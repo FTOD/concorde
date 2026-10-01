@@ -20,7 +20,7 @@ Spec panel in its [definition](panel.md).
 - GIVEN a Module A and a reviewer that reports two findings of blocking tiers about A's own documents: a requirement with two obligations, `obvious-fix`, and an entry that never shows a normal interaction, `decision-needed`
 - WHEN the caller runs `spec_review` for Module A
 - THEN the verdict is `changes_required`
-- AND both problems are returned in the same result, each with its path, dimension, tier, evidence, suggestion and the Issue it was recorded as, whose report carries its tier, title, problem, impact and evidence
+- AND both problems are returned in the same result, each with its path, dimension, severity, tier, evidence, suggestion and the Issue it was recorded as, whose report carries its severity, tier, title, problem, impact and evidence
 
 ### scenario.spec-review.checker — The checker disputes a finding
 
@@ -52,7 +52,7 @@ Spec panel in its [definition](panel.md).
 - GIVEN the project's open Issues I1 and I2 of `module.a`, of blocking tiers, and I3, a `suggestion`, all reported by earlier Spec reviews, and I4, open and owned by `module.a` but reported by a [task session](../../glossary.json#concept.task-session)
 - WHEN a reviewer, given I1, I2 and I3 but not I4, reports the problem of I2 changed but still blocking, one new suggestion, and I3 and an unknown I9 resolved
 - THEN I2 receives the changed finding as a new report, the new suggestion is recorded as a new Issue, and I1, I3 and I4 are unchanged
-- AND the result lists I1 as carried with its tier and title, I3 as resolved with the reason and I9 as ignored
+- AND the result lists I1 as carried with its severity, tier and title, I3 as resolved with the reason and I9 as ignored
 - AND the outcome is `changes_required`, since the carried I1 and the reported I2 are of blocking tiers
 
 ### scenario.spec-review.last-blocker-resolved — Resolving the last blocking Issue accepts the Module

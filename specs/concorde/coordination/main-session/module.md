@@ -405,16 +405,20 @@ closed ones when the problem may have been fixed before, rather than the whole p
 outgrows a tool result, and `issue_show` for a possible match, and appends a report to the Issue
 that already tracks the problem, at the revision `issue_show` printed, rather than create another;
 it reopens a closed match whose closure the observation calls into question. Every report carries a
-complete description, impact, basis and evidence, and a **tier** that says who may handle the
+complete description, impact, basis and evidence, a **tier** that says who may handle the
 problem ([Issues' tiers](../../issues/module.md#tiers)): `suggestion`, `obvious-fix`,
-`preferred-fix` or `decision-needed`. Recording never stops the reporter and schedules nothing.
+`preferred-fix` or `decision-needed`, and a **[severity](../../glossary.json#concept.issue-severity)**
+that says how much it matters ([Issues' severities](../../issues/module.md#severities)): `critical`,
+`high`, `medium` or `low`, which the guidance explains in a few words each. Recording never stops
+the reporter and schedules nothing.
 
 **Tiers decide who fixes.** Reporting and fixing are separate: a review Operation only reports, and
 fixing is later work of a task. A task session working a task may fix an `obvious-fix` Issue
 itself, and a `preferred-fix` one too, reporting the fix it chose to the main agent; it never
 settles a `decision-needed` Issue, which it escalates, naming the Issue by its identity, for the
 main agent to decide or put to the developer. A `suggestion` blocks nothing. The main agent decides
-which Issues a task takes up and names them in the task, with `concorde task open --resolves` or
+which Issues a task takes up, starting from the most severe ones that `issue_list` sorted by
+`severity` lists first among the open Issues, and names them in the task, with `concorde task open --resolves` or
 `task_resolve`, so the task's merge closes them as `resolved` with the merge commit as evidence;
 starting, fixing or delivering a task changes no Issue. An Issue closed for another reason, or fixed
 without such a task, is closed with `issue_close`, `duplicate` naming another open Issue or
@@ -423,7 +427,7 @@ without such a task, is closed with `issue_close`, `duplicate` naming another op
 retry.
 
 **After a review.** The review Operations, `spec_review`, `spec_panel` and `code_review`, report
-every finding as an Issue with the tier their reviewer or chair gave it, and their result names each
+every finding as an Issue with the severity and tier their reviewer or chair gave it, and their result names each
 finding's Issue, the earlier Issues that still stand and those the review found resolved. The
 guidance tells the task session to handle them like any other Issue of its task, by their tier, in
 later `specify` or `implement` work, never in the review, to escalate a `code_review` finding that
@@ -464,8 +468,8 @@ events are in the [contracts](contracts.md).
 - **Short writes** with structured arguments: `task_open`, `task_escalate`, whose error chain link
   is typed arguments rather than a command line to quote, `task_report`, `task_answer`,
   `task_rebind`, `task_resolve` and `task_close` without a merge.
-- **Issues**: `issue_list`, filtered by `status`, `module` and `tier` as `concorde issues list`
-  is, `issue_show` and `issue_check` read the project's
+- **Issues**: `issue_list`, filtered by `status`, `module`, `tier` and `severity` and sorted by
+  severity as `concorde issues list` is, `issue_show` and `issue_check` read the project's
   [Issues](../../glossary.json#concept.issue), and `issue_report`, `issue_close` and
   `issue_reopen` write them, each as `concorde issues` does and without waiting for the merge lock
   an Issue write takes, refused at once with `merge_busy` while another process holds it. A report
@@ -718,7 +722,8 @@ the bookkeeping command for [reports](../../issues/interface.md#contract.issues.
 [receipts](../../issues/interface.md#contract.issues.receipt), whose actions the project MCP server
 presents as its Issue tools, unchanged. The guidance relies on status following dispositions,
 [revisions](../../glossary.json#concept.issue-revision) detecting concurrent writes and every
-report carrying its tier. It tells sessions to inspect before recording, to fix by tier, to have a
+report carrying its tier and severity. It tells sessions to inspect before recording, to fix by
+tier, starting from the most severe Issues, to have a
 task's merge close the Issues it resolves and never to report a failure of the Issue system as an
 Issue. The command records these decisions; whoever disposes an Issue remains responsible for the
 evidence.

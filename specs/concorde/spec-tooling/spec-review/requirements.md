@@ -83,7 +83,7 @@ under.
 
 ### req.spec-review.claims-stay-claims — Worker claims stay claims
 
-The [run result](../../glossary.json#concept.run-result) SHALL keep worker findings, tiers,
+The [run result](../../glossary.json#concept.run-result) SHALL keep worker findings, severities, tiers,
 checker statuses and resolutions apart from the evidence the Operation produced itself.
 
 ## Panel

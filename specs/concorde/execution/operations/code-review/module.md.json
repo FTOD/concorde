@@ -48,7 +48,8 @@
           "concept.issue",
           "concept.issue-report",
           "concept.issue-revision",
-          "concept.issue-tier"
+          "concept.issue-tier",
+          "concept.issue-severity"
         ]
       }
     ],

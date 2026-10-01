@@ -174,7 +174,8 @@
             "concept.issue",
             "concept.issue-report",
             "concept.issue-revision",
-            "concept.issue-tier"
+            "concept.issue-tier",
+            "concept.issue-severity"
           ]
         },
         {
@@ -723,7 +724,8 @@
             "concept.issue",
             "concept.issue-report",
             "concept.issue-revision",
-            "concept.issue-tier"
+            "concept.issue-tier",
+            "concept.issue-severity"
           ]
         }
       ],
@@ -964,7 +966,8 @@
             "concept.issue",
             "concept.issue-revision",
             "contract.issues.report",
-            "contract.issues.receipt"
+            "contract.issues.receipt",
+            "concept.issue-severity"
           ]
         },
         {
@@ -1421,7 +1424,9 @@
           "meaning": "#uses-issues",
           "relies_on": [
             "concept.issue",
-            "concept.issue-report"
+            "concept.issue-report",
+            "concept.issue-tier",
+            "concept.issue-severity"
           ]
         },
         {

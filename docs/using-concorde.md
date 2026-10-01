@@ -520,9 +520,9 @@ concorde delivery
 | `task-validation` (command) | none         | Deterministic: structural validation and the checks of the changed Modules; decides readiness.                                                                                                 |
 | `delivery` (command)        | none         | Deterministic: validates the whole workspace again, then commits it on the task branch; the delivery commit is the record that the task was delivered.                                         |
 
-Spec reviews report every finding as an **Issue** of the project, with its tier, from the
-Operation itself; `spec_panel` adds two architects that judge how the Module fits among all the
-Modules, and a chair that merges every finding and gives it its tier. Each reviewer receives the
+Spec reviews report every finding as an **Issue** of the project, with its severity and tier, from
+the Operation itself; `spec_panel` adds two architects that judge how the Module fits among all the
+Modules, and a chair that merges every finding and gives it its severity and tier. Each reviewer receives the
 Issues earlier reviews reported for the Module, so a repeated review reports only what is new or
 changed and lists the Issues it found resolved, and a Module stays `changes_required` while any
 blocking Issue still stands. The review never fixes or closes an Issue: the task session fixes them
@@ -817,14 +817,19 @@ A problem the current task will not fix, such as a Spec gap in another Module, i
 **Issue**, a record the primary worktree keeps under `.concorde/issues/` and commits on the primary
 branch, so that it survives the task and every session sees it at once. Every report carries a
 tier: `suggestion`, `obvious-fix`, `preferred-fix` or `decision-needed`, which says whether AI may
-fix it alone or the level above decides. Sessions use the project MCP server's Issue tools; the
-command does the same:
+fix it alone or the level above decides; and a severity: `critical`, `high`, `medium` or `low`,
+which says how much the problem matters, from wrong results or lost data down to something
+cosmetic. Sessions use the project MCP server's Issue tools; the command does the same:
 
 ```bash
 concorde issues report --file report.json [--task retry]
-concorde issues list --module <module> --status open [--tier <tier>]
+concorde issues list --module <module> --status open [--tier <tier>] [--severity <severity>]
+concorde issues list --status open --sort severity
 concorde issues show <id>
 ```
+
+Sorted by severity, the list starts from the most severe open Issues, those of equal severity
+`decision-needed` first, which is where choosing the next fix starts.
 
 Solving an Issue is ordinary work: a task for its Module that names it,
 `concorde task open <task> … --resolves <id>`, and the Operations that fix it; merging the task
