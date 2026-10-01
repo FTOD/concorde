@@ -636,7 +636,8 @@ def _writing(root: Path, what: str, wait: float, locked: bool):
     what earlier writes published but did not commit; yields what ``_recover`` did.
 
     ``locked`` says the caller, such as a task merge closing the Issues its task resolves, holds
-    it already. Refused with ``not_primary``, ``merge_busy``, ``merge_incomplete`` or
+    it already, so the write neither takes nor waits for it; an unfinished merge refuses it all
+    the same. Refused with ``not_primary``, ``merge_busy``, ``merge_incomplete`` or
     ``recovery_failed``.
     """
     try:
@@ -648,17 +649,13 @@ def _writing(root: Path, what: str, wait: float, locked: bool):
             "not_primary",
         ) from error
     if locked:
+        _refuse_unfinished_merge(primary, what)
         yield _recover(root)
         return
     path = tasks.merge_lock_path(primary)
     try:
         with locks.hold(path, f"an Issue write ({what})", wait=wait):
-            unfinished = tasks.unfinished_merge(primary)
-            if unfinished is not None:
-                raise IssueError(
-                    f"{what} was not written: {tasks.incomplete_merge(primary, unfinished)}",
-                    "merge_incomplete",
-                )
+            _refuse_unfinished_merge(primary, what)
             yield _recover(root)
     except locks.LockBusy as busy:
         raise IssueError(
@@ -666,6 +663,16 @@ def _writing(root: Path, what: str, wait: float, locked: bool):
             f"{primary}, which is still held by {busy.holder}, and wrote nothing",
             "merge_busy",
         ) from None
+
+
+def _refuse_unfinished_merge(primary: Path, what: str) -> None:
+    """``merge_incomplete`` while a task is stored ``merging``; the merge lock is held."""
+    unfinished = tasks.unfinished_merge(primary)
+    if unfinished is not None:
+        raise IssueError(
+            f"{what} was not written: {tasks.incomplete_merge(primary, unfinished)}",
+            "merge_incomplete",
+        )
 
 
 def _publish(root: Path, record: dict, before: str | None, message: str) -> None:

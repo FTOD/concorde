@@ -3,14 +3,19 @@
 Concrete situations that show the [requirements](requirements.md) at work. Shapes and error codes
 are defined in the [Issue interface](interface.md).
 
+A command a scenario names in short gives every argument the scenario does not name in a valid
+form: a `close` a closing reason, a nonblank note and distinct, nonblank evidence items, and a
+`reopen` a nonblank note and such evidence. A refusal a scenario expects so comes from the
+condition it names, never from `usage`.
+
 ## Recording through the command
 
 ### scenario.issues.command-report — Record a report from a file
 
-- GIVEN an initialized project and a report file naming a registered owner and existing evidence
+- GIVEN an initialized project in a Git repository and a report file naming a registered owner and existing evidence
 - WHEN the [main agent](../glossary.json#concept.main-agent) runs `report --file` with that file and a task identity
 - THEN a new open [Issue](../glossary.json#concept.issue) holds exactly that report
-- AND its provenance names `main-agent`, `issues`, `report`, the owner as reporting [Module](../glossary.json#concept.module), the registry digest, the task and the Git `HEAD` or `null` outside a Git repository
+- AND its provenance names `main-agent`, `issues`, `report`, the owner as reporting [Module](../glossary.json#concept.module), the registry digest, the task and the reporting worktree's Git `HEAD`, or `null` when Git cannot name that `HEAD`
 - AND the command prints the receipt and the revision that `show` reports for the Issue
 
 This illustrates [command attribution](requirements.md#req.issues.main-agent-actor) and the
@@ -47,7 +52,7 @@ This illustrates [command attribution](requirements.md#req.issues.main-agent-act
 - AND exits with status 1
 - BUT writes nothing
 
-This illustrates [checked reports](requirements.md#req.issues.report-checked).
+This illustrates [checked error chains](requirements.md#req.issues.report-error-chain).
 
 ### scenario.issues.command-report-check — Check a report without recording it
 
@@ -162,6 +167,8 @@ This illustrates [specific refusals](requirements.md#req.issues.specific-refusal
 - AND exits with status 1
 - BUT writes nothing
 
+This illustrates [registered owners](requirements.md#req.issues.report-owner-registered).
+
 ### scenario.issues.command-report-missing-evidence — A report naming absent evidence is refused
 
 - GIVEN a report file without an `origin` whose evidence path does not exist in the project
@@ -169,6 +176,8 @@ This illustrates [specific refusals](requirements.md#req.issues.specific-refusal
 - THEN the command prints the error code `missing_evidence` and a message naming the report file, the field `evidence/<index>/path` and the path
 - AND exits with status 1
 - BUT writes nothing
+
+This illustrates [present evidence](requirements.md#req.issues.report-evidence-present).
 
 ### scenario.issues.command-unknown-issue — Naming an absent Issue is refused
 
@@ -344,19 +353,30 @@ This illustrates [project-level records](requirements.md#req.issues.project-leve
 
 ### scenario.issues.store-merge-lock — A write waits for the merge lock
 
-- GIVEN another process holding the primary worktree's [merge lock](../glossary.json#concept.merge-lock)
-- WHEN the store is asked to save a report without waiting, and again with its default wait
-- THEN the first is refused with `merge_busy`, naming the lock file, and writes nothing
-- AND the second waits, writes nothing while the lock is held, and saves the report once it is released
+- GIVEN another process holding the primary worktree's [merge lock](../glossary.json#concept.merge-lock), which it releases before 300 seconds have passed
+- WHEN the store is asked to save a report with its default wait of 300 seconds
+- THEN the write waits and writes nothing while the lock is held
+- AND it saves the report once the lock is released
+
+This illustrates [Issue writes under the merge lock](requirements.md#req.issues.merge-lock).
+
+### scenario.issues.store-merge-busy — A write whose wait ends first is refused
+
+- GIVEN another process holding the primary worktree's merge lock for longer than a write's wait
+- WHEN the store is asked to save a report with that wait, such as none
+- THEN it is refused with `merge_busy` once the wait has passed, naming the lock file and the holder its holder line names
+- BUT no Issue is written
 
 This illustrates [Issue writes under the merge lock](requirements.md#req.issues.merge-lock).
 
 ### scenario.issues.store-merge-incomplete — No write while a merge is unfinished
 
 - GIVEN a task stored `merging` whose merge process has ended
-- WHEN the store is asked to save a report
-- THEN it refuses with `merge_incomplete`, naming the task
+- WHEN the store is asked to save a report, then to save it and to recover by a caller that holds the merge lock itself
+- THEN each is refused with `merge_incomplete`, naming the task
 - BUT no Issue is written
+
+This illustrates [no Issue write while a merge is unfinished](requirements.md#req.issues.no-write-during-merge).
 
 ### scenario.issues.store-committed — Every write commits its record alone
 
@@ -376,27 +396,74 @@ This illustrates [an Issue commit alone](requirements.md#req.issues.commit-alone
 - THEN it refuses with `commit_failed`, saying the `HEAD` is detached
 - BUT no record is left in the directory and no Issue is listed
 
-### scenario.issues.store-tier — Every report carries a tier
+### scenario.issues.store-tier — A report without a valid tier is refused
 
 - GIVEN a report without a `tier`, or with a tier that is none of the four
 - WHEN the store is asked to save it
-- THEN Spec core's typed-value check refuses it, naming the field `tier`, and no Issue is written
-- AND a report of tier `suggestion` creates a record of `schema_version` 4 listed with that tier
-- AND a record of `schema_version` 2 whose report has no tier stays valid, is listed without a tier and takes a tiered report, which becomes its tier
-- BUT a record of `schema_version` 3 or 4 holding an untiered report is refused with `invalid_issue`, naming the field `tier`
+- THEN Spec core's typed-value check refuses it, naming the field `tier`
+- BUT no Issue is written
 
 This illustrates [required tiers](requirements.md#req.issues.tier-required).
 
-### scenario.issues.store-severity — Every report carries a severity
+### scenario.issues.store-tier-recorded — A tiered report creates a current record
+
+- GIVEN a valid report of tier `suggestion`
+- WHEN the store saves it
+- THEN it creates a record of `schema_version` 4, listed with the tier `suggestion`
+
+### scenario.issues.store-tier-legacy — A record written before tiers stays valid
+
+- GIVEN a committed record of `schema_version` 2 whose one report has no tier
+- WHEN the Issues are listed and the record is read
+- THEN the record reads as valid and is listed without a tier
+
+### scenario.issues.store-tier-legacy-append — A record written before tiers takes a tiered report
+
+- GIVEN a committed record of `schema_version` 2 whose one report has no tier, and its revision
+- WHEN a report of tier `obvious-fix` appends to it at that revision
+- THEN the Issue is listed with the tier `obvious-fix`
+- AND its record keeps `schema_version` 2
+
+### scenario.issues.store-tier-missing — A current record without a tier is refused
+
+- GIVEN a record of `schema_version` 3 or 4 one of whose reports has no tier
+- WHEN the store validates it
+- THEN it refuses it with `invalid_issue`, naming the field `tier`
+
+### scenario.issues.store-severity — A report without a valid severity is refused
 
 - GIVEN a report without a `severity`, or with a severity that is none of the four
 - WHEN the store is asked to save it
-- THEN Spec core's typed-value check refuses it, naming the field `severity`, and no Issue is written
-- AND a report of severity `low` creates a record of `schema_version` 4 listed with that severity
-- AND a record of `schema_version` 3 whose report has no severity stays valid, is listed without a severity, passes no severity filter and takes a report with a severity, which becomes its severity, keeping its version 3
-- BUT a record of `schema_version` 4 holding a report without a severity is refused with `invalid_issue`, naming the field `severity`
+- THEN Spec core's typed-value check refuses it, naming the field `severity`
+- BUT no Issue is written
 
 This illustrates [required severities](requirements.md#req.issues.severity-required).
+
+### scenario.issues.store-severity-recorded — A report with a severity creates a current record
+
+- GIVEN a valid report of severity `low`
+- WHEN the store saves it
+- THEN it creates a record of `schema_version` 4, listed with the severity `low`
+
+### scenario.issues.store-severity-legacy — A record written before severities stays valid
+
+- GIVEN a committed record of `schema_version` 3 whose one report has no severity
+- WHEN the Issues are listed, unfiltered and filtered by every severity, and the record is read
+- THEN the record reads as valid and is listed without a severity
+- BUT no severity filter keeps it
+
+### scenario.issues.store-severity-legacy-append — A record written before severities takes a report with one
+
+- GIVEN a committed record of `schema_version` 3 whose one report has no severity, and its revision
+- WHEN a report of severity `critical` appends to it at that revision
+- THEN the Issue is listed with the severity `critical`
+- AND its record keeps `schema_version` 3
+
+### scenario.issues.store-severity-missing — A current record without a severity is refused
+
+- GIVEN a record of `schema_version` 4 one of whose reports has no severity
+- WHEN the store validates it
+- THEN it refuses it with `invalid_issue`, naming the field `severity`
 
 ### scenario.issues.store-severity-sort — Listing by severity puts the most severe Issues first
 

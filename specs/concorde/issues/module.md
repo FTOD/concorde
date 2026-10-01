@@ -99,16 +99,18 @@ never erase a concurrent report to make an old request succeed.
 
 Sessions record and read Issues with the bookkeeping command, directly or through the project MCP
 server, which goes through the Issue store; the store relies on Spec core for its records and on
-Tasks for the primary worktree and its merge lock, and Tasks closes through the command the Issues a
-merged task resolves.
+Tasks for the primary worktree and its merge lock, the command on Tracing for the error chains it
+checks and prints, and Tasks closes through the command the Issues a merged task resolves.
 
 ```d2
 issues: Issues
 core: Spec core
 tasks: Tasks
+tracing: Tracing
 session: Main session
 issues -> core
 issues -> tasks
+issues -> tracing
 tasks -> issues
 session -> issues
 ```
@@ -355,12 +357,20 @@ No program but the store writes a record, and nobody edits one by hand. Main ses
 `session -> issues` in the [structure](#structure) diagram: its
 [guidance](../coordination/main-session/module.md) says when sessions record, fix and close Issues,
 and its project MCP server presents the command's actions as tools. Tasks relies on Issues to check
-the Issues a task names as resolving and to close them when the task merges.
+the Issues a task names as resolving and to close them when the task merges, which it does through
+the command's library entry `dispose`, holding the merge lock itself, as the
+[interface](interface.md#disposing-under-a-held-lock) states.
 
-It follows the Framework's
-[error contract](../tracing/contracts.md#contract.tracing.error): the command checks a report's
-`error_chain` against it and prints every refusal as one link of it. For provenance the command
-asks Git for the reporting worktree's `HEAD` and records `null` when Git fails.
+For provenance the command asks Git for the reporting worktree's `HEAD` and records `null` when Git
+fails.
+
+<a id="uses-tracing"></a>
+
+**Tracing** provides the Framework's
+[error contract](../tracing/contracts.md#contract.tracing.error), on which the command relies twice:
+it checks a report's `error_chain` against it, refusing one the contract does not accept, and it
+prints every refusal as one `component` link of it, so that a session or run carries the refusal on
+in its own error chain unchanged.
 
 <a id="uses-spec"></a>
 
@@ -369,15 +379,24 @@ machinery Issues' shapes register with, the
 [file transaction](../glossary.json#concept.file-transaction) a digest-bound
 record publishes through, the [registry](../glossary.json#concept.registry)
 the command reads for which Modules exist, and the
-[error type](../spec-tooling/spec/errors.md) the store's `IssueError` extends with its own codes. A
-stale transaction is refused, reported `stale_issue`, writing nothing.
+[error type](../spec-tooling/spec/errors.md#contract.spec.error) the store's `IssueError` extends
+with its own codes, whose `stale_proposal`, `system_error` and `invalid_field` the store and the
+command translate as the [interface](interface.md#store-operations) says. A stale transaction is
+refused, reported `stale_issue`, writing nothing. Issues calls Spec core's library directly, its
+`canonical` JSON, typed-value checks and `apply_files`, so it reads the
+[contracts](../spec-tooling/spec/contracts.md) that define them.
 
 <a id="uses-tasks"></a>
 
 **Tasks** provides the primary worktree of any worktree of the repository, and its
 [merge lock](../glossary.json#concept.merge-lock) with the rule that no primary-branch change is made
 while a task's merge is unfinished. The store holds that lock for each write, or relies on its
-caller holding it, as a merge closing the Issues its task resolves does.
+caller holding it, as a merge closing the Issues its task resolves does once it has closed the task.
+Either way it asks Tasks whether a task is stored `merging`, which Tasks records
+[before its merge touches the primary branch](../coordination/tasks/requirements.md#req.tasks.merging-recorded),
+and refuses the write with `merge_incomplete` while one is, its message
+[Tasks' account of that merge](../coordination/tasks/requirements.md#req.tasks.merge-incomplete-refused):
+the merging task, its commits and the `--resume` and `--abort` that finish it.
 
 ### Inside
 
@@ -387,17 +406,52 @@ caller holding it, as a merge closing the Issues its task resolves does.
 never deletes a committed record. Each file holds one identity heading and one JSON record, so no prose
 copy can drift from it, and reports are never rewritten: a later observation that classifies the
 problem differently is a new report. Each write refuses a root that is not the primary worktree,
-holds the merge lock, puts back what earlier writes left uncommitted, checks the revision its
-caller read against the committed record, publishes through a
-[file transaction](../glossary.json#concept.file-transaction), syncs, and commits the record alone
-with `git commit --only`, so success means the record is committed and a concurrent writer is never
-silently overwritten. A failure after publication, a commit Git refuses among them, puts the
-record back as it was and refuses the write. Reads ask Git for the records of the last commit, so
-they need no lock and see one commit's records at once.
-Identities are derived from the reporting invocation and the reporter's key rather than counted, so
-no allocation state is shared. Report and receipt shapes are
-[typed values](../glossary.json#concept.typed-value) registered as
-`concorde-issue-report@3` and `concorde-issue-receipt@1`, which Spec core does not know.
+holds the merge lock, refuses while a task's merge is unfinished, puts back what earlier writes
+left uncommitted, checks the revision its caller read against the committed record, publishes
+through a [file transaction](../glossary.json#concept.file-transaction), syncs, and commits the
+record alone with `git commit --only`, so success means the record is committed and a concurrent
+writer is never silently overwritten. A failure after publication, a commit Git refuses among
+them, puts the record back as it was and refuses the write. Reads ask Git for the records of the
+last commit, so they need no lock and see one commit's records at once. Identities are derived from
+the reporting invocation and the reporter's key rather than counted, so no allocation state is
+shared. Report and receipt shapes are [typed values](../glossary.json#concept.typed-value)
+registered as `concorde-issue-report@3` and `concorde-issue-receipt@1`, which Spec core does not
+know.
+
+The view below follows one write and what each refusal leaves; every refusal before publication
+leaves the record as it was committed.
+
+```d2 illustrative
+direction: down
+check: "check the request\n(the report or disposition, the root)"
+lock: "take the merge lock,\nor the caller holds it"
+merge: "no task stored merging?"
+recover: "put back what earlier\nwrites left uncommitted"
+revision: "committed record at the\nrevision the caller read?"
+publish: "publish through a file\ntransaction and sync"
+commit: "git commit --only\nof the record"
+done: "receipt or revision:\nthe record is committed"
+putback: "put the record back"
+refused: "refused: nothing written,\nthe committed record stands"
+failed: "recovery_failed: the record\nstays uncommitted, no read\nshows it, the next write\nputs it back"
+check -> lock
+lock -> merge
+merge -> recover: yes
+recover -> revision
+revision -> publish: yes
+publish -> commit
+commit -> done
+check -> refused: invalid_issue, not_primary
+lock -> refused: merge_busy
+merge -> refused: merge_incomplete
+recover -> refused: uncommitted_change
+recover -> failed: a record not put back
+revision -> refused: stale_issue, closed_issue, open_issue
+publish -> putback: failure
+commit -> putback: commit_failed
+putback -> refused: put back
+putback -> failed: putting back failed
+```
 
 <a id="realization.issues.command"></a>
 

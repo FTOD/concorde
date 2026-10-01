@@ -21,7 +21,8 @@
         "relies_on": [
           "concept.typed-value",
           "concept.file-transaction",
-          "concept.registry"
+          "concept.registry",
+          "contract.spec.error"
         ]
       },
       {
@@ -29,15 +30,24 @@
         "meaning": "#uses-tasks",
         "relies_on": [
           "concept.merge-lock",
-          "concept.task"
+          "concept.task",
+          "req.tasks.merging-recorded",
+          "req.tasks.merge-incomplete-refused"
+        ]
+      },
+      {
+        "target": "module.tracing",
+        "meaning": "#uses-tracing",
+        "relies_on": [
+          "contract.tracing.error"
         ]
       }
     ],
     "includes": [
       {
         "kind": "document",
-        "target": "document.tracing.contracts",
-        "reason": "the Framework's error contract, which this Module's errors follow"
+        "target": "document.spec.contracts",
+        "reason": "Spec core's library contracts that Issues calls directly: canonical JSON, typed-value checks and file transactions"
       }
     ],
     "participates": []
@@ -101,6 +111,12 @@
       "source": "realization.issues.store",
       "verb": "commits records under the merge lock of",
       "target": "module.tasks"
+    },
+    {
+      "type": "relates",
+      "source": "realization.issues.command",
+      "verb": "checks and prints error chains of",
+      "target": "module.tracing"
     }
   ],
   "extensions": {}

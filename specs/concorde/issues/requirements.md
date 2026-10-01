@@ -42,18 +42,25 @@ This is attribution by the command and the tools, not authentication or a restri
 store's library callers. Workers never record or dispose Issues; an [Operation](../glossary.json#concept.operation)'s host may record
 them through the store with the provenance it vouches for.
 
-### req.issues.report-checked — A report names a registered owner and existing evidence
+### req.issues.report-owner-registered — A report names a registered owner
 
 The bookkeeping command SHALL refuse a report whose `owner_target_id` is neither `null` nor a
-[Module](../glossary.json#concept.module) of the primary worktree's registry, whose evidence path
-does not exist in the worktree it reports from or, for a report with an origin, in the origin
-project, or whose
-[error chain](../glossary.json#concept.error-chain) is not an error of the Framework's error
-contract.
+[Module](../glossary.json#concept.module) of the primary worktree's registry.
 
 A `null` owner is accepted: the report's reporting Module is then the registry's root Module, and
 the command refuses the report with `no_reporting_module` when the registry has no single root
 ([provenance](interface.md#provenance)).
+
+### req.issues.report-evidence-present — A report's evidence exists
+
+The bookkeeping command SHALL refuse a report one of whose evidence paths does not exist in the
+worktree it reports from or, for a report with an origin, in the origin project.
+
+### req.issues.report-error-chain — A report's error chain follows the error contract
+
+The bookkeeping command SHALL refuse a report whose
+[error chain](../glossary.json#concept.error-chain) is not an error of the Framework's error
+contract.
 
 ### req.issues.durable-receipt — A receipt means the report is committed
 
@@ -201,17 +208,24 @@ they replace, and a mismatch fails with `stale_issue`.
 ### req.issues.merge-lock — Issue writes take the merge lock
 
 The Issue store SHALL perform every write while holding the primary worktree's
-[merge lock](../glossary.json#concept.merge-lock), or while its caller holds it, and only while no
-task's merge into the primary branch is unfinished.
+[merge lock](../glossary.json#concept.merge-lock), or while its caller holds it.
+
+Writes so never overlap one another, or a task's merge, open or close.
+
+### req.issues.no-write-during-merge — No Issue write while a merge is unfinished
+
+The Issue store SHALL refuse every write, whether it took the merge lock or its caller holds it,
+while a task's merge into the primary branch is unfinished.
 
 A write so never commits between a merge commit and the checks that decide whether it stays.
 
 ### req.issues.commit-alone — An Issue commit commits its record alone
 
-The Issue store SHALL commit each write as a commit of that record alone on the primary branch, or,
-when Git does not commit it, put the record back as it was and refuse the write.
+The Issue store SHALL commit each write as a commit of that record alone on the primary branch.
 
-Other changes of the primary worktree, staged or not, stay as they were.
+Other changes of the primary worktree, staged or not, stay as they were. A write whose commit Git
+refuses puts its record back and refuses, as the [store operations](interface.md#store-operations)
+say.
 
 ### req.issues.status-derived — Status agrees with disposition history
 
