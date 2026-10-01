@@ -1,8 +1,8 @@
 """Where Tracing keeps every task, trace node and lock, relative to a ``.concorde`` directory.
 
 The layout is Tracing's (``specs/concorde/tracing/contracts.md#layout``): one folder per current
-task under ``tasks/``, the closed tasks under ``history/``, the unbound runs under ``unbound/`` and
-every lock under ``locks/``. Producers ask here for the folders and lock files they need and never
+task under ``tasks/``, the closed tasks under ``history/``, the unbound runs under ``unbound/``, the
+bound runs that have not entered their workspace under ``lobby/`` and every lock under ``locks/``. Producers ask here for the folders and lock files they need and never
 spell a path of the layout themselves; a folder a parent hands its child is only ever joined below.
 """
 
@@ -17,6 +17,7 @@ CONCORDE = ".concorde"
 TASKS = "tasks"
 HISTORY = "history"
 UNBOUND = "unbound"
+LOBBY = "lobby"
 LOCKS = "locks"
 CONFIGURATION = "tracing.json"
 # The file names of a node's own record and of the records that stay next to it.
@@ -24,7 +25,9 @@ TRACE = "trace.json"
 PROGRESS = "status.json"
 RESULT = "result.json"
 # Every folder Git must ignore, relative to the project root.
-IGNORED = tuple(f"{CONCORDE}/{name}/" for name in (TASKS, HISTORY, UNBOUND, LOCKS))
+IGNORED = tuple(
+    f"{CONCORDE}/{name}/" for name in (TASKS, HISTORY, UNBOUND, LOBBY, LOCKS)
+)
 # The kinds of lock and the folder of ``locks/`` their files lie in; None: directly in it.
 LOCK_KINDS = {
     "merge": None,
@@ -74,6 +77,16 @@ def history_folder(concorde: Path) -> Path:
 
 def unbound_folder(concorde: Path) -> Path:
     return Path(concorde) / UNBOUND
+
+
+def lobby_folder(concorde: Path) -> Path:
+    return Path(concorde) / LOBBY
+
+
+def lobby_run_folder(concorde: Path, run_id: str) -> Path:
+    """Where a bound run's node lies until it holds its workspace's lock, and stays when it never
+    does."""
+    return lobby_folder(concorde) / run_id
 
 
 def locks_folder(concorde: Path) -> Path:
@@ -169,6 +182,7 @@ __all__ = [
     "CONFIGURATION",
     "HISTORY",
     "IGNORED",
+    "LOBBY",
     "LOCKS",
     "LOCK_KINDS",
     "PROGRESS",
@@ -181,6 +195,8 @@ __all__ = [
     "concorde_of",
     "history_folder",
     "history_key",
+    "lobby_folder",
+    "lobby_run_folder",
     "lock_file",
     "locks_folder",
     "primary_worktree",

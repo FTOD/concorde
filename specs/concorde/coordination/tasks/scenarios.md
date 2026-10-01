@@ -576,6 +576,14 @@ This illustrates [a merge running the Concorde it started with](requirements.md#
 - THEN the run is stopped with `SIGTERM` and ends with its own result, as a task session of the task would be stopped with `claude stop` ([scenario.task-session.close-stops](../task-session/scenarios.md#scenario.task-session.close-stops))
 - AND only then, holding the task's workspace lock, the close moves the task's folder to the history, with the stopped run in its trace
 
+### scenario.tasks.close-retires-waiting-run — A run waiting for the workspace while the task closes
+
+- GIVEN a task whose workspace lock a run holds, and a second run of its workspace started with `--wait 600` in a PID namespace the close cannot see, so the close cannot stop it, waiting for that lock
+- WHEN the main agent closes the task with `--failed` and `--wait 600`, and the first run ends
+- THEN the close takes the workspace lock, removes the worktree with its binding, moves the task's folder to the history and removes the workspace lock file while still holding it
+- AND the waiting run, which wrote only in Execution's lobby, then takes the removed lock file and is refused with `workspace_retired`, its result kept in the lobby and found by its identity
+- AND the history holds nothing of the waiting run and is never written afterwards
+
 ### scenario.tasks.closed-run-refused — A run of a closed task is refused
 
 - GIVEN a closed task whose worktree was left in place by hand with its binding

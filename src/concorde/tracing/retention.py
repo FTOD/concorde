@@ -1,7 +1,7 @@
 """Retention: which ended traces may be removed, by the Tracing configuration.
 
-Only three things are ever removed: an unbound run that ended longer ago than ``unbound_days``
-and whose run lock nobody holds, whole; a history folder of a task closed longer ago than
+Only three things are ever removed: an unbound run, or a run of the lobby, that ended longer ago
+than ``unbound_days`` and whose run lock nobody holds, whole; a history folder of a task closed longer ago than
 ``history_days``, whole; and, from a history folder of a task closed longer ago than
 ``conversation_days``, its conversation records, the transcripts of its task sessions and
 worker runs and their event streams. Nothing runs in the background; ``prune`` runs when called,
@@ -27,7 +27,7 @@ CONVERSATION_FILES = ("transcript.jsonl", "events.jsonl")
 CONVERSATION_FOLDERS = ("transcript",)
 _DAYS = {"anyOf": [{"type": "null"}, {"type": "integer", "minimum": 0}]}
 
-# contract.tracing.configuration, version 2
+# contract.tracing.configuration, version 3
 CONFIGURATION_SCHEMA: dict = {
     "type": "object",
     "additionalProperties": False,
@@ -103,21 +103,21 @@ def conversation_records(folder: Path) -> list[Path]:
 
 
 def removable(concorde: Path, moment: datetime | None = None) -> list[Path]:
-    """What retention may remove now, oldest kinds first: unbound runs, then history folders,
-    then the conversation records of the history folders it keeps."""
+    """What retention may remove now, oldest kinds first: unbound runs and runs of the lobby, then
+    history folders, then the conversation records of the history folders it keeps."""
     moment = moment or datetime.now(UTC)
     periods = configuration(concorde)
     found: list[Path] = []
-    unbound = layout.unbound_folder(concorde)
-    for folder in sorted(unbound.iterdir()) if unbound.is_dir() else []:
-        record = read(folder)
-        if (
-            record
-            and record.get("ended_at")
-            and not run_alive(concorde, record["id"])
-            and _expired(record["ended_at"], periods["unbound_days"], moment)
-        ):
-            found.append(folder)
+    for parent in (layout.unbound_folder(concorde), layout.lobby_folder(concorde)):
+        for folder in sorted(parent.iterdir()) if parent.is_dir() else []:
+            record = read(folder)
+            if (
+                record
+                and record.get("ended_at")
+                and not run_alive(concorde, record["id"])
+                and _expired(record["ended_at"], periods["unbound_days"], moment)
+            ):
+                found.append(folder)
     history = layout.history_folder(concorde)
     kept = []
     for folder in sorted(history.iterdir()) if history.is_dir() else []:

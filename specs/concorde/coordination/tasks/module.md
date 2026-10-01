@@ -359,8 +359,13 @@ history, `.concorde/history/<task-id>/`, keeping the branch; no run of the task'
 start there any more, and a closed or failed task stays so whatever happens afterwards. A task
 closes only once it has really ended: the close holds the task's workspace lock, so no run of it is
 running and none can start, while it moves the folder, and a close with `--completed` or `--failed`
-first stops the task's task sessions and the runs of the workspace that still run, then waits for
-the lock. Just before the folder moves,
+first stops the task's task sessions and the runs of the workspace that still run, those waiting in
+Execution's [lobby](../../execution/runner.md#the-lobby) for its lock included, then waits for the
+lock. A run that waits for the lock meanwhile writes nothing into the task's folder: it waits in the
+lobby, outside it, and when it takes the lock after the close, Execution refuses it with
+`workspace_retired`, since the close removed the worktree with its binding and, while still holding
+the lock, the lock file, so its result stays in the lobby and the history stays as the close left
+it. Just before the folder moves,
 [Task sessions](../task-session/module.md#ending-claude-sessions) copies each Claude Code task
 session's transcript into the session's node and finishes the node with the session's status, end
 and usage from Claude Code's records, and once the task is closed it removes those sessions

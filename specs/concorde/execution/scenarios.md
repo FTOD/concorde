@@ -92,6 +92,15 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 - THEN its run progress file shows the step `workspace-lock` and names the `implement` run in `waiting_for`
 - AND once the `implement` run releases the lock, the delivery runs its steps and ends with its own result
 - BUT a run whose `--wait` ends while the lock is still held is refused with `workspace_busy`, saying how long it waited
+- AND while it waits, its node, run progress file and, when detached, its runner's output lie in `lobby/<run-id>/` of the binding's `.concorde` and nothing of it lies in the workspace folder; once it holds the lock its node is in `runs/<run-id>/` of the workspace folder, and a run refused while waiting keeps its node and result in the lobby
+
+### scenario.execution.workspace-retired — A workspace closed while a run waits for it
+
+- GIVEN a bound workspace whose lock `task close` holds, and a run started there with `--wait 600` that waits for that lock in the lobby
+- WHEN the close removes the worktree with its binding, moves the workspace folder to the history and removes the workspace lock file while still holding it, then releases it
+- THEN the waiting run is refused with `workspace_retired`, naming the removed lock file, its result and node in `lobby/<run-id>/`, and it runs no step
+- AND the history the close moved holds nothing of that run, and nothing of it is written there afterwards
+- AND a run whose binding is gone or names another workspace when it takes the lock is refused with `workspace_retired` the same way, naming what changed
 
 ### scenario.execution.removed-module — A Module the workspace removed is left out
 
@@ -146,10 +155,10 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 
 - GIVEN a bound workspace `severity`
 - WHEN the task level runs `concorde run implement --detach` there
-- THEN the command prints the run identity and the path of its future result and exits with status 0 while the runner keeps running
-- AND the run's [run progress file](../glossary.json#concept.run-progress-file) exists when the command exits
-- AND the runner writes the same [run result](../glossary.json#concept.run-result) and trace node as a run started without `--detach`
-- BUT a workspace already running something still gets a `failed` result naming the refusal, written where the printed path says
+- THEN the command prints the run identity, the path of its future result and its lobby folder and exits with status 0 while the runner keeps running
+- AND the run's [run progress file](../glossary.json#concept.run-progress-file) exists when the command exits, in the lobby or, once the run entered its workspace, in its node
+- AND the runner writes the same [run result](../glossary.json#concept.run-result) and trace node as a run started without `--detach`, its output `host.out` moving with its node into the workspace folder
+- BUT a workspace already running something still gets a `failed` result naming the refusal, written in the printed lobby folder, where every reader that looks the run up by its identity finds it
 
 ### scenario.execution.detached-namespace — A detached run dies with its PID namespace
 

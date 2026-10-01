@@ -296,6 +296,10 @@ class RunnerTests(unittest.TestCase):
             (self.run_folder(envelope, concorde) / "result.json").read_text()
         )
 
+    def lobby(self, run_id: str) -> Path:
+        """Where a bound run waits for its workspace's lock, and stays when refused before."""
+        return self.records / "lobby" / run_id
+
     def run_status(self, envelope, workspace: str | None = "t1"):
         """The status the run store lists for the run among the workspace's runs."""
         return {
@@ -889,8 +893,15 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual("decision", error["unhandled"]["reason"])
         self.assertIn("r-other", error["detail"])
         self.assertIsNone(envelope["output"])
-        # The refusal is recorded like any run, and the lock is free again afterwards.
-        self.assertEqual(envelope, self.saved(envelope))
+        # The refusal is recorded like any run, in the lobby, since the run never entered its
+        # workspace; its identity finds it there, and the lock is free again afterwards.
+        refused = self.lobby(envelope["run_id"])
+        self.assertEqual(envelope, json.loads((refused / "result.json").read_text()))
+        self.assertFalse(self.run_folder(envelope).exists())
+        self.assertEqual(refused, self.store().find(envelope["run_id"]))
+        self.assertEqual(envelope, runs.load_result(self.store(), envelope["run_id"]))
+        node = json.loads((refused / "trace.json").read_text())
+        self.assertEqual((envelope["run_id"], "failed"), (node["id"], node["status"]))
         self.assertIsNone(runs.lock_holder(self.store(), "t1"))
         # An admitted run writes its result while it still holds the lock, so the next run
         # admitted finds that result written.
@@ -940,11 +951,13 @@ class RunnerTests(unittest.TestCase):
             "command", "task-validation", ["--wait", "60"], cwd=self.worktree
         )
         self.assertEqual(0, status, announced)
-        progress = Path(announced["progress"])
+        # It waits in the lobby: nothing of it lies in the workspace folder yet.
+        lobby = Path(announced["lobby"])
+        self.assertEqual(self.lobby(announced["run_id"]), lobby)
         deadline = time.monotonic() + 30
         shown = {}
         while time.monotonic() < deadline:
-            shown = json.loads(progress.read_text())
+            shown = json.loads((lobby / "status.json").read_text())
             if shown.get("step") == "workspace-lock":
                 break
             time.sleep(0.05)
@@ -952,10 +965,21 @@ class RunnerTests(unittest.TestCase):
             ("running", "workspace-lock", "implement run r-other"),
             (shown["phase"], shown["step"], shown["waiting_for"].split(" (process")[0]),
         )
-        self.assertFalse(Path(announced["result"]).exists())
+        self.assertFalse(Path(announced["trace"]).exists())
+        self.assertTrue((lobby / "trace.json").is_file())
+        self.assertTrue((lobby / "host.out").is_file())
+        listed = runs.workspace_runs(self.store(), "t1")
+        self.assertIn(
+            (announced["run_id"], "running"),
+            [(r["run_id"], r["status"]) for r in listed],
+        )
+        progress = Path(announced["progress"])
         release.set()
         envelope = self.wait_for(Path(announced["result"]))
-        # Once the lock was free the run did its own work: a readiness, not a refusal.
+        # Once the lock was free the run entered its workspace, its whole node and its runner's
+        # output moving out of the lobby, and did its own work: a readiness, not a refusal.
+        self.assertFalse(lobby.exists())
+        self.assertTrue((Path(announced["trace"]) / "host.out").is_file())
         self.assertIsNotNone(envelope["output"], envelope)
         self.assertNotIn(
             "workspace_busy", [item["ref"] for item in envelope["host_evidence"]]
@@ -963,6 +987,85 @@ class RunnerTests(unittest.TestCase):
         self.assertIsNone(json.loads(progress.read_text())["waiting_for"])
         with self.assertRaisesRegex(UsageError, "negative"):
             execute("command", "task-validation", ["--wait", "-1"], cwd=self.worktree)
+
+    @verifies("scenario.execution.workspace-retired")
+    def test_a_run_waiting_for_a_retired_workspace_is_refused(self):
+        lock = self.records / "locks/workspaces/t1.lock"
+        path = binding_file.path_of(self.worktree)
+        good = path.read_text()
+        workspace = self.records / "tasks/t1/workspace"
+
+        def waiting() -> bool:
+            for progress in (self.records / "lobby").glob("*/status.json"):
+                if json.loads(progress.read_text()).get("step") == "workspace-lock":
+                    return True
+            return False
+
+        def files() -> list[Path]:
+            return sorted(workspace.rglob("*"))
+
+        for retire, said in (
+            # A close removes the lock file while it holds the lock.
+            (lambda: lock.unlink(), "removed the lock file"),
+            (lambda: path.unlink(), "is gone"),
+            (
+                lambda: path.write_text(
+                    json.dumps({**json.loads(good), "goal": "another goal"})
+                ),
+                "changed: goal",
+            ),
+        ):
+            with self.subTest(said=said):
+                taken = threading.Event()
+
+                def hold(retire=retire):
+                    # Hold the lock as a close does until the run waits for it, then retire
+                    # the workspace and release the lock.
+                    with runs.workspace_lock(self.store(), "t1", "close of t1"):
+                        taken.set()
+                        deadline = time.monotonic() + 30
+                        while not waiting() and time.monotonic() < deadline:
+                            time.sleep(0.05)
+                        retire()
+
+                holder = threading.Thread(target=hold)
+                holder.start()
+                self.assertTrue(taken.wait(10))
+                before = files()
+                status, envelope = self.project.run(
+                    "task-validation", "--task", "t1", "--wait", "30"
+                )
+                holder.join(30)
+                path.write_text(good)
+                self.assertEqual(
+                    (1, ["refused", "workspace_retired"]),
+                    (status, codes(envelope["error"])),
+                    envelope["error"],
+                )
+                [cause] = envelope["error"]["causes"]
+                self.assertEqual("Execution (workspace binding)", cause["actor"])
+                self.assertIn(said, cause["detail"])
+                self.assertEqual(
+                    "environment", envelope["error"]["unhandled"]["reason"]
+                )
+                self.assertEqual([], envelope["worker_runs"])
+                # It never entered the workspace: its node and result stay in the lobby, and
+                # nothing was written into the workspace folder.
+                self.assertEqual(before, files())
+                lobby = self.lobby(envelope["run_id"])
+                self.assertEqual(
+                    envelope, json.loads((lobby / "result.json").read_text())
+                )
+                self.assertEqual(lobby, self.store().find(envelope["run_id"]))
+                self.assertNotIn(
+                    envelope["run_id"],
+                    [run["run_id"] for run in runs.workspace_runs(self.store(), "t1")],
+                )
+        # Once the workspace is bound again, a run enters it as before.
+        status, envelope = self.project.run("task-validation", "--task", "t1")
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        self.assertFalse(self.lobby(envelope["run_id"]).exists())
+        self.assertTrue((self.run_folder(envelope) / "result.json").is_file())
 
     @verifies("scenario.execution.binding-refused")
     def test_a_broken_binding_refuses_the_run(self):
@@ -1058,7 +1161,12 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(
             ("command", "task-validation"), (announced["kind"], announced["name"])
         )
-        self.assertTrue(Path(announced["progress"]).is_file())
+        # Its progress file exists once announced: in the lobby, or in its node once it entered
+        # its workspace.
+        self.assertTrue(
+            Path(announced["progress"]).is_file()
+            or (Path(announced["lobby"]) / "status.json").is_file()
+        )
         folder = self.records / "tasks/t1/workspace/runs" / announced["run_id"]
         self.assertEqual(
             (folder, folder / "result.json"),
@@ -1078,8 +1186,9 @@ class RunnerTests(unittest.TestCase):
                 "command", "task-validation", [], cwd=self.worktree
             )
             self.assertEqual(0, status, announced)
-            refused = self.wait_for(Path(announced["result"]))
+            refused = self.wait_for(Path(announced["lobby"]) / "result.json")
         self.assertEqual("failed", refused["status"])
+        self.assertFalse(Path(announced["trace"]).exists())
         self.assertIn(
             "workspace_busy", [item["ref"] for item in refused["host_evidence"]]
         )
@@ -1108,7 +1217,7 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(0, status, announced)
         run_id = announced["run_id"]
         lock = self.records / "locks/runs" / f"{run_id}.lock"
-        progress = Path(announced["progress"])
+        progress = Path(announced["lobby"]) / "status.json"
         deadline = time.monotonic() + 30
         while time.monotonic() < deadline:
             if json.loads(progress.read_text()).get("step") == "workspace-lock":

@@ -3,9 +3,10 @@
 One runner executes both kinds of run definition in the worktree it is started in:
 
 1. Parse the command line and look up the definition; only then create the run.
-2. Read the workspace binding of the worktree. A bound run takes the workspace lock and works on
-   the binding's Modules; an unbound run, for a definition that allows it, works in a throwaway
-   detached checkout of the worktree's ``HEAD``. Check ``--modules`` and ``--input``.
+2. Read the workspace binding of the worktree. A bound run waits in the lobby for the workspace
+   lock, checks once it holds it that the workspace was not retired meanwhile, then enters it and
+   works on the binding's Modules; an unbound run, for a definition that allows it, works in a
+   throwaway detached checkout of the worktree's ``HEAD``. Check ``--modules`` and ``--input``.
 3. Execute the definition's steps in order.
 4. Remove an unbound run's checkout, compose and check the run result, write ``result.json``
    and the run's trace node, release the locks, print the result.
@@ -13,6 +14,9 @@ One runner executes both kinds of run definition in the worktree it is started i
 Every run is a trace node: ``trace.json`` is written when the run lock is taken and again after the
 result, in ``runs/<run-id>/`` of the binding's workspace folder, in the folder ``--trace-at`` names
 there (a workflow step's), or in ``.concorde/unbound/<run-id>/`` of the worktree for an unbound run.
+A bound run's node starts in the lobby, ``lobby/<run-id>/`` of the binding's ``.concorde``, and moves
+into the workspace folder only once the run holds the workspace lock, so nothing is written into a
+workspace folder that a close may be moving; a run refused before then stays in the lobby.
 
 ``--detach`` starts the same runner as a process of its own and announces the run at once.
 """
@@ -21,8 +25,10 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import errno
 import json
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -107,6 +113,22 @@ REFUSALS = {
         "a binding copied from another worktree would bind the wrong workspace",
         ["remove the copied .concorde/workspace.json"],
     ),
+    "workspace_retired": (
+        "environment",
+        "the workspace the run was started for was retired, or its binding changed, while the "
+        "run waited for its lock, and the runner works only in the workspace whose binding it read",
+        [
+            "start the run again in a worktree that is bound now, such as the worktree of an "
+            "open task"
+        ],
+    ),
+    "run_store_unwritable": (
+        "environment",
+        "the runner keeps a run only in the run store and cannot record it elsewhere",
+        [
+            "repair what the cause names, such as a full or read-only file system, and run it again"
+        ],
+    ),
     "checkout_unavailable": (
         "environment",
         "an unbound run works only in a throwaway checkout of the commit it examines, which Git "
@@ -118,7 +140,10 @@ REFUSALS = {
     ),
 }
 # The component of the runner that refused, by refusal code; the run store otherwise.
-REFUSING = {"checkout_unavailable": "Execution (unbound checkout)"}
+REFUSING = {
+    "checkout_unavailable": "Execution (unbound checkout)",
+    "workspace_retired": "Execution (workspace binding)",
+}
 INPUT_REFUSAL = (
     "input",
     "the Modules or inputs named on the command line are refused and only the caller can "
@@ -478,7 +503,10 @@ def execute(
     if identity is not None and not RUN_ID.match(identity):
         raise UsageError(f"invalid run identity {identity!r}")
     identity = identity or new_run_id(chosen.name)
-    run_dir = _node_folder(arguments, store, identity, bound)
+    node_folder = _node_folder(arguments, store, identity, bound)
+    # A bound run waits in the lobby: nothing of it lies in the workspace folder until it holds
+    # the workspace lock, since a close holding that lock moves the folder.
+    run_dir = store.lobby_folder(identity) if bound is not None else node_folder
     run_dir.mkdir(parents=True, exist_ok=True)
     started = now()
     context = RunContext(
@@ -519,8 +547,11 @@ def execute(
                                 waiting=lambda holder: _progress(
                                     context, step="workspace-lock", waiting_for=holder
                                 ),
+                                retake=False,
                             )
                         )
+                        _revalidate(root, bound)
+                        _enter(context, node, node_folder)
                         _progress(context, step=None, waiting_for=None)
                     else:
                         checkout = _checkout(chosen, context)
@@ -545,7 +576,9 @@ def execute(
             # The result is written while the lock is still held, so a run admitted after this one
             # always finds it written. Seeing the result does not mean the lock is free: it is
             # released only when this block ends.
-            (run_dir / "result.json").write_text(json.dumps(envelope, indent=2) + "\n")
+            (context.run_dir / layout.RESULT).write_text(
+                json.dumps(envelope, indent=2) + "\n"
+            )
             _progress(
                 context,
                 phase="finished",
@@ -555,6 +588,86 @@ def execute(
             )
             _finish_node(chosen, context, node, words, envelope, status)
     return status, envelope
+
+
+def _revalidate(root: Path, bound: dict) -> None:
+    """Refuse with ``workspace_retired`` unless the binding read at the parse still binds the
+    worktree; the caller holds the workspace lock, so it cannot change any more."""
+    path = binding_file.path_of(root)
+    try:
+        current = binding_file.load(root)
+    except binding_file.BindingError as error:
+        raise RunError(
+            "workspace_retired",
+            f"the workspace {bound['workspace']} was retired while this run waited for its lock: "
+            f"its binding {path} can no longer be trusted ({error.code}: {error})",
+        ) from None
+    if current is None:
+        raise RunError(
+            "workspace_retired",
+            f"the workspace {bound['workspace']} was retired while this run waited for its lock: "
+            f"its binding {path} is gone",
+        )
+    if current != bound:
+        changed = sorted(
+            key for key in {*bound, *current} if bound.get(key) != current.get(key)
+        )
+        raise RunError(
+            "workspace_retired",
+            f"the binding {path} changed while this run waited for the lock of workspace "
+            f"{bound['workspace']} (changed: {', '.join(changed)}); the run works only in the "
+            "workspace whose binding it read",
+        )
+
+
+def _enter(context: RunContext, node: Node, folder: Path) -> None:
+    """Move the run's node from the lobby into the workspace folder, once it holds the lock.
+
+    A rename keeps every file, the detached runner's open ``host.out`` included; across file
+    systems the node is copied and this process's output follows its copy. ``run_store_unwritable``
+    when the node cannot be moved.
+    """
+    lobby = context.run_dir
+    try:
+        folder.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            os.rename(lobby, folder)
+        except OSError as error:
+            if error.errno != errno.EXDEV:
+                raise
+            shutil.copytree(lobby, folder, dirs_exist_ok=True)
+            _follow_output(lobby / "host.out", folder / "host.out")
+            shutil.rmtree(lobby, ignore_errors=True)
+    except OSError as error:
+        raise RunError(
+            "run_store_unwritable",
+            f"the run's node {lobby} cannot be moved from the lobby into the workspace folder as "
+            f"{folder}: {error}",
+        ) from error
+    context.run_dir = folder
+    node.folder = folder
+
+
+def _follow_output(old: Path, new: Path) -> None:
+    """Point this process's standard output and error that write ``old`` at ``new`` instead."""
+    try:
+        before = os.stat(old)
+    except OSError:
+        return
+    target = None
+    for stream, descriptor in ((sys.stdout, 1), (sys.stderr, 2)):
+        try:
+            current = os.fstat(descriptor)
+        except OSError:
+            continue
+        if (current.st_dev, current.st_ino) != (before.st_dev, before.st_ino):
+            continue
+        if target is None:
+            target = os.open(new, os.O_WRONLY | os.O_APPEND)
+        stream.flush()
+        os.dup2(target, descriptor)
+    if target is not None:
+        os.close(target)
 
 
 def _cancelled(chosen: Provider, context: RunContext, cancelled: Cancelled) -> Stop:
@@ -741,8 +854,9 @@ def detach(
 
     The command line is checked first, so a malformed one starts nothing (``UsageError``). The
     run identity is chosen here and handed to the runner, which writes its progress file as its
-    first act; this returns once that file exists, with status 0 and the run's identity and
-    result path, or with status 1 and an error link when the runner ended or stayed silent
+    first act, in the lobby for a bound run; this returns once that file exists, in the lobby or
+    in the node the run moved to on entering its workspace, with status 0 and the run's identity,
+    node and lobby, or with status 1 and an error link when the runner ended or stayed silent
     before writing it.
     """
     words = [word for word in words if word != "--detach"]
@@ -755,7 +869,9 @@ def detach(
         bound = None  # the runner itself refuses the broken binding, with a result
     store = store_of(root, bound)
     identity = new_run_id(chosen.name)
-    run_dir = _node_folder(arguments, store, identity, bound)
+    node_folder = _node_folder(arguments, store, identity, bound)
+    lobby = store.lobby_folder(identity) if bound is not None else None
+    run_dir = lobby or node_folder
     run_dir.mkdir(parents=True, exist_ok=True)
     environment = dict(os.environ, **{RUN_ID_VARIABLE: identity})
     environment["PYTHONPATH"] = os.pathsep.join(
@@ -773,10 +889,15 @@ def detach(
             stderr=subprocess.STDOUT,
             start_new_session=True,
         )
-    progress = run_dir / "status.json"
-    result = run_dir / "result.json"
+    progress = node_folder / layout.PROGRESS
+    # The lobby first: a run moves from it into its node, never back.
+    places = [run_dir / layout.PROGRESS, progress] if lobby else [progress]
+
+    def written() -> bool:
+        return any(place.exists() for place in places)
+
     deadline = time.monotonic() + wait
-    while not progress.exists():
+    while not written():
         if process.poll() is not None or time.monotonic() > deadline:
             break
         time.sleep(0.05)
@@ -785,11 +906,12 @@ def detach(
         "kind": chosen.kind,
         "name": chosen.name,
         "host_pid": process.pid,
-        "trace": run_dir.as_posix(),
+        "trace": node_folder.as_posix(),
         "progress": progress.as_posix(),
-        "result": result.as_posix(),
+        "result": (node_folder / layout.RESULT).as_posix(),
+        "lobby": lobby.as_posix() if lobby else None,
     }
-    if progress.exists():
+    if written():
         return 0, announced
     ended = process.poll()
     if ended is None:
@@ -800,7 +922,13 @@ def detach(
         except OSError:
             pass
         process.wait()
-    tail = output.read_bytes()[-4000:].decode("utf-8", "replace").strip()
+    if not output.exists():
+        # The runner may have moved its node, and its output with it, before it ended.
+        output = node_folder / "host.out"
+    try:
+        tail = output.read_bytes()[-4000:].decode("utf-8", "replace").strip()
+    except OSError:
+        tail = ""
     detail = (
         f"the detached runner of {chosen.name} (process {process.pid}) "
         + (

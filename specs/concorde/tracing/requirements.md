@@ -80,8 +80,11 @@ ends.
 
 ### req.tracing.nested-by-parent — A child lies inside its parent
 
-The folder of every trace node except a task and an [unbound run](../glossary.json#concept.unbound-run) SHALL lie inside the folder of the
+The folder of every trace node except a task, an [unbound run](../glossary.json#concept.unbound-run) and a bound run in the lobby SHALL lie inside the folder of the
 node it belongs to, at the location that node chose before the child started.
+
+A bound run lies in the lobby, `lobby/<run>/`, until it holds its workspace's lock, and stays there
+when it never does; once it holds the lock it lies at the location its parent chose.
 
 ### req.tracing.downward-only — Execution's nodes never name a task
 

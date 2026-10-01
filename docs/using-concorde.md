@@ -905,6 +905,7 @@ Neither user documents nor custom docs may contain a registered Spec document.
 | `.concorde/tasks/<task>/`                  | A current task: its record, decision log, sessions, merges and runs (ignored by Git).   |
 | `.concorde/history/`                       | The folders of closed tasks, kept as they were (ignored by Git).                        |
 | `.concorde/unbound/`                       | Runs without a task, such as an `understand` of your primary checkout (ignored by Git). |
+| `.concorde/lobby/`                         | Runs waiting for a task's workspace, or refused before entering it (ignored by Git).    |
 | `.concorde/locks/`                         | Every lock Concorde takes (ignored by Git).                                             |
 | `.concorde/tracing.json`                   | How long unbound runs, closed tasks and their transcripts are kept (optional).          |
 | `.concorde/decisions/`                     | The decision logs of ended tasks, committed when each task ends.                        |

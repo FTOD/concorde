@@ -6,7 +6,8 @@ names the task, once it holds the lock, and empties the file before it releases 
 that gives up can say who holds it. The kernel releases a ``flock`` however its process ends. A
 lock taken with ``remove`` (the run lock) is removed by its holder while still held; a lock whose
 file was removed or replaced while a process waited for it is taken again on the file that is there
-now, so no two processes ever believe they hold the same lock.
+now, so no two processes ever believe they hold the same lock, unless the taker asks to learn of it
+instead (``retake=False``), as a run waiting for a workspace lock that a close removes does.
 
 A lock may be handed to a process: its taker starts it with the locked descriptor inherited and
 names it in the environment variable ``CONCORDE_INHERITED_LOCKS`` (``{"<lock path>": <fd>}``).
@@ -49,6 +50,18 @@ class LockBusy(Exception):
         self.holder = holder
         self.waited = waited
         self.entry = entry
+
+
+class LockGone(Exception):
+    """The lock file was removed or replaced while this process waited for it, and the taker
+    asked not to take the file there now."""
+
+    def __init__(self, path: Path, waited: float):
+        super().__init__(
+            f"{path} was removed or replaced by its holder while this process waited for it"
+        )
+        self.path = path
+        self.waited = waited
 
 
 def _now() -> str:
@@ -163,6 +176,7 @@ def hold(
     remove: bool = False,
     waiting: Callable[[str], None] | None = None,
     task: str | None = None,
+    retake: bool = True,
 ):
     """Hold the lock ``path`` for the block; yield the seconds spent waiting for it.
 
@@ -170,7 +184,8 @@ def hold(
     takes. ``waiting`` is told the current holder once when the wait begins. ``task`` is written
     into the holder line. The descriptor is not inherited by processes the holder starts, so none
     of them keeps the lock alive. A descriptor this process inherited for ``path`` is adopted
-    without waiting.
+    without waiting. A file removed or replaced while this process waited for it is taken again
+    where it is now, or with ``retake`` False refused with ``LockGone``.
     """
     path = Path(path)
     started = time.monotonic()
@@ -205,6 +220,8 @@ def hold(
         # The file was removed or replaced while this process waited: take the current one.
         os.close(descriptor)
         descriptor = None
+        if not retake:
+            raise LockGone(path, round(time.monotonic() - started, 3))
     try:
         write_entry(descriptor, line(holder, os.getpid(), task))
         yield round(time.monotonic() - started, 3)
@@ -354,6 +371,7 @@ __all__ = [
     "POLL",
     "SESSION",
     "LockBusy",
+    "LockGone",
     "acquire",
     "describe",
     "entry",
