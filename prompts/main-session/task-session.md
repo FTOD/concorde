@@ -212,10 +212,13 @@ fixed it, and otherwise close with `issue_close` as `resolved`, the review's run
 when your brief asks for it or after a change large enough to deserve a whole-Module check.
 
 A refusal of the Issue tools whose reason is `environment`, such as `merge_busy` while a merge holds
-the lock, `merge_incomplete` or `commit_failed`, is a failure of the Issue system itself: never
-report it as an Issue. Record it in the decision log; wait for a busy merge lock with
-`concorde task wait --lock merge` in background Bash and write again; escalate any other with
-`--error-file` naming a file holding its error.
+the lock, `merge_incomplete`, `commit_failed`, `recovery_failed` or `uncommitted_change`, is a
+failure of the Issue system itself: never report it as an Issue. Record it in the decision log; wait
+for a busy merge lock with `concorde task wait --lock merge` in background Bash and write again;
+escalate any other with `--error-file` naming a file holding its error. `recovery_failed` and
+`uncommitted_change` concern an Issue record in the primary worktree, which the main agent puts
+right with `concorde issues recover` or by reverting the record: never run that recovery or touch
+the record yourself.
 
 ## Report
 

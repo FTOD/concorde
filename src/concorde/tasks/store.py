@@ -755,11 +755,8 @@ def end_merge(primary: Path, task_id: str) -> dict:
 
 
 def _ignored_inside(primary: Path, worktree: Path) -> None:
-    """Refuse a worktree inside the primary worktree that Git would not ignore there."""
-    resolved = Path(os.path.realpath(worktree))
-    if primary not in resolved.parents:
-        return
-    relative = resolved.relative_to(primary).as_posix()
+    """Refuse a worktree, always inside the primary worktree, that Git would not ignore there."""
+    relative = worktree.relative_to(primary).as_posix()
     checked = _git(primary, "check-ignore", "-q", relative + "/", check=False)
     if checked.returncode != 0:
         raise TaskError(
@@ -767,8 +764,7 @@ def _ignored_inside(primary: Path, worktree: Path) -> None:
             f"the worktree path {relative}/ lies inside the primary worktree {primary} but Git "
             f"does not ignore it (git check-ignore exited {checked.returncode}), so the task's "
             f"checkout would appear as untracked files of the primary branch; add "
-            f"{WORKTREES}/ (or the path's directory) to .gitignore, or pass --path outside "
-            "the primary worktree",
+            f"{WORKTREES}/ to .gitignore",
         )
 
 
@@ -1101,7 +1097,6 @@ def open_task(
     modules: list[str],
     *,
     base: str | None = None,
-    path: Path | None = None,
     wait: float = MERGE_WAIT,
     resolves: list[str] = (),
 ) -> dict:
@@ -1122,7 +1117,6 @@ def open_task(
             goal,
             modules,
             base=base,
-            path=path,
             resolves=list(resolves),
         )
 
@@ -1236,7 +1230,6 @@ def _open_task(
     modules: list[str],
     *,
     base: str | None,
-    path: Path | None,
     resolves: list[str] = (),
 ) -> dict:
     if not TASK_ID.match(task_id or ""):
@@ -1277,11 +1270,12 @@ def _open_task(
             f"branch {branch} already exists in {primary} although no task record does; "
             "delete the branch or choose another task identity",
         )
-    worktree = Path(os.path.abspath(path or primary / WORKTREES / task_id))
+    worktree = primary / WORKTREES / task_id
     if worktree.exists():
         raise TaskError(
             "path_exists",
-            f"the worktree path {worktree} already exists; pass --path or remove it",
+            f"the worktree path {worktree} already exists; remove it or choose another task "
+            "identity",
         )
     _ignored_inside(primary, worktree)
     registered(primary, modules)

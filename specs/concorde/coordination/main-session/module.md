@@ -449,7 +449,12 @@ by an earlier version, or on a project just adopted; unbound, in the primary wor
 Issue system itself, such as a busy merge lock, an unfinished merge or a failed commit, is never
 recorded as an Issue: the session carries its error chain in the task's decision log and
 escalation, as it would any other failure, and a run carries it in its result. A busy merge lock is
-waited for (`register_wait`) and the write asked again.
+waited for (`register_wait`) and the write asked again. Two of these failures concern a record in the
+primary worktree, which the main agent alone puts right: after `recovery_failed`, a record a write
+published stays uncommitted until the cause is fixed and `concorde issues recover`, which has no
+tool, puts it back; after `uncommitted_change`, the record holds a change no Issue write made, to be
+inspected and reverted, never committed by hand. A task's merge first puts back what a killed Issue
+write left, and its `primary_dirty` names any record that recovery left the same way.
 
 ## Develop installs
 
@@ -496,7 +501,10 @@ instructions, stays what the session started with until the next session.
   severity as `concorde issues list` is, `issue_show` and `issue_check` read the project's
   [Issues](../../glossary.json#concept.issue), and `issue_report`, `issue_close` and
   `issue_reopen` write them, each as `concorde issues` does and without waiting for the merge lock
-  an Issue write takes, refused at once with `merge_busy` while another process holds it. A report
+  an Issue write takes, refused at once with `merge_busy` while another process holds it. Each
+  write tool's description also says that the write first puts back what a killed Issue write
+  left, and how its `recovery_failed` and `uncommitted_change` refusals are put right, recovery
+  itself being `concorde issues recover`'s alone. A report
   is checked against the session's worktree, where its evidence lies, and recorded as the session's:
   `task-session` with its task in a task worktree bound as a workspace, `main-agent` otherwise.
 - **Long work**: `task_merge`, which never waits for a lock. It takes the task's workspace lock and

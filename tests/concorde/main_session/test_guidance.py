@@ -660,6 +660,27 @@ class GuidanceTests(unittest.TestCase):
             session,
         )
 
+    @verifies("scenario.main-session.issue-recovery")
+    def test_the_guidance_says_how_issue_records_are_put_back(self):
+        skill, session = (" ".join(text.split()) for text in self.issues())
+        merging = " ".join(self.skill.split())
+        for text, instruction in (
+            (skill, "`recovery_failed` means a record an Issue write published"),
+            (skill, "then run `concorde issues recover` (it has no MCP tool)"),
+            (skill, "`uncommitted_change` means the record of the Issue you wrote"),
+            (skill, "Never commit such a record by hand."),
+            (merging, "It first puts back the Issue records a killed Issue write left"),
+            (merging, "inspect it with `git diff` and revert it"),
+            (
+                merging,
+                "then run `concorde issues recover`, which puts the records back",
+            ),
+            (session, "`recovery_failed` or `uncommitted_change`, is a failure"),
+            (session, "never run that recovery or touch the record yourself"),
+        ):
+            with self.subTest(instruction=instruction):
+                self.assertIn(instruction, text)
+
     @verifies("scenario.main-session.worker-configuration-required")
     def test_workers_run_only_on_the_models_the_configuration_enables(self):
         models = self.skill.split("## Worker models", 1)[1]

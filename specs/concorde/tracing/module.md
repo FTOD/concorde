@@ -212,15 +212,17 @@ trace or a task folder, and its file holds only who holds it now:
 | [merge lock](../glossary.json#concept.merge-lock) `merge.lock` | a task merge, open or close, and an [Issue](../glossary.json#concept.issue) write | always |
 | task lock `tasks/<task>.lock` | a change of the task's record | until the task is closed |
 | [workspace lock](../glossary.json#concept.workspace-lock) `workspaces/<workspace>.lock` | a run of the workspace, a merge or close of its task | until the task is closed |
-| workflow lock `workflows/<workspace>.lock` | a workflow step of the workspace | until the task is closed |
+| workflow lock `workflows/<workspace>.lock` | a workflow step or report of the workspace, a close of its task, also the close that ends its merge | until the task is closed |
 | [run lock](../glossary.json#concept.run-lock) `runs/<run>.lock` | the run's runner only | removed by the runner as it exits |
 
 A lock file's holder line names the holder, its process and since when it holds the lock, and,
 when they are known, the Claude Code session it works for and the task, so that whoever is refused
-learns who to wait for. A lock can be handed on: its holder starts a process that inherits the
-locked descriptor, which is how the
-[project MCP server](../glossary.json#concept.project-mcp-server) gives the locks it took to the
-merge it starts, so that the lock belongs to the work and not to the server. A wait for a lock's
+learns who to wait for. A lock can be handed on: its holder passes the locked descriptor to a
+process it starts, or to the program it replaces itself with, which inherits it. That is how the
+process a [project MCP server](../glossary.json#concept.project-mcp-server) runs for one
+`task_merge` call, having taken both locks and answered, gives them to the `concorde task merge`
+it replaces itself with, so that the locks belong to the work: the long-lived server takes no lock
+at all. A wait for a lock's
 release blocks on the lock itself, so the kernel wakes it when the holder ends or dies
 ([contracts](contracts.md#locks)).
 

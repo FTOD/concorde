@@ -129,6 +129,15 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - WHEN the main agent merges the task inside that sandbox
 - THEN the merge is not refused as `primary_dirty`, since a new path Git cannot version is no change of the primary worktree, and the task is closed as merged
 
+### scenario.tasks.merge-recovers-issue-records — A merge puts back what a killed Issue write left
+
+- GIVEN a delivered task
+- AND an Issue record a killed Issue write published and never committed in the primary worktree
+- AND an Issue record edited by hand there
+- WHEN the main agent merges the task
+- THEN the merge puts back the killed write's record, as the next Issue write would, and refuses with `primary_dirty`, naming the edited record and that no Issue write made its change
+- AND once the edit is reverted, the merge runs and closes the task as merged
+
 ### scenario.tasks.merge-nothing-outside — A merge judges what changed outside the task's worktree
 
 - GIVEN a delivered task `severity`, a task `labels` that has delivered and waits and a task `quiet` that ended and whose worktree outlived it
