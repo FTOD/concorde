@@ -264,10 +264,10 @@ path argument exactly as pi resolves it.
 ### Why the Harness is separate
 
 The Harness is separate from the agents because what it produces does not depend on who runs the
-agent or why: the same write-hook table and sandbox settings serve a worker and a task session, and
-a worker's harness on either program comes from the same grant by the same code. The agent Modules keep what does: when an agent starts, how its rounds go, what is audited and
-recorded. So a new kind of agent, or a new level, needs a new set of inputs for the Harness, not a
-new enforcement mechanism.
+agent or why: the same write-hook table serves a worker and a task session, and a worker's harness
+on either program comes from the same grant by the same code. The agent Modules keep what does: when
+an agent starts, how its rounds go, what is audited and recorded. So a new kind of agent, or a new
+level, needs a new set of inputs for the Harness, not a new enforcement mechanism.
 
 ### One grant, compiled for each program
 

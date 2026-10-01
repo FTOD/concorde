@@ -20,7 +20,7 @@ from unittest.mock import patch
 from concorde.harness import pi_backend
 from concorde.harness.settings import RunPaths, sandbox_filesystem
 from concorde.spec.verification import verifies
-from tests.concorde.harness.workers.test_workers import SESSION_PROXY, WorkerProject
+from tests.concorde.harness.workers.test_workers import LOOPBACK_PROXY, WorkerProject
 
 FAKE = Path(__file__).with_name("fake_pi.py")
 POLICY_SOURCE = Path(pi_backend.__file__).with_name("pi_policy.ts")
@@ -155,13 +155,13 @@ class PiRunTests(unittest.TestCase):
         self.assertEqual("concorde_result", status["last_action"]["tool"])
 
     @verifies("scenario.workers.session-proxy")
-    def test_a_pi_worker_in_a_task_session_gets_the_session_proxy(self):
-        with patch.dict(os.environ, SESSION_PROXY):
+    def test_a_pi_worker_behind_a_loopback_proxy_uses_it(self):
+        with patch.dict(os.environ, LOOPBACK_PROXY):
             record = self.project.run([{}])
         self.assertEqual("ok", record["status"], record["error"])
         [first] = self.project.rounds(record)
         for name in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"):
-            self.assertEqual(SESSION_PROXY[name], first["env"][name])
+            self.assertEqual(LOOPBACK_PROXY[name], first["env"][name])
         self.assertEqual("10.0.0.0/8", first["env"]["NO_PROXY"])
         self.assertEqual("10.0.0.0/8", first["env"]["no_proxy"])
         self.assertNotIn("ALL_PROXY", first["env"])
