@@ -38,6 +38,17 @@ of judgment is enforced elsewhere — workers by the Harness, Operations by thei
 readiness by `task-validation` and `delivery` — so an agent that ignores the guidance wastes effort
 but cannot widen a worker's boundary.
 
+<a id="concept.task-brief"></a>
+
+The **[task brief](../../glossary.json#concept.task-brief)** is how the main agent hands a task to
+its session: before it starts the task session, it records in the task's
+[decision log](../../glossary.json#concept.decision-log) the developer's decisions the task carries
+out, the workflow and its [mode](../../glossary.json#concept.workflow-mode) when one applies,
+anything the goal leaves out and what it leaves for the session to decide, and the session reads it
+before it changes anything. It is written by the main agent for a task session, unlike a worker's
+[brief](../../glossary.json#concept.brief), which an Operation generates for each worker it launches
+from that worker's grant.
+
 <a id="concept.project-mcp-server"></a>
 
 The **[project MCP server](../../glossary.json#concept.project-mcp-server)** is the project's one
@@ -109,7 +120,7 @@ primary: "Main agent\nprimary worktree" {
   grid-columns: 1
   vertical-gap: 60
   agree: "Agree the limit\nwith the developer"
-  open: "Open a task for\nmodule.payments,\nrecord its brief"
+  open: "Open a task for\nmodule.payments,\nrecord its task brief"
   g1: "" {style.opacity: 0}
   g2: "" {style.opacity: 0}
   g3: "" {style.opacity: 0}
@@ -137,8 +148,8 @@ primary.merge -> primary.report
 primary.report -> developer.read
 ```
 
-The main agent agrees the change with the developer, opens a task and records its brief, and hands
-the task to a task session, which runs the Operations and execution commands in the task worktree,
+The main agent agrees the change with the developer, opens a task and records its task brief, and
+hands the task to a task session, which runs the Operations and execution commands in the task worktree,
 reads each [run result](../../glossary.json#concept.run-result) and delivers. The main agent merges
 the delivered task and reports what it decided on the developer's behalf, here the back-off.
 
@@ -191,19 +202,20 @@ The installed guidance gives the main agent this working method:
   `concorde task session <task>`, even for a single task, and stay in the primary worktree, where
   the main agent discusses, opens and closes tasks, starts and answers task sessions, runs
   [unbound](../../glossary.json#concept.unbound-run) Operations, merges, reports, inspects Issues
-  and changes the worker configuration. Before starting the session, record the task's brief in its
-  decision log: the developer's decisions the task carries out, the workflow and mode when one
-  applies, and what is left to the session; the session reads it first. A task session is a
-  background Claude Code session, on the main agent's own program: the command names the main
-  agent's session with `--main`, the task session reports back with SendMessage, and the main agent
-  answers it the same way; ending the task, by its merge or its close, stops its task sessions and
+  and changes the worker configuration. Before starting the session, record the task's
+  [task brief](../../glossary.json#concept.task-brief) in its decision log; the session reads it
+  first. A task session is a background Claude Code session, on the main agent's own program: the
+  command names the main agent's session with `--main`, the task session reports back with
+  SendMessage, and the main agent answers it the same way; ending the task, by its merge or its close, stops its task sessions and
   removes them from Claude's session list, keeping their transcripts in the task's
   [trace](../../glossary.json#concept.trace), so the main agent never removes them itself. The task
   session changes Specs and code in the task worktree directly or by running
   [Operations](../../glossary.json#concept.operation) with `concorde run <operation> …` and the
   [execution commands](../../glossary.json#concept.execution-command) `concorde task-validation`
   and `concorde delivery`, reading each [run result](../../glossary.json#concept.run-result), and
-  runs every `concorde` command that works on the task's workspace with the worktree's own copy;
+  runs every `concorde` command that works on the task's workspace as the task worktree's own
+  command, from that worktree
+  ([requirements](requirements.md#req.main-session.worktree-own-concorde));
   the commands that open, merge and close tasks and start task sessions run from the primary
   worktree. None of these names the task: the task worktree's
   [workspace binding](../../glossary.json#concept.workspace-binding), which `concorde task open`
@@ -225,19 +237,25 @@ The installed guidance gives the main agent this working method:
   ([requirements](requirements.md#req.main-session.batched-decisions)).
 - **Have a plan reviewed when it deserves it.** The task-session guidance presents `plan_review` as
   optional: nothing requires it before `task-validation` or `delivery`, and a task session runs it
-  when it chooses or its brief asks for it. The session writes the plan itself, possibly starting
-  from an `understand` plan, and leads the discussion over several runs: it answers every finding
+  when it chooses or its task brief asks for it. The session writes the plan itself, possibly
+  starting from an `understand` plan, and leads the discussion over several runs: it answers every finding
   of an iteration, accepting it and revising the plan or rejecting it with its reason, and runs
   `plan_review` again with the previous run as `--input` and the answers as `--accept` and
   `--reject`, until the verdict is `accepted`. A finding the reviewer maintains after the session
   rejected it, and that the session still rejects, is a disagreement it does not iterate on again
   but escalates to the main agent, stating the answer in its next run
   ([requirements](requirements.md#req.main-session.task-session-plan-review)).
-- **Keep the decision log.** Record every non-`ok` result of the task's runs and every
-  unsupervised choice, with its reason, in the task's
-  [decision log](../../glossary.json#concept.decision-log), including the decisions and problems of
-  a workflow's report, which nothing else writes there, knowing that the log is committed to the
-  primary branch when the task ends and so outlives the local history.
+- **Keep the decision log.** Each session records in the task's
+  [decision log](../../glossary.json#concept.decision-log) what it did without the developer, with
+  its reason. The task session, which starts the task's runs and decides its ordinary questions,
+  records every non-`ok` result of the runs it starts and every choice it made, including the
+  decisions and problems of a [workflow result](../../glossary.json#concept.workflow-result), which
+  nothing else writes there
+  ([requirements](requirements.md#req.main-session.task-session-decision-log)); the main agent
+  records every choice it made for the task
+  ([requirements](requirements.md#req.main-session.decision-log)), and `concorde task answer`
+  appends its answers to the session's reports. The log is committed to the primary branch when the
+  task ends and so outlives the local history.
 - **Merge delivered work.** Merge, without asking the developer's authorization, a task branch
   that `delivery` committed, from the primary worktree with `concorde task merge`, never with
   `git merge`: it holds the [merge lock](../../glossary.json#concept.merge-lock) so merges of
@@ -266,7 +284,12 @@ The installed guidance gives the main agent this working method:
   list --main <former> --state open,active,delivered,merging`, rebinds each to its current name
   with `concorde task rebind`, and reads their unanswered reports, those `concorde task show` lists
   with no answer, before anything else
-  ([requirements](requirements.md#req.main-session.reconcile-after-restart)). An ended task needs
+  ([requirements](requirements.md#req.main-session.reconcile-after-restart)). An answer it recorded
+  may never have been sent, since the restart may have come between `concorde task answer` and
+  SendMessage, so it also sends again, to the session of each such task whose last report has an
+  answer, the latest answer recorded, naming the reports it answers by number; every answer names
+  them, and a task session treats an answer to a report it already acted on as nothing to do
+  ([requirements](requirements.md#req.main-session.reconcile-resend-answer)). An ended task needs
   none of this: it has no task session left, and its merge or close answered every report still
   unanswered when it ended.
 - **Report.** Close each piece of work with a short summary for the developer: what was merged,
@@ -285,7 +308,17 @@ The installed guidance gives the main agent this working method:
 A result that is not `ok`, or a refused `concorde` command, carries an
 [error chain](../../glossary.json#concept.error-chain); the guidance tells the main agent to read it
 in full, since the origin says what went wrong and each link says why that level could not handle
-it. The main agent decides ordinary design uncertainty itself — naming, internal structure, task
+it. Spec tooling is the exception: its commands, such as `spec-validation`, `registry`, `grant` and
+`build`, and the Spec MCP server refuse with Spec tooling's own
+[error record](../../spec-tooling/spec/errors.md#contract.spec.error) — a code, a message, why it is
+an error, where, how to fix it and its causes — which is no link of the chain, so that
+`concorde task escalate` refuses a file holding one with `invalid_error`. As
+[Tracing](../../tracing/contracts.md#where-links-appear) requires of any Module that receives such
+an error and cannot handle it, the guidance tells the main agent and task sessions to translate the
+record into a `component` link of actor `Spec tooling (concorde <command>)`, its detail keeping the
+record's message, reason, location and remediation and its causes being the record's causes
+translated the same way, to save that link in a file and to escalate with it as `--error-file`
+([requirements](requirements.md#req.main-session.spec-tooling-errors)). The main agent decides ordinary design uncertainty itself — naming, internal structure, task
 order, a clarified re-run, splitting a task — and records and reports the choice. Among the
 questions the work raises, it asks the developer first only for a decision with major impact:
 changing what a Module promises to its users or the project's direction, contradicting an earlier
@@ -360,14 +393,14 @@ a Module before a change is agreed.
 
 For a task that follows a known procedure the guidance tells the main agent to have its
 [workflow](../../glossary.json#concept.workflow) run instead of sequencing the runs by hand: open the
-task and name in its brief the workflow, its Module and its
+task and name in its task brief the workflow, its Module and its
 [mode](../../glossary.json#concept.workflow-mode); the task session starts the workflow inside the
 task worktree, since like every run it works on the workspace of the worktree it starts in and
 never names the task: it runs the installed `/concorde-<name>` workflow. The main agent asks the
 developer which mode to use unless the developer already said; interactive suits a developer who
 wants the decision points settled before the workflow goes on, by the main agent or by the
 developer, no-ask one who wants the result later. A task session runs the
-workflow in the mode its brief names, and in interactive mode when the brief names none
+workflow in the mode its task brief names, and in interactive mode when the task brief names none
 ([requirements](requirements.md#req.main-session.task-session-workflow)).
 
 When the workflow ends `awaiting_decision`, the session escalates every pending
@@ -384,8 +417,8 @@ workflow result from the file Workflows saves in the workflow's node beside the 
 treats it like a run result: it copies the result's decisions and problems into the task's decision
 log, since Workflows keeps its record apart from the task and in no-ask mode those are decisions
 taken without the developer, gives the decisions in its own report and escalates a result that is
-not `ok` with the report as `--error-file` and a decision of major impact with its own link alone.
-The main agent reads every problem's chain and merges a delivered task. The guidance names the
+not `ok` with the saved workflow result as `--error-file` and a decision of major impact with its
+own link alone. The main agent reads every problem's chain and merges a delivered task. The guidance names the
 [brownfield workflow](../../glossary.json#concept.brownfield-workflow) as the way to describe a
 project whose code came before its Specs, right after installation and initialization, and
 nowhere else, in a task opened for the root Module, or for a created Module to split further.
@@ -447,8 +480,13 @@ by an earlier version, or on a project just adopted; unbound, in the primary wor
 
 **The Issue system's own failures.** A refusal of the Issue tools or command that is a failure of the
 Issue system itself, such as a busy merge lock, an unfinished merge or a failed commit, is never
-recorded as an Issue: the session carries its error chain in the task's decision log and
-escalation, as it would any other failure, and a run carries it in its result. A busy merge lock is
+recorded as an Issue: a session that met it for a task carries its error chain in the task's
+decision log and escalation, as it would any other failure, and a run carries it in its result. An
+Issue tool or command needs no task, and a failure the main agent met for none has no decision log
+or escalation to carry it, so the guidance tells the main agent to show the developer its whole
+chain at once, as it does an [unbound run](../../glossary.json#concept.unbound-run)'s, and to open
+a task only when the failure leads to work
+([requirements](requirements.md#req.main-session.issues-failure-no-task)). A busy merge lock is
 waited for (`register_wait`) and the write asked again. Two of these failures concern a record in the
 primary worktree, which the main agent alone puts right: after `recovery_failed`, a record a write
 published stays uncommitted until the cause is fixed and `concorde issues recover`, which has no
@@ -626,9 +664,14 @@ change made directly, and the primary worktree must stay clean to merge; the dev
 of the specific change stands in for that evidence where a task would cost more than the change.
 Inside a task worktree a direct change is bounded by the task and evidenced by `task-validation`
 and `delivery`, so task sessions may change Specs and code there themselves. Every `concorde`
-command that works on a task's workspace runs with the worktree's own copy, because only the
-branch's copy knows the Specs, Protocol and checks the task changes, and only that worktree's
-binding names the task's workspace.
+command that works on a task's workspace is the task worktree's own command, run from that
+worktree, because only the task branch holds the Specs,
+[Protocol copy](../../glossary.json#concept.protocol-copy) and checks the task changes, and only
+that worktree's binding names the task's workspace. Which Framework code the command runs
+is [Distribution](../../distribution/module.md)'s concern, not the guidance's: in an installed
+project a task worktree's command ordinarily runs the installed Framework shared with the primary
+worktree, unless the task reinstalled Concorde there, while in Concorde's own source checkout it
+runs the task branch's code.
 
 The main agent hands every task, even a single one, to a task session, so that it stays free to
 talk with the developer and to answer every session while tasks run, and every task runs under a
@@ -690,7 +733,7 @@ merges a delivered task itself.
 <a id="uses-workflows"></a>
 
 **Workflows** provides the [workflows](../../glossary.json#concept.workflow) the main agent names
-in a task's brief, their modes and the
+in a task brief, their modes and the
 [workflow result](../../glossary.json#concept.workflow-result) read when one ends. The guidance
 relies on a workflow never opening, merging or closing a task and on its result keeping every
 run's chain whole, so that a workflow's end is handled like a run's: an `awaiting_decision` result
@@ -706,18 +749,57 @@ Operation and the [execution commands](../../glossary.json#concept.execution-com
 `concorde task-validation`, `concorde delivery` and `concorde scaffold`, each reading the
 worktree's [workspace binding](../../glossary.json#concept.workspace-binding), and
 the Operations that run [unbound](../../glossary.json#concept.unbound-run) in the
-primary worktree. Each run returns a [run result](../../glossary.json#concept.run-result)
-the main agent can read without inspecting a worker, and none starts the next one: that choice is
-the agent's that started it. Every non-`ok` result of a task's runs is recorded in the decision
-log, and its chain is read in full before deciding or escalating. The project MCP server reads a
-run's [run lock](../../glossary.json#concept.run-lock) to tell whether it still runs and waits for
-its release to learn that it ended, and reads the workspace lock Execution's runs hold.
+primary worktree. Each run returns a [run result](../../glossary.json#concept.run-result), in the
+shape of Execution's [run result contract](../../execution/contracts.md#contract.execution.run-result),
+which the session that started it can read without inspecting a worker, and none starts the next
+one: that choice is the session's that started it. The task session records every non-`ok` result
+of the runs it starts in the decision log, and reads its chain in full before deciding or
+escalating. The project MCP server's `run_result` presents a run's saved result, and while the run
+has none its [run progress file](../../glossary.json#concept.run-progress-file), unchanged; it
+reads the run's [run lock](../../glossary.json#concept.run-lock) to tell whether it still runs and
+waits for its release to learn that it ended, and reads the workspace lock Execution's runs hold.
+Execution records no owner in a run's records, so the guidance and the server never take a run's
+owner from them ([requirements](requirements.md#req.main-session.owner-recorded-by-coordination)).
 
 <a id="uses-operations"></a>
 
 **Operations** provides the [Operation](../../glossary.json#concept.operation)
 catalog: which Operations exist, what each takes and which may run unbound. The guidance names
-them, and the task session chooses which to run for a task's next step.
+them, and the task session chooses which to run for a task's next step. What an Operation takes
+and returns is its provider's, and the guidance relies on four of them directly.
+
+<a id="uses-understanding"></a>
+
+**Understanding** provides `understand` and `plan_review`. The task-session guidance relies on
+`plan_review`'s iterations: a run given the previous run as `--input` must answer every finding of
+it once, with `--accept` or `--reject`, its reviewer answers those answers, and its verdict follows
+the findings that stand ([plan review](../../execution/operations/understanding/contracts.md#contract.understanding.plan-review)).
+It relies too on an `understand` plan naming in `new_files` the files a change needs that do not
+exist yet, for the task session to create and bind before the run that fills them.
+
+<a id="uses-specification"></a>
+
+**Specification** provides `specify`. The task-session guidance relies on it creating each new
+Spec document a `specify` worker proposes, empty and registered in its Module's `owns`, and
+refusing a proposed path that already exists
+([New and deleted documents](../../execution/operations/specification/module.md#new-and-deleted-documents)),
+so that a task session prepares implementation files for workers and never a Spec document.
+
+<a id="uses-spec-review"></a>
+
+**Spec review** provides `spec_review` and `spec_panel`. The guidance relies on each reporting every
+finding that stands as an Issue of the Module it concerns, closing none, and naming in its result
+each finding's Issue, the earlier Issues that still stand and those it found resolved
+([result](../../spec-tooling/spec-review/operation.md#contract.spec-review.payload)), with a
+[review verdict](../../glossary.json#concept.review-verdict) derived from the Issues that stand.
+
+<a id="uses-code-review"></a>
+
+**Code review** provides `code_review`, which judges a task's change since its base or, with
+`--scope module`, each named Module's whole code against all its Specs. The guidance relies on it
+reporting every finding as an Issue, a `spec-challenge` finding among them, closing none, and
+naming the earlier Issues that stand and those it found resolved, as Spec review does
+([Code review](../../execution/operations/code-review/module.md#two-scopes)).
 
 <a id="uses-commands"></a>
 
@@ -751,7 +833,7 @@ Tracing's [trace view](../../tracing/contracts.md#contract.tracing.view).
 
 ## Beside the levels
 
-Two providers serve the main agent without being a level below it.
+Three providers serve the main agent without being a level below it.
 
 <a id="uses-issues"></a>
 
@@ -765,6 +847,18 @@ tier, starting from the most severe Issues, to have a
 task's merge close the Issues it resolves and never to report a failure of the Issue system as an
 Issue. The command records these decisions; whoever disposes an Issue remains responsible for the
 evidence.
+
+<a id="uses-spec"></a>
+
+**Spec core** provides the commands that check and regenerate the Specs a session works on:
+`concorde spec-validation`, which reports every [structural check](../../glossary.json#concept.structural-check)
+finding of a worktree's Specs, and `concorde registry --write`, which regenerates the
+[registry](../../glossary.json#concept.registry) mirror after a Module's `module` block changed,
+the housekeeping the main agent may do in the primary worktree. The task-session guidance tells a
+session to check with `spec-validation` a realization entry it added before it commits it. The
+guidance relies on these commands, like every command of Spec tooling, refusing with Spec tooling's
+own [error record](../../spec-tooling/spec/errors.md#contract.spec.error), which a session
+translates into a link of the chain before it escalates it ([Escalation policy](#escalation-policy)).
 
 <a id="uses-spec-mcp"></a>
 

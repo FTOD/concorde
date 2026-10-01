@@ -667,6 +667,19 @@
       "explanation": "specs/concorde/coordination/tasks/module.md#concept.task"
     },
     {
+      "id": "concept.task-brief",
+      "title": "Task brief",
+      "owner": "module.main-session",
+      "definition": "What the main agent records in a task's decision log before it starts the task's session: the developer's decisions the task carries out, the workflow and its mode when one applies, and what it leaves for the session to decide.",
+      "explanation": "specs/concorde/coordination/main-session/module.md#concept.task-brief",
+      "contrasts": [
+        {
+          "target": "concept.brief",
+          "reason": "the task brief is the main agent's handoff of a task to a task session; a brief is the prompt an Operation generates for one worker"
+        }
+      ]
+    },
+    {
       "id": "concept.task-context",
       "title": "Task context",
       "owner": "module.concorde",

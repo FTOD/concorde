@@ -48,7 +48,7 @@ guides.
 - GIVEN the rendered main-session guidance
 - WHEN a main agent reads how to carry out the tasks it opened
 - THEN it is told to start one [task session](../../glossary.json#concept.task-session) per task, even for a single task, as a background Claude Code session with `concorde task session` naming its own session with `--main`
-- AND to record the task's brief in its [decision log](../../glossary.json#concept.decision-log) before starting the session
+- AND to record the task's [task brief](../../glossary.json#concept.task-brief) in its [decision log](../../glossary.json#concept.decision-log) before starting the session
 - AND to stay in the primary worktree
 - AND to answer a task session's escalation or pass it to the developer with its own link on top
 
@@ -63,7 +63,7 @@ guides.
 
 - GIVEN the rendered task-session guidance
 - WHEN a task session reads how to work
-- THEN it is told to read the task's decision log first and to work only inside its task worktree with the worktree's own `concorde`
+- THEN it is told to read the task's decision log first and to work only inside its task worktree with the worktree's own `concorde` command
 - AND to escalate beyond its task's goal or Modules with `concorde task escalate --by task-session`, recording every escalation first and then sending them together with SendMessage
 - AND to report to the main agent when the task is delivered or cannot go further without decisions that are not its own
 - BUT never to merge the task branch into the primary branch or close the task
@@ -74,13 +74,26 @@ guides.
 - WHEN a task session has delivered its task or escalated every decision it needs
 - THEN it is told to record the report first with `concorde task report`, naming the escalations it carries, and then to send it with SendMessage to the `main` that command prints
 - AND when SendMessage reaches no session of that name, to run `concorde task wait <task> --rebound <that name>` in background Bash and send the same report to the name it returns
+- AND that an answer names the reports it answers, and that an answer to a report it already acted on, matched by that number, changes nothing
+
+This illustrates [recording a report first](requirements.md#req.main-session.task-session-report-recorded),
+[its addressee](requirements.md#req.main-session.task-session-report-addressee),
+[sending it again](requirements.md#req.main-session.task-session-report-resent) and
+[an answer acted on once](requirements.md#req.main-session.task-session-answer-once).
 
 ### scenario.main-session.reconcile-after-restart — The main agent rebinds its tasks after its session name changed
 
 - GIVEN the rendered main-session guidance
 - WHEN ListAgents reports for the main agent's session a name other than the one it gave its tasks, as after a resume
 - THEN the main agent is told to run `concorde task list --main <former> --state open,active,delivered,merging`, which lists only the tasks not ended, to rebind each task listed with `concorde task rebind <task> --main <current>` and to read the reports `concorde task show` lists without an answer, before anything else
-- AND to record each answer with `concorde task answer` before sending it
+- AND to send again the latest recorded answer of each listed task whose last report has one, naming the reports it answers, since the restart may have come between recording it and sending it
+- AND to record each answer with `concorde task answer` before sending it, naming in it the reports it answers
+
+This illustrates [listing the tasks](requirements.md#req.main-session.reconcile-after-restart),
+[rebinding them](requirements.md#req.main-session.reconcile-rebind),
+[reading their unanswered reports](requirements.md#req.main-session.reconcile-unanswered),
+[sending a recorded answer again](requirements.md#req.main-session.reconcile-resend-answer) and
+[answers naming their reports](requirements.md#req.main-session.answers-name-reports).
 
 ### scenario.main-session.task-session-unrestricted — The task-session guidance gives one rule and no restriction besides
 
@@ -96,13 +109,17 @@ This illustrates [the task session's one rule](requirements.md#req.main-session.
 [runs in the background](requirements.md#req.main-session.task-session-background-runs) and
 [the quiet before validating](requirements.md#req.main-session.task-session-quiet-before-validation).
 
-### scenario.main-session.task-session-prepares-workers — The task session creates and binds new files before a worker fills them
+### scenario.main-session.task-session-prepares-workers — The task session creates and binds new implementation files before a worker fills them
 
 - GIVEN the rendered task-session guidance and the main agent's skill
-- WHEN a task's work needs a new file outside the directories its Modules bind, such as one an `understand` plan lists in `new_files`
+- WHEN a task's work needs a new implementation file outside the directories its Modules bind, such as one an `understand` plan lists in `new_files`
 - THEN the task-session guidance tells the session to create the file with the least content its format needs to be valid, to add it to the `entries` of the right realization and to commit both together, before it launches the worker that fills it
 - AND the main agent's skill says the task session prepares the workers' environment this way
 - AND both name the [delivery commit](../../glossary.json#concept.delivery-commit) as what `delivery` creates, the only commit that marks the task delivered
+- BUT a new Spec document is not prepared this way: both say that `specify` proposes it and that the Operation creates it and registers it in its Module's `owns`
+
+This illustrates [preparing the workers' environment](requirements.md#req.main-session.task-session-prepares-workers)
+and [binding the files created](requirements.md#req.main-session.task-session-binds-new-files).
 
 ### scenario.main-session.task-session-plan-review — A task session leads the review of its plan
 
@@ -110,26 +127,32 @@ This illustrates [the task session's one rule](requirements.md#req.main-session.
 - WHEN a task session wants its plan reviewed before it changes Specs or code
 - THEN the task-session guidance tells it that `plan_review` is optional and that it writes the plan itself
 - AND to answer every finding with `--accept` or `--reject` in the next run, with the previous run as `--input`, until the verdict is `accepted`
-- AND to escalate a finding the reviewer maintains after it rejected it rather than run again on it
+- AND to escalate a finding the reviewer maintains after it rejected it, and that it still rejects, rather than run again on it
 - AND the main agent's skill names `plan_review` among the Operations a task session runs
+- BUT a maintained finding whose renewed reasoning the session now accepts is answered with `--accept` and the plan revised, like any other finding
+
+This illustrates [an optional plan review](requirements.md#req.main-session.task-session-plan-review),
+[answering every finding](requirements.md#req.main-session.task-session-plan-review-iterates) and
+[escalating a continuing disagreement](requirements.md#req.main-session.task-session-plan-review-disagreement).
 
 ### scenario.main-session.task-session-workflow — A task session runs its workflow in its brief's mode
 
 - GIVEN the rendered task-session guidance
 - WHEN a task session reads how to run a task that follows a known procedure
-- THEN it is told to start the [workflow](../../glossary.json#concept.workflow) in its task worktree in the [mode](../../glossary.json#concept.workflow-mode) its brief names, interactive when it names none
-- AND to escalate every pending [decision point](../../glossary.json#concept.decision-point) of a workflow that ended `awaiting_decision` at once, with the report as `--error-file`, and to start the same workflow again with every answer given so far
-- AND to read the [workflow result](../../glossary.json#concept.workflow-result) like a [run result](../../glossary.json#concept.run-result), copying its decisions and problems into the task's [decision log](../../glossary.json#concept.decision-log)
+- THEN it is told to start the [workflow](../../glossary.json#concept.workflow) in its task worktree in the [mode](../../glossary.json#concept.workflow-mode) its [task brief](../../glossary.json#concept.task-brief) names, interactive when it names none
+- AND to escalate every pending [decision point](../../glossary.json#concept.decision-point) of a workflow that ended `awaiting_decision` at once, with the saved [workflow result](../../glossary.json#concept.workflow-result) as `--error-file`, and to start the same workflow again with every answer given so far
+- AND to read the workflow result like a [run result](../../glossary.json#concept.run-result), copying its decisions and problems into the task's [decision log](../../glossary.json#concept.decision-log)
 - AND to give the workflow's decisions in its own report to the main agent, naming those of major impact for the developer
-- AND to escalate a workflow result that is not `ok` and that it cannot repair within the task with `concorde task escalate --by task-session` and the report as `--error-file`
+- AND to escalate a workflow result that is not `ok` and that it cannot repair within the task with `concorde task escalate --by task-session` and that result as `--error-file`
 - AND to escalate a decision of major impact a no-ask workflow took, which carries no error, with `concorde task escalate --by task-session` naming no run or file
 
 ### scenario.main-session.claude-sees-by-query — A main session sees another session's work by asking
 
-- GIVEN two main sessions of the same project, the second of which started a run of the task `t1` in background Bash and a task session of `t1` naming itself with `--main`, while the first registered no wait for that run
+- GIVEN two main sessions of the same project, the second of which started a task session of the task `t1` naming itself with `--main`, and that task session started a run in its task worktree in background Bash, while the first registered no wait for that run
 - WHEN that run ends
-- THEN the first main session is not woken, since nothing it did not ask for is pushed into it
-- AND `concorde task show t1`, when it asks, lists the run with its status and the task session with the main session it reports to
+- THEN neither main session is woken by it, since its owner is the task session that started it, and nothing the first did not ask for is pushed into it
+- AND the second hears of the run in the task session's report
+- AND `concorde task show t1`, when the first asks, lists the run with its status and the task session with the main session it reports to
 
 ### scenario.main-session.merge-delivered — The guidance merges delivered work without asking
 
@@ -215,16 +238,21 @@ This illustrates [the task session's one rule](requirements.md#req.main-session.
 - GIVEN the rendered main-session guidance
 - WHEN a main agent has just initialized a project whose code came before its Specs
 - THEN it is told to open a task bound to the root Module and have its task session run the [brownfield workflow](../../glossary.json#concept.brownfield-workflow) inside its worktree, which never names the task
-- AND to ask the developer for interactive or no-ask mode unless the developer already said, and to name it in the task's brief
+- AND to ask the developer for interactive or no-ask mode unless the developer already said, and to name it in the task's [task brief](../../glossary.json#concept.task-brief)
 - AND when the task session escalates the pending [decision points](../../glossary.json#concept.decision-point) of a workflow that ended `awaiting_decision`, to decide those its authority covers, put the rest to the developer at once and answer the session with every answer, with which it starts the workflow again
 - AND to read the [workflow result](../../glossary.json#concept.workflow-result) saved beside the workspace's [workflow record](../../glossary.json#concept.workflow-record) like a run result, whose decisions and problems the task session copies into the task's [decision log](../../glossary.json#concept.decision-log), and merge the delivered task
 
 ### scenario.main-session.ordinary-decision — The guidance decides ordinary questions and reports them
 
-- GIVEN the rendered main-session guidance
-- WHEN a main agent reads how to handle a run result blocked on a choice of ordinary scope, such as a name or an internal structure
-- THEN it is told to decide, to record the decision and its reason in the task's decision log and to report it at the end
-- BUT not to stop and ask the developer
+- GIVEN the rendered main-session and task-session guidance
+- WHEN a task session reads how to handle a run result of its task blocked on a choice of ordinary scope, such as a name or an internal structure
+- THEN it is told to decide, to record the decision and its reason, and every result that is not `ok`, in the task's decision log and to report the decision at the end
+- AND the main agent is told to decide an ordinary question of a task itself, to record that decision and its reason in the task's decision log and to report it at the end
+- BUT neither is told to stop and ask the developer
+
+This illustrates [the task session's records](requirements.md#req.main-session.task-session-decision-log),
+[the main agent's records](requirements.md#req.main-session.decision-log) and
+[deciding ordinary questions](requirements.md#req.main-session.ordinary-decisions).
 
 ### scenario.main-session.major-decision — The guidance escalates major decisions with their evidence
 
@@ -238,6 +266,17 @@ This illustrates [the task session's one rule](requirements.md#req.main-session.
 - GIVEN the rendered main-session guidance
 - WHEN a main agent reads how to handle a result that is not `ok`
 - THEN it is told that the result carries an error chain in `error`, what each link holds, and to read the whole chain before deciding
+
+### scenario.main-session.spec-tooling-error — The guidance translates a Spec tooling error before escalating it
+
+- GIVEN the rendered main-session and task-session guidance
+- AND a Spec tooling command, such as `concorde spec-validation` or `concorde registry --write`, that refused with Spec tooling's own [error record](../../spec-tooling/spec/errors.md#contract.spec.error)
+- WHEN a session that cannot handle that error reads how to escalate it
+- THEN it is told that the record is not a link of the [error chain](../../glossary.json#concept.error-chain), and that `concorde task escalate` refuses it as `--error-file` with `invalid_error`
+- AND to translate it into a `component` link of actor `Spec tooling (concorde <command>)` whose detail keeps the record's message, reason, location and remediation and whose causes are the record's causes translated the same way
+- AND to save that link in a file and to escalate with it as `--error-file`
+
+This illustrates [translating a Spec tooling error](requirements.md#req.main-session.spec-tooling-errors).
 
 ### scenario.main-session.unbound-failure — The guidance brings a failed unbound run to the developer whole
 
@@ -259,7 +298,8 @@ This illustrates [the task session's one rule](requirements.md#req.main-session.
 - AND to record through the project MCP server's `issue_report`, with a complete description, impact, basis, evidence, tier and severity, or with the `concorde issues` command, which answers the same way
 - BUT it is told that repeating a creation creates another Issue
 
-This illustrates [inspecting before recording](requirements.md#req.main-session.issues-recording)
+This illustrates [inspecting before recording](requirements.md#req.main-session.issues-recording),
+[appending to a tracked problem](requirements.md#req.main-session.issues-append)
 and [the Issue tools](requirements.md#req.main-session.issues-through-server).
 
 ### scenario.main-session.issue-tiers — The guidance fixes Issues by their tier
@@ -270,7 +310,9 @@ and [the Issue tools](requirements.md#req.main-session.issues-through-server).
 - AND escalates a `decision-needed` Issue by its identity for the main agent or the developer to decide
 - BUT a review Operation only reports, and a `suggestion` blocks nothing
 
-This illustrates [tiers deciding who fixes](requirements.md#req.main-session.issues-tiers).
+This illustrates [tiers deciding who fixes](requirements.md#req.main-session.issues-tiers),
+[reporting a chosen fix](requirements.md#req.main-session.issues-preferred-fix-reported) and
+[escalating a decision](requirements.md#req.main-session.issues-decision-needed).
 
 ### scenario.main-session.issue-severity — The guidance rates every Issue and fixes the most severe first
 
@@ -291,7 +333,8 @@ This illustrates [severity deciding what is fixed first](requirements.md#req.mai
 - AND to escalate a `code_review` finding that challenges the Spec rather than change the promise
 - AND to close each Issue the review found resolved, through `task resolve` when its task fixed it and otherwise with `issue_close`
 
-This illustrates [a review's Issues](requirements.md#req.main-session.review-issues).
+This illustrates [a review's Issues](requirements.md#req.main-session.review-issues) and
+[closing those it found resolved](requirements.md#req.main-session.review-resolved-closed).
 
 ### scenario.main-session.module-code-review — The guidance names the Module review
 
@@ -315,11 +358,23 @@ This illustrates [closing with the merge](requirements.md#req.main-session.issue
 ### scenario.main-session.issue-system-failure — The guidance keeps Issue-system failures out of Issues
 
 - GIVEN the rendered main-session and task-session guidance
-- WHEN a session reads what to do when an Issue tool or command fails
-- THEN it is told to carry the error chain in the decision log and escalation, or a run's result
+- WHEN a session reads what to do when an Issue tool or command fails for a task
+- THEN it is told to carry the error chain in the task's decision log and escalation, or a run's result
 - BUT never to report that failure as an Issue
 
-This illustrates [failures as error chains](requirements.md#req.main-session.issues-own-failures).
+This illustrates [never an Issue](requirements.md#req.main-session.issues-own-failures) and
+[the task carrying the chain](requirements.md#req.main-session.issues-failure-chain).
+
+### scenario.main-session.issue-system-failure-no-task — The guidance shows an Issue-system failure without a task to the developer whole
+
+- GIVEN the rendered main-session guidance
+- AND an `issue_report` of the main agent's own, made for no task, refused with `commit_failed`
+- WHEN the main agent reads what to do with that refusal
+- THEN it is told that the decision log and escalation belong to a task, and to show the developer the whole error chain at once, never a summary of it
+- AND to open a task only when the failure leads to work
+- BUT never to report that failure as an Issue
+
+This illustrates [a failure without a task](requirements.md#req.main-session.issues-failure-no-task).
 
 ### scenario.main-session.issue-recovery — The guidance says how Issue records are put back
 
@@ -427,7 +482,7 @@ This illustrates [queries and short writes answering as their commands](requirem
 - GIVEN the command lines of the server's ancestor processes
 - WHEN one is a `claude` on a terminal started with `--dangerously-load-development-channels server:concorde` or with `server:concorde` among the entries of `--channels`
 - THEN the server knows it has a channel
-- BUT the same command line of a `claude` without a terminal, a background session, does not give it one, nor does `server:concorde` as the value of another option or another server's entry
+- BUT the same command line of a `claude` without a terminal, a background session, does not give it one, nor does that command line of another program on a terminal, nor `server:concorde` as the value of another option or another server's entry
 - AND `CONCORDE_CHANNEL` `0` or `1` decides instead when it is set
 
 ### scenario.main-session.project-mcp-guidance — The guidance says how to start with the server and when to use it

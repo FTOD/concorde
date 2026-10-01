@@ -23,7 +23,9 @@
           "concept.run-result",
           "concept.unbound-run",
           "concept.run-lock",
-          "concept.workspace-lock"
+          "concept.workspace-lock",
+          "contract.execution.run-result",
+          "concept.run-progress-file"
         ]
       },
       {
@@ -31,6 +33,45 @@
         "meaning": "#uses-operations",
         "relies_on": [
           "concept.operation"
+        ]
+      },
+      {
+        "target": "module.understanding",
+        "meaning": "#uses-understanding",
+        "relies_on": [
+          "contract.understanding.assessment",
+          "contract.understanding.plan-review",
+          "req.understanding.plan-review-answers",
+          "req.understanding.plan-review-verdict"
+        ]
+      },
+      {
+        "target": "module.specification",
+        "meaning": "#uses-specification",
+        "relies_on": [
+          "req.specification.created-documents",
+          "req.specification.no-implementation-files"
+        ]
+      },
+      {
+        "target": "module.spec-review",
+        "meaning": "#uses-spec-review",
+        "relies_on": [
+          "contract.spec-review.payload",
+          "contract.spec-review.panel-payload",
+          "req.spec-review.reports-issues",
+          "req.spec-review.never-disposes",
+          "concept.review-verdict"
+        ]
+      },
+      {
+        "target": "module.code-review",
+        "meaning": "#uses-code-review",
+        "relies_on": [
+          "contract.code-review.review",
+          "req.code-review.module-scope",
+          "req.code-review.findings-as-issues",
+          "req.code-review.no-closing"
         ]
       },
       {
@@ -67,6 +108,16 @@
           "contract.issues.report",
           "contract.issues.receipt",
           "concept.issue-severity"
+        ]
+      },
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec",
+        "relies_on": [
+          "concept.structural-check",
+          "concept.registry",
+          "contract.spec.error",
+          "req.spec.registry-mirror-only"
         ]
       },
       {

@@ -56,9 +56,11 @@ own, and every other call in the order it arrives, so a waiting step never holds
 other calls.
 
 It decides once whether the session **listens to it as a channel**: `CONCORDE_CHANNEL` `1` or `0`
-when set; otherwise whether one of its ancestor processes, up to eight levels up, has its standard
-input on a terminal and a command line with an entry `server:<name>` among the words after
-`--dangerously-load-development-channels` or `--channels` and before the next option. The terminal
+when set; otherwise whether one of its ancestor processes, up to eight levels up, is a `claude`
+process, one whose program, the first word of its command line, is named `claude` or `claude.exe`,
+with its standard input on a terminal and a command line with an entry `server:<name>` among the
+words after `--dangerously-load-development-channels` or `--channels` and before the next option.
+Another program with the same words is no Claude Code session and gives no channel. The terminal
 is required because only an interactive session is woken by channel events: a `claude --bg` session
 started with the flag was never woken in a probe on 2026-09-29 (Claude Code 2.1.284), and `claude -p`
 registers no channel. Claude Code tells a server neither whether it loaded it as
