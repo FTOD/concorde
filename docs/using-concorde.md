@@ -508,21 +508,25 @@ concorde task-validation
 concorde delivery
 ```
 
-| Operation                   | Worker       | What it does                                                                                                                                                         |
-| --------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `understand`                | reads only   | Assesses what the Modules promise and whether the Spec suffices; returns a plan with `--plan`.                                                                       |
-| `plan_review`               | reads only   | Optional: reviews a plan the task session wrote (`--plan`) against the task's goal, the Specs and the code; reports findings and a verdict.                          |
-| `specify`                   | writes Specs | Changes the bound Modules' own Spec documents.                                                                                                                       |
-| `implement`                 | writes code  | Changes the bound Modules' code; the host runs your checks and resumes the worker on failures (`--rounds` limits the rounds).                                        |
-| `test`                      | reads only   | The host runs your checks; the worker interprets the results (`--focus` narrows it).                                                                                 |
-| `spec_review`               | reads only   | Reviews the bound Modules' Specs against their review memory: reports new findings, updates and resolves earlier ones (`--check-findings` has each finding checked). |
-| `code_review`               | reads only   | Reviews the task's code changes against the Specs (`--base`, `--focus`).                                                                                             |
-| `task-validation` (command) | none         | Deterministic: structural validation and the checks of the changed Modules; decides readiness.                                                                       |
-| `delivery` (command)        | none         | Deterministic: validates the whole workspace again, then commits it on the task branch; the delivery commit is the record that the task was delivered.               |
+| Operation                   | Worker       | What it does                                                                                                                                                           |
+| --------------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `understand`                | reads only   | Assesses what the Modules promise and whether the Spec suffices; returns a plan with `--plan`.                                                                         |
+| `plan_review`               | reads only   | Optional: reviews a plan the task session wrote (`--plan`) against the task's goal, the Specs and the code; reports findings and a verdict.                            |
+| `specify`                   | writes Specs | Changes the bound Modules' own Spec documents.                                                                                                                         |
+| `implement`                 | writes code  | Changes the bound Modules' code; the host runs your checks and resumes the worker on failures (`--rounds` limits the rounds).                                          |
+| `test`                      | reads only   | The host runs your checks; the worker interprets the results (`--focus` narrows it).                                                                                   |
+| `spec_review`               | reads only   | Reviews the bound Modules' Specs and reports every finding as an Issue, building on the Issues earlier reviews reported (`--check-findings` has each finding checked). |
+| `code_review`               | reads only   | Reviews the task's code changes against the Specs (`--base`, `--focus`).                                                                                               |
+| `task-validation` (command) | none         | Deterministic: structural validation and the checks of the changed Modules; decides readiness.                                                                         |
+| `delivery` (command)        | none         | Deterministic: validates the whole workspace again, then commits it on the task branch; the delivery commit is the record that the task was delivered.                 |
 
-Spec reviews keep a **review memory** per Module in `.concorde/reviews/spec/`, committed with the
-task. A repeated review reports only what is new, what changed and what was fixed, and a Module
-stays `changes_required` while any earlier blocking finding is still open.
+Spec reviews report every finding as an **Issue** of the project, with its tier, from the
+Operation itself; `spec_panel` adds two architects that judge how the Module fits among all the
+Modules, and a chair that merges every finding and gives it its tier. Each reviewer receives the
+Issues earlier reviews reported for the Module, so a repeated review reports only what is new or
+changed and lists the Issues it found resolved, and a Module stays `changes_required` while any
+blocking Issue still stands. The review never fixes or closes an Issue: the task session fixes them
+by their tier in later work and closes the resolved ones.
 
 A **plan review** is optional: nothing requires it before `task-validation` or `delivery`. The task
 session writes the plan itself in a file of its worktree, possibly starting from an `understand`

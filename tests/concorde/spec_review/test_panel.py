@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 from concorde.harness.claude_backend import ClaudeBackend
 from concorde.harness.runs import read_record
+from concorde.issues.store import list_issues, read_issue
 from concorde.spec.grants import grant
 from concorde.spec.repository import SpecRepository
 from concorde.spec.schema import validate
@@ -27,17 +28,30 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 FAKE_PANELIST = Path(__file__).with_name("fake_panelist.py")
 
 
-def finding(path="specs/a/module.md", severity="blocking", **extra):
+def finding(path="specs/a/module.md", tier="obvious-fix", **extra):
     return {
         "module": "module.a",
         "path": path,
         "dimension": "obligations",
-        "severity": severity,
-        "problem": f"A {severity} problem in {path}.",
+        "tier": tier,
+        "title": f"A {tier} problem",
+        "problem": f"A {tier} problem in {path}.",
+        "impact": "A reader could not rely on it.",
         "evidence": "Quoted text.",
         "suggestion": "Rewrite it.",
         **extra,
     }
+
+
+def architectural(path="specs/a/module.md", tier="decision-needed", **extra):
+    return finding(
+        path,
+        tier,
+        dimension="interfaces",
+        problem="A relies on a promise B does not make.",
+        related=["module.b"],
+        **extra,
+    )
 
 
 def merged(*sources, note="Verified in the Spec.", **extra):
@@ -67,7 +81,7 @@ class AccountingTests(unittest.TestCase):
             [
                 "r2.1 is not accounted for",
                 "r1.1 is accounted for 2 times",
-                "r9.9 names no reviewer finding",
+                "r9.9 names no worker finding",
             ],
             account(["r1.1", "r2.1"], report),
         )
@@ -84,13 +98,31 @@ class SpecPanelTests(unittest.TestCase):
         wrapper.chmod(0o755)
         self.project.fake = wrapper
 
-    def panel(self, plans, *extra, modules=("module.a",)):
+    def panel(self, plans, *extra, modules=("module.a",), architects="0"):
         goal = "Review the Specs.\nFAKE-PLANS: " + json.dumps(plans)
         self.project.open_task("t1", modules=modules, goal=goal)
         self.worktree = self.project.worktree("t1")
         return self.project.run(
-            "spec_panel", "--task", "t1", "--modules", ",".join(modules), *extra
+            "spec_panel",
+            "--task",
+            "t1",
+            "--modules",
+            ",".join(modules),
+            "--architects",
+            architects,
+            *extra,
         )
+
+    def issues(self):
+        return {
+            row["id"]: read_issue(self.root, row["id"])[0]
+            for row in list_issues(self.root)
+        }
+
+    def identity(self, task_type):
+        return grant(
+            SpecRepository(self.worktree, REPOSITORY_ROOT), ["module.a"], task_type
+        ).value["context_identity"]
 
     def record(self, run_id):
         """The worker run's record, rebuilt from its trace node below the primary's records."""
@@ -125,7 +157,7 @@ class SpecPanelTests(unittest.TestCase):
                 "reviewer module.a 2": worker(
                     findings=[
                         finding(problem="The requirement holds two duties."),
-                        finding(severity="advisory", problem="Wording."),
+                        finding(tier="suggestion", problem="Wording."),
                     ]
                 ),
                 "chair module.a 1": worker(
@@ -133,6 +165,7 @@ class SpecPanelTests(unittest.TestCase):
                         merged(
                             "r1.1",
                             "r2.1",
+                            tier="obvious-fix",
                             problem="The requirement holds two obligations.",
                             note="Both quote the same sentence; it has two SHALLs.",
                         )
@@ -150,29 +183,40 @@ class SpecPanelTests(unittest.TestCase):
         validate(output, PAYLOAD_SCHEMA)
         self.assertEqual("changes_required", output["verdict"])
         (module,) = output["modules"]
+        self.assertEqual(self.identity("review-spec"), module["context_identity"])
+        self.assertIsNone(module["architecture_identity"])
         self.assertEqual(
-            grant(
-                SpecRepository(self.worktree, REPOSITORY_ROOT),
-                ["module.a"],
-                "review-spec",
-            ).value["context_identity"],
-            module["context_identity"],
-        )
-        self.assertEqual(
-            [(1, "ok", ["r1.1"]), (2, "ok", ["r2.1", "r2.2"])],
             [
-                (r["reviewer"], r["status"], [f["label"] for f in r["findings"]])
+                ("reviewer1", 1, "ok", ["r1.1"]),
+                ("reviewer2", 2, "ok", ["r2.1", "r2.2"]),
+            ],
+            [
+                (
+                    r["worker"],
+                    r["seat"],
+                    r["status"],
+                    [f["label"] for f in r["findings"]],
+                )
                 for r in module["reviews"]
             ],
         )
         (report,) = module["findings"]
         self.assertEqual(
-            (["r1.1", "r2.1"], 2), (report["sources"], report["reviewers"])
+            (["r1.1", "r2.1"], 2, "obvious-fix"),
+            (report["sources"], report["workers"], report["tier"]),
         )
         self.assertEqual(["r2.2"], [item["source"] for item in module["rejected"]])
         self.assertIn(
-            "1 blocking and 0 advisory finding(s) merged from 3", envelope["summary"]
+            "1 blocking finding(s) and 0 suggestion(s) merged from 3",
+            envelope["summary"],
         )
+        # The merged finding is one Issue; the rejection is recorded nowhere.
+        issues = self.issues()
+        self.assertEqual([report["issue"]], list(issues))
+        (entry,) = issues[report["issue"]]["reports"]
+        self.assertEqual("obvious-fix", entry["report"]["tier"])
+        self.assertIn("r1.1, r2.1", entry["report"]["basis"])
+        self.assertEqual("spec_panel", entry["source"]["operation"])
         self.assertEqual(3, len(envelope["worker_runs"]))
         reviewers = self.briefs(envelope, "reviewer")
         self.assertEqual(2, len(reviewers))
@@ -196,27 +240,32 @@ class SpecPanelTests(unittest.TestCase):
             [
                 (
                     "module.a chair attempt 1",
-                    "every reviewer finding accounted for once",
+                    "every worker finding accounted for once",
                 )
             ],
             [(i["ref"], i["detail"]) for i in accounting],
         )
         graph = next(i for i in envelope["host_evidence"] if i["kind"] == "graph")
         self.assertIn("chair", Path(graph["ref"]).read_text())
-        # A panel writes nothing.
+        # A panel changes no file of the workspace.
         self.assertEqual("", self.status())
 
     @verifies("scenario.spec-review.panel-worker-models")
     def test_each_reviewer_runs_on_the_model_configured_for_its_worker_id(self):
         config = {
             "schema_version": 2,
-            "enabled_models": {"claude-sonnet-5": {}, "claude-opus-5-5": {}},
+            "enabled_models": {
+                "claude-sonnet-5": {},
+                "claude-opus-5-5": {},
+                "haiku": {},
+            },
             "default": {"backend": "claude"},
             "operations": {
                 "spec_panel": {
                     "default": {"model": "claude-sonnet-5", "reasoning": "medium"},
                     "workers": {
                         "reviewer2": {"model": "claude-opus-5-5"},
+                        "architect1": {"model": "haiku", "reasoning": "low"},
                         "chair": {"model": "claude-opus-5-5", "reasoning": "high"},
                     },
                 }
@@ -240,10 +289,12 @@ class SpecPanelTests(unittest.TestCase):
                 {
                     "reviewer module.a 1": worker(findings=[]),
                     "reviewer module.a 2": worker(findings=[]),
+                    "architect module.a 1": worker(findings=[]),
                     "chair module.a 1": worker(findings=[], rejected=[]),
                 },
                 "--reviewers",
                 "2",
+                architects="1",
             )
         self.assertEqual((0, "ok"), (exit_status, envelope["status"]), envelope)
         chosen = {}
@@ -262,6 +313,7 @@ class SpecPanelTests(unittest.TestCase):
             {
                 "reviewer1": ("claude-sonnet-5", "medium"),
                 "reviewer2": ("claude-opus-5-5", "medium"),
+                "architect1": ("haiku", "low"),
                 "chair": ("claude-opus-5-5", "high"),
             },
             chosen,
@@ -330,6 +382,7 @@ class SpecPanelTests(unittest.TestCase):
         exit_status, envelope = self.panel(
             {
                 "reviewer module.a 1": worker(findings=[finding()]),
+                "architect module.a 1": worker(findings=[architectural()]),
                 "reviewer module.a 2": [
                     {
                         "result": {
@@ -346,14 +399,16 @@ class SpecPanelTests(unittest.TestCase):
             },
             "--reviewers",
             "2",
+            architects="1",
         )
         self.assertEqual((1, "blocked"), (exit_status, envelope["status"]))
         output = envelope["output"]
         self.assertEqual("incomplete", output["verdict"])
         self.assertEqual([], self.briefs(envelope, "chair"))
+        self.assertEqual({}, self.issues())
         self.assertEqual(
-            [(1, "ok"), (2, "blocked")],
-            [(r["reviewer"], r["status"]) for r in output["modules"][0]["reviews"]],
+            [("reviewer1", "ok"), ("reviewer2", "blocked"), ("architect1", "ok")],
+            [(r["worker"], r["status"]) for r in output["modules"][0]["reviews"]],
         )
         error = envelope["error"]
         self.assertEqual("panel_incomplete", error["code"])
@@ -364,7 +419,7 @@ class SpecPanelTests(unittest.TestCase):
         worker_link = link_at(error, "worker")
         self.assertEqual("The entry of module.c is needed.", worker_link["detail"])
 
-    def test_a_blocking_finding_outside_the_module_is_advisory(self):
+    def test_a_blocking_finding_outside_the_module_is_a_suggestion(self):
         exit_status, envelope = self.panel(
             {
                 "reviewer module.a 1": worker(findings=[finding("specs/b/module.md")]),
@@ -378,8 +433,102 @@ class SpecPanelTests(unittest.TestCase):
         )
         self.assertEqual((0, "ok"), (exit_status, envelope["status"]), envelope)
         (item,) = envelope["output"]["modules"][0]["findings"]
-        self.assertEqual("advisory", item["severity"])
+        self.assertEqual(("suggestion", "module.b"), (item["tier"], item["module"]))
         self.assertEqual("accepted", envelope["output"]["verdict"])
+        owner = self.issues()[item["issue"]]["reports"][0]["report"]["owner_target_id"]
+        self.assertEqual("module.b", owner)
+
+    @verifies("scenario.spec-review.panel-architects")
+    def test_architects_judge_the_module_among_all_the_modules(self):
+        exit_status, envelope = self.panel(
+            {
+                "reviewer module.a 1": worker(findings=[]),
+                "reviewer module.a 2": worker(findings=[]),
+                "architect module.a 1": worker(findings=[architectural()]),
+                "architect module.a 2": worker(findings=[]),
+                "chair module.a 1": worker(
+                    findings=[
+                        merged(
+                            "a1.1",
+                            tier="decision-needed",
+                            dimension="interfaces",
+                            problem="A relies on a promise B does not make.",
+                            related=["module.b"],
+                            note="B's entry promises nothing of the kind.",
+                        )
+                    ],
+                    rejected=[],
+                ),
+            },
+            "--reviewers",
+            "2",
+            architects="2",
+        )
+        self.assertEqual((0, "ok"), (exit_status, envelope["status"]), envelope)
+        (module,) = envelope["output"]["modules"]
+        self.assertEqual("changes_required", module["outcome"])
+        self.assertEqual(self.identity("review-spec"), module["context_identity"])
+        self.assertEqual(
+            self.identity("review-architecture"), module["architecture_identity"]
+        )
+        grants = {}
+        for run_id in envelope["worker_runs"]:
+            record = self.record(run_id)
+            frozen = json.loads(
+                (Path(record["run_directory"]) / "grant.json").read_text()
+            )
+            grants[record["worker"]] = frozen["task_type"]
+            readable = {
+                entry["path"] for entry in frozen["entries"] if entry["level"] == "ro"
+            }
+            if frozen["task_type"] == "review-architecture":
+                self.assertIn("specs/b/module.md", readable)
+        self.assertEqual(
+            {
+                "reviewer1": "review-spec",
+                "reviewer2": "review-spec",
+                "architect1": "review-architecture",
+                "architect2": "review-architecture",
+                "chair": "review-architecture",
+            },
+            grants,
+        )
+        (chair,) = self.briefs(envelope, "chair")
+        self.assertIn("### Architect 1", chair)
+        self.assertIn('"label": "a1.1"', chair)
+        (architect, _) = self.briefs(envelope, "architect")
+        self.assertIn("Your role: architect.", architect)
+        (report,) = module["findings"]
+        self.assertEqual(
+            (["a1.1"], ["module.b"]), (report["sources"], report["related"])
+        )
+        entry = self.issues()[report["issue"]]["reports"][0]
+        self.assertEqual("module.a", entry["report"]["owner_target_id"])
+        self.assertIn("module.b", entry["report"]["description"])
+        self.assertEqual(module["architecture_identity"], entry["source"]["context_id"])
+
+    @verifies("scenario.spec-review.panel-no-architects")
+    def test_a_panel_without_architects_reads_only_the_modules_context(self):
+        exit_status, envelope = self.panel(
+            {
+                "reviewer module.a 1": worker(findings=[]),
+                "reviewer module.a 2": worker(findings=[]),
+                "chair module.a 1": worker(findings=[], rejected=[]),
+            },
+            "--reviewers",
+            "2",
+        )
+        self.assertEqual((0, "ok"), (exit_status, envelope["status"]), envelope)
+        self.assertEqual([], self.briefs(envelope, "architect"))
+        (chair_run,) = [
+            run_id
+            for run_id in envelope["worker_runs"]
+            if self.record(run_id)["worker"] == "chair"
+        ]
+        record = self.record(chair_run)
+        frozen = json.loads((Path(record["run_directory"]) / "grant.json").read_text())
+        self.assertEqual("review-spec", frozen["task_type"])
+        self.assertIsNone(envelope["output"]["modules"][0]["architecture_identity"])
 
 
 class PayloadContractTests(unittest.TestCase):

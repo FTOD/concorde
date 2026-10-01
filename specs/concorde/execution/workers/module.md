@@ -341,9 +341,9 @@ so every developer's workers of a commit run alike. A project model name depends
 since the ids a program takes, such as pi's `local-openai/gpt-6-astra`, are defined by one machine's
 own pi or Claude Code configuration. Every worker needs the file: a worktree without one runs no
 worker. Every Operation declares the ids of the workers it may launch in the Operation catalog, such
-as `spec_panel`'s `reviewer1` to `reviewer5` and `chair`, `spec_review`'s `reviewer` and `checker`,
-or `worker` for an Operation with one worker, and the same id names the worker in its run record and
-in the Operation's evidence.
+as `spec_panel`'s `reviewer1` to `reviewer5`, `architect1`, `architect2` and `chair`,
+`spec_review`'s `reviewer` and `checker`, or `worker` for an Operation with one worker, and the
+same id names the worker in its run record and in the Operation's evidence.
 
 One model map serves the primary worktree, every task worktree, every unbound checkout and every
 [test project](../../glossary.json#concept.test-project) of its user, as pi's and Claude Code's own

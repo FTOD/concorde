@@ -1,18 +1,22 @@
 """The ``spec_panel`` Operation (see the Spec panel document of Spec review).
 
 For each named Module several ``reviewer`` workers review the same Specs independently and at the
-same time, each under the Module's ``review-spec`` grant; then a ``chair`` worker audits their
-findings against the Specs and merges them into one panel report. The host labels every reviewer
-finding, checks that the chair accounted for each label exactly once, and derives the outcome:
+same time, each under the Module's ``review-spec`` grant, and up to two ``architect`` workers judge
+the Module among all the Modules, each under its ``review-architecture`` grant; then a ``chair``
+worker audits their findings against the Specs, merges them into one panel report and gives each
+merged finding its tier. The host labels every worker finding, checks that the chair accounted for
+each label exactly once, reports the report's findings as Issues and derives the outcome:
 
 1. ``validate_modules`` (shared with ``spec_review``): load and validate the Specs.
-2. ``panel_modules``: per remaining Module, run the panel graph, a LangGraph ``StateGraph``: the
-   reviewers fan out in parallel, ``gather`` joins them, ``chair`` merges, and ``account`` checks
-   the report, sending it back to the chair once when a label is missing.
-3. ``derive_verdict``: each Module's outcome from its report, the verdict and the result.
+2. ``panel_modules``: per remaining Module, read its earlier Issues, run the panel graph, a
+   LangGraph ``StateGraph`` (the reviewers and architects fan out in parallel, ``gather`` joins
+   them, ``chair`` merges and the host's accounting sends the report back to the chair once when a
+   label is missing), then report the chair's findings as Issues.
+3. ``derive_verdict``: each Module's outcome from the Issues that stand, the verdict and the result.
 
-Reviewer findings, the chair's merges, rejections and notes are worker claims; the host's own facts
-(structural findings, grants, audits, scope corrections, the accounting) are host evidence.
+Worker findings, the chair's merges, tiers, rejections, notes and resolutions are worker claims; the
+host's own facts (structural findings, grants, audits, scope corrections, the accounting, the Issues
+it reported to) are host evidence.
 """
 
 from __future__ import annotations
@@ -34,25 +38,58 @@ from ..operations.provider import (
 )
 from ..spec.schema import validate
 from . import operation as review
+from . import reporting
 
 TASK_TYPE = "review-spec"
+ARCHITECTURE_TASK_TYPE = "review-architecture"
 OUTCOMES = ["accepted", "changes_required", "incomplete"]
 DEFAULT_REVIEWERS = 3
 MAX_REVIEWERS = 5
-# The panel's worker ids: reviewer<seat> for each seat a panel may have, and the chair.
-WORKERS = (*(f"reviewer{seat}" for seat in range(1, MAX_REVIEWERS + 1)), "chair")
+DEFAULT_ARCHITECTS = 2
+MAX_ARCHITECTS = 2
+REVIEWERS = tuple(f"reviewer{seat}" for seat in range(1, MAX_REVIEWERS + 1))
+ARCHITECTS = tuple(f"architect{seat}" for seat in range(1, MAX_ARCHITECTS + 1))
+# The panel's worker ids: one per reviewer and architect seat a panel may have, and the chair.
+WORKERS = (*REVIEWERS, *ARCHITECTS, "chair")
+# The workers' roles in the order the payload lists their reviews, and each role's label prefix.
+ROLES = ("reviewer", "architect")
+PREFIX = {"reviewer": "r", "architect": "a"}
 # The chair's attempts: its report, and one repair when the report leaves a label unaccounted.
 CHAIR_ATTEMPTS = 2
-LABEL = r"^r[1-9][0-9]*\.[1-9][0-9]*$"
+LABEL = r"^[ra][1-9][0-9]*\.[1-9][0-9]*$"
 
-# A finding as a reviewer states it: the Spec review finding without the review memory's ``earlier``.
-FINDING: dict = copy.deepcopy(review.REVIEWER_FINDING)
-del FINDING["properties"]["earlier"]
-REVIEWER_OUTPUT: dict = {
-    "type": "object",
-    "additionalProperties": False,
-    "required": ["findings"],
-    "properties": {"findings": {"type": "array", "items": FINDING}},
+RESOLUTION: dict = review.RESOLVED
+# A reviewer's finding is a Spec review finding; an architect's judges an architecture dimension
+# and may name the other Modules the problem concerns.
+REVIEWER_FINDING: dict = copy.deepcopy(review.REVIEWER_FINDING)
+ARCHITECT_FINDING: dict = copy.deepcopy(review.REVIEWER_FINDING)
+ARCHITECT_FINDING["properties"]["dimension"] = {"enum": review.ARCHITECTURE_DIMENSIONS}
+ARCHITECT_FINDING["properties"]["related"] = {
+    "type": "array",
+    "items": {"type": "string", "minLength": 1},
+}
+# Any worker finding, as the chair may merge either kind.
+FINDING: dict = copy.deepcopy(ARCHITECT_FINDING)
+FINDING["properties"]["dimension"] = {
+    "enum": list(dict.fromkeys([*review.DIMENSIONS, *review.ARCHITECTURE_DIMENSIONS]))
+}
+
+
+def _output(finding: dict) -> dict:
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["findings"],
+        "properties": {
+            "findings": {"type": "array", "items": finding},
+            "resolved": {"type": "array", "items": RESOLUTION},
+        },
+    }
+
+
+OUTPUTS = {
+    "reviewer": _output(REVIEWER_FINDING),
+    "architect": _output(ARCHITECT_FINDING),
 }
 MERGED: dict = copy.deepcopy(FINDING)
 MERGED["required"] = [*MERGED["required"], "sources", "note"]
@@ -78,21 +115,21 @@ CHAIR_OUTPUT: dict = {
     "properties": {
         "findings": {"type": "array", "items": MERGED},
         "rejected": {"type": "array", "items": REJECTION},
+        "resolved": {"type": "array", "items": RESOLUTION},
     },
 }
 
-# The payload's findings: paths normalized to the task worktree, and, for a report finding, the
-# number of distinct reviewers among its sources, counted by the host.
-LABELLED: dict = copy.deepcopy(FINDING)
-LABELLED["properties"]["path"] = {"type": "string", "format": "project-path"}
-LABELLED["required"] = [*LABELLED["required"], "label"]
-LABELLED["properties"]["label"] = {"type": "string", "pattern": LABEL}
-REPORTED: dict = copy.deepcopy(MERGED)
-REPORTED["properties"]["path"] = {"type": "string", "format": "project-path"}
-REPORTED["required"] = [*REPORTED["required"], "reviewers"]
-REPORTED["properties"]["reviewers"] = {"type": "integer", "minimum": 1}
+# The payload's findings: paths normalized to the task worktree; a worker's finding keeps its label
+# and, as its claim, the earlier Issue it named, and a report finding gets the number of distinct workers among its sources,
+# the earlier Issue it was appended to and the Issue it was reported to.
+IDENTITY: dict = {
+    "anyOf": [
+        {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        {"type": "null"},
+    ]
+}
 
-# contract.spec-review.panel-payload, version 1 (panel.md); a test keeps the two equal.
+# contract.spec-review.panel-payload, version 3 (panel.md); a test keeps the two equal.
 PAYLOAD_SCHEMA: dict = {
     "type": "object",
     "required": ["verdict", "modules"],
@@ -108,50 +145,77 @@ PAYLOAD_SCHEMA: dict = {
                     "module",
                     "outcome",
                     "context_identity",
+                    "architecture_identity",
                     "reviews",
                     "findings",
                     "rejected",
+                    "earlier_issues",
                 ],
                 "additionalProperties": False,
                 "properties": {
                     "module": {"type": "string", "minLength": 1},
                     "outcome": {"enum": OUTCOMES},
-                    "context_identity": {
-                        "anyOf": [
-                            {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
-                            {"type": "null"},
-                        ]
-                    },
+                    "context_identity": IDENTITY,
+                    "architecture_identity": IDENTITY,
                     "reviews": {
                         "type": "array",
                         "items": {
                             "type": "object",
                             "additionalProperties": False,
-                            "required": ["reviewer", "worker", "status", "findings"],
+                            "required": [
+                                "worker",
+                                "role",
+                                "seat",
+                                "status",
+                                "findings",
+                                "resolved",
+                            ],
                             "properties": {
-                                "reviewer": {"type": "integer", "minimum": 1},
                                 "worker": {"enum": list(WORKERS[:-1])},
+                                "role": {"enum": list(ROLES)},
+                                "seat": {"type": "integer", "minimum": 1},
                                 "status": {"enum": ["ok", "blocked", "failed"]},
-                                "findings": {"type": "array", "items": LABELLED},
+                                "findings": {
+                                    "type": "array",
+                                    "items": {"$ref": "#/$defs/labelled"},
+                                },
+                                "resolved": {"type": "array", "items": RESOLUTION},
                             },
                         },
                     },
-                    "findings": {"type": "array", "items": REPORTED},
+                    "findings": {
+                        "type": "array",
+                        "items": {"$ref": "#/$defs/reported"},
+                    },
                     "rejected": {"type": "array", "items": REJECTION},
+                    "earlier_issues": review.EARLIER_ISSUES,
                 },
             },
         },
     },
+    "$defs": {},
 }
+_LABELLED: dict = copy.deepcopy(FINDING)
+_LABELLED["properties"]["path"] = {"type": "string", "format": "project-path"}
+_LABELLED["required"] = [*_LABELLED["required"], "label"]
+_LABELLED["properties"]["label"] = {"type": "string", "pattern": LABEL}
+_REPORTED: dict = copy.deepcopy(MERGED)
+_REPORTED["properties"]["path"] = {"type": "string", "format": "project-path"}
+_REPORTED["properties"]["earlier"] = review.ISSUE_ID
+_REPORTED["required"] = [*_REPORTED["required"], "workers", "issue"]
+_REPORTED["properties"]["workers"] = {"type": "integer", "minimum": 1}
+_REPORTED["properties"]["issue"] = {"anyOf": [{"type": "null"}, review.ISSUE_ID]}
+PAYLOAD_SCHEMA["$defs"] = {"labelled": _LABELLED, "reported": _REPORTED}
 
 
 class PanelState(TypedDict):
     """The panel graph's state for one Module; plain JSON so that it could be checkpointed."""
 
-    # One entry per reviewer, appended by the parallel reviewer nodes in any order.
+    # One entry per reviewer and architect, appended by the parallel nodes in any order.
     reviews: Annotated[list[dict], operator.add]
     evidence: Annotated[list[dict], operator.add]
     context_identity: str | None
+    architecture_identity: str | None
     # The chair's latest report and the host's accounting of it.
     report: dict | None
     unaccounted: list[str]
@@ -178,13 +242,18 @@ def account(labels: list[str], report: dict) -> list[str]:
         if count > 1 and label in labels
     ]
     problems += [
-        f"{label} names no reviewer finding" for label in seen if label not in labels
+        f"{label} names no worker finding" for label in seen if label not in labels
     ]
     return problems
 
 
 def _labels(reviews: list[dict]) -> list[str]:
     return [finding["label"] for item in reviews for finding in item["findings"]]
+
+
+def _ordered(reviews: list[dict]) -> list[dict]:
+    """The reviews by role, reviewers first, then by seat."""
+    return sorted(reviews, key=lambda item: (ROLES.index(item["role"]), item["seat"]))
 
 
 def _stop_value(stop: Stop) -> dict:
@@ -195,12 +264,17 @@ class Panel:
     """The panel of one Module: the graph's nodes, bound to the run and the Module's review."""
 
     def __init__(
-        self, ctx: RunContext, subject: review.ModuleReview, prompt: str, size: int
+        self,
+        ctx: RunContext,
+        subject: review.ModuleReview,
+        prompt: str,
+        reviewers: int,
+        architects: int,
     ):
         self.ctx = ctx
         self.subject = subject
         self.prompt = prompt
-        self.size = size
+        self.seats = {"reviewer": reviewers, "architect": architects}
 
     def _brief(self, role: str, section: str, material: str = "") -> str:
         return (
@@ -209,16 +283,21 @@ class Panel:
             + review._task_section(self.ctx, self.subject, role)
             + "\n"
             + section
+            + "\n"
+            + reporting.material(self.subject.earlier or [])
             + ("\n" + material if material else "")
+            + review.criteria(self.ctx.worktree)
         )
 
-    def _launch(self, worker: str, instructions: str, schema: dict, label: str):
+    def _launch(
+        self, worker: str, task_type: str, instructions: str, schema: dict, label: str
+    ):
         """The worker ``worker``, one of the panel's worker ids, so that the worker
-        configuration may give each reviewer and the chair its own backend, model and thinking
-        level; returns (output or None, host evidence, context identity, stop or None)."""
+        configuration may give each worker its own backend, model and thinking level; returns
+        (output or None, host evidence, context identity, stop or None)."""
         result = self.ctx.run_worker(
             instructions,
-            task_type=TASK_TYPE,
+            task_type=task_type,
             output_schema=schema,
             rounds=0,
             modules=[self.subject.module],
@@ -252,7 +331,7 @@ class Panel:
                 ),
             )
         cleaned = [
-            {key: value for key, value in item.items() if key not in ("check", "id")}
+            {key: value for key, value in item.items() if key not in ("check", "issue")}
             for item in findings
         ]
         return cleaned, corrections, None
@@ -262,24 +341,31 @@ class Panel:
     def fan_out(self, state: PanelState):
         from langgraph.types import Send
 
-        return [Send("review", {"seat": seat}) for seat in range(1, self.size + 1)]
+        return [
+            Send("review", {"role": role, "seat": seat})
+            for role in ROLES
+            for seat in range(1, self.seats[role] + 1)
+        ]
 
     def review(self, seat_state: dict) -> dict:
-        seat = seat_state["seat"]
-        label = worker = f"reviewer{seat}"
+        role, seat = seat_state["role"], seat_state["seat"]
+        label = worker = f"{role}{seat}"
         output, found, identity, stop = self._launch(
             worker,
+            ARCHITECTURE_TASK_TYPE if role == "architect" else TASK_TYPE,
             self._brief(
-                "reviewer", f"## Your seat\n\nPanel seat: {seat} of {self.size}.\n"
+                role, f"## Your seat\n\nPanel seat: {seat} of {self.seats[role]}.\n"
             ),
-            REVIEWER_OUTPUT,
+            OUTPUTS[role],
             label,
         )
         entry = {
-            "reviewer": seat,
             "worker": worker,
+            "role": role,
+            "seat": seat,
             "status": "ok",
             "findings": [],
+            "resolved": [],
             "identity": identity,
         }
         if stop is None:
@@ -287,23 +373,36 @@ class Panel:
             found += corrections
             if stop is None:
                 entry["findings"] = [
-                    {**finding, "label": f"r{seat}.{number}"}
+                    {**finding, "label": f"{PREFIX[role]}{seat}.{number}"}
                     for number, finding in enumerate(findings, 1)
                 ]
+                entry["resolved"] = list(output.get("resolved") or [])
         if stop is not None:
             entry["status"] = stop.status
             entry["stop"] = _stop_value(stop)
         return {"reviews": [entry], "evidence": found}
 
     def gather(self, state: PanelState) -> dict:
-        """Join the reviewers: stop the Module when any of them could not review."""
-        reviews = sorted(state["reviews"], key=lambda item: item["reviewer"])
-        identity = next(
-            (item["identity"] for item in reviews if item["identity"]), None
-        )
+        """Join the workers: stop the Module when any of them could not review."""
+        reviews = _ordered(state["reviews"])
+
+        def identity(role: str) -> str | None:
+            return next(
+                (
+                    item["identity"]
+                    for item in reviews
+                    if item["role"] == role and item["identity"]
+                ),
+                None,
+            )
+
+        identities = {
+            "context_identity": identity("reviewer"),
+            "architecture_identity": identity("architect"),
+        }
         failed = [item for item in reviews if "stop" in item]
         if not failed:
-            return {"context_identity": identity}
+            return identities
         status = (
             "failed"
             if any(item["stop"]["status"] == "failed" for item in failed)
@@ -314,33 +413,39 @@ class Panel:
             status,
             "panel_short",
             f"{names} of the {self.subject.module} panel did not finish.",
-            f"{len(failed)} of {self.size} reviewer(s) of {self.subject.module} did not finish "
-            f"({names}), so the panel has no complete set of reviews to merge: "
+            f"{len(failed)} of {len(reviews)} worker(s) of the {self.subject.module} panel did "
+            f"not finish ({names}), so the panel has no complete set of reviews to merge: "
             + "; ".join(
                 f"{item['worker']}: {item['stop']['summary']}" for item in failed
             ),
             reason="decision",
             explanation="the chair merges only a complete panel, so that the report never "
-            "silently lacks a reviewer; rerunning or shrinking the panel is the main agent's "
+            "silently lacks a review; rerunning or shrinking the panel is the main agent's "
             "decision",
             causes=[item["stop"]["error"] for item in failed],
             options=[
-                "address each reviewer's cause, then run spec_panel again",
-                "run spec_panel with fewer --reviewers",
+                "address each worker's cause, then run spec_panel again",
+                "run spec_panel with fewer --reviewers or --architects",
             ],
         )
-        return {"context_identity": identity, "stop": _stop_value(stop)}
+        return {**identities, "stop": _stop_value(stop)}
 
     def chair(self, state: PanelState) -> dict:
         attempt = state["attempts"] + 1
-        reviews = sorted(state["reviews"], key=lambda item: item["reviewer"])
+        reviews = _ordered(state["reviews"])
         material = ["## The reviews\n"]
         for item in reviews:
-            material.append(f"\n### Reviewer {item['reviewer']}\n\n")
+            material.append(f"\n### {item['role'].capitalize()} {item['seat']}\n\n")
             if not item["findings"]:
                 material.append("No findings.\n")
             for finding in item["findings"]:
                 material.append(f"```json\n{json.dumps(finding, indent=2)}\n```\n")
+            if item["resolved"]:
+                material.append(
+                    "\nEarlier Issues it found resolved:\n\n```json\n"
+                    + json.dumps(item["resolved"], indent=2)
+                    + "\n```\n"
+                )
         section = f"## Your report\n\nChair attempt: {attempt}.\n"
         if state["report"] is not None:
             section += (
@@ -349,13 +454,18 @@ class Panel:
                 + "\nReturn the whole report again, corrected. Your previous report:\n\n"
                 + f"```json\n{json.dumps(state['report'], indent=2)}\n```\n"
             )
-        output, found, _, stop = self._launch(
+        # The chair checks architects' findings against the other Modules' Specs they cite.
+        wide = self.seats["architect"] > 0
+        output, found, identity, stop = self._launch(
             "chair",
+            ARCHITECTURE_TASK_TYPE if wide else TASK_TYPE,
             self._brief("chair", section, "".join(material)),
             CHAIR_OUTPUT,
             f"chair attempt {attempt}",
         )
         updates: dict = {"attempts": attempt, "evidence": found}
+        if wide and identity and not state["architecture_identity"]:
+            updates["architecture_identity"] = identity
         if stop is not None:
             updates["stop"] = _stop_value(stop)
             return updates
@@ -380,6 +490,7 @@ class Panel:
                 for finding, item in zip(merged, output["findings"], strict=True)
             ],
             "rejected": output["rejected"],
+            "resolved": list(output.get("resolved") or []),
         }
         problems = account(_labels(reviews), report)
         updates["report"] = report
@@ -390,19 +501,19 @@ class Panel:
                 f"{self.subject.module} chair attempt {attempt}",
                 "; ".join(problems)
                 if problems
-                else "every reviewer finding accounted for once",
+                else "every worker finding accounted for once",
             )
         ]
         if problems and attempt >= CHAIR_ATTEMPTS:
             stop = self.ctx.fail(
                 "failed",
                 "report_unaccounted",
-                f"The chair of {self.subject.module} left reviewer findings unaccounted for.",
+                f"The chair of {self.subject.module} left worker findings unaccounted for.",
                 f"after {attempt} attempt(s) the chair's report of {self.subject.module} still "
-                "does not account for every reviewer finding exactly once: "
+                "does not account for every reviewer and architect finding exactly once: "
                 + "; ".join(problems),
                 reason="exhausted",
-                explanation="the host never decides a reviewer finding itself and gives the "
+                explanation="the host never decides a worker finding itself and gives the "
                 f"chair {CHAIR_ATTEMPTS} attempts",
                 evidence=[
                     evidence("panel-accounting", self.subject.module, problem)
@@ -449,12 +560,13 @@ class Panel:
             "reviews": [],
             "evidence": [],
             "context_identity": None,
+            "architecture_identity": None,
             "report": None,
             "unaccounted": [],
             "attempts": 0,
             "stop": None,
         }
-        # the reviewers, gather, then at most CHAIR_ATTEMPTS chair turns.
+        # the workers, gather, then at most CHAIR_ATTEMPTS chair turns.
         steps = CHAIR_ATTEMPTS + 4
         return self.graph().invoke(initial, {"recursion_limit": steps})
 
@@ -463,8 +575,20 @@ def _panels(ctx: RunContext) -> dict[str, PanelState]:
     return ctx.__dict__.setdefault("spec_panel", {})
 
 
+def _report(ctx: RunContext, subject: review.ModuleReview, state: PanelState):
+    """Step 4: settle the earlier Issues the chair's report names and report its findings."""
+    report = state["report"]
+    subject.findings = _unreported(report)
+    return review.report_findings(
+        ctx,
+        subject,
+        report["resolved"],
+        state["architecture_identity"] or state["context_identity"],
+    )
+
+
 def panel_modules(ctx: RunContext):
-    """Step 2: the panel graph per Module that passed validation."""
+    """Steps 2 to 4: the earlier Issues, the panel graph and the Issue reports per Module."""
     try:
         import langgraph.graph  # noqa: F401
     except ImportError as error:
@@ -485,11 +609,15 @@ def panel_modules(ctx: RunContext):
         )
     prompt = load_prompt("panel-spec")
     found: list[dict] = []
-    size = ctx.arguments.reviewers
     for subject in review._state(ctx).reviews.values():
         if subject.stop is not None:
             continue
-        panel = Panel(ctx, subject, prompt, size)
+        found.extend(review.read_earlier(ctx, subject))
+        if subject.stop is not None:
+            continue
+        panel = Panel(
+            ctx, subject, prompt, ctx.arguments.reviewers, ctx.arguments.architects
+        )
         drawing = ctx.run_dir / "panel-graph.mmd"
         if not drawing.exists():
             drawing.write_text(panel.graph().get_graph().draw_mermaid())
@@ -511,47 +639,52 @@ def panel_modules(ctx: RunContext):
         if state["stop"]:
             stop = state["stop"]
             subject.stop = Stop(stop["status"], stop["summary"], [], stop["error"])
+            continue
+        found.extend(_report(ctx, subject, state))
     return Continue(evidence=found)
 
 
-def _module_payload(subject: review.ModuleReview, state: PanelState | None) -> dict:
-    reviews = sorted(
-        (state or {}).get("reviews", []), key=lambda item: item["reviewer"]
-    )
-    report = (state or {}).get("report") or {"findings": [], "rejected": []}
-    findings = [
+def _unreported(report: dict) -> list[dict]:
+    """The chair's report as it came, for a Module that stopped before it reported an Issue."""
+    return [
         {
             **finding,
-            "reviewers": len({label.split(".")[0] for label in finding["sources"]}),
+            "workers": len({label.split(".")[0] for label in finding["sources"]}),
+            "issue": None,
         }
         for finding in report["findings"]
     ]
-    if subject.stop is not None:
-        outcome = "incomplete"
-    elif any(item["severity"] == "blocking" for item in findings):
-        outcome = "changes_required"
-    else:
-        outcome = "accepted"
+
+
+def _module_payload(subject: review.ModuleReview, state: PanelState | None) -> dict:
+    state = state or {}
+    report = state.get("report") or {"findings": [], "rejected": []}
     return {
         "module": subject.module,
-        "outcome": outcome,
+        "outcome": subject.outcome,
         "context_identity": subject.context_identity,
+        "architecture_identity": state.get("architecture_identity"),
         "reviews": [
             {
-                "reviewer": item["reviewer"],
                 "worker": item["worker"],
+                "role": item["role"],
+                "seat": item["seat"],
                 "status": item["status"],
                 "findings": item["findings"],
+                "resolved": item["resolved"],
             }
-            for item in reviews
+            for item in _ordered(state.get("reviews", []))
         ],
-        "findings": findings,
+        "findings": subject.findings
+        if subject.summary is not None
+        else _unreported(report),
         "rejected": report["rejected"],
+        "earlier_issues": subject.summary,
     }
 
 
 def derive_verdict(ctx: RunContext):
-    """Step 3: each Module's outcome, the verdict and the result, all derived by the host."""
+    """Step 5: each Module's outcome, the verdict and the result, all derived by the host."""
     panels = _panels(ctx)
     subjects = list(review._state(ctx).reviews.values())
     modules = [
@@ -563,11 +696,13 @@ def derive_verdict(ctx: RunContext):
     ctx.output = payload
     reported = [item for module in modules for item in module["findings"]]
     raw = sum(len(r["findings"]) for module in modules for r in module["reviews"])
+    standing = sum(subject.standing for subject in subjects if subject.stop is None)
+    blocking = sum(1 for item in reported if reporting.is_blocking(item["tier"]))
     counts = (
-        f"{sum(1 for item in reported if item['severity'] == 'blocking')} blocking and "
-        f"{sum(1 for item in reported if item['severity'] == 'advisory')} advisory finding(s) "
-        f"merged from {raw} reviewer finding(s), "
-        f"{sum(len(module['rejected']) for module in modules)} rejected"
+        f"{blocking} blocking finding(s) and {len(reported) - blocking} suggestion(s) "
+        f"merged from {raw} worker finding(s), "
+        f"{sum(len(module['rejected']) for module in modules)} rejected; "
+        f"{standing} blocking Issue(s) stand"
     )
     incomplete = [subject for subject in subjects if subject.stop is not None]
     if not incomplete:
@@ -591,21 +726,31 @@ def derive_verdict(ctx: RunContext):
     )
 
 
-def _reviewers(value: str) -> int:
-    import argparse
+def _count(name: str, low: int, high: int):
+    def parse(value: str) -> int:
+        import argparse
 
-    number = int(value)
-    if not 2 <= number <= MAX_REVIEWERS:
-        raise argparse.ArgumentTypeError(f"--reviewers must be 2 to {MAX_REVIEWERS}")
-    return number
+        number = int(value)
+        if not low <= number <= high:
+            raise argparse.ArgumentTypeError(f"--{name} must be {low} to {high}")
+        return number
+
+    return parse
 
 
 def add_arguments(parser) -> None:
     parser.add_argument(
         "--reviewers",
-        type=_reviewers,
+        type=_count("reviewers", 2, MAX_REVIEWERS),
         default=DEFAULT_REVIEWERS,
         help=f"the reviewers per Module (2 to {MAX_REVIEWERS}, default {DEFAULT_REVIEWERS})",
+    )
+    parser.add_argument(
+        "--architects",
+        type=_count("architects", 0, MAX_ARCHITECTS),
+        default=DEFAULT_ARCHITECTS,
+        help=f"the architects per Module (0 to {MAX_ARCHITECTS}, default "
+        f"{DEFAULT_ARCHITECTS})",
     )
 
 
@@ -621,9 +766,10 @@ SPEC_PANEL = Provider(
 )
 
 __all__ = [
+    "ARCHITECT_FINDING",
     "CHAIR_OUTPUT",
+    "OUTPUTS",
     "PAYLOAD_SCHEMA",
-    "REVIEWER_OUTPUT",
     "SPEC_PANEL",
     "account",
 ]

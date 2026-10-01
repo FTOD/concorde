@@ -294,6 +294,13 @@
       "explanation": "specs/concorde/issues/module.md#concept.issue-revision"
     },
     {
+      "id": "concept.issue-tier",
+      "title": "Issue tier",
+      "owner": "module.issues",
+      "definition": "The class an Issue report gives its problem by who may handle it without the level above: `suggestion`, which is advisory, or the blocking `obvious-fix`, `preferred-fix` and `decision-needed`.",
+      "explanation": "specs/concorde/issues/module.md#concept.issue-tier"
+    },
+    {
       "id": "concept.main-agent",
       "title": "Main agent",
       "owner": "module.concorde",
@@ -450,21 +457,14 @@
       "id": "concept.review-finding",
       "title": "Review finding",
       "owner": "module.spec-review",
-      "definition": "One problem a reviewer establishes in a reviewed Module's documents, with its location, dimension, severity, evidence and a suggested repair.",
+      "definition": "One problem a reviewer or architect establishes in the Specs of a reviewed Module, with its location, dimension, tier, evidence and a suggested repair, which the review reports as an Issue.",
       "explanation": "specs/concorde/spec-tooling/spec-review/module.md#concept.review-finding"
-    },
-    {
-      "id": "concept.review-memory",
-      "title": "Review memory",
-      "owner": "module.spec-review",
-      "definition": "The findings the Spec reviews of one Module have kept, open or resolved, each under a stable id, tracked with the project so that a repeated review builds on them.",
-      "explanation": "specs/concorde/spec-tooling/spec-review/module.md#concept.review-memory"
     },
     {
       "id": "concept.review-verdict",
       "title": "Review verdict",
       "owner": "module.spec-review",
-      "definition": "The outcome of a Spec review or a Spec panel, derived by the Operation from the findings: `accepted`, `changes_required` or `incomplete`.",
+      "definition": "The outcome of a Spec review or a Spec panel, derived by the Operation from the Issues that stand for each reviewed Module: `accepted`, `changes_required` or `incomplete`.",
       "explanation": "specs/concorde/spec-tooling/spec-review/module.md#concept.review-verdict",
       "relates": [
         {

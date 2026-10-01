@@ -258,6 +258,16 @@ and [the Issue tools](requirements.md#req.main-session.issues-through-server).
 
 This illustrates [tiers deciding who fixes](requirements.md#req.main-session.issues-tiers).
 
+### scenario.main-session.review-issues — The guidance acts on a review's Issues
+
+- GIVEN the rendered main-session and task-session guidance
+- WHEN a task session reads what to do after `spec_review` or `spec_panel`
+- THEN it is told that the review reported every finding as an Issue, named in its result with the earlier Issues that stand and those found resolved
+- AND to fix them by their tier in later `specify` or `implement` work, never in the review
+- AND to close each Issue the review found resolved, through `task resolve` when its task fixed it and otherwise with `issue_close`
+
+This illustrates [a review's Issues](requirements.md#req.main-session.review-issues).
+
 ### scenario.main-session.solve-issue — The guidance closes a fixed Issue with its task's merge
 
 - GIVEN the rendered main-session guidance
