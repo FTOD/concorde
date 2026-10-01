@@ -143,10 +143,12 @@ Issues, which the primary worktree keeps.
 | `failed` | `unresolved_base` | `input` | `--base` or the binding's base names no commit; Git's message as cause |
 | `failed` | `base_in_module_scope` | `input` | `--base` given to a Module review, which has no diff |
 
-A run that stops before any reviewer launches carries no report and names as host evidence what its
-steps established: the base once resolved, the diff's paths once computed and the check results
-once the checks ran. Every other run carries the report, including for `blocked` and `failed`, so
-the findings of the Modules that were reviewed are never lost. The error of an incomplete Module is
+A run that stops in steps 1 or 2, before it turns to any Module's reviewer, carries no report and
+names as host evidence what those steps established: the base once resolved, the diff's paths once
+computed and the check results once the checks ran. Every other run carries the report, including
+for `blocked` and `failed`, even when no reviewer could be launched, so each Module's outcome and the
+findings of the Modules that were reviewed are never lost; an incomplete Module keeps its reviewer's
+summary when one returned and lists its earlier Issues, once read, as carried. The error of an incomplete Module is
 the Operation's link for it: the worker sequence's own link, with the worker's below it when the
 worker ended `blocked` or `failed` and the audit's violations when it found a change,
 `unresolved_evidence` naming every finding whose basis, location or

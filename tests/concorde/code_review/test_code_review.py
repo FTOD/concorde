@@ -194,9 +194,10 @@ class CodeReviewTests(unittest.TestCase):
         findings = [
             finding(),
             finding("specs/a/module.md#design", kind="defect", tier="preferred-fix"),
-            finding(kind="missing-test", locations=["tests/"], tier="obvious-fix"),
+            finding(
+                kind="missing-test", locations=["src/a/calc.py"], tier="obvious-fix"
+            ),
         ]
-        (self.worktree / "tests").mkdir()
         before = status_lines(self.worktree)
         _, envelope = self.change(*findings)
         self.assertEqual("ok", envelope["status"], envelope)
@@ -354,10 +355,11 @@ class CodeReviewTests(unittest.TestCase):
             finding(locations=["src/a/missing.py:3"]),
             finding(locations=["src/a/calc.py:40"]),
             finding(locations=["../outside.py"]),
+            finding(locations=["src/a/"]),
         )
         problems = self.unresolved(envelope)
         self.assertEqual(
-            ["src/a/missing.py:3", "src/a/calc.py:40", "../outside.py"],
+            ["src/a/missing.py:3", "src/a/calc.py:40", "../outside.py", "src/a/"],
             [item["ref"] for item in problems],
         )
 
@@ -380,10 +382,16 @@ class CodeReviewTests(unittest.TestCase):
         self.assertIn("src/a/calc.py", audit[0]["detail"])
         self.assertEqual("incomplete", envelope["output"]["verdict"])
 
-    def test_a_blocked_reviewer_blocks_the_run(self):
-        _, envelope = self.change(status="blocked")
+    def test_a_blocked_reviewer_blocks_the_run_and_keeps_what_was_obtained(self):
+        standing = self.earlier("standing")
+        _, envelope = self.change(status="blocked", summary="cannot judge")
         self.assertEqual("blocked", envelope["status"], envelope)
         self.assertEqual("review_incomplete", envelope["error"]["code"])
+        entry = self.module_entry(envelope)
+        self.assertEqual("cannot judge", entry["summary"])
+        self.assertEqual(
+            [standing], [item["issue"] for item in entry["earlier_issues"]["carried"]]
+        )
 
     def test_an_unknown_base_fails_before_the_reviewer(self):
         _, envelope = self.change(extra=("--base", "no-such-ref"))

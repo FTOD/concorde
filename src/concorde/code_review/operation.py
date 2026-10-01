@@ -642,13 +642,15 @@ def check_evidence(
             else:
                 target = ctx.worktree / path
                 first, last = parsed[1], parsed[2]
-                if not target.exists() and path not in changed:
+                if target.is_file():
+                    if first is not None and (
+                        first < 1 or last < first or last > _line_count(target)
+                    ):
+                        problem = "gives lines beyond the file's end"
+                elif path not in changed or target.exists():
                     problem = "names no file of the worktree and no changed path"
                 elif first is not None:
-                    if not target.is_file():
-                        problem = "gives lines of a path that is not a file"
-                    elif first < 1 or last < first or last > _line_count(target):
-                        problem = "gives lines beyond the file's end"
+                    problem = "gives lines of a file the worktree no longer has"
             if problem:
                 problems.append(
                     evidence(
@@ -718,8 +720,12 @@ def _judge(
     label = f"{', '.join(modules)} reviewer"
 
     def stop_all(stop: Stop) -> None:
+        # An incomplete Module keeps what was obtained: its earlier Issues, once read, all
+        # still stand, since the review settled none of them.
         for review in reviews:
             review.stop = stop
+            if review.earlier is not None and review.settled is None:
+                review.settled = issues.settle(review.earlier, [], [])
 
     found, stop = _read_earlier(ctx, reviews)
     if stop is not None:
@@ -742,20 +748,20 @@ def _judge(
     found.extend(_labelled(outcome.evidence, label))
     if len(ctx.worker_runs) > launched:
         identity = _identity(outcome.evidence)
+        summary = (ctx.worker or {}).get("summary") or None
         for review in reviews:
             review.context_identity = identity
+            review.summary = summary
     if isinstance(outcome, Stop):
         outcome.error["actor"] += f", review of {', '.join(modules)}"
         stop_all(outcome)
         return found
-    summary = (ctx.worker or {}).get("summary") or None
     output = outcome.output or {}
     findings = list(output.get("findings") or [])
     problems, defined = check_evidence(ctx, state, modules, findings)
     for finding in findings:
         finding["issue"] = None
     for review in reviews:
-        review.summary = summary
         review.findings = [item for item in findings if item["module"] == review.module]
     # A finding about a Module nobody reviewed stays in the report, with the first Module's.
     reviews[0].findings += [item for item in findings if item["module"] not in modules]
