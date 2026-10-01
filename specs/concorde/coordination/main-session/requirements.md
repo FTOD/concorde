@@ -745,6 +745,14 @@ in later work of its task, and to close each Issue the review lists as resolved.
 It closes such an Issue through its task when the task fixed it, and otherwise by hand as `resolved`
 with the review's run as evidence; the review itself never closes one.
 
+### req.main-session.module-code-review — The guidance names the Module review
+
+The guidance SHALL tell the main agent and a task session that `code_review --scope module` judges
+each named Module's whole code against all of its Specs, and when to use it.
+
+The guidance names a whole-Module check after a large change, code written before its Specs or by an
+earlier version, and a project just adopted.
+
 ### req.main-session.issues-close-with-merge — A fixed Issue closes with its task's merge
 
 The guidance SHALL tell the main agent to name the Issues a task fixes in the task, so that the

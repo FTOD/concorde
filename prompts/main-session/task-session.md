@@ -186,14 +186,17 @@ Never close an Issue you fixed: add it to your task with `concorde task resolve 
 and the task's merge closes it once the fix is on the primary branch. Say in your report which
 Issues the task resolves.
 
-**After a review.** `spec_review` and `spec_panel` report every finding themselves, as an Issue of
-the Module it concerns, and their result names each finding's Issue (`issue`), the earlier Issues
-that still stand (`earlier_issues.carried`) and those the review found resolved
+**After a review.** `spec_review`, `spec_panel` and `code_review` report every finding themselves,
+as an Issue of the Module it concerns, and their result names each finding's Issue (`issue`), the
+earlier Issues that still stand (`earlier_issues.carried`) and those the review found resolved
 (`earlier_issues.resolved`). Handle each by its tier as above: fixing is later `specify` or
 `implement` work of your task, never the review's, and the verdict `changes_required` means a
-blocking Issue still stands. An Issue the review lists as resolved you add to your task with
-`concorde task resolve` when your task fixed it, and otherwise close with `issue_close` as
-`resolved`, the review's run as evidence.
+blocking Issue still stands. A `code_review` finding of kind `spec-challenge` says the Spec, not the
+code, is wrong: it is usually `decision-needed`, so escalate it rather than change the promise. An
+Issue the review lists as resolved you add to your task with `concorde task resolve` when your task
+fixed it, and otherwise close with `issue_close` as `resolved`, the review's run as evidence.
+`code_review --scope module` judges each named Module's whole code against all its Specs; run it
+when your brief asks for it or after a change large enough to deserve a whole-Module check.
 
 A refusal of the Issue tools whose reason is `environment`, such as `merge_busy` while a merge holds
 the lock, `merge_incomplete` or `commit_failed`, is a failure of the Issue system itself: never

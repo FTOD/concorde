@@ -715,6 +715,16 @@
         {
           "target": "module.spec",
           "meaning": "#uses-spec"
+        },
+        {
+          "target": "module.issues",
+          "meaning": "#uses-issues",
+          "relies_on": [
+            "concept.issue",
+            "concept.issue-report",
+            "concept.issue-revision",
+            "concept.issue-tier"
+          ]
         }
       ],
       "includes": [

@@ -40,6 +40,16 @@
       {
         "target": "module.spec",
         "meaning": "#uses-spec"
+      },
+      {
+        "target": "module.issues",
+        "meaning": "#uses-issues",
+        "relies_on": [
+          "concept.issue",
+          "concept.issue-report",
+          "concept.issue-revision",
+          "concept.issue-tier"
+        ]
       }
     ],
     "includes": [
@@ -64,6 +74,13 @@
       ]
     }
   ],
-  "relations": [],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "realization.code-review.operation",
+      "verb": "reports findings as Issues through",
+      "target": "module.issues"
+    }
+  ],
   "extensions": {}
 }

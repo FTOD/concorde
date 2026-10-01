@@ -342,7 +342,7 @@ question flow when the developer already chose a model.
 ## Questions without a task
 
 The guidance tells the main agent that `understand`, `survey`, `spec_review`, `spec_panel` and
-`code_review` (with `--base`) also run [unbound](../../glossary.json#concept.unbound-run), in a
+`code_review` (a change review with `--base`, a Module review without) also run [unbound](../../glossary.json#concept.unbound-run), in a
 worktree without a workspace binding such as the primary worktree, on the Modules `--modules` names.
 Such a run works on an [unbound checkout](../../glossary.json#concept.unbound-checkout) of that
 worktree's `HEAD`, so a task merged there meanwhile does not disturb it and uncommitted changes are
@@ -419,13 +419,21 @@ without such a task, is closed with `issue_close`, `duplicate` naming another op
 `issue_reopen`, preserving history. On `stale_issue`, read the record again before deciding to
 retry.
 
-**After a review.** The review Operations, `spec_review` and `spec_panel`, report every finding as
-an Issue with the tier their reviewer or chair gave it, and their result names each finding's Issue,
-the earlier Issues that still stand and those the review found resolved. The guidance tells the task
-session to handle them like any other Issue of its task, by their tier, in later `specify` or
-`implement` work, never in the review, and to close each Issue the review found resolved: through
-its task with `task resolve` when the task fixed it, otherwise with `issue_close` as `resolved`,
-naming the review's run as evidence.
+**After a review.** The review Operations, `spec_review`, `spec_panel` and `code_review`, report
+every finding as an Issue with the tier their reviewer or chair gave it, and their result names each
+finding's Issue, the earlier Issues that still stand and those the review found resolved. The
+guidance tells the task session to handle them like any other Issue of its task, by their tier, in
+later `specify` or `implement` work, never in the review, to escalate a `code_review` finding that
+challenges the Spec, usually `decision-needed`, rather than change the promise itself, and to close
+each Issue the review found resolved: through its task with `task resolve` when the task fixed it,
+otherwise with `issue_close` as `resolved`, naming the review's run as evidence.
+
+**A Module review.** Besides judging a task's change, `code_review --scope module` judges each named
+Module's whole code against all of its Specs, one reviewer per Module
+([Code review](../../execution/operations/code-review/module.md#two-scopes)). The guidance names it
+and when to use it: a whole-Module check after a large change, on code written before its Specs or
+by an earlier version, or on a project just adopted; unbound, in the primary worktree, it needs only
+`--modules`.
 
 **The Issue system's own failures.** A refusal of the Issue tools or command that is a failure of the
 Issue system itself, such as a busy merge lock, an unfinished merge or a failed commit, is never

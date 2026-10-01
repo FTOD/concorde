@@ -548,8 +548,39 @@ class GuidanceTests(unittest.TestCase):
             (session, "`implement` work of your task, never the review's"),
             (session, "`concorde task resolve` when your task fixed it"),
             (session, "close with `issue_close` as `resolved`"),
+            (
+                session,
+                "`spec_review`, `spec_panel` and `code_review` report every finding",
+            ),
+            (session, "of kind `spec-challenge` says the Spec, not the code, is wrong"),
+            (session, "so escalate it rather than change the promise"),
             (skill, "reports each of its findings as an Issue"),
-            (skill, "closes the resolved ones, through its task when the task fixed them"),
+            (skill, "(`spec_review`, `spec_panel`, `code_review`)"),
+            (
+                skill,
+                "closes the resolved ones, through its task when the task fixed them",
+            ),
+        ):
+            with self.subTest(instruction=instruction):
+                self.assertIn(instruction, text)
+
+    @verifies("scenario.main-session.module-code-review")
+    def test_the_guidance_names_the_module_review(self):
+        skill, session = self.skill, self.issues()[1]
+        for text, instruction in (
+            (skill, "With `--scope module` it is a **Module review**"),
+            (skill, "one reviewer per named Module judges that Module's whole code"),
+            (
+                skill,
+                "for a whole-Module check after a large change, on code written before its",
+            ),
+            (skill, "or on a project just adopted"),
+            (skill, "concorde run code_review [--scope module]"),
+            (
+                session,
+                "`code_review --scope module` judges each named Module's whole code",
+            ),
+            (session, "after a change large enough to deserve a whole-Module check"),
         ):
             with self.subTest(instruction=instruction):
                 self.assertIn(instruction, text)
@@ -634,7 +665,10 @@ class GuidanceTests(unittest.TestCase):
         self.assertIn("scripts/available_models.py --backend pi", self.skill)
         self.assertIn("custom/offline model names", self.skill)
         self.assertIn("one entry per **worker id**", self.skill)
-        self.assertIn("`reviewer1` to `reviewer5`, `architect1`, `architect2` and `chair`", self.skill)
+        self.assertIn(
+            "`reviewer1` to `reviewer5`, `architect1`, `architect2` and `chair`",
+            self.skill,
+        )
         self.assertIn("`limits` of every worker launch", self.skill)
         self.assertIn(
             "change the models workers use only when the developer asks", self.block

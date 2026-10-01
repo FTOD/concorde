@@ -54,7 +54,7 @@ The **Operation catalog** of this version:
 | `test` | [Implementation](implementation/module.md) | `test` | `worker` | no | no | a test report ([contract](implementation/contracts.md#contract.implementation.test-report)) |
 | `spec_review` | [Spec review](../../spec-tooling/spec-review/module.md) | `review-spec` | `reviewer`, `checker` | yes | no | [review findings](../../glossary.json#concept.review-finding) and a verdict ([contract](../../spec-tooling/spec-review/operation.md#contract.spec-review.payload)) |
 | `spec_panel` | [Spec review](../../spec-tooling/spec-review/module.md) | `review-spec`; `review-architecture` for its architects, and for its chair when it has an architect | `reviewer1` … `reviewer5`, `architect1`, `architect2`, `chair` | yes | no | a panel report merged from independent reviews, and a verdict ([contract](../../spec-tooling/spec-review/panel.md#contract.spec-review.panel-payload)) |
-| `code_review` | [Code review](code-review/module.md) | `review-code` | `worker` | yes (`--base`) | no | a code review report with findings and a verdict ([contract](code-review/contracts.md#contract.code-review.review)) |
+| `code_review` | [Code review](code-review/module.md) | `review-code` | `worker` | yes (`--base` for a change review) | no | a code review report of a change or of whole Modules, each finding reported as an [Issue](../../glossary.json#concept.issue), and a verdict ([contract](code-review/contracts.md#contract.code-review.review)) |
 | `survey` | [Adoption](adoption/module.md) | `code-to-spec`, Specs withheld | `worker` | yes | no | a [decomposition proposal](adoption/contracts.md#contract.adoption.decomposition) |
 | `code_to_spec` | [Adoption](adoption/module.md) | `code-to-spec` | `worker` | no | Specs of the bound Modules, the registry mirror and the `verifies` links of the existing tests it describes | a [Spec description](adoption/contracts.md#contract.adoption.spec-description) |
 
@@ -271,11 +271,12 @@ need a bound workspace.
 
 <a id="contains-code-review"></a>
 
-**Code review** provides `code_review`: a worker judges the workspace's code change against the
-bound Modules' Specs and returns findings, changing nothing. The Operation prepares the change to
-review from the binding's base commit, or from `--base` when it runs unbound, keeps the findings as
-the worker's claims and derives the verdict from their severities itself; acting on a finding is
-the task level's decision.
+**Code review** provides `code_review`: a worker judges code against the Specs and returns
+findings, changing nothing, either a workspace's change since the binding's base commit, or since
+`--base` when it runs unbound, or, with `--scope module`, each named Module's whole code, one worker
+per Module. The Operation keeps the findings as the workers' claims, checks their evidence, reports
+each as an Issue of the project and derives the verdict from the tiers of the Issues that stand;
+acting on an Issue is the task level's decision.
 
 <a id="contains-adoption"></a>
 

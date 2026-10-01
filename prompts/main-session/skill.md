@@ -85,7 +85,7 @@ concorde run specify     --intent "<what the Spec should say>"
 concorde run implement   --goal "<what to build>" [--input <run-id>]
 concorde run test
 concorde run spec_review
-concorde run code_review
+concorde run code_review   [--scope module]
 concorde task-validation
 concorde delivery
 ```
@@ -101,6 +101,13 @@ files its Modules bind and new files inside the directories they bind, and a Mod
 files that exist, so the task session itself creates any other new file the work needs, with the
 least content its format needs to be valid, and binds it to its Module before it launches the
 worker that fills it.
+
+`code_review` judges a task's change since its base. With `--scope module` it is a **Module
+review** instead: one reviewer per named Module judges that Module's whole code and tests against
+all of its Specs, and may challenge a Spec requirement it finds unreasonable or unrealizable. Use it
+for a whole-Module check after a large change, on code written before its Specs or by an earlier
+version, or on a project just adopted with the brownfield workflow; run unbound in the primary
+worktree it needs only `--modules`.
 Each run prints one JSON run result and saves it in its own folder in the task's folder of the
 primary worktree, `.concorde/tasks/<task>/workspace/runs/<run-id>/result.json` (an unbound run's in
 `.concorde/unbound/<run-id>/`), where you can read it too. Every level of the work leaves such a
@@ -126,7 +133,8 @@ main session each reports to, or register a wait for it with `register_wait`, a 
 yourself.
 
 Some Operations also run **unbound**, in a worktree without a binding such as the primary
-worktree: `understand`, `survey`, `spec_review`, `spec_panel` and `code_review` (with `--base`).
+worktree: `understand`, `survey`, `spec_review`, `spec_panel` and `code_review` (a change review
+with `--base`, a Module review without).
 They work on a throwaway checkout of that worktree's `HEAD`, with the Modules you name in
 `--modules`, so a task merged there meanwhile does not disturb them and uncommitted changes are not
 examined; their result has `workspace` null and names the examined commit as `commit`, and they
@@ -388,8 +396,8 @@ name the Issues it fixes, `concorde task open <task> … --resolves <issue>[,<is
 `preferred-fix` Issues itself, reporting the fix it chose for a `preferred-fix` one, and escalates a
 `decision-needed` Issue, naming it by its identity, for you to decide or to put to the developer.
 A review
-(`spec_review`, `spec_panel`) reports each of its findings as an Issue with the tier its reviewer or
-chair gave it, and lists in its result the earlier Issues that still stand and those it found
+(`spec_review`, `spec_panel`, `code_review`) reports each of its findings as an Issue with the tier
+its reviewer or chair gave it, and lists in its result the earlier Issues that still stand and those it found
 resolved; the task session fixes the first by their tier in later `specify` or `implement` work and
 closes the resolved ones, through its task when the task fixed them. Starting, fixing or delivering
 the task changes no Issue; once `task merge` has merged it and its
