@@ -576,7 +576,10 @@ class GuidanceTests(unittest.TestCase):
                 with self.subTest(severity=severity):
                     self.assertIn(f"`{severity}`", text)
         for text, instruction in (
-            (skill, "and its `severity`, how much the problem matters whoever handles it"),
+            (
+                skill,
+                "and its `severity`, how much the problem matters whoever handles it",
+            ),
             (session, "and its `severity`, how much it matters"),
             (skill, "`issue_list` with `status` `open` and `sort` `severity`"),
             (skill, "which puts the most severe Issues first"),
