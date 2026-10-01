@@ -1,0 +1,43 @@
+# I-6a51557fc91b5e40bfcbfc78a09ecdda
+
+```json
+{
+  "schema_version": 3,
+  "id": "I-6a51557fc91b5e40bfcbfc78a09ecdda",
+  "status": "open",
+  "reports": [
+    {
+      "id": "sha256:5775d7799558dc02a30857a9fe8e000017a88d2d388694a497f8545341cc73bb",
+      "created_at": "2026-10-01T06:13:09.803108+00:00",
+      "report": {
+        "report_key": "module.workers/15",
+        "tier": "decision-needed",
+        "type": "bug",
+        "subtype": null,
+        "title": "The canonical audit evidence record lacks a defined structure",
+        "description": "The canonical round contract does not define audit fields or nonempty violation item shapes, including the required glossary-owner evidence.\n\nSuggested repair: Define changed-path and violation fields and their item types, covering ordinary paths, deletions, Git-state changes and glossary entries with before/after owners. Include a nonempty example and preserve the existing null-before-audit meaning.\n\nOther Modules concerned: module.operations",
+        "impact": "Independent producers and consumers can disagree about nonempty violations and ownership evidence while satisfying the published contract.",
+        "basis": "spec_panel run r-20261001T051011-spec_panel-91e80034 judged specs/concorde/execution/workers/contracts.md at contract.workers.worker-round-trace, line 680 by the obligations criterion of the Protocol's Evaluating a Spec; the Specs read: The audit schema accepts any object; its semantics specify only \"the verdict of the host's audit after the round (changed paths and violations)\". The example is `{\"changed\": [\"src/http/retry.py\"], \"violations\": []}`. The entry requires glossary violations named `<glossary>#<concept>` \"with both owners\".\n\nThe panel's chair merged r2.3 and verified: Checked the entire round contract and audit explanations. Null already means the audit did not run; the unresolved part is the canonical completed-audit structure and violation representations, which require a contract decision.",
+        "owner_target_id": "module.workers",
+        "evidence": [
+          {
+            "path": "specs/concorde/execution/workers/contracts.md",
+            "description": "contract.workers.worker-round-trace, cited by the obligations finding"
+          }
+        ]
+      },
+      "source": {
+        "invocation_id": "r-20261001T051011-spec_panel-91e80034",
+        "agent": "operation",
+        "operation": "spec_panel",
+        "phase": "report",
+        "target_id": "module.workers",
+        "context_id": "sha256:d9d26b9c3b118a1ec71a8cb21310fcb039173ad3cfece95db1c14e2faee0ef23",
+        "change_id": null,
+        "head": "eb6687427361c480d7a7eb0d9a022b0c2c9f5dbb"
+      }
+    }
+  ],
+  "dispositions": []
+}
+```
