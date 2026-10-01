@@ -37,6 +37,8 @@ from .shapes import (
     RECORD,
     RECORD_VERSION,
     REPORT,
+    SEVERITIES,
+    TIERED_VERSION,
     TIERS,
 )
 from ..spec.repository import SpecError, digest
@@ -124,13 +126,14 @@ def _now() -> str:
 
 
 def validate_report(report: dict) -> None:
-    """A report a caller submits: of the report contract, with its tier."""
+    """A report a caller submits: of the report contract, with its tier and severity."""
     check_schema(report, REPORT)
     _check_report(report)
 
 
 def _check_report(report: dict) -> None:
-    """The rules of a report beyond its schema, also of a stored report written before tiers."""
+    """The rules of a report beyond its schema, also of a stored report written before tiers or
+    severities."""
     if (report["type"] == "gap") != (report["subtype"] is not None):
         raise IssueError(
             "field subtype: a gap report requires a gap subtype, a bug or limitation report null",
@@ -164,12 +167,13 @@ def validate_record(record: dict) -> None:
     for observation in record["reports"]:
         report, source = observation["report"], observation["source"]
         _check_report(report)
-        if record["schema_version"] >= RECORD_VERSION and "tier" not in report:
-            raise IssueError(
-                f"field tier: a report of a record of schema version {RECORD_VERSION} "
-                "carries its tier",
-                "invalid_issue",
-            )
+        for field, since in (("tier", TIERED_VERSION), ("severity", RECORD_VERSION)):
+            if record["schema_version"] >= since and field not in report:
+                raise IssueError(
+                    f"field {field}: a report of a record of schema version "
+                    f"{record['schema_version']} carries its {field}",
+                    "invalid_issue",
+                )
         if report.get("issue_id", record["id"]) != record["id"]:
             raise IssueError("report belongs to another issue", "invalid_issue")
         if observation["id"] != digest({"report": report, "source": source}):
@@ -277,16 +281,23 @@ def list_issues(
     target_id: str | None = None,
     status: str | None = None,
     tiers: list[str] | tuple[str, ...] | None = None,
+    severities: list[str] | tuple[str, ...] | None = None,
+    sort: str | None = None,
 ) -> list[dict]:
     """Read-only metadata; an absent collection is empty and is never created by a query."""
     if status not in {None, "open", "closed"}:
         raise IssueError("unknown issue status", "invalid_issue")
     if tiers is not None and not set(tiers) <= set(TIERS):
         raise IssueError("unknown issue tier", "invalid_issue")
+    if severities is not None and not set(severities) <= set(SEVERITIES):
+        raise IssueError("unknown issue severity", "invalid_issue")
+    if sort not in {None, "severity"}:
+        raise IssueError(f"unknown issue sort {sort!r}: only severity", "invalid_issue")
     directory = checked_path(root, DIRECTORY)
     if not directory.exists():
         return []
     result = []
+    reported = {}
     for path in sorted(directory.glob("I-*.md")):
         record, revision = read_issue(root, path.stem)
         latest = record["reports"][-1]
@@ -300,9 +311,13 @@ def list_issues(
             continue
         if tiers is not None and report.get("tier") not in tiers:
             continue
+        if severities is not None and report.get("severity") not in severities:
+            continue
+        reported[record["id"]] = record["reports"][0]["created_at"]
         result.append(
             {
                 "id": record["id"],
+                "severity": report.get("severity"),
                 "tier": report.get("tier"),
                 "type": report["type"],
                 "subtype": report["subtype"],
@@ -313,7 +328,21 @@ def list_issues(
                 "revision": revision,
             }
         )
+    if sort == "severity":
+        result.sort(key=lambda row: _severity_order(row, reported[row["id"]]))
     return result
+
+
+def _severity_order(row: dict, reported_at: str) -> tuple:
+    """Most severe first, then the strongest tier, then the Issue reported first; an Issue
+    without a severity or tier after every one with it."""
+    severity, tier = row["severity"], row["tier"]
+    return (
+        SEVERITIES.index(severity) if severity else len(SEVERITIES),
+        -TIERS.index(tier) if tier else 1,
+        reported_at,
+        row["id"],
+    )
 
 
 def project_root(path: Path) -> Path:

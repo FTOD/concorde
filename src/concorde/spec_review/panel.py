@@ -129,7 +129,7 @@ IDENTITY: dict = {
     ]
 }
 
-# contract.spec-review.panel-payload, version 3 (panel.md); a test keeps the two equal.
+# contract.spec-review.panel-payload, version 4 (panel.md); a test keeps the two equal.
 PAYLOAD_SCHEMA: dict = {
     "type": "object",
     "required": ["verdict", "modules"],

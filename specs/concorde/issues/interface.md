@@ -17,15 +17,16 @@ between tokens.
 ```concorde-contract
 {
   "id": "contract.issues.report",
-  "version": 2,
+  "version": 3,
   "schema": {
     "type": "object",
     "additionalProperties": false,
-    "required": ["report_key", "tier", "type", "subtype", "title", "description", "impact",
-                 "basis", "owner_target_id", "evidence"],
+    "required": ["report_key", "tier", "severity", "type", "subtype", "title", "description",
+                 "impact", "basis", "owner_target_id", "evidence"],
     "properties": {
       "report_key": {"type": "string", "minLength": 1},
       "tier": {"enum": ["suggestion", "obvious-fix", "preferred-fix", "decision-needed"]},
+      "severity": {"enum": ["critical", "high", "medium", "low"]},
       "type": {"enum": ["bug", "gap", "limitation"]},
       "subtype": {
         "anyOf": [
@@ -66,10 +67,11 @@ between tokens.
       "expected_revision": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
     }
   },
-  "semantics": "One observation of a concrete problem, registered as typed value concorde-issue-report. report_key is chosen by the reporter and stays the same across retries of the same observation. tier says who may handle the problem without the level above (the main agent, then the developer): suggestion, advisory, no problem today; obvious-fix, an obvious problem with an obvious fix, which the session fixing it fixes alone; preferred-fix, a simple problem whose best fix of several is clear, which the session fixing it fixes and reports; decision-needed, a problem that is unclear or whose fix is uncertain, which the level above decides; every tier but suggestion is blocking. description, impact, basis and evidence describe the problem completely enough for whoever the Issue is escalated to by its identity to act on it. type bug is a defect or failure, gap an implementation/Spec mismatch, a conflict between Specs or a missing necessary promise, limitation behaviour that is consistent but insufficient; subtype is required for gap and null otherwise. owner_target_id names the Module that owns the broken promise, or null when unknown. evidence may be empty; its paths are canonical project-relative POSIX paths (nonempty, no leading slash, no backslash, colon or control character, no empty, . or .. component); the report command also requires each to exist in the project, or in the origin project when origin is given. origin, optional, says the observation was made in another project than the one recording it: that project's absolute path, its Git HEAD then, the commit of the Concorde it ran, and the task, each nullable but project. error_chain, optional, is the failure's error chain as one error of the Framework's error contract, checked against it. issue_id and expected_revision are both absent to create an Issue and both present to append to that Issue at exactly that revision. Provenance is never part of a report. The report is at most 64 KiB as canonical JSON.",
+  "semantics": "One observation of a concrete problem, registered as typed value concorde-issue-report. report_key is chosen by the reporter and stays the same across retries of the same observation. tier says who may handle the problem without the level above (the main agent, then the developer): suggestion, advisory, no problem today; obvious-fix, an obvious problem with an obvious fix, which the session fixing it fixes alone; preferred-fix, a simple problem whose best fix of several is clear, which the session fixing it fixes and reports; decision-needed, a problem that is unclear or whose fix is uncertain, which the level above decides; every tier but suggestion is blocking. severity says how much the problem matters while it stands, independently of the tier, most severe first: critical, wrong results, lost or corrupted data, a security exposure or a core flow broken with no workaround; high, a main flow broken or wrong although a workaround exists, or a promise that leads the work relying on it to act wrongly; medium, a secondary flow or an edge case that fails, or a gap that slows the work without misleading it; low, something cosmetic with which nothing goes wrong. description, impact, basis and evidence describe the problem completely enough for whoever the Issue is escalated to by its identity to act on it. type bug is a defect or failure, gap an implementation/Spec mismatch, a conflict between Specs or a missing necessary promise, limitation behaviour that is consistent but insufficient; subtype is required for gap and null otherwise. owner_target_id names the Module that owns the broken promise, or null when unknown. evidence may be empty; its paths are canonical project-relative POSIX paths (nonempty, no leading slash, no backslash, colon or control character, no empty, . or .. component); the report command also requires each to exist in the project, or in the origin project when origin is given. origin, optional, says the observation was made in another project than the one recording it: that project's absolute path, its Git HEAD then, the commit of the Concorde it ran, and the task, each nullable but project. error_chain, optional, is the failure's error chain as one error of the Framework's error contract, checked against it. issue_id and expected_revision are both absent to create an Issue and both present to append to that Issue at exactly that revision. Provenance is never part of a report. The report is at most 64 KiB as canonical JSON.",
   "example": {
     "report_key": "retry-count-unspecified",
     "tier": "decision-needed",
+    "severity": "high",
     "type": "gap",
     "subtype": "missing-contract",
     "title": "Retry limit is not specified",
@@ -141,7 +143,8 @@ A record lives at `.concorde/issues/<issue_id>.md` of the primary worktree and i
 line, a `json` fence holding the record serialized with two-space indentation, and the closing
 fence. Nothing else may appear in the file. A record is at most 16 MiB.
 
-The record has `schema_version` 3, or 2 for a record written before tiers existed, `id`, `status` (`open` or `closed`), `reports` (at least one)
+The record has `schema_version` 4, 3 for a record written before severities existed or 2 for one
+written before tiers existed, `id`, `status` (`open` or `closed`), `reports` (at least one)
 and `dispositions`. Each entry of `reports` is `{id, created_at, report, source}`, with `source`
 the provenance and `id` the digest of `{report, source}`. Each disposition is
 `{reason, note, evidence, duplicate_of, actor, created_at}`, where `reason` is `resolved`,
@@ -160,15 +163,17 @@ A record is valid only when:
   `(invocation_id, report_key)` pair;
 - every report is itself a valid report of this Issue: it satisfies the
   [report contract](#contract.issues.report), except that a report of a record of
-  `schema_version` 2 may lack its `tier`, the first report has no `issue_id`, and a later
+  `schema_version` 2 may lack its `tier` and its `severity` and a report of a record of
+  `schema_version` 3 its `severity`, the first report has no `issue_id`, and a later
   report that has one names this Issue;
 - dispositions alternate from open: a closing reason only while open, `reopened` only while
   closed, and `status` equals the state after the last disposition.
 
 An Issue's owner is the latest report's `owner_target_id`, or that report's reporting Module when
-the owner is `null`, and its tier the latest report's `tier`, or none when that report has none. The
-store creates records of `schema_version` 3 and never changes a record's version, so appending a
-tiered report to a record of version 2 keeps it version 2. Its revision is the SHA-256 digest of the file's bytes.
+the owner is `null`, its tier the latest report's `tier` and its severity the latest report's `severity`, each none when
+that report has none. The store creates records of `schema_version` 4 and never changes a record's
+version, so appending a report with a tier and a severity to a record of version 2 or 3 keeps its
+version. Its revision is the SHA-256 digest of the file's bytes.
 
 ## Store operations
 
@@ -206,7 +211,7 @@ The bookkeeping command reports a `TypedDataError` as `invalid_issue`, and a `sy
 | --- | --- |
 | `report_issue(root, report, source, wait, locked)` | Validates, then under the merge lock: returns the existing receipt when the same `(invocation_id, report_key)` already holds identical content; fails with `issue_key_conflict` for different content; otherwise creates the record or, for an append, checks that the Issue exists (`unknown_issue`), `expected_revision` (`stale_issue`) and open status (`closed_issue`) and appends. |
 | `read_issue(root, id)` | Returns the record and its revision; `invalid_issue` for a malformed identity, `unknown_issue` when absent, `invalid_issue` when malformed or oversized. |
-| `list_issues(root, target_id, status, tiers)` | Returns one summary row per Issue, sorted by identity: `{id, tier, type, subtype, title, status, target_id, owner_target_id, revision}`, where `tier` (or `null` without one), `type`, `subtype`, `title` and `owner_target_id` are the latest report's, `target_id` is that report's reporting Module and `revision` the record's. A `target_id` keeps only the Issues whose latest report has that reporting Module or owner, whether or not it is a registered Module; a `status` keeps only the Issues with that status, `invalid_issue` for one that is neither `open` nor `closed`; `tiers` keeps only the Issues whose latest report has one of those tiers, so never one without a tier, `invalid_issue` when it names one that is not a tier; `null` for any of them filters nothing, and the filters given combine, an Issue passing each. An absent directory yields an empty list and is not created. |
+| `list_issues(root, target_id, status, tiers, severities, sort)` | Returns one summary row per Issue, sorted by identity unless `sort` says otherwise: `{id, severity, tier, type, subtype, title, status, target_id, owner_target_id, revision}`, where `severity` and `tier` (each `null` without one), `type`, `subtype`, `title` and `owner_target_id` are the latest report's, `target_id` is that report's reporting Module and `revision` the record's. A `target_id` keeps only the Issues whose latest report has that reporting Module or owner, whether or not it is a registered Module; a `status` keeps only the Issues with that status, `invalid_issue` for one that is neither `open` nor `closed`; `tiers` keeps only the Issues whose latest report has one of those tiers, so never one without a tier, `invalid_issue` when it names one that is not a tier; `severities` likewise keeps only the Issues whose latest report has one of those severities, never one without a severity, `invalid_issue` when it names one that is not a severity; `null` for any of them filters nothing, and the filters given combine, an Issue passing each. `sort` `severity` orders the rows most severe first, those of equal severity by tier from `decision-needed` down to `suggestion`, then by the `created_at` of the Issue's first report and by identity, every row without a severity after those with one and every row without a tier after those of its severity with one; `null` keeps the order by identity, and any other value is `invalid_issue`. An absent directory yields an empty list and is not created. |
 | `resolve_report(root, receipt)` | Returns the exact report the receipt names, never the latest one; `stale_issue` when it is absent. |
 | `disposition_record(record, ...)` | Prepares and validates a disposed record without writing. |
 | `dispose_issue(root, id, expected_revision, reason, note, evidence, actor, duplicate_of, duplicate_revision, created_at, wait, locked)` | Refuses a `duplicate` without `duplicate_of`, naming the Issue itself, or another reason with `duplicate_of` (`invalid_issue`). Under the lock, checks the revision (`stale_issue`), refuses closing a closed Issue (`closed_issue`) and reopening an open one (`open_issue`), and for `duplicate` that the other Issue exists (`unknown_issue`), is open (`invalid_issue`) and, when the caller gives `duplicate_revision`, the revision it read of that other Issue, still has it (`stale_issue`); appends the disposition and returns the new revision. `duplicate_of` and `duplicate_revision` default to `null`; `created_at` defaults to the time of acceptance; the bookkeeping command never gives `duplicate_revision`. |
@@ -238,8 +243,8 @@ Modules. `--task` supplies provenance only; the CLI neither requires nor looks u
 unified CLI, `python3 scripts/concorde.py issues` in a source checkout and `concorde issues` in an
 installed project route to this command. The actions live in `concorde.issues.command`, which the
 project MCP server's Issue tools call with the same arguments, so each tool answers exactly what the
-action prints and refuses with the same link: `issue_list` (`status`, `module` and `tier`, a
-nonempty list, as `list`'s options), `issue_show`, `issue_check` (the
+action prints and refuses with the same link: `issue_list` (`status`, `module`, `tier` and `severity`,
+each of the last two a nonempty list, and `sort`, as `list`'s options), `issue_show`, `issue_check` (the
 primary worktree's `check`), `issue_report` (the report as an object `report` or a `file` relative to
 the session's worktree, and `check`), `issue_close` and `issue_reopen`. Their writes never wait for
 the merge lock (`wait` 0), and they record the session as the provenance above says and as a
@@ -247,7 +252,7 @@ disposition's actor.
 
 | Action | Effect and output |
 | --- | --- |
-| `list [--status open\|closed] [--module <module>] [--tier <tier>]...` | `{"issues": [...]}`: the summary rows of `list_issues` with `--status` as `status`, `--module` as `target_id` and the `--tier` values, which may be repeated, as `tiers`; without an option, every Issue |
+| `list [--status open\|closed] [--module <module>] [--tier <tier>]... [--severity <severity>]... [--sort severity]` | `{"issues": [...]}`: the summary rows of `list_issues` with `--status` as `status`, `--module` as `target_id`, the `--tier` and `--severity` values, which may each be repeated, as `tiers` and `severities`, and `--sort` as `sort`; without an option, every Issue by identity |
 | `show <id>` | `{"issue": <record>, "revision": <digest>}` |
 | `check` | `{"errors": [...], "notes": [...]}`, exit status 1 when `errors` is nonempty and 0 otherwise |
 | `report --file <report.json> [--task <task-id>]` | Records the report in the file with the provenance above and prints `{"receipt": <receipt>, "revision": <digest>}` |

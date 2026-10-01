@@ -315,8 +315,8 @@ class ProjectMcpTests(unittest.TestCase):
         main = self.client()
         listed, error = main.call("issue_list")
         self.assertEqual(
-            [(issue, "decision-needed")],
-            [(row["id"], row["tier"]) for row in listed["issues"]],
+            [(issue, "decision-needed", "high")],
+            [(row["id"], row["tier"], row["severity"]) for row in listed["issues"]],
         )
         # Filters keep only the Issues they name.
         for filters, expected in (
@@ -325,12 +325,19 @@ class ProjectMcpTests(unittest.TestCase):
             ({"status": "closed"}, []),
             ({"module": "module.b"}, []),
             ({"tier": ["suggestion"]}, []),
+            ({"severity": ["high"], "sort": "severity"}, [issue]),
+            ({"severity": ["critical", "low"]}, []),
         ):
             listed, error = main.call("issue_list", **filters)
             self.assertFalse(error, listed)
             self.assertEqual(expected, [row["id"] for row in listed["issues"]])
-        value, error = main.call("issue_list", tier=["urgent"])
-        self.refusal(value, error, "invalid_input")
+        for filters in (
+            {"tier": ["urgent"]},
+            {"severity": ["urgent"]},
+            {"sort": "tier"},
+        ):
+            value, error = main.call("issue_list", **filters)
+            self.refusal(value, error, "invalid_input")
         checked, error = main.call("issue_check")
         self.assertEqual({"errors": [], "notes": []}, checked)
         resolved, error = main.call("task_resolve", task="t1", issues=[issue])

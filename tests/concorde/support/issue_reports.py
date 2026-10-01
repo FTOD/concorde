@@ -26,6 +26,7 @@ def report(**changes):
     return {
         "report_key": "missing-retry",
         "tier": "decision-needed",
+        "severity": "high",
         "type": "gap",
         "subtype": "missing-contract",
         "title": "Retry ownership is unspecified",

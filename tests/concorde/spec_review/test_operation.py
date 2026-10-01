@@ -30,6 +30,7 @@ def finding(path, tier="obvious-fix", module="module.a", **extra):
         "module": module,
         "path": path,
         "dimension": "obligations",
+        "severity": "high",
         "tier": tier,
         "title": f"A problem in {path}",
         "problem": f"A problem in {path}.",
@@ -47,6 +48,7 @@ def earlier_report(module, tier, title, operation="spec_review", root=None):
         {
             "report_key": title,
             "tier": tier,
+            "severity": "medium",
             "type": "bug",
             "subtype": None,
             "title": title,
@@ -236,8 +238,8 @@ class SpecReviewTests(unittest.TestCase):
             )
             report = issues[item["issue"]]["reports"][-1]["report"]
             self.assertEqual(
-                (item["tier"], item["title"], item["impact"]),
-                (report["tier"], report["title"], report["impact"]),
+                (item["tier"], item["severity"], item["title"], item["impact"]),
+                (report["tier"], report["severity"], report["title"], report["impact"]),
             )
             self.assertIn(item["problem"], report["description"])
             self.assertIn(item["evidence"], report["basis"])
@@ -332,7 +334,14 @@ class SpecReviewTests(unittest.TestCase):
         self.assertNotIn(new["issue"], before)
         summary = module["earlier_issues"]
         self.assertEqual(
-            [{"issue": first, "tier": "obvious-fix", "title": "first"}],
+            [
+                {
+                    "issue": first,
+                    "severity": "medium",
+                    "tier": "obvious-fix",
+                    "title": "first",
+                }
+            ],
             summary["carried"],
         )
         self.assertEqual(

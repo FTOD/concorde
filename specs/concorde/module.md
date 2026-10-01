@@ -499,7 +499,8 @@ uses no other Module.
 <a id="contains-issues"></a>
 
 **Issues** keeps durable, project-level [Issue](glossary.json#concept.issue) records, each report
-with its tier, so a problem worth keeping survives the task that found it; solving one is ordinary
+with its tier and severity, so a problem worth keeping survives the task that found it and work can
+start from the most severe; solving one is ordinary
 work of a task, whose merge closes it.
 
 <a id="contains-distribution"></a>

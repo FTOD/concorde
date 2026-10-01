@@ -86,7 +86,7 @@ refused, unchanged, which is `Tasks (concorde task <command>)` for a refusal of 
 | `task_answer` | `task`, `reports` (nonempty numbers ≥ 1), `text` | as `concorde task answer` with `--report` for each |
 | `task_close` | `task`, `outcome` (`completed` or `failed`); `note` for completed; `reason` and either `runs`/`error_files` or `no_error` true for failed; optional `force` | as `concorde task close --completed` or `--failed`, taking the workspace and merge locks without waiting |
 | `task_resolve` | `task`, `issues` (nonempty) | as `concorde task resolve <task> <issue>…` |
-| `issue_list` | optional `status` (`open` or `closed`), `module`, `tier` (nonempty list of tiers) | as `concorde issues list` with `--status`, `--module` and `--tier` for each |
+| `issue_list` | optional `status` (`open` or `closed`), `module`, `tier` (nonempty list of tiers), `severity` (nonempty list of severities), `sort` (`severity`) | as `concorde issues list` with `--status`, `--module`, `--tier` and `--severity` for each, and `--sort` |
 | `issue_show` | `issue` | as `concorde issues show <issue>` |
 | `issue_check` | none | as `concorde issues check` in the primary worktree, without its exit status |
 | `issue_report` | exactly one of `report`, a [report](../../issues/interface.md#contract.issues.report) as an object, and `file`, a report file's path relative to the session's worktree; optional `check` | as `concorde issues report --file <file> [--check]` run in the session's worktree, never waiting for the merge lock, with the session's provenance: `task-session` and its task in a task worktree bound as a workspace, `main-agent` without a task otherwise; a call naming both or neither of `report` and `file` is refused with `invalid_input` |

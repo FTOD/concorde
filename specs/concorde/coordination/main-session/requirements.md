@@ -737,7 +737,8 @@ open Issues of the Module concerned, and its closed ones when the problem may ha
 before, through `issue_list`'s filters rather than the whole project's list, and to append a report
 to the Issue that already tracks it instead of creating another.
 
-Every report carries a complete description, impact, basis and evidence and its tier, so that an
+Every report carries a complete description, impact, basis and evidence, its tier and its severity,
+so that an
 [Issue](../../glossary.json#concept.issue) escalated by its identity alone can be acted on.
 Repeating a creation creates another Issue.
 
@@ -757,6 +758,15 @@ itself, reporting the fix it chose for a `preferred-fix` one, and that it escala
 `decision-needed` Issue, named by its identity, instead of settling it.
 
 A review Operation only reports; fixing is later work of a task. A `suggestion` blocks nothing.
+
+### req.main-session.issues-severity — Work starts from the most severe Issues
+
+The guidance SHALL tell every session that records an Issue to give each report one of the
+[severities](../../glossary.json#concept.issue-severity) `critical`, `high`, `medium` and `low`,
+saying what each means, and the main agent to choose which Issues a task takes up from the open
+Issues listed by severity, most severe first.
+
+The severity says how much a problem matters, never who fixes it, which stays the tier's.
 
 ### req.main-session.review-issues — A review's Issues are handled by their tier
 

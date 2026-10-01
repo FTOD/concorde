@@ -56,6 +56,16 @@ The review below has one of two scopes:
   - `decision-needed`: a **blocking** problem that is unclear, or whose fix changes what a Module
     promises, so that someone above the task must decide it. A `spec-challenge` is usually
     `decision-needed`, and so is a `spec-gap` whose answer is not obvious.
+- `severity`: how much the problem matters, whoever fixes it, as the project's Issues rate every
+  problem, most severe first:
+  - `critical`: wrong results, lost or corrupted data, a security hole, or a core flow broken with
+    no workaround.
+  - `high`: a main flow broken or wrong with a workaround, or a promise broken in a way callers
+    rely on.
+  - `medium`: a secondary flow or an edge case fails, or a missing test leaves a promise
+    unverified.
+  - `low`: cosmetic, such as naming, wording or style; nothing goes wrong.
+  Severity is independent of the tier: an obvious fix may be critical and a decision low.
 - `title`: the problem in one short line, as an Issue's title;
 - `problem`: what is wrong, in one or two sentences; for a `spec-challenge`, why the requirement is
   unreasonable or unrealizable;
@@ -83,7 +93,7 @@ derives the verdict from the tiers of your findings and of the earlier Issues th
 The review lists the reviewed Modules' **earlier Issues**: the open problems earlier code reviews
 recorded. Compare every finding with them before you report it as new. A finding about the same
 problem is that Issue's, however you would word it now: report it only when it changed, when you
-would state it differently or give it another tier, with `earlier` set to the Issue's identity and
+would state it differently or give it another severity or tier, with `earlier` set to the Issue's identity and
 `module` its Module. An earlier Issue that still stands as recorded you leave out: it stays open.
 An earlier Issue the code no longer has you list in `resolved`, an array of
 `{"issue": "<its identity>", "reason": "..."}`; in change scope only when the change shows it is

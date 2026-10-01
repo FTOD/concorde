@@ -18,7 +18,7 @@ in the [contracts](contracts.md).
 - GIVEN a change that violates two requirements of a bound Module and omits a test for one of its scenarios
 - WHEN the reviewer reviews the change
 - THEN one report lists all three problems as findings of a blocking tier, each naming its basis and locations
-- AND the Operation reports each as a new [Issue](../../../glossary.json#concept.issue) owned by that Module with the finding's tier, and names the Issue in the finding
+- AND the Operation reports each as a new [Issue](../../../glossary.json#concept.issue) owned by that Module with the finding's severity and tier, and names the Issue in the finding
 - AND the verdict is `changes_required`
 - BUT the reviewer is not resumed and nothing in the worktree changes
 

@@ -33,6 +33,7 @@ def finding(path="specs/a/module.md", tier="obvious-fix", **extra):
         "module": "module.a",
         "path": path,
         "dimension": "obligations",
+        "severity": "high",
         "tier": tier,
         "title": f"A {tier} problem",
         "problem": f"A {tier} problem in {path}.",
@@ -214,7 +215,10 @@ class SpecPanelTests(unittest.TestCase):
         issues = self.issues()
         self.assertEqual([report["issue"]], list(issues))
         (entry,) = issues[report["issue"]]["reports"]
-        self.assertEqual("obvious-fix", entry["report"]["tier"])
+        self.assertEqual(
+            ("obvious-fix", "high"),
+            (entry["report"]["tier"], entry["report"]["severity"]),
+        )
         self.assertIn("r1.1, r2.1", entry["report"]["basis"])
         self.assertEqual("spec_panel", entry["source"]["operation"])
         self.assertEqual(3, len(envelope["worker_runs"]))

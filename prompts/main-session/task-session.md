@@ -184,9 +184,12 @@ you find that this task will not fix is worth an Issue: first read the Issues of
 before), never the whole project's list, and `issue_show` for a possible match, and append to the
 Issue that already tracks it, with its `issue_id` and the `expected_revision` `issue_show` printed,
 rather than create another. Every report states the problem completely (`description`, `impact`,
-`basis`, `evidence`) and carries its `tier`: `suggestion` (no problem today), `obvious-fix` (an
-obvious problem with an obvious fix), `preferred-fix` (several fixes, one clearly better) or
-`decision-needed` (the problem is unclear or its fix uncertain).
+`basis`, `evidence`) and carries its `tier`, who may handle it: `suggestion` (no problem today),
+`obvious-fix` (an obvious problem with an obvious fix), `preferred-fix` (several fixes, one clearly
+better) or `decision-needed` (the problem is unclear or its fix uncertain); and its `severity`, how
+much it matters: `critical` (wrong results, lost data, a security hole or a core flow broken with no
+workaround), `high` (a main flow broken or wrong with a workaround), `medium` (a secondary flow or
+an edge case) or `low` (cosmetic; nothing goes wrong).
 
 An Issue your task is to fix, named in your brief or found by a review you ran, you handle by its
 tier: fix an `obvious-fix` Issue yourself; fix a `preferred-fix` Issue with the better fix and say

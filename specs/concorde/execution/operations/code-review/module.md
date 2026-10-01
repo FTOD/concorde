@@ -34,6 +34,7 @@ report's shape.
 ### Findings and their evidence
 
 Each **finding** names the reviewed Module it concerns, its kind, its
+[severity](../../../glossary.json#concept.issue-severity), its
 [tier](../../../glossary.json#concept.issue-tier), a title, the problem, its impact, its basis, the
 code locations that show it, the evidence it quotes and a suggested repair. Its kind says which
 side the reviewer judges wrong:
@@ -57,7 +58,9 @@ Module's code, so a disputed finding traces to a written promise and to the code
 A finding's tier says who may act on it, as for every Issue: `suggestion` for code that keeps its
 promises but could serve them better, and otherwise a blocking tier, `obvious-fix`,
 `preferred-fix` or `decision-needed`. A Spec challenge is usually `decision-needed`, since changing
-what a Module promises is decided above the task.
+what a Module promises is decided above the task. Its severity says, independently, how much the
+problem matters to the callers and the later tasks relying on the code, from `critical`, such as
+wrong results or lost data, down to `low`, something cosmetic.
 
 ### Earlier Issues
 
@@ -196,7 +199,7 @@ available to it.
 The Operation reports each finding through the Issue store as one
 [Issue report](../../../glossary.json#concept.issue-report), in bound and unbound runs alike, and
 supplies its provenance itself, as Spec review does: `report_key` `<module>/<n>`, the finding's
-position among its Module's findings; the finding's tier, title and impact; its problem followed by
+position among its Module's findings; the finding's tier, severity, title and impact; its problem followed by
 its suggested repair as the description; as basis the run, the scope, the kind, the cited basis and
 the quoted evidence; the finding's Module as owner; and as evidence each location's file and the
 basis's document. Violations, missing tests and Spec challenges are `gap` reports of subtype
@@ -240,6 +243,7 @@ Issues, outcomes and verdict.
   their latest [report](../../../glossary.json#concept.issue-report) and
   [revision](../../../glossary.json#concept.issue-revision), to record a new Issue or append a
   report at the revision read, committing it before it answers, and to refuse a stale append rather
-  than overwrite it; and on its [tiers](../../../glossary.json#concept.issue-tier) for what a
-  finding blocks. A refusal of the store makes the Module `incomplete`, with the store's error as
+  than overwrite it; on its [tiers](../../../glossary.json#concept.issue-tier) for what a
+  finding blocks; and on its [severities](../../../glossary.json#concept.issue-severity) for how
+  much a finding matters. A refusal of the store makes the Module `incomplete`, with the store's error as
   the cause; the Operation never retries it and never records it as an Issue.

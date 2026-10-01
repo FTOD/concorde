@@ -31,7 +31,9 @@
         "meaning": "#uses-issues",
         "relies_on": [
           "concept.issue",
-          "concept.issue-report"
+          "concept.issue-report",
+          "concept.issue-tier",
+          "concept.issue-severity"
         ]
       },
       {

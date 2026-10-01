@@ -568,6 +568,25 @@ class GuidanceTests(unittest.TestCase):
             with self.subTest(instruction=instruction):
                 self.assertIn(instruction, text)
 
+    @verifies("scenario.main-session.issue-severity")
+    def test_every_issue_is_rated_and_the_most_severe_are_fixed_first(self):
+        skill, session = (" ".join(text.split()) for text in self.issues())
+        for text in (skill, session):
+            for severity in ("critical", "high", "medium", "low"):
+                with self.subTest(severity=severity):
+                    self.assertIn(f"`{severity}`", text)
+        for text, instruction in (
+            (
+                skill,
+                "and its `severity`, how much the problem matters whoever handles it",
+            ),
+            (session, "and its `severity`, how much it matters"),
+            (skill, "`issue_list` with `status` `open` and `sort` `severity`"),
+            (skill, "which puts the most severe Issues first"),
+        ):
+            with self.subTest(instruction=instruction):
+                self.assertIn(instruction, text)
+
     @verifies("scenario.main-session.review-issues")
     def test_a_reviews_issues_are_handled_by_their_tier(self):
         skill, session = self.issues()

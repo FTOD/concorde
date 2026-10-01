@@ -245,11 +245,14 @@ TOOLS: dict[str, dict] = {
         ),
     },
     "issue_list": {
-        "description": "A summary row per Issue of the project with its tier, as `concorde "
-        "issues list`: every Issue, open and closed, unless filtered. `status` keeps the Issues "
-        "with that status, `module` those whose latest report has that owner or reporting "
-        "Module and `tier` those whose latest report has one of those tiers; given together, "
-        "an Issue must pass each.",
+        "description": "A summary row per Issue of the project with its severity and tier, as "
+        "`concorde issues list`: every Issue, open and closed, unless filtered. `status` keeps "
+        "the Issues with that status, `module` those whose latest report has that owner or "
+        "reporting Module, `tier` those whose latest report has one of those tiers and "
+        "`severity` those whose latest report has one of those severities; given together, an "
+        "Issue must pass each. Rows come by identity, or with `sort` severity most severe "
+        "first, then by tier, decision-needed first, then the Issue reported first, Issues "
+        "without a severity last.",
         "inputSchema": schema(
             {
                 "status": {"enum": ["open", "closed"]},
@@ -259,6 +262,12 @@ TOOLS: dict[str, dict] = {
                     "items": {"enum": list(issues.TIERS)},
                     "minItems": 1,
                 },
+                "severity": {
+                    "type": "array",
+                    "items": {"enum": list(issues.SEVERITIES)},
+                    "minItems": 1,
+                },
+                "sort": {"enum": ["severity"]},
             }
         ),
     },
@@ -273,7 +282,7 @@ TOOLS: dict[str, dict] = {
     },
     "issue_report": {
         "description": "Record an Issue report, as `concorde issues report`: `report` is the "
-        "report object (contract.issues.report, with its tier), or `file` a report file; "
+        "report object (contract.issues.report, with its tier and severity), or `file` a report file; "
         "`check` checks it and records nothing. It creates an Issue, or appends to the one its "
         "issue_id names at its expected_revision. Evidence paths are checked in the session's "
         "worktree; the report is recorded as the session's (main-agent in the primary worktree, "
@@ -604,6 +613,8 @@ class Project:
             status=arguments.get("status"),
             module=arguments.get("module"),
             tiers=arguments.get("tier"),
+            severities=arguments.get("severity"),
+            sort=arguments.get("sort"),
         )
 
     def issue_show(self, arguments: dict):

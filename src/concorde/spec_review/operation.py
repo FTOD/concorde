@@ -57,6 +57,7 @@ ARCHITECTURE_DIMENSIONS = [
     "context",
 ]
 TIERS = list(reporting.TIERS)
+SEVERITIES = list(reporting.SEVERITIES)
 OUTCOMES = ["accepted", "changes_required", "incomplete"]
 LOAD_ERROR = "CONCORDE-SOURCE-008"
 ISSUE_ID: dict = {"type": "string", "pattern": reporting.ISSUE}
@@ -69,6 +70,7 @@ REVIEWER_FINDING: dict = {
         "module",
         "path",
         "dimension",
+        "severity",
         "tier",
         "title",
         "problem",
@@ -82,6 +84,7 @@ REVIEWER_FINDING: dict = {
         "anchor": {"type": "string", "minLength": 1},
         "line": {"type": "integer", "minimum": 1},
         "dimension": {"enum": DIMENSIONS},
+        "severity": {"enum": SEVERITIES},
         "tier": {"enum": TIERS},
         "title": {"type": "string", "minLength": 1},
         "problem": {"type": "string", "minLength": 1},
@@ -153,9 +156,12 @@ EARLIER_ISSUES: dict = {
                     "items": {
                         "type": "object",
                         "additionalProperties": False,
-                        "required": ["issue", "tier", "title"],
+                        "required": ["issue", "severity", "tier", "title"],
                         "properties": {
                             "issue": ISSUE_ID,
+                            "severity": {
+                                "anyOf": [{"enum": SEVERITIES}, {"type": "null"}]
+                            },
                             "tier": {"anyOf": [{"enum": TIERS}, {"type": "null"}]},
                             "title": {"type": "string", "minLength": 1},
                         },
@@ -188,7 +194,7 @@ FINDING: dict = {
     },
 }
 
-# contract.spec-review.payload, version 4 (operation.md); a test keeps the two equal.
+# contract.spec-review.payload, version 5 (operation.md); a test keeps the two equal.
 PAYLOAD_SCHEMA: dict = {
     "type": "object",
     "required": ["verdict", "modules"],

@@ -121,7 +121,7 @@ This illustrates [command attribution](requirements.md#req.issues.main-agent-act
 
 ### scenario.issues.command-usage — An unusable argument exits with status 2
 
-- GIVEN a missing argument, an unknown reason, a `duplicate` without `--duplicate-of`, a blank note, a repeated evidence item, or a `list` status or tier that is none of the statuses or tiers
+- GIVEN a missing argument, an unknown reason, a `duplicate` without `--duplicate-of`, a blank note, a repeated evidence item, or a `list` status, tier, severity or sort that is none of the statuses, tiers, severities or sorts
 - WHEN the command runs
 - THEN it prints the error code `usage` and a message naming the argument
 - AND exits with status 2
@@ -243,14 +243,17 @@ This illustrates [specific refusals](requirements.md#req.issues.specific-refusal
 
 This illustrates [project-level records](requirements.md#req.issues.project-level).
 
-### scenario.issues.command-list-filtered — List only the Issues of one Module, status and tier
+### scenario.issues.command-list-filtered — List only the Issues of one Module, status, tier and severity
 
-- GIVEN Issues owned by two Modules, one of them closed, with different tiers
-- WHEN the main agent runs `list --module <module> --status open`, then `list --tier <tier>` with two tiers, then all three filters together, then `list` alone
+- GIVEN Issues owned by two Modules, one of them closed, with different tiers and severities
+- WHEN the main agent runs `list --module <module> --status open`, then `list --tier <tier>` with two tiers, then the Module, status and tier filters together, then `list` alone, then `list --severity <severity>` with two severities, then `list --status open --sort severity`
 - THEN the first lists only that Module's open Issues, the second only the Issues of either tier, and the third only those passing all three filters
 - AND `list` alone names every Issue, open and closed
+- AND `--severity` lists only the Issues of either severity
+- AND `--sort severity` lists the open Issues most severe first, those of equal severity `decision-needed` before `obvious-fix`, each row with its severity
 
-This illustrates [filtered listing](requirements.md#req.issues.list-filtered).
+This illustrates [filtered listing](requirements.md#req.issues.list-filtered) and
+[listing by severity](requirements.md#req.issues.list-by-severity).
 
 ### scenario.issues.command-commit-failed — A failed commit is an Issue-system failure, never an Issue
 
@@ -355,11 +358,32 @@ This illustrates [an Issue commit alone](requirements.md#req.issues.commit-alone
 - GIVEN a report without a `tier`, or with a tier that is none of the four
 - WHEN the store is asked to save it
 - THEN Spec core's typed-value check refuses it, naming the field `tier`, and no Issue is written
-- AND a report of tier `suggestion` creates a record of `schema_version` 3 listed with that tier
+- AND a report of tier `suggestion` creates a record of `schema_version` 4 listed with that tier
 - AND a record of `schema_version` 2 whose report has no tier stays valid, is listed without a tier and takes a tiered report, which becomes its tier
-- BUT a record of `schema_version` 3 holding an untiered report is refused with `invalid_issue`, naming the field `tier`
+- BUT a record of `schema_version` 3 or 4 holding an untiered report is refused with `invalid_issue`, naming the field `tier`
 
 This illustrates [required tiers](requirements.md#req.issues.tier-required).
+
+### scenario.issues.store-severity — Every report carries a severity
+
+- GIVEN a report without a `severity`, or with a severity that is none of the four
+- WHEN the store is asked to save it
+- THEN Spec core's typed-value check refuses it, naming the field `severity`, and no Issue is written
+- AND a report of severity `low` creates a record of `schema_version` 4 listed with that severity
+- AND a record of `schema_version` 3 whose report has no severity stays valid, is listed without a severity, passes no severity filter and takes a report with a severity, which becomes its severity, keeping its version 3
+- BUT a record of `schema_version` 4 holding a report without a severity is refused with `invalid_issue`, naming the field `severity`
+
+This illustrates [required severities](requirements.md#req.issues.severity-required).
+
+### scenario.issues.store-severity-sort — Listing by severity puts the most severe Issues first
+
+- GIVEN open Issues of severities `critical`, `high` and `low`, the `high` ones of tiers `decision-needed` and `obvious-fix`, two of them both `high` and `decision-needed`, and an Issue written before severities whose latest report has none
+- WHEN the store lists them sorted by severity, then sorted by severity and filtered to `high`
+- THEN the first lists the `critical` Issue, the two `high` `decision-needed` Issues in the order they were reported, the `high` `obvious-fix` Issue, the `low` Issue and last the Issue without a severity
+- AND the second lists only the three `high` Issues in that order
+- BUT listed without a sort they come by identity
+
+This illustrates [listing by severity](requirements.md#req.issues.list-by-severity).
 
 ### scenario.issues.store-disposition — Close with evidence
 

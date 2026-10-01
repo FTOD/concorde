@@ -66,8 +66,10 @@ only the third may be fixed there without asking the developer.
 
 A **[defect report](../glossary.json#concept.defect-report)** is an
 [Issue report](../glossary.json#concept.issue-report) the project's main agent writes about a
-Concorde defect. Its owner is `null`, since the Concorde repository decides which of its Modules is
-at fault; its `origin` names the project and the Concorde commit the defect was seen on; and its
+Concorde defect. Like every Issue report it carries a [tier](../glossary.json#concept.issue-tier),
+who may fix the defect in the Concorde repository, and a
+[severity](../glossary.json#concept.issue-severity), how much it matters to work using Concorde. Its
+owner is `null`, since the Concorde repository decides which of its Modules is at fault; its `origin` names the project and the Concorde commit the defect was seen on; and its
 `error_chain` is the failure's whole [error chain](../glossary.json#concept.error-chain) with the
 main agent's own link on top.
 
@@ -201,6 +203,8 @@ to the developer ([requirements](requirements.md#req.dogfooding.defect-outside-t
 ```json
 {
   "report_key": "grant-misses-used-module-tests",
+  "tier": "obvious-fix",
+  "severity": "high",
   "type": "bug",
   "subtype": null,
   "title": "The test grant omits the tests of a used Module",

@@ -64,7 +64,7 @@ chair -> chair: "a label unaccounted\nand an attempt remains"
   a report must never silently lack a review.
 - **chair** receives every labelled finding and every claimed resolution, grouped by worker, with
   the earlier Issues, and returns the report: merged findings, each with the labels it merges as
-  `sources`, a `note` and the tier the chair gives it, rejections, each with a label and a reason,
+  `sources`, a `note` and the severity and tier the chair gives it, rejections, each with a label and a reason,
   and the earlier Issues it finds resolved, each with a reason. The Operation normalizes the merged
   findings as well.
 - **accounting**, part of the chair node, is the Operation's check that the report accounts for
@@ -104,12 +104,12 @@ An architect finding has the same shape, except that its `dimension` is one of t
 quality dimensions `responsibilities`, `ownership`, `interfaces`, `dependencies`,
 `failure-containment` and `consistency`, or `context`, and that it may add `related`, the other
 registered Modules the problem concerns. A chair finding has either shape and adds `sources`, a
-non-empty list of labels, and `note`, what the chair verified and why it chose the tier. A
+non-empty list of labels, and `note`, what the chair verified and why it chose the severity and tier. A
 rejection is `{source, reason}` and a resolution `{issue, reason}`, both optional lists but for
 `findings`. A result that does not match its role's shape is an **invalid result** and stops the
 Module; a report that matches but accounts badly goes back to the chair as rule 3 says.
 
-The chair may change a merged finding's wording, evidence, suggestion and tier, and names the
+The chair may change a merged finding's wording, evidence, suggestion, severity and tier, and names the
 earlier Issue it is when any of its sources named one. It may not add a problem that no reviewer or
 architect reported: every report finding has sources. Each worker's findings stay in the payload as
 the Operation normalized them, so the chair's changes can be compared with them.
@@ -138,7 +138,7 @@ per run in the [run directory](../../glossary.json#concept.run-directory).
 ```concorde-contract
 {
   "id": "contract.spec-review.panel-payload",
-  "version": 3,
+  "version": 4,
   "schema": {
     "type": "object",
     "required": [
@@ -324,6 +324,7 @@ per run in the [run directory](../../glossary.json#concept.run-directory).
                         "additionalProperties": false,
                         "required": [
                           "issue",
+                          "severity",
                           "tier",
                           "title"
                         ],
@@ -331,6 +332,21 @@ per run in the [run directory](../../glossary.json#concept.run-directory).
                           "issue": {
                             "type": "string",
                             "pattern": "^I-[0-9a-f]{32}$"
+                          },
+                          "severity": {
+                            "anyOf": [
+                              {
+                                "enum": [
+                                  "critical",
+                                  "high",
+                                  "medium",
+                                  "low"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           },
                           "tier": {
                             "anyOf": [
@@ -412,6 +428,7 @@ per run in the [run directory](../../glossary.json#concept.run-directory).
           "module",
           "path",
           "dimension",
+          "severity",
           "tier",
           "title",
           "problem",
@@ -451,6 +468,14 @@ per run in the [run directory](../../glossary.json#concept.run-directory).
               "dependencies",
               "failure-containment",
               "consistency"
+            ]
+          },
+          "severity": {
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low"
             ]
           },
           "tier": {
@@ -505,6 +530,7 @@ per run in the [run directory](../../glossary.json#concept.run-directory).
           "module",
           "path",
           "dimension",
+          "severity",
           "tier",
           "title",
           "problem",
@@ -547,6 +573,14 @@ per run in the [run directory](../../glossary.json#concept.run-directory).
               "dependencies",
               "failure-containment",
               "consistency"
+            ]
+          },
+          "severity": {
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low"
             ]
           },
           "tier": {
@@ -619,7 +653,7 @@ per run in the [run directory](../../glossary.json#concept.run-directory).
       }
     }
   },
-  "semantics": "The outcome of one Spec panel. For each Module, reviews holds every worker's own findings and claimed resolutions, reviewers then architects, each in seat order, with its worker id, role and seat, each finding labelled r<seat>.<n> for a reviewer and a<seat>.<n> for an architect by the Operation; a worker that did not finish has its status and whatever it returned before stopping, usually nothing. findings is the chair's report: each merged finding lists in sources the labels it merges, with the chair's note and tier, workers counts the distinct workers among those labels, issue is the Issue the Operation reported it to, null when the Issue store refused an earlier report, and earlier, present only when it was appended to an earlier Issue the Operation offered, names that Issue. rejected holds the labels the chair judged not to hold, each with its reason, which are reported nowhere. In a complete report every label appears exactly once, in one finding's sources or as one rejection. earlier_issues, null when the Module's earlier Issues were never read, lists the earlier Issues carried, those the chair found resolved, for the task to close, and the names ignored, as in the Spec review payload. context_identity is the Module's review-spec grant identity and architecture_identity its review-architecture grant identity, null when no architect ran or no grant could be computed. A Module's outcome is incomplete when its panel stopped or its Issues could not be read or all written, changes_required when an Issue of a blocking tier stands for it, reported now or carried, and accepted otherwise; the verdict is the highest outcome in the order accepted, changes_required, incomplete. Findings, tiers, merges, notes, rejections and resolutions are worker claims; the Operation labels, normalizes, counts, checks the accounting and reports the Issues. A behaviour or field change increments the version.",
+  "semantics": "The outcome of one Spec panel. For each Module, reviews holds every worker's own findings and claimed resolutions, reviewers then architects, each in seat order, with its worker id, role and seat, each finding labelled r<seat>.<n> for a reviewer and a<seat>.<n> for an architect by the Operation; a worker that did not finish has its status and whatever it returned before stopping, usually nothing. findings is the chair's report: each merged finding lists in sources the labels it merges, with the chair's note, severity and tier, workers counts the distinct workers among those labels, issue is the Issue the Operation reported it to, null when the Issue store refused an earlier report, and earlier, present only when it was appended to an earlier Issue the Operation offered, names that Issue. rejected holds the labels the chair judged not to hold, each with its reason, which are reported nowhere. In a complete report every label appears exactly once, in one finding's sources or as one rejection. earlier_issues, null when the Module's earlier Issues were never read, lists the earlier Issues carried, those the chair found resolved, for the task to close, and the names ignored, as in the Spec review payload. context_identity is the Module's review-spec grant identity and architecture_identity its review-architecture grant identity, null when no architect ran or no grant could be computed. A Module's outcome is incomplete when its panel stopped or its Issues could not be read or all written, changes_required when an Issue of a blocking tier stands for it, reported now or carried, and accepted otherwise; the verdict is the highest outcome in the order accepted, changes_required, incomplete. Findings, severities, tiers, merges, notes, rejections and resolutions are worker claims; the Operation labels, normalizes, counts, checks the accounting and reports the Issues. A behaviour or field change increments the version.",
   "example": {
     "verdict": "changes_required",
     "modules": [
@@ -640,6 +674,7 @@ per run in the [run directory](../../glossary.json#concept.run-directory).
                 "path": "specs/checkout/requirements.md",
                 "anchor": "req.checkout.single-order",
                 "dimension": "obligations",
+                "severity": "medium",
                 "tier": "obvious-fix",
                 "title": "A requirement joins two obligations",
                 "problem": "The requirement states two obligations.",
@@ -662,6 +697,7 @@ per run in the [run directory](../../glossary.json#concept.run-directory).
                 "path": "specs/checkout/module.md",
                 "anchor": "uses-inventory",
                 "dimension": "interfaces",
+                "severity": "high",
                 "tier": "decision-needed",
                 "title": "Checkout relies on Inventory's internal reservation table",
                 "problem": "Checkout reads Inventory's reservation rows instead of a promise of Inventory.",
@@ -683,6 +719,7 @@ per run in the [run directory](../../glossary.json#concept.run-directory).
             "path": "specs/checkout/module.md",
             "anchor": "uses-inventory",
             "dimension": "interfaces",
+            "severity": "high",
             "tier": "decision-needed",
             "title": "Checkout relies on Inventory's internal reservation table",
             "problem": "Checkout reads Inventory's reservation rows instead of a promise of Inventory.",

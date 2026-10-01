@@ -8,7 +8,8 @@ worktree keeps under `.concorde/issues/`, the store that alone writes them and c
 the primary branch, dispositions closing or reopening one, and the bookkeeping command, which the
 [project MCP server](../glossary.json#concept.project-mcp-server) also presents, that sessions
 record, close, reopen, list, show and check them with. Every report carries a **[tier](../glossary.json#concept.issue-tier)** saying who
-may handle the problem. Recording never stops the reporter, starts a repair or changes the outcome
+may handle the problem and a **[severity](../glossary.json#concept.issue-severity)** saying how much
+it matters, so that work can start from the most severe Issues. Recording never stops the reporter, starts a repair or changes the outcome
 of a task, and it grants nobody read/write access; Issues neither solves problems nor decides who
 may close one — a task fixes an [Issue](../glossary.json#concept.issue) with ordinary work on its
 [Module](../glossary.json#concept.module), and whoever disposes it answers for the evidence cited.
@@ -27,10 +28,10 @@ worktree writes the same store. Each report classifies the problem as a `bug`, a
 implementation/[Spec](../glossary.json#concept.spec) mismatch, a Spec conflict or a missing promise)
 or a `limitation`, and states it completely: its description, impact, basis and evidence, so that
 whoever the Issue is escalated to, by its identity alone, can act on it. The latest report supplies
-the current title, tier, classification and owning Module. When that report's owner is `null`,
+the current title, tier, severity, classification and owning Module. When that report's owner is `null`,
 ownership falls to its reporting Module, the root Module for a command-recorded report. Appending a
-new observation can therefore correct ownership, tier or classification without rewriting an earlier
-report. Ownership identifies the Module whose promise needs attention; it does not assign an agent or
+new observation can therefore correct ownership, tier, severity or classification without rewriting
+an earlier report. Ownership identifies the Module whose promise needs attention; it does not assign an agent or
 grant permission to change that Module.
 
 A report may name its **origin**, when the problem was seen in another project, such as a
@@ -57,6 +58,27 @@ part of its observation, and a later report may change it like any other classif
 records the tier and never acts on it: which session fixes an Issue, and when, is the
 [main-session guidance](../coordination/main-session/module.md#issues)'s. Records written before
 tiers existed hold reports without one; such an Issue has no tier until a tiered report is appended.
+
+### Severities
+
+<a id="concept.issue-severity"></a>
+
+A report's **severity** says how much the problem matters: what goes wrong, and for whom, while it
+stands. It is independent of the tier, which says who may handle the problem: an obvious fix may be
+critical and a problem awaiting a decision low. There are four, most severe first:
+
+| Severity | The problem's consequence while it stands |
+| --- | --- |
+| `critical` | wrong results, lost or corrupted data, a security exposure, or a core flow broken with no workaround |
+| `high` | a main flow broken or wrong although a workaround exists, or a promise that leads the work relying on it to act wrongly |
+| `medium` | a secondary flow or an edge case fails, or a gap that slows the work without misleading it |
+| `low` | cosmetic, such as wording, naming or layout: nothing goes wrong |
+
+The reporter chooses the severity as part of its observation, and a later report may change it like
+the tier. Issues records the severity and acts on it only when asked to list by it: `list` sorted by
+severity puts the most severe Issues first, so that whoever chooses what to fix next starts there.
+Records written before severities existed hold reports without one; such an Issue has no severity,
+and sorts after every Issue with one, until a report with a severity is appended.
 
 ### Issue revisions
 
@@ -157,7 +179,7 @@ Only a disposition changes an existing Issue's status. Starting a repair, runnin
 delivering a task is not a disposition; there is no `in-progress` state. A duplicate closure changes
 only the Issue being closed: its reports stay there, and later changes to the referenced Issue do not
 propagate automatically. Reopening retains the identity and history; append a new observation
-afterwards if the problem's description, tier, classification or owner needs to change. A closed
+afterwards if the problem's description, tier, severity, classification or owner needs to change. A closed
 Issue cannot receive a new report or close again, and an open one cannot reopen. Rejected actions
 leave its record unchanged.
 
@@ -230,12 +252,13 @@ call starts from, it acts on the primary worktree's records.
 
 Read `list` before recording, and `show <id>` for a possible match: a reporter appends to the Issue
 already tracking its problem instead of creating another. `list` returns every Issue, open and
-closed, unless it is filtered: `--status`, `--module` and `--tier` (the tool's `status`, `module`
-and `tier`) keep only the Issues with that status, concerning that Module as owner or reporting
-Module, or of those tiers, so `list --module <owner> --status open` reads the Issues a new report
+closed, unless it is filtered: `--status`, `--module`, `--tier` and `--severity` (the tool's
+`status`, `module`, `tier` and `severity`) keep only the Issues with that status, concerning that
+Module as owner or reporting Module, or of those tiers or severities, so `list --module <owner> --status open` reads the Issues a new report
 about that Module could duplicate without reading the whole project's. A closed match may need
 reopening: list the Module's closed Issues too when the problem may have been fixed before. Write
-the report as JSON using the [report contract](interface.md#contract.issues.report), with its tier, then run
+the report as JSON using the [report contract](interface.md#contract.issues.report), with its tier
+and severity, then run
 `concorde issues report --file <report.json> [--task <task-id>]` or call `issue_report`. The
 command checks the owner against the primary worktree's registry, evidence paths in the worktree the
 report is made in or the named origin, and any error chain; it supplies the reporter, reporting
@@ -273,7 +296,8 @@ records remain readable and are never deleted by the store. The exact state rule
 
 ### Inspection and refusals
 
-`list` prints a summary row per Issue that passes its filters, `show <id>` the complete record and
+`list` prints a summary row per Issue that passes its filters, with its severity and tier, by
+identity or, with `--sort severity` (the tool's `sort`), most severe first; `show <id>` the complete record and
 revision, and `check` validates every record of the worktree it runs in: in the primary worktree the
 project's Issues, in a task worktree the copy its branch holds, which proves the branch's code still reads the records.
 These commands never launch a model. The
@@ -341,7 +365,7 @@ silently overwritten. A commit Git refuses puts the record back as it was and re
 Identities are derived from the reporting invocation and the reporter's key rather than counted, so
 no allocation state is shared. Report and receipt shapes are
 [typed values](../glossary.json#concept.typed-value) registered as
-`concorde-issue-report@2` and `concorde-issue-receipt@1`, which Spec core does not know.
+`concorde-issue-report@3` and `concorde-issue-receipt@1`, which Spec core does not know.
 
 <a id="realization.issues.command"></a>
 
@@ -365,6 +389,6 @@ is only noted.
 <a id="realization.issues.tests"></a>
 
 The **Issues tests** cover the store on Git repositories (the merge lock, commits, concurrent
-writers, malformed records, failed publications and commits, tiers), every bookkeeping-command
+writers, malformed records, failed publications and commits, tiers, severities and the order by severity), every bookkeeping-command
 action with its refusals, from the primary and a linked worktree, and the configured store check on
 a fixture project.

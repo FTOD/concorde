@@ -102,7 +102,14 @@ class IssueStoreTests(unittest.TestCase):
         self.assertEqual([], list_issues(self.root, target_id="module.foreign"))
         self.assertEqual([], list_issues(self.root, tiers=["suggestion"]))
         self.assertEqual(1, len(list_issues(self.root, tiers=["decision-needed"])))
-        for filters in ({"status": "fixed"}, {"tiers": ["urgent"]}):
+        self.assertEqual([], list_issues(self.root, severities=["low"]))
+        self.assertEqual(1, len(list_issues(self.root, severities=["high", "low"])))
+        for filters in (
+            {"status": "fixed"},
+            {"tiers": ["urgent"]},
+            {"severities": ["urgent"]},
+            {"sort": "tier"},
+        ):
             with self.subTest(filters=filters), self.assertRaises(IssueError) as raised:
                 list_issues(self.root, **filters)
             self.assertEqual("invalid_issue", raised.exception.code)
@@ -608,7 +615,7 @@ class IssueStoreTests(unittest.TestCase):
         self.assertEqual({}, self.issue_files())
         receipt = report_issue(self.root, report(tier="suggestion"), source())
         record, _ = read_issue(self.root, receipt["issue_id"])
-        self.assertEqual(3, record["schema_version"])
+        self.assertEqual(4, record["schema_version"])
         self.assertEqual("suggestion", list_issues(self.root)[0]["tier"])
         # A record written before tiers keeps its untiered report and takes tiered ones.
         from concorde.issues import store
@@ -639,7 +646,96 @@ class IssueStoreTests(unittest.TestCase):
         record, _ = read_issue(self.root, receipt["issue_id"])
         self.assertEqual(2, record["schema_version"])
         self.assertEqual("obvious-fix", list_issues(self.root)[0]["tier"])
-        # A record of the current version holds only tiered reports.
-        record["schema_version"] = 3
-        with self.assertRaisesRegex(IssueError, "field tier"):
+        # A record of a later version holds only tiered reports.
+        for version in (3, 4):
+            record["schema_version"] = version
+            with self.assertRaisesRegex(IssueError, "field tier"):
+                store.render(record)
+
+    @verifies("scenario.issues.store-severity")
+    def test_every_report_carries_a_severity_and_older_records_stay_valid(self):
+        unrated = {key: value for key, value in report().items() if key != "severity"}
+        with self.assertRaises(TypedDataError) as raised:
+            report_issue(self.root, unrated, source())
+        self.assertEqual("/severity", raised.exception.field)
+        with self.assertRaises(TypedDataError):
+            report_issue(self.root, report(severity="urgent"), source())
+        self.assertEqual({}, self.issue_files())
+        receipt = report_issue(self.root, report(severity="low"), source())
+        record, _ = read_issue(self.root, receipt["issue_id"])
+        self.assertEqual(4, record["schema_version"])
+        self.assertEqual("low", list_issues(self.root)[0]["severity"])
+        # A record written before severities keeps its report without one and takes rated ones.
+        from concorde.issues import store
+        from concorde.spec.repository import digest
+
+        older = copy.deepcopy(record)
+        older["schema_version"] = 3
+        observation = older["reports"][0]
+        observation["report"] = unrated
+        observation["id"] = digest({"report": unrated, "source": observation["source"]})
+        path = self.root / receipt["path"]
+        path.write_text(store.render(older))
+        git(self.root, "commit", "-qam", "an Issue written before severities")
+        _, revision = read_issue(self.root, receipt["issue_id"])
+        self.assertIsNone(list_issues(self.root)[0]["severity"])
+        self.assertEqual([], list_issues(self.root, severities=list(store.SEVERITIES)))
+        report_issue(
+            self.root,
+            report(
+                issue_id=receipt["issue_id"],
+                expected_revision=revision,
+                report_key="rated-now",
+                severity="critical",
+            ),
+            source(invocation_id="worker-2"),
+        )
+        record, _ = read_issue(self.root, receipt["issue_id"])
+        self.assertEqual(3, record["schema_version"])
+        self.assertEqual("critical", list_issues(self.root)[0]["severity"])
+        # A record of the current version holds only reports with a severity.
+        record["schema_version"] = 4
+        with self.assertRaisesRegex(IssueError, "field severity"):
             store.render(record)
+
+    @verifies("scenario.issues.store-severity-sort")
+    def test_sorting_by_severity_puts_the_most_severe_first(self):
+        def recorded(key, severity, tier):
+            return report_issue(
+                self.root,
+                report(report_key=key, severity=severity, tier=tier),
+                source(invocation_id=f"worker-{key}"),
+            )["issue_id"]
+
+        low = recorded("a", "low", "decision-needed")
+        high_fix = recorded("b", "high", "obvious-fix")
+        high_decision = recorded("c", "high", "decision-needed")
+        high_later = recorded("d", "high", "decision-needed")
+        critical = recorded("e", "critical", "suggestion")
+        # An Issue written before severities, whose latest report has none.
+        from concorde.issues import store
+        from concorde.spec.repository import digest
+
+        unrated = recorded("f", "medium", "preferred-fix")
+        record, _ = read_issue(self.root, unrated)
+        record["schema_version"] = 3
+        observation = record["reports"][0]
+        del observation["report"]["severity"]
+        observation["id"] = digest(
+            {"report": observation["report"], "source": observation["source"]}
+        )
+        (self.root / store.issue_path(unrated)).write_text(store.render(record))
+        git(self.root, "commit", "-qam", "an Issue written before severities")
+
+        def order(**filters):
+            return [row["id"] for row in list_issues(self.root, **filters)]
+
+        self.assertEqual(sorted(order()), order())
+        self.assertEqual(
+            [critical, high_decision, high_later, high_fix, low, unrated],
+            order(sort="severity"),
+        )
+        self.assertEqual(
+            [high_decision, high_later, high_fix],
+            order(sort="severity", severities=["high"]),
+        )

@@ -57,8 +57,8 @@ position or a second status for the same finding is ignored, and a finding witho
 A Module's **earlier Issues** are the open [Issues](../../glossary.json#concept.issue) of the
 project whose owner is the Module and one of whose reports a `spec_review` or `spec_panel` run
 made, read from the primary worktree of the worktree the run started in, in the order of their
-identities. A worker receives each with its identity, tier, title, description and evidence as its
-latest report states them.
+identities. A worker receives each with its identity, severity, tier, title, description and evidence as
+its latest report states them.
 
 Settling them follows the worker's claims under these rules. A finding whose `earlier` names an
 earlier Issue is that Issue's new report; a finding whose `earlier` names any other Issue, or one
@@ -81,6 +81,7 @@ creates a new Issue. The report is:
 | --- | --- |
 | `report_key` | `<module>/<n>`: the reviewed Module and the finding's position among its findings |
 | `tier` | the finding's tier |
+| `severity` | the finding's severity |
 | `type`, `subtype` | `gap` and `missing-contract` for the dimension `context`, `gap` and `spec-conflict` for `consistency`, `bug` and `null` for every other dimension |
 | `title` | the finding's title |
 | `description` | the finding's problem, then its suggested repair |
@@ -134,13 +135,14 @@ the numbered list the checker received, starting at 1, and `status` is `confirme
 Both end `ok` when they could do their work; a `blocked` or `failed` worker still returns an empty
 `findings` or `checks` array.
 
-A finding is `{module, path, anchor, line, dimension, tier, title, problem, impact, evidence,
-suggestion}`, plus `earlier` when it is an earlier Issue's problem, naming that Issue. `module` is
+A finding is `{module, path, anchor, line, dimension, severity, tier, title, problem, impact,
+evidence, suggestion}`, plus `earlier` when it is an earlier Issue's problem, naming that Issue. `module` is
 the reviewed Module, or the provider whose selected document the finding concerns; `path` is a
 document member in the grant; `anchor` and `line` are optional; `dimension` is one of the Module
 quality dimensions `readability`, `obligations`, `design`, `views`, `terminology` and `context`;
-`tier` is one of `suggestion`, `obvious-fix`, `preferred-fix` and `decision-needed`. A finding about
-another Module's document is always a `suggestion`.
+`severity` is one of `critical`, `high`, `medium` and `low`; `tier` is one of `suggestion`,
+`obvious-fix`, `preferred-fix` and `decision-needed`. A finding about another Module's document is
+always a `suggestion`, whatever its severity.
 
 ## Review payload
 
@@ -149,7 +151,7 @@ The [run result](../../glossary.json#concept.run-result) carries this payload as
 ```concorde-contract
 {
   "id": "contract.spec-review.payload",
-  "version": 4,
+  "version": 5,
   "schema": {
     "type": "object",
     "required": [
@@ -210,6 +212,7 @@ The [run result](../../glossary.json#concept.run-result) carries this payload as
                   "module",
                   "path",
                   "dimension",
+                  "severity",
                   "tier",
                   "title",
                   "problem",
@@ -244,6 +247,14 @@ The [run result](../../glossary.json#concept.run-result) carries this payload as
                       "views",
                       "terminology",
                       "context"
+                    ]
+                  },
+                  "severity": {
+                    "enum": [
+                      "critical",
+                      "high",
+                      "medium",
+                      "low"
                     ]
                   },
                   "tier": {
@@ -340,6 +351,7 @@ The [run result](../../glossary.json#concept.run-result) carries this payload as
                         "additionalProperties": false,
                         "required": [
                           "issue",
+                          "severity",
                           "tier",
                           "title"
                         ],
@@ -347,6 +359,21 @@ The [run result](../../glossary.json#concept.run-result) carries this payload as
                           "issue": {
                             "type": "string",
                             "pattern": "^I-[0-9a-f]{32}$"
+                          },
+                          "severity": {
+                            "anyOf": [
+                              {
+                                "enum": [
+                                  "critical",
+                                  "high",
+                                  "medium",
+                                  "low"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           },
                           "tier": {
                             "anyOf": [
@@ -421,7 +448,7 @@ The [run result](../../glossary.json#concept.run-result) carries this payload as
       }
     }
   },
-  "semantics": "The outcome of one Spec review. Each Module's outcome is incomplete when it could not be reviewed or its Issues could not be read or all written, changes_required when an Issue of a blocking tier (obvious-fix, preferred-fix, decision-needed) stands for it, reported by this review or an earlier Issue it carried, and accepted otherwise; the verdict is incomplete if any Module is incomplete, else changes_required if any Module requires changes, else accepted. Findings, tiers and checker statuses are worker claims; check is null when no checker ran. context_identity is null only when no grant could be computed. Each finding's issue is the Issue the Operation reported it to, and null when the checker disputed it or it was not reported because the Issue store refused an earlier report; earlier, present only when the Operation appended the finding to an earlier Issue it offered, names that Issue. earlier_issues is null when the Module's earlier Issues were never read; otherwise carried lists the earlier Issues no finding named and no resolution resolved, which still stand, with their tier and title; resolved lists the earlier Issues the reviewer found the Specs no longer have, with its reason, for the task to close, since the Operation closes none; ignored lists the names of Issues a finding or resolution gave that were not offered or already settled, with why. A behaviour or field change increments the version.",
+  "semantics": "The outcome of one Spec review. Each Module's outcome is incomplete when it could not be reviewed or its Issues could not be read or all written, changes_required when an Issue of a blocking tier (obvious-fix, preferred-fix, decision-needed) stands for it, reported by this review or an earlier Issue it carried, and accepted otherwise; the verdict is incomplete if any Module is incomplete, else changes_required if any Module requires changes, else accepted. Findings, severities, tiers and checker statuses are worker claims; check is null when no checker ran. context_identity is null only when no grant could be computed. Each finding's issue is the Issue the Operation reported it to, and null when the checker disputed it or it was not reported because the Issue store refused an earlier report; earlier, present only when the Operation appended the finding to an earlier Issue it offered, names that Issue. earlier_issues is null when the Module's earlier Issues were never read; otherwise carried lists the earlier Issues no finding named and no resolution resolved, which still stand, with their severity, tier and title; resolved lists the earlier Issues the reviewer found the Specs no longer have, with its reason, for the task to close, since the Operation closes none; ignored lists the names of Issues a finding or resolution gave that were not offered or already settled, with why. A behaviour or field change increments the version.",
   "example": {
     "verdict": "changes_required",
     "modules": [
@@ -435,6 +462,7 @@ The [run result](../../glossary.json#concept.run-result) carries this payload as
             "path": "specs/checkout/requirements.md",
             "anchor": "req.checkout.single-order",
             "dimension": "obligations",
+            "severity": "medium",
             "tier": "obvious-fix",
             "title": "A requirement joins two obligations",
             "problem": "The requirement states two obligations in one sentence.",
