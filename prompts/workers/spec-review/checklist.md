@@ -70,4 +70,5 @@ that Issue's, however you would word it now: report it only when it changed, whe
 it differently or give it another tier, with `earlier` set to the Issue's identity. An earlier Issue
 that still stands as recorded you leave out: it stays open. An earlier Issue the Specs no longer
 have you list in `resolved` as `{"issue": "<its identity>", "reason": "..."}`. Only a problem none
-of them covers is a new finding.
+of them covers is a new finding, and a new finding has no `earlier` at all: leave the field out
+rather than writing a placeholder such as `none`.

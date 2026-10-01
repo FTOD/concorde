@@ -36,7 +36,8 @@ Your report is the panel's only result, so it must account for every labelled fi
   whose `sources` lists all their labels. Write the merged finding in your own words, with the
   best evidence and suggestion among them, and give it its **tier** as described above, which may
   differ from what the workers chose: the tier decides who fixes the problem, so choose it with
-  care. When any of its sources named an earlier Issue, set `earlier` to that Issue. Say in `note`
+  care. When any of its sources named one of the task's earlier Issues, set `earlier` to that
+  Issue; otherwise leave `earlier` out, never a placeholder such as `none`. Say in `note`
   what you verified and why you chose that tier.
 - **Reject** a finding that does not hold: its evidence is not in the Spec, another passage already
   says what it claims is missing, or it is not a problem for the reader. Give the reason in one
