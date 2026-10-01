@@ -4,9 +4,11 @@ and output, with Claude Code channel notifications sent from the threads that wa
 The server finds the project once, at start: the primary worktree of the Git repository that
 ``CLAUDE_PROJECT_DIR``, or else its working directory, lies in, found through Git's common
 directory, so a server started from any worktree serves the same tasks, traces and locks. It is a
-child of one Claude Code session and lives as long as that session. It declares the tools
-capability and the experimental ``claude/channel`` capability; whether the session actually
-listens to it as a channel is not something Claude Code tells a server, so it is read from
+child of one Claude Code session and lives as long as that session, but answers no call with its
+own code: each runs in a fresh process of the primary worktree's current Concorde (``calls.py``),
+so the session never meets the code the server started with once Concorde changed. It declares
+the tools capability and the experimental ``claude/channel`` capability; whether the session
+actually listens to it as a channel is not something Claude Code tells a server, so it is read from
 ``CONCORDE_CHANNEL`` (``1`` or ``0``) when set, otherwise from its ancestor processes: one of them
 must be a ``claude`` started with ``--dangerously-load-development-channels server:<name>`` or
 ``--channels server:<name>`` whose standard input is a terminal. Only an interactive session is
@@ -26,7 +28,8 @@ from typing import IO
 
 from .. import errors
 from ..tasks import store
-from .tools import ACTOR, THREADED, TOOLS, Project, Refusal, call
+from .calls import Calls
+from .tools import ACTOR, THREADED, Refusal, digest, listing, serve_call
 
 NAME = "concorde"
 SUPPORTED_VERSIONS = ("2025-06-18", "2025-03-26", "2024-11-05")
@@ -35,9 +38,10 @@ CHANNEL_FLAGS = ("--dangerously-load-development-channels", "--channels")
 ANCESTORS = 8
 INSTRUCTIONS = (
     "Concorde's project MCP server: the project's tasks, traces and locks, read fresh from the "
-    "primary worktree on every call. Queries: task_list, task_show, trace_show, run_result, "
-    "workflow_report, locks. Short writes: task_open, task_escalate, task_report, task_answer, "
-    "task_rebind, task_close. workflow_step starts or awaits a workflow step of the bound "
+    "primary worktree on every call by the Concorde its `concorde` runs at that moment. "
+    "Queries: task_list, task_show, trace_show, run_result, workflow_report, locks. Short "
+    "writes: task_open, task_escalate, task_report, task_answer, task_rebind, task_close. "
+    "workflow_step starts or awaits a workflow step of the bound "
     "workspace the session started in, as a process of this server, for step agents. "
     "task_merge "
     "takes the task's workspace lock and the merge lock without waiting (a busy lock is refused "
@@ -132,18 +136,19 @@ class Session:
         self.lock = threading.Lock()
         environment = dict(os.environ if environment is None else environment)
         primary = find_primary(environment, Path(cwd or Path.cwd()))
-        self.project = (
-            Project(
+        self.where = Path(environment.get("CLAUDE_PROJECT_DIR") or cwd or Path.cwd())
+        self.calls = (
+            Calls(
                 primary,
+                self.where,
                 environment.get("CLAUDE_CODE_SESSION_ID") or None,
                 detect_channel(name, environment),
                 self.notify,
-                Path(environment.get("CLAUDE_PROJECT_DIR") or cwd or Path.cwd()),
+                self.tools_changed,
             )
             if primary is not None
             else None
         )
-        self.where = Path(environment.get("CLAUDE_PROJECT_DIR") or cwd or Path.cwd())
 
     # --- transport --------------------------------------------------------------------------
 
@@ -166,6 +171,10 @@ class Session:
             }
         )
 
+    def tools_changed(self) -> None:
+        """Tell the client that the current code's tools differ from those it was given."""
+        self.send({"jsonrpc": "2.0", "method": "notifications/tools/list_changed"})
+
     def reply(self, identity, result: dict) -> None:
         self.send({"jsonrpc": "2.0", "id": identity, "result": result})
 
@@ -185,7 +194,7 @@ class Session:
                     if requested in SUPPORTED_VERSIONS
                     else SUPPORTED_VERSIONS[0],
                     "capabilities": {
-                        "tools": {"listChanged": False},
+                        "tools": {"listChanged": True},
                         "experimental": {"claude/channel": {}},
                     },
                     "serverInfo": {"name": NAME, "version": "1"},
@@ -197,7 +206,7 @@ class Session:
         elif method == "tools/list":
             self.reply(
                 identity,
-                {"tools": [{"name": name, **tool} for name, tool in TOOLS.items()]},
+                {"tools": self.calls.tools() if self.calls is not None else listing()},
             )
         elif method == "tools/call":
             params = message.get("params") or {}
@@ -224,7 +233,7 @@ class Session:
 
     def tool_result(self, name, arguments) -> dict:
         try:
-            if self.project is None:
+            if self.calls is None:
                 raise Refusal(
                     errors.link(
                         "component",
@@ -240,7 +249,7 @@ class Session:
                         ],
                     )
                 )
-            value, error = call(self.project, name, arguments), False
+            value, error = self.calls.call(name, arguments), False
         except Refusal as refusal:
             value, error = {"error": refusal.link}, True
         except Exception as failure:  # noqa: BLE001 -- every failure is a detailed error link
@@ -273,6 +282,8 @@ class Session:
                 continue
             if isinstance(message, dict):
                 self.handle(message)
+        if self.calls is not None:
+            self.calls.close()
         return 0
 
 
@@ -284,7 +295,24 @@ def main(argv=None) -> int:
         help="the name the server is registered under, which a channel flag names as "
         "server:<name>",
     )
+    parser.add_argument(
+        "--call",
+        metavar="TOOL",
+        help="answer one call of the server, read as a JSON object from standard input; only the "
+        "server runs this",
+    )
+    parser.add_argument(
+        "--tools",
+        action="store_true",
+        help="print the tools of this Concorde as tools/list gives them; only the server runs this",
+    )
     arguments = parser.parse_args(argv if argv is not None else [])
+    if arguments.call is not None:
+        return serve_call(arguments.call, sys.stdin, sys.stdout)
+    if arguments.tools:
+        tools = listing()
+        sys.stdout.write(json.dumps({"tools": tools, "digest": digest(tools)}) + "\n")
+        return 0
     return Session(sys.stdin, sys.stdout, name=arguments.name).run()
 
 

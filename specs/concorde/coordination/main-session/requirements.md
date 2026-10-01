@@ -332,6 +332,28 @@ Those tools are the queries `task_list`, `task_show`, `trace_show`, `issue_list`
 `issue_report`, `issue_close` and `issue_reopen`. The primary worktree is that of
 the repository the server was started in, whichever worktree of the project it was started from.
 
+### req.main-session.project-mcp-current-code — Every call answers with the current Concorde
+
+The server SHALL answer every tool call with a process of the Concorde that the primary worktree's
+`concorde` command runs when the call arrives, never with Concorde code the server loaded before
+that call.
+
+So a merge or a `concorde update` while a session runs changes the code that answers the session's
+next call: its rules, its record formats and its refusals
+([Current code](module.md#current-code)). The same holds for the `concorde task wait` a registered
+wait runs and for the `concorde task merge` that `task_merge` starts.
+
+### req.main-session.project-mcp-tools-changed — The session hears that its tools changed
+
+When the tools of the Concorde that answered a call differ from those the server last listed to its
+session, the server SHALL tell the session that its tools changed and list the current code's tools
+when asked again.
+
+### req.main-session.project-mcp-call-failed — A call without an answer is refused
+
+When the process of a call ends, or exceeds its time, without an answer, the server SHALL refuse
+the call with its own `call_failed` link naming the command and the end of what it printed.
+
 ### req.main-session.project-mcp-record-queries — The other queries present records read-only
 
 The queries `run_result`, `workflow_report` and `locks` SHALL answer with the result and refuse
@@ -361,10 +383,10 @@ start, the call is refused only by its arguments, by a busy lock
 ### req.main-session.project-mcp-workflow-step — `workflow_step` runs the worktree's own step command
 
 `workflow_step` SHALL run `concorde workflow step --json <request> --wait <wait>` with the
-`concorde` of the session's worktree, from that worktree's root, as a child of the server, and
-answer with the step outcome it printed.
+`concorde` of the session's worktree, from that worktree's root, as a process the server started,
+and answer with the step outcome it printed.
 
-The command is the server's own child, so the
+The command is a process of the server's, so the
 [detached run](../../glossary.json#concept.detached-run) it starts depends on neither the relaying
 agent's turn nor one of the session's background commands, and lives until its run ends
 ([contracts](contracts.md#starting-a-workflow-step)).
@@ -404,8 +426,8 @@ When `task_merge` has both locks, the server SHALL hand them to the merge proces
 that they are released exactly when that process ends, however it ends, and never by the server or
 its session ending.
 
-It starts the merge as a process of its own with both locked descriptors inherited, and closes its
-own copies before it answers.
+The call's process takes both locks, answers, and becomes `concorde task merge` in a session of its
+own, keeping both locked descriptors; the server itself never holds them.
 
 ### req.main-session.project-mcp-wait-notifies — A wait only notifies
 
@@ -414,6 +436,14 @@ own copies before it answers.
 It answers at once when what it waits for already happened, and otherwise, with a channel, wakes its
 session with one channel event when it happens or ends another way, watching by blocking on the
 lock or on the kernel's notice of its changes, never by polling.
+
+### req.main-session.project-mcp-wait-ends — A wait ends with its server
+
+The process that watches a registered wait SHALL end when the server ends, however the server
+ends.
+
+A wait wakes only the session whose server registered it, so once that server is gone nobody is
+left to wake, and a wait for something that never happens would otherwise block forever.
 
 ### req.main-session.project-mcp-fallback — Without a channel the server says so
 

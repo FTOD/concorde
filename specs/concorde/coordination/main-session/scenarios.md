@@ -343,6 +343,15 @@ This illustrates [failures as error chains](requirements.md#req.main-session.iss
 - WHEN a call names an unknown task, lacks a required argument or names no tool of the server
 - THEN each is refused with an error link: Tasks' own `unknown_task` link for the unknown task, and the server's own `invalid_input` link otherwise
 
+### scenario.main-session.project-mcp-fresh-code — A call answers with the Concorde current when it arrives
+
+- GIVEN a server whose session listens to it, in a project whose primary worktree's `concorde` runs one Concorde, and a `task_list` call that Concorde answered
+- WHEN that Concorde changes while the session runs, as a merge or `concorde update` changes it, so that `task_list` answers otherwise and a tool is added, and the session calls `task_list` again
+- THEN the second call answers with the changed Concorde, the server tells its session that its tools changed, and its next `tools/list` lists the added tool, which answers
+- BUT once the primary worktree's `concorde` exits without an answer, a call is refused with the server's own `call_failed` link naming its exit status and what it printed
+
+This illustrates [every call answering with the current Concorde](requirements.md#req.main-session.project-mcp-current-code).
+
 ### scenario.main-session.project-mcp-short-writes — Short writes take structured arguments
 
 - GIVEN a running server
@@ -395,6 +404,7 @@ This illustrates [queries and short writes answering as their commands](requirem
 - THEN a `wait_done` event for the lock arrives naming the holder it waited for
 - AND a wait registered for the task becoming delivered is woken by a `wait_done` event once a delivery made under the workspace lock releases it
 - AND registering the same wait again answers at once that the task is delivered and registers nothing
+- AND a wait for a lock that stays held ends when its server is killed, so no wait outlives its session
 
 ### scenario.main-session.project-mcp-wait-fallback — Without a channel the wait names its command
 

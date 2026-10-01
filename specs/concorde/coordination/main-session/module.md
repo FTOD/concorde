@@ -41,19 +41,22 @@ but cannot widen a worker's boundary.
 <a id="concept.project-mcp-server"></a>
 
 The **[project MCP server](../../glossary.json#concept.project-mcp-server)** is the project's one
-stdio MCP server for the main-session side, `concorde project-mcp`, which the installer registers
-as `concorde` in the project's `.mcp.json`. Each Claude Code session that loads it runs its own
-server process, which lives exactly as long as that session; there is no daemon. Started from any
-worktree, it finds the primary worktree through Git's common directory and serves that project's
-tasks, traces and locks, read afresh on every call. It is a presentation: the `concorde` commands
-stay the source of truth, and every answer and refusal of a query or short write is the command's
-own. Its one rule of its own is that it never waits for a lock, so `task_merge` answers at once with
-the merge it started, and `register_wait` with the wait it registered, while the merge's result and
-the wait's answer arrive later. One tool, `workflow_step`, works on a workspace rather than on
-records: it starts and awaits the [workflow steps](../../glossary.json#concept.workflow-step) of the
-workspace its session works in, so that their runs are processes of the server rather than of a
-relaying agent's turn. Its tools and how it wakes a session are explained
-[below](#the-project-mcp-server).
+stdio MCP server for the main-session side, `concorde project-mcp`, which the installer registers as
+`concorde` in the project's `.mcp.json`. Each Claude Code session that loads it runs its own server
+process, which lives exactly as long as that session; there is no daemon. Started from any worktree,
+it finds the primary worktree through Git's common directory and serves that project's tasks, traces
+and locks, read afresh on every call. It answers no call with code of its own: each call runs in a
+fresh process of the Concorde that the primary worktree's `concorde` command runs at that moment, so
+a merge or a `concorde update` during a session changes the code that answers the session's next
+call, and the long-lived process keeps only what must live as long as its session. It is a
+presentation: the `concorde` commands stay the source of truth, and every answer and refusal of a
+query or short write is the command's own. Its one rule of its own is that it never waits for a
+lock, so `task_merge` answers at once with the merge it started, and `register_wait` with the wait
+it registered, while the merge's result and the wait's answer arrive later. One tool,
+`workflow_step`, works on a workspace rather than on records: it starts and awaits the [workflow
+steps](../../glossary.json#concept.workflow-step) of the workspace its session works in, so that
+their runs are processes of the server rather than of a relaying agent's turn. Its tools and how it
+wakes a session are explained [below](#the-project-mcp-server).
 
 <a id="owners"></a>
 
@@ -462,6 +465,27 @@ unchanged; a normal install carries no such section.
 The [project MCP server](../../glossary.json#concept.project-mcp-server) presents these tools; the exact tools and
 events are in the [contracts](contracts.md).
 
+<a id="current-code"></a>
+
+**Current code.** The server process lives as long as its Claude Code session, which may be hours,
+while Concorde itself changes under it: a task merge in Concorde's own checkout, or
+`concorde update` in an installed project. Code loaded once would then keep answering with the
+rules and record formats it started with, and refuse the records the new code writes. So the server
+runs none of its tools itself. Each call runs `concorde project-mcp --call <tool>` with the
+`concorde` of the primary worktree as it is when the call arrives, its `.concorde/bin/concorde` or,
+in Concorde's source checkout, its `scripts/concorde.py`, as a process of its own; the call's
+arguments and the session's provenance go to it as one JSON object, and its answer or refusal is
+the tool's. A waiting tool works the same way: the wait `register_wait` registers is that
+`concorde`'s `concorde task wait`, run as a process the server watches, and the merge `task_merge`
+starts is the very process the call ran in, which, having taken both locks and answered, replaces
+itself with `concorde task merge`. What stays in the server is what needs a process that lives with
+its session: the MCP session itself, the channel, and the wait and merge processes it watches. A
+call whose process gives no answer is refused with the server's own `call_failed` link, naming the
+command and what it printed. Each answer also says which tools the current code has; when they
+differ from those the session was given, the server tells its session that its tools changed, and
+Claude Code lists them again. Only the server's own session code, its few protocol messages and its
+instructions, stays what the session started with until the next session.
+
 - **Queries**: `task_list`, `task_show`, `trace_show` (one node, down to a `depth`, so a large
   trace need not be read whole), `run_result`, `workflow_report` and `locks`, which says who holds
   the merge lock and each task's [workspace lock](../../glossary.json#concept.workspace-lock).
@@ -478,12 +502,13 @@ events are in the [contracts](contracts.md).
 - **Long work**: `task_merge`, which never waits for a lock. It takes the task's workspace lock and
   the [merge lock](../../glossary.json#concept.merge-lock) at once or is refused at once, with
   `workspace_busy` or `merge_busy` naming who holds the busy one: the holder's command, process,
-  start time, Claude Code session and task. When it gets both, it starts `concorde task merge` as a
-  process of its own and hands both locks to it: the `flock` belongs to the open file description,
-  which the process inherits, and the server closes its own copy, so the lock belongs to the
-  session's work, never to the server, and is released when the merge ends, however it ends,
-  even when the session and its server end first. It returns at once with the merge it started,
-  not the merge's result, which a channel event or the returned wait command delivers later.
+  start time, Claude Code session and task. The call's process takes them and, when it gets both,
+  becomes `concorde task merge`, a process of its own session, keeping both locks: the `flock`
+  belongs to the open file description, which survives the change of program, and the server never
+  holds either, so the lock belongs to the session's work, never to the server, and is released
+  when the merge ends, however it ends, even when the session and its server end first. It returns
+  at once with the merge it started, not the merge's result, which a channel event or the returned
+  wait command delivers later.
 - **Workflow steps**: `workflow_step`, which the
   [step agents](../../glossary.json#concept.step-agent) of a [workflow](../../glossary.json#concept.workflow) call, one call per relay, with the step
   request as an object. It runs `concorde workflow step --json <request> --wait <wait>`, waiting at
@@ -493,7 +518,7 @@ events are in the [contracts](contracts.md).
   `unbound_worktree`, a session whose worktree has no
   [workspace binding](../../glossary.json#concept.workspace-binding), such as the main agent's in
   the primary worktree, since a workflow runs only in a bound workspace. It exists because of where
-  the server runs: the step command is the server's own child, so the
+  the server runs: the step command is a process the server started, so the
   [detached run](../../glossary.json#concept.detached-run) it starts depends on neither the
   relaying agent's turn nor a background command of the session, and lives until its run ends
   ([Workflows](../../execution/workflows/module.md#steps-through-the-server)). The server answers
@@ -501,32 +526,37 @@ events are in the [contracts](contracts.md).
   meanwhile.
 - **Waiting**: `register_wait` asks to be woken when a task becomes `delivered`, `merging`,
   `closed` or `failed`, when a task is rebound to a main agent's session other than a named one,
-  when a run ends, or when a lock is released. The server watches without
-  polling, blocking on the lock itself or on the kernel's notice of each new holder, and wakes its
-  session with a [Claude Code channel](#channels) event when it happens. It only notifies: it never
-  takes a lock for the session it wakes, which asks again and may be refused again.
+  when a run ends, or when a lock is released. The server watches by running the matching
+  `concorde task wait`, which waits without polling, blocking on the lock itself or on the kernel's
+  notice of each new holder, and wakes its session with a [Claude Code channel](#channels) event
+  with that command's answer when it happens. The wait process ends with the server. It only
+  notifies: it never takes a lock for the session it wakes, which asks again and may be refused
+  again.
 
 A merge through the server, from a refusal to the merge's end, with who holds the locks at each
-stage: the server holds them only between taking them and starting the merge process, the process
-from then until it ends, and the woken session never.
+stage: the call's process takes them and keeps them as it becomes the merge, until the merge ends;
+the server and the woken session never hold them.
 
 ```d2 illustrative
 shape: sequence_diagram
 session: Claude Code session
 server: Project MCP server
-merge: "concorde task merge\nprocess"
+merge: "call process, then\nconcorde task merge"
 busy: "A lock is held by another process" {
   session -> server: task_merge
-  server -> session: "workspace_busy or merge_busy,\nnaming the holder"
+  server -> merge: "run the call"
+  merge -> server: "workspace_busy or merge_busy,\nnaming the holder"
+  server -> session: "the refusal"
   session -> server: register_wait for that lock
   server -> session: "released: a wait_done event, or,\nwithout a channel, the returned\nconcorde task wait in background Bash"
 }
 granted: "Both locks are free" {
   session -> server: task_merge again
-  server -> server: take both locks
-  server -> merge: "start it with both locked\ndescriptors inherited"
-  server -> server: close its own copies
+  server -> merge: "run the call"
+  merge -> merge: take both locks
+  merge -> server: "started, with the output files"
   server -> session: "started, with the output files\nand how the session is woken"
+  merge -> merge: "become concorde task merge,\nkeeping both locks"
   merge -> merge: "merge, run the checks,\nclose the task"
 }
 ended: "The merge ends" {
@@ -768,12 +798,14 @@ observes.
 
 The **project MCP server** lives in `src/concorde/project_mcp/`: `server.py` runs the stdio session,
 finds the project, decides whether the session listens to it as a channel and sends channel events
-from the threads that watch; `tools.py` maps each tool to Tasks, Tracing and Workflows' records and
-starts the merges. Like the Spec MCP server it is a small hand-written JSON-RPC session with no MCP
-library, since its wire is the same few messages plus one notification; it keeps its own session
-code rather than reusing the Spec MCP server's, which is written for one read-only root with its
-tools fixed and sends only from one thread. Its tests, under `tests/concorde/project_mcp/`, talk to
-it over a real stdio connection and watch real locks, merges and channel events.
+from the threads that watch; `calls.py` runs each call in a fresh process of the primary worktree's
+current Concorde and watches the wait and merge processes; `tools.py` is what that process runs,
+mapping each tool to Tasks, Tracing, Issues and Workflows' records and taking the merge's locks.
+Like the Spec MCP server it is a small hand-written JSON-RPC session with no MCP library, since its
+wire is the same few messages plus one notification; it keeps its own session code rather than
+reusing the Spec MCP server's, which is written for one read-only root with its tools fixed and
+sends only from one thread. Its tests, under `tests/concorde/project_mcp/`, talk to it over a real
+stdio connection and watch real locks, merges and channel events.
 
 ## Who relies on it
 

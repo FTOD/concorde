@@ -1,10 +1,16 @@
 """The tools of the project MCP server, each a thin call into Tasks, Tracing, Workflows' records or
-the project's Issues.
+the project's Issues, and the process that answers one call.
+
+The server runs no tool in its own process: each call runs ``concorde project-mcp --call <tool>`` of
+the primary worktree as a process of its own (``serve_call`` here), so the answer is always the one
+of the Concorde code that worktree's ``concorde`` runs at the time of the call, however long the
+session has been running. The call's arguments and the session's provenance arrive as one JSON
+object on standard input; the answer leaves as one JSON line on standard output.
 
 ``workflow_step`` is the one tool that works on a workspace rather than on records: it runs the
-``concorde workflow step`` of the worktree the session started in as a child of this server, so a
-step's detached runner is a process of the server rather than of a relaying agent's turn or of one
-of the session's background commands, and lives until its run ends.
+``concorde workflow step`` of the worktree the session started in as a child of the call's
+process, so a step's detached runner is a process of the server's rather than of a relaying agent's
+turn or of one of the session's background commands, and lives until its run ends.
 
 Every call reads the stores afresh from the primary worktree, so an answer is the state when the
 call arrives; the server keeps no copy of any record and adds no rule of its own. A refusal is the
@@ -18,12 +24,11 @@ it.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shlex
 import subprocess
-import sys
-import tempfile
 from argparse import Namespace
 from pathlib import Path
 
@@ -35,10 +40,6 @@ from ..tasks.store import TaskError
 from ..tracing import layout, locks, reader
 
 ACTOR = "Concorde project MCP server"
-# The entry point of the running Concorde, which the merge it starts runs too.
-SCRIPT = Path(__file__).resolve().parents[3] / "scripts/concorde.py"
-# How much of a finished merge's output a notification carries; the file holds all of it.
-CUT = 6000
 # The longest a workflow_step call waits for its run, so that the call returns within two minutes.
 STEP_WAIT = 100
 # What a workflow_step call adds to its wait before it gives up on the step command itself.
@@ -395,31 +396,45 @@ def _check(tool: str, arguments: dict) -> dict:
     return arguments
 
 
+def concorde_of(worktree: Path) -> tuple[list[str], dict]:
+    """The worktree's own ``concorde`` command line and the environment to run it with: its
+    installed command, or its checkout's script, or else this package itself."""
+    from ..workflows.step import concorde_command
+
+    command = concorde_command(worktree)
+    environment = dict(os.environ)
+    if command[1:3] == ["-m", "concorde"]:
+        # This package itself: make it importable for the child.
+        environment["PYTHONPATH"] = os.pathsep.join(
+            [str(Path(__file__).resolve().parents[2])]
+            + ([environment["PYTHONPATH"]] if environment.get("PYTHONPATH") else [])
+        )
+    return command, environment
+
+
 class Project:
-    """What every tool needs: the primary worktree, the session and whether it has a channel."""
+    """What every tool needs: the primary worktree, the session and whether it has a channel.
+
+    One call's process makes one; what the server must do after the answer, start a wait's watch
+    or become the merge, it leaves in ``watch`` and ``handover``."""
 
     def __init__(
         self,
         primary: Path,
         session: str | None,
         channel: bool,
-        notify,
         where: Path | None = None,
+        merge: dict | None = None,
     ):
         self.primary = primary
         # The folder the session started in, whose worktree workflow_step works on.
         self.where = where or primary
         self.session = session
         self.channel = channel
-        self.notify = notify
-        self.waits = 0
-        self._runtime: Path | None = None
-
-    def runtime(self) -> Path:
-        """A private temporary directory for the output of work this server started."""
-        if self._runtime is None:
-            self._runtime = Path(tempfile.mkdtemp(prefix="concorde-project-mcp-"))
-        return self._runtime
+        # The files of the server that a merge's standard output and error go to.
+        self.merge = merge
+        self.watch: dict | None = None
+        self.handover: dict | None = None
 
     # --- queries ----------------------------------------------------------------------------
 
@@ -714,6 +729,18 @@ class Project:
         holder = (
             f"`concorde task merge` of task {task}, started by the project MCP server"
         )
+        if self.merge is None:
+            raise own(
+                tool,
+                "invalid_input",
+                "a merge starts only through the project MCP server, which names the files its "
+                "output goes to",
+                reason="environment",
+            )
+        command, environment = concorde_of(self.primary)
+        argv = [*command, "task", "merge", task, "--wait", "0"]
+        argv += [word for check in checks for word in ("--check", check)]
+        argv += ["--resume"] if resume else ["--abort"] if abort else []
         taken = []
         try:
             for path, code in ((workspace, "workspace_busy"), (merging, "merge_busy")):
@@ -722,59 +749,32 @@ class Project:
                 except locks.LockBusy as busy:
                     raise self._busy(tool, code, task, busy) from None
                 taken.append((path, descriptor))
+                # This process becomes the merge (``hand_over``), so its pid is the merge's.
                 locks.write_entry(
                     descriptor, locks.line(holder, os.getpid(), task, self.session)
                 )
-            return self._start_merge(task, checks, resume, abort, taken)
-        finally:
+        except BaseException:
             for _, descriptor in taken:
-                # The merge process has its own copy of each descriptor; closing the server's
-                # leaves the lock to it. Before a start, closing releases the lock.
                 os.close(descriptor)
-
-    def _start_merge(self, task, checks, resume, abort, taken):
-        argv = [sys.executable, SCRIPT.as_posix(), "task", "merge", task, "--wait", "0"]
-        argv += [word for check in checks for word in ("--check", check)]
-        argv += ["--resume"] if resume else ["--abort"] if abort else []
-        runtime = self.runtime()
-        number = len(list(runtime.glob("*.json"))) + 1
-        output = runtime / f"{number}-merge-{task}.json"
-        messages = runtime / f"{number}-merge-{task}.log"
-        environment = dict(os.environ)
+            raise
         environment[locks.INHERITED] = json.dumps(
             {path.as_posix(): descriptor for path, descriptor in taken}
         )
         if self.session:
             environment[locks.SESSION] = self.session
-        try:
-            with output.open("wb") as out, messages.open("wb") as err:
-                process = subprocess.Popen(
-                    argv,
-                    cwd=self.primary,
-                    env=environment,
-                    stdin=subprocess.DEVNULL,
-                    stdout=out,
-                    stderr=err,
-                    pass_fds=[descriptor for _, descriptor in taken],
-                    start_new_session=True,
-                )
-        except OSError as error:
-            raise own(
-                "task_merge",
-                "start_failed",
-                f"`concorde task merge {task}` could not be started: {error}; both locks were "
-                "released",
-                reason="environment",
-                explanation="the operating system refused to start the process",
-            ) from error
-        self.watch_process(process, task, output, messages)
+        self.handover = {
+            "task": task,
+            "argv": argv,
+            "environment": environment,
+            "descriptors": [descriptor for _, descriptor in taken],
+        }
         fallback = f"concorde task wait {task} --lock workspace"
         return {
             "started": {
-                "command": "concorde " + " ".join(argv[2:]),
-                "pid": process.pid,
-                "output": output.as_posix(),
-                "messages": messages.as_posix(),
+                "command": "concorde " + shlex.join(argv[len(command) :]),
+                "pid": os.getpid(),
+                "output": self.merge["output"],
+                "messages": self.merge["messages"],
             },
             "locks": {
                 "workspace": taken[0][0].as_posix(),
@@ -793,44 +793,6 @@ class Project:
             ),
         }
 
-    def watch_process(self, process, task, output: Path, messages: Path) -> None:
-        import threading
-
-        def reap():
-            code = process.wait()
-            if not self.channel:
-                return
-            try:
-                text = output.read_text(encoding="utf-8", errors="replace").strip()
-            except OSError:
-                text = ""
-            try:
-                value = json.loads(text)
-            except ValueError:
-                value = None
-            status = (
-                "refused"
-                if isinstance(value, dict) and "error" in value
-                else ("ok" if code == 0 else "failed")
-            )
-            body = (
-                text
-                if len(text) <= CUT
-                else f"{text[:CUT]}\n…(cut; the whole output is in {output})"
-            )
-            self.notify(
-                f"Concorde: `concorde task merge {task}` ended with exit status {code} "
-                f"({status}). Its output ({output}, errors in {messages}):\n{body}",
-                {
-                    "event": "merge_ended",
-                    "task": task,
-                    "exit_code": str(code),
-                    "status": status,
-                },
-            )
-
-        threading.Thread(target=reap, name=f"merge {task}", daemon=True).start()
-
     # --- waits ------------------------------------------------------------------------------
 
     # --- workflow steps ---------------------------------------------------------------------
@@ -846,7 +808,6 @@ class Project:
         ``step_failed``.
         """
         from ..execution import binding as binding_file
-        from ..workflows.step import concorde_command
 
         tool = "workflow_step"
         try:
@@ -875,8 +836,8 @@ class Project:
                 options=["run the workflow in a task worktree, from its task session"],
             )
         wait = arguments.get("wait", STEP_WAIT)
-        command = [
-            *concorde_command(root),
+        command, environment = concorde_of(root)
+        command += [
             "workflow",
             "step",
             "--json",
@@ -884,12 +845,6 @@ class Project:
             "--wait",
             str(wait),
         ]
-        environment = dict(os.environ)
-        if command[1:3] == ["-m", "concorde"]:
-            environment["PYTHONPATH"] = os.pathsep.join(
-                [str(Path(__file__).resolve().parents[2])]
-                + ([environment["PYTHONPATH"]] if environment.get("PYTHONPATH") else [])
-            )
         shown = shlex.join(command)
         try:
             done = subprocess.run(
@@ -974,38 +929,26 @@ class Project:
             )
         if until:
             description = f"task {task} becoming {' or '.join(until)}"
-            command = f"concorde task wait {task} --until {','.join(until)}"
+            words = [task, "--until", ",".join(until)]
             now = wait.reached(self.primary, task, wait.check_until(until))
             if now is not None:
                 return {"registered": False, "already": now}
-
-            def waiting():
-                return wait.wait_task(self.primary, task, until)
-
             meta = {"kind": "task", "task": task}
         elif former:
             description = (
                 f"task {task} naming a main agent's session other than {former}"
             )
-            command = f"concorde task wait {task} --rebound {shlex.quote(former)}"
+            words = [task, "--rebound", former]
             now = wait.rebound(self.primary, task, former)
             if now is not None:
                 return {"registered": False, "already": now}
-
-            def waiting():
-                return wait.wait_rebound(self.primary, task, former)
-
             meta = {"kind": "rebound", "task": task}
         elif run:
             description = f"the end of run {run}"
-            command = f"concorde task wait --run {run}"
+            words = ["--run", run]
             now = wait.run_answer(self.primary, run)
             if now is not None:
                 return {"registered": False, "already": now}
-
-            def waiting():
-                return wait.wait_run(self.primary, run)
-
             meta = {"kind": "run", "run": run}
         else:
             if task:
@@ -1013,15 +956,15 @@ class Project:
             description = f"the release of the {lock} lock" + (
                 f" of task {task}" if task else ""
             )
-            command = f"concorde task wait {task + ' ' if task else ''}--lock {lock}"
+            words = [*([task] if task else []), "--lock", lock]
             now = wait.lock_answer(self.primary, lock, task)
             if now["holder"] is None:
                 return {"registered": False, "already": {**now, "released": True}}
-
-            def waiting():
-                return wait.wait_lock(self.primary, lock, task)
-
+            # The wait command may start after the holder is gone and then names none; the
+            # registration and the event still name the holder it was registered for.
+            description += f", held by {json.dumps(now['holder'], ensure_ascii=False)}"
             meta = {"kind": "lock", "lock": lock, **({"task": task} if task else {})}
+        command = shlex.join(["concorde", "task", "wait", *words])
         if not self.channel:
             return {
                 "registered": False,
@@ -1034,49 +977,14 @@ class Project:
                 "run the command in background Bash instead: it blocks without polling until "
                 f"{description} and prints one JSON value",
             }
-        self.waits += 1
-        identity = str(self.waits)
-        self.start_wait(identity, description, waiting, {**meta, "wait": identity})
-        return {
-            "registered": True,
-            "wait": identity,
-            "channel": True,
-            "waits_for": description,
+        # The server runs the same command as a process it watches and wakes the session with its
+        # answer; the wait's identity is the server's.
+        self.watch = {
+            "words": ["task", "wait", *words],
+            "description": description,
+            "meta": meta,
         }
-
-    def start_wait(self, identity: str, description: str, waiting, meta: dict) -> None:
-        import threading
-
-        def watch():
-            try:
-                value = waiting()
-            except TaskError as error:
-                link = task_cli.refusal("wait", error)
-                self.notify(
-                    f"Concorde: wait {identity} for {description} ended without it: "
-                    f"{errors.render(link)}",
-                    {**meta, "event": "wait_failed", "code": error.code},
-                )
-                return
-            except Exception as error:  # noqa: BLE001 -- the session must hear of it
-                link = errors.from_exception(
-                    f"{ACTOR} (register_wait)",
-                    error,
-                    explanation="the server has no recovery for an unexpected error of a wait",
-                )
-                self.notify(
-                    f"Concorde: wait {identity} for {description} failed: "
-                    f"{errors.render(link)}",
-                    {**meta, "event": "wait_failed", "code": link["code"]},
-                )
-                return
-            self.notify(
-                f"Concorde: {description} happened (wait {identity}): "
-                f"{json.dumps(value, ensure_ascii=False)}",
-                {**meta, "event": "wait_done"},
-            )
-
-        threading.Thread(target=watch, name=f"wait {identity}", daemon=True).start()
+        return {"registered": True, "channel": True, "waits_for": description}
 
 
 # The Tasks command whose refusals each tool passes on.
@@ -1118,4 +1026,136 @@ def call(project: Project, name: str, arguments) -> object:
         raise Refusal(refusal.link) from None
 
 
-__all__ = ["ACTOR", "THREADED", "TOOLS", "Project", "Refusal", "call"]
+def listing() -> list[dict]:
+    """The tools as ``tools/list`` gives them."""
+    return [{"name": name, **tool} for name, tool in TOOLS.items()]
+
+
+def digest(tools: list[dict]) -> str:
+    """The digest of a tool listing, by which the server notices that the tools changed."""
+    text = json.dumps(tools, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return "sha256:" + hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def answer(name: str, envelope: dict) -> tuple[dict, Project | None]:
+    """One call's answer, ``{"value"}`` or ``{"error"}`` with the digest of this code's tools and,
+    for a wait the server is to watch, its ``watch``; and the project it was answered in."""
+    tools = digest(listing())
+    try:
+        project = Project(
+            Path(envelope["primary"]),
+            envelope.get("session"),
+            bool(envelope.get("channel")),
+            Path(envelope["where"]),
+            envelope.get("merge"),
+        )
+    except (KeyError, TypeError) as error:
+        link = own(
+            str(name),
+            "invalid_input",
+            f"the call's input lacks the session's provenance: {error!r}",
+            reason="environment",
+            explanation="only the project MCP server starts a call's process, and it always "
+            "passes the primary worktree and the session's folder",
+        ).link
+        return {"error": link, "tools": tools}, None
+    try:
+        value = call(project, name, envelope.get("arguments"))
+    except Refusal as refusal:
+        return {"error": refusal.link, "tools": tools}, project
+    except Exception as failure:  # noqa: BLE001 -- every failure is a detailed error link
+        link = errors.from_exception(
+            f"{ACTOR} ({name})",
+            failure,
+            explanation="the server has no recovery for an unexpected error; nothing after it ran",
+        )
+        return {"error": link, "tools": tools}, project
+    reply = {"value": value, "tools": tools}
+    if project.watch is not None:
+        reply["watch"] = project.watch
+    return reply, project
+
+
+def _write(descriptor: int, text: str) -> None:
+    data = text.encode("utf-8")
+    while data:
+        data = data[os.write(descriptor, data) :]
+
+
+def hand_over(project: Project, line: str, writer) -> int:
+    """Become the merge ``task_merge`` started: answer through a copy of standard output that the
+    exec closes, which ends the answer, then replace this process with ``concorde task merge``,
+    its standard output going to the server's file and both locked descriptors inherited.
+
+    When the exec fails, a second answer line refuses the call with ``start_failed``, and this
+    process ends, which releases both locks."""
+    plan = project.handover
+    writer.flush()
+    reply = os.dup(writer.fileno())  # not inheritable: the exec closes it
+    output = os.open(
+        project.merge["output"], os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600
+    )
+    os.dup2(output, 1)
+    os.close(output)
+    null = os.open(os.devnull, os.O_RDONLY)
+    os.dup2(null, 0)
+    os.close(null)
+    for descriptor in plan["descriptors"]:
+        os.set_inheritable(descriptor, True)
+    _write(reply, line)
+    try:
+        os.execve(plan["argv"][0], plan["argv"], plan["environment"])
+    except OSError as error:
+        link = own(
+            "task_merge",
+            "start_failed",
+            f"`{shlex.join(plan['argv'])}` could not be started: {error}; both locks were "
+            "released",
+            reason="environment",
+            explanation="the operating system refused to start the process",
+        ).link
+        _write(reply, json.dumps({"error": link}, ensure_ascii=False) + "\n")
+        return 1
+
+
+def serve_call(name: str, reader, writer) -> int:
+    """``concorde project-mcp --call <tool>``: answer one call of the server, read as one JSON
+    object from ``reader``, with one JSON line on ``writer``."""
+    project = None
+    try:
+        envelope = json.loads(reader.read())
+        problem = None if isinstance(envelope, dict) else "it is no JSON object"
+    except ValueError as error:
+        problem = str(error)
+    if problem is not None:
+        link = own(
+            str(name),
+            "invalid_input",
+            f"the call's input cannot be read: {problem}",
+            reason="environment",
+            explanation="only the project MCP server starts a call's process, with one JSON "
+            "object on its standard input",
+        ).link
+        reply = {"error": link, "tools": digest(listing())}
+    else:
+        reply, project = answer(name, envelope)
+    line = json.dumps(reply, ensure_ascii=False, separators=(",", ":")) + "\n"
+    if project is not None and project.handover is not None and "error" not in reply:
+        return hand_over(project, line, writer)
+    writer.write(line)
+    writer.flush()
+    return 0
+
+
+__all__ = [
+    "ACTOR",
+    "THREADED",
+    "TOOLS",
+    "Project",
+    "Refusal",
+    "call",
+    "concorde_of",
+    "digest",
+    "listing",
+    "serve_call",
+]

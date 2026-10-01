@@ -20,7 +20,7 @@ The server is started as `concorde project-mcp [--name <name>]` (default name `c
 MCP over standard input and output, newline-delimited JSON-RPC 2.0, answering `initialize`, `ping`,
 `tools/list` and `tools/call`. It answers `initialize` with the client's protocol version when it
 is one of `2025-06-18`, `2025-03-26` and `2024-11-05`, and with `2025-06-18` otherwise, and declares
-the capabilities `{"tools": {"listChanged": false}, "experimental": {"claude/channel": {}}}` and
+the capabilities `{"tools": {"listChanged": true}, "experimental": {"claude/channel": {}}}` and
 instructions naming its tools and events.
 
 At start it finds the **project**: the primary worktree of the Git repository that
@@ -28,6 +28,22 @@ At start it finds the **project**: the primary worktree of the Git repository th
 Git's common directory as every `concorde task` command finds it. Every call reads the task
 records, traces and locks of that primary worktree afresh. Outside a Git repository every call is
 refused with `no_project`.
+
+**Every call runs the current Concorde.** The server answers `tools/list` and every `tools/call`
+with a process of its own per request, started with the primary worktree's `concorde` as it is at
+that moment, its `.concorde/bin/concorde` or, in Concorde's source checkout, its
+`scripts/concorde.py` with the server's Python, from the primary worktree, with the server's
+environment: `concorde project-mcp --tools` prints the tools, and `concorde project-mcp --call
+<tool>` answers one call. These two options are the server's own interface with the Concorde it
+presents, not a command for anyone else. The call's process reads one JSON object on its standard
+input, the call's `arguments` with the session's provenance (the primary worktree, the session's
+worktree, the Claude Code session and whether it has a channel), and prints one JSON line on its
+standard output, `{"value": <answer>}` or `{"error": <link>}`, each with `tools`, the digest of its
+tools; the server returns that answer or refusal as the tool's. An ordinary call's process may take
+300 seconds and a `workflow_step` call's its wait plus 120 seconds; one that exceeds it is stopped.
+When an answer's `tools` differ from the tools the server last listed, it sends
+`notifications/tools/list_changed`, and its next `tools/list` answers with the current tools. When
+`concorde project-mcp --tools` gives no tools, the server lists its own.
 
 It takes the **session** it serves from `CLAUDE_CODE_SESSION_ID`, the identity Claude Code gives
 the processes of a session, and writes it into the holder line of every lock it takes. The
@@ -60,7 +76,8 @@ refused, unchanged, which is `Tasks (concorde task <command>)` for a refusal of 
 | `no_project` | `environment` | the server found no Git repository at start |
 | `invalid_input` | `input` | the tool is unknown, or its arguments do not satisfy its input schema or name a combination it does not take; the detail names the argument |
 | `workspace_busy`, `merge_busy` | `environment` | `task_merge` found the lock held; the detail names the lock file and the holder's command, process, start time, session and task, and the evidence of kind `lock` carries the holder line as JSON |
-| `start_failed` | `environment` | the operating system refused to start the merge process; both locks were released |
+| `call_failed` | `environment` | the process of a call exited, or was stopped after its time, without printing an answer; the detail names the command run in the primary worktree, its exit status and the end of what it printed |
+| `start_failed` | `environment` | the operating system refused to start `concorde task merge`; both locks were released |
 | `unbound_worktree` | `environment` | `workflow_step` in a session whose worktree has no usable [workspace binding](../../glossary.json#concept.workspace-binding), such as the primary worktree; the detail names the worktree and, for a binding that cannot be read, its code |
 | `step_failed` | `environment` | `concorde workflow step` printed no JSON object, or gave no answer within its wait and 60 seconds more; the detail carries the command, its exit status and the end of its output |
 | `unknown_run` | `input` | `run_result` names a run no reader finds |
@@ -102,17 +119,21 @@ A holder line is the object a lock file holds while it is held,
 
 ### Starting a merge
 
-`task_merge` takes the task's [workspace lock](../../glossary.json#concept.workspace-lock) and then
-the [merge lock](../../glossary.json#concept.merge-lock) with an exclusive `flock` that does not
-wait, and writes into each a holder line naming `` `concorde task merge` of task <task>, started by
-the project MCP server ``, its session and the task. A lock that is held refuses the call at once
-with `workspace_busy` or `merge_busy`, after releasing a lock it had already taken. With both, it
-starts `concorde task merge <task> --wait 0` with each `--check`, or with `--resume` or `--abort`,
-as a process of its own session in the primary worktree, whose standard output and error go to
-files of a private temporary directory of the server. The process inherits both locked descriptors
-and finds them named in its environment variable `CONCORDE_INHERITED_LOCKS`, as
-[Tracing](../../tracing/contracts.md#handing-a-lock-on) states; the server then closes its own
-copies, so from then on the locks are released exactly when that process ends.
+The server starts the call's process for `task_merge` in a process session of its own, with its
+standard error going to a file of a private temporary directory of the server. That process takes
+the task's [workspace lock](../../glossary.json#concept.workspace-lock) and then the
+[merge lock](../../glossary.json#concept.merge-lock) with an exclusive `flock` that does not wait,
+and writes into each a holder line naming `` `concorde task merge` of task <task>, started by the
+project MCP server ``, its own process, the session and the task. A lock that is held refuses the
+call at once with `workspace_busy` or `merge_busy`, after releasing a lock it had already taken.
+With both, it prints the start below and replaces itself with
+`concorde task merge <task> --wait 0` of the primary worktree, with each `--check`, or with
+`--resume` or `--abort`, whose standard output goes to another file of that directory. The merge
+keeps both locked descriptors, named in its environment variable `CONCORDE_INHERITED_LOCKS` as
+[Tracing](../../tracing/contracts.md#handing-a-lock-on) states, and the server never holds either,
+so the locks are released exactly when the merge ends. When the operating system refuses to run
+`concorde task merge`, the call's process prints a `start_failed` refusal after the start and
+exits, which releases both locks, and the call is refused with it.
 
 The result is returned at once:
 
@@ -137,8 +158,8 @@ one that cannot be read, it is refused with `unbound_worktree` and runs nothing.
 that worktree's own `concorde`, its `.concorde/bin/concorde` or, in Concorde's source checkout,
 its `scripts/concorde.py` with the server's Python, as
 `concorde workflow step --json <request> --wait <wait>` from the worktree's root, as a child of the
-server with the server's environment and no standard input, and waits for it at most `wait` plus
-60 seconds. The command is the server's own child, so the
+call's process with the server's environment and no standard input, and waits for it at most
+`wait` plus 60 seconds. The command is a process of the server's, so the
 [detached run](../../glossary.json#concept.detached-run) it starts for a new step is a process of
 its own and lives until its run ends, whatever becomes of the calls that asked for it or of the
 session and its server.
@@ -162,9 +183,12 @@ Otherwise, without a channel, it answers
 `{"registered": false, "channel": false, "command": "<concorde task wait …>", "explanation": …}`,
 where the command is `concorde task wait <task> --until <state>[,<state>…]`,
 `concorde task wait <task> --rebound <session>`, `concorde task wait --run <run-id>` or `concorde task wait [<task>] --lock merge|workspace`. With a
-channel it answers `{"registered": true, "wait": "<n>", "channel": true, "waits_for": "<what>"}` and
-watches, as `concorde task wait` does, until it happens or ends another way; it never takes or
-hands over a lock for the session.
+channel it answers `{"registered": true, "wait": "<n>", "channel": true, "waits_for": "<what>"}`,
+where the `waits_for` of a lock names the holder line the call saw, and runs that same
+`concorde task wait` of the primary worktree as a process that ends when the server ends, until it
+happens or ends another way. What that command prints becomes the event: its answer a `wait_done`,
+its refusal a `wait_failed`, and no answer a `wait_failed` with the server's `call_failed` link. It
+never takes or hands over a lock for the session.
 
 ## Channel events
 
