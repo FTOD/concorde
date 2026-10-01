@@ -1,0 +1,43 @@
+# I-d838bcb654245eb1ad36a501fdc8afbc
+
+```json
+{
+  "schema_version": 3,
+  "id": "I-d838bcb654245eb1ad36a501fdc8afbc",
+  "status": "open",
+  "reports": [
+    {
+      "id": "sha256:c47d4e6a47a96421adbaf0d462e9055820e5e465ae9929d0e703075889633ed1",
+      "created_at": "2026-10-01T05:39:36.256567+00:00",
+      "report": {
+        "report_key": "module.e2e/2",
+        "tier": "preferred-fix",
+        "type": "bug",
+        "subtype": null,
+        "title": "Select the providers for preparation's complete model validation",
+        "description": "Preparation directly relies on Workers' configuration and model-map contracts without declaring that provider. Its promise to validate every worker also lacks selected context defining the catalog over which validation operates.\n\nSuggested repair: Declare uses of Workers and select the configuration, model-map and refusal promises preparation consumes. Select the Operation catalog contract needed to enumerate workers, or an existing provider contract that performs that complete validation. Explain E2E's construction and preflight duties and propagation of refusals before cloning.\n\nOther Modules concerned: module.workers, module.operations",
+        "impact": "An E2E task must construct and validate configuration without receiving the canonical rules and complete worker enumeration it must follow. Changes to those promises are absent from its declared dependency account.",
+        "basis": "spec_panel run r-20261001T051011-spec_panel-91e80034 judged specs/concorde/e2e/module.md at preparing-a-test-project, line 182 by the dependencies criterion of the Protocol's Evaluating a Spec; the Specs read: Preparation refuses \"a worker configuration whose models that map cannot resolve for every worker of every Operation, with Workers' own refusal (`model_unmapped`, `model_map_missing` or `model_map_invalid`)\". The entry metadata selects Workflows, Distribution, Execution, Main session and Tasks, but neither Workers nor the Operation catalog. Workers' entry owns configuration and model-map resolution; Operations' workers.md describes catalog-based validation.\n\nThe panel's chair merged r2.2, r3.2, a1.1, a2.1 and verified: Verified E2E's dependency selections, Workers' ownership and refusal rules, and Operations' catalog-based validation account. Merged the context and dependency reports. Preferred-fix because selecting the existing canonical contracts is preferable to duplicating them, while the precise selection depends on which provider performs enumeration.",
+        "owner_target_id": "module.e2e",
+        "evidence": [
+          {
+            "path": "specs/concorde/e2e/module.md",
+            "description": "preparing-a-test-project, cited by the dependencies finding"
+          }
+        ]
+      },
+      "source": {
+        "invocation_id": "r-20261001T051011-spec_panel-91e80034",
+        "agent": "operation",
+        "operation": "spec_panel",
+        "phase": "report",
+        "target_id": "module.e2e",
+        "context_id": "sha256:6d1ed9a2394f063345e81a92404e19816da64eedbb1c079e0a2bac0dfb3233b5",
+        "change_id": null,
+        "head": "eb6687427361c480d7a7eb0d9a022b0c2c9f5dbb"
+      }
+    }
+  ],
+  "dispositions": []
+}
+```
