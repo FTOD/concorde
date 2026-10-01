@@ -4,7 +4,7 @@
 {
   "schema_version": 3,
   "id": "I-e6635dfe06dc5d81bf4ad7b7ca279b7f",
-  "status": "open",
+  "status": "closed",
   "reports": [
     {
       "id": "sha256:3b446dd5922522cd730410ee81ac674a4006df3acb627fbbdec847fdea4fb93f",
@@ -50,6 +50,18 @@
       }
     }
   ],
-  "dispositions": []
+  "dispositions": [
+    {
+      "reason": "resolved",
+      "note": "Fixed by task module-code-review, merged into the primary branch at d703a2c691330055f3201d33950a7cce14443079.",
+      "evidence": [
+        "merge commit d703a2c691330055f3201d33950a7cce14443079",
+        "task module-code-review"
+      ],
+      "duplicate_of": null,
+      "actor": "main-agent",
+      "created_at": "2026-10-01T05:27:15.722047+00:00"
+    }
+  ]
 }
 ```
