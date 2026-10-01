@@ -45,6 +45,23 @@ was restarted with: asking for that label again starts a new run under the same 
 
 `concorde workflow step` SHALL look a key up, start its run and record it while holding the workspace's workflow lock.
 
+It SHALL NOT wait for the workspace lock, or any other lock, while holding the workflow lock: a step
+that finds the workspace busy releases the workflow lock while it waits and looks the key up again
+once it holds it again, so that whoever retires the workspace while holding its workspace lock
+always gets the workflow lock.
+
+### req.workflows.workspace-retired — Nothing is written into a retired workspace
+
+The step and report commands SHALL NOT create or write any file or folder in the workspace folder
+before they hold the workflow lock and the binding read again matches the binding read when the
+command started.
+
+They take the workflow lock without ever taking a lock file that was removed or replaced while they
+waited for it, and refuse with `workspace_retired`, starting and recording nothing, when it was or
+when the binding is now absent, untrusted or different. Whoever retires the workspace removes the
+binding, moves the workspace folder and removes the workflow lock file while holding that lock, so a
+step never writes into a folder that has moved or recreates one that is gone.
+
 ### req.workflows.supersede — A rerun supersedes what came after it
 
 Starting a new run for a base key that already has a current step SHALL supersede that step and every step recorded after it.
@@ -55,6 +72,9 @@ answered step is taken as current.
 ### req.workflows.refused-recorded — A step that could not start is recorded
 
 A step whose command line the runner rejected, or whose detached runner did not start, SHALL be recorded without a run and with its error link.
+
+A step refused because its workspace was retired is the exception: it is recorded nowhere, and its
+outcome alone carries the `workspace_retired` link.
 
 ### req.workflows.bounded-wait — A step call waits a bounded time
 

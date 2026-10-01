@@ -162,16 +162,26 @@ one task runs one thing at a time by Execution's
 ### req.tasks.close-when-ended — A task moves to the history only once it has ended
 
 Tasks SHALL move a closed task's folder to the history only while it holds the task's workspace
-lock, after it stopped, for a close without a merge, every task session of the task and every run
-of the workspace still running or waiting for its lock, and after it removed the worktree with its
-binding.
+lock and its workflow lock, after it stopped, for a close without a merge, every task session of the
+task and every run of the workspace still running or waiting for its lock, and after it removed the
+worktree with its binding.
 
-Still holding the lock, the close then removes the workspace lock file.
+Still holding both locks, the close then removes the workspace lock file and the workflow lock file.
 
 A run of the task therefore never writes into a folder that has moved: none runs while the close
 holds the lock, one waiting for it writes only in Execution's lobby and is refused with
 `workspace_retired` once it takes the removed lock file or finds the binding gone, and none starts
-after it, since its binding is gone or names a folder that no longer exists.
+after it, since its binding is gone or names a folder that no longer exists. Nor does a workflow
+step of the workspace: one holding the workflow lock finishes its writes before the folder moves,
+and one waiting for it is refused with `workspace_retired` in the same way.
+
+### req.tasks.workflow-lock-last — A close takes the workflow lock last
+
+Tasks SHALL take a task's workflow lock, in `close` and in the close that ends `merge`, only while
+already holding the task's workspace lock and the merge lock, and wait for it as long as it takes.
+
+A [workflow step](../../glossary.json#concept.workflow-step) holds that lock only for writes that wait for no other lock, so the wait is short
+and no two processes ever wait for each other's locks.
 
 ### req.tasks.history-unique — No closed task replaces another
 

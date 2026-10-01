@@ -5,8 +5,12 @@ the binding names, beside the answers passed to steps (``answers/``), the saved 
 (``reports/``) and one trace node per step (``steps/<n>-<key>/``), inside which the step's run keeps
 its own node. A workspace runs at most one workflow. Nothing else writes the record or the step
 nodes, and they are written only while the workflow lock ``locks/workflows/<workspace>.lock`` of the
-binding's ``.concorde`` is held. Paths inside the record are relative to the workflow's node; the
-record ``load`` returns names the answers files absolutely, as the step command passes them on.
+binding's ``.concorde`` is held. The lock is never taken again on a file that was removed or replaced
+while waiting for it, and once held the binding is read again: whoever retires the workspace, as a
+task's close does, removes the lock file while holding it, so a step or report that finds the lock
+gone or the binding gone or changed is refused with ``workspace_retired`` before it writes anything.
+Paths inside the record are relative to the workflow's node; the record ``load`` returns names the
+answers files absolutely, as the step command passes them on.
 """
 
 from __future__ import annotations
@@ -120,6 +124,16 @@ class WorkflowError(Exception):
     def __init__(self, code: str, message: str):
         super().__init__(message)
         self.code = code
+
+
+class WorkspaceRetired(WorkflowError):
+    """The workspace was retired, or its binding changed, while the command waited for its workflow
+    lock; ``found`` names what was found: ``lock_removed``, ``binding_gone``,
+    ``binding_untrusted`` or ``binding_changed``."""
+
+    def __init__(self, found: str, message: str):
+        super().__init__("workspace_retired", message)
+        self.found = found
 
 
 @dataclass(frozen=True)
@@ -304,9 +318,58 @@ def _write(space: Workspace, record: dict, *, ended: dict | None = None) -> None
 
 @contextmanager
 def step_lock(space: Workspace):
-    """The workspace's workflow lock, held while a key is looked up, started and recorded."""
-    with locks.hold(space.lock, f"workflow of workspace {space.name}", wait=None):
-        yield
+    """The workspace's workflow lock, held while a key is looked up, started and recorded, a step's
+    node ended or a report saved; ``WorkspaceRetired`` when the workspace was retired meanwhile.
+
+    The lock is a leaf: nothing waits for another lock while holding it, so that a close holding
+    the workspace lock always gets it soon. A lock file removed or replaced while this process
+    waited for it is never taken again, and once held the binding must still be the one the
+    command read, since a close removes the worktree with its binding before it moves the
+    workspace folder and removes the lock file while holding the lock.
+    """
+    try:
+        with locks.hold(
+            space.lock, f"workflow of workspace {space.name}", wait=None, retake=False
+        ):
+            _check_binding(space)
+            yield
+    except locks.LockGone as gone:
+        raise WorkspaceRetired(
+            "lock_removed",
+            f"the workspace {space.name} was retired while this command waited for its workflow "
+            f"lock: {gone}",
+        ) from None
+
+
+def _check_binding(space: Workspace) -> None:
+    """Refuse with ``WorkspaceRetired`` unless the worktree's binding is still the one read."""
+    path = workspace_binding.path_of(space.root)
+    try:
+        current = workspace_binding.load(space.root)
+    except workspace_binding.BindingError as error:
+        raise WorkspaceRetired(
+            "binding_untrusted",
+            f"the workspace {space.name} was retired while this command waited for its workflow "
+            f"lock: its binding {path} can no longer be trusted ({error.code}: {error})",
+        ) from None
+    if current is None:
+        raise WorkspaceRetired(
+            "binding_gone",
+            f"the workspace {space.name} was retired while this command waited for its workflow "
+            f"lock: its binding {path} is gone",
+        )
+    if current != space.binding:
+        changed = sorted(
+            key
+            for key in {*space.binding, *current}
+            if space.binding.get(key) != current.get(key)
+        )
+        raise WorkspaceRetired(
+            "binding_changed",
+            f"the binding {path} changed while this command waited for the workflow lock of "
+            f"workspace {space.name} (changed: {', '.join(changed)}); a workflow writes only in "
+            "the workspace whose binding it read",
+        )
 
 
 def current_steps(record: dict | None) -> list[dict]:
@@ -517,38 +580,37 @@ def end_step(space: Workspace, step: dict, state: str, result: dict | None) -> N
 
 def record_report(space: Workspace, result: dict, rendered: str) -> dict:
     """Save a report and its rendering in the workflow's node, list it there and end the node
-    with the report's status."""
-    with step_lock(space):
-        record = load(space)
-        if record is None:
-            raise WorkflowError(
-                "no_workflow",
-                f"workspace {space.name} ran no workflow step; there is nothing to report",
-            )
-        from ..execution.runs import load_result, run_state
-
-        # Every step whose run ended by now has its node ended with it.
-        for step in record["steps"]:
-            if step.get("run_id"):
-                state = run_state(space.store, step["run_id"])
-                end_step(space, step, state, load_result(space.store, step["run_id"]))
-        number = len(record["reports"]) + 1
-        folder = space.directory / "reports"
-        folder.mkdir(parents=True, exist_ok=True)
-        path = folder / f"{number}.json"
-        path.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n")
-        text = folder / f"{number}.md"
-        text.write_text(rendered, encoding="utf-8")
-        record["reports"].append(
-            {
-                "status": result["status"],
-                "path": path.as_posix(),
-                "rendered": text.as_posix(),
-                "at": now(),
-            }
+    with the report's status; the caller holds the workflow lock (``step_lock``)."""
+    record = load(space)
+    if record is None:
+        raise WorkflowError(
+            "no_workflow",
+            f"workspace {space.name} ran no workflow step; there is nothing to report",
         )
-        _write(space, record, ended=result)
-        return record
+    from ..execution.runs import load_result, run_state
+
+    # Every step whose run ended by now has its node ended with it.
+    for step in record["steps"]:
+        if step.get("run_id"):
+            state = run_state(space.store, step["run_id"])
+            end_step(space, step, state, load_result(space.store, step["run_id"]))
+    number = len(record["reports"]) + 1
+    folder = space.directory / "reports"
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / f"{number}.json"
+    path.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n")
+    text = folder / f"{number}.md"
+    text.write_text(rendered, encoding="utf-8")
+    record["reports"].append(
+        {
+            "status": result["status"],
+            "path": path.as_posix(),
+            "rendered": text.as_posix(),
+            "at": now(),
+        }
+    )
+    _write(space, record, ended=result)
+    return record
 
 
 def write_answers(space: Workspace, key: str, answers: list[dict]) -> str:
@@ -566,6 +628,7 @@ __all__ = [
     "WORKFLOW_TRACE",
     "WorkflowError",
     "Workspace",
+    "WorkspaceRetired",
     "base_key",
     "check_step",
     "current_steps",

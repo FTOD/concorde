@@ -16,7 +16,7 @@ Printed by `concorde workflow step`, from the workspace's
 ```concorde-contract
 {
   "id": "contract.workflows.step",
-  "version": 4,
+  "version": 5,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -280,7 +280,7 @@ Printed by `concorde workflow step`, from the workspace's
       }
     }
   },
-  "semantics": "The outcome of one workflow step in the bound workspace the step command runs in. workspace names that workspace as its binding does. key is the step key, including the restart label after # and the answers digest after @ when they were given. name is the Operation or execution command the step runs. run_id names the run recorded for the key, null for a refused step and for a step that is still waiting for the workspace lock, and result_path the path in the run store where its run result is or will be saved. state is running while the run has no result and its runner lives, and also when the command's wait ended before the workspace lock was free, in which case nothing was started or recorded and asking again waits for the lock again; finished once it has a result, lost when it has neither a result nor a living runner, and refused when the run could not start or the workflow record refused the step; status and summary are the result's once finished and null otherwise. decision_points counts the result's open questions, and for a survey also its decisions decided by the worker, leaving out the points the step's own answers settle. created_modules lists the Modules a scaffold created, each with the other created Modules it uses, empty for any other step. ready is a task-validation result's readiness and null otherwise. error is null for running and finished, and the workflow's link for lost and refused. A behaviour or field change increments the version.",
+  "semantics": "The outcome of one workflow step in the bound workspace the step command runs in. workspace names that workspace as its binding does. key is the step key, including the restart label after # and the answers digest after @ when they were given. name is the Operation or execution command the step runs. run_id names the run recorded for the key, null for a refused step, except one whose run started before its workspace was retired, which names that run, and for a step that is still waiting for the workspace lock, and result_path the path in the run store where its run result is or will be saved. state is running while the run has no result and its runner lives, and also when the command's wait ended before the workspace lock was free, in which case nothing was started or recorded and asking again waits for the lock again; finished once it has a result, lost when it has neither a result nor a living runner, and refused when the run could not start, the workflow record refused the step or the workspace was retired while the command waited for its workflow lock, which nothing records; status and summary are the result's once finished and null otherwise. decision_points counts the result's open questions, and for a survey also its decisions decided by the worker, leaving out the points the step's own answers settle. created_modules lists the Modules a scaffold created, each with the other created Modules it uses, empty for any other step. ready is a task-validation result's readiness and null otherwise. error is null for running and finished, and the workflow's link for lost and refused. A behaviour or field change increments the version.",
   "example": {
     "workflow": "brownfield",
     "workspace": "adopt",
@@ -1625,6 +1625,7 @@ causes.
 | `step_running` | result | `exhausted` | a report was taken while a current step still runs |
 | `step_rejected` | step outcome | `input` | the workflow record refused the step (`workflow_conflict`, `step_conflict`, `record_unreadable`), its `Workflows (workflow record)` link the cause; nothing was started or recorded, and the outcome has state `refused` |
 | `step_unrecorded` | step outcome | `environment` | a run started but the workflow record refused to record it, its link the cause; the link names the live run |
+| `workspace_retired` | step outcome | `environment` | the workflow lock's file was removed or replaced while the step command waited for it, or, once it held the lock, the worktree's binding was gone, untrusted or no longer the one the command read: whoever retired the workspace moved its folder away; a `Workflows (workflow lock)` link of code `lock_removed`, `binding_gone`, `binding_untrusted` or `binding_changed` is the cause. Nothing was started or recorded, and the outcome has state `refused`; when the step had started a run that ended before the retirement, the link names that run and so does the outcome |
 | `incomplete` | result | `capability` | the recorded steps end before the procedure's last step without any of the stops above, such as a script that ended early |
 | `report_failed` | report command | `capability` | the report could not be built for a reason of its own, such as a recorded result the report's contract refuses; the detail names the reason, instead of the command ending in a traceback |
 
@@ -1635,7 +1636,7 @@ cannot work at all: `binding_required` when the worktree they start in has no
 [workspace binding](../../glossary.json#concept.workspace-binding), `binding_unreadable`,
 `binding_invalid` or `binding_misplaced` when its binding is refused, and, for the report,
 `no_workflow` when the workspace ran no [workflow step](../../glossary.json#concept.workflow-step)
-and `record_unreadable` when its workflow record cannot be read. A command line that breaks the
+and `record_unreadable` when its workflow record cannot be read, and, for the report, `workspace_retired` with reason `environment` when the workspace was retired while it waited for the workflow lock, as for a step. A command line that breaks the
 [step request](#contract.workflows.step-request) contract, or a malformed report command line, is
 answered with a `component` link of
 the actor `Workflows (concorde workflow)`, code `invalid_request`, reason `input`, and exit status

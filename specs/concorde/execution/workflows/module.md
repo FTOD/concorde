@@ -475,7 +475,8 @@ once the run has finished, 3 while it is still running, so a caller that must no
 a few minutes simply asks again, 1 when the step is lost or refused or the command cannot work at
 all, and 2 when the command line or request breaks the step request contract (`invalid_request`).
 Before it starts a run, the command waits, within the same bound, until the workspace lock is free,
-since a workspace runs one run at a time. When the bound ends while the lock is still held, it
+since a workspace runs one run at a time. It waits without holding the workflow lock, then takes it
+again and looks the key up again. When the bound ends while the lock is still held, it
 starts and records nothing and prints an outcome with state `running`, no run and no error, exiting
 with status 3; asking again waits for the lock again. A step is **lost** when its recorded run has
 no result and no living runner. A step is **refused** when the runner rejected the command line or
@@ -484,6 +485,28 @@ step for another workflow than the workspace's, or a key recorded for another Op
 is refused by the workflow record before anything is recorded or started, with a `step_rejected`
 link over that refusal; if the record refuses a run already started, the link is `step_unrecorded`
 and names the run. Such a step is in no record, so the script returns its outcome with the report.
+
+<a id="retired-workspace"></a>
+
+**A retired workspace.** Whoever retires a workspace, as closing a task does, removes its worktree
+with the binding, moves the workspace folder away and removes the workflow lock file, holding the
+workflow lock all the while. So the step and report commands write nothing into a workspace folder
+until they hold the workflow lock and have read the binding again: they never take a lock file that
+was removed or replaced while they waited for it, and once they hold the lock, the binding must
+still be the one they read when they started. Otherwise the step is refused with a
+`workspace_retired` link, whose cause, a `Workflows (workflow lock)` link, says what the command
+found: `lock_removed`, `binding_gone`, `binding_untrusted` or `binding_changed`. Nothing is started
+or recorded, for the workspace folder may already lie in the history, which nothing writes: the
+outcome alone carries the refusal, with state `refused`, and the script returns it with the report.
+A step whose run had started and ended before the workspace was retired is refused the same way when
+it comes to end the step's node, naming the run, whose own records went with the folder. The report
+command in a retired workspace is refused with a `component` link `workspace_retired`.
+
+The workflow lock is a leaf: neither command waits for another lock while holding it, which is why a
+step waits for the workspace lock without it. A close holding the workspace lock, and the [merge lock](../../glossary.json#concept.merge-lock)
+when it merges, therefore always gets the workflow lock soon, and nothing waits in a circle: a step
+that holds the workflow lock before the close does finishes its writes before the folder moves, and
+one that waits for it until after the close is refused.
 Every lost or refused outcome carries an error link, and a lost step's link carries the end of its
 runner's output.
 
@@ -530,9 +553,10 @@ takes every process it started with it ([Execution](../module.md#detached-namesp
 agent does not run the step command with Bash: it calls the
 [project MCP server](../../glossary.json#concept.project-mcp-server)'s tool `workflow_step` with the
 step request as an object, and the server, a process of the session beside its tools, runs the step
-command of the session's worktree. The run it starts is the server's own child and lives until it
-ends, whatever becomes of the calls that asked for it, of the session or of the server; later calls
-for the same key only wait for it. The request travels as an object, with nothing quoted for a
+command of the session's worktree, through the fresh process with which it answers each call
+([Current code](../../coordination/main-session/module.md#current-code)). The run it starts lives
+until it ends, whatever becomes of the calls that asked for it, of the session or of the server;
+later calls for the same key only wait for it. The request travels as an object, with nothing quoted for a
 shell. The report is still relayed with Bash: `concorde workflow report` starts no run and returns
 at once.
 
@@ -635,7 +659,9 @@ It relies on a [detached run](../../glossary.json#concept.detached-run) being an
 its [run progress file](../../glossary.json#concept.run-progress-file) exists, and on the
 [run store](../../glossary.json#concept.run-store) keeping every run's result and progress by its
 identity, which is how a later call, or a relaunched workflow, finds a run it started before.
-Workflows reads results and never changes them. A command line the runner rejects, such as an
+Workflows reads results and never changes them. It relies on whoever retires a workspace, as the task level
+does when it closes a task, holding the workflow lock while it removes the binding, moves the
+workspace folder and removes the lock file, as [A retired workspace](#retired-workspace) describes. A command line the runner rejects, such as an
 unknown argument, and a detached runner that did not start make the step refused, with the runner's
 message or `detach_failed` link as the cause; a run with no result and no living runner makes it
 lost, with the end of the runner's output; a run that the runner refused, such as one for a

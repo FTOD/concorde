@@ -34,7 +34,7 @@ from ..execution.runs import (
 )
 from ..spec.schema import validate
 from . import store
-from .store import WorkflowError, Workspace
+from .store import WorkflowError, Workspace, WorkspaceRetired
 
 WAIT = 540.0
 POLL = 0.5
@@ -81,7 +81,7 @@ MODULE_ID = {
     "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$",
 }
 NAME = {"type": "string", "pattern": "^[a-z][a-z_-]*$"}
-# contract.workflows.step, version 4
+# contract.workflows.step, version 5
 STEP_SCHEMA: dict = {
     "type": "object",
     "additionalProperties": False,
@@ -447,6 +447,54 @@ def rejected(
     )
 
 
+def retired(
+    space: Workspace,
+    workflow,
+    key,
+    name,
+    refusal: WorkspaceRetired,
+    *,
+    run_id: str | None = None,
+):
+    """The ``workspace_retired`` outcome of a step whose workspace was retired while it waited for
+    the workflow lock, with what the lock showed as the cause; nothing of it is recorded."""
+    if run_id:
+        detail = (
+            f"step {key} ({name}) started run {run_id}, but its workspace {space.name} was "
+            f"retired before the step could end its node: {refusal}; nothing more was written"
+        )
+    else:
+        detail = (
+            f"step {key} ({name}) was refused, since its workspace {space.name} was retired: "
+            f"{refusal}; nothing was started or recorded"
+        )
+    return workflow_link(
+        workflow,
+        space.name,
+        "workspace_retired",
+        detail,
+        reason="environment",
+        explanation="a workflow writes its records only into the folder of a workspace that is "
+        "still bound, and a retired workspace's folder has moved where nothing writes any more",
+        evidence=[errors.evidence("run", run_id, "")] if run_id else [],
+        options=[
+            "run the workflow again in a worktree that is bound now, such as the worktree of "
+            "an open task"
+        ],
+        causes=[
+            errors.link(
+                "component",
+                "Workflows (workflow lock)",
+                refusal.found,
+                str(refusal),
+                reason="environment",
+                explanation="the workflow lock is held only on the lock file of a workspace "
+                "whose binding is still the one the command read",
+            )
+        ],
+    )
+
+
 def run_step(
     space: Workspace, request: dict, wait: float | None = WAIT
 ) -> tuple[int, dict]:
@@ -464,55 +512,75 @@ def run_step(
 
     started = None
     try:
-        with store.step_lock(space):
-            record = store.load(space)
-            store.check_step(space, record, workflow, key, name)
-            found = next(
-                (s for s in reversed(store.current_steps(record)) if s["key"] == key),
-                None,
-            )
-            state = run_state(space.store, found["run_id"]) if found else None
-            restart = found is None or (
-                request["retry"]
-                and state in ("finished", "lost", "refused")
-                and (load_result(space.store, found["run_id"]) or {}).get("status")
-                != "ok"
-            )
-            if not restart:
-                run_id = found["run_id"]
-                if run_id is None:
-                    return refused(found.get("error"))
-            else:
-                # One run of a workspace at a time: wait for a run still holding the workspace,
-                # such as the previous step's whose runner is finishing, before starting this one.
-                while lock_holder(space.store, space.name) is not None:
-                    if deadline is not None and time.monotonic() >= deadline:
-                        return 3, outcome(
-                            space, workflow, key, name, None, "running", None, settled
-                        )
-                    time.sleep(POLL)
-                argv = list(request["argv"])
-                path = None
-                if answers:
-                    path = store.write_answers(space, key, answers)
-                    argv += ["--answers", path]
-                    asked = asking_run(space, record, request["key"])
-                    if asked:
-                        argv += ["--input", asked]
-                # The step's node is created before its run, which is placed inside it.
-                folder = store.next_step_folder(space, record, key)
-                folder.mkdir(parents=True, exist_ok=True)
-                try:
-                    announced = start_run(workflow, space, argv, folder / "run")
-                    run_id, error = announced["run_id"], None
-                except StepError as refusal:
-                    run_id, error = None, refusal.link
-                started = run_id
-                store.record_step(
-                    space, workflow, key, name, run_id, mode, path, error, folder=folder
+        while True:
+            with store.step_lock(space):
+                record = store.load(space)
+                store.check_step(space, record, workflow, key, name)
+                found = next(
+                    (
+                        s
+                        for s in reversed(store.current_steps(record))
+                        if s["key"] == key
+                    ),
+                    None,
                 )
-                if error is not None:
-                    return refused(error)
+                state = run_state(space.store, found["run_id"]) if found else None
+                restart = found is None or (
+                    request["retry"]
+                    and state in ("finished", "lost", "refused")
+                    and (load_result(space.store, found["run_id"]) or {}).get("status")
+                    != "ok"
+                )
+                if not restart:
+                    run_id = found["run_id"]
+                    if run_id is None:
+                        return refused(found.get("error"))
+                    break
+                # One run of a workspace at a time: a run still holding the workspace, such as
+                # the previous step's whose runner is finishing, is waited for below.
+                if lock_holder(space.store, space.name) is None:
+                    argv = list(request["argv"])
+                    path = None
+                    if answers:
+                        path = store.write_answers(space, key, answers)
+                        argv += ["--answers", path]
+                        asked = asking_run(space, record, request["key"])
+                        if asked:
+                            argv += ["--input", asked]
+                    # The step's node is created before its run, which is placed inside it.
+                    folder = store.next_step_folder(space, record, key)
+                    folder.mkdir(parents=True, exist_ok=True)
+                    try:
+                        announced = start_run(workflow, space, argv, folder / "run")
+                        run_id, error = announced["run_id"], None
+                    except StepError as refusal:
+                        run_id, error = None, refusal.link
+                    started = run_id
+                    store.record_step(
+                        space,
+                        workflow,
+                        key,
+                        name,
+                        run_id,
+                        mode,
+                        path,
+                        error,
+                        folder=folder,
+                    )
+                    if error is not None:
+                        return refused(error)
+                    break
+            # The workspace lock is waited for without the workflow lock, which is a leaf: a
+            # close holding the workspace lock takes the workflow lock before it moves the
+            # workspace folder. The key is looked up again once the workspace is free.
+            while lock_holder(space.store, space.name) is not None:
+                if deadline is not None and time.monotonic() >= deadline:
+                    return 3, outcome(
+                        space, workflow, key, name, None, "running", None, settled
+                    )
+                time.sleep(POLL)
+    except WorkspaceRetired as refusal:
+        return refused(retired(space, workflow, key, name, refusal))
     except WorkflowError as refusal:
         return refused(
             rejected(space, workflow, key, name, refusal, started=started), started
@@ -524,9 +592,14 @@ def run_step(
         ):
             break
         time.sleep(POLL)
-    value = outcome(space, workflow, key, name, run_id, state, None, settled)
     if state in ("finished", "lost"):
-        _end_step_node(space, key, run_id, state)
+        try:
+            _end_step_node(space, key, run_id, state)
+        except WorkspaceRetired as refusal:
+            return refused(
+                retired(space, workflow, key, name, refusal, run_id=run_id), run_id
+            )
+    value = outcome(space, workflow, key, name, run_id, state, None, settled)
     return {"finished": 0, "running": 3}.get(state, 1), value
 
 

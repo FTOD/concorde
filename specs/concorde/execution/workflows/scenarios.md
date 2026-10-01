@@ -50,6 +50,15 @@ shapes are in the [contracts](contracts.md).
 - AND when the bound ends while the lock is still held, it prints the step outcome with state `running` and no run and exits with status 3, having started and recorded nothing
 - AND once the lock is free, running the same command again starts the step's run
 
+### scenario.workflows.step-retired — A step waiting while its task is closed
+
+- GIVEN a task worktree of the workspace `adopt` whose workflow lock the close of its task holds, and the step command run there for `survey`, waiting for that lock
+- WHEN the close removes the worktree with its binding, moves the workspace folder to the history and removes the workflow lock file while still holding it, then releases it
+- THEN the step prints an outcome with state `refused`, no run and a `workspace_retired` link whose cause, a `Workflows (workflow lock)` link `lock_removed`, names the removed lock file, and exits with status 1
+- AND it started no run, the history the close moved holds nothing of the step, and no workspace folder is created again where the moved one was
+- AND a step that takes the workflow lock after the close, finding the binding gone or changed, is refused with `workspace_retired` the same way, its cause `binding_gone` or `binding_changed`
+- AND `concorde workflow report` there is refused with a `component` link `workspace_retired` of reason `environment`
+
 ### scenario.workflows.step-cached — A finished step returns at once
 
 - GIVEN a workspace whose step `survey` has finished `ok`

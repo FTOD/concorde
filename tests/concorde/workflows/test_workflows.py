@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import contextlib
+import io
 import json
+import os
 import re
 import secrets
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
 from datetime import UTC, datetime
@@ -21,9 +24,11 @@ from concorde.commands.catalog import COMMANDS
 from concorde.execution.runs import Store, run_lock, workspace_lock, workspace_runs
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
+from concorde.tracing import locks
 from concorde.tracing import node as trace
 from concorde.workflows import catalog, store
 from concorde.workflows import step as steps
+from concorde.workflows.cli import refused
 from concorde.workflows.report import RESULT_SCHEMA, report
 from concorde.workflows.step import (
     REQUEST_SCHEMA,
@@ -57,6 +62,19 @@ def run_link(name: str, run_id: str, code: str, reason: str = "decision") -> dic
         reason=reason,
         explanation="a test stand-in",
     )
+
+
+def wait_blocked(path: Path, timeout: float = 30) -> None:
+    """Return once some process waits for the ``flock`` of ``path``, as ``/proc/locks`` shows."""
+    inode = os.stat(path).st_ino
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        for line in Path("/proc/locks").read_text().splitlines():
+            fields = line.split()
+            if "->" in fields and fields[fields.index("->") + 5].endswith(f":{inode}"):
+                return
+        time.sleep(0.02)
+    raise AssertionError(f"nothing waited for the lock {path}")
 
 
 class Runs:
@@ -319,6 +337,138 @@ class StepTests(unittest.TestCase):
             status, again = run_step(self.space, self.request(), wait=0.1)
         self.assertEqual(1, len(self.started))
         self.assertEqual(outcome["run_id"], again["run_id"])
+
+    @verifies("scenario.workflows.step-retired")
+    def test_a_step_waiting_while_its_task_closes_is_refused(self):
+        from concorde.tasks import store as tasks
+
+        with self.starter(output=SURVEY_OUTPUT):
+            run_step(self.space, self.request())
+        waiting = {}
+        threads = []
+        dirty = tasks._dirty
+
+        def meanwhile(worktree):
+            # The close holds the workflow lock now, before it removes the worktree: a step
+            # asked for meanwhile waits for that lock.
+            def ask():
+                waiting["outcome"] = run_step(
+                    self.space, self.request("validate", ("task-validation",))
+                )
+
+            thread = threading.Thread(target=ask)
+            thread.start()
+            threads.append(thread)
+            wait_blocked(self.space.lock)
+            return dirty(worktree)
+
+        with self.starter(), patch.object(tasks, "_dirty", side_effect=meanwhile):
+            tasks.close_task(
+                self.primary, "adopt", "failed", note="abandoned", force=True
+            )
+        [thread] = threads
+        thread.join(30)
+        history = self.primary / ".concorde/history/adopt"
+        closed = {
+            path.relative_to(history).as_posix(): path.read_bytes()
+            for path in sorted(history.rglob("*"))
+            if path.is_file()
+        }
+        status, value = waiting["outcome"]
+        self.assertEqual(
+            (1, "refused", None), (status, value["state"], value["run_id"])
+        )
+        validate(value, STEP_SCHEMA)
+        self.assertEqual(
+            ["workspace_retired", "lock_removed"], errors.codes(value["error"])
+        )
+        self.assertEqual("environment", value["error"]["unhandled"]["reason"])
+        self.assertIn(str(self.space.lock), json.dumps(value["error"]))
+        self.assertEqual([["survey", "--modules", "module.shop"]], self.started)
+        # Nothing of the step lies in the history, and no workspace folder came back.
+        self.assertFalse((self.primary / ".concorde/tasks/adopt").exists())
+        self.assertFalse(any("validate" in name for name in closed))
+        # A step that takes the lock after the close finds the binding gone, and so does a
+        # report; neither writes anything.
+        status, value = run_step(
+            self.space, self.request("validate", ("task-validation",))
+        )
+        self.assertEqual(
+            ["workspace_retired", "binding_gone"], errors.codes(value["error"])
+        )
+        with self.assertRaises(store.WorkspaceRetired) as raised:
+            report(self.space)
+        self.assertEqual(
+            ("workspace_retired", "binding_gone"),
+            (raised.exception.code, raised.exception.found),
+        )
+        self.assertFalse((self.primary / ".concorde/tasks/adopt").exists())
+        self.assertEqual(
+            closed,
+            {
+                path.relative_to(history).as_posix(): path.read_bytes()
+                for path in sorted(history.rglob("*"))
+                if path.is_file()
+            },
+        )
+        self.assertEqual(1, len(self.started))
+
+    @verifies("scenario.workflows.step-retired")
+    def test_a_step_whose_binding_changed_is_refused(self):
+        path = self.space.root / ".concorde/workspace.json"
+        changed = json.loads(path.read_text())
+        changed["goal"] = "another goal"
+        path.write_text(json.dumps(changed))
+        with self.starter(output=SURVEY_OUTPUT):
+            status, value = run_step(self.space, self.request())
+        self.assertEqual((1, "refused"), (status, value["state"]))
+        self.assertEqual(
+            ["workspace_retired", "binding_changed"], errors.codes(value["error"])
+        )
+        self.assertIn("goal", value["error"]["causes"][0]["detail"])
+        self.assertEqual([], self.started)
+        self.assertFalse(self.space.directory.exists())
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(
+                1,
+                refused(store.WorkspaceRetired("binding_changed", "changed"), "report"),
+            )
+        link = json.loads(output.getvalue())["error"]
+        self.assertEqual(
+            ("workspace_retired", "environment"),
+            (link["code"], link["unhandled"]["reason"]),
+        )
+
+    def test_a_step_waits_for_the_workspace_without_the_workflow_lock(self):
+        # The workflow lock is a leaf: a close holding the workspace lock takes it while a step
+        # waits for the workspace.
+        with self.starter(output=SURVEY_OUTPUT):
+            with workspace_lock(
+                self.store, "adopt", "`concorde task close` of task adopt"
+            ):
+                done = {}
+                thread = threading.Thread(
+                    target=lambda: done.update(
+                        outcome=run_step(self.space, self.request())
+                    )
+                )
+                thread.start()
+                deadline = time.monotonic() + 30
+                # Once the step has taken the workflow lock and found the workspace busy, the
+                # lock is free while it waits.
+                while not self.space.lock.exists() and time.monotonic() < deadline:
+                    time.sleep(0.02)
+                while not done and time.monotonic() < deadline:
+                    try:
+                        with locks.hold(self.space.lock, "close", wait=0):
+                            break
+                    except locks.LockBusy:
+                        time.sleep(0.02)
+                else:
+                    self.fail("the step kept the workflow lock while it waited")
+            thread.join(30)
+        self.assertEqual("finished", done["outcome"][1]["state"])
 
     @verifies("scenario.workflows.step-cached")
     def test_a_finished_step_returns_at_once(self):
