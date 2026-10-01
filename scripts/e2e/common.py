@@ -4,14 +4,16 @@ from __future__ import annotations
 
 import os
 import subprocess
+import tempfile
 from pathlib import Path
 
 CHECKOUT = Path(__file__).resolve().parents[2]
-# Where prepared projects live unless CONCORDE_E2E_ROOT says otherwise: in this checkout's
-# .claude/worktrees/, which Git ignores and where every worktree a worker runs in lies, each as
-# test-<name>, removed when its test is done.
-DEFAULT_ROOT = CHECKOUT / ".claude/worktrees"
-# The prefix of every test project's directory, and of every scratch clone the tools make there.
+# Where prepared projects live unless CONCORDE_E2E_ROOT says otherwise: concorde-e2e in the
+# system's temporary directory, wherever that lies, each as test-<name>, removed when its test is
+# done. Never inside this checkout, whose CLAUDE.md Claude Code would load into every session of a
+# test project below it.
+DEFAULT_ROOT = Path(tempfile.gettempdir()) / "concorde-e2e"
+# The prefix of every test project's directory.
 TEST_PREFIX = "test-"
 
 
@@ -39,7 +41,19 @@ def run(command: list[str], cwd: Path, **options) -> subprocess.CompletedProcess
 
 
 def e2e_root() -> Path:
-    return Path(os.environ.get("CONCORDE_E2E_ROOT") or DEFAULT_ROOT).expanduser()
+    """The end-to-end root; ``E2EError`` ``root_inside_checkout`` when it lies in this checkout."""
+    named = os.environ.get("CONCORDE_E2E_ROOT")
+    root = Path(named or DEFAULT_ROOT).expanduser()
+    resolved = Path(os.path.realpath(root))
+    if resolved == CHECKOUT or CHECKOUT in resolved.parents:
+        source = "CONCORDE_E2E_ROOT" if named else "the default end-to-end root"
+        raise E2EError(
+            "root_inside_checkout",
+            f"{source} {root} lies inside the Concorde checkout {CHECKOUT}, so Claude Code "
+            f"would load the checkout's CLAUDE.md into every session of a test project there; "
+            "set CONCORDE_E2E_ROOT to a directory outside the checkout",
+        )
+    return root
 
 
 def test_directory(root: Path, name: str) -> Path:

@@ -55,8 +55,7 @@ breaks what both [worker backends](../../glossary.json#concept.worker-backend) s
 backend's part alike, so that it holds whichever backend a worker configuration chooses.
 
 **Scenario directory.** A scenario is prepared into a **scenario directory** `test-<name>` under the
-end-to-end root, by default this checkout's `.claude/worktrees/` as for every
-[test project](../../glossary.json#concept.test-project), which holds the faulty Concorde clone, the project installed from it, the baselines, every
+end-to-end root, as every [test project](../../glossary.json#concept.test-project) is, which holds the faulty Concorde clone, the project installed from it, the baselines, every
 session run in it and the latest evaluation.
 
 **Evaluation.** The **evaluation** judges a scenario from the files the session left, never from
@@ -105,7 +104,7 @@ dir: "Scenario directory, under the end-to-end root" {
   sessions: "sessions/<time>/: one headless session per run"
   evaluation: "evaluation.json, written by evaluate and after each run"
 }
-throwaway: "Throwaway clone of concorde/, as .claude/worktrees/test-intake-… of this checkout"
+throwaway: "Throwaway clone of concorde/, in a temporary directory"
 checkout -> dir.concorde: "prepare: clone, inject, commit, build"
 upstream -> dir.project: "prepare: clone at the revision"
 dir.concorde -> dir.project: "prepare: develop install"
@@ -124,8 +123,8 @@ dir.record -> dir.evaluation: "evaluation: the baselines"
 ```text
 python3 scripts/e2e/e2e.py dogfood list
 python3 scripts/e2e/e2e.py dogfood prepare write-hook-rw-directories [--name <dir>] [--worker-model <model>]
-python3 scripts/e2e/e2e.py dogfood run .claude/worktrees/test-write-hook-rw-directories [--rounds 4]
-python3 scripts/e2e/e2e.py dogfood evaluate .claude/worktrees/test-write-hook-rw-directories
+python3 scripts/e2e/e2e.py dogfood run /tmp/concorde-e2e/test-write-hook-rw-directories [--rounds 4]
+python3 scripts/e2e/e2e.py dogfood evaluate /tmp/concorde-e2e/test-write-hook-rw-directories
 ```
 
 `prepare` makes the scenario directory under the end-to-end root: it clones this checkout's
@@ -169,8 +168,8 @@ names the scenario and the report files found and holds one entry per check, wit
   their baselines;
 - `reports_checked`: there is at least one report under `.concorde/runs/defects/`, and each passes
   the project's `concorde issues report --check`;
-- `reports_accepted`: each report is recorded by a throwaway clone of the scenario's Concorde,
-  made as `.claude/worktrees/test-intake-…` of this checkout and removed afterwards, as the
+- `reports_accepted`: each report is recorded by a throwaway clone of the scenario's Concorde, in a
+  temporary directory removed afterwards, as the
   [Concorde repository](../../glossary.json#concept.concorde-repository)'s session would record
   it;
 - `classified`: some report has an expected type and a basis containing every expected phrase;

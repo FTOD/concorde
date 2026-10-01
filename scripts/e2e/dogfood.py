@@ -2,9 +2,10 @@
 
 A scenario (``scenarios/<name>.json`` beside this file) names a project, a fault, the prompt a
 developer gives the main agent and what the session must achieve. ``prepare`` clones this
-checkout's committed Concorde into a scenario directory, ``test-<name>`` of the end-to-end root, injects the fault there as a commit of its
-own, builds it, clones the project, makes a develop install of it from the faulty clone, writes the
-project's worker configuration and records the baselines. ``run`` drives a headless session in the
+checkout's committed Concorde into a scenario directory, ``test-<name>`` of the end-to-end root,
+injects the fault there as a commit of its own, builds it, clones the project, makes a develop
+install of it from the faulty clone, writes the project's worker configuration and records the
+baselines. ``run`` drives a headless session in the
 project with the scenario's prompt; ``evaluate`` then decides, from files alone, whether the
 session left Concorde untouched, wrote defect reports that pass ``issues report --check`` and are
 accepted by a clone of the Concorde repository, classified the defect as expected and did not work
@@ -25,8 +26,6 @@ from pathlib import Path
 import sessions
 from common import (
     CHECKOUT,
-    DEFAULT_ROOT,
-    TEST_PREFIX,
     E2EError,
     clone,
     repository_url,
@@ -271,13 +270,9 @@ def _checked(project: Path, reports: list[Path]) -> dict:
 
 def _accepted(concorde: Path, reports: list[Path]) -> dict:
     """Record every report into a throwaway clone of the Concorde repository, as its session
-    would, so the check covers what the receiving side refuses. The clone lies, like every test
-    project, in this checkout's ``.claude/worktrees/`` as ``test-intake-…``, removed afterwards."""
+    would, so the check covers what the receiving side refuses."""
     refused = []
-    DEFAULT_ROOT.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(
-        prefix=f"{TEST_PREFIX}intake-", dir=DEFAULT_ROOT
-    ) as scratch:
+    with tempfile.TemporaryDirectory() as scratch:
         intake = Path(scratch) / "concorde"
         run(["git", "clone", "-q", str(concorde), str(intake)], cwd=Path(scratch))
         for path in reports:
