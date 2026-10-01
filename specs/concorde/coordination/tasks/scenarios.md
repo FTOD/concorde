@@ -283,6 +283,25 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 This illustrates [resolving open Issues](requirements.md#req.tasks.resolves-open-issues) and
 [closing them with the merge](requirements.md#req.tasks.merge-closes-resolved).
 
+### scenario.tasks.merge-issues-unavailable — A merge whose Issues fail still closes and answers
+
+- GIVEN a delivered task that resolves an open Issue, and a merge process that cannot load the Issues component
+- WHEN the main agent merges the task and its checks pass
+- THEN the task is closed as merged, its sessions are ended and the merge prints its result with no Issue `resolved`
+- AND its warnings name the Issue with the error chain `issues_unavailable`, and the Issue stays open for the main agent to close
+
+This illustrates [closing resolved Issues with the merge](requirements.md#req.tasks.merge-closes-resolved).
+
+### scenario.tasks.merge-own-sources — A module first imported after the merge is the one the merge started with
+
+- GIVEN a merge process that has loaded one module of its package and not yet another that imports from it
+- WHEN the merge changes both files so that the second needs a name only the new version of the first has
+- THEN the second module, imported after the merge, is its source as it was when the merge started, and imports
+- AND no bytecode cache is written for it from that source
+- BUT a process that did not keep its sources fails that import with `ImportError`, as the merge of a task changing Concorde did before
+
+This illustrates [a merge running the Concorde it started with](requirements.md#req.tasks.merge-own-sources).
+
 ### scenario.tasks.merge-empty-log — A merge warns of an unwritten decision log
 
 - GIVEN a delivered task whose decision log holds only the heading and goal `open` wrote

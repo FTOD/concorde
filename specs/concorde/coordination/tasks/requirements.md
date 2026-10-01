@@ -357,10 +357,22 @@ the project, named at `open` or with `resolve` while the task has not ended.
 
 `concorde task merge` SHALL, once its checks passed and while it holds the merge lock, close as
 `resolved`, with the merge commit as evidence, each Issue of the task's `resolves` that is still
-open, and report each it could not close as a warning, never as a refusal of the merge.
+open, and report each it could not close as a warning, never as a refusal of the merge; a failure
+of the Issues, whatever it is, never keeps the merge from ending the task's sessions and printing
+its result.
 
 The fix is on the primary branch only once the merge stands, so an Issue closes with its merge and
 never earlier; a task that ends without merging closes none.
+
+### req.tasks.merge-own-sources — A merge runs the Concorde it started with
+
+`concorde task merge` SHALL run every step after the merge, closing the task, its Issues and its
+sessions, on the Concorde code its process started with, even when the merge changes that code in
+the primary worktree.
+
+A merge of a task that changed Concorde itself changes the files of the running Concorde under its
+own process: a module it first needs after the merge would otherwise be the merged version, mixed
+with the modules it loaded before. Its checks are processes of their own and run the merged code.
 
 ### req.tasks.merge-clean-primary — A merge starts from a clean primary
 
