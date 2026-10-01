@@ -16,7 +16,7 @@ from collections import Counter
 from pathlib import Path
 
 from .content_model import MODULE_OPTIONAL, metadata_path
-from .content_repository import DocumentUnitRepository, severity
+from .content_repository import DocumentUnitRepository, strictness
 from .errors import system_cause
 from .glossary import plain_definition
 from .model import Finding, ToolResult
@@ -87,7 +87,7 @@ def _finding(
 ) -> Finding:
     return Finding(
         check,
-        severity(check),
+        strictness(check),
         source,
         message,
         REMEDIATION.get(
@@ -1526,7 +1526,7 @@ def validate_repository(
         inputs.extend(checks_digests)
         inputs.append((repository.registry_path, digest(repository.registry_bytes)))
         inputs.append(("protocol", repository.config["protocol"]["digest"]))
-    counts = Counter(f.severity for f in findings)
+    counts = Counter(f.strictness for f in findings)
     return ToolResult(
         "spec-validation",
         target_id or ".",

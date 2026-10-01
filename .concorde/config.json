@@ -2,7 +2,7 @@
   "profile_version": 19,
   "protocol": {
     "version": "16.1.0",
-    "digest": "sha256:0fa490cbfd7685af9500ba1a4144611b4f257dcbc0afc63cc9af50f2bc8dfb7b"
+    "digest": "sha256:ea064c091baadd0db50e3f1eec0538be961ea5131816d6bd2d18b41610716995"
   },
   "python": ".venv/bin/python"
 }

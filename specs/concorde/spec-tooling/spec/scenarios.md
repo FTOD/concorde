@@ -91,7 +91,7 @@ to it.
 - GIVEN a project with several independent violations, such as a duplicate node identity, a Module that uses itself, a file no Module binds and a link to a requirement identity that the linked document does not define
 - WHEN the validator runs
 - THEN it returns status `invalid`
-- AND reports one finding per violation, each naming its rule identity, severity, file and a remediation, with `CONCORDE-LINK-001` for the broken link
+- AND reports one finding per violation, each naming its rule identity, strictness, file and a remediation, with `CONCORDE-LINK-001` for the broken link
 - BUT it does not stop at the first violation and does not judge whether the described behaviour is correct
 
 ### scenario.spec.node-checks — Malformed nodes

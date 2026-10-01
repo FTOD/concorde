@@ -187,7 +187,7 @@ class InitialModuleTests(unittest.TestCase):
             self.assertEqual(
                 "success",
                 report.status,
-                [f.message for f in report.findings if f.severity == "error"],
+                [f.message for f in report.findings if f.strictness == "error"],
             )
 
     def _installed_project(self, root: Path, files: dict[str, str], listed: list[str]):
@@ -220,7 +220,7 @@ class InitialModuleTests(unittest.TestCase):
         self.assertEqual(
             "success",
             report.status,
-            [f.message for f in report.findings if f.severity == "error"],
+            [f.message for f in report.findings if f.strictness == "error"],
         )
 
     @verifies("scenario.spec.installation-follows-record")
@@ -357,7 +357,7 @@ class InitialModuleTests(unittest.TestCase):
             self.assertEqual(
                 "success",
                 report.status,
-                [f.message for f in report.findings if f.severity == "error"],
+                [f.message for f in report.findings if f.strictness == "error"],
             )
 
     @verifies("scenario.spec.reject-not-installed")

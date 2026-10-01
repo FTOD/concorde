@@ -140,8 +140,8 @@ class CheckTests(unittest.TestCase):
         self.project.module("module.provider", "specs/provider/module.md", PROVIDER)
         self.project.module("module.consumer", "specs/consumer/module.md", CONSUMER)
 
-    def rules(self, severity="error"):
-        return self.project.rules(severity)
+    def rules(self, strictness="error"):
+        return self.project.rules(strictness)
 
     def entry(self, module):
         return f"specs/{module}/module.md"
@@ -274,7 +274,7 @@ class CheckTests(unittest.TestCase):
         findings = self.project.findings("CHK.term.unlinked")
         self.assertEqual(
             [("warning", "specs/provider/rules.md", "concept.provider.thing", 7)],
-            [(f.severity, f.source, f.subject_id, f.line) for f in findings],
+            [(f.strictness, f.source, f.subject_id, f.line) for f in findings],
         )
         self.assertIn(
             "[Thing](../glossary.json#concept.provider.thing)", findings[0].message
@@ -372,7 +372,7 @@ class CheckTests(unittest.TestCase):
                 (self.root / entry).write_text(text)
                 findings = self.project.findings("CHK.term.link")
                 self.assertEqual(
-                    [("error", entry)], [(f.severity, f.source) for f in findings]
+                    [("error", entry)], [(f.strictness, f.source) for f in findings]
                 )
         (self.root / entry).write_text(original)
         self.glossary(
@@ -738,7 +738,7 @@ class CheckTests(unittest.TestCase):
         findings = self.project.findings("CHK.concept.local")
         self.assertEqual(
             [("warning", "specs/glossary.json", "concept.provider.shelf")],
-            [(f.severity, f.source, f.subject_id) for f in findings],
+            [(f.strictness, f.source, f.subject_id) for f in findings],
         )
         self.assertIn("module.provider", findings[0].message)
         self.assertEqual("success", self.project.validate().status)
@@ -1015,7 +1015,7 @@ class CheckTests(unittest.TestCase):
         before = self.snapshot()
         report = self.project.validate()
         self.assertEqual("invalid", report.status)
-        errors = [f for f in report.findings if f.severity == "error"]
+        errors = [f for f in report.findings if f.strictness == "error"]
         self.assertEqual(["CONCORDE-SOURCE-008"], [f.rule_id for f in errors])
         self.assertIn("JSON", errors[0].message)
         load = report.result["load_error"]
@@ -1035,7 +1035,7 @@ class CheckTests(unittest.TestCase):
             "[Provider](../provider/module.md)\n\n### Rendering",
         )
         findings = self.project.findings("CHK.node.explained")
-        self.assertEqual(["warning"], [f.severity for f in findings])
+        self.assertEqual(["warning"], [f.strictness for f in findings])
         self.assertEqual("specs/consumer/module.md", findings[0].source)
         self.assertEqual("success", self.project.validate().status)
 
@@ -1139,7 +1139,7 @@ class CheckTests(unittest.TestCase):
         findings = self.project.findings("CHK.includes.redundant")
         self.assertEqual(
             [("warning", "module.consumer")],
-            [(f.severity, f.subject_id) for f in findings],
+            [(f.strictness, f.subject_id) for f in findings],
         )
         self.assertEqual("success", self.project.validate().status)
         sources = (
@@ -1265,7 +1265,7 @@ class CheckTests(unittest.TestCase):
                 ("error", "data/link.txt", "check.consumer"),
                 ("error", "data/missing.txt", "check.consumer"),
             ],
-            sorted((f.severity, f.source, f.subject_id) for f in findings),
+            sorted((f.strictness, f.source, f.subject_id) for f in findings),
         )
         for finding in findings:
             self.assertIn("check.consumer", finding.message)

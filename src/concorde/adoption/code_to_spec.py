@@ -109,8 +109,10 @@ def baseline(ctx: RunContext):
                 "run concorde task-validation in the workspace to see why the Specs do not load"
             ],
         )
-    ctx.state["baseline"] = {key(f) for f in result.findings if f.severity == "error"}
-    ctx.state["baseline_errors"] = [f for f in result.findings if f.severity == "error"]
+    ctx.state["baseline"] = {key(f) for f in result.findings if f.strictness == "error"}
+    ctx.state["baseline_errors"] = [
+        f for f in result.findings if f.strictness == "error"
+    ]
     return Continue(
         evidence=[
             evidence(
@@ -287,7 +289,7 @@ def validation_repair(ctx: RunContext) -> str | None:
     errors = [
         finding
         for finding in validate_repository(ctx.worktree).findings
-        if finding.severity == "error"
+        if finding.strictness == "error"
         and (key(finding) not in ctx.state["baseline"] or finding.source in own)
     ]
     return spec_repair_prompt(errors)
@@ -420,7 +422,7 @@ def revalidate(ctx: RunContext):
     from ..spec.validation import validate_repository
 
     result = validate_repository(ctx.worktree)
-    errors = [f for f in result.findings if f.severity == "error"]
+    errors = [f for f in result.findings if f.strictness == "error"]
     # Every error in a described Module's own documents is the run's, even one that was there
     # before: the worker rewrites those documents, and a retry after a failed attempt must not
     # count that attempt's errors as the project's.

@@ -31,7 +31,7 @@ Neither level reads code contents (see [Task types](boundaries.md#task-types)). 
 what it tells its reader; whether the code does what the Spec says is implementation conformance,
 established by evidence. Code never repairs a Spec's missing meaning.
 
-## Severity
+## Blocking and advisory problems
 
 Every problem is **blocking** or **advisory**:
 
@@ -46,10 +46,10 @@ Every problem is **blocking** or **advisory**:
   idea they need, a diagram that would make a relationship easier to follow, a boundary that could
   be drawn more cleanly without any task being misled today.
 
-Severity measures the effect on a reader and a task, not the size or difficulty of the repair. A
-missing diagram alone is advisory; when the meaning a picture would show is itself missing or
-contradictory, the missing meaning is the problem, and a picture alone cannot supply it. The
-Protocol defines no further grading: what is done with a problem once found, who repairs it and
+Whether a problem is blocking depends on its effect on a reader and a task, not on the size or
+difficulty of the repair. A missing diagram alone is advisory; when the meaning a picture would
+show is itself missing or contradictory, the missing meaning is the problem, and a picture alone
+cannot supply it. The Protocol defines no further grading: what is done with a problem once found, who repairs it and
 whether it must be decided by someone else, belongs to the tools and the project's own process.
 
 ## Module quality

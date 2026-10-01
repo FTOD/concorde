@@ -38,8 +38,8 @@ only after the developer rebinds.
 
 A **[structural check](../../glossary.json#concept.structural-check)** is one decidable rule of the
 Protocol or of Concorde's Spec conventions, named by a rule identity such as `CHK.registry.mirror`
-and carrying the severity error or warning. `concorde spec-validation` reports every finding in one
-run, each with its rule, severity, file and remediation; errors make the result `invalid`. Coverage
+and carrying the strictness error or warning. `concorde spec-validation` reports every finding in
+one run, each with its rule, strictness, file and remediation; errors make the result `invalid`. Coverage
 comes from **[verification declarations](../../glossary.json#concept.verification-declaration)** in
 the tests' own source, which name the scenarios a test verifies and are parsed, never run
 ([syntax](contracts.md#verification-declarations)). Success is evidence about structure only; see
@@ -203,7 +203,7 @@ registry still mirrors Checkout's old `module` block:
 ```json
 {
   "rule_id": "CHK.registry.mirror",
-  "severity": "error",
+  "strictness": "error",
   "source": ".concorde/specs.json",
   "subject_id": "module.checkout",
   "message": "registry record module.checkout differs from its entry's module block in uses",

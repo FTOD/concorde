@@ -87,7 +87,7 @@ class ScaffoldTests(AdoptionCase):
         )
         report = validate_repository(worktree)
         self.assertEqual(
-            [], [f.message for f in report.findings if f.severity == "error"]
+            [], [f.message for f in report.findings if f.strictness == "error"]
         )
 
     @verifies("scenario.scaffold.vendored-external")
@@ -132,7 +132,7 @@ class ScaffoldTests(AdoptionCase):
         self.assertNotIn("src/db.py", entries)
         report = validate_repository(worktree)
         self.assertEqual(
-            [], [f.message for f in report.findings if f.severity == "error"]
+            [], [f.message for f in report.findings if f.strictness == "error"]
         )
         # Vendored code is never also a child's entry.
         overlapping = json.loads(json.dumps(PROPOSAL))
@@ -171,7 +171,7 @@ class ScaffoldTests(AdoptionCase):
         )
         report = validate_repository(worktree)
         self.assertEqual(
-            [], [f.message for f in report.findings if f.severity == "error"]
+            [], [f.message for f in report.findings if f.strictness == "error"]
         )
 
     @verifies("scenario.scaffold.stale")

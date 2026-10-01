@@ -11,7 +11,7 @@ run does and does not mean. The precise obligations are in the [requirements](re
 ## Check families
 
 The Protocol's Checks chapter (`protocol/checks.md`) lists every check with an identity and a
-severity. Validation evaluates all of them. They fall into five families:
+strictness. Validation evaluates all of them. They fall into five families:
 
 | Family | What it catches | Example |
 | --- | --- | --- |
@@ -28,7 +28,7 @@ registry mirror covers every field of a Module's `module` block, its title inclu
 
 ## Reading a finding
 
-A finding names the rule that failed, for example `CHK.context.reconciled`, its severity, the file
+A finding names the rule that failed, for example `CHK.context.reconciled`, its strictness, the file
 it concerns and, where known, a line, the node identity involved and a remediation. An error means
 the Specs are not structurally conformant; the result status is `invalid`. A warning is reported
 and does not change the status. `CHK.contains.root`, `CHK.node.explained`, `CHK.term.unlinked`,

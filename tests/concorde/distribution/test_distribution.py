@@ -1127,7 +1127,7 @@ class InstallTests(unittest.TestCase):
         self.assertEqual(
             "success",
             report.status,
-            [f.message for f in report.findings if f.severity == "error"],
+            [f.message for f in report.findings if f.strictness == "error"],
         )
         # An update with nothing new to place leaves the Specs as they are.
         bound = metadata.read_bytes()

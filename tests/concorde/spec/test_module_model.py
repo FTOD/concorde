@@ -20,7 +20,7 @@ from tests.concorde.support.spec_project import (
 
 def rule_ids(report) -> set[str]:
     return {
-        finding.rule_id for finding in report.findings if finding.severity == "error"
+        finding.rule_id for finding in report.findings if finding.strictness == "error"
     }
 
 
@@ -28,7 +28,7 @@ def errors(report) -> list[str]:
     return [
         f"{f.rule_id}: {f.source}: {f.message}"
         for f in report.findings
-        if f.severity == "error"
+        if f.strictness == "error"
     ]
 
 
@@ -373,7 +373,7 @@ class ModuleImplementationTests(SharedFileProject, unittest.TestCase):
             if f.rule_id == "CHK.document.schema" and "pending" in f.message
         ]
         self.assertEqual(1, len(findings), errors(report))
-        self.assertEqual("error", findings[0].severity)
+        self.assertEqual("error", findings[0].strictness)
         self.assertIn("realization.a.adapter", findings[0].message)
         self.assertIn("unknown fields ['pending']", findings[0].message)
 

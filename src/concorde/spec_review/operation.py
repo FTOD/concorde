@@ -367,7 +367,7 @@ def validate_modules(ctx: RunContext):
         errors = [
             item
             for item in result.findings
-            if item.severity == "error" and _attributed(repository, module, item)
+            if item.strictness == "error" and _attributed(repository, module, item)
         ]
         if not errors:
             continue

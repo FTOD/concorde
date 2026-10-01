@@ -403,13 +403,13 @@ member paths and the project glossary), `findings` and `result`. A target must n
 Module, otherwise the call fails with `unknown_target`; it does not narrow the run, which checks the
 whole project and reports every finding whatever the target.
 
-A finding has `rule_id`, `severity` (`error` or `warning`), `source` (a project-relative path),
+A finding has `rule_id`, `strictness` (`error` or `warning`), `source` (a project-relative path),
 `message` and `remediation`, and optionally `line`, `column` and `subject_id` (the node identity
 concerned). For every Protocol check, `rule_id` is the check's identity, such as
 `CHK.relies-on.linked`. Findings that Concorde adds beyond the Protocol use `CONCORDE-` rule
 identities:
 
-| Rule | Severity | Meaning |
+| Rule | Strictness | Meaning |
 | --- | --- | --- |
 | `CONCORDE-LINK-001` | error | a link fragment shaped like a requirement, scenario, realization or contract identity names no definition in the linked document |
 | `CONCORDE-COVERAGE-001` | warning | no test declares a scenario of a Module that binds files |
@@ -425,7 +425,7 @@ enter the digest, nor do the files Modules bind, the list of version-controlled 
 scanned for verification declarations, so a finding about bindings, unbound files or scenario
 coverage can change while `source_digest` stays the same.
 
-The command-line envelope is canonical JSON with `schema_version: 3`, the fields above and `error`:
+The command-line envelope is canonical JSON with `schema_version: 4`, the fields above and `error`:
 `null` when the command did its work, otherwise the [error record](errors.md) of its failure,
 including a malformed command line (`invalid_input`) and an unexpected failure
 (`unexpected_error`). Findings are sorted by rule, source, line, column and message, and artifacts

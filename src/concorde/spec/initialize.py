@@ -570,7 +570,9 @@ def apply_project_proposal(root: Path, package: Path, proposal: dict) -> dict:
 
     def verify():
         report = validate_repository(root, package_root=package)
-        errors = [finding for finding in report.findings if finding.severity == "error"]
+        errors = [
+            finding for finding in report.findings if finding.strictness == "error"
+        ]
         if errors:
             raise SpecError(
                 f"the initialized project would not validate: {len(errors)} error(s), each a "

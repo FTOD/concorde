@@ -108,8 +108,8 @@ class RequirementsAndVerificationTests(unittest.TestCase):
     def write(self, path, content):
         write_document(self.root, path, content)
 
-    def rules(self, severity="error"):
-        return self.project.rules(severity)
+    def rules(self, strictness="error"):
+        return self.project.rules(strictness)
 
     @verifies("scenario.spec.validate-success")
     def test_a_requirement_section_is_parsed_with_its_one_shall_statement(self):
@@ -255,7 +255,7 @@ class RequirementsAndVerificationTests(unittest.TestCase):
         findings = self.project.findings("CHK.evidence.no-spec-coverage")
         self.assertEqual(
             [("error", "specs/shop/notes.md", line + 1)],
-            [(f.severity, f.source, f.line) for f in findings],
+            [(f.strictness, f.source, f.line) for f in findings],
         )
         path.write_text(
             str(NOTES)
@@ -276,7 +276,7 @@ class RequirementsAndVerificationTests(unittest.TestCase):
         findings = self.project.findings("CHK.verifies.resolves")
         self.assertEqual(
             [("error", "tests/shop/test_cart.py", "scenario.shop.unknown")],
-            [(f.severity, f.source, f.subject_id) for f in findings],
+            [(f.strictness, f.source, f.subject_id) for f in findings],
         )
         self.assertEqual(9, findings[0].line)
         self.assertIn("test_unknown", findings[0].message)
@@ -301,7 +301,7 @@ class RequirementsAndVerificationTests(unittest.TestCase):
                 findings = self.project.findings("CHK.defines.role")
                 self.assertEqual(
                     [("error", "specs/shop/notes.md")],
-                    [(f.severity, f.source) for f in findings],
+                    [(f.strictness, f.source) for f in findings],
                 )
                 self.assertIn(label, findings[0].message)
         notes.write_text(str(NOTES))
@@ -418,7 +418,7 @@ class RequirementsAndVerificationTests(unittest.TestCase):
         findings = self.project.findings("CONCORDE-COVERAGE-001")
         self.assertEqual(
             [("warning", "scenario.shop.submit", "specs/shop/obligations.md")],
-            [(f.severity, f.subject_id, f.source) for f in findings],
+            [(f.strictness, f.subject_id, f.source) for f in findings],
         )
         self.write("specs/shop/module.md", shop(nodes=[]))
         (self.root / "specs/shop/notes.md").write_text(
@@ -469,7 +469,7 @@ class RequirementsAndVerificationTests(unittest.TestCase):
         self.assertEqual(
             "success",
             report.status,
-            [f.message for f in report.findings if f.severity == "error"],
+            [f.message for f in report.findings if f.strictness == "error"],
         )
         # Tests and scenarios are many-to-many: a test another Module owns verifies the
         # scenario like any other, and nothing is reported about its owner.
