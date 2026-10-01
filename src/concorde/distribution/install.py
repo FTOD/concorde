@@ -67,7 +67,8 @@ CLAUDE_SETTINGS = ".claude/settings.json"
 MCP_CONFIG = ".mcp.json"
 MCP_SERVER = "concorde"
 # What every workflow's Claude Code step agents use: the project MCP server's step tool, which
-# starts each step outside the session's Bash sandbox, and the report command.
+# runs each step as the server's own process so that the run outlives the step agent's short call,
+# and the report command.
 STEP_RULES = (
     f"mcp__{MCP_SERVER}__workflow_step",
     f"Bash({COMMAND} workflow report:*)",

@@ -26,9 +26,9 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - THEN none of them reaches the worker
 - AND the worker's environment holds only the listed variables, with `HOME`, `CLAUDE_CONFIG_DIR` and `TMPDIR` inside its [runtime directory](../../glossary.json#concept.runtime-directory)
 
-### scenario.workers.session-proxy — A worker started in a task session uses the session's proxy
+### scenario.workers.session-proxy — A worker started behind a loopback proxy uses that proxy
 
-- GIVEN a host environment whose `HTTP_PROXY`, `HTTPS_PROXY`, `http_proxy` and `https_proxy` name a proxy on `localhost` and whose `NO_PROXY` lists `localhost`, `127.0.0.1`, `::1` and a private address range, as a [task session](../../glossary.json#concept.task-session)'s sandbox sets them
+- GIVEN a host environment whose `HTTP_PROXY`, `HTTPS_PROXY`, `http_proxy` and `https_proxy` name a proxy on `localhost` and whose `NO_PROXY` lists `localhost`, `127.0.0.1`, `::1` and a private address range, as an enclosing loopback proxy, such as a sandboxed [main agent](../../glossary.json#concept.main-agent)'s session, sets them
 - WHEN the host launches a worker, on the pi backend or the Claude Code backend
 - THEN the worker's environment holds the same four proxy variables
 - AND its `NO_PROXY` still lists the private range but no loopback entry

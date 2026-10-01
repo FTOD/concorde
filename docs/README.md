@@ -129,17 +129,17 @@ print one JSON result. Run them inside a task's worktree, whose workspace bindin
 | `concorde init --propose\|--apply`                      | Propose and apply a project's first Spec.                                           |
 | `concorde docsite --propose\|--apply`                   | Scaffold a documentation site for the project's Specs.                              |
 
-| Operation         | Result and boundary                                                                           |
-| ----------------- | --------------------------------------------------------------------------------------------- |
-| `understand`      | An assessment of the Modules and, when asked, a plan; reads Specs and only the names of code. |
-| `plan_review`     | (optional) Findings and a verdict on a plan the task session wrote; reads Specs and code.     |
-| `specify`         | A change of the bound Modules' own Spec documents; structural validation afterwards.          |
-| `implement`       | A code change within the bound Modules' realization; configured checks with resume rounds.    |
-| `test`            | The host's check results interpreted by a read-only worker.                                   |
-| `spec_review`     | Review findings and a verdict on the bound Modules' Specs.                                    |
-| `code_review`     | Review findings and a verdict on the task's code changes.                                     |
-| `task-validation` | (command) Readiness: structural validation and the configured checks of the changed Modules.  |
-| `delivery`        | (command) The validated commit of the task's change on the task branch.                       |
+| Operation         | Result and boundary                                                                                                                  |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `understand`      | An assessment of the Modules and, when asked, a plan; reads Specs and only the names of code.                                        |
+| `plan_review`     | (optional) Findings and a verdict on a plan the task session wrote; reads Specs and code.                                            |
+| `specify`         | A change of the bound Modules' own Spec documents; structural validation afterwards.                                                 |
+| `implement`       | A code change within the bound Modules' realization; configured checks with resume rounds.                                           |
+| `test`            | The host's check results interpreted by a read-only worker.                                                                          |
+| `spec_review`     | Review findings and a verdict on the bound Modules' Specs.                                                                           |
+| `code_review`     | Findings, recorded as Issues, and a verdict on the task's code changes or, with `--scope module`, on each named Module's whole code. |
+| `task-validation` | (command) Readiness: structural validation and the configured checks of the changed Modules.                                         |
+| `delivery`        | (command) The validated commit of the task's change on the task branch.                                                              |
 
 ## Explore
 

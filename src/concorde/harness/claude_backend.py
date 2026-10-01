@@ -27,8 +27,9 @@ from .settings import (
 )
 
 ACTOR = "Claude Code process (claude -p)"
-# The proxy a worker's own model calls go through: a task session's sandbox leaves the process no
-# network but its proxy, and a developer's own proxy applies to workers as to the host.
+# The proxy a worker's own model calls go through: an enclosing loopback proxy, such as a
+# developer's local model proxy or a sandboxed main agent's session, may be the process's only way
+# out, and a developer's own proxy elsewhere applies to workers as to the host.
 PROXY_VARIABLES = ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy")
 NO_PROXY_VARIABLES = ("NO_PROXY", "no_proxy")
 LOOPBACK_NAMES = {"localhost", "127.0.0.1", "::1", "[::1]"}
@@ -172,10 +173,10 @@ def proxy_environment(host: dict[str, str] | None = None) -> dict[str, str]:
     """The proxy variables a worker inherits from the host's environment.
 
     Every set ``HTTP_PROXY``/``HTTPS_PROXY`` in either case passes on, and with one the
-    ``NO_PROXY``/``no_proxy`` values. When every passed proxy is on loopback, as a task session's
-    sandbox proxy is, loopback leaves the no-proxy lists: the process's network namespace may hold
-    nothing but that proxy, so ``localhost`` is reachable only through it. Without a proxy nothing
-    passes on.
+    ``NO_PROXY``/``no_proxy`` values. When every passed proxy is on loopback, as a sandboxed main
+    agent's session proxy is, loopback leaves the no-proxy lists: the process's network namespace
+    may hold nothing but that proxy, so ``localhost`` is reachable only through it. Without a proxy
+    nothing passes on.
     """
     host = os.environ if host is None else host
     proxies = {name: host[name] for name in PROXY_VARIABLES if host.get(name)}

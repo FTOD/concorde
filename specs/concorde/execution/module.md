@@ -99,12 +99,12 @@ over the unchanged errors it received. The
 
 An Operation whose catalog entry allows it may also run
 **[unbound](../glossary.json#concept.unbound-run)**, in a worktree without a binding such as the
-primary worktree: `understand`, `survey`, `spec_review`, `spec_panel` and `code_review` (with
-`--base`). It works with the Modules `--modules` names, records `workspace` null, admits only
-unbound inputs, takes no workspace lock, having no workspace to lock, though it takes its run lock
-like every run, and may launch only reading workers, so it changes no
-[Spec](../glossary.json#concept.spec) or code. Every other Operation and every execution command is
-refused unbound with `binding_required`.
+primary worktree: `understand`, `survey`, `spec_review`, `spec_panel` and `code_review` (a change
+review with `--base`, a Module review without). It works with the Modules `--modules` names,
+records `workspace` null, admits only unbound inputs, takes no workspace lock, having no workspace
+to lock, though it takes its run lock like every run, and may launch only reading workers, so it
+changes no [Spec](../glossary.json#concept.spec) or code. Every other Operation and every execution
+command is refused unbound with `binding_required`.
 
 <a id="concept.unbound-checkout"></a>
 

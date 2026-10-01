@@ -66,8 +66,9 @@ HOST_PROXY = {
     "ALL_PROXY",
     "all_proxy",
 }
-# The proxy variables a task session's sandbox gives its commands.
-SESSION_PROXY = {
+# The proxy variables an enclosing loopback proxy, such as a sandboxed main agent's session, gives
+# its commands.
+LOOPBACK_PROXY = {
     "HTTP_PROXY": "http://user:secret@localhost:3128",
     "HTTPS_PROXY": "http://user:secret@localhost:3128",
     "http_proxy": "http://user:secret@localhost:3128",
@@ -91,8 +92,8 @@ class WorkerProject:
     def __init__(self, test, *, check=True):
         directory = tempfile.TemporaryDirectory()
         test.addCleanup(directory.cleanup)
-        # A task session's sandbox sets proxy variables the worker would pass on; the fixture
-        # starts from a host without them, and the proxy tests set their own.
+        # The host running the tests may set proxy variables the worker would pass on; the
+        # fixture starts from a host without them, and the proxy tests set their own.
         unproxied = patch.dict(
             os.environ,
             {k: v for k, v in os.environ.items() if k not in HOST_PROXY},
@@ -579,13 +580,13 @@ class WorkerRunTests(unittest.TestCase):
         self.assertNotIn("always use absolute paths", call["prompt"])
 
     @verifies("scenario.workers.session-proxy")
-    def test_a_worker_in_a_task_session_gets_the_session_proxy(self):
-        with patch.dict(os.environ, SESSION_PROXY):
+    def test_a_worker_behind_a_loopback_proxy_uses_it(self):
+        with patch.dict(os.environ, LOOPBACK_PROXY):
             record = self.project.run([{}], check_modules=None)
         self.assertEqual("ok", record["status"], record["error"])
         [call] = self.project.rounds(record)
         for name in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"):
-            self.assertEqual(SESSION_PROXY[name], call["env"][name])
+            self.assertEqual(LOOPBACK_PROXY[name], call["env"][name])
         self.assertEqual("10.0.0.0/8", call["env"]["NO_PROXY"])
         self.assertEqual("10.0.0.0/8", call["env"]["no_proxy"])
         self.assertNotIn("ALL_PROXY", call["env"])

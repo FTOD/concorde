@@ -164,16 +164,16 @@ environment sets to a non-empty value and, only when it passes at least one of t
   direct;
 - a list that nothing is left in not passed at all.
 
-Other proxy variables, such as `ALL_PROXY`, never pass. The reason is where a worker runs. A
-[task session](../../glossary.json#concept.task-session) runs its shell commands, and so the
-Operations it starts and their workers, inside a sandbox with a network namespace of its own that
-holds only a loopback interface: its only way out is the sandbox's proxy, which it names on
-`localhost` in those variables, and its no-proxy lists name loopback. A worker that dropped the
-proxy could reach no model endpoint at all, and one that kept loopback in its no-proxy lists could
-not reach an endpoint on `localhost`, such as a local model proxy, which the sandbox's proxy
-relays. A worker started from a main session, with no proxy in its environment, gets no proxy
-variable and runs exactly as without this rule. The proxy serves the worker's own process only: its
-tools run in their own sandbox without network ([req.workers.bash-sandbox](#req.workers.bash-sandbox),
+Other proxy variables, such as `ALL_PROXY`, never pass. The reason is where a worker runs: in the
+network of whatever started it, whose only way out may be a proxy on loopback, such as a
+developer's own local model proxy or the sandbox proxy of a
+[main agent](../../glossary.json#concept.main-agent) whose own session is sandboxed, named on
+`localhost` in those variables while the no-proxy lists name loopback. A worker that dropped that
+proxy could reach no model endpoint behind it, and one that kept loopback in its no-proxy lists
+could not reach an endpoint on `localhost` that it reaches only through that proxy. A worker
+started with no proxy in its environment gets no proxy variable and runs exactly as without this
+rule. The proxy serves the worker's own process only: its tools run in their own sandbox without
+network ([req.workers.bash-sandbox](#req.workers.bash-sandbox),
 [req.workers.pi-sandbox](pi.md#req.workers.pi-sandbox)), whose namespace cannot reach the proxy.
 
 ## Audit
