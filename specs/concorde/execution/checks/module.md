@@ -113,9 +113,11 @@ caller keeps as a cause under its link. The check result is
 owned here, next to the runner that produces it, so Workers, Validation and Delivery consume one
 record and never run checks another way. Every check it runs is a [trace node](../../glossary.json#concept.trace-node) with its log,
 placed only in the directory the caller names, the `checks/` of the calling run's or worker round's
-node in the [run store](../../glossary.json#concept.run-store); a check's output reaches a worker only as the
-bounded log tail Workers puts into a [resume round](../../glossary.json#concept.resume-round), and
-whether a worker needs more than its last 20,000 bytes is undecided.
+node in the [run store](../../glossary.json#concept.run-store). This Module hands a check's output to
+no worker itself: Workers puts the bounded tail of a failed check's log into a
+[resume round](../../glossary.json#concept.resume-round), and the `test` and `code_review`
+Operations, consumers of their own, make the full logs of the checks they ran readable to their
+workers as task material.
 
 The calling code, not an AI worker, decides when to run checks:
 
