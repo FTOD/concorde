@@ -473,7 +473,9 @@ its content type.
 ## Layout
 
 Everything is under the `.concorde` directory of the project's primary worktree, except the unbound
-runs and the [Issue](../glossary.json#concept.issue) lock, which are under the `.concorde` of the worktree they belong to. Git
+runs and their [run locks](../glossary.json#concept.run-lock), which are under the `.concorde` of
+the worktree they started in. Every write of an [Issue](../glossary.json#concept.issue) takes the
+primary worktree's [merge lock](../glossary.json#concept.merge-lock), as [Locks](#locks) says. Git
 ignores `tasks/`, `history/`, `unbound/`, `lobby/` and `locks/`.
 
 ```text

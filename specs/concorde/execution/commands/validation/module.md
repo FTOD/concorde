@@ -149,7 +149,9 @@ below, are not seen.
 The measurement covers everything Delivery will commit: tracked changes since the binding's base
 commit and untracked files Git does not ignore. An untracked path Git cannot version, such as the
 `/dev/null` mounts with which Claude Code's Bash sandbox hides `.bashrc` or `.claude/settings.json`
-from a [task session](../../../glossary.json#concept.task-session), is left out, and so is the
+from a sandboxed Claude Code session working in the worktree, such as a
+[main agent](../../../glossary.json#concept.main-agent) whose own session is sandboxed (a
+[task session](../../../glossary.json#concept.task-session) runs under no sandbox), is left out, and so is the
 empty read-only placeholder file the sandbox creates on the host at each such path and keeps while
 any of the session's sandboxed commands still runs, so the readiness and delivery come out the same
 inside and outside that sandbox. A placeholder is recognised by the signature the sandbox runtime

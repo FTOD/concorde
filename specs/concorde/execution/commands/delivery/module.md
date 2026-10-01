@@ -10,9 +10,9 @@ the remaining changes on the bound branch. The
 [delivery commit](../../../glossary.json#concept.delivery-commit) is the only record of the
 delivery. Whoever merges the workspace relies on it, in Concorde the
 [main agent](../../../glossary.json#concept.main-agent), so that what it merges is exactly what was
-validated. Workers never touch Git; the task level — whoever works the task, the main agent itself
-or a [task session](../../../glossary.json#concept.task-session) — may commit verified steps on the
-branch, and only Delivery makes the commit that marks the work delivered. Delivery never merges, pushes,
+validated. Workers never touch Git; whoever works in the workspace, in Concorde the
+[task session](../../../glossary.json#concept.task-session) of its task, may commit verified steps
+on the branch, and only Delivery makes the commit that marks the work delivered. Delivery never merges, pushes,
 rewrites history, repairs a finding, writes a task record, or delivers anything it did not validate
 in the same run.
 
