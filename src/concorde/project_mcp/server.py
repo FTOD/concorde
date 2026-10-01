@@ -10,8 +10,9 @@ so the session never meets the code the server started with once Concorde change
 the tools capability and the experimental ``claude/channel`` capability; whether the session
 actually listens to it as a channel is not something Claude Code tells a server, so it is read from
 ``CONCORDE_CHANNEL`` (``1`` or ``0``) when set, otherwise from its ancestor processes: one of them
-must be a ``claude`` started with ``--dangerously-load-development-channels server:<name>`` or
-``--channels server:<name>`` whose standard input is a terminal. Only an interactive session is
+must be a ``claude``, a program named ``claude`` or ``claude.exe``, started with
+``--dangerously-load-development-channels server:<name>`` or ``--channels server:<name>`` whose
+standard input is a terminal. Only an interactive session is
 woken by channel events: a probe on 2026-09-29 (Claude Code 2.1.284) found a ``claude --bg``
 session started with the flag never woken, and ``claude -p`` registers no channel at all.
 """
@@ -34,6 +35,8 @@ from .tools import ACTOR, THREADED, Refusal, digest, listing, serve_call
 NAME = "concorde"
 SUPPORTED_VERSIONS = ("2025-06-18", "2025-03-26", "2024-11-05")
 CHANNEL_FLAGS = ("--dangerously-load-development-channels", "--channels")
+# The names Claude Code's program runs under, the first word of its command line.
+CLAUDE_PROGRAMS = ("claude", "claude.exe")
 # How far up the process tree the server looks for the claude that started it.
 ANCESTORS = 8
 INSTRUCTIONS = (
@@ -100,10 +103,17 @@ def channel_requested(name: str, words: list[str]) -> bool:
     return False
 
 
+def is_claude(words: list[str]) -> bool:
+    """Whether the command line runs Claude Code's program, by the name of its first word."""
+    return bool(words) and os.path.basename(words[0]) in CLAUDE_PROGRAMS
+
+
 def channel_from(name: str, ancestors: list[tuple[list[str], bool]]) -> bool:
-    """Whether an interactive ancestor, one on a terminal, names this server as a channel."""
+    """Whether an interactive ``claude`` ancestor, one on a terminal, names this server as a
+    channel."""
     return any(
-        terminal and channel_requested(name, words) for words, terminal in ancestors
+        terminal and is_claude(words) and channel_requested(name, words)
+        for words, terminal in ancestors
     )
 
 

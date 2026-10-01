@@ -88,14 +88,22 @@ class GuidanceTests(unittest.TestCase):
         )
         self.assertIn("Every task is worked by a task session", self.skill)
         self.assertIn("Stay in the primary worktree while any runs", self.skill)
-        self.assertIn("record there the task's **brief**", self.skill)
+        self.assertIn("record there the **task brief**", self.skill)
+        # The task brief is the main agent's handoff, not a worker's brief.
+        self.assertIn(
+            "not the brief an Operation generates for each worker it launches",
+            self.skill,
+        )
+        self.assertIn(
+            "not the brief an Operation gives each of its workers", self.session
+        )
         self.assertIn(
             "put all the others to the developer at once (with AskUserQuestion), "
             "and then answer the session once with every answer",
             self.skill,
         )
         self.assertIn(
-            "after recording its brief in the task's decision log", self.block
+            "after recording its task brief in the task's decision log", self.block
         )
         self.assertIn("naming its escalation as a cause", self.skill)
         self.assertIn("concorde task session", self.block)
@@ -124,6 +132,16 @@ class GuidanceTests(unittest.TestCase):
             self.session,
         )
         self.assertIn("send the same report to that name, without", self.session)
+        # An answer names its reports, and one already acted on changes nothing.
+        self.assertIn(
+            "Its answer names the reports it answers by their number", self.session
+        )
+        self.assertIn(
+            "an answer to a report you already acted on, which the main agent sends again "
+            "after a restart since it cannot tell whether its message arrived, changes "
+            "nothing: ignore it",
+            self.session,
+        )
 
     @verifies("scenario.main-session.reconcile-after-restart")
     def test_the_main_agent_rebinds_its_tasks_after_its_name_changed(self):
@@ -142,6 +160,16 @@ class GuidanceTests(unittest.TestCase):
         )
         self.assertIn("`concorde task rebind`", self.block)
         self.assertIn("recording each answer with `concorde task answer`", self.block)
+        # A recorded answer may never have been sent, so it is sent again.
+        self.assertIn(
+            "For each task whose last report has an answer, send that latest recorded answer "
+            "again to its task session, naming the reports it answers",
+            self.skill,
+        )
+        self.assertIn(
+            "naming in the message the numbers of the reports it answers", self.skill
+        )
+        self.assertIn("send again each latest recorded answer", self.block)
 
     @verifies("scenario.main-session.task-session-role")
     def test_a_task_session_stays_within_its_task(self):
@@ -206,6 +234,20 @@ class GuidanceTests(unittest.TestCase):
         self.assertIn("`entries` of the right realization", self.session)
         self.assertIn("commit both together", self.session)
         self.assertIn("The task session prepares the workers' environment", self.skill)
+        self.assertIn("When the work needs a new implementation file", self.session)
+        self.assertIn("creates any other new implementation file", self.skill)
+        # A new Spec document is Specification's to create, never a session's.
+        self.assertIn(
+            "A new Spec document is not such a file: never create one for a worker, since "
+            "`specify` proposes it and the Operation creates it and registers it in its "
+            "Module's `owns`",
+            self.session,
+        )
+        self.assertIn(
+            "A new Spec document is not prepared this way: `specify` proposes it and the "
+            "Operation creates it and registers it in its Module's `owns`",
+            self.skill,
+        )
         for text in (self.session, self.skill):
             self.assertIn("creates the delivery commit on the task branch", text)
             self.assertNotIn("commits the result on the task branch", text)
@@ -227,6 +269,11 @@ class GuidanceTests(unittest.TestCase):
             "reject, is a disagreement: do not run again on it, escalate it",
             session,
         )
+        self.assertIn(
+            "A maintained finding whose renewed reasoning convinces you is no disagreement: "
+            "accept it and revise the plan",
+            session,
+        )
         self.assertIn("concorde run plan_review --plan <file>", self.skill)
         self.assertIn(
             "optionally `plan_review` of the plan the task session writes", self.skill
@@ -236,11 +283,11 @@ class GuidanceTests(unittest.TestCase):
     @verifies("scenario.main-session.task-session-workflow")
     def test_a_task_session_runs_workflows_in_the_mode_of_its_brief(self):
         session = self.session
-        self.assertIn("in the mode the task's brief names", session)
-        self.assertIn("`interactive`, also when the brief names no mode", session)
+        self.assertIn("in the mode the task brief names", session)
+        self.assertIn("`interactive`, also when the task brief names no mode", session)
         self.assertIn(
             "escalate every point in `pending` at once, with `--error-file` naming "
-            "its report",
+            "its workflow result",
             session,
         )
         self.assertIn(
@@ -468,11 +515,27 @@ class GuidanceTests(unittest.TestCase):
         self.assertIn(
             "Record the decision in the decision log and report it", self.skill
         )
+        # The main agent records its own decisions; the task session its own and its runs'.
         self.assertIn(
-            "every result of the task's runs that is not `ok` and every decision you made "
-            "without the developer",
+            "Record there too every decision you made for the task without the developer, "
+            "with the reason",
             self.skill,
         )
+        self.assertIn(
+            "The task session records the rest: every result that is not `ok` of the runs it "
+            "starts and every decision it made without the developer",
+            self.skill,
+        )
+        self.assertIn(
+            "Decide ordinary questions inside the task's goal and Modules yourself",
+            self.session,
+        )
+        self.assertIn(
+            "Record each such decision, and every result that is not `ok` of the runs you "
+            "start, in the task's decision log with its reason",
+            self.session,
+        )
+        self.assertIn("record every decision you made alone for a task", self.block)
 
     @verifies("scenario.main-session.major-decision")
     def test_major_decisions_are_escalated_with_their_evidence(self):
@@ -500,6 +563,33 @@ class GuidanceTests(unittest.TestCase):
     def test_the_main_agent_reads_the_whole_error_chain(self):
         self.assertIn("carries an **error chain** in `error`", self.skill)
         self.assertIn("Read the whole chain before deciding", self.skill)
+
+    @verifies("scenario.main-session.spec-tooling-error")
+    def test_a_spec_tooling_error_is_translated_before_it_is_escalated(self):
+        for text in (self.skill, self.session):
+            self.assertIn(
+                "`spec-validation`, `registry`, `grant` and `build`, and the Spec MCP server",
+                text,
+            )
+            self.assertIn(
+                "(`code`, `message`, `reason`, `location`, `remediation`, `causes`), which is "
+                "no link",
+                text,
+            )
+            self.assertIn(
+                "`concorde task escalate` refuses it as `--error-file` with `invalid_error`",
+                text,
+            )
+            self.assertIn(
+                "translate it into a `component` link and save that in a JSON file: `level` "
+                "`component`, `actor` `Spec tooling (concorde <command>)`",
+                text,
+            )
+            self.assertIn(
+                "as `causes` the record's causes translated the same way. Then name that "
+                "file with `--error-file`",
+                text,
+            )
 
     @verifies("scenario.main-session.unbound-failure")
     def test_a_failed_unbound_run_reaches_the_developer_whole(self):
@@ -659,6 +749,19 @@ class GuidanceTests(unittest.TestCase):
             "is a failure of the Issue system itself: never report it as an Issue",
             session,
         )
+
+    @verifies("scenario.main-session.issue-system-failure-no-task")
+    def test_an_issue_system_failure_without_a_task_reaches_the_developer_whole(self):
+        skill, _ = self.issues()
+        self.assertIn("`commit_failed`", skill)
+        self.assertIn(
+            "When you met the failure for no task, such as on an Issue you recorded while "
+            "discussing the project, there is no decision log or escalation to carry it: show "
+            "the developer its whole error chain at once, as rendered, never a summary of it, "
+            "and open a task only when the failure leads to work",
+            skill,
+        )
+        self.assertIn("Never record a failure of the Issue system itself", skill)
 
     @verifies("scenario.main-session.issue-recovery")
     def test_the_guidance_says_how_issue_records_are_put_back(self):

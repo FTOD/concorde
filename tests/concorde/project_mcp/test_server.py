@@ -770,8 +770,19 @@ class ChannelDetectionTests(unittest.TestCase):
                 [(["claude", "--channels", "plugin:a@b server:concorde"], True)],
             )
         )
+        self.assertTrue(
+            channel_from(
+                "concorde",
+                [(["/opt/claude-code/bin/claude.exe", *flagged[1:]], True)],
+            )
+        )
         # A background session is never woken by channel events, flag or not.
         self.assertFalse(channel_from("concorde", [(flagged, False)]))
+        # Another program with the same words on a terminal is no Claude Code session.
+        self.assertFalse(channel_from("concorde", [(["node", *flagged[1:]], True)]))
+        self.assertFalse(
+            channel_from("concorde", [(["claudette", *flagged[1:]], True)])
+        )
         self.assertFalse(
             channel_from("concorde", [(["claude", "--model", "server:concorde"], True)])
         )
