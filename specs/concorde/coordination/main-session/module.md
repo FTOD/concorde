@@ -399,13 +399,15 @@ runs a session starts.
 
 **Recording.** The session that meets a concrete problem it will not fix now decides whether it
 deserves an Issue; a worker finding or an Operation error is input to that decision, and a review
-Operation may report the problems it finds itself. Before recording, the session reads the open
-and closed Issues (`issue_list`, `issue_show`) and appends a report to the Issue that already tracks
-the problem, at the revision `issue_show` printed, rather than create another; it reopens a closed
-match whose closure the observation calls into question. Every report carries a complete
-description, impact, basis and evidence, and a **tier** that says who may handle the problem
-([Issues' tiers](../../issues/module.md#tiers)): `suggestion`, `obvious-fix`, `preferred-fix` or
-`decision-needed`. Recording never stops the reporter and schedules nothing.
+Operation may report the problems it finds itself. Before recording, the session reads the Issues of
+the Module concerned, `issue_list` filtered by that `module` and by `status`, the open ones and the
+closed ones when the problem may have been fixed before, rather than the whole project's list, which
+outgrows a tool result, and `issue_show` for a possible match, and appends a report to the Issue
+that already tracks the problem, at the revision `issue_show` printed, rather than create another;
+it reopens a closed match whose closure the observation calls into question. Every report carries a
+complete description, impact, basis and evidence, and a **tier** that says who may handle the
+problem ([Issues' tiers](../../issues/module.md#tiers)): `suggestion`, `obvious-fix`,
+`preferred-fix` or `decision-needed`. Recording never stops the reporter and schedules nothing.
 
 **Tiers decide who fixes.** Reporting and fixing are separate: a review Operation only reports, and
 fixing is later work of a task. A task session working a task may fix an `obvious-fix` Issue
@@ -462,7 +464,8 @@ events are in the [contracts](contracts.md).
 - **Short writes** with structured arguments: `task_open`, `task_escalate`, whose error chain link
   is typed arguments rather than a command line to quote, `task_report`, `task_answer`,
   `task_rebind`, `task_resolve` and `task_close` without a merge.
-- **Issues**: `issue_list`, `issue_show` and `issue_check` read the project's
+- **Issues**: `issue_list`, filtered by `status`, `module` and `tier` as `concorde issues list`
+  is, `issue_show` and `issue_check` read the project's
   [Issues](../../glossary.json#concept.issue), and `issue_report`, `issue_close` and
   `issue_reopen` write them, each as `concorde issues` does and without waiting for the merge lock
   an Issue write takes, refused at once with `merge_busy` while another process holds it. A report

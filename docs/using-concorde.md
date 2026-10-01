@@ -822,7 +822,7 @@ command does the same:
 
 ```bash
 concorde issues report --file report.json [--task retry]
-concorde issues list
+concorde issues list --module <module> --status open [--tier <tier>]
 concorde issues show <id>
 ```
 

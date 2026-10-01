@@ -121,7 +121,7 @@ This illustrates [command attribution](requirements.md#req.issues.main-agent-act
 
 ### scenario.issues.command-usage — An unusable argument exits with status 2
 
-- GIVEN a missing argument, an unknown reason, a `duplicate` without `--duplicate-of`, a blank note or a repeated evidence item
+- GIVEN a missing argument, an unknown reason, a `duplicate` without `--duplicate-of`, a blank note, a repeated evidence item, or a `list` status or tier that is none of the statuses or tiers
 - WHEN the command runs
 - THEN it prints the error code `usage` and a message naming the argument
 - AND exits with status 2
@@ -242,6 +242,15 @@ This illustrates [specific refusals](requirements.md#req.issues.specific-refusal
 - AND `list` names both Issues
 
 This illustrates [project-level records](requirements.md#req.issues.project-level).
+
+### scenario.issues.command-list-filtered — List only the Issues of one Module, status and tier
+
+- GIVEN Issues owned by two Modules, one of them closed, with different tiers
+- WHEN the main agent runs `list --module <module> --status open`, then `list --tier <tier>` with two tiers, then all three filters together, then `list` alone
+- THEN the first lists only that Module's open Issues, the second only the Issues of either tier, and the third only those passing all three filters
+- AND `list` alone names every Issue, open and closed
+
+This illustrates [filtered listing](requirements.md#req.issues.list-filtered).
 
 ### scenario.issues.command-commit-failed — A failed commit is an Issue-system failure, never an Issue
 

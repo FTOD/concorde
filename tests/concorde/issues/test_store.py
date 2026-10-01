@@ -100,6 +100,12 @@ class IssueStoreTests(unittest.TestCase):
         self.assertEqual(original, resolve_report(self.root, receipt)["report"])
         self.assertEqual(revision, list_issues(self.root)[0]["revision"])
         self.assertEqual([], list_issues(self.root, target_id="module.foreign"))
+        self.assertEqual([], list_issues(self.root, tiers=["suggestion"]))
+        self.assertEqual(1, len(list_issues(self.root, tiers=["decision-needed"])))
+        for filters in ({"status": "fixed"}, {"tiers": ["urgent"]}):
+            with self.subTest(filters=filters), self.assertRaises(IssueError) as raised:
+                list_issues(self.root, **filters)
+            self.assertEqual("invalid_issue", raised.exception.code)
         self.assertFalse((self.root / ".concorde/status").exists())
         self.assertIn(
             "Retry ownership is unspecified", (self.root / receipt["path"]).read_text()

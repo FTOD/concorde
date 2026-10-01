@@ -122,6 +122,17 @@ The Issue store SHALL NOT delete an Issue record file.
 
 A closed Issue keeps its reports and dispositions, so it can be shown and reopened.
 
+### req.issues.list-filtered — A listing reads only the Issues asked for
+
+The bookkeeping command's `list` and the `issue_list` tool SHALL list only the Issues that pass
+every filter given: a status keeps the Issues with that status, a Module those whose latest report
+has it as owner or reporting Module, and tiers those whose latest report has one of them.
+
+Given no filter, they list every Issue, open and closed.
+
+A session checking for an Issue that already tracks its problem reads the open Issues of the Module
+concerned, which fit its context however many Issues the project keeps.
+
 ### req.issues.revision-checked — Writes never overwrite a newer record
 
 The Issue store SHALL write a record only over the exact revision its caller read.

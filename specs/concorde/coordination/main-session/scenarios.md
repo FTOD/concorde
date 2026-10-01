@@ -255,7 +255,7 @@ This illustrates [the task session's one rule](requirements.md#req.main-session.
 
 - GIVEN the rendered main-session and task-session guidance
 - WHEN a session reads how to retain a problem the current task will not fix
-- THEN it is told to read the open and closed Issues with `issue_list` and `issue_show` before recording, and to append to the matching open [Issue](../../glossary.json#concept.issue) at its current revision or reopen a closed one
+- THEN it is told to read the Issues of the Module concerned with `issue_list` filtered by `module` and `status`, open and, when the problem may have been fixed before, closed, and `issue_show` before recording, never the whole project's list, and to append to the matching open [Issue](../../glossary.json#concept.issue) at its current revision or reopen a closed one
 - AND to record through the project MCP server's `issue_report`, with a complete description, impact, basis, evidence and tier, or with the `concorde issues` command, which answers the same way
 - BUT it is told that repeating a creation creates another Issue
 

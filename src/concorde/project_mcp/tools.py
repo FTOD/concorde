@@ -245,9 +245,22 @@ TOOLS: dict[str, dict] = {
         ),
     },
     "issue_list": {
-        "description": "A summary row per Issue of the project, open and closed, with its tier, "
-        "as `concorde issues list`.",
-        "inputSchema": schema({}),
+        "description": "A summary row per Issue of the project with its tier, as `concorde "
+        "issues list`: every Issue, open and closed, unless filtered. `status` keeps the Issues "
+        "with that status, `module` those whose latest report has that owner or reporting "
+        "Module and `tier` those whose latest report has one of those tiers; given together, "
+        "an Issue must pass each.",
+        "inputSchema": schema(
+            {
+                "status": {"enum": ["open", "closed"]},
+                "module": TEXT,
+                "tier": {
+                    "type": "array",
+                    "items": {"enum": list(issues.TIERS)},
+                    "minItems": 1,
+                },
+            }
+        ),
     },
     "issue_show": {
         "description": "One Issue's complete record and revision, as `concorde issues show`.",
@@ -586,7 +599,12 @@ class Project:
         return root, "task-session", bound["workspace"]
 
     def issue_list(self, arguments: dict):
-        return issues.list_action(self.primary)
+        return issues.list_action(
+            self.primary,
+            status=arguments.get("status"),
+            module=arguments.get("module"),
+            tiers=arguments.get("tier"),
+        )
 
     def issue_show(self, arguments: dict):
         return issues.show_action(self.primary, arguments["issue"])

@@ -221,16 +221,21 @@ The bookkeeping command is the sessions' interface. In an installed project it i
 is `python3 scripts/concorde.py issues`, which routes to `python3 scripts/issues.py`. The project
 MCP server presents the same actions as the tools `issue_list`, `issue_show`, `issue_check`,
 `issue_report`, `issue_close` and `issue_reopen`, which answer and refuse exactly as the command
-does. A [task session](../glossary.json#concept.task-session) writes Issues through those tools:
-its Bash sandbox cannot write the primary worktree, while the server runs outside it. Whichever
-worktree a call starts from, it acts on the primary worktree's records.
+does. A session, the main agent or a [task session](../glossary.json#concept.task-session), uses
+those tools because they record the calling session as reporter and actor, which the command cannot
+know; the command serves a task session's shell and the runs it starts as well. Whichever worktree a
+call starts from, it acts on the primary worktree's records.
 
 ### Recording and following up
 
 Read `list` before recording, and `show <id>` for a possible match: a reporter appends to the Issue
-already tracking its problem instead of creating another. `list` includes open and closed Issues; a
-closed match may need reopening. Write the report as JSON using the
-[report contract](interface.md#contract.issues.report), with its tier, then run
+already tracking its problem instead of creating another. `list` returns every Issue, open and
+closed, unless it is filtered: `--status`, `--module` and `--tier` (the tool's `status`, `module`
+and `tier`) keep only the Issues with that status, concerning that Module as owner or reporting
+Module, or of those tiers, so `list --module <owner> --status open` reads the Issues a new report
+about that Module could duplicate without reading the whole project's. A closed match may need
+reopening: list the Module's closed Issues too when the problem may have been fixed before. Write
+the report as JSON using the [report contract](interface.md#contract.issues.report), with its tier, then run
 `concorde issues report --file <report.json> [--task <task-id>]` or call `issue_report`. The
 command checks the owner against the primary worktree's registry, evidence paths in the worktree the
 report is made in or the named origin, and any error chain; it supplies the reporter, reporting
@@ -268,9 +273,9 @@ records remain readable and are never deleted by the store. The exact state rule
 
 ### Inspection and refusals
 
-`list` prints a summary row per Issue, `show <id>` the complete record and revision, and `check`
-validates every record of the worktree it runs in: in the primary worktree the project's Issues, in a
-task worktree the copy its branch holds, which proves the branch's code still reads the records.
+`list` prints a summary row per Issue that passes its filters, `show <id>` the complete record and
+revision, and `check` validates every record of the worktree it runs in: in the primary worktree the
+project's Issues, in a task worktree the copy its branch holds, which proves the branch's code still reads the records.
 These commands never launch a model. The
 [configured check](../glossary.json#concept.configured-check) `check.issues.store` runs `check`
 whenever this Module's checks run; it fails malformed, misnamed or inconsistent records and open

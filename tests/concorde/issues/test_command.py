@@ -463,6 +463,8 @@ class IssueCommandTests(unittest.TestCase):
             (("reopen", identifier, "--note", "n", "--evidence", "e", "e"), ["'e'"]),
             (("show",), ["issue_id"]),
             (("list", identifier), [identifier]),
+            (("list", "--status", "fixed"), ["--status", "fixed"]),
+            (("list", "--tier", "urgent"), ["--tier", "urgent"]),
         ):
             with self.subTest(args=args):
                 self.assert_refused(2, "usage", fragments, *args)
@@ -726,6 +728,46 @@ class IssueCommandTests(unittest.TestCase):
         )
         self.assertTrue((self.root / value["receipt"]["path"]).is_file())
         self.assertFalse((linked / value["receipt"]["path"]).exists())
+
+    @verifies("scenario.issues.command-list-filtered")
+    def test_list_keeps_only_the_issues_its_filters_name(self):
+        def recorded(key, owner, tier):
+            path = self.report_file(
+                f"{key}.json", report_key=key, owner_target_id=owner, tier=tier
+            )
+            status, value = self.run_command("report", "--file", path)
+            self.assertEqual(0, status, value)
+            return value["receipt"]["issue_id"]
+
+        service = recorded("service", "module.service", "obvious-fix")
+        closed = recorded("closed", "module.service", "obvious-fix")
+        app = recorded("app", "module.app", "suggestion")
+        advice = recorded("advice", "module.service", "suggestion")
+        decision = recorded("decision", "module.app", "decision-needed")
+        status, value = self.run_command(
+            "close", closed, "--reason", "resolved", *DISPOSITION
+        )
+        self.assertEqual(0, status, value)
+
+        def listed(*args):
+            status, value = self.run_in_process("list", *args)
+            self.assertEqual(0, status, value)
+            return {row["id"] for row in value["issues"]}
+
+        self.assertEqual(
+            {service, advice}, listed("--module", "module.service", "--status", "open")
+        )
+        self.assertEqual(
+            {app, advice, decision},
+            listed("--tier", "suggestion", "--tier", "decision-needed"),
+        )
+        self.assertEqual(
+            {app},
+            listed(
+                "--module", "module.app", "--status", "open", "--tier", "suggestion"
+            ),
+        )
+        self.assertEqual({service, closed, app, advice, decision}, listed())
 
     @verifies("scenario.issues.command-commit-failed")
     def test_a_failed_commit_is_an_environment_error_that_is_no_issue(self):
