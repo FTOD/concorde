@@ -474,6 +474,12 @@ class IssueStoreTests(unittest.TestCase):
             path.read_text().replace("Retry ownership", "Changed ownership")
         )
         corrupted = path.read_bytes()
+        # Reads see only the committed record, so the edit counts once it is committed.
+        self.assertEqual(
+            report(),
+            read_issue(self.root, receipt["issue_id"])[0]["reports"][0]["report"],
+        )
+        git(self.root, "commit", "-qam", "an edited Issue record")
         with self.assertRaisesRegex(IssueError, "digest differs") as raised:
             read_issue(self.root, receipt["issue_id"])
         self.assertEqual("invalid_issue", raised.exception.code)
@@ -573,6 +579,7 @@ class IssueStoreTests(unittest.TestCase):
         self.assertIn('"status": "open"', record)
         malformed = record.replace('"status": "open"', '"status": "closed"', 1)
         path.write_text(malformed)
+        git(self.root, "commit", "-qam", "an edited Issue record")
         with self.assertRaisesRegex(
             SpecError, "status differs from its disposition"
         ) as raised:
@@ -739,3 +746,286 @@ class IssueStoreTests(unittest.TestCase):
             [high_decision, high_later, high_fix],
             order(sort="severity", severities=["high"]),
         )
+
+
+@contextmanager
+def killed_before_commit(stage=False, put_back=True):
+    """The write's process dies after publishing its record and, when ``stage``, after staging
+    it, before Git commits it: nothing puts the record back, as after SIGKILL. With
+    ``put_back`` False the process lives on, Git refuses the commit and putting the record back
+    fails too. Records of other writes are put back as usual."""
+    from concorde.issues import store
+
+    dying = set()
+    really_put_back = store._put_back
+
+    def commit(root, identifier, message):
+        dying.add(store.issue_path(identifier))
+        if stage:
+            git(root, "add", "-f", "--", store.issue_path(identifier))
+        if put_back:
+            raise SystemExit("killed")
+        return "git commit exited 1 on main: a hook refused the commit"
+
+    def failing_put_back(root, path):
+        if path in dying:
+            return f"git checkout HEAD -- {path} exited 128: index.lock exists"
+        return really_put_back(root, path)
+
+    with (
+        patch("concorde.issues.store._commit", side_effect=commit),
+        patch("concorde.issues.store._put_back", side_effect=failing_put_back),
+    ):
+        yield
+
+
+class IssueRecoveryTests(unittest.TestCase):
+    """Records published but not committed are never read and are put back before any write."""
+
+    setUp = IssueStoreTests.setUp
+    issue_files = IssueStoreTests.issue_files
+    close = IssueStoreTests.close
+
+    def head(self):
+        return git(self.root, "rev-parse", "HEAD").strip()
+
+    def status(self):
+        """What Git sees changed in the Issue directory, ignored files included."""
+        return git(
+            self.root, "status", "--porcelain", "--ignored", "--", ".concorde/issues"
+        )
+
+    def committed_paths(self, commit="HEAD"):
+        return git(self.root, "show", "--name-only", "--format=", commit).split()
+
+    def leave_killed_report(self, **changes):
+        """A report whose write was killed after publishing it; the name of its record file."""
+        before, files = self.head(), set(self.issue_files())
+        with killed_before_commit(**changes), self.assertRaises(SystemExit):
+            report_issue(self.root, report(report_key="killed"), source())
+        self.assertEqual(before, self.head())
+        (name,) = set(self.issue_files()) - files
+        return name
+
+    @verifies("scenario.issues.store-uncommitted-hidden")
+    def test_reads_show_only_committed_records(self):
+        from concorde.issues import store
+
+        committed = report_issue(self.root, report(), source())
+        seen = []
+        commit = store._commit
+
+        def reading_then_committing(root, identifier, message):
+            # Another session reads between publication and commit.
+            seen.append(([row["id"] for row in list_issues(root)], identifier))
+            with self.assertRaises(IssueError) as raised:
+                read_issue(root, identifier)
+            self.assertEqual("unknown_issue", raised.exception.code)
+            return commit(root, identifier, message)
+
+        with patch(
+            "concorde.issues.store._commit", side_effect=reading_then_committing
+        ):
+            later = report_issue(self.root, report(report_key="later"), source())
+        self.assertEqual([([committed["issue_id"]], later["issue_id"])], seen)
+        self.assertEqual(2, len(list_issues(self.root)))
+        # A record file nobody committed is not an Issue.
+        name = self.leave_killed_report()
+        self.assertEqual(2, len(list_issues(self.root)))
+        with self.assertRaises(IssueError) as raised:
+            read_issue(self.root, name.removesuffix(".md"))
+        self.assertEqual("unknown_issue", raised.exception.code)
+
+    @verifies("scenario.issues.store-sync-failed")
+    def test_a_write_that_fails_after_publication_puts_its_record_back(self):
+        receipt = report_issue(self.root, report(), source())
+        before, files = self.head(), self.issue_files()
+        failure = OSError(errno.EIO, "Input/output error", ".concorde/issues")
+        with (
+            patch("concorde.issues.store._sync_directory", side_effect=failure),
+            self.assertRaises(OSError) as raised,
+        ):
+            report_issue(self.root, report(report_key="new"), source())
+        self.assertIs(failure, raised.exception)
+        self.assertEqual((before, files), (self.head(), self.issue_files()))
+        self.assertEqual(
+            [receipt["issue_id"]], [row["id"] for row in list_issues(self.root)]
+        )
+        self.assertEqual("", self.status())
+
+    @verifies("scenario.issues.store-put-back-failed")
+    def test_a_record_that_could_not_be_put_back_is_put_back_by_the_next_write(self):
+        before = self.head()
+        with (
+            killed_before_commit(put_back=False),
+            self.assertRaises(IssueError) as raised,
+        ):
+            report_issue(self.root, report(report_key="killed"), source())
+        error = raised.exception
+        self.assertEqual("recovery_failed", error.code)
+        self.assertIn("a hook refused the commit", str(error))
+        self.assertIn("index.lock exists", str(error))
+        self.assertIn("no read shows it", str(error))
+        self.assertTrue((self.root / error.path).is_file())
+        self.assertEqual((before, []), (self.head(), list_issues(self.root)))
+        # The next write puts it back first and commits only its own record.
+        other = report_issue(self.root, report(report_key="other"), source())
+        self.assertFalse((self.root / error.path).exists())
+        self.assertEqual([other["path"]], self.committed_paths())
+        self.assertEqual("", self.status())
+        # Repeating the refused report records it once, committed.
+        retried = report_issue(self.root, report(report_key="killed"), source())
+        self.assertEqual(error.path, retried["path"])
+        self.assertEqual([retried["path"]], self.committed_paths())
+        self.assertEqual(2, len(list_issues(self.root)))
+
+    @verifies("scenario.issues.store-interrupted")
+    def test_what_a_killed_write_left_is_put_back_before_the_next_write_acts(self):
+        from concorde.issues import store
+
+        created = report_issue(self.root, report(), source())
+        _, revision = read_issue(self.root, created["issue_id"])
+        committed = (self.root / created["path"]).read_bytes()
+        (self.root / "unrelated.txt").write_text("staged, not the store's\n")
+        git(self.root, "add", "unrelated.txt")
+        (self.root / "notes.txt").write_text("not staged\n")
+        # A killed creation and a killed append, staged before the kill; since each write puts
+        # back what the one before left, the creation's record is published again by hand.
+        killed = self.leave_killed_report()
+        left = (self.root / store.DIRECTORY / killed).read_bytes()
+        with killed_before_commit(stage=True), self.assertRaises(SystemExit):
+            report_issue(
+                self.root,
+                report(
+                    report_key="appended",
+                    issue_id=created["issue_id"],
+                    expected_revision=revision,
+                ),
+                source(invocation_id="worker-2"),
+            )
+        self.assertNotIn(killed, self.issue_files())
+        (self.root / store.DIRECTORY / killed).write_bytes(left)
+        temporary = self.root / store.DIRECTORY / ".concorde-write-k1ll3d"
+        temporary.write_text("half a record")
+        self.assertNotEqual(committed, (self.root / created["path"]).read_bytes())
+        self.assertEqual(
+            {created["issue_id"]}, {row["id"] for row in list_issues(self.root)}
+        )
+        self.assertEqual(revision, read_issue(self.root, created["issue_id"])[1])
+        recovered = store.recover_issues(self.root)
+        self.assertEqual(
+            sorted(
+                [
+                    {"path": created["path"], "action": "restored"},
+                    {"path": f"{store.DIRECTORY}/{killed}", "action": "removed"},
+                    {
+                        "path": f"{store.DIRECTORY}/{temporary.name}",
+                        "action": "removed",
+                    },
+                ],
+                key=lambda item: item["path"],
+            ),
+            sorted(recovered["recovered"], key=lambda item: item["path"]),
+        )
+        self.assertEqual([], recovered["left"])
+        self.assertEqual(committed, (self.root / created["path"]).read_bytes())
+        self.assertEqual(
+            {created["path"].rsplit("/", 1)[1], ".gitignore"} - {".gitignore"},
+            set(self.issue_files()),
+        )
+        self.assertEqual(
+            "A  unrelated.txt\n?? notes.txt\n",
+            git(self.root, "status", "--porcelain", "--", "unrelated.txt", "notes.txt"),
+        )
+        # The append, repeated, now records at the committed revision.
+        report_issue(
+            self.root,
+            report(
+                report_key="appended",
+                issue_id=created["issue_id"],
+                expected_revision=revision,
+            ),
+            source(invocation_id="worker-2"),
+        )
+        self.assertEqual([created["path"]], self.committed_paths())
+        self.assertEqual(
+            2, len(read_issue(self.root, created["issue_id"])[0]["reports"])
+        )
+        self.assertEqual(
+            "A  unrelated.txt\n?? notes.txt\n",
+            git(self.root, "status", "--porcelain", "--", "unrelated.txt", "notes.txt"),
+        )
+
+    @verifies("scenario.issues.store-interrupted")
+    def test_every_write_puts_back_what_a_killed_write_left_first(self):
+        name = self.leave_killed_report(stage=True)
+        receipt = report_issue(self.root, report(report_key="next"), source())
+        self.assertNotIn(name, self.issue_files())
+        self.assertEqual([receipt["path"]], self.committed_paths())
+        self.assertEqual("", self.status())
+        _, revision = read_issue(self.root, receipt["issue_id"])
+        name = self.leave_killed_report()
+        self.close(receipt["issue_id"], revision)
+        self.assertNotIn(name, self.issue_files())
+        self.assertEqual([receipt["path"]], self.committed_paths())
+
+    @verifies("scenario.issues.store-foreign-change")
+    def test_a_record_change_no_write_made_is_left_alone(self):
+        from concorde.issues import store
+
+        edited = report_issue(self.root, report(), source())
+        path = self.root / edited["path"]
+        _, revision = read_issue(self.root, edited["issue_id"])
+        path.write_text(path.read_text().replace("Retry ownership", "Hand-edited"))
+        changed = path.read_bytes()
+        # A write of another Issue goes on and leaves the change as it is.
+        other = report_issue(self.root, report(report_key="other"), source())
+        self.assertEqual([other["path"]], self.committed_paths())
+        self.assertEqual(changed, path.read_bytes())
+        for write in (
+            lambda: self.close(edited["issue_id"], revision),
+            lambda: report_issue(
+                self.root,
+                report(
+                    report_key="later",
+                    issue_id=edited["issue_id"],
+                    expected_revision=revision,
+                ),
+                source(invocation_id="worker-2"),
+            ),
+        ):
+            with self.assertRaises(IssueError) as raised:
+                write()
+            self.assertEqual("uncommitted_change", raised.exception.code)
+            self.assertEqual(edited["path"], raised.exception.path)
+            self.assertIn("digest differs", str(raised.exception))
+            self.assertEqual(changed, path.read_bytes())
+        recovered = store.recover_issues(self.root)
+        self.assertEqual([], recovered["recovered"])
+        self.assertEqual([edited["path"]], [item["path"] for item in recovered["left"]])
+        # A deleted record is a change no write makes either.
+        path.unlink()
+        self.assertEqual(
+            [{"path": edited["path"], "reason": "the committed record was deleted"}],
+            store.recover_issues(self.root)["left"],
+        )
+        self.assertEqual("open", read_issue(self.root, edited["issue_id"])[0]["status"])
+
+    @verifies("scenario.issues.store-recover")
+    def test_recovery_holds_the_merge_lock(self):
+        from concorde.issues import store
+
+        name = self.leave_killed_report()
+        lock = self.root / ".concorde/locks/merge.lock"
+        with lock.open("a+b") as held:
+            fcntl.flock(held.fileno(), fcntl.LOCK_EX)
+            with self.assertRaises(IssueError) as raised:
+                store.recover_issues(self.root, wait=0)
+            self.assertEqual("merge_busy", raised.exception.code)
+            self.assertIn(name, self.issue_files())
+            # A caller holding the lock, such as a task merge, recovers within it.
+            self.assertEqual(
+                [{"path": f"{store.DIRECTORY}/{name}", "action": "removed"}],
+                store.recover_issues(self.root, locked=True)["recovered"],
+            )
+        self.assertEqual({"recovered": [], "left": []}, store.recover_issues(self.root))

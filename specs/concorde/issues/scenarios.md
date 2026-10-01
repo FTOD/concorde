@@ -265,6 +265,29 @@ This illustrates [filtered listing](requirements.md#req.issues.list-filtered) an
 
 This illustrates [the Issue system never reporting itself](requirements.md#req.issues.own-failures).
 
+### scenario.issues.command-recover — Recover what a killed write left
+
+- GIVEN a recorded Issue and a report whose command was killed after publishing its record and before committing it
+- WHEN the main agent runs `list`, then `recover`, then `recover` again
+- THEN `list` names only the recorded Issue
+- AND the first `recover` exits with status 0 and prints the killed report's record file as `removed`, which is gone, and no record `left`
+- AND the second prints that nothing was recovered or left
+- BUT the primary branch gains no commit
+
+This illustrates [recovering uncommitted records](requirements.md#req.issues.uncommitted-recovered).
+
+### scenario.issues.command-recovery-failed — A record that could not be put back is an Issue-system failure
+
+- GIVEN a valid report file, a commit Git refuses, and a primary worktree in which putting the published record back fails too
+- WHEN the main agent runs `report --file` with that file
+- THEN the command prints the error code `recovery_failed` with the reason `environment`, saying that no read shows the uncommitted record
+- AND its options say to carry the error chain in the decision log, escalation or run result and never to report it as an Issue
+- AND `list` names no Issue
+- BUT after `recover`, a record edited by hand makes `close` of its Issue refuse with `uncommitted_change` and the reason `environment`, naming the Issue, and `recover` lists that record as `left`
+
+This illustrates [the Issue system never reporting itself](requirements.md#req.issues.own-failures)
+and [kept foreign changes](requirements.md#req.issues.foreign-change-kept).
+
 ## Records
 
 ### scenario.issues.store-report — Save a report once
@@ -499,6 +522,70 @@ This illustrates [durable receipts](requirements.md#req.issues.durable-receipt).
 - BUT the record keeps the other program's bytes
 
 This illustrates [revision-checked writes](requirements.md#req.issues.revision-checked).
+
+## Uncommitted records
+
+### scenario.issues.store-uncommitted-hidden — Reads show only committed records
+
+- GIVEN a committed Issue, and another session reading while a second report's record is published but not yet committed
+- WHEN that session lists the Issues and reads the second one, and later a report's write is killed after publishing its record
+- THEN the session's list names only the committed Issue and the read of the second is refused with `unknown_issue`
+- AND once the second is committed both are listed
+- BUT the killed report's record file is neither listed nor read
+
+This illustrates [committed visibility](requirements.md#req.issues.committed-visible).
+
+### scenario.issues.store-sync-failed — A write that fails after publication puts its record back
+
+- GIVEN a committed Issue and a file system that fails to sync the Issue directory after the next record is published
+- WHEN the store is asked to save another report
+- THEN it fails with the operating system's error instead of returning a receipt
+- AND the new record is removed, so the directory, the index and the primary branch are as they were
+- BUT the committed Issue stays listed
+
+This illustrates [durable receipts](requirements.md#req.issues.durable-receipt) and
+[refusals that record nothing](requirements.md#req.issues.refusal-writes-nothing).
+
+### scenario.issues.store-put-back-failed — A record that could not be put back is put back by the next write
+
+- GIVEN a commit Git refuses, and putting the published record back failing too
+- WHEN the store is asked to save a report, then another, then the first one again with the same invocation and report key
+- THEN the first is refused with `recovery_failed`, naming Git's refusal and the failed putting back and saying no read shows the record, which stays in the directory and is not listed
+- AND the second write removes it first, then commits only its own record, leaving the Issue directory clean
+- AND the repeated report is recorded once and committed, its receipt naming the same record
+
+This illustrates [recovering uncommitted records](requirements.md#req.issues.uncommitted-recovered).
+
+### scenario.issues.store-interrupted — What a killed write left is put back before the next write acts
+
+- GIVEN a committed Issue, another change staged and an untracked file in the primary worktree, a killed creation whose record is uncommitted, a killed append to the Issue whose record is staged, and a file transaction's temporary file
+- WHEN the store recovers, and when any later write, report or disposition, starts
+- THEN the appended record is restored to its committed version, the created record and the temporary file are removed, and the reads show the committed Issue throughout
+- AND the repeated append records at the committed revision, in a commit holding only its record
+- BUT the other staged change stays staged and the untracked file untracked
+
+This illustrates [recovering uncommitted records](requirements.md#req.issues.uncommitted-recovered).
+
+### scenario.issues.store-foreign-change — A record change no write made is left alone
+
+- GIVEN a committed Issue whose record file was edited by hand, so that it no longer reads as valid
+- WHEN the store saves a report to another Issue, then is asked to close or append to the edited one, then recovers, and recovers again after the record file is deleted
+- THEN the other report is committed and the edit stays as it was
+- AND the close and the append are refused with `uncommitted_change`, naming the record file and why no write left the change, and the file keeps the edit
+- AND recovery puts nothing back and lists the record as left, the second time because the committed record was deleted
+- BUT the Issue reads as committed, open
+
+This illustrates [kept foreign changes](requirements.md#req.issues.foreign-change-kept).
+
+### scenario.issues.store-recover — Recovery holds the merge lock
+
+- GIVEN a killed report's uncommitted record and another process holding the merge lock
+- WHEN the store is asked to recover without waiting, then by a caller that holds the lock, then again
+- THEN the first is refused with `merge_busy` and the record stays
+- AND the second removes it and says so
+- BUT the third has nothing to recover
+
+This illustrates [Issue writes under the merge lock](requirements.md#req.issues.merge-lock).
 
 ## The store check
 

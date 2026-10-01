@@ -19,7 +19,11 @@ from concorde.issues.command import NOT_AN_ISSUE
 from concorde.issues.store import list_issues, read_issue
 from concorde.spec.repository import digest
 from concorde.spec.verification import verifies
-from tests.concorde.issues.test_store import racing_writer, refused_record_writes
+from tests.concorde.issues.test_store import (
+    killed_before_commit,
+    racing_writer,
+    refused_record_writes,
+)
 from tests.concorde.support.issue_reports import git_project, report
 
 COMMAND = Path(__file__).resolve().parents[3] / "scripts/issues.py"
@@ -807,6 +811,69 @@ class IssueCommandTests(unittest.TestCase):
         )
         self.assertEqual("environment", value["error"]["unhandled"]["reason"])
         self.assertIn(NOT_AN_ISSUE, value["error"]["options"])
+
+    @verifies("scenario.issues.command-recover")
+    def test_recover_puts_back_what_a_killed_write_left(self):
+        recorded = self.recorded()
+        before = self.head()
+        with killed_before_commit(), self.assertRaises(SystemExit):
+            self.run_in_process(
+                "report", "--file", self.report_file("killed.json", report_key="killed")
+            )
+        (left,) = set(self.records()) - {recorded["receipt"]["path"].rsplit("/", 1)[1]}
+        status, value = self.run_command("list")
+        self.assertEqual(
+            [recorded["receipt"]["issue_id"]], [row["id"] for row in value["issues"]]
+        )
+        status, value = self.run_command("recover")
+        self.assertEqual(0, status, value)
+        self.assertEqual(
+            {
+                "recovered": [
+                    {"path": f".concorde/issues/{left}", "action": "removed"}
+                ],
+                "left": [],
+            },
+            value,
+        )
+        self.assertEqual(before, self.head())
+        self.assertNotIn(left, self.records())
+        self.assertEqual(
+            (0, {"recovered": [], "left": []}), self.run_command("recover")
+        )
+
+    @verifies("scenario.issues.command-recovery-failed")
+    def test_a_record_left_uncommitted_is_an_environment_error_that_is_no_issue(self):
+        with killed_before_commit(put_back=False):
+            status, value = self.run_in_process("report", "--file", self.report_file())
+        self.assertEqual(
+            (1, "recovery_failed"), (status, value["error"]["code"]), value
+        )
+        self.assertIn("no read shows it", value["error"]["detail"])
+        self.assertEqual("environment", value["error"]["unhandled"]["reason"])
+        self.assertIn(NOT_AN_ISSUE, value["error"]["options"])
+        self.assertEqual((0, {"issues": []}), self.run_command("list"))
+        # A record edited by hand is left alone, and only its own Issue's writes are refused.
+        self.assertEqual(0, self.run_command("recover")[0])
+        recorded = self.recorded()
+        path = self.root / recorded["receipt"]["path"]
+        path.write_text(path.read_text().replace('"open"', '"closed"', 1))
+        value = self.assert_refused(
+            1,
+            "uncommitted_change",
+            [recorded["receipt"]["issue_id"], "differs from its committed version"],
+            "close",
+            recorded["receipt"]["issue_id"],
+            "--reason",
+            "resolved",
+            *DISPOSITION,
+        )
+        self.assertEqual("environment", value["error"]["unhandled"]["reason"])
+        self.assertIn(NOT_AN_ISSUE, value["error"]["options"])
+        status, value = self.run_command("recover")
+        self.assertEqual(
+            [recorded["receipt"]["path"]], [item["path"] for item in value["left"]]
+        )
 
 
 if __name__ == "__main__":

@@ -102,7 +102,7 @@ between tokens.
       "path": {"type": "string", "pattern": "^\\.concorde/issues/I-[0-9a-f]{32}\\.md$"}
     }
   },
-  "semantics": "The durable name of one accepted report, registered as typed value concorde-issue-receipt. report_id is the digest of the report together with its caller-supplied provenance, so the receipt always names that one immutable report, even after later reports or dispositions of the same Issue. path is the record file of issue_id. A receipt is returned only after the record is on disk. The report command answers {receipt, revision}, where revision is the digest of the record file after the write and is usable as a later expected_revision.",
+  "semantics": "The durable name of one accepted report, registered as typed value concorde-issue-receipt. report_id is the digest of the report together with its caller-supplied provenance, so the receipt always names that one immutable report, even after later reports or dispositions of the same Issue. path is the record file of issue_id. A receipt is returned only after the record holding the report is committed on the primary branch. The report command answers {receipt, revision}, where revision is the digest of the record file after the write and is usable as a later expected_revision.",
   "example": {
     "issue_id": "I-0123456789abcdef0123456789abcdef",
     "report_id": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
@@ -155,6 +155,10 @@ the caller of `disposition_record` or `dispose_issue` supplies one. `reports` an
 keep the order in which they were accepted, so the **latest** report is the last entry of
 `reports`.
 
+A record is **committed** when the last commit of the primary worktree, its `HEAD`, holds it at its
+path. A record file whose state in the primary worktree, staged or not, differs from the committed
+one, or that no commit holds, is **uncommitted**; reads never see it.
+
 A record is valid only when:
 
 - its `id` is `I-` plus the hex form of the UUIDv5 (URL namespace) of the canonical JSON
@@ -180,8 +184,11 @@ version. Its revision is the SHA-256 digest of the file's bytes.
 These are library operations in `concorde.issues.store`. None launches a model. Each takes the
 `root` whose records it reads or writes; `project_root(path)` gives the primary worktree of the
 repository `path` lies in, refusing with `not_a_repository` outside one, and every write refuses
-any other root with `not_primary`. Only writes run Git, to commit the record they wrote. They
-fail in these ways:
+any other root with `not_primary`. Reads take the committed records of `root`'s `HEAD` from Git
+(`git ls-tree` and `git cat-file`), never its files, refusing with `not_a_repository` when `root`
+lies in no repository; an unborn `HEAD` holds no records. A record's revision is the digest of
+its committed bytes. Writes run Git to commit the record they wrote and to put back uncommitted
+records. They fail in these ways:
 
 - a refusal by an Issue rule is an `IssueError` carrying one of the codes under [Errors](#errors)
   and a message that states what is wrong; a refusal that concerns one stored Issue, such as a
@@ -197,40 +204,64 @@ fail in these ways:
   through a symbolic link is refused the same way, without a field;
 - a write the operating system refuses inside the file transaction fails with the transaction's
   `system_error`;
-- an operating-system error outside the file transaction, such as reading a record, taking the
-  lock or syncing the directory after publication, propagates as the operating system's own
-  `OSError`;
+- an operating-system error outside the file transaction, such as taking the lock, syncing the
+  directory after publication or Git failing to list or read the committed records, propagates as
+  the operating system's own `OSError`, after the write put back the record it had published;
 - a write that cannot hold the [merge lock](../glossary.json#concept.merge-lock) within its wait, is made while a task's merge is
   unfinished, or whose commit Git refuses is an `IssueError` with `merge_busy`,
-  `merge_incomplete` or `commit_failed`.
+  `merge_incomplete` or `commit_failed`;
+- a write that cannot put back an uncommitted record, its own after a failure or one an earlier
+  write left, is an `IssueError` with `recovery_failed`, and a write of an Issue whose record holds
+  a change no write left is an `IssueError` with `uncommitted_change`, naming the record file.
 
 The bookkeeping command reports a `TypedDataError` as `invalid_issue`, and a `system_error` or an
 `OSError` as `io_error`.
 
 | Operation | Behaviour |
 | --- | --- |
-| `report_issue(root, report, source, wait, locked)` | Validates, then under the merge lock: returns the existing receipt when the same `(invocation_id, report_key)` already holds identical content; fails with `issue_key_conflict` for different content; otherwise creates the record or, for an append, checks that the Issue exists (`unknown_issue`), `expected_revision` (`stale_issue`) and open status (`closed_issue`) and appends. |
-| `read_issue(root, id)` | Returns the record and its revision; `invalid_issue` for a malformed identity, `unknown_issue` when absent, `invalid_issue` when malformed or oversized. |
-| `list_issues(root, target_id, status, tiers, severities, sort)` | Returns one summary row per Issue, sorted by identity unless `sort` says otherwise: `{id, severity, tier, type, subtype, title, status, target_id, owner_target_id, revision}`, where `severity` and `tier` (each `null` without one), `type`, `subtype`, `title` and `owner_target_id` are the latest report's, `target_id` is that report's reporting Module and `revision` the record's. A `target_id` keeps only the Issues whose latest report has that reporting Module or owner, whether or not it is a registered Module; a `status` keeps only the Issues with that status, `invalid_issue` for one that is neither `open` nor `closed`; `tiers` keeps only the Issues whose latest report has one of those tiers, so never one without a tier, `invalid_issue` when it names one that is not a tier; `severities` likewise keeps only the Issues whose latest report has one of those severities, never one without a severity, `invalid_issue` when it names one that is not a severity; `null` for any of them filters nothing, and the filters given combine, an Issue passing each. `sort` `severity` orders the rows most severe first, those of equal severity by tier from `decision-needed` down to `suggestion`, then by the `created_at` of the Issue's first report and by identity, every row without a severity after those with one and every row without a tier after those of its severity with one; `null` keeps the order by identity, and any other value is `invalid_issue`. An absent directory yields an empty list and is not created. |
+| `report_issue(root, report, source, wait, locked)` | Validates, then under the merge lock, after recovery: returns the existing receipt when the committed record already holds identical content for the same `(invocation_id, report_key)`, so that receipt names a committed report; fails with `issue_key_conflict` for different content; otherwise creates the record or, for an append, checks that the Issue exists (`unknown_issue`), `expected_revision` (`stale_issue`) and open status (`closed_issue`) and appends. |
+| `read_issue(root, id)` | Returns the committed record and its revision; `invalid_issue` for a malformed identity, `unknown_issue` when no commit of `HEAD` holds it, even when an uncommitted file does, `invalid_issue` when malformed, oversized or committed as anything but a regular file. |
+| `read_record_file(root, id)` | Returns the record file of `root` as it is on disk, committed or not, and the digest of its bytes, refusing as `read_issue` does; the store check alone reads this way. |
+| `list_issues(root, target_id, status, tiers, severities, sort)` | Returns one summary row per Issue, sorted by identity unless `sort` says otherwise: `{id, severity, tier, type, subtype, title, status, target_id, owner_target_id, revision}`, where `severity` and `tier` (each `null` without one), `type`, `subtype`, `title` and `owner_target_id` are the latest report's, `target_id` is that report's reporting Module and `revision` the record's. A `target_id` keeps only the Issues whose latest report has that reporting Module or owner, whether or not it is a registered Module; a `status` keeps only the Issues with that status, `invalid_issue` for one that is neither `open` nor `closed`; `tiers` keeps only the Issues whose latest report has one of those tiers, so never one without a tier, `invalid_issue` when it names one that is not a tier; `severities` likewise keeps only the Issues whose latest report has one of those severities, never one without a severity, `invalid_issue` when it names one that is not a severity; `null` for any of them filters nothing, and the filters given combine, an Issue passing each. `sort` `severity` orders the rows most severe first, those of equal severity by tier from `decision-needed` down to `suggestion`, then by the `created_at` of the Issue's first report and by identity, every row without a severity after those with one and every row without a tier after those of its severity with one; `null` keeps the order by identity, and any other value is `invalid_issue`. It lists the committed records alone, all of one commit; a commit without the directory yields an empty list, and nothing is created. |
 | `resolve_report(root, receipt)` | Returns the exact report the receipt names, never the latest one; `stale_issue` when it is absent. |
 | `disposition_record(record, ...)` | Prepares and validates a disposed record without writing. |
 | `dispose_issue(root, id, expected_revision, reason, note, evidence, actor, duplicate_of, duplicate_revision, created_at, wait, locked)` | Refuses a `duplicate` without `duplicate_of`, naming the Issue itself, or another reason with `duplicate_of` (`invalid_issue`). Under the lock, checks the revision (`stale_issue`), refuses closing a closed Issue (`closed_issue`) and reopening an open one (`open_issue`), and for `duplicate` that the other Issue exists (`unknown_issue`), is open (`invalid_issue`) and, when the caller gives `duplicate_revision`, the revision it read of that other Issue, still has it (`stale_issue`); appends the disposition and returns the new revision. `duplicate_of` and `duplicate_revision` default to `null`; `created_at` defaults to the time of acceptance; the bookkeeping command never gives `duplicate_revision`. |
+| `recover_issues(root, wait, locked)` | Under the merge lock, as a write holds it, runs the recovery below without writing an Issue and returns `{"recovered": [{path, action}], "left": [{path, reason}]}`: each record put back (`action` `restored` to its committed version, or `removed` when no commit holds it) or temporary file removed (`removed`), and each record change left because no write made it, with the reason. Refuses as a write does, with `not_primary`, `merge_busy`, `merge_incomplete` or `recovery_failed`. |
 
 Every write refuses a `root` that is not the primary worktree (`not_primary`), then holds the
 primary worktree's merge lock, `.concorde/locks/merge.lock`, the one Tasks' merges, opens and closes
 hold, waiting for it up to `wait` seconds (default 300) and refusing with `merge_busy`, naming the
 holder, after that; `locked` says the caller holds it already, as a task merge closing the Issues its
 task resolves does, and then neither waits nor checks for a merge. Holding it, a write refuses with
-`merge_incomplete` while a task is stored `merging`, checks the file's previous digest, publishes a
-staged file through a [file transaction](../glossary.json#concept.file-transaction), syncs the
-directory and commits the record alone on the primary worktree's branch: `git add -f` of its path
+`merge_incomplete` while a task is stored `merging`, recovers as below, refuses with
+`uncommitted_change` when the record it writes holds a change recovery left, reads the committed
+record and checks its revision, publishes a staged file over the committed bytes through a
+[file transaction](../glossary.json#concept.file-transaction), syncs the directory and commits the
+record alone on the primary worktree's branch: `git add -f` of its path
 and `git commit --only` of that path, with the repository's author identity and hooks, which leaves
 every other change of the primary worktree as it was, and the message `concorde: record Issue <id>`,
 `concorde: report to Issue <id>`, `concorde: close Issue <id> (<reason>)` or
-`concorde: reopen Issue <id>`, a blank line and the trailer `Concorde-Issue: <id>`. When the
-primary worktree's `HEAD` is detached or Git refuses the commit, the write puts back the committed
-record, or removes the new one, and refuses with `commit_failed`, carrying Git's output. A failed
-write is never reported as success. No operation deletes a record file.
+`concorde: reopen Issue <id>`, a blank line and the trailer `Concorde-Issue: <id>`. When anything
+fails after publication, the write puts back the committed record, or removes the new one from
+the index and the directory, before it refuses: with `commit_failed`, carrying Git's output, when
+the primary worktree's `HEAD` is detached or Git refuses the commit, and otherwise with the
+failure itself. When that putting back fails too, it refuses with `recovery_failed` instead,
+naming both failures and the record, which stays uncommitted until the next recovery. A failed
+write is never reported as success. No operation deletes a committed record.
+
+**Recovery** lists, with `git status --porcelain --untracked-files=all --ignored` of
+`.concorde/issues/`, every entry named `I-<32 hex digits>.md` whose state differs from `HEAD` and
+every file transaction temporary `.concorde-write-*`; it touches no other path. A record entry is
+**left by a write** when its file is a regular file that reads as a valid record of the Issue its
+name gives and, when `HEAD` holds the record, differs from it, has the same `schema_version`, and
+begins its `reports` and `dispositions` with the committed ones. Recovery puts each such record
+back, with `git checkout HEAD -- <path>` when `HEAD` holds it and otherwise with
+`git rm --cached` and the file's removal, and removes each temporary. It leaves every other record
+entry as it is, with the reason: the committed record was deleted, the file is no regular file,
+it is no valid record, the committed record is not valid, it rewrites what the committed record
+holds, or the file equals the committed record while its index entry does not. It commits
+nothing. When something cannot be put back or removed, it tries the rest and refuses with
+`recovery_failed`, naming each failure.
 
 ## Bookkeeping command
 
@@ -248,13 +279,14 @@ each of the last two a nonempty list, and `sort`, as `list`'s options), `issue_s
 primary worktree's `check`), `issue_report` (the report as an object `report` or a `file` relative to
 the session's worktree, and `check`), `issue_close` and `issue_reopen`. Their writes never wait for
 the merge lock (`wait` 0), and they record the session as the provenance above says and as a
-disposition's actor.
+disposition's actor. `recover` has no tool.
 
 | Action | Effect and output |
 | --- | --- |
 | `list [--status open\|closed] [--module <module>] [--tier <tier>]... [--severity <severity>]... [--sort severity]` | `{"issues": [...]}`: the summary rows of `list_issues` with `--status` as `status`, `--module` as `target_id`, the `--tier` and `--severity` values, which may each be repeated, as `tiers` and `severities`, and `--sort` as `sort`; without an option, every Issue by identity |
 | `show <id>` | `{"issue": <record>, "revision": <digest>}` |
 | `check` | `{"errors": [...], "notes": [...]}`, exit status 1 when `errors` is nonempty and 0 otherwise |
+| `recover` | Runs `recover_issues` on the primary worktree, waiting for the merge lock, and prints its `{"recovered": [...], "left": [...]}` |
 | `report --file <report.json> [--task <task-id>]` | Records the report in the file with the provenance above and prints `{"receipt": <receipt>, "revision": <digest>}` |
 | `report --file <report.json> --check` | Runs every check `report` runs on the file, records nothing and prints `{"valid": true, "file", "report_key", "reporting_module"}` |
 | `close <id> --reason resolved\|duplicate\|not-actionable --note <text> --evidence <item>... [--duplicate-of <id>]` | Closes the open Issue at its current revision and prints `{"issue_id", "status": "closed", "revision"}` |
@@ -281,12 +313,15 @@ like a missing argument or an unknown reason, itself before it reads the Issue, 
 violation with `usage`; a `--duplicate-of` naming the Issue being closed passes them and is
 refused by the store with `invalid_issue`.
 
-Every refusal prints `{"error": <link>}` and writes nothing. The link is a `component` link of
+Every refusal prints `{"error": <link>}`, commits nothing and leaves no record a read shows. It
+writes nothing either, with one exception: a write refused with `recovery_failed`, or a process
+killed while writing, may leave an uncommitted record in the primary worktree, which the next
+write or `recover` puts back, so a refused write may be repeated. The link is a `component` link of
 the Framework's [error chain](../tracing/contracts.md#contract.tracing.error) with the actor
 `Issues (concorde issues)`: its code is the refusal code, its detail names the Issue, the report
 file and field, or the argument concerned and states what is wrong, and its reason is
-`environment` for `io_error`, `merge_busy`, `merge_incomplete`, `commit_failed` and
-`not_a_repository`, and `input` for every other code. These environment refusals are failures of
+`environment` for `io_error`, `merge_busy`, `merge_incomplete`, `commit_failed`,
+`recovery_failed`, `uncommitted_change` and `not_a_repository`, and `input` for every other code. These environment refusals are failures of
 the Issue system itself: each lists among its options that its [error chain](../glossary.json#concept.error-chain) is carried in the task's
 [decision log](../glossary.json#concept.decision-log) and escalation, or in the run's result, and never reported as an Issue. The Issue store raises `IssueError`,
 a subclass of Spec tooling's [error type](../spec-tooling/spec/errors.md) with its own registered
@@ -295,8 +330,8 @@ it breaks, and its option is the error's remediation. The exit status is 2 when 
 request is unusable (codes `usage`, `not_a_project`, `unreadable_file`) and 1 when the request is
 refused (every other code).
 
-`check` reads the registry and every entry of `.concorde/issues/` except hidden files
-such as `.gitignore`. Each error names the file: an entry that is not a regular file named
+`check` reads the registry and every entry of `.concorde/issues/` of `--root` except hidden files
+such as `.gitignore`, as files on disk (`read_record_file`), committed or not. Each error names the file: an entry that is not a regular file named
 `I-<32 hex digits>.md`, a record that does not read as valid, or an open Issue whose owner is not a
 registered Module (`<id> names unknown owner <module>`). A closed Issue with an unknown owner
 produces the same text as a note, which does not change the exit status. An absent directory passes.
@@ -328,3 +363,5 @@ Concorde's configuration registers it as the
 | `merge_busy` | the merge lock stayed held for the whole wait; the message names its holder |
 | `merge_incomplete` | a task's merge into the primary branch is unfinished; the message is Tasks' account of it |
 | `commit_failed` | the primary worktree's `HEAD` is detached or Git refused the commit of the record, which was put back |
+| `recovery_failed` | an uncommitted record, the write's own after a failure or one an earlier write left, could not be put back; it stays uncommitted and no read shows it |
+| `uncommitted_change` | the record the write would change differs from its committed version in a way no write leaves; it is left as it is |

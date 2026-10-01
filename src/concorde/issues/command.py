@@ -1,5 +1,5 @@
-"""The bookkeeping command's actions: list, show and check Issues, and record reports and
-dispositions for a session; never launch a model.
+"""The bookkeeping command's actions: list, show and check Issues, record reports and
+dispositions for a session, and recover what Issue writes left uncommitted; never launch a model.
 
 ``scripts/issues.py`` (``concorde issues``) and the project MCP server's Issue tools call the same
 actions, so both give the same answer and the same refusal. Every action but ``check`` works on the
@@ -28,22 +28,32 @@ from ..tasks.store import MERGE_WAIT
 from .shapes import SEVERITIES, TIERS
 from .store import (
     DIRECTORY,
+    RECORD_NAME,
     dispose_issue,
     list_issues,
     project_root,
     read_issue,
+    read_record_file,
+    recover_issues,
     report_issue,
     validate_report,
 )
 
 ACTOR = "Issues (concorde issues)"
-RECORD_NAME = re.compile(r"I-[0-9a-f]{32}\.md")
 USAGE, REFUSED = 2, 1
 AGENTS = ("main-agent", "task-session")
 CLOSING_REASONS = ("resolved", "duplicate", "not-actionable")
 # The refusals that are failures of the Issue system itself rather than of the request.
 ENVIRONMENT = frozenset(
-    {"io_error", "merge_busy", "merge_incomplete", "commit_failed", "not_a_repository"}
+    {
+        "io_error",
+        "merge_busy",
+        "merge_incomplete",
+        "commit_failed",
+        "recovery_failed",
+        "uncommitted_change",
+        "not_a_repository",
+    }
 )
 # What every such failure tells its reader to do instead of reporting it as an Issue.
 NOT_AN_ISSUE = (
@@ -197,7 +207,7 @@ def check(root: Path) -> tuple[dict, int]:
             problems.append(f"{relative} is not a record named I-<32 hex digits>.md")
             continue
         try:
-            record, _ = read_issue(root, path.stem)
+            record, _ = read_record_file(root, path.stem)
         except (ValueError, OSError) as error:
             problems.append(f"{relative} is invalid: {error}")
             continue
@@ -208,6 +218,12 @@ def check(root: Path) -> tuple[dict, int]:
         message = f"{record['id']} names unknown owner {owner}"
         (problems if record["status"] == "open" else notes).append(message)
     return {"errors": problems, "notes": notes}, 1 if problems else 0
+
+
+def recover_action(root: Path, *, wait: float = MERGE_WAIT) -> dict:
+    """Put back, under the merge lock, the records Issue writes published in the primary worktree
+    but did not commit; name each record change left because no Issue write made it."""
+    return guarded(recover_issues, issues_root(project(root)), wait=wait)
 
 
 # --- reports ----------------------------------------------------------------------------------
@@ -433,6 +449,7 @@ __all__ = [
     "check",
     "dispose",
     "list_action",
+    "recover_action",
     "refusal_link",
     "report_action",
     "show_action",

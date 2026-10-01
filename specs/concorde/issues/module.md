@@ -143,6 +143,33 @@ versioned with the project and, once acknowledged, are committed; a write never 
 task's merge commit and the checks that decide whether the merge stays, and while a merge is
 unfinished no write is made at all.
 
+Only committed records count. Every read takes the records of the primary worktree's last commit,
+never its files, so a record is visible exactly when it is committed, and a receipt names a report
+the commit holds. A write that fails after publishing its record puts it back before it refuses.
+Only when that putting back fails, or the writing process is killed, does a record stay published
+but not committed: no read shows it, and it is put back before any further write acts, as
+[recovering uncommitted records](#recovering-uncommitted-records) explains.
+
+### Recovering uncommitted records
+
+Every write, holding the merge lock and before it reads the record it changes, looks for what an
+earlier write published but did not commit: a record file of `.concorde/issues/` whose state,
+staged or not, differs from the last commit, and the temporary files of an interrupted
+[file transaction](../glossary.json#concept.file-transaction). A record file that holds a valid
+record of its Issue continuing the committed one, if any, with more reports or dispositions, is
+what a write leaves behind: it is put back to its committed version, or removed when no commit
+holds it, and the temporaries are removed. Nothing is committed in recovery, because a write that
+gave no receipt recorded nothing: whoever made it was refused or never answered, and may repeat
+it. Any other change of a record, such as a deleted, edited or invalid record, was made by no
+write, so recovery leaves it as it is, and only a write of that very Issue is refused, with
+`uncommitted_change`, until someone inspects and reverts it; writes of other Issues go on. Recovery
+touches nothing outside `.concorde/issues/`, and nothing there but those records and temporaries.
+
+`concorde issues recover` runs the same recovery without writing an Issue, and says what it put
+back and which changes it left. The main agent runs it when such a record keeps the primary
+worktree from being clean, as before a task's merge, or after a refusal with `recovery_failed`
+once the cause the refusal names is fixed.
+
 A task branch holds the copy of `.concorde/issues/` of the commit it started from and never changes
 it: a task that finds, fixes or closes a problem changes the primary worktree's records directly,
 never its own copy, so a task branch brings no Issue change into its merge and Issue records never
@@ -243,7 +270,7 @@ The bookkeeping command is the sessions' interface. In an installed project it i
 is `python3 scripts/concorde.py issues`, which routes to `python3 scripts/issues.py`. The project
 MCP server presents the same actions as the tools `issue_list`, `issue_show`, `issue_check`,
 `issue_report`, `issue_close` and `issue_reopen`, which answer and refuse exactly as the command
-does. A session, the main agent or a [task session](../glossary.json#concept.task-session), uses
+does; `recover` is the command's alone. A session, the main agent or a [task session](../glossary.json#concept.task-session), uses
 those tools because they record the calling session as reporter and actor, which the command cannot
 know; the command serves a task session's shell and the runs it starts as well. Whichever worktree a
 call starts from, it acts on the primary worktree's records.
@@ -296,11 +323,12 @@ records remain readable and are never deleted by the store. The exact state rule
 
 ### Inspection and refusals
 
-`list` prints a summary row per Issue that passes its filters, with its severity and tier, by
-identity or, with `--sort severity` (the tool's `sort`), most severe first; `show <id>` the complete record and
-revision, and `check` validates every record of the worktree it runs in: in the primary worktree the
-project's Issues, in a task worktree the copy its branch holds, which proves the branch's code still reads the records.
-These commands never launch a model. The
+`list` prints a summary row per committed Issue that passes its filters, with its severity and
+tier, by identity or, with `--sort severity` (the tool's `sort`), most severe first; `show <id>`
+the complete committed record and revision, and `check` validates every record file of the
+worktree it runs in: in the primary worktree the project's Issues, in a task worktree the copy its
+branch holds, which proves the branch's code still reads the records. `recover` puts back what
+writes left uncommitted. These commands never launch a model. The
 [configured check](../glossary.json#concept.configured-check) `check.issues.store` runs `check`
 whenever this Module's checks run; it fails malformed, misnamed or inconsistent records and open
 Issues with unregistered owners, but only notes closed Issues with unregistered owners. An open
@@ -308,7 +336,8 @@ Issue with a valid owner does not by itself fail this check; readiness to delive
 decision.
 
 An unknown Issue, stale revision, action on the wrong status, unregistered owner, missing report
-evidence, busy merge lock, unfinished merge or failed commit is refused without writing a record.
+evidence, busy merge lock, unfinished merge, failed commit, record that could not be put back or
+record changed by hand is refused without committing a record or leaving one a read shows.
 The error names the Issue, file, field or argument and gives a code and explanation so the caller
 can correct the request. The exit status is 2 for an unusable request and 1 for a refused one; exact
 shapes, actions and codes are in the [Issue interface](interface.md).
@@ -355,13 +384,16 @@ caller holding it, as a merge closing the Issues its task resolves does.
 <a id="realization.issues.store"></a>
 
 **The Issue store** is the only code that creates, appends to or disposes an Issue record, and it
-never deletes a record file. Each file holds one identity heading and one JSON record, so no prose
+never deletes a committed record. Each file holds one identity heading and one JSON record, so no prose
 copy can drift from it, and reports are never rewritten: a later observation that classifies the
 problem differently is a new report. Each write refuses a root that is not the primary worktree,
-holds the merge lock, checks the revision its caller read, publishes through a
+holds the merge lock, puts back what earlier writes left uncommitted, checks the revision its
+caller read against the committed record, publishes through a
 [file transaction](../glossary.json#concept.file-transaction), syncs, and commits the record alone
 with `git commit --only`, so success means the record is committed and a concurrent writer is never
-silently overwritten. A commit Git refuses puts the record back as it was and refuses the write.
+silently overwritten. A failure after publication, a commit Git refuses among them, puts the
+record back as it was and refuses the write. Reads ask Git for the records of the last commit, so
+they need no lock and see one commit's records at once.
 Identities are derived from the reporting invocation and the reporter's key rather than counted, so
 no allocation state is shared. Report and receipt shapes are
 [typed values](../glossary.json#concept.typed-value) registered as
@@ -370,7 +402,7 @@ no allocation state is shared. Report and receipt shapes are
 <a id="realization.issues.command"></a>
 
 **The bookkeeping command** is the sessions' face of the store — `report`/`close`/`reopen` write,
-`list`/`show`/the store check read — kept in `src/concorde/issues/command.py` so that
+`recover` puts back, `list`/`show`/the store check read — kept in `src/concorde/issues/command.py` so that
 `scripts/issues.py` and the project MCP server's Issue tools share every answer and refusal. It
 reads the [registry](../glossary.json#concept.registry) for which Modules exist, which is root, and
 which digest names a report's context. It supplies provenance rather than trusting report-file
@@ -389,6 +421,7 @@ is only noted.
 <a id="realization.issues.tests"></a>
 
 The **Issues tests** cover the store on Git repositories (the merge lock, commits, concurrent
-writers, malformed records, failed publications and commits, tiers, severities and the order by severity), every bookkeeping-command
+writers, malformed records, failed publications and commits, reads of committed records only,
+recovery after failed and killed writes, tiers, severities and the order by severity), every bookkeeping-command
 action with its refusals, from the primary and a linked worktree, and the configured store check on
 a fixture project.
