@@ -25,7 +25,7 @@ from ..errors import from_exception, link
 from ..spec.repository import SpecError, digest
 from ..spec.typed_data import TypedDataError, decode
 from ..tasks.store import MERGE_WAIT
-from .shapes import TIERS
+from .shapes import SEVERITIES, TIERS
 from .store import (
     DIRECTORY,
     dispose_issue,
@@ -140,8 +140,11 @@ def list_action(
     status: str | None = None,
     module: str | None = None,
     tiers: list[str] | None = None,
+    severities: list[str] | None = None,
+    sort: str | None = None,
 ) -> dict:
-    """The summary rows of the Issues that pass every filter given; none given, every Issue."""
+    """The summary rows of the Issues that pass every filter given, none given every Issue, in
+    the order ``sort`` names or by identity."""
     return {
         "issues": guarded(
             list_issues,
@@ -149,6 +152,8 @@ def list_action(
             target_id=module,
             status=status,
             tiers=tiers,
+            severities=severities,
+            sort=sort,
         )
     }
 
@@ -421,6 +426,7 @@ __all__ = [
     "AGENTS",
     "CLOSING_REASONS",
     "REFUSED",
+    "SEVERITIES",
     "TIERS",
     "USAGE",
     "Refusal",

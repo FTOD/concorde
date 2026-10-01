@@ -294,6 +294,19 @@
       "explanation": "specs/concorde/issues/module.md#concept.issue-revision"
     },
     {
+      "id": "concept.issue-severity",
+      "title": "Issue severity",
+      "owner": "module.issues",
+      "definition": "How much the problem of an Issue report matters while it stands, independently of its tier: `critical`, `high`, `medium` or `low`, most severe first.",
+      "explanation": "specs/concorde/issues/module.md#concept.issue-severity",
+      "contrasts": [
+        {
+          "target": "concept.issue-tier",
+          "reason": "the tier says who may handle the problem; the severity says how much it matters, and so which Issues are fixed first"
+        }
+      ]
+    },
+    {
       "id": "concept.issue-tier",
       "title": "Issue tier",
       "owner": "module.issues",

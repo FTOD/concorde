@@ -60,6 +60,10 @@ else:
 - `tier`: who may fix it in the Concorde repository, one of Issues' tiers: `obvious-fix` when the
   defect and its fix are both obvious, `preferred-fix` when one of several fixes is clearly better,
   `decision-needed` when the cause or the fix is uncertain, and `suggestion` for no defect today;
+- `severity`: how much the defect matters to work using Concorde, one of Issues' severities:
+  `critical` for wrong results, lost or corrupted data, a security hole or a core flow broken with
+  no workaround, `high` for a main flow broken or wrong with a workaround, `medium` for a secondary
+  flow or an edge case, and `low` for something cosmetic;
 - `type`: `bug` (a failure or wrong result), `limitation` (consistent but insufficient behaviour)
   or `gap`; `subtype`: `null` for a bug or a limitation, and for a gap one of
   `implementation-spec-mismatch`, `spec-conflict` or `missing-contract`;
@@ -93,6 +97,7 @@ For example, with the error chain shortened:
 {
   "report_key": "write-hook-refuses-rw-directories",
   "tier": "decision-needed",
+  "severity": "high",
   "type": "bug",
   "subtype": null,
   "title": "The worker write hook refuses files under an rw directory entry",

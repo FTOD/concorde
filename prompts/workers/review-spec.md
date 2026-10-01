@@ -18,7 +18,7 @@ independently of how confident it sounds, and end with status `ok` and `output` 
 `{"checks": [...]}`, one `{"finding": <number>, "status": "confirmed" | "disputed", "reason": "..."}`
 per finding: `confirmed` when the Spec text supports the finding as stated, `disputed` when it does
 not, for example because the quoted evidence is not in the Spec, another passage already states
-what the finding says is missing, or the tier is wrong. The reason says which. A disputed finding is
+what the finding says is missing, or the tier or severity is wrong. The reason says which. A disputed finding is
 recorded nowhere.
 
 Return `blocked` only when you cannot review at all, for example because the reviewed Module's

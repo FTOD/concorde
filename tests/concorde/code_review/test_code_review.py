@@ -28,6 +28,7 @@ def finding(basis="scenario.a.answer", **values):
     return {
         "module": "module.a",
         "kind": "violation",
+        "severity": "high",
         "tier": "obvious-fix",
         "title": "add subtracts",
         "problem": "add subtracts its arguments.",
@@ -121,6 +122,7 @@ class CodeReviewTests(unittest.TestCase):
             {
                 "report_key": title,
                 "tier": tier,
+                "severity": "medium",
                 "type": "bug",
                 "subtype": None,
                 "title": title,
@@ -210,10 +212,11 @@ class CodeReviewTests(unittest.TestCase):
         self.assertEqual(set(reported), set(issues))
         first = issues[reported[0]]["reports"][-1]
         self.assertEqual(
-            ("module.a", "obvious-fix", "gap", "implementation-spec-mismatch"),
+            ("module.a", "obvious-fix", "high", "gap", "implementation-spec-mismatch"),
             (
                 first["report"]["owner_target_id"],
                 first["report"]["tier"],
+                first["report"]["severity"],
                 first["report"]["type"],
                 first["report"]["subtype"],
             ),

@@ -54,6 +54,7 @@ KINDS = [
     "spec-challenge",
 ]
 TIERS = list(issues.TIERS)
+SEVERITIES = list(issues.SEVERITIES)
 OUTCOMES = ["accepted", "changes_required", "incomplete"]
 LOG_TAIL = 8_000
 DIFF_LIMIT = 300_000
@@ -84,6 +85,7 @@ REVIEWER_FINDING: dict = {
     "required": [
         "module",
         "kind",
+        "severity",
         "tier",
         "title",
         "problem",
@@ -96,6 +98,7 @@ REVIEWER_FINDING: dict = {
     "properties": {
         "module": MODULE_ID,
         "kind": {"enum": KINDS},
+        "severity": {"enum": SEVERITIES},
         "tier": {"enum": TIERS},
         "title": _STRING,
         "problem": _STRING,
@@ -146,9 +149,12 @@ EARLIER_ISSUES: dict = {
                     "items": {
                         "type": "object",
                         "additionalProperties": False,
-                        "required": ["issue", "tier", "title"],
+                        "required": ["issue", "severity", "tier", "title"],
                         "properties": {
                             "issue": ISSUE_ID,
+                            "severity": {
+                                "anyOf": [{"enum": SEVERITIES}, {"type": "null"}]
+                            },
                             "tier": {"anyOf": [{"enum": TIERS}, {"type": "null"}]},
                             "title": _STRING,
                         },
@@ -167,7 +173,7 @@ EARLIER_ISSUES: dict = {
     ]
 }
 
-# contract.code-review.review, version 3 (contracts.md); a test keeps the two equal.
+# contract.code-review.review, version 4 (contracts.md); a test keeps the two equal.
 REVIEW_SCHEMA: dict = {
     "type": "object",
     "additionalProperties": False,

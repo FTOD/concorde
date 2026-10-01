@@ -41,8 +41,18 @@ problem you can establish in the Specs as one finding:
     better; say which in `suggestion`.
   - `decision-needed`: a **blocking** problem that is unclear, or whose fix changes what the Module
     promises or how the project is divided, so that someone above the task must decide it.
-  Blocking and advisory are the criteria's severity: a problem is blocking when a reader or a task
-  bound to the Module could not rely on the Spec as written.
+  The criteria call a problem blocking when a reader or a task bound to the Module could not rely
+  on the Spec as written, and advisory otherwise; the tier records that, and who may fix it.
+- `severity`: how much the problem matters, whoever fixes it, as the project's Issues rate every
+  problem, most severe first:
+  - `critical`: a task relying on the Spec would produce wrong results, lose data, open a security
+    hole or break a core flow, with nothing in the Specs to warn it.
+  - `high`: a task relying on the Spec would act wrongly or could not act in a main use of the
+    Module, though a careful reader could find the way out.
+  - `medium`: the Spec misleads or leaves out something in a secondary use or an edge case, or
+    costs every reader real effort without misleading them.
+  - `low`: cosmetic, such as wording, naming, order or a missing diagram; nothing is done wrongly.
+  Severity is independent of the tier: an obvious fix may be critical and a decision low.
 - `title`: the problem in one short line, as an Issue's title.
 - `problem`: what is wrong, in one or two sentences.
 - `impact`: what a reader or a task bound to the Module would do wrong or could not do because of
@@ -67,7 +77,7 @@ Do not pad the list either; a finding without evidence in the Specs is not a fin
 The task lists the reviewed Module's **earlier Issues**: the open problems earlier reviews recorded.
 Compare every finding with them before you report it as new. A finding about the same problem is
 that Issue's, however you would word it now: report it only when it changed, when you would state
-it differently or give it another tier, with `earlier` set to the Issue's identity. An earlier Issue
+it differently or give it another severity or tier, with `earlier` set to the Issue's identity. An earlier Issue
 that still stands as recorded you leave out: it stays open. An earlier Issue the Specs no longer
 have you list in `resolved` as `{"issue": "<its identity>", "reason": "..."}`. Only a problem none
 of them covers is a new finding, and a new finding has no `earlier` at all: leave the field out

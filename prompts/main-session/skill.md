@@ -375,8 +375,9 @@ close again, which commits the log and finishes the close.
 
 Issues are the project's durable records of concrete problems: the primary worktree keeps them, and
 every session and run sees the same Issues at once. Manage them through the project MCP server's
-Issue tools, which answer as `concorde issues` does: `issue_list` (a row per Issue with its tier,
-open and closed, filtered by `status`, `module` and `tier`) and `issue_show` to read,
+Issue tools, which answer as `concorde issues` does: `issue_list` (a row per Issue with its severity and tier,
+open and closed, filtered by `status`, `module`, `tier` and `severity`, and with `sort` `severity`
+most severe first) and `issue_show` to read,
 `issue_report`, `issue_close` and `issue_reopen` to write, and `issue_check` to check the records. A task session reaches the same Issues, through these tools or
 the `concorde issues` command, as the runs it starts do. No Issue is created or closed behind your back, apart from a
 review Operation that reports the problems it finds and a task merge that closes the Issues its task
@@ -390,7 +391,7 @@ possible match: append to the Issue that already tracks the problem, with its `i
 `expected_revision` that `issue_show` printed, instead of creating another; reopen a closed match
 before appending a new observation. Repeating a creation creates another Issue, even with the same
 report key. A report states the problem completely, `description`, `impact`, `basis` and `evidence`, because whoever it is
-escalated to acts on its identity alone, and carries its `tier`:
+escalated to acts on its identity alone, and carries its `tier`, who may handle it:
 
 | Tier | The problem | Who handles it |
 | --- | --- | --- |
@@ -399,14 +400,24 @@ escalated to acts on its identity alone, and carries its `tier`:
 | `preferred-fix` | simple, with several fixes of which one is clearly better | the task session fixing it, which reports the fix it chose to you |
 | `decision-needed` | unclear, or its fix is uncertain | you decide, or put it to the developer, before anyone fixes it |
 
+and its `severity`, how much the problem matters whoever handles it, most severe first:
+
+| Severity | The problem's consequence |
+| --- | --- |
+| `critical` | wrong results, lost or corrupted data, a security hole, or a core flow broken with no workaround |
+| `high` | a main flow broken or wrong with a workaround, or a promise that misleads the work relying on it |
+| `medium` | a secondary flow or an edge case fails, or a gap that slows the work without misleading it |
+| `low` | cosmetic, such as wording, naming or layout; nothing goes wrong |
+
 **Fixing.** Recording and fixing are separate: a review Operation only reports, and fixing is later
-work of a task. Solve an Issue like any other work: open a task for the Issue's current Module and
+work of a task. Choose what to fix first from `issue_list` with `status` `open` and `sort`
+`severity`, which puts the most severe Issues first, then by tier, `decision-needed` first. Solve an Issue like any other work: open a task for the Issue's current Module and
 name the Issues it fixes, `concorde task open <task> … --resolves <issue>[,<issue>…]`, or later
 `task_resolve`. Tell its session in the brief which tier each Issue has: it fixes `obvious-fix` and
 `preferred-fix` Issues itself, reporting the fix it chose for a `preferred-fix` one, and escalates a
 `decision-needed` Issue, naming it by its identity, for you to decide or to put to the developer.
 A review
-(`spec_review`, `spec_panel`, `code_review`) reports each of its findings as an Issue with the tier
+(`spec_review`, `spec_panel`, `code_review`) reports each of its findings as an Issue with the severity and tier
 its reviewer or chair gave it, and lists in its result the earlier Issues that still stand and those it found
 resolved; the task session fixes the first by their tier in later `specify` or `implement` work and
 closes the resolved ones, through its task when the task fixed them. Starting, fixing or delivering

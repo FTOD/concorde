@@ -68,6 +68,14 @@ The Issue store SHALL accept a report only when it carries one of the [tiers](mo
 Every record it creates therefore holds only tiered reports; a record written before tiers existed
 keeps its untiered reports unchanged and stays valid.
 
+### req.issues.severity-required — Every report carries a severity
+
+The Issue store SHALL accept a report only when it carries one of the
+[severities](module.md#severities) `critical`, `high`, `medium` and `low`.
+
+Every record it creates therefore holds only reports with a severity; a record written before
+severities existed keeps its reports without one unchanged and stays valid.
+
 ### req.issues.own-failures — The Issue system never reports itself
 
 The bookkeeping command and the project MCP server's Issue tools SHALL say, in every refusal that is
@@ -126,12 +134,24 @@ A closed Issue keeps its reports and dispositions, so it can be shown and reopen
 
 The bookkeeping command's `list` and the `issue_list` tool SHALL list only the Issues that pass
 every filter given: a status keeps the Issues with that status, a Module those whose latest report
-has it as owner or reporting Module, and tiers those whose latest report has one of them.
+has it as owner or reporting Module, tiers those whose latest report has one of them, and
+severities those whose latest report has one of them.
 
 Given no filter, they list every Issue, open and closed.
 
 A session checking for an Issue that already tracks its problem reads the open Issues of the Module
 concerned, which fit its context however many Issues the project keeps.
+
+### req.issues.list-by-severity — A listing can start from the most severe Issues
+
+Asked to sort by severity, the bookkeeping command's `list` and the `issue_list` tool SHALL list
+the Issues most severe first, those of equal severity by tier from `decision-needed` down to
+`suggestion`, then in the order they were first reported, and the Issues without a severity or
+tier after every one with it.
+
+Without that request they list the Issues by identity. Every row shows the Issue's severity, or
+none when its latest report has none, beside its tier, so that whoever chooses what to fix next can
+start from the most severe problems.
 
 ### req.issues.revision-checked — Writes never overwrite a newer record
 

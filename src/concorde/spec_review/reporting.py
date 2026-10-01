@@ -17,7 +17,7 @@ import json
 
 from ..execution.context import RunContext, evidence
 from ..issues import command as issue_command
-from ..issues.shapes import BLOCKING, TIERS
+from ..issues.shapes import BLOCKING, SEVERITIES, TIERS
 from ..issues.store import list_issues, project_root, read_issue, report_issue
 
 # The Operations whose reports make an Issue one of a Module's earlier Issues.
@@ -49,6 +49,7 @@ def earlier_issues(ctx: RunContext, module: str) -> list[dict]:
         found.append(
             {
                 "issue": record["id"],
+                "severity": latest.get("severity"),
                 "tier": latest.get("tier"),
                 "title": latest["title"],
                 "description": latest["description"],
@@ -69,7 +70,7 @@ def material(earlier: list[dict]) -> str:
         "same passage or the same kind of defect in the same place, is that Issue, however you "
         "would word it now, never a new one. If an Issue still stands as recorded, leave it out: "
         "it stays open. If it still stands but you would state it differently, give it another "
-        "tier, or it has changed, report it as a finding with `earlier` set to its identity. If "
+        "severity or tier, or it has changed, report it as a finding with `earlier` set to its identity. If "
         "the Specs no longer have the problem, list it in `resolved` with the reason. Only a "
         "problem none of them covers is a new finding.\n\n```json\n"
         + json.dumps(earlier, indent=2, ensure_ascii=False)
@@ -119,7 +120,7 @@ def settle(earlier: list[dict], findings: list[dict], resolved: list[dict]) -> d
         ignored.append({"issue": name, "reason": reason})
     closed = named | {entry["issue"] for entry in done}
     carried = [
-        {"issue": item["issue"], "tier": item["tier"], "title": item["title"]}
+        {key: item[key] for key in ("issue", "severity", "tier", "title")}
         for item in earlier
         if item["issue"] not in closed
     ]
@@ -166,6 +167,7 @@ def issue_report(operation: str, run_id: str, key: str, finding: dict) -> dict:
     return {
         "report_key": key,
         "tier": finding["tier"],
+        "severity": finding["severity"],
         "type": kind,
         "subtype": subtype,
         "title": finding["title"],
@@ -246,6 +248,7 @@ def report(
 __all__ = [
     "ISSUE",
     "REVIEW_OPERATIONS",
+    "SEVERITIES",
     "TIERS",
     "earlier_issues",
     "is_blocking",

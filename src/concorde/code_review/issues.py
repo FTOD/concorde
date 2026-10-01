@@ -18,7 +18,7 @@ import re
 
 from ..execution.context import RunContext, Stop, evidence
 from ..issues import command as issue_command
-from ..issues.shapes import BLOCKING, TIERS
+from ..issues.shapes import BLOCKING, SEVERITIES, TIERS
 from ..issues.store import list_issues, project_root, read_issue, report_issue
 
 OPERATION = "code_review"
@@ -59,6 +59,7 @@ def earlier_issues(ctx: RunContext, module: str) -> list[dict]:
             {
                 "issue": record["id"],
                 "module": module,
+                "severity": latest.get("severity"),
                 "tier": latest.get("tier"),
                 "title": latest["title"],
                 "description": latest["description"],
@@ -81,9 +82,9 @@ def material(earlier: list[dict]) -> str:
         "report any finding as new, compare it with each of them: a finding about the same "
         "problem, in the same code or against the same promise, is that Issue, however you would "
         "word it now, never a new one. If an Issue still stands as recorded, leave it out: it "
-        "stays open. If it still stands but you would state it differently, give it another tier, "
-        "or it has changed, report it as a finding of the same Module with `earlier` set to its "
-        "identity. If the code no longer has the problem, list it in `resolved` with the reason. "
+        "stays open. If it still stands but you would state it differently, give it another "
+        "severity or tier, or it has changed, report it as a finding of the same Module with "
+        "`earlier` set to its identity. If the code no longer has the problem, list it in `resolved` with the reason. "
         "Only a problem none of them covers is a new finding.\n\n```json\n"
         + json.dumps(earlier, indent=2, ensure_ascii=False)
         + "\n```\n"
@@ -133,7 +134,7 @@ def settle(earlier: list[dict], findings: list[dict], resolved: list[dict]) -> d
         ignored.append({"issue": name, "reason": reason})
     closed = named | {entry["issue"] for entry in done}
     carried = [
-        {"issue": item["issue"], "tier": item["tier"], "title": item["title"]}
+        {key: item[key] for key in ("issue", "severity", "tier", "title")}
         for item in earlier
         if item["issue"] not in closed
     ]
@@ -182,6 +183,7 @@ def issue_report(
     return {
         "report_key": key,
         "tier": finding["tier"],
+        "severity": finding["severity"],
         "type": kind,
         "subtype": subtype,
         "title": finding["title"],
@@ -270,6 +272,7 @@ __all__ = [
     "CLASSIFICATION",
     "ISSUE",
     "OPERATION",
+    "SEVERITIES",
     "TIERS",
     "earlier_issues",
     "is_blocking",

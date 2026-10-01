@@ -47,6 +47,18 @@ def parser() -> Parser:
         action="append",
         help="only Issues whose latest report has this tier; may be repeated",
     )
+    listing.add_argument(
+        "--severity",
+        choices=command.SEVERITIES,
+        action="append",
+        help="only Issues whose latest report has this severity; may be repeated",
+    )
+    listing.add_argument(
+        "--sort",
+        choices=("severity",),
+        help="severity: most severe first, then by tier, decision-needed first, then the "
+        "Issue reported first; Issues without a severity last",
+    )
     show = actions.add_parser("show", parents=[common], help="one record")
     show.add_argument("issue_id")
     actions.add_parser(
@@ -83,7 +95,12 @@ def main(argv=None) -> int:
         if args.action == "list":
             emit(
                 command.list_action(
-                    root, status=args.status, module=args.module, tiers=args.tier
+                    root,
+                    status=args.status,
+                    module=args.module,
+                    tiers=args.tier,
+                    severities=args.severity,
+                    sort=args.sort,
                 )
             )
         elif args.action == "show":

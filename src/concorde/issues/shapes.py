@@ -16,6 +16,8 @@ GAP_KINDS = ("implementation-spec-mismatch", "spec-conflict", "missing-contract"
 TIERS = ("suggestion", "obvious-fix", "preferred-fix", "decision-needed")
 # The tiers that block: every tier but a suggestion.
 BLOCKING = TIERS[1:]
+# How much a problem matters, most severe first; orthogonal to its tier.
+SEVERITIES = ("critical", "high", "medium", "low")
 EVIDENCE = obj({"path": PATH, "description": STRING})
 # Where a report was observed when that is another project than the one recording it: evidence
 # paths are then relative to that project.
@@ -30,6 +32,7 @@ ORIGIN = obj(
 REPORT_FIELDS = {
     "report_key": STRING,
     "tier": {"enum": list(TIERS)},
+    "severity": {"enum": list(SEVERITIES)},
     "type": {"enum": ["bug", "gap", "limitation"]},
     "subtype": {"anyOf": [{"enum": list(GAP_KINDS)}, {"type": "null"}]},
     "title": STRING,
@@ -45,11 +48,12 @@ REPORT_FIELDS = {
     "expected_revision": DIGEST,
 }
 OPTIONAL = ("origin", "error_chain", "issue_id", "expected_revision")
-# What a caller submits: every report carries its tier.
+# What a caller submits: every report carries its tier and its severity.
 REPORT = obj(REPORT_FIELDS, OPTIONAL)
 # A report as a record stores it: records of schema version 2, written before tiers, hold reports
-# without one, which the store never rewrites; version 3 requires it of every report.
-STORED_REPORT = obj(REPORT_FIELDS, ("tier", *OPTIONAL))
+# without either, and records of version 3, written before severities, reports without a
+# severity, which the store never rewrites; version 4 requires both of every report.
+STORED_REPORT = obj(REPORT_FIELDS, ("tier", "severity", *OPTIONAL))
 PROVENANCE = obj(
     {
         "invocation_id": STRING,
@@ -77,10 +81,12 @@ DISPOSITION = obj(
     }
 )
 # The version of the records the store creates.
-RECORD_VERSION = 3
+RECORD_VERSION = 4
+# The first record version whose reports carry their tier.
+TIERED_VERSION = 3
 RECORD = obj(
     {
-        "schema_version": {"enum": [2, RECORD_VERSION]},
+        "schema_version": {"enum": [2, TIERED_VERSION, RECORD_VERSION]},
         "id": ISSUE_ID,
         "status": {"enum": ["open", "closed"]},
         "reports": {**array(OBSERVATION), "minItems": 1},
@@ -88,5 +94,5 @@ RECORD = obj(
     }
 )
 
-register("concorde-issue-report", 2, REPORT)
+register("concorde-issue-report", 3, REPORT)
 register("concorde-issue-receipt", 1, RECEIPT)
