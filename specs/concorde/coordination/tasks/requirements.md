@@ -369,7 +369,27 @@ uncommitted or untracked path, and a task that `close --merged` would refuse for
 than containment.
 
 A new path Git cannot version, such as a sandbox's `/dev/null` mount of `.bashrc`, is no untracked
-path here, by the same rule as a task worktree's changes.
+path here, by the same rule as a task worktree's changes. The refusal says that a task changes
+nothing outside its worktree as well as that a merge starts from a clean primary worktree, since
+the paths may be a task's and not the developer's.
+
+### req.tasks.merge-nothing-outside — A merge refuses what changed outside every task's reach
+
+`concorde task merge` SHALL refuse, before merging, an uncommitted or untracked path in the
+worktree of a task that has ended, naming each such worktree with its task and its paths, and warn
+without refusing about one in the worktree of another task that has delivered and waits.
+
+A task changes nothing outside its own worktree, and its session's shell is held to that by its
+guidance alone
+([req.task-session.no-sandbox](../task-session/requirements.md#req.task-session.no-sandbox)), so
+the merge audits it as far as the filesystem allows, which records who wrote nothing. No task will
+validate or deliver what is in the worktree of a task that ended, so it is refused; a change in the
+worktree of a task that has delivered and waits may be that task's own session's, so it is a
+warning, since refusing would block a task that has nothing to do with it. The worktree of a task
+still working is not judged: its own session changes it, and what is written there becomes that
+task's content, which its own delivery and merge judge, refusing an uncommitted change as
+`dirty_worktree`. Worktrees of no task are not the project's to judge. The audit judges working
+trees and not commits, since the primary branch legitimately moves while a task runs.
 
 ### req.tasks.refusal-detail — A refusal is an error link
 

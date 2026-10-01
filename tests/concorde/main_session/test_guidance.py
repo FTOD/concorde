@@ -167,6 +167,29 @@ class GuidanceTests(unittest.TestCase):
             "Read the task's decision log before you change anything", self.session
         )
 
+    @verifies("scenario.main-session.task-session-unrestricted")
+    def test_a_task_session_has_one_rule_and_no_restriction_besides(self):
+        self.assertIn(
+            "One rule bounds you: **change nothing outside your task worktree**",
+            self.session,
+        )
+        self.assertIn("Nothing else about your session is restricted", self.session)
+        self.assertIn("your commands run under no sandbox", self.session)
+        self.assertIn("prepare your worktree yourself", self.session)
+        self.assertIn("`concorde task merge` audits this at the end", self.session)
+        self.assertIn(
+            "Edit and Write refuse any path outside the task worktree and its decision log",
+            self.session,
+        )
+        self.assertIn(
+            "let every run of your workspace finish and stop every other background command "
+            "you started that still runs",
+            self.session,
+        )
+        self.assertIn("holds your workspace lock", self.session)
+        for text in (self.session, self.skill):
+            self.assertNotIn("the main agent prepares that before starting", text)
+
     @verifies("scenario.main-session.task-session-prepares-workers")
     def test_a_task_session_creates_and_binds_new_files_before_a_worker(self):
         self.assertIn("**Prepare the workers' environment.**", self.session)
@@ -513,9 +536,13 @@ class GuidanceTests(unittest.TestCase):
             (skill, "reopen a closed match before appending"),
             (skill, "Repeating a creation creates another Issue"),
             (skill, "`description`, `impact`, `basis` and `evidence`"),
-            (skill, "it never writes an Issue record from Bash"),
-            (session, "never from Bash"),
-            (session, "read and write them only with the project MCP server's"),
+            (
+                skill,
+                "A task session reaches the same Issues, through these tools or the "
+                "`concorde issues` command",
+            ),
+            (session, "the `concorde issues` command does the same from your shell"),
+            (session, "read and write them with the project MCP server's"),
             (session, "append to the Issue that already tracks it"),
             (session, "carries its `tier`"),
         ):

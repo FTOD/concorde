@@ -154,8 +154,8 @@ The build wraps it with a `meta` block and the Claude Code step adapter, whose s
 [project MCP server](../../glossary.json#concept.project-mcp-server)'s tool `workflow_step` once
 with the step request, waiting at most 100 seconds, and returns the step outcome it answered, while
 the step function itself asks again as long as the run is still running and treats an outcome that
-names another step or no real run as no answer. The server runs the step command, outside the
-session's Bash sandbox, as [Steps in Claude Code](#steps-in-claude-code) explains. A model copies
+names another step or no real run as no answer. The server runs the step command as a process of its
+own, as [Steps in Claude Code](#steps-in-claude-code) explains. A model copies
 the request, and a live headless run showed one dropping a field of it,
 which the step command then refused as `invalid_request`; so the step function asks again after an
 outcome that is no answer, three times in a row at most, since the same key never starts a run
@@ -243,7 +243,7 @@ results.
 
 A step passes through four participants below the task level. The script asks for a key; a step
 agent relays it once, through the project MCP server's `workflow_step`, which runs the step command
-outside the session's Bash sandbox, waiting at most 100 seconds; the workflow commands start the
+as a process of the server, waiting at most 100 seconds; the workflow commands start the
 run only when the key is not yet recorded and otherwise wait for the recorded one; the Execution
 runner runs it and saves its result. While the run is still running the script asks again with the
 same key, which only waits again, so a run that outlives many calls is still started once. The
@@ -521,33 +521,34 @@ replays its finished steps at once.
 
 <a id="steps-through-the-server"></a>
 
-The detached run must also outlive the call that started it, and a Bash call does not let it. A
-workflow is started by a task session, whose Bash tool runs in Claude Code's sandbox, and the
-sandbox runs every Bash call in a PID namespace of its own that ends with the call: a runner
-detached from it is killed when the call returns
-([Execution](../module.md#detached-namespace)). An end-to-end run on 2026-09-30 lost its survey
-step this way, `step_lost` over `host_ended` with nothing in the runner's output, while the worker
-was still reading. So a step agent does not run the step command with Bash: it calls the
+The detached run must also outlive the relay that started it, and a step agent's own Bash does not
+let it. A step may run for many minutes while each relay is one short turn, and a run anchored in a
+relaying agent's call lives only as long as that call: an end-to-end run on 2026-09-30 lost its
+survey step this way, `step_lost` over `host_ended` with nothing in the runner's output, while the
+worker was still reading, because a sandboxed Bash call's PID namespace ends with the call and
+takes every process it started with it ([Execution](../module.md#detached-namespace)). So a step
+agent does not run the step command with Bash: it calls the
 [project MCP server](../../glossary.json#concept.project-mcp-server)'s tool `workflow_step` with the
-step request as an object, and the server, a process of the session outside its Bash sandbox, runs
-the step command of the session's worktree. The run it starts is started outside the sandbox and
-lives until it ends, whatever becomes of the calls that asked for it, of the session or of the
-server; later calls for the same key only wait for it. The request travels as an object, with
-nothing quoted for a shell. The report is still relayed with Bash: `concorde workflow report`
-starts no run and returns at once.
+step request as an object, and the server, a process of the session beside its tools, runs the step
+command of the session's worktree. The run it starts is the server's own child and lives until it
+ends, whatever becomes of the calls that asked for it, of the session or of the server; later calls
+for the same key only wait for it. The request travels as an object, with nothing quoted for a
+shell. The report is still relayed with Bash: `concorde workflow report` starts no run and returns
+at once.
 
-The rejected alternative kept the run inside the sandbox by anchoring it in background Bash, whose
-call keeps its namespace until its command ends: each step's first relay would have started the step
-command with `run_in_background` to live as long as the run, then asked for the outcome with a
-second, foreground call that only waits, and a later relay that found the step unrecorded and no
-anchor alive would have had to start the anchor again. It was rejected because it asks a small relay
-model for a two-command choreography around a background command, the very kind of instruction a
-live run had seen a relay turn into an invented outcome; because Claude Code ends a background
-command after at most two hours and ends a session's background commands when the session is
-stopped, taking the run down with them; and because Claude Code wakes each step agent again when its
-anchor ends, a turn for nothing. The server path has none of these limits, at the price that a task
-session's workflow runs no longer run inside its Bash sandbox, as
-[Task sessions](../../coordination/task-session/module.md#workflow-runs-outside-the-sandbox) states.
+The rejected alternative anchored the run in a step agent's background Bash call, which lives until
+its command ends: each step's first relay would have started the step command with
+`run_in_background` to live as long as the run, then asked for the outcome with a second,
+foreground call that only waits, and a later relay that found the step unrecorded and no anchor
+alive would have had to start the anchor again. It was rejected because it asks a small relay model
+for a two-command choreography around a background command, the very kind of instruction a live run
+had seen a relay turn into an invented outcome; because Claude Code ends a background command after
+at most two hours and ends a session's background commands when the session is stopped, taking the
+run down with them; and because Claude Code wakes each step agent again when its anchor ends, a turn
+for nothing. The server path has none of these limits, at the price that a workflow's runs are
+started by the session's server rather than by the session's own shell, as
+[Task sessions](../../coordination/task-session/module.md#workflow-runs-through-the-server)
+states.
 
 The result is assembled by a deterministic command from what the runs recorded. A step agent might
 drop or paraphrase what it relays; the report reads each saved run result itself. So the chain the
@@ -644,9 +645,9 @@ workspace that was busy after all, is an ordinary finished run whose result carr
 
 **Main session** provides the [project MCP server](../../glossary.json#concept.project-mcp-server),
 whose `workflow_step` tool the Claude Code step agents call. Workflows relies on it running the
-step command of the session's worktree, from outside the session's Bash sandbox, and answering with
-the step outcome that command printed, or with its refusal unchanged; it relies on nothing else of
-the server.
+step command of the session's worktree as a process of the server, so that the run outlives the
+relay, and answering with the step outcome that command printed, or with its refusal unchanged; it
+relies on nothing else of the server.
 
 <a id="uses-operations"></a>
 

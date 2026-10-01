@@ -842,7 +842,7 @@ busy [merge lock](../../glossary.json#concept.merge-lock), its holder), and whos
 `environment` for `git_failed`, `worktree_failed`, `record_conflict`, `record_unreadable`,
 `record_unwritable`, `decision_log_failed`, `decision_log_uncommitted`, `binding_failed`, `merge_busy`, `workspace_busy`, `rollback_failed`, `wait_timeout`, `wait_failed` and the
 session codes `session_failed` and `missing_worktree`, `decision` for `dirty_worktree`,
-`not_merged`, `delivery_unverified`, `primary_dirty`, `merge_conflict`, `check_failed`,
+`not_merged`, `delivery_unverified`, `primary_dirty`, `changed_outside`, `merge_conflict`, `check_failed`,
 `merge_incomplete`, `not_resumable` and `merge_diverged`, and `input` otherwise. A
 refusal exits with status 1 and changes nothing, apart from the refusals that
 [req.tasks.refusal-inert](requirements.md#req.tasks.refusal-inert) names, each of which says what
@@ -1017,7 +1017,8 @@ holds the first two.
 | `not_merging` | `merge --resume` or `--abort` names a task that is not `merging`; the message names its state. |
 | `not_resumable` | `merge --resume` finds that the primary branch's head is not the merge commit; the message names the head and whether it is the commit before the merge, and that `--abort` is the way out. |
 | `merge_diverged` | `merge --resume` or `--abort` finds the primary worktree on another branch or detached, or (`--abort`) its head neither the commit before the merge nor the merge commit; the message names the commits and says to restore the branch by hand. |
-| `primary_dirty` | `merge` finds an uncommitted or untracked path in the primary worktree, or its `HEAD` detached; the message names the paths or the detached commit. |
+| `primary_dirty` | `merge` finds an uncommitted or untracked path in the primary worktree, or its `HEAD` detached; the message names the paths or the detached commit, and says that a task changes nothing outside its worktree. |
+| `changed_outside` | `merge` finds an uncommitted or untracked path in the worktree of a task that has ended and whose worktree outlived it; the message names each worktree with its task and its paths. A worktree of a task that has delivered and waits is a warning of the merge instead, not a refusal. |
 | `merge_conflict` | `git merge` stopped with conflicts; the merge was aborted, and the message names the conflicting paths. |
 | `check_failed` | A post-merge check, of a merge or of `--resume`, exited non-zero or could not run, or the checks left uncommitted paths; the primary branch was reset to the commit before the merge and the task is delivered again, and the message names the failing check, its exit status, the log and the end of its output, or the paths the checks left and the log, and any paths the checks created, which stay in the primary worktree. |
 | `rollback_failed` | After a conflict or a failed check, or during `--abort`, Git refused to abort the merge or reset the primary branch; the message carries the original failure, Git's output and the commit the primary branch is at, the primary worktree is left as Git left it, and the task stays `merging`. |

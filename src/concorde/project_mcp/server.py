@@ -38,7 +38,7 @@ INSTRUCTIONS = (
     "primary worktree on every call. Queries: task_list, task_show, trace_show, run_result, "
     "workflow_report, locks. Short writes: task_open, task_escalate, task_report, task_answer, "
     "task_rebind, task_close. workflow_step starts or awaits a workflow step of the bound "
-    "workspace the session started in, outside the session's Bash sandbox, for step agents. "
+    "workspace the session started in, as a process of this server, for step agents. "
     "task_merge "
     "takes the task's workspace lock and the merge lock without waiting (a busy lock is refused "
     "naming its holder) and starts the merge as its own process. register_wait asks to be woken "

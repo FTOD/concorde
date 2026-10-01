@@ -37,16 +37,8 @@ Commands, the session's [trace node](../../glossary.json#concept.trace-node) and
 - GIVEN the settings written for a [task session](../../glossary.json#concept.task-session)
 - WHEN its write hook judges an Edit of a file in the task worktree, of the [decision log](../../glossary.json#concept.decision-log) and of a file of the primary worktree
 - THEN the first two are allowed and the third is denied with a reason naming the task worktree
-- AND the sandbox lets Bash write only the task worktree, the Git directory, the task's folder, `.concorde/locks/` and `.concorde/issues/` of the primary worktree and package caches
-- AND the sandbox allows every network host
-- BUT the write hook denies an Edit of an [Issue](../../glossary.json#concept.issue) record
-
-### scenario.task-session.issue-write — A run the session starts writes an Issue inside the boundary
-
-- GIVEN a [task session](../../glossary.json#concept.task-session)'s writable paths, created as its start creates them
-- WHEN a run started in the task worktree reports an [Issue](../../glossary.json#concept.issue), which takes the [merge lock](../../glossary.json#concept.merge-lock) and commits its record on the primary branch
-- THEN every file the write creates or changes lies inside those writable paths
-- AND the record is committed on the primary branch
+- AND the write hook denies an Edit of an [Issue](../../glossary.json#concept.issue) record, which lies outside the task worktree
+- BUT the settings restrict nothing else: they carry no sandbox, so the session's commands reach every path, process, socket and network host
 
 ## Ending with the task
 

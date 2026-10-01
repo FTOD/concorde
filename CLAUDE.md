@@ -12,9 +12,8 @@ The rules that hold before the skills are loaded:
 
 - **The main agent** stays in the primary worktree and never works inside a task worktree: every
   change of Spec meaning or code behaviour is a task (`task open`) handed to a task session
-  (`task session <task> --main <its session name>`, after `python3
-  scripts/development/init-references.py` in the task worktree and the task's brief recorded in
-  its decision log), even a single task. The only change it makes in the primary worktree itself
+  (`task session <task> --main <its session name>`, after the task's brief is recorded in its
+  decision log), even a single task. The only change it makes in the primary worktree itself
   is a small change, such as a typo or a one-line fix, that the developer approved after it said
   what it would change and why it is small, besides `registry --write` and a commit of
   `.concorde/workers.json` alone. It merges only with `task merge <task> --check "python3
@@ -22,7 +21,9 @@ The rules that hold before the skills are loaded:
   Bash, never with `git merge`. After dispatching tasks it shows the developer each task's name
   with its goal in one line and reports on the tasks by those names.
 - **A task session** works only inside its task worktree, with that worktree's own
-  `python3 scripts/concorde.py`, and follows its first prompt. It never asks the developer in
+  `python3 scripts/concorde.py`, and follows its first prompt. It prepares that worktree itself
+  before anything else: `python3 scripts/development/init-references.py`, `uv sync --locked
+  --group dev`, `npm --prefix docsite ci` and `python3 scripts/concorde.py build`. It never asks the developer in
   place: it gathers every decision it needs and escalates them together to the main agent. It
   never merges into the primary branch; its only merge is the primary branch into its task branch
   when the main agent asks for it after a merge conflict.

@@ -51,8 +51,9 @@ own. Its one rule of its own is that it never waits for a lock, so `task_merge` 
 the merge it started, and `register_wait` with the wait it registered, while the merge's result and
 the wait's answer arrive later. One tool, `workflow_step`, works on a workspace rather than on
 records: it starts and awaits the [workflow steps](../../glossary.json#concept.workflow-step) of the
-workspace its session works in, so that their runs start outside the session's Bash sandbox. Its
-tools and how it wakes a session are explained [below](#the-project-mcp-server).
+workspace its session works in, so that their runs are processes of the server rather than of a
+relaying agent's turn. Its tools and how it wakes a session are explained
+[below](#the-project-mcp-server).
 
 <a id="owners"></a>
 
@@ -392,9 +393,9 @@ nowhere else, in a task opened for the root Module, or for a created Module to s
 every session and run sees the same records at once. The guidance tells the main agent and task
 sessions to manage them through the [project MCP server](#the-project-mcp-server)'s Issue tools,
 `issue_list`, `issue_show`, `issue_report`, `issue_close`, `issue_reopen` and `issue_check`, which
-answer as `concorde issues` does; a task session never writes an Issue record from Bash, although
-its sandbox lets the runs it starts report their findings, and the command stays for the main agent
-and for runs.
+answer as `concorde issues` does and record the session that called them, which the command cannot
+know; the command answers the same way and stays the path for a task session's shell and for the
+runs a session starts.
 
 **Recording.** The session that meets a concrete problem it will not fix now decides whether it
 deserves an Issue; a worker finding or an Operation error is input to that decision, and a review
@@ -485,11 +486,12 @@ events are in the [contracts](contracts.md).
   `unbound_worktree`, a session whose worktree has no
   [workspace binding](../../glossary.json#concept.workspace-binding), such as the main agent's in
   the primary worktree, since a workflow runs only in a bound workspace. It exists because of where
-  the server runs: outside the session's Bash sandbox, so the
-  [detached run](../../glossary.json#concept.detached-run) the step command starts is started
-  outside it too and lives until its run ends, which a run started from a sandboxed Bash call does
-  not ([Execution](../../execution/module.md#long-runs)). The server answers these calls, which
-  wait, each on a thread of its own, so the session's other calls are not held up meanwhile.
+  the server runs: the step command is the server's own child, so the
+  [detached run](../../glossary.json#concept.detached-run) it starts depends on neither the
+  relaying agent's turn nor a background command of the session, and lives until its run ends
+  ([Workflows](../../execution/workflows/module.md#steps-through-the-server)). The server answers
+  these calls, which wait, each on a thread of its own, so the session's other calls are not held up
+  meanwhile.
 - **Waiting**: `register_wait` asks to be woken when a task becomes `delivered`, `merging`,
   `closed` or `failed`, when a task is rebound to a main agent's session other than a named one,
   when a run ends, or when a lock is released. The server watches without
@@ -530,10 +532,10 @@ Using the server is recommended, not enforced. The kernel's `flock` stays the on
 and the runs of task sessions take the same locks directly, so both paths see each other's
 holders. The server is the better path for the main agent whenever it would otherwise wait:
 `task_merge` instead of a `task merge --wait` that blocks a background command for minutes, and
-`register_wait` instead of watching a task. For workflow steps the server is the only path a
-sandboxed session has, and the Claude Code workflow adapter always takes it. The CLI remains the
-way for everything else: `task session`, the runs a task session starts itself in background Bash,
-and anything the server does not present.
+`register_wait` instead of watching a task. For workflow steps it is the path the Claude Code
+workflow adapter always takes, since a step may outlast many relays. The CLI remains the way for
+everything else: `task session`, the runs a task session starts itself in background Bash, the
+Issues it writes from its shell, and anything the server does not present.
 
 <a id="channels"></a>
 

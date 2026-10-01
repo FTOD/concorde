@@ -156,13 +156,13 @@ The adapter decides only how a step is invoked and awaited and how the report is
 relay subagents that have the same step command a developer could run run for them, with the report
 assembled from the recorded runs.
 
-### req.workflows.steps-through-server — Claude Code steps start outside the Bash sandbox
+### req.workflows.steps-through-server — Claude Code steps start from the project MCP server
 
 The Claude Code step function SHALL start and await every step through the
 [project MCP server](../../glossary.json#concept.project-mcp-server)'s `workflow_step` tool, never
 through a Bash command.
 
-A run started from a sandboxed Bash call dies when the call returns
+A step may outlast many relays, and a run anchored in a relaying agent's Bash call dies with it
 ([Steps in Claude Code](module.md#steps-in-claude-code)).
 
 ### req.workflows.script-repeats — The script, not a model, waits for a run

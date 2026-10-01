@@ -37,8 +37,8 @@ configuration, such as a worker gets, would give it other tools and instructions
 agent's.
 
 Its **[session boundary](../../glossary.json#concept.session-boundary)**, a term of the Harness, is
-the settings and write hook that confine what its own file tools and shell write to its task while
-leaving reads and the network open.
+the settings and write hook that keep its own file-writing tools inside its task. That is its one
+restriction: everything else of the session, its shell included, is as open as the main agent's.
 
 ## Overview
 
@@ -195,11 +195,11 @@ probe on 2026-09-29 (Claude Code 2.1.284) started a `claude --bg` session with
 on a held [merge lock](../../glossary.json#concept.merge-lock), and when the lock was released the
 idle session was never woken. So `register_wait` answers a task session with the `concorde task
 wait` command, which it runs in background Bash and is woken by when it returns. The server runs as
-every MCP server does, outside the Bash sandbox, and its tools may change any task's record: the
-developer accepted that a task session can reach the task management tools, which are no boundary,
-so the guidance, not the boundary, keeps a task session from merging or closing its task. Its
-`workflow_step` starts the runs of the session's workflows from there, outside the sandbox
-([below](#workflow-runs-outside-the-sandbox)).
+every MCP server does, as a process of the session beside its tools, and its tools may change any
+task's record: the developer accepted that a task session can reach the task management tools, which
+are no boundary, so the guidance, not the boundary, keeps a task session from merging or closing its
+task. Its `workflow_step` starts the runs of the session's workflows from there
+([below](#workflow-runs-through-the-server)).
 
 <a id="project-mcp-approvals"></a>
 
@@ -233,75 +233,68 @@ only reach the session through `--settings`, so they change no approval anywhere
 
 ## The session boundary
 
-A task session may write only what working its task needs: with its file tools, the task worktree
-and the task's decision log; with its shell, also the repository's Git directory, where its commits
-on the task branch are written, the task's own folder `.concorde/tasks/<task>/` of the primary
-worktree, which holds the workspace folder the task worktree's
-[workspace binding](../../glossary.json#concept.workspace-binding) names for every run started
-there, including the [workflow record](../../glossary.json#concept.workflow-record), and the task's
-record and trace, where `concorde task escalate` records its escalations, the primary worktree's
-`.concorde/locks/`, where those runs take the
-[workspace lock](../../glossary.json#concept.workspace-lock) and their
-[run locks](../../glossary.json#concept.run-lock), the primary worktree's `.concorde/issues/`, where
-those runs write the project's [Issues](../../glossary.json#concept.issue), and the user's package
-caches. An Issue write takes the [merge lock](../../glossary.json#concept.merge-lock) in
-`.concorde/locks/` and commits its record on the primary branch through the Git directory, so these
-paths are all it needs; the file tools still never write an Issue record, which the session itself
-writes only through the Issue command or the project MCP server's Issue tools. Reads and the
-network stay open. The shell's sandbox reaches the network through a proxy of its own on
-`localhost`, named in the proxy variables of the commands it runs, since those commands have a
-network namespace holding only a loopback interface; the workers of the Operations a session starts
-pass that proxy on ([Workers' proxy rule](../../execution/workers/launch.md#proxy)), so they reach
-their model endpoints, one on `localhost` included, as a main session's workers do, while their own
-tools keep no network.
+A task session is restricted in one thing: it changes nothing outside its task worktree. Its file
+tools are held to that by the [write hook](../../glossary.json#concept.write-hook), which lets Edit
+and Write change the task worktree and the task's decision log and denies every other path, an
+[Issue](../../glossary.json#concept.issue) record among them; the session writes Issues through the
+Issue command or the project MCP server's Issue tools, as the runs it starts do. Nothing else of
+the session is restricted. Its commands run under no operating-system sandbox, with every path,
+process, socket, home-state file and network host open to them, so the session prepares its own
+worktree — dependencies, submodules, build outputs — probes the machine it runs on, and starts the
+runs of its task as the main agent starts its own.
 
-The session boundary guards against mistakes, not a malicious session. It costs only generated
-settings (see the [Harness](../../glossary.json#concept.session-boundary) for what they hold).
+The session boundary guards against mistakes, not a malicious session, and a task session is the
+main agent's own role at a smaller scale: the main agent works under no boundary at all. The
+developer decided the shell's sandbox away after it had cost fourteen problems in one week, of
+which only four were answered by changing a rule and the rest by a workaround that moved work to
+the main agent or into the project MCP server: a PID namespace per Bash call that killed every
+[detached run](../../glossary.json#concept.detached-run), a network namespace reached only through a proxy, Unix sockets blocked by seccomp
+(which broke the nested sandbox of every pi worker a session started), protected paths such as
+`.git/config` that no setting could open, placeholder files the host saw, and only paths existing
+at the start made writable. What keeps the shell inside the task now is the task-session
+[guidance](../../glossary.json#concept.main-session-guidance), Claude Code's `auto` mode and, at
+the end, the audit `concorde task merge` runs over what lies outside the task worktree
+([Tasks](../tasks/module.md#nothing-changed-outside-the-task)): the merge is refused when the
+primary worktree, or the worktree of a task that ended, holds changes nobody accounts for, and the
+task's own merge refuses an uncommitted change in its worktree, so what another session wrote there
+is caught too.
+
 Nobody answers permission prompts in a background session, so it runs in Claude Code's `auto` mode:
-a classifier approves or refuses each action instead of asking, an extra check inside the hook and
-sandbox, which stay the boundary. `bypassPermissions` would skip that check, and Claude Code starts
+a classifier approves or refuses each action instead of asking, which is the only check between the
+guidance and the session's shell. `bypassPermissions` would skip that check, and Claude Code starts
 a background session in it only after the developer accepted a disclaimer once. A model without
-`auto` mode would fall back to asking and stall, so `--model` must name one that has it. Reads stay
-open, because the session needs the whole project's context, and so does the network: a command
-that did not foresee a host fails, sometimes only partly, as when a package manager falls back to
-its cache or Git cannot fetch an object of a partial clone, and keeping the network closed would
-guard against exfiltration, which is outside what this boundary is for. Claude Code's sandbox keeps
-the repository's `.git/config` and Git's hooks read-only inside the writable Git directory, since
-writing them could run code outside the sandbox; a session commits but cannot register a submodule,
-so the main agent prepares that before starting it. While a sandboxed background command of a
-session lives, its sandbox also keeps placeholder files in the task worktree and holds the
-repository's `.git/config.lock`, which blocks the session's own `task-validation` and every other
-task's preparation; so the guidance has a task session stop every background command it started
-before `task-validation` and `delivery`, and never wait by polling, whose loop may never end.
+`auto` mode would fall back to asking and stall, so `--model` must name one that has it. Reads are
+open because the session needs the whole project's context. Tools that MCP servers add are outside
+the write hook, which guards Edit and Write only, and so are the server's own writes: the
+[project MCP server](../../glossary.json#concept.project-mcp-server) can change any task's record
+and take any lock, which the developer accepted, since it is a management tool and the guidance,
+not the boundary, says what a task session does with it.
 
-Tools that MCP servers add are outside the write hook, which guards Edit and Write only. A sandbox
-makes only existing paths writable, so Task sessions creates the writable directories that do not
-exist yet, such as the primary worktree's `.concorde/locks/` and `.concorde/issues/`, before a
-session starts.
+A run of the session's own, started with `concorde run`, `task-validation` or `delivery` in
+background Bash, lives as long as that background call. So the guidance has the session let its runs
+finish and stop every other background command before `task-validation` and `delivery`: a run that
+still runs holds the [workspace lock](../../glossary.json#concept.workspace-lock), which refuses
+both, and `delivery` commits every uncommitted change, so a command still writing in the worktree
+would decide what the [delivery commit](../../glossary.json#concept.delivery-commit) holds.
 
-<a id="workflow-runs-outside-the-sandbox"></a>
+<a id="workflow-runs-through-the-server"></a>
 
-**A task session's workflow runs start outside its Bash sandbox.** The sandbox runs every Bash
-call in a PID namespace of its own that ends with the call, and a run detached from a call dies
-with it ([Execution](../../execution/module.md#detached-namespace)), so no
-[workflow step](../../glossary.json#concept.workflow-step) longer than one call could finish there.
-The [step agents](../../glossary.json#concept.step-agent) of the session's
-[workflows](../../glossary.json#concept.workflow) therefore start and await every step through the
-[project MCP server](../../glossary.json#concept.project-mcp-server)'s `workflow_step`, which runs
-the task worktree's own `concorde workflow step` from the server, a process of the session outside
-its sandbox ([Workflows](../../execution/workflows/module.md#steps-in-claude-code)). Those runs, and
-the checks and workers they start, then work as the main agent's runs do, under no sandbox of the
-session. What still bounds them is Concorde's own: the runner works only on the bound workspace of
-the session's own task worktree, with its trace and locks, and commits, for `delivery`, only on the
-task branch; each worker keeps its [grant](../../glossary.json#concept.grant) and its own
-boundary; each [configured check](../../glossary.json#concept.configured-check) runs in the
-[read-only check boundary](../../glossary.json#concept.read-only-check-boundary). The session
-boundary guards against mistakes, not a malicious session, and this path rests on the task-session
-guidance, as `task_merge` and `task_escalate` of the same server do: the guidance has a task session
-start its workflows as the installed workflows and use the server's tools only as they are meant
-for, not the boundary. Runs a task session starts itself, with `concorde run`, `task-validation` or
-`delivery` in background Bash, stay inside the sandbox, whose background call lives as long as the
-run.
+**A task session's workflow runs start from the project MCP server.** The
+[step agents](../../glossary.json#concept.step-agent) of the session's
+[workflows](../../glossary.json#concept.workflow) start and await every step through that server's
+`workflow_step`, which runs the task worktree's own `concorde workflow step` as a process of the
+server ([Workflows](../../execution/workflows/module.md#steps-in-claude-code)). A
+[workflow step](../../glossary.json#concept.workflow-step) may outlast many relays, and a run
+started there depends on neither a relaying agent's turn nor a background command Claude Code ends
+after two hours or when the session is stopped. What bounds those runs is Concorde's own, as it
+bounds the main agent's: the runner works only on the bound workspace of the session's own task
+worktree, with its trace and locks, and commits, for `delivery`, only on the task branch; each
+worker keeps its [grant](../../glossary.json#concept.grant) and its own boundary; each
+[configured check](../../glossary.json#concept.configured-check) runs in the
+[read-only check boundary](../../glossary.json#concept.read-only-check-boundary). This path rests on
+the task-session guidance, as `task_merge` and `task_escalate` of the same server do: the guidance
+has a task session start its workflows as the installed workflows and use the server's tools only as
+they are meant for.
 
 ## When the task ends
 
@@ -360,9 +353,8 @@ the node because retention later removes the transcript:
 
 A session whose transcript was not kept still receives its session id and status when Claude Code
 tells them; its usage stays null. Claude Code judges a session's state by whether its process
-lives, which it can see only from a process namespace in which that process is visible: from inside
-a task session's own sandbox a live session reads `failed`. So Concorde takes the state only at the
-close, which runs outside every task session.
+lives, so a state read while a session still works says nothing about how it ended. So Concorde
+takes the state only at the close, when the task has ended.
 
 ## Escalating
 
@@ -393,8 +385,8 @@ names none. An interactive workflow ends at its first
 answers the session in place, it escalates every pending point of that step at once, with the
 workflow result as the cause, and starts the workflow again with the main agent's answers; a no-ask
 workflow decides those points itself and reports every decision at the end. Its workflow's steps
-start through the project MCP server, outside the session's Bash sandbox
-([The session boundary](#workflow-runs-outside-the-sandbox)). The session relies on
+start through the project MCP server
+([The session boundary](#workflow-runs-through-the-server)). The session relies on
 the [workflow result](../../glossary.json#concept.workflow-result) listing those decisions and
 keeping every step's [error chain](../../glossary.json#concept.error-chain) whole. It copies the
 decisions and problems into the task's [decision log](../../glossary.json#concept.decision-log),
@@ -440,7 +432,7 @@ tasksession: Task sessions {
 
 <a id="realization.task-session.starter"></a>
 
-The **session starter** (`session.py`) assembles the session's writable paths and settings and
+The **session starter** (`session.py`) assembles the session's settings around the write hook and
 starts `claude --bg`, and ends a task's task sessions: their stop, the copy of their transcripts and
 their removal, which Tasks' close calls. The boundary files themselves, the task-session write hook
 among them, are the [Harness](../../harness/module.md)'s. The tests (`test_session.py` under
@@ -471,28 +463,26 @@ the start.
 
 <a id="uses-harness"></a>
 
-The **Harness** provides the sources of the
-[session boundary](../../glossary.json#concept.session-boundary): the task-session write hook,
-which Task sessions writes into place with the writable paths it assembles, beside the settings
-that carry the Bash sandbox. Task sessions relies on them confining the session's file tools and
-shell to those paths and leaving reads and the network open; it never widens the paths it hands
-over. The boundary is written before the session starts, and `--dry-run` writes it without starting
-anything, so no session runs without its boundary.
+The **Harness** provides the source of the
+[session boundary](../../glossary.json#concept.session-boundary): the task-session write hook, which
+Task sessions writes into place with the task's worktree and decision log embedded. Task sessions
+relies on it holding Edit and Write to those two and leaving everything else of the session open; it
+never widens the paths it hands over, and adds no restriction of its own around the hook. The
+boundary is written before the session starts, and `--dry-run` writes it without starting anything,
+so no session runs without its boundary.
 
 <a id="uses-issues"></a>
 
 **Issues** keeps the project's [Issues](../../glossary.json#concept.issue) in the primary worktree's
 `.concorde/issues/`, each write holding the [merge lock](../../glossary.json#concept.merge-lock) and
-committing its record alone on the primary branch. Task sessions relies on that place and on those
-being all an Issue write touches, so that the runs a task session starts may write Issues from
-inside its shell's sandbox.
+committing its record alone on the primary branch. Task sessions relies on an Issue record lying
+outside every task worktree, so that the write hook refuses one and a task session reaches Issues
+only through the Issue command or the Issue tools, as the runs it starts do.
 
 <a id="uses-workers"></a>
 
 **Workers** launches the [workers](../../glossary.json#concept.worker) of the Operations a task
-session starts. Task sessions relies on it passing the shell sandbox's proxy on to them
-([req.workers.proxy-passed](../../execution/workers/launch.md#req.workers.proxy-passed)), so they
-reach their model endpoints from inside the session's sandbox, and on each worker's
+session starts. Task sessions relies on each worker's
 [worker backend](../../glossary.json#concept.worker-backend) coming from the
 [worker configuration](../../glossary.json#concept.worker-configuration), pi unless it chooses
 Claude Code, never from the program the task session runs on.

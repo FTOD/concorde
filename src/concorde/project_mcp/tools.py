@@ -3,7 +3,8 @@ the project's Issues.
 
 ``workflow_step`` is the one tool that works on a workspace rather than on records: it runs the
 ``concorde workflow step`` of the worktree the session started in as a child of this server, so a
-step's detached runner is started outside the session's Bash sandbox and lives until its run ends.
+step's detached runner is a process of the server rather than of a relaying agent's turn or of one
+of the session's background commands, and lives until its run ends.
 
 Every call reads the stores afresh from the primary worktree, so an answer is the state when the
 call arrives; the server keeps no copy of any record and adds no rule of its own. A refusal is the
@@ -317,9 +318,8 @@ TOOLS: dict[str, dict] = {
     "workflow_step": {
         "description": "Start or await one workflow step in the bound workspace this session "
         "started in, as a step agent relays it: runs that worktree's own `concorde workflow step "
-        "--json <request> --wait <wait>` as a process of this server, outside the session's Bash "
-        "sandbox, so the run it starts outlives every Bash call, and returns the step outcome it "
-        "printed. `request` is the step request as an object; `wait` is at most 100 seconds "
+        "--json <request> --wait <wait>` as a process of this server, so the run it starts "
+        "outlives the relaying agent's turn, and returns the step outcome it printed. `request` is the step request as an object; `wait` is at most 100 seconds "
         "(default 100). Refused in a worktree without a workspace binding.",
         "inputSchema": schema(
             {
@@ -809,9 +809,9 @@ class Project:
     def workflow_step(self, arguments: dict):
         """The step outcome ``concorde workflow step`` printed in the session's worktree.
 
-        The command runs as this server's child, never in a Bash sandbox, and the runner it
-        detaches is a process of its own: it lives until its run ends, whether or not the
-        session's Bash calls, or the session itself, still run. A worktree without a workspace
+        The command runs as this server's child, and the runner it detaches is a process of its
+        own: it lives until its run ends, whether or not the relaying agent's turn, the session's
+        Bash calls or the session itself still run. A worktree without a workspace
         binding is refused with ``unbound_worktree``; a request the step command refuses is
         refused with its own link, unchanged; an output that is no JSON object with
         ``step_failed``.

@@ -100,15 +100,32 @@ The guidance SHALL tell the main agent to start each unbound run in background B
 
 ### req.main-session.task-session-background-runs — A task session starts its runs in the background
 
-The task-session guidance SHALL tell a task session to start each
+The task-session guidance SHALL tell a task session to start in background Bash each
 [Operation](../../glossary.json#concept.operation) and
-[execution command](../../glossary.json#concept.execution-command) of its task in background Bash.
+[execution command](../../glossary.json#concept.execution-command) it starts itself, never with
+`--detach`.
 
 It starts them inside the task worktree
 ([A task runs its worktree's Concorde](#req.main-session.worktree-own-concorde)) without naming the
 task: the task worktree's [workspace binding](../../glossary.json#concept.workspace-binding) tells
 the run which task's goal, Modules, branch and base it works on, and one workspace runs one thing
-at a time.
+at a time. The background call lives as long as the run it started. A
+[workflow step](../../glossary.json#concept.workflow-step) is not such a run: its
+[step agents](../../glossary.json#concept.step-agent) start it through the server's `workflow_step`
+([`workflow_step` runs the worktree's own step command](#req.main-session.project-mcp-workflow-step)),
+which runs it as a process of the server and waits for it there.
+
+### req.main-session.task-session-quiet-before-validation — A task session stops its background commands before validating
+
+The task-session guidance SHALL tell a task session to let every run of its workspace finish and to
+stop every other background command it started, confirming each ended, before it starts
+`task-validation` or `delivery`.
+
+A run that still runs holds the [workspace lock](../../glossary.json#concept.workspace-lock), which
+refuses both commands, and `delivery` commits every uncommitted change, so a command still writing
+in the task worktree would decide what the [delivery commit](../../glossary.json#concept.delivery-commit)
+holds. A polling loop, which the guidance forbids anyway
+([Waiting never polls](#req.main-session.no-polling)), may never end by itself.
 
 ### req.main-session.act-on-run-result — Every run result is acted on
 
@@ -347,8 +364,10 @@ start, the call is refused only by its arguments, by a busy lock
 `concorde` of the session's worktree, from that worktree's root, as a child of the server, and
 answer with the step outcome it printed.
 
-The server runs outside the session's Bash sandbox, so the
-[detached run](../../glossary.json#concept.detached-run) the command starts lives until its run ends ([contracts](contracts.md#starting-a-workflow-step)).
+The command is the server's own child, so the
+[detached run](../../glossary.json#concept.detached-run) it starts depends on neither the relaying
+agent's turn nor one of the session's background commands, and lives until its run ends
+([contracts](contracts.md#starting-a-workflow-step)).
 
 ### req.main-session.project-mcp-workflow-step-bound — `workflow_step` works only in a bound workspace
 
@@ -726,8 +745,9 @@ Repeating a creation creates another Issue.
 The guidance SHALL tell the main agent and task sessions to read and write Issues through the
 project MCP server's Issue tools.
 
-A task session never writes an Issue record from Bash, although its sandbox lets the runs it starts
-report their findings; the `concorde issues` command stays for the main agent and runs.
+The tools record the session that called them, which the `concorde issues` command cannot know; the
+command answers the same way and stays the path for the main agent, for a task session's shell and
+for the runs a session starts.
 
 ### req.main-session.issues-tiers — The tier decides who fixes an Issue
 

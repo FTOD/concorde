@@ -17,7 +17,8 @@ Run it once in a fresh clone (after ``python3 scripts/concorde.py build``); with
 The submodules' registration (``submodule.<name>.url`` and ``.active``) lives in the repository's
 shared ``.git/config``, which every worktree reads. A registered submodule is not registered again,
 so preparing another worktree only reads that file: writing it needs its lock, ``config.lock``,
-which a Claude Code task session's sandbox keeps in place for as long as one of its commands runs.
+which another Git command writing that configuration — one of another worktree's preparation, for
+instance — holds meanwhile.
 """
 
 from __future__ import annotations
@@ -102,11 +103,10 @@ def register(entry: dict[str, str]) -> None:
     )
     lock = config.with_name("config.lock")
     busy = (
-        f"{lock} exists, so Git cannot write {config}. A Claude Code session's sandbox keeps "
-        "that lock in place while one of its commands runs (a task session's sandbox keeps "
-        "the shared Git configuration read-only), or a Git command is writing the "
-        "configuration now. Wait until that command ends and run this script again; never "
-        "delete the lock"
+        f"{lock} exists, so Git cannot write {config}: a Git command is writing the shared "
+        "configuration now, such as another worktree's preparation registering its own "
+        "submodules. Wait until that command ends and run this script again; never delete "
+        "the lock"
     )
     if lock.exists():
         raise SystemExit(f"cannot register the submodule {path} in {config}: {busy}")

@@ -35,19 +35,16 @@ Developing this checkout itself is direct developer-authorized maintenance, done
 1. The main agent opens the task from the primary worktree with
    `python3 scripts/concorde.py task open <task> --goal "<goal>" --modules <ids>`; its worktree is
    `.claude/worktrees/<task>` and its decision log the `decision_log` path the command prints.
-2. Before starting the task's session, the main agent runs
-   `python3 scripts/development/init-references.py` in the task worktree itself, with that
-   worktree's own script: it registers in the shared `.git/config`, which the session's sandbox
-   keeps read-only, each reference submodule not registered yet, and checks them all out. While
-   another task session runs a command, its sandbox holds `.git/config.lock`; the script then
-   still checks out the submodules when all are registered, but when one still needs registering
-   it refuses before checking out any. Run it again once that command ends, and never delete the
-   lock. It records the task's brief in the decision log
-   and starts the session with
+2. The main agent records the task's brief in the decision log and starts the session with
    `python3 scripts/concorde.py task session <task> --main <its session name>` from the primary
    worktree.
-3. The task session creates what Git ignores in its worktree: `uv sync --locked --group dev`,
-   `npm --prefix docsite ci` and `python3 scripts/concorde.py build`.
+3. The task session creates what Git ignores in its worktree: `python3
+   scripts/development/init-references.py`, which registers in the shared `.git/config` each
+   reference submodule not registered yet and checks them all out, then `uv sync --locked --group
+   dev`, `npm --prefix docsite ci` and `python3 scripts/concorde.py build`. When another worktree's
+   preparation is writing `.git/config` meanwhile, the script refuses before checking out anything,
+   naming the submodule and `config.lock`; run it again once that command ends, and never delete
+   the lock.
 4. It changes the sources, verifies, and commits each verified step on the task branch. It runs
    every `scripts/concorde.py` command (`build`, `spec-validation`, `registry`, `run <operation>`,
    `task-validation`, `delivery`) from the task worktree, never the primary worktree's copy: only

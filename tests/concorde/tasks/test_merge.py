@@ -596,6 +596,45 @@ class MergeTests(unittest.TestCase):
         self.assert_untouched(before)
         self.assertFalse((self.root / ".concorde/tasks/t1/merges").exists())
 
+    @verifies("scenario.tasks.merge-nothing-outside")
+    def test_a_change_outside_every_tasks_reach_refuses_the_merge(self):
+        self.project.open_task("t1")
+        self.project.open_task("t2")
+        self.project.open_task("t3")
+        self.deliver()
+        self.deliver("t2", path="src/a/other.py", text="OTHER = 1\n")
+        ended = self.project.worktree("t3")
+        status, closed = self.command("close", "t3", "--completed", "--note", "done")
+        self.assertEqual(0, status, closed)
+        # The close removes the worktree; one it could not remove outlives its task.
+        git(self.root, "worktree", "add", str(ended), "concorde/t3")
+        before = self.head()
+        (ended / "stray.txt").write_text("written from outside\n")
+        error = self.refusal("merge", "t1")
+        self.assertEqual(
+            ("changed_outside", "decision"),
+            (error["code"], error["unhandled"]["reason"]),
+        )
+        self.assertIn("stray.txt", error["detail"])
+        self.assertIn("t3", error["detail"])
+        self.assertIn(str(ended), error["detail"])
+        self.assert_untouched(before)
+        self.assertFalse((self.root / ".concorde/tasks/t1/merges").exists())
+        (ended / "stray.txt").unlink()
+        # A task that has delivered and waits only warns: its own session may have written it.
+        other = self.project.worktree("t2")
+        (other / "late.txt").write_text("after delivering\n")
+        status, merged = self.command("merge", "t1", "--check", python("pass"))
+        self.assertEqual(0, status, merged)
+        self.assertEqual("closed", self.state())
+        self.assertTrue(
+            any(
+                "late.txt" in warning and str(other) in warning
+                for warning in merged["warnings"]
+            ),
+            merged["warnings"],
+        )
+
     @verifies("scenario.tasks.delivery-unverified")
     def test_a_delivery_commit_that_does_not_verify_is_not_merged(self):
         self.project.open_task("t1")

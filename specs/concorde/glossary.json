@@ -581,7 +581,7 @@
       "id": "concept.session-boundary",
       "title": "Session boundary",
       "owner": "module.harness",
-      "definition": "The settings and write hook that confine a task session's file tools and shell to its task, leaving reads and the network open.",
+      "definition": "The settings and write hook that keep a task session's file-writing tools inside its task, its one restriction, everything else of the session being left open.",
       "explanation": "specs/concorde/harness/module.md#concept.session-boundary"
     },
     {

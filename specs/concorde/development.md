@@ -41,17 +41,17 @@ release, both move with it. `scripts/development/init-references.py` checks them
 without their media, at exactly the recorded commits.
 
 A submodule's registration, its `url` and `active` settings, lives in the repository's shared
-`.git/config`, which every worktree reads. The initializer registers only a submodule that is not
-registered yet, so preparing a task worktree while other task sessions run reads that file and
-never needs its lock: a task session's sandbox keeps `.git/config.lock` in place for as long as one
-of its commands runs, to keep the shared configuration read-only. When a submodule still needs
-registering while that lock is held, the initializer stops before it clones any submodule, so that a
-worktree is never left with some references checked out and others not.
+`.git/config`, which every worktree reads. Each task session prepares its own worktree, so several
+may run the initializer at once; it registers only a submodule that is not registered yet, so the
+usual preparation reads that file and never needs its lock, which another worktree's registration
+holds meanwhile. When a submodule still needs registering while that lock is held, the initializer
+stops before it clones any submodule, so that a worktree is never left with some references checked
+out and others not.
 
 ### scenario.concorde.references-registered-once — Registered submodules are checked out while the configuration is locked
 
 - GIVEN a worktree of this repository whose reference submodules are all registered in the shared `.git/config` but not checked out
-- AND another session's sandboxed command holding `.git/config.lock` of the shared Git directory
+- AND another worktree's preparation holding `.git/config.lock` of the shared Git directory
 - WHEN `scripts/development/init-references.py` runs in that worktree
 - THEN it checks out every submodule at the commit the worktree records
 - AND it leaves `.git/config` unwritten and the lock in place
@@ -59,10 +59,10 @@ worktree is never left with some references checked out and others not.
 ### scenario.concorde.references-unregistered-refused — An unregistered submodule stops the checkout while the configuration is locked
 
 - GIVEN a worktree of this repository whose reference submodules are not checked out, one of them not registered in the shared `.git/config`
-- AND another session's sandboxed command holding `.git/config.lock` of the shared Git directory
+- AND another worktree's preparation holding `.git/config.lock` of the shared Git directory
 - WHEN `scripts/development/init-references.py` runs in that worktree
 - THEN it stops before cloning any submodule, registered or not, so that no reference is checked out
-- AND its error names the unregistered submodule and the lock, says a running session's sandbox may hold the lock, to run it again once that command ends and never to delete the lock
+- AND its error names the unregistered submodule and the lock, says another Git command writing the shared configuration holds it, to run it again once that command ends and never to delete the lock
 - AND it leaves `.git/config` unwritten and the lock in place
 
 ### scenario.concorde.references-registered-when-free — An unregistered submodule is registered while the configuration is free

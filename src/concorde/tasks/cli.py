@@ -95,6 +95,11 @@ HANDLING = {
         "Tasks neither commits nor discards what is in the primary worktree, and merges only "
         "into a clean checked-out branch",
     ),
+    "changed_outside": (
+        "decision",
+        "a worktree no task is working in holds changes nobody accounts for, and Tasks neither "
+        "commits nor discards what it did not write",
+    ),
     "merge_conflict": (
         "decision",
         "resolving a conflict is work for the task, done in its worktree, never a step Tasks "
@@ -164,6 +169,10 @@ OPTIONS = {
     "primary_dirty": [
         "commit, move into a task or remove the listed paths of the primary worktree",
         "check out the primary branch in the primary worktree",
+    ],
+    "changed_outside": [
+        "find out what wrote the listed paths, then revert them",
+        "have the session of the task they belong to commit and deliver them",
     ],
     "merge_conflict": [
         "merge the primary branch into the task branch in the task worktree, resolve the "
