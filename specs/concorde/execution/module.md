@@ -142,10 +142,15 @@ A sandboxed command cannot hand the run to a process outside either, since the s
 even Unix sockets. Whoever needs a run to outlive a sandboxed call starts it from a process outside
 the sandbox, as a [workflow step](../glossary.json#concept.workflow-step) does through the
 [project MCP server](../glossary.json#concept.project-mcp-server)
-([Workflows](workflows/module.md#steps-in-claude-code)), or keeps the call alive as long as the run,
-as a [task session](../glossary.json#concept.task-session) does when it runs a run in background
-Bash. Execution itself does not see which namespace it was started in and promises no more than
-this.
+([Workflows](workflows/module.md#steps-in-claude-code)), or keeps the call alive as long as the run.
+Which callers those are is not Execution's to say: a worker's Bash is sandboxed on the Claude Code
+backend ([req.workers.bash-sandbox](workers/launch.md#req.workers.bash-sandbox)) and a
+[main agent](../glossary.json#concept.main-agent)'s own session may be, while a
+[task session](../glossary.json#concept.task-session)'s calls are not
+([req.task-session.no-sandbox](../coordination/task-session/requirements.md#req.task-session.no-sandbox)),
+so no namespace of theirs ends with them; a task session starts its runs in background Bash rather
+than detached all the same, because Claude Code may end the processes of a call that returned.
+Execution itself does not see which namespace it was started in and promises no more than this.
 
 ### The run store
 
