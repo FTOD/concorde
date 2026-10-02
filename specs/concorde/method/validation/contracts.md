@@ -48,15 +48,16 @@ The `output` of `task-validation` also carries, beside the readiness's fields, t
 of the [step output convention](../../workflows/contracts.md#contract.workflows.step-output), as
 [req.validation.step-output](requirements.md#req.validation.step-output) says: `data` holds `ready`,
 the readiness's own value, and `blocking` is `null` when the workspace is ready and otherwise
-`{"code": "not_ready", "detail": "<each blocking finding's code and subject>"}`, so that a workflow
-counts a run that ended `ok` on a workspace that is not ready as a step that stops its procedure.
+`{"code": "not_ready", "detail": "<each blocking finding's kind and subject>"}`, so that the run
+declares to a workflow, which reads nothing else of its output, that its procedure stops here. The
+readiness saved as `readiness.json` does not carry the object.
 It declares no [decision point](../../glossary.json#concept.decision-point), decision or note; the convention, not this contract, defines the
 object.
 
 ```concorde-contract
 {
   "id": "contract.validation.readiness",
-  "version": 6,
+  "version": 7,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -67,7 +68,8 @@ object.
       "modules",
       "blocking",
       "warnings",
-      "checks"
+      "checks",
+      "workflow"
     ],
     "properties": {
       "workspace": {
@@ -163,6 +165,9 @@ object.
           "$ref": "#/$defs/finding"
         }
       },
+      "workflow": {
+        "type": "object"
+      },
       "warnings": {
         "type": "array",
         "items": {
@@ -250,7 +255,7 @@ object.
       }
     }
   },
-  "semantics": "The output of one task-validation run of the bound workspace named by workspace, and the readiness a delivery run decides with the same steps and saves in its trace node. inputs is the input measurement taken at the start of the run and confirmed unchanged at its end: every changed path with its mode and digest; digest is the input digest. modules lists, sorted, the changed Modules (binding a changed path or owning a changed Spec document) together with the run's Modules. blocking lists every blocking finding: load when the Specs could not be loaded, structural for a structural-check error (ref is the rule identity and path) or one of the run's Modules that the workspace's registry does not register (ref is the Module identity), unbound for an existing changed path that is no document member, not the project glossary, no control record under .concorde/, no generated or build output, no external material and bound by no Module (ref is the path), check for a configured check that failed or timed out (ref is the check identity) or for Modules whose checks could not be run (ref is the Module identity, or the comma-separated identities of the whole selection when its selective checks could not run). warnings lists structural-check warnings in the same shape and never affects ready. checks lists one result per configured check run, in run order, with measured_digest the measured digest Check execution took before the check ran, exit_code null on timeout and log the path of its saved log relative to the run's trace node, checks/<check>/output.log. ready is true exactly when blocking is empty; every check then has status passed. The run's status is ok when ready is true and blocked otherwise, and a blocked run still carries this readiness as its output. A readiness is valid only while a fresh input measurement of the same workspace yields the same digest. A behaviour or field change increments the version.",
+  "semantics": "The output of one task-validation run of the bound workspace named by workspace, and the readiness a delivery run decides with the same steps and saves in its trace node. inputs is the input measurement taken at the start of the run and confirmed unchanged at its end: every changed path with its mode and digest; digest is the input digest. modules lists, sorted, the changed Modules (binding a changed path or owning a changed Spec document) together with the run's Modules. blocking lists every blocking finding: load when the Specs could not be loaded, structural for a structural-check error (ref is the rule identity and path) or one of the run's Modules that the workspace's registry does not register (ref is the Module identity), unbound for an existing changed path that is no document member, not the project glossary, no control record under .concorde/, no generated or build output, no external material and bound by no Module (ref is the path), check for a configured check that failed or timed out (ref is the check identity) or for Modules whose checks could not be run (ref is the Module identity, or the comma-separated identities of the whole selection when its selective checks could not run). warnings lists structural-check warnings in the same shape and never affects ready. checks lists one result per configured check run, in run order, with measured_digest the measured digest Check execution took before the check ran, exit_code null on timeout and log the path of its saved log relative to the run's trace node, checks/<check>/output.log. ready is true exactly when blocking is empty; every check then has status passed. The run's status is ok when ready is true and blocked otherwise, and a blocked run still carries this readiness as its output. A readiness is valid only while a fresh input measurement of the same workspace yields the same digest. workflow is the object of Workflows' step output convention, which defines its fields: its data holds ready, and blocking is null when the workspace is ready and otherwise names the blocking findings (req.validation.step-output); the readiness saved as readiness.json does not carry it. A behaviour or field change increments the version.",
   "example": {
     "workspace": "severity",
     "ready": true,
@@ -292,7 +297,17 @@ object.
         "measured_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
         "log": "checks/check.issues.tests/output.log"
       }
-    ]
+    ],
+    "workflow": {
+      "decision_points": [],
+      "decisions": [],
+      "deviations": [],
+      "notes": [],
+      "blocking": null,
+      "data": {
+        "ready": true
+      }
+    }
   }
 }
 ```

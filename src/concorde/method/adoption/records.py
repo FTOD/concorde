@@ -25,6 +25,7 @@ from ...spec.repository_base import (
 )
 from ...spec.schema import ContractError, validate
 from ...spec.typed_data import TypedDataError, safe_path
+from ...workflows.output import step_output
 
 S = {"type": "string", "minLength": 1}
 MODULE_ID = {
@@ -133,7 +134,9 @@ SURVEY_WORKER_SCHEMA = obj(
         "open_questions": {"type": "array", "items": QUESTION},
     }
 )
-# contract.adoption.decomposition, version 6
+# The workflow object of the step output convention, whose own contract defines its fields.
+WORKFLOW = {"type": "object"}
+# contract.adoption.decomposition, version 7
 DECOMPOSITION_SCHEMA = obj(
     {
         "module": MODULE_ID,
@@ -144,6 +147,7 @@ DECOMPOSITION_SCHEMA = obj(
         "checks": {"type": "array", "items": CHECK},
         "decisions": {"type": "array", "items": DECISION},
         "open_questions": {"type": "array", "items": QUESTION},
+        "workflow": WORKFLOW,
     }
 )
 PROMISE = obj(
@@ -185,7 +189,7 @@ DESCRIBE_WORKER_SCHEMA = obj(
         "deviations": {"type": "array", "items": DEVIATION},
     }
 )
-# contract.adoption.spec-description, version 4
+# contract.adoption.spec-description, version 5
 SPEC_DESCRIPTION_SCHEMA = obj(
     {
         "modules": {"type": "array", "minItems": 1, "items": MODULE_ID},
@@ -205,6 +209,7 @@ SPEC_DESCRIPTION_SCHEMA = obj(
                 "preexisting_errors": {"type": "integer", "minimum": 0},
             }
         ),
+        "workflow": WORKFLOW,
     }
 )
 # contract.adoption.answers, version 3
@@ -224,6 +229,77 @@ ANSWERS_SCHEMA = obj(
         }
     }
 )
+
+
+def workflow_object(
+    decisions: list[dict],
+    questions: list[dict],
+    deviations: list[dict] = (),
+    checks: list[dict] = (),
+    *,
+    survey: bool,
+) -> dict:
+    """What a survey or code_to_spec run declares under Workflows' step output convention
+    (req.adoption.step-output): every open question, and for a survey every decision its worker
+    took itself, as a decision point; every decision; every deviation; and, for a survey, every
+    proposed check as a note."""
+    points = [
+        {
+            "id": item["id"],
+            "kind": "question",
+            "question": f"{item['subject']}: {item['observed']}",
+            "options": list(item["options"]),
+            "recommendation": item["recommendation"],
+            "module": item["module"],
+        }
+        for item in questions
+    ]
+    if survey:
+        points += [
+            {
+                "id": item["id"],
+                "kind": "decision",
+                "question": item["question"],
+                "options": list(item["options"]),
+                "recommendation": f"the worker chose {item['chosen']!r}: {item['reason']}",
+                "module": item["module"],
+            }
+            for item in decisions
+            if item["decided_by"] == "worker"
+        ]
+    return step_output(
+        decision_points=points,
+        decisions=[
+            {
+                "id": item["id"],
+                "question": item["question"],
+                "options": list(item["options"]),
+                "decision": item["chosen"],
+                "reason": item["reason"],
+                "decided_by": item["decided_by"],
+                "module": item["module"],
+            }
+            for item in decisions
+        ],
+        deviations=[
+            {
+                "subject": f"the answer to {item['question']}",
+                "intended": item["intended"],
+                "observed": item["observed"],
+                "point": item["question"],
+                "module": item["module"],
+            }
+            for item in deviations
+        ],
+        notes=[
+            {
+                "kind": "proposed-check",
+                "text": f"{item['id']} for {item['module']}: {item['reason']}",
+                "data": item,
+            }
+            for item in checks
+        ],
+    )
 
 
 class AnswersError(ValueError):
@@ -609,6 +685,7 @@ __all__ = [
     "MODULE_ID",
     "SPEC_DESCRIPTION_SCHEMA",
     "SURVEY_WORKER_SCHEMA",
+    "workflow_object",
     "WORKER_DECISION",
     "AnswersError",
     "S",

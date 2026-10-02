@@ -198,6 +198,13 @@ class AdoptionTests(AdoptionCase):
             ("a Module of its own", "main-agent"),
             (decision["chosen"], decision["decided_by"]),
         )
+        # A decision that follows an answer is declared for a workflow, but as no point.
+        declared = envelope["output"]["workflow"]
+        self.assertEqual([], declared["decision_points"])
+        self.assertEqual(
+            [("d.db-helper", "a Module of its own", "main-agent")],
+            [(d["id"], d["decision"], d["decided_by"]) for d in declared["decisions"]],
+        )
         # An answer whose decision the proposal leaves out fails the run.
         omitted = {**PROPOSAL, "decisions": []}
         status, envelope = self.survey(omitted, "--answers", answers)
@@ -214,6 +221,21 @@ class AdoptionTests(AdoptionCase):
         status, envelope = self.survey()
         self.assertEqual(0, status, envelope)
         self.assertEqual([DB_HELPER_RECORDED], envelope["output"]["decisions"])
+        # The worker's own decision is declared as a decision point under the step output
+        # convention (req.adoption.step-output), and its proposed checks as notes.
+        declared = envelope["output"]["workflow"]
+        self.assertEqual(
+            [("d.db-helper", "decision")],
+            [(p["id"], p["kind"]) for p in declared["decision_points"]],
+        )
+        self.assertEqual(
+            [c["id"] for c in envelope["output"]["checks"]],
+            [
+                n["data"]["id"]
+                for n in declared["notes"]
+                if n["kind"] == "proposed-check"
+            ],
+        )
         self.assertEqual([DB_HELPER], envelope["worker"]["output"]["decisions"])
         prompt = self.worker_round(envelope)["prompt"]
         self.assertIn("`chosen`: the `id` of the option you chose", prompt)
@@ -696,6 +718,10 @@ class AdoptionTests(AdoptionCase):
             (self.worktree / "specs/project/checkout/contracts.md").exists()
         )
         self.assertEqual([RETRY_QUESTION], output["open_questions"])
+        self.assertEqual(
+            [(RETRY_QUESTION["id"], "question")],
+            [(p["id"], p["kind"]) for p in output["workflow"]["decision_points"]],
+        )
         record = read_record(
             self.project.root / ".concorde", envelope["worker_runs"][-1]
         )
@@ -794,6 +820,10 @@ class AdoptionTests(AdoptionCase):
         )
         self.assertEqual(0, status, envelope)
         self.assertEqual(claims["deviations"], envelope["output"]["deviations"])
+        self.assertEqual(
+            [d["question"] for d in claims["deviations"]],
+            [d["point"] for d in envelope["output"]["workflow"]["deviations"]],
+        )
         # A deviation never replaces the promise the answer states.
         claims["promises"] = []
         status, envelope = self.describe(

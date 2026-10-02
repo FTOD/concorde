@@ -1,5 +1,5 @@
-"""The tools of the project MCP server, each a thin call into Tasks, Tracing, Workflows' records or
-the project's Issues, and the process that answers one call.
+"""The tools of the project MCP server, each a thin call into Tasks, Tracing, the workflow part's
+tools or the project's Issues, and the process that answers one call.
 
 The server runs no tool in its own process: each call runs ``concorde project-mcp --call <tool>`` of
 the primary worktree as a process of its own (``serve_call`` here), so the answer is always the one
@@ -7,10 +7,9 @@ of the Concorde code that worktree's ``concorde`` runs at the time of the call, 
 session has been running. The call's arguments and the session's provenance arrive as one JSON
 object on standard input; the answer leaves as one JSON line on standard output.
 
-``workflow_step`` is the one tool that works on a workspace rather than on records: it runs the
-``concorde workflow step`` of the worktree the session started in as a child of the call's
-process, so a step's detached runner is a process of the server's rather than of a relaying agent's
-turn or of one of the session's background commands, and lives until its run ends.
+``workflow_step`` and ``workflow_report`` are the workflow part's own tools (``workflows/tools.py``),
+which the server presents here until it reads the parts' registrations; ``workflow_step`` works on
+the worktree the session started in rather than on records.
 
 Every call reads the stores afresh from the primary worktree, so an answer is the state when the
 call arrives; the server keeps no copy of any record and adds no rule of its own. A refusal is the
@@ -28,7 +27,6 @@ import hashlib
 import json
 import os
 import shlex
-import subprocess
 from argparse import Namespace
 from pathlib import Path
 
@@ -39,12 +37,10 @@ from ...coordination.tasks import cli as task_cli
 from ...coordination.tasks import merge, store, wait
 from ...coordination.tasks.store import TaskError
 from ...kernel.tracing import layout, locks, reader
+from ...workflows import tools as workflow_tools
+from ...workflows.tools import STEP_GRACE, STEP_WAIT, concorde_of
 
 ACTOR = "Concorde project MCP server"
-# The longest a workflow_step call waits for its run, so that the call returns within two minutes.
-STEP_WAIT = 100
-# What a workflow_step call adds to its wait before it gives up on the step command itself.
-STEP_GRACE = 60
 
 
 class Refusal(Exception):
@@ -137,13 +133,8 @@ TOOLS: dict[str, dict] = {
         "unbound run, or, while it runs, its run progress file.",
         "inputSchema": schema({"run": TEXT}, ["run"]),
     },
-    "workflow_report": {
-        "description": "A saved workflow result of a task's workspace: report `number`, or "
-        "the latest.",
-        "inputSchema": schema(
-            {"task": TASK, "number": {"type": "integer", "minimum": 1}}, ["task"]
-        ),
-    },
+    # The workflow part's tools, presented here until the server reads part registrations.
+    "workflow_report": workflow_tools.TOOLS["workflow_report"],
     "locks": {
         "description": "Who holds the merge lock and each current task's workspace lock now: "
         "each holder line (holder, process, since, session, task), or null when free.",
@@ -349,20 +340,7 @@ TOOLS: dict[str, dict] = {
             ["task"],
         ),
     },
-    "workflow_step": {
-        "description": "Start or await one workflow step in the bound workspace this session "
-        "started in, as a step agent relays it: runs that worktree's own `concorde workflow step "
-        "--json <request> --wait <wait>` as a process of this server, so the run it starts "
-        "outlives the relaying agent's turn, and returns the step outcome it printed. `request` is the step request as an object; `wait` is at most 100 seconds "
-        "(default 100). Refused in a worktree without a workspace binding.",
-        "inputSchema": schema(
-            {
-                "request": {"type": "object"},
-                "wait": {"type": "integer", "minimum": 0, "maximum": STEP_WAIT},
-            },
-            ["request"],
-        ),
-    },
+    "workflow_step": workflow_tools.TOOLS["workflow_step"],
     "register_wait": {
         "description": "Ask to be woken, through this server's Claude Code channel, when a task "
         "reaches one of the states `until` (delivered, merging, closed, failed), when a task's "
@@ -405,22 +383,6 @@ def _check(tool: str, arguments: dict) -> dict:
             tool, "invalid_input", f"the arguments of {tool} are invalid: {error}"
         ) from None
     return arguments
-
-
-def concorde_of(worktree: Path) -> tuple[list[str], dict]:
-    """The worktree's own ``concorde`` command line and the environment to run it with: its
-    installed command, or its checkout's script, or else this package itself."""
-    from ...workflows.step import concorde_command
-
-    command = concorde_command(worktree)
-    environment = dict(os.environ)
-    if command[1:3] == ["-m", "concorde"]:
-        # This package itself: make it importable for the child.
-        environment["PYTHONPATH"] = os.pathsep.join(
-            [str(Path(__file__).resolve().parents[3])]
-            + ([environment["PYTHONPATH"]] if environment.get("PYTHONPATH") else [])
-        )
-    return command, environment
 
 
 class Project:
@@ -502,35 +464,7 @@ class Project:
         }
 
     def workflow_report(self, arguments: dict):
-        task = arguments["task"]
-        _, folder = store.load_any(self.primary, task)
-        reports = layout.workflow_folder(store.workspace_folder(folder)) / "reports"
-        numbers = sorted(
-            int(path.stem) for path in reports.glob("*.json") if path.stem.isdigit()
-        )
-        if not numbers:
-            raise own(
-                "workflow_report",
-                "no_report",
-                f"the workspace of task {task} has no workflow result in {reports}",
-                explanation="a workflow result exists only once `concorde workflow report` "
-                "saved one",
-            )
-        number = arguments.get("number") or numbers[-1]
-        path = reports / f"{number}.json"
-        if not path.is_file():
-            raise own(
-                "workflow_report",
-                "no_report",
-                f"the workspace of task {task} has no workflow result {number}; it has "
-                f"{', '.join(map(str, numbers))}",
-            )
-        return {
-            "task": task,
-            "number": number,
-            "path": path.as_posix(),
-            "report": json.loads(path.read_text()),
-        }
+        return workflow_tools.workflow_report(self.where, arguments)
 
     def locks(self, arguments: dict):
         workspaces = {}
@@ -843,96 +777,7 @@ class Project:
     # --- workflow steps ---------------------------------------------------------------------
 
     def workflow_step(self, arguments: dict):
-        """The step outcome ``concorde workflow step`` printed in the session's worktree.
-
-        The command runs as this server's child, and the runner it detaches is a process of its
-        own: it lives until its run ends, whether or not the relaying agent's turn, the session's
-        Bash calls or the session itself still run. A worktree without a workspace
-        binding is refused with ``unbound_worktree``; a request the step command refuses is
-        refused with its own link, unchanged; an output that is no JSON object with
-        ``step_failed``.
-        """
-        from ...kernel import binding as binding_file
-
-        tool = "workflow_step"
-        try:
-            root = binding_file.toplevel(self.where)
-            bound = binding_file.load(root)
-        except KernelError as error:
-            raise own(
-                tool,
-                "unbound_worktree",
-                f"the session's folder {self.where} has no usable workspace binding: "
-                f"{error.code}: {error}",
-                reason="environment",
-                explanation="a workflow step runs only in the bound workspace of the session "
-                "that asks for it",
-                options=["run the workflow in a task worktree, from its task session"],
-            ) from None
-        if bound is None:
-            raise own(
-                tool,
-                "unbound_worktree",
-                f"the session's worktree {root} has no workspace binding "
-                f"({binding_file.BINDING}), so it is no workspace a workflow could run in",
-                reason="environment",
-                explanation="a workflow step runs only in the bound workspace of the session "
-                "that asks for it",
-                options=["run the workflow in a task worktree, from its task session"],
-            )
-        wait = arguments.get("wait", STEP_WAIT)
-        command, environment = concorde_of(root)
-        command += [
-            "workflow",
-            "step",
-            "--json",
-            json.dumps(arguments["request"], ensure_ascii=False),
-            "--wait",
-            str(wait),
-        ]
-        shown = shlex.join(command)
-        try:
-            done = subprocess.run(
-                command,
-                cwd=root,
-                env=environment,
-                stdin=subprocess.DEVNULL,
-                capture_output=True,
-                text=True,
-                timeout=wait + STEP_GRACE,
-                check=False,
-            )
-        except (OSError, subprocess.TimeoutExpired) as error:
-            raise own(
-                tool,
-                "step_failed",
-                f"`{shown}` in {root} did not answer: {error}",
-                reason="environment",
-                explanation="the server only passes the step command's answer on and has none",
-                options=[
-                    "ask for the same step again; the same key never starts a run twice"
-                ],
-            ) from None
-        try:
-            value = json.loads(done.stdout)
-        except ValueError:
-            value = None
-        if not isinstance(value, dict):
-            raise own(
-                tool,
-                "step_failed",
-                f"`{shown}` in {root} exited with status {done.returncode} and printed no JSON "
-                f"object: {(done.stderr or done.stdout).strip()[-2000:] or '(no output)'}",
-                reason="environment",
-                explanation="the server only passes the step command's answer on and has none",
-                options=[
-                    "ask for the same step again; the same key never starts a run twice"
-                ],
-            )
-        if "key" not in value and isinstance(value.get("error"), dict):
-            # The step command refused the request or the workspace: its own link, unchanged.
-            raise Refusal(value["error"])
-        return value
+        return workflow_tools.workflow_step(self.where, arguments)
 
     def register_wait(self, arguments: dict):
         tool = "register_wait"
@@ -1045,12 +890,11 @@ COMMANDS = {
     "task_resolve": "resolve",
     "task_merge": "merge",
     "register_wait": "wait",
-    "workflow_report": "show",
     "locks": "list",
 }
 # The tools whose calls may take long and are served on a thread of their own, so the session's
 # other calls are answered meanwhile.
-THREADED = frozenset({"workflow_step"})
+THREADED = frozenset(workflow_tools.THREADED)
 
 
 def call(project: Project, name: str, arguments) -> object:
@@ -1068,6 +912,9 @@ def call(project: Project, name: str, arguments) -> object:
         raise tasks_refusal(name, COMMANDS.get(name, name), error) from None
     except issues.Refusal as refusal:
         # The Issues command's own link, unchanged.
+        raise Refusal(refusal.link) from None
+    except workflow_tools.ToolRefusal as refusal:
+        # The workflow part's own link, unchanged.
         raise Refusal(refusal.link) from None
 
 
@@ -1200,6 +1047,8 @@ def serve_call(name: str, reader, writer) -> int:
 
 __all__ = [
     "ACTOR",
+    "STEP_GRACE",
+    "STEP_WAIT",
     "THREADED",
     "TOOLS",
     "Project",

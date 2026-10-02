@@ -8,10 +8,12 @@ machinery it runs on — steps, keys, modes, the record and the report — is
 ## The script
 
 Method contributes the workflow's [workflow script](../glossary.json#concept.workflow-script),
-`brownfield.js`, which the build renders with Workflows' Claude Code step adapter into the installed
-`/concorde-brownfield` workflow. Everything particular to this procedure lives in the script, never
-in Workflows: its `meta` names `delivery` as the procedure's last step, so the
-[workflow result](../glossary.json#concept.workflow-result) is `ok` only when that step ended `ok`;
+`brownfield.js`, and registers the workflow with Workflows' catalog when its code loads; the build
+renders the script with Workflows' Claude Code step adapter into the installed
+`/concorde-brownfield` workflow. Everything particular to this procedure lives with Method, never
+in Workflows: its registration names `delivery` as the procedure's last step, which the script
+reads as `LAST_STEP`, so the [workflow result](../glossary.json#concept.workflow-result) is `ok`
+only when that step ended `ok`;
 it reads the Modules a scaffold created, with the `uses` among them, from the `data.created_modules`
 that Scaffold hands it under the step output convention
 ([req.scaffold.step-output](scaffold/requirements.md#req.scaffold.step-output)), to order the

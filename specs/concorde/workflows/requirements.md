@@ -159,8 +159,8 @@ The workflow result SHALL list every recorded step, every decision, decision poi
 
 A workflow result SHALL have status `ok` only when the last step its workflow names ended `ok`.
 
-The part that owns a procedure names its last step when it registers the workflow, and the script's
-`meta` carries the same name; Workflows knows no step by name otherwise.
+The part that owns a procedure names its last step when it registers the workflow, and the build
+renders the same name into the script as its `LAST_STEP` constant; Workflows knows no step by name otherwise.
 
 ### req.workflows.chain-on-top — The workflow adds its own link
 

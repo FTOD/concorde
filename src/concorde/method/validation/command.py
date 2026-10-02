@@ -43,6 +43,7 @@ from ...spec.validation import (
     generated_outputs,
     validate_repository,
 )
+from ...workflows.output import step_output
 from .measurement import MeasurementError, current_branch, measure
 
 SHA256 = {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
@@ -60,6 +61,7 @@ READINESS_SCHEMA: dict = {
         "blocking",
         "warnings",
         "checks",
+        "workflow",
     ],
     "properties": {
         "workspace": TEXT,
@@ -95,6 +97,8 @@ READINESS_SCHEMA: dict = {
         },
         "modules": {"type": "array", "items": TEXT},
         "blocking": {"type": "array", "items": {"$ref": "#/$defs/finding"}},
+        # The workflow object of the step output convention, whose own contract defines it.
+        "workflow": {"type": "object"},
         "warnings": {"type": "array", "items": {"$ref": "#/$defs/finding"}},
         "checks": {
             "type": "array",
@@ -541,10 +545,25 @@ def not_deliverable(ctx: RunContext) -> dict:
     )
 
 
+def handoff(readiness: dict) -> dict:
+    """What a workflow reads of a decided readiness (req.validation.step-output): ``ready`` in
+    its data and, when the workspace is not ready, a ``blocking`` item naming the findings."""
+    blocking = None
+    if not readiness["ready"]:
+        blocking = {
+            "code": "not_ready",
+            "detail": "the workspace is not ready: "
+            + "; ".join(
+                f"{item['kind']} {item['ref']}" for item in readiness["blocking"]
+            ),
+        }
+    return step_output(blocking=blocking, data={"ready": readiness["ready"]})
+
+
 def issue_readiness(ctx: RunContext):
     state = _state(ctx)
     readiness, found = readiness_of(ctx)
-    ctx.output = readiness
+    ctx.output = {**readiness, "workflow": handoff(readiness)}
     saved = (ctx.run_dir / "readiness.json").as_posix()
     if readiness["ready"]:
         return Stop("ok", "Readiness decided: ready.", found)

@@ -31,6 +31,7 @@ from pathlib import Path
 
 from ..execution.context import RunContext, Stop, evidence
 from ..kernel.errors import link
+from ..workflows.output import step_output
 from ..workflows.step import concorde_command
 
 # The tiers and severities of the Issue report contract, weakest and most severe first; every tier
@@ -43,7 +44,9 @@ ACTOR = "Method (Issues through concorde issues)"
 TIMEOUT = 900
 # The refusal code by which ``concorde`` names a command of a part the project has not installed.
 ABSENT_CODE = "part_not_installed"
-NOT_RECORDED = "the findings were not recorded as Issues, since the issues part is not installed"
+NOT_RECORDED = (
+    "the findings were not recorded as Issues, since the issues part is not installed"
+)
 
 # A finding the review reports nowhere, such as one its checker disputed.
 Skipped = Callable[[dict], bool]
@@ -63,6 +66,22 @@ class Absent(Exception):
 
 def is_blocking(tier: str | None) -> bool:
     return tier in BLOCKING
+
+
+def review_output(operation: str, verdict: str, modules: list[dict]) -> dict:
+    """A review's workflow object under the step output convention: one ``review`` note with the
+    verdict and each Module's outcome with its counts, so that a workflow reports the review
+    without knowing the review's own payload."""
+    return step_output(
+        notes=[
+            {
+                "kind": "review",
+                "text": f"{operation} verdict {verdict}: "
+                + ", ".join(f"{item['module']} {item['outcome']}" for item in modules),
+                "data": {"verdict": verdict, "modules": modules},
+            }
+        ]
+    )
 
 
 def _never(finding: dict) -> bool:
@@ -360,6 +379,7 @@ __all__ = [
     "earlier_issues",
     "installed",
     "is_blocking",
+    "review_output",
     "report",
     "settle",
     "statement",
