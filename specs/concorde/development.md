@@ -2,9 +2,9 @@
 
 The root [Module](glossary.json#concept.module) binds the files that set up development of this
 checkout: the Python project and lock, the pytest configuration and its evidence plugin, the
-reference initializer, the Claude Code documentation fetcher and the docsite type check. These
-promises concern how Concorde's own tests and checks run, not what Concorde offers a consumer
-project.
+reference initializer, the Claude Code documentation fetcher, the docsite type check and the part
+dependency check. These promises concern how Concorde's own tests and checks run, not what Concorde
+offers a consumer project.
 
 ## Test evidence
 
@@ -213,3 +213,17 @@ read the rendered files directly.
 - THEN it copies the docsite to a temporary directory, derives the sidebar from the project registry there and runs the TypeScript compiler on the copy
 - AND dependency installation and generated files stay inside that copy
 - AND the command returns the compiler's exit status and removes the copy
+
+## Part dependency check
+
+Each [part](glossary.json#concept.part)'s code is one directory of `src/concorde/`: `spec/`,
+`kernel/`, `worker_harness/`, `execution/`, `workflows/`, `issues/`, `coordination/`, `method/`
+and `distribution/`, with `__main__.py` counted as Distribution's and `dogfooding/` as no part.
+`tests/concorde/development/test_part_dependencies.py` checks
+[req.concorde.part-dependencies](requirements.md#req.concorde.part-dependencies) on that code: it
+reads the allowed directions from the root's [parts table](module.md#the-parts) and fails on any
+`concorde.*` import, at module or function level and including the `"module:attribute"` strings a
+catalog imports by name, that crosses to a part its own part does not depend on and is no listed
+[optional integration](glossary.json#concept.optional-integration). The reliances that code still has are listed in the test as known exceptions,
+each with the code task expected to remove it; a listed exception that no longer occurs also fails
+the check, so the list only shrinks.
