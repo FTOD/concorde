@@ -116,10 +116,11 @@ answers -> decision: settle
 
 Adoption starts where initialization leaves a project: a root Module whose realization binds every
 existing file and whose entry says nothing is specified yet. The
-[main agent](../../../glossary.json#concept.main-agent) opens a task bound to that Module. The main
-agent or a [task session](../../../glossary.json#concept.task-session) then runs the three steps in
-order in its task worktree, directly or through the
-[brownfield workflow](../../workflows/module.md):
+[main agent](../../../glossary.json#concept.main-agent) opens a task bound to that Module and hands
+it to the task's [task session](../../../glossary.json#concept.task-session), which runs the three
+steps in order in its task worktree, directly or through the
+[brownfield workflow](../../workflows/module.md); the main agent settles the decision points within
+its authority and puts the rest to the developer:
 
 ```text
 concorde run survey --modules <module-id> [--answers <file>] [--input <run-id>]…

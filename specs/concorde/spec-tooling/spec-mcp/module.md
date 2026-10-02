@@ -123,7 +123,7 @@ Rooting at one worktree keeps answers honest across concurrent tasks: a branch m
 or declare a `uses` the primary lacks, and only its own server sees it. The running Concorde package
 must still carry the Protocol the root binds, or calls fail with `protocol_mismatch`.
 `validate` alone does not fail then: it loads through the validator, which reports Specs it cannot
-load as a finding, so its answer is the `spec-validation` envelope with status `invalid` and one
+load as a finding, so its answer is Spec core's validation result with status `invalid` and one
 error finding that describes the mismatch. Confining path arguments to the root keeps a query from
 reading or reporting on files of another worktree.
 
