@@ -3,7 +3,7 @@
 The project's Issues, which the primary worktree keeps, are the review's memory. Before its workers
 judge a Module, the host reads the Module's earlier Issues: its open Issues one of whose reports a
 review Operation made, and every worker receives them. Reading, settling and reporting them are
-every review's, in ``operations.review_issues``; this module adds what is the Spec review's own:
+every review's, in ``method.review_issues``; this module adds what is the Spec review's own:
 the workers' view of the earlier Issues, the disputed findings it reports nowhere and the Issue
 report of a Spec finding.
 """
@@ -13,27 +13,28 @@ from __future__ import annotations
 import json
 
 from ...execution.context import RunContext
-from ...issues import command as issue_command  # noqa: F401 (callers catch its Refusal)
-from ...issues.shapes import BLOCKING, SEVERITIES, TIERS
-from ...execution.operations import review_issues
+from .. import review_issues
+from ..review_issues import SEVERITIES, TIERS, Refusal, is_blocking
 
 # The Operations whose reports make an Issue one of a Module's earlier Issues.
 REVIEW_OPERATIONS = ("spec_review", "spec_panel")
 ISSUE = r"^I-[0-9a-f]{32}$"
 
 
-def is_blocking(tier: str | None) -> bool:
-    return tier in BLOCKING
-
-
-def earlier_issues(ctx: RunContext, module: str) -> list[dict]:
-    """The Module's open Issues a review reported, each as its latest report states it; raises
-    ``issue_command.Refusal`` when the project's Issues cannot be read."""
+def earlier_issues(ctx: RunContext, module: str) -> list[dict] | None:
+    """The Module's open Issues a review reported, each as its latest report states it; None
+    where the issues part is not installed. Raises ``Refusal`` when the project's Issues cannot be
+    read."""
     return review_issues.earlier_issues(ctx, module, REVIEW_OPERATIONS)
 
 
-def material(earlier: list[dict]) -> str:
+def material(earlier: list[dict] | None) -> str:
     """The workers' view of the earlier Issues."""
+    if earlier is None:
+        return (
+            "## Earlier Issues\n\nThe project keeps no Issues (the issues part is not installed), "
+            "so there are no earlier Issues: report every finding as new and resolve none.\n"
+        )
     if not earlier:
         return "## Earlier Issues\n\nNo earlier review left an open Issue for this Module.\n"
     return (
@@ -144,6 +145,7 @@ __all__ = [
     "SEVERITIES",
     "TIERS",
     "earlier_issues",
+    "Refusal",
     "is_blocking",
     "issue_report",
     "material",

@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import copy
 import errno
+import json
 import os
 import re
 import subprocess
@@ -30,7 +31,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import NAMESPACE_URL, uuid5
 
-from ..coordination.tasks import store as tasks
 from ..kernel import locking
 from ..kernel.errors import ERROR_SCHEMA
 from ..kernel.files import apply_files
@@ -55,11 +55,12 @@ from .shapes import (
     TIERED_VERSION,
     TIERS,
 )
-from ..spec.repository import SpecError
 
 
-class IssueError(SpecError):
-    """A refused Issue record, report or disposition, with the Issue rule it breaks."""
+class IssueError(ValueError):
+    """A refused Issue record, report or disposition: its stable ``code``, the Issue rule it
+    breaks (``reason``) and its ``remediation``, the record file (``path``) or field concerned, and
+    the refusals that caused it."""
 
     DEFAULT_CODE = "invalid_issue"
     CODES = {
@@ -129,7 +130,64 @@ class IssueError(SpecError):
             "revert it (`git checkout HEAD -- <path>`, or remove a file HEAD does not hold), "
             "then repeat the write",
         ),
+        "system_error": (
+            "the operating system refused a file operation an Issue write needs",
+            "fix the file, permission or environment named in the message, then repeat the "
+            "write; carry this error chain, never an Issue",
+        ),
     }
+    # The rule and remediation of a code no entry above names, such as a file transaction's.
+    UNREGISTERED = (
+        "an Issue write publishes its record only through a file transaction it can trust",
+        "read the message, fix what it names and repeat the request",
+    )
+
+    def __init__(
+        self,
+        message: str,
+        code: str | None = None,
+        field: str = "",
+        *,
+        path: str | None = None,
+        reason: str | None = None,
+        remediation: str | None = None,
+        causes=(),
+    ):
+        super().__init__(message)
+        self.code = code or self.DEFAULT_CODE
+        self.message = message
+        self.field = field
+        self.path = path
+        known = self.CODES.get(self.code, self.UNREGISTERED)
+        self.reason = reason or known[0]
+        self.remediation = remediation or known[1]
+        self.causes = tuple(causes)
+
+    def where(self) -> str:
+        """The record file and field concerned, as one phrase; empty when neither is known."""
+        parts = [self.path or ""]
+        if self.field and self.field != self.path:
+            parts.append(f"field {self.field}" if self.path else self.field)
+        return ", ".join(part for part in parts if part)
+
+    def record(self) -> dict:
+        """The refusal as plain data, each cause as its own."""
+        return {
+            "code": self.code,
+            "message": str(self),
+            "reason": self.reason,
+            "location": {"path": self.path, "field": self.field or None},
+            "remediation": self.remediation,
+            "causes": [_cause_record(cause) for cause in self.causes],
+        }
+
+
+def _cause_record(error: BaseException) -> dict:
+    if isinstance(error, IssueError):
+        return error.record()
+    if isinstance(error, KernelError):
+        return error.to_dict()
+    return {"code": "unexpected", "message": f"{type(error).__name__}: {error}"}
 
 
 DIRECTORY = ".concorde/issues"
@@ -282,7 +340,7 @@ def parse(text: str, identifier: str) -> dict:
         raise IssueError(
             f"Issue {identifier}{where}: {error}", "invalid_issue"
         ) from error
-    except SpecError as error:
+    except IssueError as error:
         raise IssueError(f"Issue {identifier}: {error}", error.code) from error
     if record["id"] != identifier:
         raise IssueError(
@@ -435,15 +493,40 @@ def _severity_order(row: dict, reported_at: str) -> tuple:
 
 def project_root(path: Path) -> Path:
     """The primary worktree of the Git repository ``path`` lies in, which keeps the project's
-    Issues; ``not_a_repository`` outside one."""
-    try:
-        return tasks.primary_of(Path(path))
-    except tasks.TaskError as error:
+    Issues and which Git's common directory names; ``not_a_repository`` outside one."""
+    primary = layout.primary_worktree(Path(path))
+    if primary is None:
         raise IssueError(
             f"{path} is not inside a Git repository, whose primary worktree keeps the "
-            f"project's Issues: {error}",
+            "project's Issues: git rev-parse --git-common-dir failed there",
             "not_a_repository",
-        ) from error
+        )
+    return primary
+
+
+def _require_primary(root: Path) -> Path:
+    """``root`` resolved, refused with ``not_primary`` unless it is the primary worktree of its
+    repository."""
+    here = Path(os.path.realpath(root))
+    found = _git(here, "rev-parse", "--show-toplevel") if here.is_dir() else None
+    top = (
+        Path(os.path.realpath(found.stdout.strip()))
+        if found is not None and found.returncode == 0
+        else None
+    )
+    primary = layout.primary_worktree(here) if top is not None else None
+    if top is None or top != primary:
+        raise IssueError(
+            f"{root} is not the primary worktree of its repository, which alone writes Issue "
+            f"records: "
+            + (
+                f"its worktree {top} is not the primary worktree {primary}"
+                if top is not None
+                else "it lies in no Git worktree"
+            ),
+            "not_primary",
+        )
+    return top
 
 
 def _git(root: Path, *arguments: str, stdin: str | None = None):
@@ -711,14 +794,7 @@ def _writing(root: Path, what: str, wait: float, locked: bool):
     the same. Refused with ``not_primary``, ``merge_busy``, ``merge_incomplete`` or
     ``recovery_failed``.
     """
-    try:
-        primary = tasks.require_primary(root)
-    except tasks.TaskError as error:
-        raise IssueError(
-            f"{root} is not the primary worktree of its repository, which alone writes Issue "
-            f"records: {error}",
-            "not_primary",
-        ) from error
+    primary = _require_primary(root)
     if locked:
         _refuse_unfinished_merge(primary, what)
         yield _recover(root)
@@ -737,12 +813,66 @@ def _writing(root: Path, what: str, wait: float, locked: bool):
         ) from None
 
 
+# Where the coordination part keeps its current tasks' records (contract.tasks.task-record).
+TASK_RECORDS = ".concorde/tasks"
+
+
+def unfinished_merge(primary: Path) -> dict | None:
+    """The record of the current task Tasks stores as ``merging``, read through Tasks' task record
+    format, or None; also None where the coordination part is not installed, since no
+    ``.concorde/tasks/`` then exists. A record that does not read as JSON cannot be told merging
+    and is passed over: Tasks refuses its own commands on it."""
+    folder = Path(primary) / TASK_RECORDS
+    if not folder.is_dir():
+        return None
+    for path in sorted(folder.glob("*/task.json")):
+        try:
+            record = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if (
+            isinstance(record, dict)
+            and record.get("state") == "merging"
+            and isinstance(record.get("merging"), dict)
+        ):
+            return {**record, "id": record.get("id") or path.parent.name}
+    return None
+
+
+def merge_account(primary: Path, record: dict) -> str:
+    """Tasks' account of the unfinished merge ``record`` describes: the merging task, its
+    commits, where the primary branch is now and how to finish it."""
+    merging = record["merging"]
+    task = record["id"]
+    before, after = merging.get("before"), merging.get("after")
+    found = _git(primary, "rev-parse", "HEAD")
+    head = found.stdout.strip() if found.returncode == 0 else "(unknown)"
+    if after and head == after:
+        where = f"at {head}, the merge commit"
+    elif head == before:
+        where = f"back at {head}, the commit before the merge"
+    else:
+        where = (
+            f"at {head}, which is neither the commit before the merge nor the merge commit "
+            f"{after or '(never recorded)'}"
+        )
+    return (
+        f"task {task} was interrupted while being merged: `concorde task merge` (process "
+        f"{merging.get('pid')}, begun {merging.get('since')}) was merging its checked delivery "
+        f"commit {merging.get('checked')} into {merging.get('branch')} of {primary}, which was at "
+        f"{before}, and ended before its checks decided whether the merge stays; the primary "
+        f"branch is now {where}. `concorde task merge {task} --resume` reruns its checks on the "
+        f"merge commit and closes the task or undoes the merge, and `concorde task merge {task} "
+        f"--abort` resets {merging.get('branch')} to {before} and returns the task to delivered"
+    )
+
+
 def _refuse_unfinished_merge(primary: Path, what: str) -> None:
     """``merge_incomplete`` while a task is stored ``merging``; the merge lock is held."""
-    unfinished = tasks.unfinished_merge(primary)
+    unfinished = unfinished_merge(primary)
     if unfinished is not None:
         raise IssueError(
-            f"{what} was not written: {tasks.incomplete_merge(primary, unfinished)}",
+            f"{what} was not written: {merge_account(primary, unfinished)}",
             "merge_incomplete",
         )
 

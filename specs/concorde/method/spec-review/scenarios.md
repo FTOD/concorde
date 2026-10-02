@@ -45,6 +45,14 @@ Spec panel in its [definition](panel.md).
 - THEN the problem is recorded as an Issue of the project, whose report names the `spec_review` run and no task
 - AND the primary worktree has no change but the Issue's commit
 
+### scenario.spec-review.without-issues — Without the issues part the findings stay in the result
+
+- GIVEN a project whose `concorde` does not offer `issues`, the issues part not being installed
+- WHEN `spec_review` reviews a Module whose reviewer returns a finding of a blocking tier
+- THEN the Module is `changes_required`, its finding keeps `issue` null and its `earlier_issues` is null
+- AND the reviewer received no earlier Issue and the result's summary says the findings were not recorded as Issues
+- BUT no Issue is recorded
+
 ## Earlier Issues
 
 ### scenario.spec-review.earlier-issues — A repeated review builds on the earlier Issues

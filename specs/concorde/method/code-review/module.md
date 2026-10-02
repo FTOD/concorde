@@ -255,7 +255,10 @@ Issues, outcomes and verdict.
   [optional integration](../../glossary.json#concept.optional-integration): where the issues part is
   installed, it keeps the project's Issues in the primary worktree, whichever worktree the run works
   in; where it is not, the review reports its findings in its run result alone, as
-  [Earlier Issues](#earlier-issues) says. Code review relies on its store to list a Module's open Issues with
+  [Earlier Issues](#earlier-issues) says. Code review reaches Issues only through the issues part's
+  [bookkeeping command](../../issues/interface.md#bookkeeping-command), `concorde issues`, never its
+  code, giving each report's provenance with `report --provenance`; it relies on its store, through
+  that command, to list a Module's open Issues with
   their latest [report](../../glossary.json#concept.issue-report) and
   [revision](../../glossary.json#concept.issue-revision), to record a new Issue or append a
   report at the revision read, committing it before it answers, and to refuse a stale append rather

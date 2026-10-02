@@ -216,10 +216,17 @@ The **Standard sequence** realization, `src/concorde/method/workers.py`, holds t
 registers, with the runtime-path resolver of one that may run unbound; the projection of Spec
 core's grant into the worker harness's grant input; the composition of the task instructions; the
 round validation and the glossary check after the worker run; and the mapping of a worker run
-record to a step outcome. The review providers' shared handling of their Issues is still in
-`src/concorde/execution/operations/` and the brownfield script in
-`src/concorde/workflows/scripts/`; those Modules' realizations bind them until the code tasks that
-follow this Spec move them into Method's package.
+record to a step outcome. The brownfield script is still in `src/concorde/workflows/scripts/`;
+its Module's realization binds it until the code tasks that follow this Spec move it into Method's
+package.
+
+<a id="realization.method.review-issues"></a>
+
+**Review Issues**, `src/concorde/method/review_issues.py`, is the review providers' shared handling
+of their Issues: reading a reviewed Module's earlier Issues, settling which a review carries or
+resolves and reporting its findings, all through the issues command as [Issues](#uses-issues) says,
+and stating in the result that the findings were not recorded where the issues part is not
+installed.
 
 ### The children
 
@@ -362,4 +369,9 @@ issues part is installed, `spec_review`, `spec_panel` and `code_review` report e
 Issue of the Module it concerns, read the earlier Issues of a reviewed Module and settle which a
 review carries or resolves; where it is not, they report nothing outside the run, every finding
 stays in the run result with its tier, and the result says that the findings were not recorded as
-Issues.
+Issues. They reach Issues only through the issues part's
+[bookkeeping command](../issues/interface.md#bookkeeping-command), `concorde issues` of the worktree
+the run started in, JSON in and out (`list`, `show`, and `report --provenance` with the provenance
+the Operation vouches for), never through its code; the issues part counts as not installed when
+that `concorde` refuses `issues` as a command of a part the project has not installed, or offers no
+such command at all.

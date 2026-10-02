@@ -27,34 +27,37 @@ Whether a problem stops the task is decided separately.
 
 ### req.issues.caller-provenance — Provenance comes from the command
 
-The bookkeeping command SHALL supply every provenance field of a report itself, never take one from
-the report file.
+The bookkeeping command SHALL supply every provenance field of a report itself, unless its caller gives the whole provenance in a provenance file of its own with `--provenance`, and never take one from the report file.
 
 A report file with a provenance field is refused as malformed, because a report has no such field.
+A caller that gives `--provenance` vouches for it, as a library caller of the store does.
 
 ### req.issues.main-agent-actor — The command attributes Issue writes to the session
 
-The bookkeeping command SHALL record as the source agent of each report and the actor of each
+The bookkeeping command SHALL record as the source agent of each report whose provenance it supplies and the actor of each
 disposition it writes `main-agent`, or, called by the [project MCP server](../glossary.json#concept.project-mcp-server)'s Issue tools, the calling
 session: `task-session` in a task worktree bound as a workspace and `main-agent` in any other.
 
 This is attribution by the command and the tools, not authentication or a restriction on the
 store's library callers. Workers never record or dispose Issues; an [Operation](../glossary.json#concept.operation)'s host may record
-them through the store with the provenance it vouches for.
+them with the provenance it vouches for, through the store or through the command's
+`report --provenance`, which records that provenance as given.
 
 ### req.issues.report-owner-registered — A report names a registered owner
 
-Where the spec part is installed, the bookkeeping command SHALL refuse a report whose `owner_target_id` is neither `null` nor a [Module](../glossary.json#concept.module) of the primary worktree's registry.
+Where the spec part is installed, the bookkeeping command SHALL refuse a report whose provenance it supplies and whose `owner_target_id` is neither `null` nor a [Module](../glossary.json#concept.module) of the primary worktree's registry.
 
 A `null` owner is accepted: the report's reporting Module is then the registry's root Module, and
 the command refuses the report with `no_reporting_module` when the registry has no single root
 ([provenance](interface.md#provenance)). Where the spec part is not installed, the owner is a plain
 label the command takes as given, and a `null` owner is refused with `no_reporting_module`, since
-no registry names a root.
+no registry names a root. The registry file `.concorde/specs.json` tells which: the spec part counts
+as installed exactly where it exists. A report given with `--provenance` names the Module its caller
+vouches for, which may be one its task adds, so the command checks no owner of it.
 
 ### req.issues.report-evidence-present — A report's evidence exists
 
-The bookkeeping command SHALL refuse a report one of whose evidence paths does not exist in the
+The bookkeeping command SHALL refuse a report whose provenance it supplies and one of whose evidence paths does not exist in the
 worktree it reports from or, for a report with an origin, in the origin project.
 
 ### req.issues.report-error-chain — A report's error chain follows the error contract
@@ -240,8 +243,10 @@ Writes so never overlap one another, or a task's merge, open or close.
 
 Where the coordination part is installed, the Issue store SHALL refuse every write, whether it took the merge lock or its caller holds it, while a task's merge into the primary branch is unfinished.
 
-A write so never commits between a merge commit and the checks that decide whether it stays.
-Without the coordination part there is no task merge, and the merge lock alone orders the writes.
+A write so never commits between a merge commit and the checks that decide whether it stays. The
+store learns of an unfinished merge from Tasks' [task records](../glossary.json#concept.task-record), the format the coordination part
+publishes, never from its code. Without the coordination part there is no task merge, and the merge
+lock alone orders the writes.
 
 ### req.issues.tools-as-command — The Issue tools answer as the command
 

@@ -7,6 +7,7 @@ import subprocess
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from concorde.worker_harness.runs import read_record
 from concorde.issues.store import list_issues, read_issue, report_issue
@@ -15,6 +16,7 @@ from concorde.spec.repository import SpecRepository
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
 from concorde.method.spec_review.operation import PAYLOAD_SCHEMA
+from concorde.method.review_issues import NOT_RECORDED
 from tests.concorde.support.operation_project import (
     OperationProject,
     link_at,
@@ -23,6 +25,20 @@ from tests.concorde.support.operation_project import (
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 FAKE_REVIEWER = Path(__file__).with_name("fake_reviewer.py")
+
+
+# A ``concorde`` whose command line knows no ``issues``: the issues part is not installed.
+NO_ISSUES = [
+    sys.executable,
+    "-c",
+    "import sys; sys.stderr.write(\"concorde: error: argument command: invalid choice: "
+    "'issues'\\n\"); sys.exit(2)",
+]
+
+
+def without_issues():
+    """Patch the reviews' ``concorde`` so that it offers no ``issues``."""
+    return patch("concorde.method.review_issues.concorde_command", return_value=NO_ISSUES)
 
 
 def finding(path, tier="obvious-fix", module="module.a", **extra):
@@ -360,6 +376,22 @@ class SpecReviewTests(unittest.TestCase):
         self.assertIn("Earlier problem first.", brief)
         self.assertNotIn("Earlier problem fourth.", brief)
         self.assertNotIn("r-earlier", brief)
+
+    @verifies("scenario.spec-review.without-issues")
+    def test_without_the_issues_part_the_findings_stay_in_the_result(self):
+        with without_issues():
+            status, envelope = self.review(
+                {"reviewer module.a": reviewer(finding("specs/a/module.md"))}
+            )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        (module,) = envelope["output"]["modules"]
+        self.assertEqual("changes_required", module["outcome"])
+        self.assertEqual([None], [item["issue"] for item in module["findings"]])
+        self.assertIsNone(module["earlier_issues"])
+        self.assertIn(NOT_RECORDED, envelope["summary"])
+        self.assertEqual({}, self.issues())
+        brief = self.brief(envelope["worker_runs"][0])
+        self.assertIn("the issues part is not installed", brief)
 
     @verifies("scenario.spec-review.last-blocker-resolved")
     def test_resolving_every_earlier_blocking_issue_accepts_the_module(self):

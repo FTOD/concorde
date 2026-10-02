@@ -37,8 +37,9 @@ NOT_PARTS = {"dogfooding": "Dogfooding, a developer Module"}
 # Files at the package root: `python -m concorde` is Distribution's command; the package marker
 # belongs to no part.
 ROOT_FILES = {"__main__.py": "distribution", "__init__.py": None}
-# Reliances outside the table that are optional integrations.
-OPTIONAL_INTEGRATIONS = {("method", "issues")}
+# Reliances outside the table that are optional integrations: none imports code, each reaches the
+# other part only through its command or a file format its Spec defines.
+OPTIONAL_INTEGRATIONS: set[tuple[str, str]] = set()
 
 # The later code tasks, in their order.
 CODE_TASKS = (
@@ -52,11 +53,6 @@ CODE_TASKS = (
 )
 # Code task -> (importing file under src/concorde/, imported module under concorde.) it removes.
 KNOWN_EXCEPTIONS = {
-    "issues": [
-        ("issues/command.py", "spec.repository"),
-        ("issues/store.py", "coordination.tasks.store"),
-        ("issues/store.py", "spec.repository"),
-    ],
     "execution": [
         ("execution/checks/checks.py", "spec.repository"),
         ("execution/checks/checks.py", "spec.repository_base"),
@@ -74,8 +70,6 @@ KNOWN_EXCEPTIONS = {
         ("execution/operations/catalog.py", "method.specification.operation"),
         ("execution/operations/catalog.py", "method.understanding.operation"),
         ("execution/operations/catalog.py", "method.understanding.plan_review"),
-        ("execution/operations/review_issues.py", "issues.command"),
-        ("execution/operations/review_issues.py", "issues.store"),
         ("execution/runner.py", "spec.repository"),
         ("execution/runner.py", "spec.repository_base"),
     ],

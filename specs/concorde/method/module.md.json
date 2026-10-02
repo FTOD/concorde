@@ -105,6 +105,15 @@
       "entries": [
         "src/concorde/method/workers.py"
       ]
+    },
+    {
+      "id": "realization.method.review-issues",
+      "type": "realization",
+      "title": "Review Issues",
+      "meaning": "#realization.method.review-issues",
+      "entries": [
+        "src/concorde/method/review_issues.py"
+      ]
     }
   ],
   "relations": [],

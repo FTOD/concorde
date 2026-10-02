@@ -25,13 +25,13 @@ from pathlib import Path
 from ..kernel.errors import from_exception, link
 from ..kernel.locking import MERGE_WAIT
 from ..kernel.refusal import KernelError
-from ..kernel.schema import decode, digest
-from ..spec.repository import SpecError
-from .shapes import SEVERITIES, TIERS
+from ..kernel.schema import check_schema, decode, digest
+from .shapes import PROVENANCE, SEVERITIES, TIERS
 from .store import (
     CLOSED,
     DIRECTORY,
     RECORD_NAME,
+    IssueError,
     archive_issues,
     dispose_issue,
     issue_path,
@@ -81,11 +81,11 @@ class Refusal(Exception):
 
 
 def refusal_link(code: str, message: str, cause=None) -> dict:
-    """The refusal as an error link; a SpecError ``cause`` adds its location, the rule it
+    """The refusal as an error link; an ``IssueError`` cause adds its location, the rule it
     breaks and its remediation."""
     environment = code in ENVIRONMENT
-    where = cause.where() if isinstance(cause, SpecError) else ""
-    options = [cause.remediation] if isinstance(cause, SpecError) else []
+    where = cause.where() if isinstance(cause, IssueError) else ""
+    options = [cause.remediation] if isinstance(cause, IssueError) else []
     if environment and NOT_AN_ISSUE not in " ".join(options):
         options.append(NOT_AN_ISSUE)
     return link(
@@ -96,7 +96,7 @@ def refusal_link(code: str, message: str, cause=None) -> dict:
         reason="environment" if environment else "input",
         explanation=(
             cause.reason
-            if isinstance(cause, SpecError)
+            if isinstance(cause, IssueError)
             else "the file system or Git refused an operation the Issues command needs"
             if environment
             else "the request or the Issue record does not satisfy the Issue rules; only "
@@ -115,7 +115,7 @@ def guarded(action, *arguments, **keywords):
     except KernelError as error:
         where = f"field {error.field}: " if error.field else ""
         raise Refusal("invalid_issue", f"{where}{error}", REFUSED, error) from error
-    except SpecError as error:
+    except IssueError as error:
         # A file transaction reports a write the operating system refused as system_error.
         code = "io_error" if error.code == "system_error" else error.code
         raise Refusal(code, str(error), REFUSED, error) from error
@@ -179,31 +179,57 @@ def show_action(root: Path, issue_id: str) -> dict:
     return {"issue": record, "revision": revision, "path": path}
 
 
-def registry(root: Path) -> tuple[str, bytes, list[dict]]:
-    """The registry's path, bytes and Modules; a refusal names what is wrong."""
-    relative = ".concorde/specs.json"
+# The registry mirror of Spec core (the spec part), read through its format: where the spec part is
+# installed it is there; where it is not, no file names the Modules and a Module is a plain label.
+REGISTRY = ".concorde/specs.json"
+NO_SPEC_PART = (
+    "the spec part is not installed (no registry {path}), so Modules are plain labels: "
+    "{consequence}"
+)
+
+
+def registry(root: Path) -> tuple[str, bytes, list[dict]] | None:
+    """The registry's path, bytes and Modules, or None where the spec part is not installed, as
+    the absence of the registry file tells; a registry that exists but does not read is refused
+    with ``unreadable_registry``."""
+    path = root / REGISTRY
+    if not path.exists() and not path.is_symlink():
+        return None
     try:
-        data = (root / relative).read_bytes()
+        data = path.read_bytes()
         modules = json.loads(data)["modules"]
-        return relative, data, modules
+        if not isinstance(modules, list) or not all(
+            isinstance(module, dict) and isinstance(module.get("id"), str)
+            for module in modules
+        ):
+            raise ValueError("modules is not a list of Modules with an id")
+        return REGISTRY, data, modules
     except (OSError, ValueError, KeyError, TypeError) as error:
         raise Refusal(
             "unreadable_registry",
-            f"cannot read the registry {root / relative}: {error}",
+            f"cannot read the registry {path}: {error}",
         ) from error
 
 
 def check(root: Path) -> tuple[dict, int]:
-    """Every record file of ``root`` reads and lies in the folder its status names, once; an open
-    Issue must name an owner the registry of ``root`` still lists. The answer and the exit status:
-    1 when there are errors.
+    """Every record file of ``root`` reads and lies in the folder its status names, once; where
+    the spec part is installed, an open Issue must name an owner the registry of ``root`` still
+    lists. The answer and the exit status: 1 when there are errors.
 
     One finding per problem names the record; hidden files are not records. A closed Issue of an
-    unknown owner is a note that does not fail the check; an absent directory passes.
+    unknown owner is a note that does not fail the check; without the spec part one note says that
+    no owner was judged. An absent directory passes.
     """
     root = project(root)
-    modules = {record["id"] for record in registry(root)[2]}
+    found = registry(root)
+    modules = None if found is None else {record["id"] for record in found[2]}
     problems, notes = [], []
+    if modules is None:
+        notes.append(
+            NO_SPEC_PART.format(
+                path=REGISTRY, consequence="no Issue's owner was checked against one"
+            )
+        )
     places = {}
     for folder in (DIRECTORY, CLOSED):
         directory = root / folder
@@ -237,7 +263,7 @@ def check(root: Path) -> tuple[dict, int]:
                 )
             latest = record["reports"][-1]
             owner = latest["report"]["owner_target_id"] or latest["source"]["target_id"]
-            if owner in modules:
+            if modules is None or owner in modules:
                 continue
             message = f"{record['id']} names unknown owner {owner}"
             (problems if record["status"] == "open" else notes).append(message)
@@ -268,23 +294,27 @@ def archive_action(root: Path, *, wait: float = MERGE_WAIT) -> dict:
 # --- reports ----------------------------------------------------------------------------------
 
 
-def load_report(path: Path) -> dict:
+def load_json(path: Path, label: str):
+    """The JSON value of the file ``path``, which ``label`` names in every refusal."""
     try:
         text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError) as error:
         reason = getattr(error, "strerror", None) or str(error)
         raise Refusal(
-            "unreadable_file", f"cannot read report file {path}: {reason}", USAGE
+            "unreadable_file", f"cannot read {label} {path}: {reason}", USAGE
         ) from error
     try:
-        report = decode(text)
+        return decode(text)
     except KernelError as error:
         raise Refusal(
             "invalid_issue",
-            f"report file {path} is not valid JSON: {error}",
+            f"{label} {path} is not valid JSON: {error}",
             cause=error,
         ) from error
-    return checked_report(report, f"report file {path}")
+
+
+def load_report(path: Path) -> dict:
+    return checked_report(load_json(path, "report file"), f"report file {path}")
 
 
 def checked_report(report, label: str) -> dict:
@@ -296,15 +326,30 @@ def checked_report(report, label: str) -> dict:
         raise Refusal(
             "invalid_issue", f"{label}{where}: {error}", cause=error
         ) from error
-    except SpecError as error:
+    except IssueError as error:
         raise Refusal(error.code, f"{label}: {error}", cause=error) from error
     return report
 
 
-def reporting_module(label: str, report: dict, relative: str, modules: list[dict]):
-    """The report's owner when it names one, else the registry's single root Module."""
-    known = {module["id"] for module in modules}
+def reporting_module(label: str, report: dict, found) -> str:
+    """The report's owner when it names one, else the registry's single root Module.
+
+    ``found`` is the registry, or None where the spec part is not installed: the owner is then a
+    plain label taken as given, and a report naming none is refused, no registry naming a root."""
     owner = report["owner_target_id"]
+    if found is None:
+        if owner is None:
+            raise Refusal(
+                "no_reporting_module",
+                f"{label} names no owner and "
+                + NO_SPEC_PART.format(
+                    path=REGISTRY, consequence="no registry names a root Module to report it"
+                )
+                + "; name the owner in owner_target_id",
+            )
+        return owner
+    relative, _, modules = found
+    known = {module["id"] for module in modules}
     if owner is not None:
         if owner not in known:
             raise Refusal(
@@ -314,7 +359,10 @@ def reporting_module(label: str, report: dict, relative: str, modules: list[dict
             )
         return owner
     contained = {
-        child["target"] for module in modules for child in module.get("contains", ())
+        child["target"]
+        for module in modules
+        for child in module.get("contains", ())
+        if isinstance(child, dict)
     }
     roots = sorted(known - contained)
     if len(roots) != 1:
@@ -351,13 +399,19 @@ def report_action(
     task: str | None = None,
     check_only: bool = False,
     agent: str = "main-agent",
+    provenance: Path | None = None,
     wait: float = MERGE_WAIT,
 ) -> dict:
     """Record the report in ``file`` or given as ``report``, made in the worktree ``root``.
 
-    Its owner must be a Module of the registry of the primary worktree, which keeps the Issue;
-    its evidence must exist in ``root``, or in its origin project, and its context is the registry
-    of ``root``.
+    Where the spec part is installed its owner must be a Module of the registry of the primary
+    worktree, which keeps the Issue, and its context is the registry of ``root``; its evidence must
+    exist in ``root``, or in its origin project.
+
+    With ``provenance``, a file holding the provenance its caller vouches for, such as an
+    Operation's host reporting its findings, the report is recorded with that provenance as the
+    store's ``report_issue`` records it: its form is checked, its owner and evidence are the
+    caller's to vouch for.
     """
     root = project(root)
     if task is not None and not task.strip():
@@ -366,6 +420,13 @@ def report_action(
         raise Refusal(
             "usage", "give the report either as a file or as an object", USAGE
         )
+    if provenance is not None and (task is not None or check_only):
+        raise Refusal(
+            "usage",
+            "--provenance names the whole provenance, its task included, and records the "
+            "report: give it without --task and --check",
+            USAGE,
+        )
     if file is not None:
         label = f"report file {file}"
         report = load_report(Path(file))
@@ -373,8 +434,21 @@ def report_action(
         label = "the report"
         report = checked_report(report, label)
     primary = issues_root(root)
-    relative, _, modules = registry(primary)
-    target = reporting_module(label, report, relative, modules)
+    if provenance is not None:
+        source = load_json(Path(provenance), "provenance file")
+        try:
+            check_schema(source, PROVENANCE)
+        except KernelError as error:
+            where = f", field {error.field.lstrip('/')}" if error.field else ""
+            raise Refusal(
+                "invalid_issue",
+                f"provenance file {provenance}{where}: {error}",
+                cause=error,
+            ) from error
+        receipt = guarded(report_issue, primary, report, source, wait=wait)
+        _, revision = guarded(read_issue, primary, receipt["issue_id"])
+        return {"receipt": receipt, "revision": revision}
+    target = reporting_module(label, report, registry(primary))
     # A report observed in another project names its evidence in that project.
     where = Path(report["origin"]["project"]) if "origin" in report else root
     for index, item in enumerate(report["evidence"]):
@@ -394,14 +468,14 @@ def report_action(
             "report_key": report["report_key"],
             "reporting_module": target,
         }
-    _, data, _ = registry(root)
+    found = registry(root)
     source = {
         "invocation_id": f"cli-{uuid.uuid4()}",
         "agent": agent,
         "operation": "issues",
         "phase": "report",
         "target_id": target,
-        "context_id": digest(data),
+        "context_id": digest(b"" if found is None else found[1]),
         "change_id": task,
         "head": head(root),
     }
