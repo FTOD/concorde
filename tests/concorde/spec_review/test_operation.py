@@ -560,8 +560,12 @@ class SpecReviewTests(unittest.TestCase):
             frozen = json.loads(
                 (Path(record["run_directory"]) / "grant.json").read_text()
             )
+            node = json.loads(
+                (Path(record["run_directory"]) / "trace.json").read_text()
+            )
             self.assertEqual(
-                ([module], "review-spec"), (frozen["modules"], frozen["task_type"])
+                ([module], "review-spec"),
+                (node["metadata"]["modules"], frozen["task_type"]),
             )
             self.assertEqual(
                 self.identity(module), by_module[module]["context_identity"]

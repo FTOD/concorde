@@ -20,6 +20,7 @@ import json
 import os
 import re
 import shutil
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from ..kernel.refusal import KernelError
@@ -138,20 +139,15 @@ class ModelConfigError(Exception):
         self.code = code
 
 
-def worker_ids() -> dict[str, tuple[str, ...]]:
-    """Load the catalog lazily, avoiding provider import cycles at runtime."""
-    from ..execution.operations.catalog import CATALOG, provider
-
-    return {
-        name: provider(name).workers
-        for name in CATALOG
-        if provider(name).task_type is not None
-    }
+# The Operations a caller may launch workers for, each with the ids of its workers, the first its
+# default: the names the configuration's entries may use. In Concorde they are the Operations the
+# installed parts register; to the worker harness they are labels.
+Declared = Mapping[str, Sequence[str]]
 
 
-def validate_config(value: dict) -> None:
-    """Check structure, catalog names, enabled models and backend reasoning vocabulary, never
-    model availability."""
+def validate_config(value: dict, declared: Declared) -> None:
+    """Check structure, the Operation and worker names against those ``declared``, enabled models
+    and backend reasoning vocabulary, never model availability."""
     if isinstance(value, dict) and "enabled_models" not in value:
         raise ModelConfigError(
             "config_invalid",
@@ -184,7 +180,7 @@ def validate_config(value: dict) -> None:
                 f"enabled_models[{json.dumps(model)}].reasoning: {level!r} is not a level of "
                 f"either backend; expected one of {', '.join(LEVELS['pi'])}",
             )
-    ids = worker_ids()
+    ids = declared
     scopes: list[tuple[str | None, str | None]] = [(None, None)]
     for operation, entry in value.get("operations", {}).items():
         if operation not in ids:
@@ -253,7 +249,9 @@ def _unique_object(pairs):
     return value
 
 
-def load(worktree: Path) -> dict:
+def load(worktree: Path, declared: Declared) -> dict:
+    """The worktree's worker configuration, validated against the Operations and worker ids its
+    caller ``declared``."""
     path = config_path(worktree)
     try:
         value = json.loads(
@@ -298,7 +296,7 @@ def load(worktree: Path) -> dict:
             f"{path} has schema_version {value.get('schema_version')!r}; expected {SCHEMA_VERSION}",
         )
     try:
-        validate_config(value)
+        validate_config(value, declared)
     except ModelConfigError as error:
         raise ModelConfigError(error.code, f"{path}: {error}") from error
     return value
@@ -384,9 +382,13 @@ def _program(backend: str, environ) -> str | None:
     return shutil.which(name, path=environ.get("PATH"))
 
 
-def worker_choice(config: dict, operation: str, worker: str, environ=None) -> dict:
-    validate_config(config)
-    ids = worker_ids()
+def worker_choice(
+    config: dict, declared: Declared, operation: str, worker: str, environ=None
+) -> dict:
+    """The backend, project model name, level, local model id and model map of the worker
+    ``worker`` of ``operation``, one of those ``declared``."""
+    validate_config(config, declared)
+    ids = declared
     if operation not in ids or worker not in ids[operation]:
         raise ModelConfigError("config_invalid", f"unknown worker {operation}/{worker}")
     environ = os.environ if environ is None else environ
@@ -511,13 +513,15 @@ def _local_model(chosen: dict, who: str, path: Path, mapped: dict) -> str:
     return local
 
 
-def check_mapped(config: dict, environ=None, operation: str | None = None) -> None:
+def check_mapped(
+    config: dict, declared: Declared, environ=None, operation: str | None = None
+) -> None:
     """Refuse with one error every model a worker of ``operation`` would take that the model map
     does not give an id for its backend, as that Operation's run asks before its first worker
     launches; without ``operation``, the workers of every Operation, such as before a test
     project's workers first run. A worker without a model is left to its own resolution."""
-    validate_config(config)
-    ids = worker_ids()
+    validate_config(config, declared)
+    ids = declared
     if operation is not None and operation not in ids:
         raise ModelConfigError(
             "config_invalid", f"{operation} is no Operation that launches workers"

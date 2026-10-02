@@ -19,11 +19,11 @@ from pathlib import Path
 from ...execution.checks.checks import checked_modules, run_checks
 from ...execution.context import (
     Continue,
-    Provider,
     RunContext,
     Stop,
     evidence,
 )
+from ..workers import grant_failure, operation, run_worker
 from ...execution.operations.provider import (
     load_prompt,
 )
@@ -183,7 +183,7 @@ def preflight(ctx: RunContext, task_type: str) -> Stop | None:
     try:
         grant(SpecRepository(ctx.worktree), ctx.modules, task_type)
     except (SpecError, OSError, ValueError) as error:
-        return ctx.grant_failure(task_type, ctx.modules, error)
+        return grant_failure(ctx, task_type, ctx.modules, error)
     return None
 
 
@@ -235,9 +235,10 @@ def _present(worktree: Path) -> set[str]:
 
 
 def _latest_checks(record: dict) -> list[dict]:
+    """The check results the latest validated round kept as its evidence."""
     for item in reversed(record.get("rounds") or []):
-        if item.get("checks") is not None:
-            return item["checks"]
+        if item.get("evidence") is not None:
+            return [check for check in item["evidence"] if "check_id" in check]
     return []
 
 
@@ -284,7 +285,8 @@ def implement_step(ctx: RunContext):
         + _admitted(ctx)
     )
     launched = len(ctx.worker_runs)
-    outcome = ctx.run_worker(
+    outcome = run_worker(
+        ctx,
         instructions,
         task_type="implement",
         output_schema=IMPLEMENT_WORKER_OUTPUT,
@@ -321,7 +323,7 @@ def implement_arguments(parser) -> None:
     parser.add_argument("--rounds", type=int, default=None)
 
 
-IMPLEMENT = Provider(
+IMPLEMENT = operation(
     "implement",
     "implement",
     True,
@@ -351,7 +353,8 @@ def testing_step(ctx: RunContext):
         + check_material(results)
     )
     # The worker interprets the checks, so it reads their full logs, passed ones included.
-    outcome = ctx.run_worker(
+    outcome = run_worker(
+        ctx,
         instructions,
         task_type="test",
         output_schema=TEST_WORKER_OUTPUT,
@@ -378,7 +381,7 @@ def testing_arguments(parser) -> None:
     parser.add_argument("--focus", default=None)
 
 
-TEST = Provider(
+TEST = operation(
     "test", "test", False, (testing_step,), TEST_REPORT_SCHEMA, testing_arguments
 )
 

@@ -420,10 +420,11 @@ submodule checked out from its own repository at the commit the checkout records
 
 The **Runner and run store** realization binds the run store, the unbound checkout, the run context and definitions that steps work with and the runner itself, with their
 tests; the runner finds an execution command by name in the catalog of
-[Commands](commands/module.md). Its run context today also holds the [standard worker sequence](../glossary.json#concept.standard-worker-sequence)'s
-launch of a worker and the computation of the grant, which are Method's
-([Method](../method/module.md#the-standard-worker-sequence)) and leave this package when a later
-code task moves them into Method's package `src/concorde/method/`. The `concorde` command belongs to [Distribution](../distribution/module.md),
+[Commands](commands/module.md). It launches no worker and computes no grant: the
+[standard worker sequence](../glossary.json#concept.standard-worker-sequence) is Method's
+([Method](../method/module.md#the-standard-worker-sequence)), whose steps record each worker run on
+the run context, and an unbound run's checkout links what the definition's runtime-path resolver
+returns. The `concorde` command belongs to [Distribution](../distribution/module.md),
 which hands `run`, the execution commands and `workflow` to the parts that register them.
 
 ```d2

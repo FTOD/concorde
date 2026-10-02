@@ -28,8 +28,8 @@ from concorde.worker_harness.workers import (
     WORKER_RESULT_SCHEMA,
     WorkerRequest,
     run_worker,
-    spec_rule,
 )
+from concorde.method.workers import compose, grant_input, round_validation, spec_rule
 from concorde.spec.grants import grant
 from concorde.spec.repository import SpecRepository
 from concorde.spec.schema import validate
@@ -179,9 +179,11 @@ class WorkerProject:
         if linked:
             self.root = self.primary / ".claude/worktrees/w"
             git(self.primary, "worktree", "add", "-q", "-b", "work", str(self.root))
-        self.grant = grant(
-            SpecRepository(self.root, REPOSITORY_ROOT), ["module.a"], "implement"
-        ).value
+        self.grant = grant_input(
+            grant(
+                SpecRepository(self.root, REPOSITORY_ROOT), ["module.a"], "implement"
+            ).value
+        )
         # The trace node of the run asking for the workers, outside the worktree.
         self.trace = self.base / "run"
         self.trace.mkdir()
@@ -201,13 +203,25 @@ class WorkerProject:
         keeper.start()
         test.addCleanup(keeper.stop)
 
-    def request(self, plan, **options) -> WorkerRequest:
+    def request(
+        self, plan, check_modules=("module.a",), validate=None, **options
+    ) -> WorkerRequest:
+        """A request whose round validation is Method's, running the configured checks of
+        ``check_modules`` and then ``validate``; none without ``check_modules``."""
         values = {
             "worktree": self.root,
             "task_type": "implement",
             "grant": self.grant,
             "instructions": "Fix A.\nFAKE-PLAN: " + json.dumps(plan),
-            "check_modules": ["module.a"],
+            "round_validation": round_validation(
+                glossary=None,
+                before=None,
+                modules=["module.a"],
+                check_modules=list(check_modules),
+                validate=validate,
+            )
+            if check_modules is not None
+            else None,
             "home": self.home,
             "claude": str(self.fake),
             "credentials": None,
@@ -541,11 +555,13 @@ class WorkerRunTests(unittest.TestCase):
 
     @verifies("scenario.workers.every-task-type")
     def test_a_worker_of_a_task_type_that_writes_nothing_runs_read_only(self):
-        reviewing = grant(
-            SpecRepository(self.root, REPOSITORY_ROOT),
-            ["module.a"],
-            "review-architecture",
-        ).value
+        reviewing = grant_input(
+            grant(
+                SpecRepository(self.root, REPOSITORY_ROOT),
+                ["module.a"],
+                "review-architecture",
+            ).value
+        )
         record = self.project.run(
             [{}],
             task_type="review-architecture",
@@ -621,7 +637,7 @@ class WorkerRunTests(unittest.TestCase):
             (self.root / "src/a/calc.py").read_text(),
         )
         self.assertEqual("ADDED = 1\n", (self.root / "src/a/added.py").read_text())
-        self.assertEqual("passed", record["rounds"][0]["checks"][0]["status"])
+        self.assertEqual("passed", record["rounds"][0]["evidence"][0]["status"])
         self.assertEqual(
             self.project.grant["context_identity"], record["context_identity"]
         )
@@ -792,7 +808,7 @@ class WorkerRunTests(unittest.TestCase):
         self.assertEqual("failed", record["status"])
         self.assertEqual("audit_violation", record["error"]["code"])
         self.assertIn("src/bmod/secret.py", record["rounds"][0]["audit"]["violations"])
-        self.assertNotIn("checks", record["rounds"][0])
+        self.assertNotIn("evidence", record["rounds"][0])
         self.assertEqual(1, len(record["rounds"]))
         self.assertEqual("SECRET = 2\n", (self.root / "src/bmod/secret.py").read_text())
         # The worker's result was a valid ok, whose error is null: no cause from the worker.
@@ -967,8 +983,8 @@ class WorkerRunTests(unittest.TestCase):
         )
         self.assertEqual("ok", record["status"], record["error"])
         self.assertEqual(2, len(record["rounds"]))
-        self.assertEqual("failed", record["rounds"][0]["checks"][0]["status"])
-        self.assertEqual("passed", record["rounds"][1]["checks"][0]["status"])
+        self.assertEqual("failed", record["rounds"][0]["evidence"][0]["status"])
+        self.assertEqual("passed", record["rounds"][1]["evidence"][0]["status"])
         first, second = self.project.rounds(record)
         self.assertNotIn("--resume", first["argv"])
         self.assertEqual(
@@ -976,7 +992,7 @@ class WorkerRunTests(unittest.TestCase):
         )
         self.assertIn("check.a", second["prompt"])
         self.assertIn("exit code 1", second["prompt"])
-        self.assertEqual("check_failures", record["rounds"][1]["prompt"])
+        self.assertEqual("repair", record["rounds"][1]["prompt"])
         self.assertEqual("fake-session-2", record["rounds"][1]["session"])
 
     @verifies("scenario.workers.trace-left")
@@ -1010,7 +1026,7 @@ class WorkerRunTests(unittest.TestCase):
                 {"writes": {f"{self.root}/src/a/flag": "ok"}, "envelope": envelope},
             ],
             credentials=credentials,
-            after_round=validation,
+            validate=validation,
         )
         self.assertEqual("ok", record["status"], record["error"])
         self.assertEqual(["running", ["1", "2"]], seen)
@@ -1056,7 +1072,7 @@ class WorkerRunTests(unittest.TestCase):
                     used["turns"],
                 ),
             )
-            [check] = round_node["content"]["data"]["checks"]
+            [check] = round_node["content"]["data"]["evidence"]
             self.assertEqual(status, check["status"])
             # The envelope's other fields are kept as Claude Code gave them, null when absent.
             claude = round_node["content"]["data"]["agent"]["claude"]
@@ -1109,7 +1125,7 @@ class WorkerRunTests(unittest.TestCase):
         )
         self.assertIn("exit code 1", cause["detail"])
         self.assertEqual(2, len(record["rounds"]))
-        self.assertEqual("failed", record["rounds"][-1]["checks"][0]["status"])
+        self.assertEqual("failed", record["rounds"][-1]["evidence"][0]["status"])
 
     def test_checks_that_cannot_run_keep_check_executions_link(self):
         from concorde.execution.checks.check_executor import CheckSandboxError
@@ -1145,7 +1161,7 @@ class WorkerRunTests(unittest.TestCase):
         self.assertEqual("blocked", record["status"])
         self.assertEqual(1, len(record["rounds"]))
         self.assertEqual("clean", record["rounds"][0]["audit"]["verdict"])
-        self.assertNotIn("checks", record["rounds"][0])
+        self.assertNotIn("evidence", record["rounds"][0])
         error = record["error"]
         self.assertEqual(("workers", "worker_blocked"), (error["level"], error["code"]))
         [cause] = error["causes"]
@@ -1166,7 +1182,10 @@ class WorkerRunTests(unittest.TestCase):
 
         with self.assertRaises(Interrupt):
             self.project.run(
-                [{}], check_modules=None, after_round=interrupt, started=started.append
+                [{}],
+                check_modules=None,
+                round_validation=lambda _worktree, _folder: interrupt(),
+                started=started.append,
             )
         [run_id] = started
         directory = self.project.trace / "workers" / run_id
@@ -1353,8 +1372,9 @@ class ProxyEnvironmentTests(unittest.TestCase):
 
 
 class GlossaryTests(unittest.TestCase):
-    """A Spec-writing worker may change only its Modules' glossary entries, and every worker's
-    brief carries the definitions of its terms."""
+    """A Spec-writing worker may change only its Modules' glossary entries, which Method's round
+    validation audits by entry, and every worker's brief carries the definitions of its terms,
+    which Method's instructions give it."""
 
     def setUp(self):
         self.project = WorkerProject(self, linked=True)
@@ -1383,9 +1403,10 @@ class GlossaryTests(unittest.TestCase):
         )
         git(root, "add", "-A")
         git(root, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "terms")
-        self.grant = grant(
+        self.computed = grant(
             SpecRepository(root, REPOSITORY_ROOT), ["module.a"], "specify"
         ).value
+        self.grant = grant_input(self.computed)
 
     def edited(self, identity, definition):
         value = read_glossary(self.project.root)
@@ -1400,6 +1421,13 @@ class GlossaryTests(unittest.TestCase):
             task_type="specify",
             grant=self.grant,
             check_modules=None,
+            round_validation=round_validation(
+                glossary=GLOSSARY,
+                before=(self.project.root / GLOSSARY).read_bytes(),
+                modules=["module.a"],
+                check_modules=None,
+                validate=None,
+            ),
         )
 
     @verifies("scenario.workers.glossary-entries")
@@ -1415,16 +1443,27 @@ class GlossaryTests(unittest.TestCase):
     def test_another_modules_entry_is_a_violation(self):
         foreign = self.run_writing(self.edited("concept.b.answer", "What B returns."))
         self.assertEqual("failed", foreign["status"])
-        self.assertEqual("audit_violation", foreign["error"]["code"])
+        error = foreign["error"]
         self.assertEqual(
-            [f"{GLOSSARY}#concept.b.answer (owner before: module.b, after: module.b)"],
-            foreign["rounds"][0]["audit"]["violations"],
+            ("audit_violation", "permission"),
+            (error["code"], error["unhandled"]["reason"]),
         )
+        entry = f"{GLOSSARY}#concept.b.answer (owner before: module.b, after: module.b)"
+        self.assertIn(entry, error["detail"])
+        [only] = foreign["rounds"]
+        self.assertEqual([], only["audit"]["violations"])
+        self.assertIn(entry, only["validation"])
 
     @verifies("scenario.workers.brief-terms")
     def test_the_brief_carries_the_workers_terms(self):
         record = self.project.run(
-            [{}], task_type="specify", grant=self.grant, check_modules=None
+            [{}],
+            task_type="specify",
+            grant=self.grant,
+            check_modules=None,
+            instructions=compose(
+                "Specify A.\nFAKE-PLAN: [{}]", "specify", self.computed
+            ),
         )
         [call] = self.project.rounds(record)
         self.assertIn("## Terms", call["prompt"])

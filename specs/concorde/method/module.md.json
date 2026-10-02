@@ -96,7 +96,17 @@
     "includes": [],
     "participates": []
   },
-  "defines": [],
+  "defines": [
+    {
+      "id": "realization.method.workers",
+      "type": "realization",
+      "title": "Standard sequence",
+      "meaning": "#realization.method.workers",
+      "entries": [
+        "src/concorde/method/workers.py"
+      ]
+    }
+  ],
   "relations": [],
   "extensions": {}
 }

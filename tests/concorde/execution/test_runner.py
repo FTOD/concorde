@@ -23,6 +23,7 @@ from concorde.kernel import binding as binding_file
 from concorde.execution import runs
 from concorde.execution.checkout import PREFIX
 from concorde.execution.context import Continue, Provider, command, evidence
+from concorde.method.workers import operation, run_worker
 from concorde.execution import runner
 from concorde.execution.runner import (
     ResultUnsaved,
@@ -76,7 +77,8 @@ def spec_contract(identity: str) -> dict:
 
 
 def worker_step(ctx):
-    return ctx.run_worker(
+    return run_worker(
+        ctx,
         ctx.arguments.goal,
         task_type="implement",
         checks=True,
@@ -120,7 +122,7 @@ def refusing_step(ctx):
     )
 
 
-WORKER = Provider("implement", "implement", True, (worker_step,), None, goal_arguments)
+WORKER = operation("implement", "implement", True, (worker_step,), None, goal_arguments)
 RAISING = Provider("test", None, False, (raising_step,))
 ADMITTED = Provider("understand", None, False, (admitted_step,))
 # Execution commands: deterministic, no worker.
@@ -129,14 +131,14 @@ REFUSING = command("delivery", (refusing_step,), writes=True)
 
 
 def reading_step(ctx):
-    return ctx.run_worker(ctx.arguments.goal, task_type="understand", rounds=0)
+    return run_worker(ctx, ctx.arguments.goal, task_type="understand", rounds=0)
 
 
 def writing_step(ctx):
-    return ctx.run_worker(ctx.arguments.goal, task_type="implement", rounds=0)
+    return run_worker(ctx, ctx.arguments.goal, task_type="implement", rounds=0)
 
 
-READER = Provider(
+READER = operation(
     "spec_review",
     "review-spec",
     False,
@@ -145,7 +147,7 @@ READER = Provider(
     goal_arguments,
     binding="optional",
 )
-WRITER = Provider(
+WRITER = operation(
     "code_review",
     "review-code",
     False,
@@ -203,7 +205,7 @@ def probing_step(ctx):
 def probing_worker(ctx):
     if ctx.arguments.fail:
         raise RuntimeError("the probe failed on purpose")
-    return ctx.run_worker(ctx.arguments.goal, task_type="understand", rounds=0)
+    return run_worker(ctx, ctx.arguments.goal, task_type="understand", rounds=0)
 
 
 def probed(ctx):
@@ -217,7 +219,7 @@ def probe_arguments(parser):
     parser.add_argument("--fail", action="store_true")
 
 
-PROBE = Provider(
+PROBE = operation(
     "understand",
     "understand",
     False,

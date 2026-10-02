@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 from concorde.kernel.errors import ERROR_SCHEMA
 from concorde.execution.context import Continue, Provider
+from concorde.method.workers import operation
 from concorde.worker_harness import models
 from concorde.execution.operations import catalog
 from concorde.method.spec_review.panel import WORKERS
@@ -21,7 +22,7 @@ def panel_step(context):
     return Continue(output={"reached": True})
 
 
-PANEL = Provider("spec_panel", "review-spec", False, (panel_step,), workers=WORKERS)
+PANEL = operation("spec_panel", "review-spec", False, (panel_step,), workers=WORKERS)
 NO_WORKERS = Provider("spec_panel", None, False, (panel_step,), workers=())
 
 

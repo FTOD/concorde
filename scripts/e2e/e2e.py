@@ -73,6 +73,7 @@ from common import (  # noqa: E402
 
 sys.path.insert(0, str(CHECKOUT / "src"))
 
+from concorde.method.workers import declared_workers  # noqa: E402
 from concorde.worker_harness import models  # noqa: E402
 
 SWE_BENCH = CHECKOUT / "references/swe-bench"
@@ -142,7 +143,7 @@ def require_mapped(workers: dict) -> None:
     """Refuse, before anything is set up, a worker configuration whose workers this machine's
     model map cannot resolve: the test project's workers read the same user-level map."""
     try:
-        models.check_mapped(workers)
+        models.check_mapped(workers, declared_workers())
     except models.ModelConfigError as error:
         raise E2EError(
             error.code,

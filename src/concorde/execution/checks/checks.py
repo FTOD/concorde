@@ -13,7 +13,6 @@ import hashlib
 import json
 import os
 import re
-import subprocess
 from pathlib import Path
 
 from ...kernel.errors import evidence, link
@@ -23,7 +22,7 @@ from ...kernel.schema import register
 from ...kernel.tracing import layout
 from ...kernel.tracing.node import Node
 from .check_executor import CHECK_POLICY, CheckSandboxError, execute_check
-from ...worker_harness.runs import primary_root
+from ...kernel.tracing.layout import primary_worktree
 
 # contract.checks.check-trace, version 1: the content of one check's trace node.
 CHECK_TRACE = "concorde-check-trace"
@@ -183,10 +182,7 @@ def project_python(worktree: Path, config: dict, check_id: str) -> str:
         candidates = [Path(configured)]
     else:
         candidates = [worktree / configured]
-        try:
-            primary = primary_root(worktree)
-        except (OSError, subprocess.CalledProcessError):
-            primary = None
+        primary = primary_worktree(worktree)
         if primary is not None and primary != worktree.resolve():
             candidates.append(primary / configured)
     for candidate in candidates:

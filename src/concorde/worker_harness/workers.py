@@ -1,11 +1,13 @@
-"""Run one worker: prepare its run directory, launch and resume it, audit and check.
+"""Run one worker: prepare its run directory, launch and resume it, audit and validate.
 
-``run_worker`` performs the standard sequence of the Workers Module on the backend the request
-names, Claude Code or pi: freeze the grant, let the backend generate its configuration from the
-grant, launch the worker in its own process group while keeping the progress file current, audit
-the task worktree after every round, run the configured checks outside the worker, resume the same
-session when a check fails, perform the deletions it proposed, and write the run record. The
-returned record keeps the worker's answer verbatim and apart from what the host observed itself.
+``run_worker`` performs a worker run on the backend the request names, Claude Code or pi: freeze
+the grant it was given as data, let the backend generate its configuration from the grant, launch
+the worker in its own process group while keeping the progress file current, audit the task
+worktree after every round, call the caller's round validation after every clean ``ok`` round,
+resume the same session with what it reports to repair, perform the deletions the worker proposed,
+and write the run record. The returned record keeps the worker's answer verbatim and apart from what
+the host observed itself. Whether a round needs repair is the caller's judgement: the worker
+harness runs no check, reads no Spec and knows no glossary.
 
 The run directory is the worker run's trace node ``workers/<run-id>/`` inside the node of the run
 that asked, holding ``trace.json`` (the run record), ``status.json``, ``grant.json``, ``brief.md``,
@@ -29,21 +31,18 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ..kernel.errors import WORKER_ERROR_SCHEMA, evidence, link
-from ..spec.grants import TASK_TYPES
-from ..spec.repository_base import SpecError
+from ..kernel.errors import WORKER_ERROR_SCHEMA, evidence, exception_detail, link
 from ..kernel.refusal import KernelError
-from ..kernel.schema import validate
+from ..kernel.schema import register, validate
+from ..kernel.tracing import layout
+from ..kernel.tracing.node import Node
 from .audit import audit, rw_allows, snapshot
 from .claude_backend import BackendRefusal, ClaudeBackend
 from .pi_backend import PiBackend
-from ..kernel.schema import register
-from ..kernel.tracing import layout
-from ..kernel.tracing.node import Node
 from .placement import PlacementError, place
 from .progress import Progress
 from .runs import create_run, now, remove_runtime
-from .settings import SettingsError, grant_view
+from .settings import TASK_TYPES, SettingsError, grant_view
 
 BACKENDS = {"claude": ClaudeBackend, "pi": PiBackend}
 
@@ -102,11 +101,11 @@ register(
         },
     },
 )
-# contract.workers.worker-round-trace, version 3
+# contract.workers.worker-round-trace, version 4
 WORKER_ROUND_TRACE = "concorde-worker-round-trace"
 register(
     WORKER_ROUND_TRACE,
-    3,
+    4,
     {
         "type": "object",
         "additionalProperties": False,
@@ -116,13 +115,13 @@ register(
             "session",
             "exit",
             "audit",
-            "checks",
+            "evidence",
             "validation",
             "agent",
         ],
         "properties": {
             "round": {"type": "integer", "minimum": 1},
-            "prompt": {"enum": ["initial", "check_failures", "validation_failures"]},
+            "prompt": {"enum": ["initial", "repair"]},
             "session": _NULLABLE_TEXT,
             "exit": {"anyOf": [{"type": "null"}, {"type": "integer"}]},
             "audit": {
@@ -140,7 +139,7 @@ register(
                     },
                 ]
             },
-            "checks": {"type": "array", "items": _OBJECT},
+            "evidence": {"type": "array", "items": _OBJECT},
             "validation": {"anyOf": [{"type": "null"}, {"type": "string"}]},
             "agent": _OBJECT,
         },
@@ -172,13 +171,42 @@ def result_schema(output_schema: dict | None) -> dict:
     return schema
 
 
+@dataclass(frozen=True)
+class Refusal:
+    """What a round validation names when it ends the run: the code, detail and causes of
+    Workers' link."""
+
+    code: str
+    detail: str
+    causes: tuple = ()
+
+
+@dataclass(frozen=True)
+class RoundValidation:
+    """A round validation's answer (launch.md#round-validation).
+
+    ``evidence`` is kept with the round, in the caller's own shape; a top-level string of an item
+    that is an absolute path below the round's folder is an artifact path, kept relative to that
+    folder in the round's node. ``repair`` is the text naming what the worker must repair, which
+    becomes the next resume round's prompt; with it, ``failure`` says that the run ends ``failed``
+    when no rounds are left for it. Instead of a repair, ``violation`` ends the run at once for what
+    the caller does not allow at all, and ``unavailable`` when it could not validate.
+    """
+
+    evidence: tuple = ()
+    repair: str | None = None
+    failure: Refusal | None = None
+    violation: Refusal | None = None
+    unavailable: Refusal | None = None
+
+
 @dataclass
 class WorkerRequest:
     worktree: Path
     task_type: str
+    # The grant as data, in the grant input format (contracts.md#grant-input).
     grant: dict
     instructions: str
-    check_modules: list[str] | None = None
     runtime: tuple[Path, ...] = ()
     output_schema: dict | None = None
     rounds: int = 3
@@ -198,9 +226,11 @@ class WorkerRequest:
     backend_source: str | None = None
     # The reasoning level: Claude Code's --effort, pi's --thinking.
     reasoning: str | None = None
-    # The Operation and worker id the model was chosen for, recorded only.
+    # The Operation and worker id the model was chosen for, and the Modules the job is about,
+    # labels recorded only.
     operation: str | None = None
     worker: str | None = None
+    modules: tuple[str, ...] | None = None
     # The identity of the Operation run that launched the worker, by which an observer pairs
     # the worker with its run.
     operation_run: str | None = None
@@ -208,10 +238,9 @@ class WorkerRequest:
     pi_config: Path | None = None
     sandbox_runtime: Path | None = None
     extra: dict = field(default_factory=dict)
-    # The host's own validation after a round that ended ok and passed its checks: the text of a
-    # resume prompt naming what to repair, or None. A worker is resumed with it while rounds
-    # remain; once none remain the round's result stands and the caller judges it.
-    after_round: Callable[[], str | None] | None = None
+    # The caller's round validation, called with the worktree and the round's node folder after
+    # every round whose worker ended ok with a clean audit; it answers a ``RoundValidation``.
+    round_validation: Callable[[Path, Path], RoundValidation] | None = None
     # Told the run identity as soon as the run exists, so that a caller interrupted while the
     # worker runs can still name it.
     started: Callable[[str], None] | None = None
@@ -224,70 +253,6 @@ class WorkerRequest:
 
 def _digest(path: Path) -> str:
     return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
-
-
-def spec_rule(task_type: str) -> str:
-    """The brief's rule about promises the Spec does not state, which depends on the task type."""
-    if task_type == "code-to-spec":
-        return (
-            "- Describing the code you read in the bound Modules' Specs is your task. Record "
-            "behaviour as it is; behaviour whose intent the code does not settle is reported as "
-            "an open question, never written as a promise.\n"
-        )
-    if task_type == "review-code":
-        return (
-            "- When the Spec neither requires nor forbids behaviour you see, do not infer a "
-            "promise from code: report it as a `spec-gap` finding whose basis is the passage that "
-            "would have to settle it.\n"
-        )
-    if task_type == "understand":
-        return (
-            "- When the Spec does not state a promise the goal needs, do not infer it from code: "
-            "report it as a Spec gap in your assessment and end `ok`.\n"
-        )
-    if task_type in ("review-spec", "review-architecture"):
-        return (
-            "- When the Spec does not state a promise, or you lack a document you need, do not "
-            "infer it from code: report it as a finding, as your task says, and go on reviewing. "
-            "Return `blocked` only when you cannot review at all.\n"
-        )
-    return (
-        "- When the Spec does not state a promise you need, do not infer it from code: return "
-        "`blocked` and describe the missing promise.\n"
-    )
-
-
-def terms(grant: dict) -> str:
-    """The brief's glossary section: the definitions of the words the bound Modules' documents
-    link, and, when the glossary is writable, which of its entries the worker may change."""
-    from ..spec.glossary import plain_definition
-
-    entries = grant.get("terms") or []
-    glossary = grant.get("glossary")
-    writable = glossary is not None and grant_view(grant).level(glossary) == "rw"
-    if not entries and not writable:
-        return ""
-    lines = ["## Terms\n\n"]
-    if entries:
-        lines.append(
-            "The words your documents link to the glossary mean the following; a term link's "
-            "fragment is the identity in brackets.\n\n"
-        )
-        lines.extend(
-            f"- **{entry['title']}** (`{entry['id']}`, owned by {entry['owner']}): "
-            f"{plain_definition(entry['definition'])}\n"
-            for entry in entries
-        )
-        lines.append("\n")
-    if writable:
-        owners = ", ".join(grant.get("modules", ()))
-        lines.append(
-            f"The glossary {glossary} is writable, but only by entry: change, add or remove only "
-            f"entries whose owner is {owners}, and never change another Module's entry or move "
-            "an entry to another owner. Every other change of the file is refused after you "
-            "finish.\n\n"
-        )
-    return "".join(lines)
 
 
 def brief(request: WorkerRequest, worktree: Path) -> str:
@@ -326,8 +291,7 @@ def brief(request: WorkerRequest, worktree: Path) -> str:
         f"{listing('ro')}\n"
         "You may know that these files exist, but you may not read or change them:\n\n"
         f"{listing('names')}\n"
-        + terms(request.grant)
-        + "Every other path is hidden from you. A refused read or write means the path is outside "
+        "Every other path is hidden from you. A refused read or write means the path is outside "
         "your boundary: do not work around it. If you need it, stop and return `blocked`, naming "
         "the path and why you need it.\n\n"
         + (
@@ -343,7 +307,6 @@ def brief(request: WorkerRequest, worktree: Path) -> str:
         "- You cannot delete files. List files that should be deleted in `proposed_deletions`.\n"
         f"- A file you create with {shell} outside the writable paths is lost when you finish; "
         f"create files with the {writer} instead.\n"
-        f"{spec_rule(request.task_type)}"
         f"{ending} For `ok`, `error` is null. For `blocked` or `failed`, "
         "`error` is required and must let the host reason about it without asking you: a code, "
         "the complete detail (what failed, where, with the exact message or output), your "
@@ -428,47 +391,6 @@ def _kill_group(process) -> None:
         pass
 
 
-def _after_round(request, number: int, round_record: dict, attempts: list[str]):
-    """The resume prompt for the host's validation of a round, or None to finish the run."""
-    if request.after_round is None:
-        return None
-    try:
-        repair = request.after_round()
-    except Exception as error:  # noqa: BLE001 -- the caller validates again and judges
-        from ..kernel.errors import exception_detail
-
-        round_record["validation"] = f"not run: {exception_detail(error)}"
-        return None
-    if not repair:
-        round_record["validation"] = "clean"
-        return None
-    round_record["validation"] = repair
-    if number > request.rounds:
-        attempts.append(
-            f"round {number}: the host's validation still reported problems and no resume "
-            "round was left"
-        )
-        return None
-    attempts.append(
-        f"round {number}: the host's validation reported problems to repair"
-    )
-    return repair
-
-
-def _resume_prompt(failures: list[dict]) -> str:
-    parts = [
-        "The host ran the configured checks after your last round and some failed. Fix the "
-        "code within your boundary and end with a new structured result.\n"
-    ]
-    for item in failures:
-        log = Path(item["log"]).read_bytes()[-TAIL:].decode("utf-8", "replace")
-        parts.append(
-            f"\n## {item['check_id']} ({item['status']}, exit code {item['exit_code']})\n\n"
-            f"```text\n{log}\n```\n"
-        )
-    return "".join(parts)
-
-
 def worker_link(record: dict, result: dict) -> dict | None:
     """The worker's own error as a link; its content is the worker's claim."""
     error = result.get("error")
@@ -503,11 +425,35 @@ def _consistency(result: dict) -> str | None:
     return None
 
 
+GRANT_FIELDS = ("task_type", "entries", "context_identity")
+
+
+def _grant_shape(grant: dict, task_type: str) -> None:
+    """Refuse a grant beyond the grant input's fields or for another task type than the request's
+    with ``grant_malformed``: the worker harness takes only the grant input, never a richer grant."""
+    extra = sorted(set(grant) - set(GRANT_FIELDS))
+    if extra:
+        raise SettingsError(
+            "grant_malformed",
+            f"the grant has the field(s) {', '.join(extra)}, which the grant input does not "
+            f"define; it holds exactly {', '.join(GRANT_FIELDS)}",
+        )
+    if grant["task_type"] != task_type:
+        raise SettingsError(
+            "grant_malformed",
+            f"the grant was computed for the task type {grant['task_type']!r}, not the "
+            f"request's {task_type!r}",
+        )
+    if not isinstance(grant["context_identity"], str):
+        raise SettingsError(
+            "grant_malformed",
+            "the grant's context identity is not a string",
+        )
+
+
 def run_worker(request: WorkerRequest) -> dict:
     """Run one worker to its end and return its run record as contract.workers.worker-run-record
     defines it; the record kept is its trace node and its rounds' nodes."""
-    from ..execution.checks.checks import check_error
-
     worktree = Path(os.path.realpath(request.worktree))
     # Without a parent node, as when a worker is run on its own, the run keeps its node beside
     # the unbound runs of the worktree.
@@ -565,7 +511,7 @@ def run_worker(request: WorkerRequest) -> dict:
         "run_directory": trace.as_posix(),
         "runtime_directory": paths.root.as_posix(),
     }
-    modules = request.grant.get("modules") if isinstance(request.grant, dict) else None
+    modules = request.modules
     node = Node(
         trace,
         run_id,
@@ -658,6 +604,13 @@ def run_worker(request: WorkerRequest) -> dict:
             causes=[cause],
         )
 
+    def finalized(result: dict, cause, attempts: list[str]) -> dict:
+        """Carry out the proposed deletions of an ok run and end it."""
+        failed = _finalize(worktree, record, result)
+        if failed:
+            return deletion_failure(failed, cause, attempts)
+        return finish("ok")
+
     def attempt() -> dict:
         if backend is None:
             return fail(
@@ -665,12 +618,13 @@ def run_worker(request: WorkerRequest) -> dict:
                 f"the worker request names the backend {request.backend!r}; Workers knows "
                 + ", ".join(sorted(BACKENDS)),
                 "input",
-                "the backend is the main session's agent program, which the Execution runner "
-                "names and Workers does not choose",
+                "the backend is chosen by the configuration reader before the launch, and "
+                "Workers launches only the programs it knows",
             )
         if (
             request.task_type not in TASK_TYPES
             or not isinstance(request.grant, dict)
+            or not request.grant.get("task_type")
             or not request.grant.get("context_identity")
             or not isinstance(request.grant.get("entries"), list)
         ):
@@ -679,6 +633,11 @@ def run_worker(request: WorkerRequest) -> dict:
                 for name, present in (
                     ("a known task type", request.task_type in TASK_TYPES),
                     ("a grant object", isinstance(request.grant, dict)),
+                    (
+                        "the grant's task type",
+                        isinstance(request.grant, dict)
+                        and bool(request.grant.get("task_type")),
+                    ),
                     (
                         "a context identity",
                         isinstance(request.grant, dict)
@@ -701,6 +660,7 @@ def run_worker(request: WorkerRequest) -> dict:
             )
         try:
             rw = grant_view(request.grant).paths("rw")
+            _grant_shape(request.grant, request.task_type)
         except SettingsError as error:
             return fail(
                 error.code,
@@ -744,10 +704,8 @@ def run_worker(request: WorkerRequest) -> dict:
             settings_digest=record["settings_digest"],
         )
         try:
-            before = snapshot(worktree, request.grant.get("glossary"))
+            before = snapshot(worktree)
         except (OSError, subprocess.CalledProcessError) as error:
-            from ..kernel.errors import exception_detail
-
             return fail(
                 "snapshot_failed",
                 f"the task worktree {worktree} cannot be snapshotted before the launch: "
@@ -800,13 +758,7 @@ def run_worker(request: WorkerRequest) -> dict:
             if source["transcript"]:
                 record["transcript"] = (trace / TRANSCRIPT).as_posix()
             progress.phase("audit")
-            verdict = audit(
-                worktree,
-                before,
-                rw,
-                request.grant.get("glossary"),
-                request.grant.get("modules", ()),
-            )
+            verdict = audit(worktree, before, rw)
             round_record["audit"] = verdict.record()
             # A write outside the grant is reported whatever else went wrong in the round.
             outside = (
@@ -920,9 +872,8 @@ def run_worker(request: WorkerRequest) -> dict:
                         f"the {request.task_type} worker ended {result['status']} in round "
                         f"{number} with {cause['code']}: {cause['detail']}",
                         reason="capability",
-                        explanation="Workers resumes a worker only to repair failing configured "
-                        "checks or what its caller's validation reports; it returns every other "
-                        "blocker unchanged",
+                        explanation="Workers resumes a worker only to repair what its caller's "
+                        "round validation reports; it returns every other blocker unchanged",
                         evidence=[evidence("trace", run_id, trace.as_posix())]
                         + (
                             [evidence("transcript", record["transcript"])]
@@ -933,80 +884,95 @@ def run_worker(request: WorkerRequest) -> dict:
                         causes=[cause],
                     ),
                 )
-            if request.check_modules is None:
-                repair = _after_round(request, number, round_record, attempts)
-                if repair is None:
-                    _finish_round(round_node, round_record, "ok", "ok")
-                    failed = _finalize(worktree, record, result)
-                    if failed:
-                        return deletion_failure(failed, None, attempts)
-                    return finish("ok")
-                _finish_round(round_node, round_record, "failed", "validation_failed")
-                prompt, kind = repair, "validation_failures"
-                continue
-            progress.phase("checks")
+            if request.round_validation is None:
+                _finish_round(round_node, round_record, "ok", "ok")
+                return finalized(result, None, attempts)
+            progress.phase("validation", round=number)
             try:
-                from ..execution.checks.checks import run_checks, service_error
-
-                checks = run_checks(
-                    worktree,
-                    modules=request.check_modules,
-                    trace_directory=layout.checks_folder(round_node.folder),
+                answer = request.round_validation(worktree, round_node.folder)
+                if not isinstance(answer, RoundValidation):
+                    raise TypeError(
+                        f"it answered a {type(answer).__name__}, not a RoundValidation"
+                    )
+            except Exception as error:  # noqa: BLE001 -- the caller's code, reported in full
+                detail = exception_detail(error)
+                round_record["evidence"] = []
+                round_record["validation"] = f"not run: {detail}"
+                _finish_round(
+                    round_node, round_record, "failed", "validation_unavailable"
                 )
-            except (SpecError, OSError) as error:
-                code = getattr(error, "code", None) or "checks_unavailable"
-                _finish_round(round_node, round_record, "failed", "checks_unavailable")
                 return fail(
-                    "checks_unavailable",
-                    f"round {number}: the configured checks of "
-                    f"{', '.join(request.check_modules)} could not run ({code}): {error}",
-                    "environment",
-                    "Workers runs the checks through Check execution and cannot repair its "
-                    "configuration or sandbox",
+                    "validation_unavailable",
+                    f"round {number}: the round validation raised instead of answering: "
+                    f"{detail}",
+                    "capability",
+                    "Workers cannot validate a round itself and never accepts a round its "
+                    "caller could not validate",
                     attempts=attempts,
-                    causes=[service_error(error)],
                 )
-            round_record["checks"] = checks
-            failures = [item for item in checks if item["status"] != "passed"]
-            if not failures:
-                repair = _after_round(request, number, round_record, attempts)
-                if repair is None:
-                    _finish_round(round_node, round_record, "ok", "ok")
-                    failed = _finalize(worktree, record, result)
-                    if failed:
-                        return deletion_failure(failed, None, attempts)
-                    return finish("ok")
-                _finish_round(round_node, round_record, "failed", "validation_failed")
-                prompt, kind = repair, "validation_failures"
-                continue
-            _finish_round(round_node, round_record, "failed", "checks_failed")
+            round_record["evidence"] = [dict(item) for item in answer.evidence]
+            if answer.unavailable is not None:
+                refusal = answer.unavailable
+                round_record["validation"] = f"not run: {refusal.detail}"
+                _finish_round(
+                    round_node, round_record, "failed", "validation_unavailable"
+                )
+                return fail(
+                    refusal.code,
+                    f"round {number}: the round validation could not validate: "
+                    f"{refusal.detail}",
+                    "environment",
+                    "Workers cannot validate a round itself and never accepts a round its "
+                    "caller could not validate",
+                    attempts=attempts,
+                    causes=list(refusal.causes),
+                )
+            if answer.violation is not None:
+                refusal = answer.violation
+                round_record["validation"] = f"violation: {refusal.detail}"
+                _finish_round(
+                    round_node, round_record, "failed", "validation_violation"
+                )
+                return fail(
+                    refusal.code,
+                    f"round {number}: {refusal.detail}",
+                    "permission",
+                    "Workers never resumes a round its caller does not allow at all",
+                    attempts=attempts,
+                    causes=list(refusal.causes),
+                )
+            if not answer.repair:
+                round_record["validation"] = "clean"
+                _finish_round(round_node, round_record, "ok", "ok")
+                return finalized(result, None, attempts)
+            round_record["validation"] = answer.repair
             attempts.append(
-                f"round {number}: the worker ended ok; failing: "
-                + ", ".join(
-                    f"{item['check_id']} ({item['status']}, exit {item['exit_code']})"
-                    for item in failures
+                f"round {number}: the worker ended ok; "
+                + (
+                    answer.failure.detail
+                    if answer.failure is not None
+                    else "the round validation reported something to repair"
                 )
             )
             if number > request.rounds:
+                if answer.failure is None:
+                    _finish_round(round_node, round_record, "ok", "ok")
+                    return finalized(result, None, attempts)
+                refusal = answer.failure
+                _finish_round(round_node, round_record, "failed", "validation_failed")
                 return fail(
-                    "checks_failed",
-                    f"{len(failures)} configured check(s) still fail after {number} round(s) "
-                    f"({request.rounds} resume round(s) allowed): "
-                    + ", ".join(item["check_id"] for item in failures),
+                    refusal.code,
+                    f"{refusal.detail}, after {number} round(s) ({request.rounds} resume "
+                    "round(s) allowed)",
                     "exhausted",
-                    f"Workers resumes the worker at most {request.rounds} time(s) with the "
-                    "failures and does not extend that",
+                    f"Workers resumes the worker at most {request.rounds} time(s) with what its "
+                    "round validation reports and does not extend that",
                     attempts=attempts,
-                    causes=[check_error(item) for item in failures],
+                    causes=list(refusal.causes),
                 )
-            prompt, kind = _resume_prompt(failures), "check_failures"
-        return fail(
-            "checks_failed",
-            "no rounds left",
-            "exhausted",
-            "Workers does not extend the configured rounds",
-            attempts=attempts,
-        )
+            _finish_round(round_node, round_record, "failed", "repair")
+            prompt, kind = answer.repair, "repair"
+        raise AssertionError("every round ends the run or resumes it")
 
     try:
         return attempt()
@@ -1066,14 +1032,10 @@ def _start_round(
 
 def _round_content(round_record: dict, folder: Path) -> dict:
     agent = {key: round_record[key] for key in ("claude", "pi") if key in round_record}
-    checks = []
-    for item in round_record.get("checks") or []:
-        shaped = dict(item)
-        try:
-            shaped["log"] = Path(item["log"]).relative_to(folder).as_posix()
-        except (KeyError, ValueError):
-            pass
-        checks.append(shaped)
+    evidence_kept = [
+        {key: _artifact(value, folder) for key, value in item.items()}
+        for item in round_record.get("evidence") or []
+    ]
     exit_code = round_record.get("exit")
     validation = round_record.get("validation")
     return {
@@ -1082,10 +1044,21 @@ def _round_content(round_record: dict, folder: Path) -> dict:
         "session": round_record.get("session") or None,
         "exit": exit_code if isinstance(exit_code, int) else None,
         "audit": round_record.get("audit"),
-        "checks": checks,
+        "evidence": evidence_kept,
         "validation": validation if isinstance(validation, str) else None,
         "agent": agent,
     }
+
+
+def _artifact(value, folder: Path):
+    """An evidence value as a round's node keeps it: an absolute path below the round's folder
+    relative to it, anything else unchanged."""
+    if isinstance(value, str) and os.path.isabs(value):
+        try:
+            return Path(value).relative_to(folder).as_posix()
+        except ValueError:
+            return value
+    return value
 
 
 def _finish_round(
@@ -1163,6 +1136,8 @@ def _finalize(worktree: Path, record: dict, result: dict) -> list[str]:
 
 __all__ = [
     "WORKER_RESULT_SCHEMA",
+    "Refusal",
+    "RoundValidation",
     "WorkerRequest",
     "brief",
     "result_schema",

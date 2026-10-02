@@ -29,8 +29,26 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from ..spec.grants import LEVELS
-
+# The eight Protocol task types, as the grant input contract names them (contracts.md#grant-input).
+TASK_TYPES = (
+    "understand",
+    "specify",
+    "implement",
+    "test",
+    "review-spec",
+    "review-code",
+    "code-to-spec",
+    "review-architecture",
+)
+# The task types whose row in the Protocol's task-type table writes no set: each gets the
+# read-only tool set whatever its grant.
+WRITING_NOTHING = (
+    "understand",
+    "test",
+    "review-spec",
+    "review-code",
+    "review-architecture",
+)
 TOOL_SETS = {
     "understand": "Read,Glob,Grep",
     "review-spec": "Read,Glob,Grep",
@@ -53,7 +71,7 @@ def tool_set(tool_sets: dict, task_type: str, grant: dict | None) -> str:
     task type assigns, such as a survey's ``code-to-spec`` grant with the Spec side withheld; such
     a worker gets no tool that changes files either.
     """
-    if task_type in LEVELS and "rw" not in LEVELS[task_type].values():
+    if task_type in WRITING_NOTHING:
         return tool_sets[READ_ONLY_TASK_TYPE]
     entries = grant.get("entries") if isinstance(grant, dict) else None
     if isinstance(entries, list) and not any(

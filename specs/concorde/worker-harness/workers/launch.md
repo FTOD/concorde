@@ -29,7 +29,7 @@ A run is requested with:
 | limits | Timeout per round, the turn limit, the budget limit when the configuration sets one, and the number of [resume rounds](../../glossary.json#concept.resume-round) (default 3) |
 | model | The project model name the run worktree's [worker configuration](../../glossary.json#concept.worker-configuration) chooses for the worker's id, which every Operation gives, recorded only |
 | local model, model map | The model's local id on the backend, which the [model map](../../glossary.json#concept.model-map) gives it and which is passed with `--model`, and the path of that map, recorded only |
-| operation, worker | The Operation and the [worker id](../../glossary.json#concept.worker-id) the model was chosen for, labels the caller gives, recorded only |
+| operation, worker, modules | The Operation and the [worker id](../../glossary.json#concept.worker-id) the model was chosen for and the [Modules](../../glossary.json#concept.module) the job is about, labels the caller gives, recorded only |
 | reasoning | Optionally the reasoning level from the same configuration, passed with `--effort` on the Claude Code backend and `--thinking` on the pi backend |
 
 ## Placement
@@ -86,7 +86,7 @@ passes a **round validation**, a callback the host calls once after every round 
 
 | Field | Meaning |
 | --- | --- |
-| evidence | The values to keep with the round as its evidence, in the caller's own shape, possibly none; nodes of its own, such as check nodes, it places below the round's folder |
+| evidence | The values to keep with the round as its evidence, in the caller's own shape, possibly none; nodes of its own, such as check nodes, it places below the round's folder, and a top-level string of an evidence value that is an absolute path below that folder is an artifact path, which the round's node keeps relative to its folder and the returned record absolute |
 | repair | Nothing, or the text naming what the worker must repair, which becomes the next resume round's prompt |
 | failure | With a repair, whether the run must end `failed` when no rounds are left for it, and then the code and the causes of Workers' link; without, a repair left over at the last round leaves the round's result for the caller to judge |
 | violation | Instead of a repair, when the round did something its caller does not allow at all: the code and the causes of Workers' link, which ends the run `failed` at once, with no further round, as an audit violation does |
@@ -320,6 +320,7 @@ describes the worktree before these deletions.
 | invalid result, audit clean | not called | end `failed` with `worker_result_invalid` |
 | `blocked` or `failed`, audit clean | not called | end with the worker's status and `worker_blocked` or `worker_failed` |
 | `ok`, audit clean, no round validation given | — | end `ok` |
+| `ok`, audit clean | raises instead of answering | end `failed` with `validation_unavailable` |
 | `ok`, audit clean | answers unavailable | end `failed` with the code and causes it names, reason `environment` |
 | `ok`, audit clean | answers a violation | end `failed` with the code and causes it names, reason `permission` |
 | `ok`, audit clean | nothing to repair | end `ok` |
@@ -385,6 +386,7 @@ by every code whose round had one, even when the round also timed out or failed 
 | `worker_blocked`, `worker_failed` | the worker's code and detail | `capability` | the worker's link |
 | the code the round validation names for a violation, in Concorde `audit_violation` for a glossary entry another Module owns | every violating entry the round validation names | `permission` | the links the round validation names, none in Concorde |
 | the code the round validation names when it cannot validate, in Concorde `checks_unavailable` | the round and what the round validation reported | `environment` | the links the round validation names, in Concorde Check execution's |
+| `validation_unavailable` | the round and the error the round validation raised instead of answering | `capability` | none |
 | the code the round validation names for a repair that fails the run, in Concorde `checks_failed` | what still needs repair and the rounds used; `attempts` lists each round's repair | `exhausted` | the links the round validation names, in Concorde one per failing check, from Check execution |
 | `deletion_failed` | every proposed deletion the host performed, every one that failed with the operating system's error, and those it refused or found already absent | `environment` | the worker's link, when its result carries an `error` |
 | `interrupted` | what ended the run from outside before it finished, such as a signal or the cancellation of the run that launched it | `environment` | none |

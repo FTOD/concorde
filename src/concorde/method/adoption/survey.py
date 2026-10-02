@@ -20,11 +20,11 @@ from pathlib import Path
 
 from ...execution.context import (
     Continue,
-    Provider,
     RunContext,
     evidence,
     spec_cause,
 )
+from ..workers import operation, run_worker
 from ...execution.operations.provider import (
     load_prompt,
 )
@@ -171,7 +171,8 @@ def answers_failure(ctx: RunContext, error: AnswersError):
 
 def propose(ctx: RunContext):
     """Step 2: the survey worker, reading code under a grant that writes nothing."""
-    return ctx.run_worker(
+    return run_worker(
+        ctx,
         instructions(ctx, ctx.state["answers"]),
         task_type="code-to-spec",
         output_schema=SURVEY_WORKER_SCHEMA,
@@ -275,7 +276,7 @@ def check(ctx: RunContext):
     )
 
 
-SURVEY = Provider(
+SURVEY = operation(
     name="survey",
     task_type="code-to-spec",
     writes=False,

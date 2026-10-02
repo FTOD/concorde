@@ -16,6 +16,29 @@ from concorde.spec.verification import verifies
 from tests.concorde.support.agent_fakes import fake_agents
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
+# The Operations and worker ids the caller declares: Concorde's, as Method declares them.
+DECLARED = {
+    "understand": ("worker",),
+    "plan_review": ("reviewer",),
+    "specify": ("worker",),
+    "implement": ("worker",),
+    "test": ("worker",),
+    "spec_review": ("reviewer", "checker"),
+    "spec_panel": (
+        "reviewer1",
+        "reviewer2",
+        "reviewer3",
+        "reviewer4",
+        "reviewer5",
+        "architect1",
+        "architect2",
+        "chair",
+    ),
+    "code_review": ("worker",),
+    "survey": ("worker",),
+    "code_to_spec": ("worker",),
+}
+
 
 def _backend(chosen: dict) -> tuple[str, str]:
     return chosen["backend"], chosen["backend_source"]
@@ -75,7 +98,9 @@ class WorkerModelTests(unittest.TestCase):
         }
         self.assertEqual(
             ("pi", "Concorde's default worker backend"),
-            _backend(models.worker_choice(bare, "implement", "worker", session)),
+            _backend(
+                models.worker_choice(bare, DECLARED, "implement", "worker", session)
+            ),
         )
 
     def _checker_on_claude(self) -> dict:
@@ -96,15 +121,19 @@ class WorkerModelTests(unittest.TestCase):
             },
         }
         self.save(config)
-        self.assertEqual(config, models.load(self.base))
+        self.assertEqual(config, models.load(self.base, DECLARED))
         return config
 
     @verifies("scenario.workers.backend-configured")
     def test_workers_run_on_pi_unless_their_configuration_chooses_claude_code(self):
         session = dict(self.environ, CLAUDECODE="1")
         config = self._checker_on_claude()
-        reviewer = models.worker_choice(config, "spec_review", "reviewer", session)
-        checker = models.worker_choice(config, "spec_review", "checker", session)
+        reviewer = models.worker_choice(
+            config, DECLARED, "spec_review", "reviewer", session
+        )
+        checker = models.worker_choice(
+            config, DECLARED, "spec_review", "checker", session
+        )
         self.assertEqual(
             ("pi", "a-pi", "local/a-pi", str(self.map)),
             (
@@ -138,7 +167,7 @@ class WorkerModelTests(unittest.TestCase):
             self.environ, CLAUDECODE="1", CONCORDE_PI=str(self.base / "nowhere")
         )
         with self.assertRaises(models.ModelConfigError) as raised:
-            models.worker_choice(config, "implement", "worker", missing)
+            models.worker_choice(config, DECLARED, "implement", "worker", missing)
         self.assertEqual("backend_missing", raised.exception.code)
         for part in (
             "the worker worker of implement runs on pi",
@@ -150,7 +179,9 @@ class WorkerModelTests(unittest.TestCase):
             self.assertIn(part, str(raised.exception))
         self.assertEqual(
             "claude",
-            models.worker_choice(config, "spec_review", "checker", missing)["backend"],
+            models.worker_choice(config, DECLARED, "spec_review", "checker", missing)[
+                "backend"
+            ],
         )
 
     @verifies(
@@ -290,7 +321,7 @@ class WorkerModelTests(unittest.TestCase):
                 }
             },
         }
-        models.validate_config(config)
+        models.validate_config(config, DECLARED)
 
         def level(operation, worker):
             chosen = models.choice(config, operation, worker)
@@ -341,7 +372,7 @@ class WorkerModelTests(unittest.TestCase):
                 self.subTest(enabled=wrong),
                 self.assertRaises(models.ModelConfigError) as raised,
             ):
-                models.validate_config(invalid)
+                models.validate_config(invalid, DECLARED)
             self.assertEqual("config_invalid", raised.exception.code)
             self.assertIn("reasoning", str(raised.exception))
 
@@ -358,9 +389,9 @@ class WorkerModelTests(unittest.TestCase):
         }
         self.assertEqual(
             "a-pi",
-            models.worker_choice(config, "spec_review", "checker", self.environ)[
-                "model"
-            ],
+            models.worker_choice(
+                config, DECLARED, "spec_review", "checker", self.environ
+            )["model"],
         )
         for operation, worker, entries in (
             (
@@ -384,7 +415,7 @@ class WorkerModelTests(unittest.TestCase):
                 self.subTest(worker=worker),
                 self.assertRaises(models.ModelConfigError) as raised,
             ):
-                models.worker_choice(config, operation, worker, self.environ)
+                models.worker_choice(config, DECLARED, operation, worker, self.environ)
             self.assertEqual("model_unresolved", raised.exception.code)
             for part in (
                 f"the {worker} worker of {operation}",
@@ -398,7 +429,7 @@ class WorkerModelTests(unittest.TestCase):
     @verifies("scenario.workers.model-not-enabled")
     def test_a_model_outside_the_enabled_models_is_refused(self):
         base = {"schema_version": 2, "enabled_models": _enabled("a-one", "a-two")}
-        models.validate_config(dict(base, default={"model": "a-one"}))
+        models.validate_config(dict(base, default={"model": "a-one"}), DECLARED)
         for config, where in (
             (dict(base, default={"model": "a-three"}), "default.model"),
             (
@@ -424,7 +455,7 @@ class WorkerModelTests(unittest.TestCase):
                 self.subTest(where=where),
                 self.assertRaises(models.ModelConfigError) as raised,
             ):
-                models.validate_config(config)
+                models.validate_config(config, DECLARED)
             self.assertEqual("model_not_enabled", raised.exception.code)
             for part in (where, "'a-three'", "a-one, a-two", "add it to"):
                 self.assertIn(part, str(raised.exception))
@@ -440,14 +471,14 @@ class WorkerModelTests(unittest.TestCase):
                 self.subTest(enabled=missing.get("enabled_models")),
                 self.assertRaises(models.ModelConfigError) as raised,
             ):
-                models.validate_config(missing)
+                models.validate_config(missing, DECLARED)
             self.assertEqual("config_invalid", raised.exception.code)
             self.assertIn("`enabled_models` " + text, str(raised.exception))
 
     @verifies("scenario.workers.config-missing")
     def test_a_worktree_without_a_worker_configuration_runs_no_worker(self):
         with self.assertRaises(models.ModelConfigError) as raised:
-            models.load(self.base)
+            models.load(self.base, DECLARED)
         self.assertEqual("config_missing", raised.exception.code)
         for part in (
             str(models.config_path(self.base)),
@@ -466,11 +497,13 @@ class WorkerModelTests(unittest.TestCase):
             "enabled_models": _enabled("offline-custom"),
             "default": {"model": "offline-custom", "reasoning": "high"},
         }
-        models.validate_config(config)
+        models.validate_config(config, DECLARED)
         self.save(config)
         self.assertEqual(
             "offline-custom",
-            models.worker_choice(config, "implement", "worker", self.environ)["model"],
+            models.worker_choice(config, DECLARED, "implement", "worker", self.environ)[
+                "model"
+            ],
         )
 
     @verifies("scenario.workers.model-refused")
@@ -496,7 +529,7 @@ class WorkerModelTests(unittest.TestCase):
                 self.subTest(config=invalid),
                 self.assertRaises(models.ModelConfigError) as raised,
             ):
-                models.validate_config(invalid)
+                models.validate_config(invalid, DECLARED)
             self.assertEqual("config_invalid", raised.exception.code)
 
     @verifies(
@@ -537,11 +570,11 @@ class WorkerModelTests(unittest.TestCase):
             "default": {"model": "x"},
         }
         self.save(enabled)
-        plain = models.load(self.base)
+        plain = models.load(self.base, DECLARED)
         self.assertEqual(models.LIMITS, models.limits(plain))
         self.assertEqual((".venv", "node_modules"), models.runtime(plain))
         self.save(dict(enabled, limits={"max_turns": 50, "rounds": 1}, runtime=["env"]))
-        config = models.load(self.base)
+        config = models.load(self.base, DECLARED)
         self.assertEqual(
             {**models.LIMITS, "max_turns": 50, "rounds": 1}, models.limits(config)
         )
@@ -556,7 +589,7 @@ class WorkerModelTests(unittest.TestCase):
         retired.parent.mkdir(parents=True)
         retired.write_text('{"schema_version": 3, "default": {"model": "x"}}')
         with self.assertRaises(models.ModelConfigError) as raised:
-            models.load(self.base)
+            models.load(self.base, DECLARED)
         self.assertEqual("config_invalid", raised.exception.code)
         for part in (models.RETIRED, models.CONFIG, "commit it"):
             self.assertIn(part, str(raised.exception))
@@ -567,7 +600,7 @@ class WorkerModelTests(unittest.TestCase):
                 "default": {"model": "y"},
             }
         )
-        self.assertEqual({"model": "y"}, models.load(self.base)["default"])
+        self.assertEqual({"model": "y"}, models.load(self.base, DECLARED)["default"])
 
     def test_duplicate_json_keys_are_refused(self):
         path = models.config_path(self.base)
@@ -576,7 +609,7 @@ class WorkerModelTests(unittest.TestCase):
             '{"schema_version": 2, "default": {"model": "x", "model": "y"}}'
         )
         with self.assertRaisesRegex(models.ModelConfigError, "duplicate key"):
-            models.load(self.base)
+            models.load(self.base, DECLARED)
 
     @verifies(
         "scenario.workers.model-config-invalid", "scenario.workers.model-config-v1"
@@ -587,7 +620,7 @@ class WorkerModelTests(unittest.TestCase):
         path.parent.mkdir(parents=True)
         path.write_text("{not json")
         with self.assertRaises(models.ModelConfigError) as raised:
-            models.load(worktree)
+            models.load(worktree, DECLARED)
         self.assertEqual("config_invalid", raised.exception.code)
         self.assertIn(str(path), str(raised.exception))
         path.write_text(
@@ -604,7 +637,7 @@ class WorkerModelTests(unittest.TestCase):
             )
         )
         with self.assertRaises(models.ModelConfigError) as raised:
-            models.load(worktree)
+            models.load(worktree, DECLARED)
         self.assertEqual("config_invalid", raised.exception.code)
         self.assertIn("modle", str(raised.exception))
         path.write_text(
@@ -617,12 +650,12 @@ class WorkerModelTests(unittest.TestCase):
             )
         )
         with self.assertRaises(models.ModelConfigError) as raised:
-            models.load(worktree)
+            models.load(worktree, DECLARED)
         self.assertEqual("config_invalid", raised.exception.code)
         self.assertIn("pi", str(raised.exception))
         path.write_text(json.dumps({"schema_version": 3, "default": {"model": "x"}}))
         with self.assertRaises(models.ModelConfigError) as raised:
-            models.load(worktree)
+            models.load(worktree, DECLARED)
         self.assertEqual("config_invalid", raised.exception.code)
         self.assertIn("schema_version 3", str(raised.exception))
         self.assertIn("expected 2", str(raised.exception))
@@ -637,7 +670,7 @@ class WorkerModelTests(unittest.TestCase):
             )
         )
         with self.assertRaises(models.ModelConfigError) as raised:
-            models.load(worktree)
+            models.load(worktree, DECLARED)
         self.assertEqual("config_invalid", raised.exception.code)
         for part in (
             "schema_version 1; expected 2",
@@ -684,7 +717,7 @@ class ModelMapTests(unittest.TestCase):
     def refused(self, operation="implement", worker="worker", environ=None):
         with self.assertRaises(models.ModelConfigError) as raised:
             models.worker_choice(
-                self.config, operation, worker, environ or self.environ
+                self.config, DECLARED, operation, worker, environ or self.environ
             )
         return raised.exception
 
@@ -727,7 +760,9 @@ class ModelMapTests(unittest.TestCase):
                 },
             }
         )
-        worker = models.worker_choice(self.config, "implement", "worker", self.environ)
+        worker = models.worker_choice(
+            self.config, DECLARED, "implement", "worker", self.environ
+        )
         self.assertEqual(
             ("pi", "gpt-6-astra", "local-openai/gpt-6-astra", str(self.map), "medium"),
             (
@@ -739,7 +774,7 @@ class ModelMapTests(unittest.TestCase):
             ),
         )
         reviewer = models.worker_choice(
-            self.config, "spec_panel", "reviewer1", self.environ
+            self.config, DECLARED, "spec_panel", "reviewer1", self.environ
         )
         self.assertEqual("anthropic/claude-opus-5-5", reviewer["local_model"])
 
@@ -788,7 +823,9 @@ class ModelMapTests(unittest.TestCase):
             {"schema_version": 1, "models": {"claude-opus-5-5": {"claude": "x"}}}
         )
         with self.assertRaises(models.ModelConfigError) as raised:
-            models.check_mapped(self.config, self.environ, operation="spec_panel")
+            models.check_mapped(
+                self.config, DECLARED, self.environ, operation="spec_panel"
+            )
         error = raised.exception
         self.assertEqual("model_unmapped", error.code)
         for part in (
@@ -808,9 +845,11 @@ class ModelMapTests(unittest.TestCase):
                 },
             }
         )
-        models.check_mapped(self.config, self.environ, operation="spec_panel")
+        models.check_mapped(self.config, DECLARED, self.environ, operation="spec_panel")
         with self.assertRaises(models.ModelConfigError) as unknown:
-            models.check_mapped(self.config, self.environ, operation="no_such")
+            models.check_mapped(
+                self.config, DECLARED, self.environ, operation="no_such"
+            )
         self.assertEqual("config_invalid", unknown.exception.code)
 
     @verifies("scenario.workers.refusal-reasons")
@@ -849,7 +888,7 @@ class ModelMapTests(unittest.TestCase):
             self.assertIn(part, str(error))
         # Every model a test project's workers would take is checked at once.
         with self.assertRaises(models.ModelConfigError) as raised:
-            models.check_mapped(self.config, self.environ)
+            models.check_mapped(self.config, DECLARED, self.environ)
         self.assertEqual("model_unmapped", raised.exception.code)
         for part in (
             "`models.gpt-6-astra.pi` (for ",
@@ -867,7 +906,7 @@ class ModelMapTests(unittest.TestCase):
                 },
             }
         )
-        models.check_mapped(self.config, self.environ)
+        models.check_mapped(self.config, DECLARED, self.environ)
 
     @verifies(
         "scenario.workers.model-map-missing", "scenario.workers.model-map-invalid"

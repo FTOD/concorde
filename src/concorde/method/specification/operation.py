@@ -25,13 +25,13 @@ from pathlib import Path
 
 from ...execution.context import (
     Continue,
-    Provider,
     RunContext,
     Stop,
     evidence,
     spec_cause,
     spec_finding,
 )
+from ..workers import operation, run_worker
 from ...execution.operations.provider import (
     load_prompt,
     protocol_guide,
@@ -383,20 +383,25 @@ def launch(ctx: RunContext, created: list[str]):
             "empty and owned by their Modules; fill them to carry out the intent:\n\n"
             + "".join(f"- `{path}` (and `{path}.json`)\n" for path in created)
         )
-    return ctx.run_worker(
+    return run_worker(
+        ctx,
         text,
         task_type="specify",
         output_schema=WORKER_OUTPUT_SCHEMA,
         checks=False,
         rounds=REPAIR_ROUNDS,
-        after_round=lambda: validation_repair(ctx),
+        validate=lambda: validation_repair(ctx),
     )
 
 
-def violated(record: dict) -> bool:
-    return any(
-        error["code"] == "audit_violation" for error in record.get("errors") or []
-    ) or any(
+def violated(record: dict, outcome) -> bool:
+    """Whether the worker run wrote outside its grant: a file outside ``rw`` or a glossary entry
+    another Module owns, found by the audit, the round validation or the check after the run."""
+    codes = {
+        (record.get("error") or {}).get("code"),
+        (getattr(outcome, "error", None) or {}).get("code"),
+    }
+    return "audit_violation" in codes or any(
         (item.get("audit") or {}).get("verdict") == "violation"
         for item in record.get("rounds") or []
     )
@@ -420,7 +425,7 @@ def change(ctx: RunContext):
         isinstance(outcome, Stop)
         and outcome.status == "blocked"
         and proposals
-        and not violated(record)
+        and not violated(record, outcome)
     ):
         created, notes = create_documents(ctx, proposals)
         found += notes
@@ -433,7 +438,7 @@ def change(ctx: RunContext):
     current.record = record
     if isinstance(outcome, Continue):
         return Continue(evidence=found)
-    if violated(record):
+    if violated(record, outcome):
         outcome.evidence[:] = found
         return outcome  # a write outside the grant: no validation, nothing is observed
     current.stop = Stop(outcome.status, outcome.summary, found, outcome.error)
@@ -595,7 +600,7 @@ def observe(ctx: RunContext):
     return Continue(output=output, evidence=found)
 
 
-SPECIFY = Provider(
+SPECIFY = operation(
     name="specify",
     task_type="specify",
     writes=True,

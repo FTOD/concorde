@@ -23,7 +23,8 @@ import json
 import os
 from pathlib import Path
 
-from ...execution.context import Continue, Provider, RunContext, evidence
+from ...execution.context import Continue, RunContext, evidence
+from ..workers import operation, run_worker
 from ...execution.operations.provider import load_prompt
 from ...spec.repository import SpecRepository
 from ...spec.repository_base import SpecError, is_identity
@@ -391,7 +392,8 @@ def instructions(ctx: RunContext) -> str:
 
 def review(ctx: RunContext):
     """Steps 3 to 5: run the reviewer once, without checks or resume rounds."""
-    return ctx.run_worker(
+    return run_worker(
+        ctx,
         instructions(ctx),
         task_type="review-code",
         output_schema=REVIEWER_OUTPUT,
@@ -569,7 +571,7 @@ def check_review(ctx: RunContext):
     )
 
 
-PLAN_REVIEW = Provider(
+PLAN_REVIEW = operation(
     name=NAME,
     task_type="review-code",
     writes=False,

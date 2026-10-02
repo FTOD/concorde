@@ -28,12 +28,12 @@ from pathlib import Path
 
 from ...execution.context import (
     Continue,
-    Provider,
     RunContext,
     Stop,
     component,
     evidence,
 )
+from ..workers import grant_failure, operation, run_worker
 from ...execution.checks.checks import checked_modules, run_checks
 from ...execution.operations.provider import load_prompt
 from ...spec.grants import Grant, grant
@@ -442,7 +442,7 @@ def prepare(ctx: RunContext):
         try:
             grant(SpecRepository(ctx.worktree), ctx.modules, TASK_TYPE)
         except (SpecError, OSError, ValueError) as error:
-            return ctx.grant_failure(TASK_TYPE, ctx.modules, error)
+            return grant_failure(ctx, TASK_TYPE, ctx.modules, error)
     if state.scope == "module":
         if ctx.arguments.base:
             return ctx.fail(
@@ -466,7 +466,7 @@ def prepare(ctx: RunContext):
         try:
             state.access = grant(SpecRepository(ctx.worktree), ctx.modules, TASK_TYPE)
         except (SpecError, OSError, ValueError) as error:
-            stop = ctx.grant_failure(TASK_TYPE, ctx.modules, error)
+            stop = grant_failure(ctx, TASK_TYPE, ctx.modules, error)
             stop.evidence[:0] = found
             return stop
         base = resolve_base(ctx)
@@ -743,7 +743,8 @@ def _judge(
     else:
         results = state.results
     launched = len(ctx.worker_runs)
-    outcome = ctx.run_worker(
+    outcome = run_worker(
+        ctx,
         instructions(ctx, state, reviews, results),
         task_type=TASK_TYPE,
         output_schema=REVIEWER_OUTPUT,
@@ -905,7 +906,7 @@ def review_arguments(parser) -> None:
     parser.add_argument("--focus", default=None)
 
 
-CODE_REVIEW = Provider(
+CODE_REVIEW = operation(
     "code_review",
     TASK_TYPE,
     False,

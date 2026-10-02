@@ -26,13 +26,13 @@ from pathlib import Path
 
 from ...execution.context import (
     Continue,
-    Provider,
     RunContext,
     Stop,
     evidence,
     spec_cause,
     spec_finding,
 )
+from ..workers import operation, run_worker
 from ...execution.operations.provider import (
     PROTOCOL_GUIDE,
     load_prompt,
@@ -586,7 +586,8 @@ def _review(ctx: RunContext, review: ModuleReview, prompt: str) -> list[dict]:
     if review.stop is not None:
         return found
     launched = len(ctx.worker_runs)
-    outcome = ctx.run_worker(
+    outcome = run_worker(
+        ctx,
         prompt
         + "\n"
         + _task_section(ctx, review, "reviewer")
@@ -637,7 +638,8 @@ def _review(ctx: RunContext, review: ModuleReview, prompt: str) -> list[dict]:
 def _check(ctx: RunContext, review: ModuleReview, prompt: str, findings: list[dict]):
     """The checker of one Module's findings; sets their ``check`` or the review's stop."""
     found: list[dict] = []
-    outcome = ctx.run_worker(
+    outcome = run_worker(
+        ctx,
         prompt
         + "\n"
         + _task_section(ctx, review, "checker")
@@ -727,7 +729,7 @@ def add_arguments(parser) -> None:
     )
 
 
-SPEC_REVIEW = Provider(
+SPEC_REVIEW = operation(
     "spec_review",
     TASK_TYPE,
     False,
