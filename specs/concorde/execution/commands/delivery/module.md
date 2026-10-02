@@ -13,8 +13,9 @@ delivery. Whoever merges the workspace relies on it, in Concorde the
 validated. Workers never touch Git; whoever works in the workspace, in Concorde the
 [task session](../../../glossary.json#concept.task-session) of its task, may commit verified steps
 on the branch, and only Delivery makes the commit that marks the work delivered. Delivery never merges, pushes,
-rewrites history, repairs a finding, writes a task record, or delivers anything it did not validate
-in the same run.
+amends or rebases a commit, repairs a finding, writes a task record, or delivers or reports as
+delivered anything it did not validate in the same run; the one commit it ever takes off its branch
+is a delivery commit it created in the same run and then rejected.
 
 ## Core concepts
 
@@ -38,8 +39,11 @@ its own, and reads its earlier deliveries back from the branch by their subject
 ([exact rule](contracts.md#delivery-commit)). Running `delivery` again when the branch head already
 is a delivery commit of the workspace and nothing waits reports that commit, `ok` with `recovered`
 true, and commits nothing — once it has verified that the commit has exactly one parent, as every
-commit Delivery creates has; a head with the subject that fails this, such as a merge commit, is
-`commit_unverified`, naming the mismatch. The delivery run's own
+commit Delivery creates has, and has validated the workspace again exactly as for a new delivery,
+since the subject alone proves nothing about what the commit holds. A head with the subject that
+has another number of parents, such as a merge commit, is `commit_unverified`, naming the mismatch;
+one whose workspace is not ready, or whose code change leaves a scenario unverified, is `blocked`
+like any delivery. The delivery run's own
 [trace node](../../../glossary.json#concept.trace-node) references the delivery commit, so the trace
 leads to what was committed: as `commit` when the run created it, and as `found_commit` when it
 found its work already delivered and reported the existing commit, which an earlier run created.
@@ -52,9 +56,10 @@ task's [decision log](../../../glossary.json#concept.decision-log) Tasks commits
 
 ### Delivering a workspace
 
-A run of `delivery` goes through ten steps. Every step before 7 leaves the workspace as it was, so a
-blocked delivery changes nothing; steps 7 and 8 are undone together when step 8 fails, and a commit
-that does not verify in step 9 stays for the task level to decide on:
+A run of `delivery` goes through eleven steps. Every step before 8 leaves the workspace as it was,
+so a blocked delivery, or one that reports a delivery commit it found, changes nothing; steps 8 and
+9 are undone together when step 9 fails, and a commit that does not verify in step 10 is taken off
+the branch again, leaving the index and the worktree as the commit left them:
 
 ```d2 illustrative
 direction: down
@@ -64,21 +69,23 @@ work: "3. A commit since the base\nor an uncommitted change?"
 readiness: "4. Decide the whole workspace's\nreadiness with Validation's steps"
 ready: "5. Ready?"
 tests: "6. Changed code: every added or\nchanged scenario has a verifying test?\n(skipped with --adoption)"
-index: "7. Record the index"
-commit: "8. Stage every change, record\nthe staged tree, commit"
-verify: "9. Verify the commit"
-output: "10. Return the commit"
+reported: "7. Found in step 2?"
+index: "8. Record the index"
+commit: "9. Stage every change, record\nthe staged tree, commit"
+verify: "10. Verify the commit"
+output: "11. Return the commit"
 ok: "ok"
 blocked: "blocked\nthe workspace unchanged"
 failed: "failed"
 branch -> found: yes
-found -> work: no
+found -> work: "no, or yes with one parent:\nvalidate it again"
 work -> readiness: yes
 readiness -> ready
 ready -> tests: yes
-tests -> index: yes
+tests -> reported: yes
+reported -> index: no
 index -> commit -> verify -> output -> ok
-found -> ok: "yes, one parent:\nrecovered"
+reported -> ok: "yes: recovered"
 found -> failed: "yes, but not one parent:\ncommit_unverified" {style.stroke-dash: 3}
 branch -> failed: "no: wrong_branch" {style.stroke-dash: 3}
 work -> blocked: "no: nothing_to_deliver" {style.stroke-dash: 3}
@@ -86,8 +93,8 @@ readiness -> failed: "measurement, checks\nor inputs fail" {style.stroke-dash: 3
 ready -> blocked: "no: not_ready" {style.stroke-dash: 3}
 tests -> blocked: "no: unverified_scenarios" {style.stroke-dash: 3}
 index -> failed: "index_unrecorded" {style.stroke-dash: 3}
-commit -> failed: "Git refuses: 7 and 8 undone" {style.stroke-dash: 3}
-verify -> failed: "mismatch: commit_unverified,\nthe commit stays" {style.stroke-dash: 3}
+commit -> failed: "Git refuses: 8 and 9 undone" {style.stroke-dash: 3}
+verify -> failed: "mismatch: commit_unverified,\nthe commit taken off the branch" {style.stroke-dash: 3}
 ```
 
 [The steps](#the-steps) gives each step's actor and stopping rule, and
@@ -136,7 +143,7 @@ Every other rule applies unchanged.
 | `blocked` | `nothing_to_deliver` | `decision` | no commit since the base commit and no uncommitted change (`git` evidence) |
 | `blocked` | `not_ready` | `decision` | the whole workspace is not ready; Validation's `not_deliverable` link is the cause, with one cause per finding |
 | `blocked` | `unverified_scenarios` | `decision` | the workspace changed code while a scenario it added or changed has no verifying test; names each with its document |
-| `failed` | — | — | `wrong_branch`, Validation's `measurement_failed`, `checks_unavailable` or `inputs_changed`, an index Git cannot record (`index_unrecorded`), Git refusing (`stage_failed`, `commit_failed`) or a commit that does not verify, the one it made or the delivery commit it found at the head (`commit_unverified`) |
+| `failed` | — | — | `wrong_branch`, Validation's `measurement_failed`, `checks_unavailable` or `inputs_changed`, an index Git cannot record (`index_unrecorded`), Git refusing (`stage_failed`, `commit_failed`) or a commit that does not verify, the one it made, which it takes off the branch again, or the delivery commit it found at the head (`commit_unverified`) |
 
 The error is the run's own link of level `command`, with the actor `Command delivery <run-id>
 (workspace <workspace>)`. Every `blocked` code carries a host evidence `ref` of the same name and
@@ -178,10 +185,13 @@ A delivery is recorded once, in the commit that makes it, and nowhere else. A se
 as a list of deliveries in a task record, could disagree with the branch: a run that ends between
 its commit and its bookkeeping leaves a delivered branch that the record says is not delivered,
 which then needs a repair step. With the commit as the only record there is nothing to repair: the
-next `delivery` sees the head is a delivery commit and reports it, and whoever needs to know whether
-a workspace is delivered reads the branch. In Concorde the task level does exactly that: it counts
-a task as delivered when its branch head is a delivery commit of its workspace and its worktree is
-clean, and merges only such a head. It also keeps Delivery ignorant of tasks, as all of Execution
+next `delivery` sees the head is a delivery commit, validates the workspace again and reports it,
+and whoever needs to know whether a workspace is delivered reads the branch. In Concorde the task
+level does exactly that: it counts a task as delivered when its branch head is a delivery commit of
+its workspace and its worktree is clean, and merges only such a head. Since the subject alone marks
+a delivery, Delivery keeps a rejected commit from becoming such a record: it takes a commit it
+rejected off the branch in the same run, and validates a delivery commit it finds at the head again
+before it reports it. The commit as the record also keeps Delivery ignorant of tasks, as all of Execution
 is: the commit names the workspace, which the binding names, and nothing else.
 
 ### The steps
@@ -189,21 +199,26 @@ is: the commit names the workspace, which the binding names, and nothing else.
 | # | Step | Actor | Stops when |
 | --- | --- | --- | --- |
 | 1 | Require the workspace's head to be on the branch its binding names | host | wrong or detached branch (`failed`) |
-| 2 | Report the head when it already is a delivery commit of the workspace and nothing waits, after verifying that it has exactly one parent | host, read-only Git | already delivered (`ok`, `recovered`) or the head does not verify (`failed`, `commit_unverified`) |
+| 2 | Note the head when it already is a delivery commit of the workspace and nothing waits, after verifying that it has exactly one parent | host, read-only Git | the head does not verify (`failed`, `commit_unverified`) |
 | 3 | Require a commit since the base commit or an uncommitted change | host, read-only Git | neither (`blocked`, `nothing_to_deliver`) |
 | 4 | Decide the whole workspace's readiness with Validation's steps | Validation | measurement, checks or inputs fail (`failed`) |
 | 5 | Require the readiness ready | host | not ready (`blocked`, `not_ready`) |
 | 6 | When the workspace changed code, require a test declaring that it verifies every scenario it added or changed since its base commit, unless `--adoption` | host, Spec core, read-only Git | an unverified scenario (`blocked`, `unverified_scenarios`, naming each with its document) |
-| 7 | Record the index with Git | host, Git | the index cannot be recorded (`failed`, `index_unrecorded`) |
-| 8 | Stage every change; record the staged tree; commit | host, Git | Git refuses (`failed`; undone, index restored) |
-| 9 | Verify the commit is head, its tree the staged tree, parent validated, worktree clean | host, read-only Git | mismatch (`failed`, `commit_unverified`; the commit stays) |
-| 10 | Return the commit as the output, numbered after the delivery commits on the branch | host | — |
+| 7 | Report the delivery commit step 2 noted, numbered among the delivery commits on the branch | host | it noted one (`ok`, `recovered`) |
+| 8 | Record the index with Git | host, Git | the index cannot be recorded (`failed`, `index_unrecorded`) |
+| 9 | Stage every change; record the staged tree; commit | host, Git | Git refuses (`failed`; undone, index restored) |
+| 10 | Verify the commit is head, its tree the staged tree, parent validated, worktree clean | host, read-only Git | mismatch (`failed`, `commit_unverified`; the commit taken off the branch) |
+| 11 | Return the commit as the output, numbered after the delivery commits on the branch | host | — |
 
-Every step before 7 leaves the workspace as it was — Validation writes its check nodes and the
+Every step before 8 leaves the workspace as it was — Validation writes its check nodes and the
 readiness only to the run's [trace node](../../../glossary.json#concept.trace-node) — so a blocked
-delivery changes nothing in the workspace. Steps 7 and 8 are undone together when step 8 fails
+delivery, and one that reports a delivery commit it found, changes nothing in the workspace. A
+delivery commit found at the head is validated exactly as new work would be, by steps 3 to 6: its
+subject and its one parent show only that Delivery may have created it, not that what it holds is
+ready, so a commit a rejected run left behind, or one another hand gave the subject, is reported
+only once its workspace is ready again. Steps 8 and 9 are undone together when step 9 fails
 (`measurement_failed` while staging, `stage_failed`, `commit_failed`): the index is given back as
-step 7 recorded it, so the workspace is again what the readiness describes. Step 7 records the index with Git's own means rather than a copy Delivery
+step 8 recorded it, so the workspace is again what the readiness describes. Step 8 records the index with Git's own means rather than a copy Delivery
 would keep: `git write-tree` for its entries, which `git read-tree` restores; the paths `git
 ls-files` lists that the tree lacks, which are intent-to-add entries a tree cannot hold and
 `git add -N` marks again; and the skip-worktree and assume-unchanged flags `git ls-files -v`
@@ -213,21 +228,31 @@ even when another fails; each part that fails — the index, the intent-to-add e
 flag — is named in the run's summary and detail, which then say the
 workspace is not as the readiness examined it, and is a `component` cause of its error with the
 file system's or Git's own account. A
-`commit_unverified` failure comes after the commit exists: Delivery leaves it in place, since it
-never rewrites history, and repairing the branch is the task level's decision. See the [requirements](requirements.md) and
+`commit_unverified` failure of step 10 comes after the commit exists, and a commit Delivery rejected
+must not stay where it would be read as a delivery: Delivery moves the bound branch back to the
+validated head with `git update-ref`, only while the validated head is the commit's only parent and
+the branch still points at the commit, and leaves the index and the worktree as the commit left
+them, so that what a hook changed stays there to be inspected. Its error says that the commit was
+taken off the branch and names it, and the run's trace node still references it as `commit`, since
+the run created it. When the head is not such a commit, such as after a hook committed again on
+top, or Git refuses the move, Delivery moves nothing, so that it never takes off a commit it did not
+create, and the error says that the commit stays and why, with Git's account as a `component`
+cause when Git refused; repairing the branch is then the task level's decision. See the [requirements](requirements.md) and
 [scenarios](scenarios.md).
 
 Delivery proves what it committed rather than assuming it. The repository's commit hooks run
 normally, and a pre-commit hook may change a file and stage it again, so the commit Git creates can
-hold content the readiness never examined while the worktree is still clean. Step 8 therefore
-records the tree of the staged index with `git write-tree` just before `git commit`, and step 9
+hold content the readiness never examined while the worktree is still clean. Step 9 therefore
+records the tree of the staged index with `git write-tree` just before `git commit`, and step 10
 compares it with the new commit's tree, naming every path that differs. A delivery commit is
 recognised in step 2 by its subject alone, which any commit can carry; Delivery reports the head as
 delivered only when it also has exactly one parent, as every commit it creates has, so that a merge
-commit reworded with the subject is not taken for a delivery. A head that fails this is
-`commit_unverified` with the reason `decision`, since what to do with a commit that does not hold
-what it claims is the task level's decision. A cherry-picked or reworded commit with one parent is
-not told from a delivery: the subject is a mark the task level relies on, not a proof.
+commit reworded with the subject is not taken for a delivery, and only once steps 3 to 6 found its
+workspace ready. A head that fails the parent check is `commit_unverified` with the reason
+`decision`, since what to do with a commit that does not hold what it claims is the task level's
+decision. A cherry-picked or reworded commit with one parent is not told from a delivery by its
+form: the subject is a mark the task level relies on, not a proof, which is why Delivery validates
+what it holds before it reports it.
 
 ### The command
 
