@@ -1,0 +1,97 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.method.module",
+    "owner": "module.method",
+    "role": "module"
+  },
+  "module": {
+    "title": "Method",
+    "owns": [
+      "specs/concorde/method/module.md",
+      "specs/concorde/method/workers.md",
+      "specs/concorde/method/brownfield.md"
+    ],
+    "contains": [
+      {
+        "target": "module.understanding",
+        "meaning": "#contains-understanding"
+      },
+      {
+        "target": "module.specification",
+        "meaning": "#contains-specification"
+      },
+      {
+        "target": "module.implementation",
+        "meaning": "#contains-implementation"
+      },
+      {
+        "target": "module.code-review",
+        "meaning": "#contains-code-review"
+      },
+      {
+        "target": "module.spec-review",
+        "meaning": "#contains-spec-review"
+      },
+      {
+        "target": "module.adoption",
+        "meaning": "#contains-adoption"
+      },
+      {
+        "target": "module.validation",
+        "meaning": "#contains-validation"
+      },
+      {
+        "target": "module.delivery",
+        "meaning": "#contains-delivery"
+      },
+      {
+        "target": "module.scaffold",
+        "meaning": "#contains-scaffold"
+      }
+    ],
+    "uses": [
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec",
+        "relies_on": [
+          "concept.grant",
+          "concept.context-identity",
+          "concept.registry"
+        ]
+      },
+      {
+        "target": "module.workers",
+        "meaning": "#uses-workers"
+      },
+      {
+        "target": "module.operations",
+        "meaning": "#uses-operations"
+      },
+      {
+        "target": "module.commands",
+        "meaning": "#uses-operations"
+      },
+      {
+        "target": "module.checks",
+        "meaning": "#uses-checks"
+      },
+      {
+        "target": "module.workflows",
+        "meaning": "#uses-workflows"
+      },
+      {
+        "target": "module.issues",
+        "meaning": "#uses-issues",
+        "relies_on": [
+          "concept.issue"
+        ]
+      }
+    ],
+    "includes": [],
+    "participates": []
+  },
+  "defines": [],
+  "relations": [],
+  "extensions": {}
+}

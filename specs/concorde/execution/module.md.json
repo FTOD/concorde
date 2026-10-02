@@ -16,20 +16,12 @@
     ],
     "contains": [
       {
-        "target": "module.workflows",
-        "meaning": "#contains-workflows"
-      },
-      {
         "target": "module.operations",
         "meaning": "#contains-operations"
       },
       {
         "target": "module.commands",
         "meaning": "#contains-commands"
-      },
-      {
-        "target": "module.workers",
-        "meaning": "#contains-workers"
       },
       {
         "target": "module.checks",

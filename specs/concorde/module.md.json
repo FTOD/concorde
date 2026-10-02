@@ -19,24 +19,32 @@
         "meaning": "#contains-spec-tooling"
       },
       {
-        "target": "module.coordination",
-        "meaning": "#contains-coordination"
+        "target": "module.kernel",
+        "meaning": "#contains-kernel"
+      },
+      {
+        "target": "module.worker-harness",
+        "meaning": "#contains-worker-harness"
       },
       {
         "target": "module.execution",
         "meaning": "#contains-execution"
       },
       {
-        "target": "module.harness",
-        "meaning": "#contains-harness"
-      },
-      {
-        "target": "module.tracing",
-        "meaning": "#contains-tracing"
+        "target": "module.workflows",
+        "meaning": "#contains-workflows"
       },
       {
         "target": "module.issues",
         "meaning": "#contains-issues"
+      },
+      {
+        "target": "module.coordination",
+        "meaning": "#contains-coordination"
+      },
+      {
+        "target": "module.method",
+        "meaning": "#contains-method"
       },
       {
         "target": "module.distribution",

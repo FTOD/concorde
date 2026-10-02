@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.worker-harness.module",
+    "owner": "module.worker-harness",
+    "role": "module"
+  },
+  "module": {
+    "title": "Worker harness",
+    "owns": [
+      "specs/concorde/worker-harness/module.md"
+    ],
+    "contains": [
+      {
+        "target": "module.harness",
+        "meaning": "#contains-harness"
+      },
+      {
+        "target": "module.workers",
+        "meaning": "#contains-workers"
+      }
+    ],
+    "uses": [],
+    "includes": [],
+    "participates": []
+  },
+  "defines": [],
+  "relations": [],
+  "extensions": {}
+}

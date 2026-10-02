@@ -20,10 +20,6 @@
         "meaning": "#contains-spec-mcp"
       },
       {
-        "target": "module.spec-review",
-        "meaning": "#contains-spec-review"
-      },
-      {
         "target": "module.views",
         "meaning": "#contains-views"
       }

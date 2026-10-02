@@ -1,8 +1,8 @@
 {
   "schema_version": 3,
   "document": {
-    "id": "document.method.workers",
-    "owner": "module.method",
+    "id": "document.kernel.contracts",
+    "owner": "module.kernel",
     "role": "implementation"
   },
   "defines": [],

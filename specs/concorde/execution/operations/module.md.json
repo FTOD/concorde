@@ -9,32 +9,10 @@
     "title": "Operations",
     "owns": [
       "specs/concorde/execution/operations/module.md",
-      "specs/concorde/method/workers.md",
       "specs/concorde/execution/operations/requirements.md",
       "specs/concorde/execution/operations/scenarios.md"
     ],
-    "contains": [
-      {
-        "target": "module.understanding",
-        "meaning": "#contains-understanding"
-      },
-      {
-        "target": "module.specification",
-        "meaning": "#contains-specification"
-      },
-      {
-        "target": "module.implementation",
-        "meaning": "#contains-implementation"
-      },
-      {
-        "target": "module.code-review",
-        "meaning": "#contains-code-review"
-      },
-      {
-        "target": "module.adoption",
-        "meaning": "#contains-adoption"
-      }
-    ],
+    "contains": [],
     "uses": [
       {
         "target": "module.spec",

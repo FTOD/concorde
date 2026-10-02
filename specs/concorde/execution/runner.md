@@ -6,7 +6,7 @@ the runner does from the parse to the finish, the [run progress file](../glossar
 and failures become a result. The Operation or execution command a command line names is the run's
 definition: its steps, its arguments, whether it may run unbound and its output contract. The
 envelope is the [run result contract](contracts.md#contract.execution.run-result) and the binding
-the [workspace binding contract](contracts.md#contract.execution.workspace-binding). What an
+the [workspace binding contract](../kernel/contracts.md#contract.kernel.workspace-binding). What an
 [Operation](../glossary.json#concept.operation) adds, its worker sequence, is in
 [How an Operation runs its workers](../method/workers.md).
 

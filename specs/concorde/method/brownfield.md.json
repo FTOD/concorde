@@ -1,9 +1,9 @@
 {
   "schema_version": 3,
   "document": {
-    "id": "document.method.workers",
+    "id": "document.method.brownfield",
     "owner": "module.method",
-    "role": "implementation"
+    "role": "module"
   },
   "defines": [],
   "relations": [],

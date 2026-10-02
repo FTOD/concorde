@@ -109,7 +109,7 @@ Opening a task SHALL write the task record only after writing the new worktree's
 the workspace.
 
 The binding satisfies the
-[binding contract](../../execution/contracts.md#contract.execution.workspace-binding), names the
+[binding contract](../../kernel/contracts.md#contract.kernel.workspace-binding), names the
 task folder's `workspace/` as its workspace folder and the primary worktree's `.concorde` for its
 locks, and is never rewritten by Tasks afterwards; closing removes it with the worktree.
 

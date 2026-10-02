@@ -4,6 +4,36 @@ These requirements hold for the Framework as a whole. Each [Module](glossary.jso
 states the precise behaviour it contributes; a requirement here promises what the Modules achieve
 together.
 
+## Parts
+
+### req.concorde.part-dependencies — A part relies only on the parts it depends on
+
+Every [part](glossary.json#concept.part) SHALL rely only on the parts it depends on, in the directions the root's [parts table](module.md#the-parts) lists, and reach any other part only through an [optional integration](glossary.json#concept.optional-integration).
+
+A Module's `uses` of a Module in a part its own part does not depend on is such an integration, and
+its explanation says what the feature does with that part and without it. No part imports
+Distribution, which reaches the parts only through their
+[registrations](glossary.json#concept.part-registration).
+
+### req.concorde.part-alone — A part works with its dependencies alone
+
+Every part SHALL do its work when it is installed with only the parts it depends on.
+
+What it cannot do without another part is an optional integration, never a failure of its own
+work: the spec part checks, serves and publishes Specs with nothing else installed, and the
+coordination part opens, delivers, merges and closes tasks with the kernel alone.
+
+### req.concorde.absent-part-stated — An absent part is stated, not failed
+
+An optional integration whose part is not installed SHALL be skipped with a statement that names the missing part, and SHALL NOT make the rest of the work it belongs to fail.
+
+A command or MCP tool of a part that is not installed is absent rather than present and broken; a
+command that needs it is refused naming the part.
+
+### req.concorde.one-version — All parts carry one version
+
+Every part SHALL carry the version number of the Concorde repository it was built from, the same for every part.
+
 ## Runtime
 
 ### req.concorde.main-agent-program — The main agent runs on Claude Code
@@ -172,15 +202,19 @@ The task level may commit verified steps on the task branch as it works; those c
 nothing. `delivery` validates everything the branch holds since its base commit together with what
 is not committed yet, and commits the delivery commit on top only when that whole workspace is
 ready, as [req.delivery.own-readiness](method/delivery/requirements.md#req.delivery.own-readiness)
-states.
+states. Where the method part is not installed, `task deliver` commits it after the checks it was
+given pass, and judges nothing else.
 
-### req.concorde.delivery-commit-by-delivery — Only delivery makes a delivery commit
+### req.concorde.delivery-commit-by-delivery — Only a delivering command makes a delivery commit
 
-No actor other than the `delivery` execution command SHALL make a delivery commit.
+No actor other than a delivering command SHALL make a delivery commit: Method's `delivery` execution command, or, only where the method part is not installed, Coordination's `task deliver`.
 
-A delivery commit is recognized by its subject alone, so no task session, main agent or other
-command commits under that subject; Delivery gives it to its delivery commits alone
-([req.delivery.marked](method/delivery/requirements.md#req.delivery.marked)).
+A delivery commit is recognized by its subject alone
+([Kernel](kernel/contracts.md#delivery-commit)), so no task session, main agent or other command
+commits under that subject; Delivery gives it to its delivery commits alone
+([req.delivery.marked](method/delivery/requirements.md#req.delivery.marked)), and `task deliver`
+refuses wherever the method part is installed, so that a workspace Method could validate is never
+delivered without that validation.
 
 ### req.concorde.merge-by-main-agent — The main agent merges delivered tasks
 

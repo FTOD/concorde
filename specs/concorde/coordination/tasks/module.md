@@ -220,7 +220,7 @@ with `worktree_not_ignored`; the installer adds `.claude/worktrees/` to `.gitign
 **The binding.** Binding the worktree is what makes it a place where Execution can work. Tasks
 writes its [workspace binding](../../glossary.json#concept.workspace-binding),
 `.concorde/workspace.json` at the worktree's root, as the
-[binding contract](../../execution/contracts.md#contract.execution.workspace-binding) defines:
+[binding contract](../../kernel/contracts.md#contract.kernel.workspace-binding) defines:
 
 ```json
 {
@@ -779,7 +779,7 @@ command dispatches `concorde task session` to the code of Task sessions.
 
 **Execution** works in the task worktree once it is bound. Tasks writes the
 [workspace binding](../../glossary.json#concept.workspace-binding) as the
-[binding contract](../../execution/contracts.md#contract.execution.workspace-binding) requires, and
+[binding contract](../../kernel/contracts.md#contract.kernel.workspace-binding) requires, and
 relies on Execution only reading it, working on the Modules, branch and base it names, recording
 every run of the workspace as a trace node in the workspace folder it names, and holding the
 [workspace lock](../../glossary.json#concept.workspace-lock) for every bound run, so that Tasks,

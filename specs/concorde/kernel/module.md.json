@@ -1,0 +1,27 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.kernel.module",
+    "owner": "module.kernel",
+    "role": "module"
+  },
+  "module": {
+    "title": "Kernel",
+    "owns": [
+      "specs/concorde/kernel/module.md",
+      "specs/concorde/kernel/contracts.md"
+    ],
+    "contains": [
+      {
+        "target": "module.tracing",
+        "meaning": "#contains-tracing"
+      }
+    ],
+    "uses": [],
+    "includes": [],
+    "participates": []
+  },
+  "defines": [],
+  "relations": [],
+  "extensions": {}
+}

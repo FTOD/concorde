@@ -32,7 +32,7 @@ ends with one result, and the run store where every run is kept. It builds on th
 
 A **workspace** exists once its **workspace binding** does. Whoever prepares it writes
 `.concorde/workspace.json` at the worktree's root, as the
-[binding contract](contracts.md#contract.execution.workspace-binding) defines: the workspace's
+[binding contract](../kernel/contracts.md#contract.kernel.workspace-binding) defines: the workspace's
 name, the absolute root it lies in, its goal, the Modules it works on, the branch and base commit it
 works from, the **workspace folder** where its runs are traced and the `.concorde` directory whose
 `locks/` holds its locks. In Concorde, [`concorde task open`](../coordination/tasks/module.md) writes

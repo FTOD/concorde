@@ -26,7 +26,7 @@
           "req.execution.workspace-lock",
           "req.execution.workspace-busy",
           "contract.execution.run-result",
-          "contract.execution.workspace-binding"
+          "contract.kernel.workspace-binding"
         ]
       },
       {

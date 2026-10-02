@@ -1,89 +1,9 @@
 # Execution contracts
 
 The canonical values of [Execution](module.md): the
-[workspace binding](../glossary.json#concept.workspace-binding) a run reads, the
 [run result](../glossary.json#concept.run-result) every run returns and the content of the trace node
 every run leaves. How the runner reads and fills
 them is in [How a run is executed](runner.md).
-
-## Workspace binding
-
-```concorde-contract
-{
-  "id": "contract.execution.workspace-binding",
-  "version": 2,
-  "schema": {
-    "type": "object",
-    "additionalProperties": false,
-    "required": [
-      "schema_version",
-      "workspace",
-      "root",
-      "branch",
-      "base_commit",
-      "goal",
-      "modules",
-      "traces",
-      "concorde"
-    ],
-    "properties": {
-      "schema_version": {
-        "const": 2
-      },
-      "workspace": {
-        "type": "string",
-        "pattern": "^[a-z0-9][a-z0-9-]{0,47}$"
-      },
-      "root": {
-        "type": "string",
-        "minLength": 1
-      },
-      "branch": {
-        "type": "string",
-        "minLength": 1
-      },
-      "base_commit": {
-        "type": "string",
-        "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
-      },
-      "goal": {
-        "type": "string",
-        "minLength": 1
-      },
-      "modules": {
-        "type": "array",
-        "minItems": 1,
-        "items": {
-          "type": "string",
-          "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
-        }
-      },
-      "traces": {
-        "type": "string",
-        "minLength": 1
-      },
-      "concorde": {
-        "type": "string",
-        "minLength": 1
-      }
-    }
-  },
-  "semantics": "The workspace binding .concorde/workspace.json at the root of a workspace. workspace names it, as runs, locks, workflow nodes and delivery commits name it. root is the absolute real path of the worktree the file lies in; a binding whose root is another worktree is refused. branch is the branch the workspace works on, which task-validation and delivery require the worktree's head to be on; base_commit is the commit its changes are measured from; goal is the text workers are briefed with and a delivery commit carries; modules are the Modules a run works on when it names none. traces is the absolute workspace folder in which Execution keeps the workspace's trace nodes: its runs under runs/ and its workflow under workflow/; whoever prepares the workspace chooses it, and it must exist. concorde is the absolute .concorde directory whose locks/ holds the workspace's locks and the run locks of its runs. Whoever prepares the workspace writes the file; Execution only reads it. A behaviour or field change increments the version.",
-  "example": {
-    "schema_version": 2,
-    "workspace": "retry",
-    "root": "/home/dev/shop/.claude/worktrees/retry",
-    "branch": "concorde/retry",
-    "base_commit": "4be1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9",
-    "goal": "Limit HTTP retries to three attempts.",
-    "modules": [
-      "module.http"
-    ],
-    "traces": "/home/dev/shop/.concorde/tasks/retry/workspace",
-    "concorde": "/home/dev/shop/.concorde"
-  }
-}
-```
 
 ## Run result
 
