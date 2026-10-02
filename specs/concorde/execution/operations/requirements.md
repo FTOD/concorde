@@ -27,10 +27,16 @@ launch the worker.
 ### req.operations.status-mapping — Worker failures are never ok
 
 A run in which the grant could not be computed, a worker could not be launched or timed out, the
-[write audit](../../glossary.json#concept.write-audit) found a violation or the round validation
-still reported something to repair, such as a
-[configured check](../../glossary.json#concept.configured-check) still failing, after the last
-[resume round](../../glossary.json#concept.resume-round) SHALL end with status `failed`.
+[write audit](../../glossary.json#concept.write-audit) found a violation, or the round validation
+still reported, after the last [resume round](../../glossary.json#concept.resume-round), a failure
+it designates to fail the run, such as a
+[configured check](../../glossary.json#concept.configured-check) still failing, SHALL end with
+status `failed`.
+
+What a run ends with when its round validation still reports something else to repair after the
+last round is the providing Operation's to say by its own contract: Adoption's `code_to_spec`, for
+example, ends `blocked` when structural errors remain
+([req.adoption.errors-left-block](../../method/adoption/requirements.md#req.adoption.errors-left-block)).
 
 ### req.operations.model-work-only — Every Operation has model work
 

@@ -33,7 +33,7 @@ from ...execution.context import (
     evidence,
 )
 from ..workers import operation, run_worker
-from ...execution.operations.provider import (
+from ..prompts import (
     load_prompt,
 )
 from ...spec.schema import validate

@@ -22,10 +22,10 @@ from ...execution.context import (
     Continue,
     RunContext,
     evidence,
-    spec_cause,
 )
+from ..specs import spec_cause
 from ..workers import operation, run_worker
-from ...execution.operations.provider import (
+from ..prompts import (
     load_prompt,
 )
 from .records import (

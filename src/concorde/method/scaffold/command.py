@@ -33,9 +33,8 @@ from ...execution.context import (
     RunContext,
     command,
     evidence,
-    spec_cause,
-    spec_finding,
 )
+from ..specs import admission, spec_cause, spec_finding
 
 # contract.scaffold.record, version 2
 SCAFFOLD_RECORD_SCHEMA = obj(
@@ -584,7 +583,7 @@ SCAFFOLD = command(
     (admit, recheck, plan, apply),
     writes=True,
     output_schema=SCAFFOLD_RECORD_SCHEMA,
-    requires_loaded_specs=True,
+    admit=admission(),
 )
 
 __all__ = ["SCAFFOLD"]

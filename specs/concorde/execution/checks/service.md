@@ -203,9 +203,10 @@ for the same check and, for a selective check, the same selected Modules, and co
 ### Errors
 
 Check execution raises its own `CheckError`, whose record carries a code, a message, a reason, a
-location, a remediation and causes, with these codes: `invalid_check` (a
-check without a nonempty argv or a positive timeout, with an `env` that is not an object of
-variable names to strings, or with a `when` other than `always` or `readiness`),
+location, a remediation and causes, with these codes: `invalid_check` (a checks file or entry that
+breaks [the format](#checks-files), or a check without a nonempty argv or a positive timeout, with an
+`env` that is not an object of variable names to strings, or with a `when` other than `always` or
+`readiness`),
 `check_input_missing`, `project_python_missing` (a check uses `{python}` but the configuration
 names no project interpreter, or none that is an executable file where it was looked for),
 `check_sandbox_unavailable` (the read-only boundary cannot be established), `stale_evidence` (an
@@ -285,6 +286,21 @@ The check service SHALL NOT return a check result for a check whose command the 
 start.
 
 ## Scenarios
+
+### scenario.checks.checks-files — Configured checks are read from one file per Module
+
+- GIVEN a worktree whose `.concorde/checks/` holds `module.b.json` with two checks and `module.a.json` with one
+- WHEN Check execution reads the configured checks
+- THEN it holds the check of `module.a` first and then those of `module.b` in file order, each carrying the Module its file is named after
+- AND a file named after a Module no registry registers is read like any other, since the identity is a label
+- BUT a check entry with a `module` field or another field the format does not name, an `id` another file already uses, an input that is not a canonical project-relative path, a file that is not valid JSON or holds another field, or a file not named `<module id>.json` is refused with `invalid_check`, naming the file and what to change
+
+### scenario.checks.check-input-missing — A configured check names a missing input
+
+- GIVEN a checks file whose [configured check](../../glossary.json#concept.configured-check) declares an input path that does not exist
+- WHEN its caller has the checks files judged with `validate_checks` before any check runs
+- THEN it is refused with `check_input_missing`, naming the check and the path
+- AND no check runs
 
 ### scenario.checks.service-run — The checks of changed Modules run and are logged
 

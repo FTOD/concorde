@@ -23,6 +23,7 @@ from concorde.kernel import binding as binding_file
 from concorde.execution import runs
 from concorde.execution.checkout import PREFIX
 from concorde.execution.context import Continue, Provider, command, evidence
+from concorde.method.specs import admission
 from concorde.method.workers import operation, run_worker
 from concorde.execution import runner
 from concorde.execution.runner import (
@@ -123,11 +124,14 @@ def refusing_step(ctx):
 
 
 WORKER = operation("implement", "implement", True, (worker_step,), None, goal_arguments)
-RAISING = Provider("test", None, False, (raising_step,))
-ADMITTED = Provider("understand", None, False, (admitted_step,))
+RAISING = Provider("test", None, False, (raising_step,), admit=admission())
+ADMITTED = Provider("understand", None, False, (admitted_step,), admit=admission())
 # Execution commands: deterministic, no worker.
-DETERMINISTIC = command("task-validation", (deterministic_step,), writes=False)
-REFUSING = command("delivery", (refusing_step,), writes=True)
+# The stand-ins read the Specs as Method's definitions do: they admit their Modules the same way.
+DETERMINISTIC = command(
+    "task-validation", (deterministic_step,), writes=False, admit=admission()
+)
+REFUSING = command("delivery", (refusing_step,), writes=True, admit=admission())
 
 
 def reading_step(ctx):
@@ -239,20 +243,20 @@ class RunnerTests(unittest.TestCase):
         self.worktree = self.project.worktree("t1")
         for table, entries in (
             (
-                catalog.CATALOG,
+                catalog.OPERATIONS.definitions,
                 {
-                    "implement": f"{__name__}:WORKER",
-                    "test": f"{__name__}:RAISING",
-                    "understand": f"{__name__}:ADMITTED",
-                    "spec_review": f"{__name__}:READER",
-                    "code_review": f"{__name__}:WRITER",
+                    "implement": WORKER,
+                    "test": RAISING,
+                    "understand": ADMITTED,
+                    "spec_review": READER,
+                    "code_review": WRITER,
                 },
             ),
             (
-                commands.COMMANDS,
+                commands.COMMANDS.definitions,
                 {
-                    "task-validation": f"{__name__}:DETERMINISTIC",
-                    "delivery": f"{__name__}:REFUSING",
+                    "task-validation": DETERMINISTIC,
+                    "delivery": REFUSING,
                 },
             ),
         ):
@@ -330,7 +334,7 @@ class RunnerTests(unittest.TestCase):
     def binding(self) -> dict:
         return json.loads((self.worktree / binding_file.BINDING).read_text())
 
-    @verifies("scenario.operations.worker-model")
+    @verifies("scenario.method.worker-model")
     def test_a_worker_runs_with_the_task_worktrees_model(self):
         (self.worktree / models.CONFIG).write_text(
             json.dumps(
@@ -407,7 +411,7 @@ class RunnerTests(unittest.TestCase):
             "PI_CODING_AGENT_DIR": str(agent),
         }
 
-    @verifies("scenario.operations.worker-backend-configured")
+    @verifies("scenario.method.worker-backend-configured")
     def test_a_claude_code_main_session_runs_its_workers_on_pi(self):
         environ = self.fake_pi()
         (self.worktree / models.CONFIG).write_text(
@@ -587,9 +591,9 @@ class RunnerTests(unittest.TestCase):
         self.assertIn("a run of t1, not of no workspace", envelope["error"]["detail"])
 
     @verifies(
-        "scenario.operations.worker-model-unavailable",
-        "scenario.operations.worker-backend-missing",
-        "scenario.operations.worker-model-unmapped",
+        "scenario.method.worker-model-unavailable",
+        "scenario.method.worker-backend-missing",
+        "scenario.method.worker-model-unmapped",
     )
     def test_a_worker_whose_backend_or_model_cannot_be_settled_fails_before_launch(
         self,
@@ -653,7 +657,7 @@ class RunnerTests(unittest.TestCase):
         )
         validate(envelope["error"], ERROR_SCHEMA)
 
-    @verifies("scenario.operations.worker-ok")
+    @verifies("scenario.method.worker-ok")
     def test_a_worker_backed_run_succeeds(self):
         status, envelope = self.implement(
             [
@@ -749,7 +753,7 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(progress["host_pid"], worker_progress["host_pid"])
         self.assertEqual(envelope["run_id"], worker_progress["operation_run_id"])
 
-    @verifies("scenario.operations.worker-blocked")
+    @verifies("scenario.method.worker-blocked")
     def test_a_blocked_worker_escalates(self):
         status, envelope = self.implement(
             [
@@ -795,7 +799,7 @@ class RunnerTests(unittest.TestCase):
         host_text = json.dumps(envelope["host_evidence"]) + envelope["summary"]
         self.assertNotIn("rounding rule", host_text)
 
-    @verifies("scenario.operations.spec-error")
+    @verifies("scenario.method.spec-error")
     def test_a_spec_tooling_error_keeps_its_reason_and_causes(self):
         from concorde.spec.errors import SpecError, system_cause
 
@@ -822,7 +826,7 @@ class RunnerTests(unittest.TestCase):
         )
         self.assertIn("src/shared.py", system["detail"])
 
-    @verifies("scenario.operations.checks-exhausted")
+    @verifies("scenario.method.checks-exhausted")
     def test_checks_still_failing_after_the_last_round(self):
         status, envelope = self.implement(
             [{"writes": {f"{self.worktree}/src/a/flag": "broken"}}], "--rounds", "1"
@@ -846,7 +850,7 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(("check", "check.a"), (check["level"], check["actor"]))
         self.assertIn("exit code 1", check["detail"])
 
-    @verifies("scenario.operations.audit-violation")
+    @verifies("scenario.method.audit-violation")
     def test_a_write_outside_the_grant_fails_the_run(self):
         _, envelope = self.implement(
             [{"writes": {f"{self.worktree}/src/bmod/secret.py": "SECRET = 2\n"}}]
@@ -1172,6 +1176,29 @@ class RunnerTests(unittest.TestCase):
         self.assertIn(f"(unbound, {self.root})", envelope["error"]["actor"])
         self.assertEqual("refused", envelope["error"]["code"])
         self.assertEqual("failed", self.run_status(envelope, None))
+
+    @verifies("scenario.execution.modules-as-names")
+    def test_a_definition_without_admission_takes_the_modules_as_names(self):
+        labels = command("labels", (deterministic_step,), writes=False)
+        binding_file.write(
+            self.worktree, {**self.binding(), "modules": ["module.a", "module.gone"]}
+        )
+        with patch.dict(commands.COMMANDS.definitions, {"labels": labels}):
+            status, envelope = self.project.run(
+                "labels", "--task", "t1", "--modules", "module.nowhere"
+            )
+            self.assertEqual((0, ["module.nowhere"]), (status, envelope["modules"]))
+            status, envelope = self.project.run("labels", "--task", "t1")
+            self.assertEqual(
+                (0, ["module.a", "module.gone"]), (status, envelope["modules"])
+            )
+        status, envelope = self.project.run(
+            "task-validation", "--task", "t1", "--modules", "module.a,module.nowhere"
+        )
+        self.assertEqual(["refused", "unknown_module"], codes(envelope["error"]))
+        cause = envelope["error"]["causes"][0]
+        self.assertEqual("Method (Module admission)", cause["actor"])
+        self.assertIn("module.nowhere", cause["detail"])
 
     @verifies("scenario.execution.removed-module", "scenario.execution.modules-removed")
     def test_a_module_the_workspace_removed_is_left_out(self):
@@ -1667,7 +1694,7 @@ class UnboundCheckoutTests(unittest.TestCase):
         self.project = OperationProject(self)
         self.root = self.project.root
         self.records = self.root / ".concorde"
-        patcher = patch.dict(catalog.CATALOG, {"understand": f"{__name__}:PROBE"})
+        patcher = patch.dict(catalog.OPERATIONS.definitions, {"understand": PROBE})
         patcher.start()
         self.addCleanup(patcher.stop)
 

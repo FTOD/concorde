@@ -34,6 +34,7 @@ from ...execution.context import (
     component,
     evidence,
 )
+from ..specs import admission
 from ..validation.command import (
     READINESS_STEPS,
     measurement_failed,
@@ -864,7 +865,7 @@ DELIVERY = command(
     output_schema=OUTPUT_SCHEMA,
     add_arguments=add_arguments,
     # Validation's steps diagnose Specs that cannot be loaded, as task-validation does.
-    requires_loaded_specs=False,
+    admit=admission(diagnoses_specs=True),
 )
 
 

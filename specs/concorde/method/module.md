@@ -213,12 +213,29 @@ The providers' and commands' code lives with their Modules.
 The **Standard sequence** realization, `src/concorde/method/workers.py`, holds the
 [standard worker sequence](../glossary.json#concept.standard-worker-sequence): the admission step
 `check_worker_models` and the helper that puts it first in every Operation definition Method
-registers, with the runtime-path resolver of one that may run unbound; the projection of Spec
+registers, with the admission of its Modules and the runtime-path resolver of one that may run
+unbound; the projection of Spec
 core's grant into the worker harness's grant input; the composition of the task instructions; the
 round validation and the glossary check after the worker run; and the mapping of a worker run
 record to a step outcome. The brownfield script is still in `src/concorde/workflows/scripts/`;
 its Module's realization binds it until the code tasks that follow this Spec move it into Method's
 package.
+
+<a id="realization.method.definitions"></a>
+
+The **Definitions** realization holds what Method's definitions share around their steps:
+`registration.py`, which registers every Operation and execution command Method provides with
+Execution's catalogs when it loads; `specs.py`, the admission of a run's Modules against the
+workspace's registry, which leaves out, with `removed-module` evidence, the binding's Modules the
+workspace no longer registers and refuses `modules_removed`, `specs_unloadable` and
+`unknown_module` as [Execution's runner](../execution/runner.md#runner) lets a definition's
+admission do, beginning anyway for a command that diagnoses the Specs itself, and the translation of
+Spec tooling's errors into links of the
+[error chain](../glossary.json#concept.error-chain); `checks.py`, which selects for
+[Check execution](#uses-checks) the Modules a change concerns and every Module that uses one of
+them, the implementation files each one's results depend on, the tests whose
+[verification declarations](../glossary.json#concept.verification-declaration) name a scenario of theirs and the project's interpreter, and runs their checks; and
+`prompts.py`, the prompt and brief helpers of the worker-backed providers.
 
 <a id="realization.method.review-issues"></a>
 
@@ -345,7 +362,9 @@ themselves; [How a run is executed](../execution/runner.md) is the canonical acc
 
 **Check execution** runs the project's configured checks for Method's round validations, for
 `test` and for the readiness of `task-validation` and `delivery`, returning each result's command,
-exit code and log as evidence. Method relies on two promises: a check's direct writes to the
+exit code and log as evidence. It reads no Spec: Method names the Modules whose checks run, the
+files each one's results depend on, the tests a selective check runs and the interpreter, all from
+the workspace's Specs and configuration. Method relies on two promises: a check's direct writes to the
 filesystem are confined to its own scratch, the workspace being mounted read-only, and a result is
 refused as `stale_evidence` when the inputs it measured before and after the check differ. Both
 have limits Method does not hide: a check can still ask a host service to act through a socket, and

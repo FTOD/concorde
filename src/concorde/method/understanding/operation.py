@@ -18,11 +18,11 @@ import json
 from ...execution.context import (
     Continue,
     RunContext,
-    spec_cause,
     evidence,
 )
+from ..specs import spec_cause
 from ..workers import operation, run_worker
-from ...execution.operations.provider import (
+from ..prompts import (
     load_prompt,
 )
 

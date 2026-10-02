@@ -1276,7 +1276,6 @@ class CheckTests(unittest.TestCase):
             "provider: Provider\n", (self.root / self.entry("consumer")).read_text()
         )
 
-    @verifies("scenario.spec.check-input-missing")
     def test_a_configured_check_with_a_missing_or_linked_input_is_an_error(self):
         (self.root / "data").mkdir()
         (self.root / "data/real.txt").write_text("input\n")

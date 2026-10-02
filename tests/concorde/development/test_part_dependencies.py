@@ -53,26 +53,6 @@ CODE_TASKS = (
 )
 # Code task -> (importing file under src/concorde/, imported module under concorde.) it removes.
 KNOWN_EXCEPTIONS = {
-    "execution": [
-        ("execution/checks/checks.py", "spec.repository"),
-        ("execution/checks/checks.py", "spec.repository_base"),
-        ("execution/checks/checks.py", "spec.verification"),
-        ("execution/commands/catalog.py", "method.delivery.command"),
-        ("execution/commands/catalog.py", "method.scaffold.command"),
-        ("execution/commands/catalog.py", "method.validation.command"),
-        ("execution/context.py", "spec.errors"),
-        ("execution/operations/catalog.py", "method.adoption.code_to_spec"),
-        ("execution/operations/catalog.py", "method.adoption.survey"),
-        ("execution/operations/catalog.py", "method.code_review.operation"),
-        ("execution/operations/catalog.py", "method.implementation.operation"),
-        ("execution/operations/catalog.py", "method.spec_review.operation"),
-        ("execution/operations/catalog.py", "method.spec_review.panel"),
-        ("execution/operations/catalog.py", "method.specification.operation"),
-        ("execution/operations/catalog.py", "method.understanding.operation"),
-        ("execution/operations/catalog.py", "method.understanding.plan_review"),
-        ("execution/runner.py", "spec.repository"),
-        ("execution/runner.py", "spec.repository_base"),
-    ],
     "coordination": [
         ("coordination/tasks/cli.py", "execution.runs"),
         ("coordination/tasks/merge.py", "issues.store"),
@@ -93,6 +73,7 @@ KNOWN_EXCEPTIONS = {
         ("distribution/cli.py", "execution.commands.catalog"),
         ("distribution/cli.py", "execution.runner"),
         ("distribution/cli.py", "kernel.tracing.command"),
+        ("distribution/cli.py", "method.registration"),
         ("distribution/cli.py", "spec.diagnostics"),
         ("distribution/cli.py", "spec.errors"),
         ("distribution/cli.py", "spec.grants"),

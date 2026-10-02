@@ -25,7 +25,7 @@ from pathlib import Path
 
 from ...execution.context import Continue, RunContext, evidence
 from ..workers import operation, run_worker
-from ...execution.operations.provider import load_prompt
+from ..prompts import load_prompt
 from ...spec.repository import SpecRepository
 from ...spec.repository_base import SpecError, is_identity
 

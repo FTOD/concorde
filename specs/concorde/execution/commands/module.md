@@ -112,21 +112,23 @@ How a task usually ends with Method's `task-validation` and `delivery` is Method
 
 <a id="realization.commands.catalog"></a>
 
-The **Command table** realization, `src/concorde/execution/commands/catalog.py`, maps each command's name to
-the definition its provider declares and imports that definition only when the command runs, so
-running one command loads only the code its provider needs. A definition that cannot be imported is
-a command-line error that names why, and no run begins. The providers' own code lives with their
-Modules.
+The **Command table** realization, `src/concorde/execution/commands/catalog.py`, holds the
+command catalog, of the same shape as the [Operation catalog](../operations/module.md): each
+command's definition as the part that provides it registers it when its code loads, with that part.
+A second definition under a registered name is refused naming both parts, and a command no
+installed part registers is a command-line error that names it, and no run begins. The providers'
+own code lives with their Modules.
 
 ### What a provider declares
 
 Each execution command's steps live with the Module that provides it. A provider's definition
 declares the command's name, its steps, the contract of its output, the arguments of its own, and
-whether its run may begin when the worktree's Specs cannot be loaded, as `task-validation`'s may
-because it diagnoses those Specs itself. The runner parses those arguments with its own, refuses a
-run without a binding, admits the inputs, runs the definition's admission and steps, checks the
-output against its contract and wraps it in the run result. What an admitted input must be, such as
-Scaffold's one survey, the provider's own steps check.
+its own admission of the run's Modules, which in Method's commands checks them against the
+workspace's Specs, except where the command diagnoses those Specs itself, as `task-validation`
+does, and so begins even when they cannot be loaded. The runner parses those arguments with its
+own, refuses a run without a binding, admits the inputs, runs the definition's admission and steps,
+checks the output against its contract and wraps it in the run result. What an admitted input must
+be, such as Scaffold's one survey, the provider's own steps check.
 
 ## What Commands relies on
 

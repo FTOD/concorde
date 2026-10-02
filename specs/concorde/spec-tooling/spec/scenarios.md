@@ -55,14 +55,6 @@ to it.
 - THEN construction fails with `invalid_spec` naming each of the three fields and where its setting lives now: the registry always at `.concorde/specs.json`, the checks in `.concorde/checks/<module id>.json` and the worker limits and runtime paths in `.concorde/workers.json`
 - AND the remediation says to move them, remove the fields and set the current `profile_version`
 
-### scenario.spec.checks-files — Configured checks are read from one file per Module
-
-- GIVEN a project whose `.concorde/checks/` holds `module.b.json` with two checks and `module.a.json` with one
-- WHEN a repository is constructed
-- THEN it holds the check of `module.a` first and then those of `module.b` in file order, each carrying the Module its file is named after
-- AND each Module's descriptor lists the identities of its own checks
-- BUT a check entry with a `module` field, an `id` another file already uses, a file named after an unregistered Module (`unknown_module`), a file not named `<module id>.json`, or a `checks` field left in `.concorde/config.json` refuses the project with an error naming the file and what to change
-
 ### scenario.spec.document-roles — Explanation and precise definitions in different roles
 
 - GIVEN a Module whose entry and topics have role `module` and whose requirements, scenarios and contracts are in documents with role `implementation`
@@ -277,13 +269,6 @@ to it.
 - AND a Mermaid block, and a checked `d2` block in an `implementation` document
 - WHEN the validator runs
 - THEN it reports `CHK.view.nodes` for the shapes, `CHK.view.nesting` for the nesting, `CHK.view.edges` for the edges, `CHK.view.subset` for the statement and `CHK.view.marked` for each misplaced block
-
-### scenario.spec.check-input-missing — A configured check names a missing input
-
-- GIVEN a configuration whose [configured check](../../glossary.json#concept.configured-check) declares an input path that does not exist, or one reached through a symbolic link
-- WHEN the validator runs
-- THEN it reports `CONCORDE-CHECK-001` as an error naming the check and the path
-- BUT it runs no check and reads no input's content
 
 ### scenario.spec.registry-mirror — A stale registry is reported
 

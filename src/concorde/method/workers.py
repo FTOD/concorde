@@ -10,9 +10,10 @@ which launches, audits, resumes and records the worker. The round validation che
 ownership, then the configured checks when the step asks for them, then the step's own validation;
 glossary ownership is checked once more after the worker run, whatever its status.
 
-Every Method Operation begins with ``check_worker_models``, the admission of all its workers
-against the worker configuration and the model map, and one that may run unbound gives the runner
-``runtime_paths`` to link into its checkout.
+Every Method Operation admits its Modules against the workspace's Specs (``specs.admission``),
+begins with ``check_worker_models``, the admission of all its workers against the worker
+configuration and the model map, and one that may run unbound gives the runner ``runtime_paths`` to
+link into its checkout.
 """
 
 from __future__ import annotations
@@ -28,8 +29,9 @@ from ..execution.context import (
     RunContext,
     Stop,
     component,
-    spec_cause,
 )
+from ..execution.operations.catalog import OPERATIONS
+from .specs import admission, spec_cause
 from ..kernel.errors import evidence
 from ..kernel.tracing import layout
 from ..worker_harness import models
@@ -124,12 +126,10 @@ ENVIRONMENT_HANDLING = (
 def declared_workers() -> dict[str, tuple[str, ...]]:
     """Every Operation the installed parts register that launches workers, with its worker ids:
     the names a worker configuration may use."""
-    from ..execution.operations.catalog import CATALOG, provider
-
     return {
-        name: provider(name).workers
-        for name in CATALOG
-        if provider(name).task_type is not None
+        name: OPERATIONS.get(name).workers
+        for name in OPERATIONS
+        if OPERATIONS.get(name).task_type is not None
     }
 
 
@@ -202,11 +202,13 @@ def check_worker_models(context: RunContext):
 
 
 def operation(*arguments, **fields) -> Provider:
-    """A Method Operation's definition: its steps preceded by the admission of its workers and,
-    when it may run unbound, the runtime-path resolver of its checkout."""
+    """A Method Operation's definition: the admission of its Modules against the workspace's
+    Specs, its steps preceded by the admission of its workers and, when it may run unbound, the
+    runtime-path resolver of its checkout."""
     chosen = Provider(*arguments, **fields)
     return replace(
         chosen,
+        admit=admission(),
         steps=(check_worker_models, *chosen.steps),
         runtime_paths=runtime_paths if chosen.binding == "optional" else None,
     )
@@ -415,8 +417,9 @@ def round_validation(
     """Method's round validation: glossary ownership, then the configured checks of
     ``check_modules`` when given, then the step's own ``validate`` once every check passed or
     none ran."""
-    from ..execution.checks.checks import check_error, run_checks, service_error
+    from ..execution.checks.checks import CheckError, check_error, service_error
     from ..spec.errors import SpecError
+    from .checks import run_module_checks
 
     def validation(worktree: Path, folder: Path) -> RoundValidation:
         if glossary is not None:
@@ -433,12 +436,12 @@ def round_validation(
         checks: list[dict] = []
         if check_modules is not None:
             try:
-                checks = run_checks(
+                checks = run_module_checks(
                     worktree,
-                    modules=check_modules,
+                    check_modules,
                     trace_directory=layout.checks_folder(folder),
                 )
-            except (SpecError, OSError) as error:
+            except (CheckError, SpecError, OSError) as error:
                 code = getattr(error, "code", None) or "checks_unavailable"
                 return RoundValidation(
                     unavailable=Refusal(
@@ -474,10 +477,10 @@ def project_interpreter(ctx: RunContext) -> str | None:
     from ..spec.repository import SpecRepository
 
     try:
-        config = SpecRepository(ctx.worktree).config
-        if not config.get("python"):
+        configured = SpecRepository(ctx.worktree).config.get("python")
+        if not configured:
             return None
-        return project_python(ctx.worktree, config, "worker")
+        return project_python(ctx.worktree, configured, "worker")
     except (CheckError, SpecError, OSError):
         return None
 
@@ -572,8 +575,8 @@ def run_worker(
     material outside the grant the worker may read as well, such as the logs of the checks the
     host ran for this run.
     """
-    from ..execution.checks.checks import checked_modules
     from ..spec.errors import SpecError
+    from .checks import checked_modules
     from ..spec.grants import grant
     from ..spec.repository import SpecRepository
 

@@ -489,6 +489,14 @@ def _failed(tool: str, error: BaseException) -> dict:
     return envelope(tool, ".", "failed", [], [], {}, unexpected(error))
 
 
+def load_definitions() -> None:
+    """Load the definitions the installed parts register with Execution's catalogs.
+
+    Until the parts give Distribution their registrations, loading Method's registering module is
+    what registers Concorde's Operations and execution commands."""
+    from ..method import registration  # noqa: F401
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = create_parser()
     words = list(sys.argv[1:] if argv is None else argv)
@@ -504,6 +512,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         script = Path(__file__).resolve().parents[3] / "scripts/issues.py"
         return runpy.run_path(str(script))["main"](words[1:])
     if words and words[0] == "workflow":
+        # A workflow step tells an execution command from an Operation by the command catalog.
+        load_definitions()
         from ..workflows.cli import main as workflow_main
 
         return workflow_main(words[1:])
@@ -522,9 +532,12 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         return trace_main(words[1:])
     if words and words[0] == "run":
+        load_definitions()
         from ..execution.runner import run_main
 
         return run_main("operation", None, words[1:])
+    if words and words[0] not in TOOLS and words[0] != "update":
+        load_definitions()
     from ..execution.commands.catalog import COMMANDS
 
     if words and words[0] in COMMANDS:

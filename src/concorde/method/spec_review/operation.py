@@ -29,11 +29,10 @@ from ...execution.context import (
     RunContext,
     Stop,
     evidence,
-    spec_cause,
-    spec_finding,
 )
+from ..specs import spec_cause, spec_finding
 from ..workers import operation, run_worker
-from ...execution.operations.provider import (
+from ..prompts import (
     PROTOCOL_GUIDE,
     load_prompt,
 )

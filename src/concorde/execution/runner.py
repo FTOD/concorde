@@ -6,7 +6,8 @@ One runner executes both kinds of run definition in the worktree it is started i
 2. Read the workspace binding of the worktree. A bound run waits in the lobby for the workspace
    lock, checks once it holds it that the workspace was not retired meanwhile, then enters it and
    works on the binding's Modules; an unbound run, for a definition that allows it, works in a
-   throwaway detached checkout of the worktree's ``HEAD``. Check ``--modules`` and ``--input``.
+   throwaway detached checkout of the worktree's ``HEAD``. Admit ``--input``, take the Modules as
+   names and run the definition's own admission of them.
 3. Execute the definition's steps in order.
 4. Remove an unbound run's checkout, compose and check the run result, write ``result.json``
    and the run's trace node, release the locks, print the result.
@@ -18,7 +19,8 @@ A bound run's node starts in the lobby, ``lobby/<run-id>/`` of the binding's ``.
 into the workspace folder only once the run holds the workspace lock, so nothing is written into a
 workspace folder that a close may be moving; a run refused before then stays in the lobby.
 
-``--detach`` starts the same runner as a process of its own and announces the run at once.
+``--detach`` starts the same runner as a process of its own, through the host's ``concorde``
+command, and announces the run at once.
 """
 
 from __future__ import annotations
@@ -41,7 +43,9 @@ from ..kernel import binding as binding_file
 from ..kernel.refusal import KernelError
 from ..kernel.schema import validate
 from .checkout import Checkout, open_checkout
-from .context import Continue, Provider, RunContext, Stop, component, evidence
+from .commands.catalog import COMMANDS
+from .context import Continue, Provider, Refused, RunContext, Stop, component, evidence
+from .operations.catalog import OPERATIONS
 from ..kernel.tracing import layout, locks
 from ..kernel.tracing.node import Node, TraceError, concorde_commit, protocol_version
 from .runs import (
@@ -76,20 +80,6 @@ REFUSALS = {
             "start this run again with --wait <seconds>, which waits for the lock inside the "
             "runner and starts as soon as the running run ends, instead of polling",
             "cancel the running run, then run this one again",
-        ],
-    ),
-    "modules_removed": (
-        "input",
-        "the binding names only Modules the workspace removed or renamed, and which of its "
-        "current Modules the run works on is for the caller to name",
-        ["run it again naming the workspace's current Modules with --modules"],
-    ),
-    "specs_unloadable": (
-        "scope",
-        "the run needs the workspace's Specs to load and never repairs them",
-        [
-            "run concorde task-validation in the workspace to see why the Specs do not load",
-            "repair the Specs by hand",
         ],
     ),
     "binding_required": (
@@ -193,32 +183,16 @@ def prog(kind: str, name: str) -> str:
 
 
 def definition(kind: str, name: str) -> Provider:
-    """The Operation or execution command ``name``; ``UsageError`` for an unknown one."""
-    if kind == "operation":
-        from .operations.catalog import CATALOG, provider
-
-        table, load = CATALOG, provider
-    else:
-        from .commands.catalog import COMMANDS, command
-
-        table, load = COMMANDS, command
-    if name not in table:
-        from .commands.catalog import COMMANDS
-
+    """The Operation or execution command ``name`` an installed part registers; ``UsageError``
+    for one no installed part registers."""
+    chosen = (OPERATIONS if kind == "operation" else COMMANDS).get(name)
+    if chosen is None:
         if kind == "operation" and name in COMMANDS:
             raise UsageError(
                 f"{name} is a command, not an Operation: it runs no worker; run "
                 f"`concorde {name}`"
             )
-        raise UsageError(f"unknown {kind} {name!r}")
-    try:
-        chosen = load(name)
-    except (ImportError, AttributeError) as error:
-        raise UsageError(
-            f"the definition of {name} cannot be loaded: {errors.exception_detail(error)}"
-        ) from error
-    if chosen.kind != kind:
-        raise UsageError(f"{name} is declared as a {chosen.kind}, not a {kind}")
+        raise UsageError(f"unknown {kind} {name!r}: no installed part registers it")
     return chosen
 
 
@@ -245,64 +219,6 @@ def _named_modules(arguments) -> list[str] | None:
     return [item.strip() for item in arguments.modules.split(",") if item.strip()]
 
 
-def _registry(root: Path) -> set[str]:
-    from ..spec.repository import SpecRepository
-    from ..spec.repository_base import SpecError
-
-    try:
-        return set(SpecRepository(root).modules)
-    except (SpecError, OSError, ValueError) as error:
-        detail = error.describe() if isinstance(error, SpecError) else str(error)
-        raise RunError(
-            "specs_unloadable", f"the Specs of {root} cannot be loaded: {detail}"
-        ) from error
-
-
-def _registered(root: Path, modules: list[str]) -> None:
-    known = _registry(root)
-    unknown = sorted(item for item in modules if item not in known)
-    if unknown:
-        raise RunError(
-            "unknown_module",
-            f"{', '.join(unknown)} {'is' if len(unknown) == 1 else 'are'} not registered in "
-            f"{root} (registered: {', '.join(sorted(known))})",
-        )
-
-
-def _bound_modules(chosen: Provider, context: RunContext) -> list[str]:
-    """The binding's Modules the workspace still registers.
-
-    A Module the workspace removed or renamed stays in the binding; the run leaves it out with
-    ``removed-module`` evidence. When the Specs do not load, the binding's list is kept whole:
-    the Module check, or the definition itself, reports why.
-    """
-    modules = list(context.workspace["modules"])
-    try:
-        known = _registry(context.worktree)
-    except RunError:
-        return modules
-    kept = [item for item in modules if item in known]
-    removed = [item for item in modules if item not in known]
-    if removed and not kept:
-        raise RunError(
-            "modules_removed",
-            f"every Module the binding of workspace {context.workspace_name} names "
-            f"({', '.join(removed)}) is no longer registered in {context.worktree}: the "
-            "workspace removed or renamed them, so the run has no Module to work on; name its "
-            "current Modules with --modules",
-        )
-    for module in removed:
-        context.evidence.append(
-            evidence(
-                "removed-module",
-                module,
-                f"the binding of workspace {context.workspace_name} names {module}, which the "
-                f"workspace no longer registers, so {chosen.name} leaves it out",
-            )
-        )
-    return kept
-
-
 def _checkout(chosen: Provider, context: RunContext) -> Checkout:
     """Admit an unbound run and move it into a throwaway checkout of its worktree's ``HEAD``."""
     if chosen.binding == "required":
@@ -327,26 +243,39 @@ def _checkout(chosen: Provider, context: RunContext) -> Checkout:
 
 
 def _resolve(chosen: Provider, context: RunContext, arguments) -> Stop | None:
-    """The Modules and inputs of a bound or an unbound run, once it is admitted."""
-    if context.workspace is not None:
-        context.modules = _named_modules(arguments) or _bound_modules(chosen, context)
-    else:
-        context.modules = _named_modules(arguments) or []
-    if context.modules and chosen.requires_loaded_specs:
-        _registered(context.worktree, context.modules)
+    """Admit the inputs, then the Modules: as names, ``--modules`` or else the binding's, which
+    the definition's own admission may narrow or refuse."""
     context.inputs = admit_inputs(
         context.store, context.workspace_name, arguments.input
     )
+    named = _named_modules(arguments)
+    context.modules_named = named is not None
+    if named is not None:
+        context.modules = named
+    elif context.workspace is not None:
+        context.modules = list(context.workspace["modules"])
+    else:
+        context.modules = []
+    if chosen.admit is not None:
+        chosen.admit(context)
     return None
 
 
 def _refused(chosen: Provider, context: RunContext, refusal) -> Stop:
-    reason, explanation, options = REFUSALS.get(refusal.code, INPUT_REFUSAL)
-    actor = (
-        "Execution (workspace binding)"
-        if isinstance(refusal, KernelError)
-        else REFUSING.get(refusal.code, "Execution (run store)")
-    )
+    if isinstance(refusal, Refused):
+        reason, explanation, options = (
+            refusal.reason,
+            refusal.explanation,
+            refusal.options,
+        )
+        actor = refusal.actor
+    else:
+        reason, explanation, options = REFUSALS.get(refusal.code, INPUT_REFUSAL)
+        actor = (
+            "Execution (workspace binding)"
+            if isinstance(refusal, KernelError)
+            else REFUSING.get(refusal.code, "Execution (run store)")
+        )
     return context.fail(
         "failed",
         "refused",
@@ -595,7 +524,7 @@ def execute(
                         held.callback(checkout.close)
                         _progress(context, step=None)
                     stop = _resolve(chosen, context, arguments)
-                except (RunError, KernelError) as refusal:
+                except (RunError, KernelError, Refused) as refusal:
                     stop = _refused(chosen, context, refusal)
                 if stop is None:
                     stop = _steps(chosen, context, node, words)
@@ -1010,8 +939,17 @@ def detach(
     )
     output = run_dir / "host.out"
     with output.open("wb") as stream:
+        # The runner is the host's `concorde` command run again, which loads the definitions the
+        # installed parts register before it runs this one.
         process = subprocess.Popen(
-            [sys.executable, "-m", "concorde.execution.runner", kind, name, *words],
+            [
+                sys.executable,
+                "-m",
+                "concorde",
+                *(["run"] if kind == "operation" else []),
+                name,
+                *words,
+            ],
             cwd=here,
             env=environment,
             stdin=subprocess.DEVNULL,
@@ -1092,12 +1030,10 @@ def detach(
 
 def _usage(kind: str, name: str | None) -> str:
     if kind == "operation":
-        from .operations.catalog import CATALOG
-
         return (
             "usage: concorde run <operation> [--modules ids] [--input run-id]... [--detach] "
             "[--wait seconds] [--trace-at folder]; "
-            f"operations: {', '.join(CATALOG)}"
+            f"operations: {', '.join(OPERATIONS) or '(none registered)'}"
         )
     return (
         f"usage: concorde {name} [--modules ids] [--input run-id]... [--detach] "
@@ -1159,7 +1095,3 @@ def run_main(kind: str, name: str | None, words) -> int:
 
 
 __all__ = ["KINDS", "UsageError", "definition", "detach", "execute", "run_main"]
-
-
-if __name__ == "__main__":  # the detached runner started by ``detach``
-    sys.exit(run_main(sys.argv[1], sys.argv[2], sys.argv[3:]))
