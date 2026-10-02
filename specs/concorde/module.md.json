@@ -51,8 +51,26 @@
         "meaning": "#contains-dogfooding"
       }
     ],
-    "uses": [],
-    "includes": [],
+    "uses": [
+      {
+        "target": "module.main-session",
+        "meaning": "#uses-main-session",
+        "relies_on": [
+          "req.main-session.ordinary-decisions",
+          "req.main-session.task-session-decides",
+          "req.main-session.task-session-escalates",
+          "req.main-session.escalation-policy",
+          "req.main-session.small-change"
+        ]
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.spec.contracts",
+        "reason": "Spec core's grants, whose task-type table is the complete assignment req.concorde.no-wider-than-type bounds every worker by, and its boundary sets, which say which paths each set holds"
+      }
+    ],
     "participates": [],
     "glossary": "specs/concorde/glossary.json"
   },

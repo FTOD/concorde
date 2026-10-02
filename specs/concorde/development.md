@@ -27,11 +27,75 @@ elapsed time.
 - AND discovery, queueing, execution and total elapsed times are reported separately
 - BUT summed parallel test time is never reported as elapsed time
 
+### req.concorde.test-fingerprints — The fingerprints name what a run examined
+
+The pytest evidence plugin SHALL record in the report's `fingerprint` a digest of the run's examined input files, of its collected tests, of its runtime, of its lock files and of its environment, and one `digest` of those five.
+
+The examined inputs are the files below pytest's root directory that Git tracks or would track
+under `src/`, `scripts/`, `tests/`, `prompts/`, `protocol/`, `specs/` and `.concorde/protocol/`,
+and the files `CLAUDE.md`, `concorde.json`, `pyproject.toml`, `uv.lock`, `.concorde/config.json`
+and `.concorde/specs.json`. `input` digests each such file's path with the SHA-256 of its bytes, and
+`lock` the same for those whose path ends in `lock` or `lock.json`. `tests` digests the sorted node
+identities of the collected tests; `runtime` the Python version and implementation and the pytest
+version, which `runtime_facts` shows; `environment` the operating system, the machine and whether
+bytecode writing is disabled, which `environment_facts` shows. Every digest is the SHA-256 of the
+JSON of what it covers, with sorted keys. No other file and no environment variable is an input, so
+`environment_complete` is always `false`. When Git cannot list the files or one of them cannot be
+read, `input_complete` is `false` and `input` is `null`.
+
+### req.concorde.test-prior — A prior run is compared by its fingerprint
+
+When `--prior=PATH` names the summary of an earlier run, the pytest evidence plugin SHALL record that run's `run_id` as `prior_run_id` and, as `same_declared_inputs`, whether the two fingerprints' `digest` values are equal.
+
+`same_declared_inputs` is `null` without `--prior`, and also when this run's input is incomplete or
+its runtime facts are unknown, since equal digests would then prove nothing; when it is `true`, the
+terminal says so and that the environment is covered only in part. A `--prior` that names no
+readable JSON summary object is a usage error, pytest's exit status 4, before any test runs.
+`--json=PATH` replaces whatever the file held.
+
+### req.concorde.test-counting — The totals count collected tests
+
+The pytest evidence plugin SHALL count in the report's `totals` one unit per collected test, a unit failing when any of its subtests fails.
+
+Subtests are not counted on their own, so the units sum to the collected count. pytest's own
+terminal line lists each failed subtest separately and counts its parent as passed, so its numbers
+may differ from the totals; the report's `counting_note` says so.
+
+### scenario.concorde.test-prior-unchanged — A rerun on unchanged inputs is recognized
+
+- GIVEN the summary of a run of some tests
+- WHEN the same tests run again with `--prior` naming that summary and no examined input changed
+- THEN the new report's `prior_run_id` is the earlier run's `run_id`
+- AND its fingerprint `digest` equals the earlier one and `same_declared_inputs` is `true`
+
+### scenario.concorde.test-prior-changed — A rerun on a changed input is told apart
+
+- GIVEN the summary of a run of some tests
+- WHEN one examined input file changes and the same tests run again with `--prior` naming that summary
+- THEN the new report's `prior_run_id` is the earlier run's `run_id`
+- AND its `input` fingerprint differs from the earlier one while its `tests` fingerprint does not
+- AND `same_declared_inputs` is `false`
+
+### scenario.concorde.test-prior-unreadable — An unreadable prior summary stops the run
+
+- GIVEN a `--prior` path that does not exist, is not JSON or holds no JSON object
+- WHEN pytest runs with it and `--json`
+- THEN pytest ends with exit status 4 and an error naming the `--prior` value
+- AND no test runs and no report is written
+
+### scenario.concorde.test-counting — A failed subtest fails its one unit
+
+- GIVEN a test with three subtests, one of which fails, and a passing test
+- WHEN they run with `--json` reporting
+- THEN the report has one failed and one passed unit and counts no subtest on its own
+- AND its `counting_note` says that subtests are not counted on their own
+
 ## External references
 
 The third-party documentation and source that Modules include as `external` live under
-`references/`. The Claude Code documentation is tracked as plain files, refreshed by
-`scripts/development/fetch-claude-code-docs.py`. The pi, sandbox-runtime, pi-packages,
+`references/`. The Claude Code documentation is tracked as plain files under
+`references/claude-code/`, refreshed by `scripts/development/fetch-claude-code-docs.py` as the
+[documentation refresh](#documentation-refresh) below says. The pi, sandbox-runtime, pi-packages,
 swe-bench, langgraph and langgraph-docs references are Git submodules pinned in
 `.gitmodules` to the versions Concorde was built against, each with a sparse-checkout pattern
 (`concorde-sparse`) that keeps only the documentation and source a reader needs. `langgraph` is
@@ -72,6 +136,39 @@ out and others not.
 - WHEN `scripts/development/init-references.py` runs in that worktree
 - THEN it registers that submodule as active in the shared `.git/config`
 - AND it checks out every submodule
+
+### Documentation refresh
+
+`scripts/development/fetch-claude-code-docs.py` takes no argument. It reads the index
+`https://code.claude.com/docs/llms.txt` and fetches, as Markdown, every page below `/docs/en/` that
+the index lists; it refuses an index that lists no such page or names a page path with `..`. The
+snapshot holds each page at its path below `references/claude-code/`, the index as `llms.txt` and
+`SOURCE.json`, which records the index address, the UTC time of the fetch and the list of pages. The
+script commits nothing: the developer reviews the change and commits it.
+
+### req.concorde.docs-refresh-whole — A documentation refresh is published whole or not at all
+
+The documentation fetcher SHALL replace `references/claude-code/` only with a complete snapshot, and leave it unchanged when a page cannot be fetched or the snapshot cannot be written.
+
+Every page is fetched before anything is written; the snapshot is written into a temporary
+directory beside `references/claude-code/` and swapped in only once complete, and the temporary
+directories are removed either way. A file of the previous snapshot that the index no longer lists
+is therefore gone after a refresh. A refused refresh exits with status 1 and names on standard error
+every page it could not fetch, or the write that failed.
+
+### scenario.concorde.docs-refresh-replaces — A refresh replaces the snapshot whole
+
+- GIVEN `references/claude-code/` holding a snapshot with a page the index no longer lists
+- WHEN the documentation fetcher runs and fetches every page the index lists
+- THEN `references/claude-code/` holds exactly the listed pages, `llms.txt` and `SOURCE.json`
+- AND the page no longer listed is gone and no temporary directory is left beside it
+
+### scenario.concorde.docs-refresh-failed-unchanged — A failed refresh leaves the snapshot as it was
+
+- GIVEN `references/claude-code/` holding a snapshot
+- WHEN the documentation fetcher runs and a page cannot be fetched, or a file of the new snapshot cannot be written, or the new snapshot cannot be moved into place
+- THEN it exits with status 1 and says why on standard error
+- AND `references/claude-code/` holds exactly the files it held before, unchanged, and no temporary directory is left beside it
 
 ## Agent instructions
 

@@ -53,9 +53,10 @@ A worktree's worker configuration SHALL change only by an explicit request of th
 No [Operation](glossary.json#concept.operation), [execution command](glossary.json#concept.execution-command), workflow or worker SHALL read or write a [task record](glossary.json#concept.task-record), a [decision log](glossary.json#concept.decision-log) or any other state of the task store.
 
 The upper half hands a task to the execution core only by writing its worktree's
-[workspace binding](glossary.json#concept.workspace-binding), and learns what happened there only
-from the [run store](glossary.json#concept.run-store) and the
-[delivery commits](glossary.json#concept.delivery-commit).
+[workspace binding](glossary.json#concept.workspace-binding), and learns the outcome of the work
+done there only from the [run store](glossary.json#concept.run-store) and the
+[delivery commits](glossary.json#concept.delivery-commit), beside what Git shows of the task branch
+and its worktree.
 
 The upper half, [Coordination](coordination/module.md), organizes the work; the lower half,
 [Execution](execution/module.md), does it. Keeping every piece of shared state on one side lets
@@ -63,10 +64,11 @@ either half change without the other.
 
 ### req.concorde.operations-are-ai — An Operation involves a model
 
-Every Operation SHALL launch at least one AI worker.
+Every Operation SHALL launch at least one AI worker in each of its runs that is not refused before its first worker starts.
 
-Deterministic work that a task or a workflow runs is an execution command or a plain `concorde`
-command instead.
+This classifies what an Operation is rather than forcing a launch: a run refused at admission, or
+whose first worker is refused at launch, launches none. Deterministic work that a task or a workflow
+runs is an execution command or a plain `concorde` command instead.
 
 ## Boundaries
 
@@ -89,6 +91,11 @@ Every grant a worker receives SHALL be computed from the Specs of the checkout i
 
 A worker's readable and writable paths among the project's files SHALL NOT exceed what its task type assigns to its bound Modules.
 
+The complete assignment, the level each task type gives every
+[boundary set](glossary.json#concept.boundary-set), is the task-type table of
+[Spec core's grants](spec-tooling/spec/contracts.md#grants), and Spec core's
+[boundary sets](spec-tooling/spec/contracts.md#boundary-sets) say which paths each set holds.
+
 Besides the project's files, the [Harness](harness/module.md) gives a worker its run's own working,
 home and temporary directories and leaves readable the system paths every program needs; its
 [known limits](harness/module.md#known-limits-of-v1) say what else it leaves out.
@@ -106,7 +113,7 @@ merges.
 
 ### req.concorde.detailed-errors — Errors are reported in detail
 
-Every Operation, execution command, worker, step, `concorde` command and the main agent SHALL report a failure to its parent as an error link that describes it completely: what failed, where, the exact message or output, the evidence and what was tried.
+Every Operation, execution command, worker, step, `concorde` command other than Spec tooling's deterministic commands, and the main agent SHALL report a failure to its parent as an error link that describes it completely: what failed, where, the exact message or output, the evidence and what was tried.
 
 A status, a code or a one-line summary alone is never the whole report. The parent must be able to reason about the error from the link without asking the actor that wrote it.
 
@@ -130,9 +137,12 @@ A [worker result](glossary.json#concept.worker-result) carries the worker's link
 
 ### req.concorde.claims-apart — Host evidence and worker claims stay apart
 
-Every run result that is not successful SHALL keep the evidence the run produced apart from the worker's own report.
+Every run result SHALL keep the evidence the run produced apart from the worker's own report.
 
-The worker's link in the chain is marked with the level `worker`; the run never moves a worker's statement into its own links or its host evidence.
+This holds whatever the run's status, as Execution's
+[req.execution.claims-apart](execution/requirements.md#req.execution.claims-apart) states for the
+runner and its steps. The worker's link in the chain is marked with the level `worker`; the run
+never moves a worker's statement into its own links or its host evidence.
 
 ### req.concorde.spec-gaps-stop — Automatic rounds never fill a Spec gap
 
@@ -146,14 +156,23 @@ path the grant does not give, is never supplied by another round; it goes up to 
 
 ## Change control
 
-### req.concorde.delivery-separate — Delivery is its own execution command
+### req.concorde.delivery-separate — A task is delivered only by a delivery commit
 
-A task SHALL count as delivered only through a [delivery commit](glossary.json#concept.delivery-commit), which only the `delivery` execution command makes, after deciding in the same run that the whole workspace is ready.
+A task SHALL count as delivered only through a [delivery commit](glossary.json#concept.delivery-commit) on its branch.
 
 The task level may commit verified steps on the task branch as it works; those commits deliver
 nothing. `delivery` validates everything the branch holds since its base commit together with what
 is not committed yet, and commits the delivery commit on top only when that whole workspace is
-ready.
+ready, as [req.delivery.own-readiness](execution/commands/delivery/requirements.md#req.delivery.own-readiness)
+states.
+
+### req.concorde.delivery-commit-by-delivery — Only delivery makes a delivery commit
+
+No actor other than the `delivery` execution command SHALL make a delivery commit.
+
+A delivery commit is recognized by its subject alone, so no task session, main agent or other
+command commits under that subject; Delivery gives it to its delivery commits alone
+([req.delivery.marked](execution/commands/delivery/requirements.md#req.delivery.marked)).
 
 ### req.concorde.merge-by-main-agent — The main agent merges delivered tasks
 

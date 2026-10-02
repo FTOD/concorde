@@ -48,6 +48,21 @@ make itself. It alone merges a task into the primary branch.
 [Main session](coordination/main-session/module.md) explains its working method and decision
 policy.
 
+<a id="uses-main-session"></a>
+
+Every flow of this Module follows Main session's policy for who settles a question. The main agent
+and a task session decide ordinary questions themselves
+([req.main-session.ordinary-decisions](coordination/main-session/requirements.md#req.main-session.ordinary-decisions),
+[req.main-session.task-session-decides](coordination/main-session/requirements.md#req.main-session.task-session-decides));
+a task session escalates every other question to the main agent
+([req.main-session.task-session-escalates](coordination/main-session/requirements.md#req.main-session.task-session-escalates)),
+which asks the developer before acting on a decision of major impact
+([req.main-session.escalation-policy](coordination/main-session/requirements.md#req.main-session.escalation-policy)); and the
+main agent changes the primary worktree itself only for a small change the developer approved
+([req.main-session.small-change](coordination/main-session/requirements.md#req.main-session.small-change)). This Module states no
+decision policy of its own: a question that policy does not let a level settle goes up, with its
+error chain, until it reaches the developer.
+
 <a id="concept.task-session"></a>
 
 A **[task session](glossary.json#concept.task-session)** carries one task to delivery inside the
@@ -70,18 +85,24 @@ occupy different levels.
 
 <a id="concept.task-type"></a>
 
-A **[task type](glossary.json#concept.task-type)** fixes access to the
+In this section a task is the Protocol's word for one worker's bounded job, not a Concorde
+[Task](glossary.json#concept.task), the branch and worktree a task session carries to delivery. A
+**[task type](glossary.json#concept.task-type)** is the kind of such a job: it fixes access to the
 [boundary sets](glossary.json#concept.boundary-set) of the bound Modules. For example, `specify`
 grants writes to their Specs and `implement` to their code; `code-to-spec` reads existing code to
 describe it in Specs when the code came first; `review-architecture` reads every Module's Specs,
 and no code, to judge how the Modules divide and share the project. The Protocol defines the
-complete access table.
+complete access table, which Spec core repeats with
+[its grants](spec-tooling/spec/contracts.md#grants).
 
 <a id="concept.boundary"></a>
 
-A task's **boundary** is the read and write limits its task type assigns to its bound Modules. The
-Protocol defines the sets and the task types; how far Concorde enforces the boundary of a worker is
-explained by the [Harness](harness/module.md).
+The **boundary** of a worker's job is the read and write limits its task type assigns to its bound
+Modules. The Protocol defines the sets and the task types; how far Concorde enforces the boundary of
+a worker is explained by the [Harness](harness/module.md). A Concorde Task has no task type and its
+task session no such boundary: the session receives the
+[session boundary](glossary.json#concept.session-boundary), which keeps its writes inside its task
+and leaves the rest of the session open.
 
 <a id="concept.context"></a>
 
@@ -116,8 +137,11 @@ empty for a given task, but never all five:
   contents.
 - <a id="concept.capability-context"></a>The
   **[capability context](glossary.json#concept.capability-context)** is not a Protocol set. It is
-  the list of tools the worker may use, fixed by its Operation and task type, and the contract of the
-  result it must return. It tells the model what it can do, never what the project promises.
+  the list of tools the worker may use, fixed by its Operation and task type, with two kinds of
+  contract: the contracts those tools reach, which say how each tool is called and what it answers,
+  and the contract of the [worker result](glossary.json#concept.worker-result) it must end with,
+  which says what its answer must hold. It tells the model what it can do, never what the project
+  promises.
 - <a id="concept.task-context"></a>The **[task context](glossary.json#concept.task-context)** is
   what the Protocol calls task material: the brief with the task and its constraints, the admitted
   artifacts of earlier steps, such as an accepted assessment or the diff to review, and the explicit
@@ -192,7 +216,8 @@ uncommitted changes, and changes nothing. [Execution](execution/module.md#unboun
 
 ### The life of a task
 
-Every change of a Spec or of code is a task, and every task takes the same path. The main agent
+Every change of a Spec or of code is a task, except a small change the developer approved, which
+the main agent makes itself in the primary worktree; every task takes the same path. The main agent
 opens it, which creates a branch and a worktree bound as the task's
 [workspace](glossary.json#concept.workspace), records its brief in the
 [decision log](glossary.json#concept.decision-log) and starts a task session there. The task session
@@ -300,11 +325,13 @@ Concorde's normal flow is therefore Spec first: a promise is written, then reali
 whose code came before its Specs is described the other way round, and only through one explicit
 route, the Protocol's `code-to-spec` task type, which the
 [Adoption](execution/operations/adoption/module.md) Operations use together with the `scaffold`
-command that writes what a survey proposed. It writes down the behaviour it reads as it is, never
-changes code, and turns every behaviour whose intent the code does not settle into an
+command that writes what a survey proposed. It writes down the behaviour it reads as it is and
+never changes what the code does: besides Specs it touches only existing tests, adding the
+`verifies` declarations that link them to the scenarios they verify
+([Adoption](execution/operations/adoption/requirements.md#req.adoption.no-code-change)). It turns
+every behaviour whose intent the code does not settle into an
 [open question](glossary.json#concept.open-question) rather than a promise, for the main agent or
-the developer to settle. Once
-a Module is described, work on it is Spec first again.
+the developer to settle. Once a Module is described, work on it is Spec first again.
 
 ### Two halves, one seam
 
@@ -501,12 +528,23 @@ uses no other Module.
 **Issues** keeps durable, project-level [Issue](glossary.json#concept.issue) records, each report
 with its tier and severity, so a problem worth keeping survives the task that found it and work can
 start from the most severe; solving one is ordinary
-work of a task, whose merge closes it.
+work of a task, whose merge closes it. Recording a report never changes the outcome of the work that
+found the problem ([req.issues.report-no-outcome](issues/requirements.md#req.issues.report-no-outcome)),
+and a failure of the Issue system itself is never recorded as an Issue: it travels as an error chain
+in the decision log, an escalation or a run result
+([req.issues.own-failures](issues/requirements.md#req.issues.own-failures)).
 
 <a id="contains-distribution"></a>
 
 **Distribution** builds the package, provides the `concorde` CLI and installs Concorde into a
-project.
+project. Every flow above starts from such an install. The installer refuses before writing anything
+when a program it needs is missing
+([req.distribution.installer-programs-first](distribution/requirements.md#req.distribution.installer-programs-first))
+or a run holds its [run lock](glossary.json#concept.run-lock)
+([req.distribution.idle-install](distribution/requirements.md#req.distribution.idle-install)),
+and prints every refusal as an error link
+([req.distribution.installer-error-links](distribution/requirements.md#req.distribution.installer-error-links)),
+which reaches the developer whole.
 
 <a id="contains-dogfooding"></a>
 
@@ -521,7 +559,11 @@ never changes Concorde from the project.
 
 **End-to-end testing** is how this project tests Concorde itself on real codebases from SWE-bench
 with real agents, headless or through a deterministic driver. It serves the developers of
-Concorde only and reaches no user's project.
+Concorde only and reaches no user's project
+([req.e2e.never-installed](e2e/requirements.md#req.e2e.never-installed)). A run reports only
+the [workflow result](glossary.json#concept.workflow-result) of its own workflow
+([req.e2e.own-result](e2e/requirements.md#req.e2e.own-result)), so a failure it shows is the
+failure of the run it started.
 
 ## Files of the root
 

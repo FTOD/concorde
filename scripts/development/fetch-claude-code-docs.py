@@ -8,6 +8,11 @@ public repository to pin as a submodule; this script instead replaces the direct
 snapshot of every page that ``llms.txt`` lists, in Markdown, plus ``llms.txt`` itself and
 ``SOURCE.json`` recording where and when the snapshot was taken. Commit the result.
 
+Every page is fetched before anything is written, and the snapshot is written into a temporary
+directory beside the target and swapped in only once it is complete, so a failed refresh leaves the
+previous snapshot as it was. Files of the previous snapshot that the index no longer lists are gone
+after a successful refresh.
+
     python3 scripts/development/fetch-claude-code-docs.py
 """
 
@@ -19,6 +24,7 @@ import json
 import re
 import shutil
 import sys
+import tempfile
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
@@ -69,24 +75,52 @@ def main(argv: list[str] | None = None) -> int:
         for message in failures:
             print(f"  {message}", file=sys.stderr)
         return 1
-    if TARGET.exists():
-        shutil.rmtree(TARGET)
-    TARGET.mkdir(parents=True)
-    (TARGET / "llms.txt").write_text(index, encoding="utf-8")
-    for (_, name), (text, _) in zip(pages, results, strict=True):
-        path = TARGET / name
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text, encoding="utf-8")
     source = {
         "index": INDEX,
         "fetched": datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "pages": [name for _, name in pages],
     }
-    (TARGET / "SOURCE.json").write_text(
-        json.dumps(source, indent=2) + "\n", encoding="utf-8"
-    )
+    try:
+        publish(
+            index,
+            [(name, text) for (_, name), (text, _) in zip(pages, results, strict=True)],
+            source,
+        )
+    except OSError as error:
+        print(
+            f"cannot write the snapshot: {error}; {TARGET.relative_to(ROOT)} is unchanged",
+            file=sys.stderr,
+        )
+        return 1
     print(f"wrote {len(pages)} pages to {TARGET.relative_to(ROOT)}")
     return 0
+
+
+def publish(index: str, pages: list[tuple[str, str]], source: dict) -> None:
+    """Write the snapshot beside ``TARGET`` and swap it in; on failure ``TARGET`` is unchanged."""
+    TARGET.parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(prefix=f".{TARGET.name}.new-", dir=TARGET.parent))
+    previous = staging.with_name(f".{TARGET.name}.old-{staging.name.rsplit('-', 1)[1]}")
+    try:
+        (staging / "llms.txt").write_text(index, encoding="utf-8")
+        for name, text in pages:
+            path = staging / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text, encoding="utf-8")
+        (staging / "SOURCE.json").write_text(
+            json.dumps(source, indent=2) + "\n", encoding="utf-8"
+        )
+        if TARGET.exists():
+            TARGET.rename(previous)
+        try:
+            staging.rename(TARGET)
+        except OSError:
+            if previous.exists():
+                previous.rename(TARGET)
+            raise
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
+        shutil.rmtree(previous, ignore_errors=True)
 
 
 def _attempt(url: str) -> tuple[str, str | None]:
