@@ -42,7 +42,6 @@ OPTIONAL_INTEGRATIONS = {("method", "issues")}
 
 # The later code tasks, in their order.
 CODE_TASKS = (
-    "kernel",
     "issues",
     "worker harness",
     "execution",
@@ -53,37 +52,7 @@ CODE_TASKS = (
 )
 # Code task -> (importing file under src/concorde/, imported module under concorde.) it removes.
 KNOWN_EXCEPTIONS = {
-    # Typed values, file transactions, the workspace binding and the delivery commit move into
-    # the kernel.
-    "kernel": [
-        ("coordination/tasks/cli.py", "spec.schema"),
-        ("coordination/tasks/merge.py", "spec.typed_data"),
-        ("coordination/tasks/session.py", "spec.typed_data"),
-        ("coordination/tasks/store.py", "execution.binding"),
-        ("coordination/tasks/store.py", "method.delivery.commits"),
-        ("coordination/tasks/store.py", "spec.typed_data"),
-        ("execution/binding.py", "spec.schema"),
-        ("execution/checks/checks.py", "spec.typed_data"),
-        ("execution/runner.py", "spec.schema"),
-        ("execution/runs.py", "spec.typed_data"),
-        ("issues/command.py", "spec.typed_data"),
-        ("issues/shapes.py", "spec.typed_data"),
-        ("issues/store.py", "spec.changes"),
-        ("issues/store.py", "spec.schema"),
-        ("issues/store.py", "spec.typed_data"),
-        ("kernel/tracing/node.py", "spec.schema"),
-        ("kernel/tracing/node.py", "spec.typed_data"),
-        ("kernel/tracing/retention.py", "spec.schema"),
-        ("worker_harness/models.py", "spec.schema"),
-        ("worker_harness/workers.py", "spec.schema"),
-        ("worker_harness/workers.py", "spec.typed_data"),
-        ("workflows/cli.py", "spec.schema"),
-        ("workflows/report.py", "spec.schema"),
-        ("workflows/step.py", "spec.schema"),
-        ("workflows/store.py", "spec.typed_data"),
-    ],
     "issues": [
-        ("issues/command.py", "coordination.tasks.store"),
         ("issues/command.py", "spec.repository"),
         ("issues/store.py", "coordination.tasks.store"),
         ("issues/store.py", "spec.repository"),
@@ -162,7 +131,6 @@ KNOWN_EXCEPTIONS = {
         ("distribution/install.py", "kernel.errors"),
         ("distribution/install.py", "kernel.tracing.layout"),
         ("distribution/install.py", "kernel.tracing.locks"),
-        ("distribution/install.py", "kernel.tracing.reader"),
         ("distribution/install.py", "spec.errors"),
         ("distribution/install.py", "spec.initialize"),
         ("distribution/install.py", "spec.views.docsite_template"),
@@ -175,9 +143,10 @@ KNOWN_EXCEPTIONS = {
         ("distribution/project_mcp/tools.py", "coordination.tasks.merge"),
         ("distribution/project_mcp/tools.py", "coordination.tasks.store"),
         ("distribution/project_mcp/tools.py", "coordination.tasks.wait"),
-        ("distribution/project_mcp/tools.py", "execution.binding"),
         ("distribution/project_mcp/tools.py", "issues.command"),
         ("distribution/project_mcp/tools.py", "kernel.errors"),
+        ("distribution/project_mcp/tools.py", "kernel.binding"),
+        ("distribution/project_mcp/tools.py", "kernel.refusal"),
         ("distribution/project_mcp/tools.py", "kernel.tracing.layout"),
         ("distribution/project_mcp/tools.py", "kernel.tracing.locks"),
         ("distribution/project_mcp/tools.py", "kernel.tracing.reader"),

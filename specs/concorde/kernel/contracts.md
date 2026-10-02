@@ -181,10 +181,22 @@ JSON type, so `true` is not `1`; each keyword applies to the kind of value it co
 schema names a `type` or not; and a string whose schema sets `minLength` must not consist of
 whitespace only.
 
-The `concorde-contract` fences of the Specs use a wider dialect of their own, with local `$defs`,
-`oneOf` and `allOf`, which belongs to the Spec tooling that checks them; a registered schema never
-uses it. The Spec tooling keeps its own copy of this registered dialect and of the typed value
-format in its own code, so that the spec part installs alone
+### Contract schemas
+
+A record whose own contract defines its representation, such as a workspace binding, a
+[run result](../glossary.json#concept.run-result) or an error link, carries no envelope: the part
+that owns it checks it against a **contract schema**, the schema its contract gives, as code. A
+contract schema is written in the registered dialect with one addition: an object `$defs` of named
+schemas at its top, referred to anywhere in it as `{"$ref": "#/$defs/<name>"}`, so that a recursive
+record such as an error link with its causes can be described. A local reference must name an entry
+of `$defs`; a bare type identity embeds a typed value as above. A contract schema is checked against
+the dialect when it is first used (`invalid_input`) and a record that breaks it is refused with
+`invalid_field`, naming the JSON pointer of the offending field. It is never registered.
+
+The `concorde-contract` fences of the Specs use a wider dialect of their own, with `oneOf` and
+`allOf` besides, which belongs to the Spec tooling that checks the fences; neither a registered nor
+a contract schema of the Kernel uses those. The Spec tooling keeps its own copy of this registered
+dialect and of the typed value format in its own code, so that the spec part installs alone
 ([Spec core](../spec-tooling/spec/contracts.md#typed-values)); the two agree on this text, not on
 code.
 
@@ -249,12 +261,17 @@ detail. Tracing's operations on trace nodes and locks are its child's
 
 | Operation | Takes | Returns | Refuses with |
 | --- | --- | --- | --- |
+| Find the worktree | a directory | the real root of the Git worktree it lies in | `not_a_worktree` |
 | Read a binding | a worktree | its workspace binding, or none when the worktree has no binding file | `binding_unreadable` (the file cannot be read or is no JSON), `binding_invalid` (it breaks the contract, names a relative folder or a workspace folder that does not exist), `binding_misplaced` (its `root` is another worktree) |
 | Write a binding | a worktree and a binding | the file's path | `binding_invalid` |
 | Register a type | an identity, a version and a schema | nothing | `duplicate_type`, `invalid_input` |
 | Make or check a typed value | a type identity and data, or a value and the type expected | a checked copy | `unknown_type`, `unsupported_version`, `incompatible_handoff`, `invalid_field`, `stale_reference` |
+| Check a record | a value and its contract schema | nothing | `invalid_input` (the schema), `invalid_field` (the value), and the codes of an embedded typed value |
 | Apply a file transaction | a root, the changes, the allowed paths and an optional final check | the written paths | the outcomes of [File transactions](#file-transactions) |
-| List deliveries | a worktree, its branch, its base commit and the workspace's name | the delivery commits on the first-parent history since the base, newest first, each with whether it verifies | `git_failed`, naming the Git command and its output |
+| List deliveries | a worktree, its branch, its base commit and the workspace's name | the delivery commits on the first-parent history since the base, oldest first, each with how it fails to verify, nothing when it verifies | `git_failed`, naming the Git command and its output |
+| Take the [workspace lock](../glossary.json#concept.workspace-lock) | the `.concorde` a binding names, the workspace, the holder, how long to wait and whether to take a lock file its holder removed meanwhile | holds it until released | `workspace_busy` naming the holder, `workspace_retired` (its holder removed the file while the taker waited, as a close does) |
+| Take the merge lock | the primary worktree's `.concorde`, the holder, the task when there is one and how long to wait, 300 seconds by default | holds it until released | `merge_busy` naming the holder |
+| Read a lock's holder | the workspace lock or the merge lock | its holder line, or none when nobody holds it | nothing |
 
 A run of Execution, for example, reads the binding of the worktree it starts in: a binding copied
 from another workspace is refused with `binding_misplaced`, and the runner records the run as

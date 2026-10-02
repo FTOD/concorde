@@ -21,10 +21,10 @@ Distribution, which reaches the parts only through their registrations.
 
 The Kernel's code is a small library: reading and checking a workspace binding, registering and
 checking typed values, applying a file transaction and finding and verifying the delivery commits
-of a workspace, each refusing with a stable code its caller turns into its own error link; Tracing,
-its child, adds the trace nodes and locks
+of a workspace and taking the workspace lock and the merge lock, each refusing with a stable code
+its caller turns into its own error link; Tracing, its child, adds the trace nodes and locks
 ([Library](contracts.md#library)). Its precise obligations are its
-[requirements](requirements.md).
+[requirements](requirements.md), and its [scenarios](scenarios.md) show them at work.
 
 ## Core concepts
 
@@ -194,10 +194,20 @@ its library.
 
 ### Code
 
-The Kernel binds no code of its own yet: today its formats are implemented where they were first
-needed, the workspace binding in Execution's runner, the delivery commit in Delivery and Tasks, the
-merge lock in Tasks, typed values and file transactions in Spec core, and each of those Modules'
-realizations binds that code. Tracing's code is already in the kernel's package
-`src/concorde/kernel/`, as `tracing/` and the error chain code's `errors.py`, bound by Tracing's
-realizations; the code tasks that follow this Spec move the other formats into that package and bind
-them here.
+<a id="realization.kernel.library"></a>
+
+The **Kernel library** is the package `src/concorde/kernel/`, besides Tracing's `tracing/` and the
+error chain code's `errors.py`: `refusal.py` holds the Kernel error every operation refuses with,
+`schema.py` typed values with their registration, the registered dialect and the checking of
+contract schemas, digests and project paths, `files.py` file transactions, `binding.py` the
+workspace binding's reader and writer, `delivery.py` the delivery commit's message and listing, and
+`locking.py` the workspace lock and the merge lock, taken through Tracing's lock library. Every part
+but the spec part and Distribution imports it for these formats instead of keeping its own; the
+Spec tooling's copy lives in Spec core.
+
+<a id="realization.kernel.tests"></a>
+
+The **Kernel tests** exercise the library on the scenarios of the Kernel's
+[scenarios](scenarios.md): bindings read and refused, deliveries listed and verified, types
+registered and values checked, transactions refused, restored and unrestored, and busy locks
+refused.

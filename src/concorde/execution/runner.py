@@ -37,8 +37,9 @@ import time
 from pathlib import Path
 
 from ..kernel import errors
-from ..spec.schema import ContractError, validate
-from . import binding as binding_file
+from ..kernel import binding as binding_file
+from ..kernel.refusal import KernelError
+from ..kernel.schema import validate
 from .checkout import Checkout, open_checkout
 from .context import Continue, Provider, RunContext, Stop, component, evidence
 from ..kernel.tracing import layout, locks
@@ -343,7 +344,7 @@ def _refused(chosen: Provider, context: RunContext, refusal) -> Stop:
     reason, explanation, options = REFUSALS.get(refusal.code, INPUT_REFUSAL)
     actor = (
         "Execution (workspace binding)"
-        if isinstance(refusal, binding_file.BindingError)
+        if isinstance(refusal, KernelError)
         else REFUSING.get(refusal.code, "Execution (run store)")
     )
     return context.fail(
@@ -497,7 +498,7 @@ def _finish_node(
 def _worktree(here: Path) -> Path:
     try:
         return binding_file.toplevel(here)
-    except binding_file.BindingError as error:
+    except KernelError as error:
         raise UsageError(str(error)) from None
 
 
@@ -519,7 +520,7 @@ def execute(
     try:
         bound = binding_file.load(root)
         broken = None
-    except binding_file.BindingError as error:
+    except KernelError as error:
         bound, broken = None, error
     store = store_of(root, bound)
     if identity is not None and not RUN_ID.match(identity):
@@ -594,7 +595,7 @@ def execute(
                         held.callback(checkout.close)
                         _progress(context, step=None)
                     stop = _resolve(chosen, context, arguments)
-                except (RunError, binding_file.BindingError) as refusal:
+                except (RunError, KernelError) as refusal:
                     stop = _refused(chosen, context, refusal)
                 if stop is None:
                     stop = _steps(chosen, context, node, words)
@@ -720,7 +721,7 @@ def _revalidate(root: Path, bound: dict) -> None:
     path = binding_file.path_of(root)
     try:
         current = binding_file.load(root)
-    except binding_file.BindingError as error:
+    except KernelError as error:
         raise RunError(
             "workspace_retired",
             f"the workspace {bound['workspace']} was retired while this run waited for its lock: "
@@ -949,19 +950,22 @@ def _envelope(chosen: Provider, context: RunContext, stop: Stop | None, started:
         validate(envelope, RESULT_SCHEMA)
         if status == "ok" and chosen.output_schema is not None:
             validate(envelope["output"], chosen.output_schema)
-    except ContractError as problem:
-        invalid = evidence("invalid-output", problem.field, str(problem))
+    except KernelError as problem:
+        invalid = evidence(
+            "invalid-output", problem.field, f"{problem.field or '/'}: {problem}"
+        )
         envelope["host_evidence"].append(invalid)
         envelope.update(
             status="failed",
-            summary=f"The run produced an invalid result: {problem}",
+            summary="The run produced an invalid result: "
+            f"{problem.field or '/'}: {problem}",
             output=None,
             error=context.fail(
                 "failed",
                 "invalid_result",
                 "invalid result",
                 f"the result of {chosen.name} does not satisfy the run result contract or its "
-                f"output contract: {problem}",
+                f"output contract at {problem.field or '/'}: {problem}",
                 reason="capability",
                 explanation="the runner never returns a result that breaks its contract and "
                 "cannot repair one",
@@ -991,7 +995,7 @@ def detach(
     root = _worktree(here)
     try:
         bound = binding_file.load(root)
-    except binding_file.BindingError:
+    except KernelError:
         bound = None  # the runner itself refuses the broken binding, with a result
     store = store_of(root, bound)
     identity = new_run_id(chosen.name)

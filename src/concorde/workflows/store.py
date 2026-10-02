@@ -21,9 +21,10 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-from ..execution import binding as workspace_binding
+from ..kernel import binding as workspace_binding
+from ..kernel.refusal import KernelError
 from ..execution.runs import Store
-from ..spec.typed_data import register
+from ..kernel.schema import register
 from ..kernel.tracing import layout, locks
 from ..kernel.tracing import node as trace
 
@@ -167,7 +168,7 @@ def workspace(here: Path) -> Workspace:
     try:
         root = workspace_binding.toplevel(here)
         bound = workspace_binding.load(root)
-    except workspace_binding.BindingError as error:
+    except KernelError as error:
         raise WorkflowError(error.code, str(error)) from error
     if bound is None:
         raise WorkflowError(
@@ -346,7 +347,7 @@ def _check_binding(space: Workspace) -> None:
     path = workspace_binding.path_of(space.root)
     try:
         current = workspace_binding.load(space.root)
-    except workspace_binding.BindingError as error:
+    except KernelError as error:
         raise WorkspaceRetired(
             "binding_untrusted",
             f"the workspace {space.name} was retired while this command waited for its workflow "

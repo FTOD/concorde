@@ -23,9 +23,10 @@ import uuid
 from pathlib import Path
 
 from ..kernel.errors import from_exception, link
-from ..spec.repository import SpecError, digest
-from ..spec.typed_data import TypedDataError, decode
-from ..coordination.tasks.store import MERGE_WAIT
+from ..kernel.locking import MERGE_WAIT
+from ..kernel.refusal import KernelError
+from ..kernel.schema import decode, digest
+from ..spec.repository import SpecError
 from .shapes import SEVERITIES, TIERS
 from .store import (
     CLOSED,
@@ -111,7 +112,7 @@ def guarded(action, *arguments, **keywords):
         return action(*arguments, **keywords)
     except Refusal:
         raise
-    except TypedDataError as error:
+    except KernelError as error:
         where = f"field {error.field}: " if error.field else ""
         raise Refusal("invalid_issue", f"{where}{error}", REFUSED, error) from error
     except SpecError as error:
@@ -277,7 +278,7 @@ def load_report(path: Path) -> dict:
         ) from error
     try:
         report = decode(text)
-    except TypedDataError as error:
+    except KernelError as error:
         raise Refusal(
             "invalid_issue",
             f"report file {path} is not valid JSON: {error}",
@@ -290,7 +291,7 @@ def checked_report(report, label: str) -> dict:
     """``report`` validated as a report; ``label`` names it in every refusal."""
     try:
         validate_report(report)
-    except TypedDataError as error:
+    except KernelError as error:
         where = f", field {error.field.lstrip('/')}" if error.field else ""
         raise Refusal(
             "invalid_issue", f"{label}{where}: {error}", cause=error

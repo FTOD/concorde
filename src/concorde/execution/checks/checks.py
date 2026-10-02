@@ -19,7 +19,7 @@ from pathlib import Path
 from ...kernel.errors import evidence, link
 from ...spec.repository import SpecRepository
 from ...spec.repository_base import SpecError, bound_by
-from ...spec.typed_data import register
+from ...kernel.schema import register
 from ...kernel.tracing import layout
 from ...kernel.tracing.node import Node
 from .check_executor import CHECK_POLICY, CheckSandboxError, execute_check

@@ -513,6 +513,11 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         return serve(words[1:])
     if words and words[0] == "trace":
+        # Tracing reads only the trace roots the parts register when their code loads: Tasks'
+        # current tasks and history, Execution's unbound runs and lobby. Until the parts register
+        # with Distribution, loading their commands is what registers them.
+        from ..coordination.tasks import cli as _tasks  # noqa: F401
+        from ..execution import runner as _runner  # noqa: F401
         from ..kernel.tracing.command import main as trace_main
 
         return trace_main(words[1:])

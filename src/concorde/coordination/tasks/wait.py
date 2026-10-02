@@ -175,7 +175,7 @@ def wait_rebound(
 def locate_run(here: Path, run_id: str) -> tuple[Path, Path]:
     """The folder of ``run_id`` and the ``.concorde`` whose ``locks/`` holds its run lock."""
     try:
-        return reader.locate(run_id, reader.roots(here))
+        return reader.locate(run_id, reader.concorde_directories(here))
     except reader.ReadError as error:
         raise TaskError("unknown_run", str(error)) from error
 

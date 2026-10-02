@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 
 from ..kernel import errors
 from ..execution.runs import load_result, run_state
-from ..spec.schema import validate
+from ..kernel.schema import validate
 from . import store
 from .step import (
     NAME,

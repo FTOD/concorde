@@ -1,9 +1,11 @@
-"""Where Tracing keeps every task, trace node and lock, relative to a ``.concorde`` directory.
+"""Where Tracing keeps trace nodes and locks, relative to a ``.concorde`` directory.
 
-The layout is Tracing's (``specs/concorde/tracing/contracts.md#layout``): one folder per current
-task under ``tasks/``, the closed tasks under ``history/``, the unbound runs under ``unbound/``, the
-bound runs that have not entered their workspace under ``lobby/`` and every lock under ``locks/``. Producers ask here for the folders and lock files they need and never
-spell a path of the layout themselves; a folder a parent hands its child is only ever joined below.
+The layout is Tracing's (``specs/concorde/kernel/tracing/contracts.md#layout``): every lock under
+``locks/``, the Tracing configuration ``tracing.json``, and below each node the folders its
+children lie in. The trace roots, the folders the top nodes lie in, are the parts' own and
+registered with Tracing (``roots``). Producers ask here for the folders and lock files they need
+and never spell a path of the layout themselves; a folder a parent hands its child is only ever
+joined below.
 """
 
 from __future__ import annotations
@@ -14,20 +16,12 @@ import subprocess
 from pathlib import Path
 
 CONCORDE = ".concorde"
-TASKS = "tasks"
-HISTORY = "history"
-UNBOUND = "unbound"
-LOBBY = "lobby"
 LOCKS = "locks"
 CONFIGURATION = "tracing.json"
 # The file names of a node's own record and of the records that stay next to it.
 TRACE = "trace.json"
 PROGRESS = "status.json"
 RESULT = "result.json"
-# Every folder Git must ignore, relative to the project root.
-IGNORED = tuple(
-    f"{CONCORDE}/{name}/" for name in (TASKS, HISTORY, UNBOUND, LOBBY, LOCKS)
-)
 # The kinds of lock and the folder of ``locks/`` their files lie in; None: directly in it.
 LOCK_KINDS = {
     "merge": None,
@@ -64,39 +58,8 @@ def primary_worktree(here: Path) -> Path | None:
     return Path(os.path.realpath(common.stdout.strip())).parent
 
 
-def tasks_folder(concorde: Path) -> Path:
-    return Path(concorde) / TASKS
-
-
-def task_folder(concorde: Path, task: str) -> Path:
-    return tasks_folder(concorde) / task
-
-
-def history_folder(concorde: Path) -> Path:
-    return Path(concorde) / HISTORY
-
-
-def unbound_folder(concorde: Path) -> Path:
-    return Path(concorde) / UNBOUND
-
-
-def lobby_folder(concorde: Path) -> Path:
-    return Path(concorde) / LOBBY
-
-
-def lobby_run_folder(concorde: Path, run_id: str) -> Path:
-    """Where a bound run's node lies until it holds its workspace's lock, and stays when it never
-    does."""
-    return lobby_folder(concorde) / run_id
-
-
 def locks_folder(concorde: Path) -> Path:
     return Path(concorde) / LOCKS
-
-
-def workspace_folder(task: Path) -> Path:
-    """The workspace folder a task's binding names, inside the task's folder."""
-    return Path(task) / "workspace"
 
 
 def runs_folder(workspace: Path) -> Path:
@@ -105,10 +68,6 @@ def runs_folder(workspace: Path) -> Path:
 
 def run_folder(workspace: Path, run_id: str) -> Path:
     return runs_folder(workspace) / run_id
-
-
-def unbound_run_folder(concorde: Path, run_id: str) -> Path:
-    return unbound_folder(concorde) / run_id
 
 
 def workflow_folder(workspace: Path) -> Path:
@@ -154,25 +113,6 @@ def lock_file(concorde: Path, kind: str, name: str | None = None) -> Path:
     return base / folder / f"{name}.lock"
 
 
-def history_key(concorde: Path, task: str, taken=None) -> str:
-    """The history key a closing task gets: its name, or ``<task>.<n>`` from 2 when taken.
-
-    A key is taken when the history holds a folder of that name or ``taken(key)`` says so, as
-    for a key whose decision log is already committed.
-    """
-    history = history_folder(concorde)
-
-    def used(key: str) -> bool:
-        return (history / key).exists() or bool(taken and taken(key))
-
-    if not used(task):
-        return task
-    number = 2
-    while used(f"{task}.{number}"):
-        number += 1
-    return f"{task}.{number}"
-
-
 def relative(folder: Path, path: Path) -> str:
     """``path`` relative to ``folder``, which must contain it, in POSIX spelling."""
     return Path(os.path.realpath(path)).relative_to(os.path.realpath(folder)).as_posix()
@@ -181,23 +121,14 @@ def relative(folder: Path, path: Path) -> str:
 __all__ = [
     "CONCORDE",
     "CONFIGURATION",
-    "HISTORY",
-    "IGNORED",
-    "LOBBY",
     "LOCKS",
     "LOCK_KINDS",
     "PROGRESS",
     "RESULT",
-    "TASKS",
     "TRACE",
-    "UNBOUND",
     "check_folder",
     "checks_folder",
     "concorde_of",
-    "history_folder",
-    "history_key",
-    "lobby_folder",
-    "lobby_run_folder",
     "lock_file",
     "locks_folder",
     "primary_worktree",
@@ -207,11 +138,6 @@ __all__ = [
     "runs_folder",
     "safe",
     "step_folder",
-    "task_folder",
-    "tasks_folder",
-    "unbound_folder",
-    "unbound_run_folder",
     "worker_folder",
     "workflow_folder",
-    "workspace_folder",
 ]

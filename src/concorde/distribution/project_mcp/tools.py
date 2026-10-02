@@ -33,6 +33,7 @@ from argparse import Namespace
 from pathlib import Path
 
 from ...kernel import errors
+from ...kernel.refusal import KernelError
 from ...issues import command as issues
 from ...coordination.tasks import cli as task_cli
 from ...coordination.tasks import merge, store, wait
@@ -460,7 +461,7 @@ class Project:
         tool = "trace_show"
         try:
             target, concorde = reader.locate(
-                arguments["node"], reader.roots(self.primary)
+                arguments["node"], reader.concorde_directories(self.primary)
             )
             return reader.view(target, concorde, depth=arguments.get("depth"))
         except reader.ReadError as error:
@@ -477,7 +478,9 @@ class Project:
     def run_result(self, arguments: dict):
         run = arguments["run"]
         try:
-            folder, concorde = reader.locate(run, reader.roots(self.primary))
+            folder, concorde = reader.locate(
+                run, reader.concorde_directories(self.primary)
+            )
         except reader.ReadError as error:
             raise own("run_result", "unknown_run", str(error)) from None
         running = locks.held(layout.lock_file(concorde, "run", run))
@@ -501,7 +504,7 @@ class Project:
     def workflow_report(self, arguments: dict):
         task = arguments["task"]
         _, folder = store.load_any(self.primary, task)
-        reports = layout.workflow_folder(layout.workspace_folder(folder)) / "reports"
+        reports = layout.workflow_folder(store.workspace_folder(folder)) / "reports"
         numbers = sorted(
             int(path.stem) for path in reports.glob("*.json") if path.stem.isdigit()
         )
@@ -621,12 +624,12 @@ class Project:
     def _reporter(self) -> tuple[Path, str, str | None]:
         """The session's worktree, whom its Issue writes are recorded as and its task: a bound
         task worktree's session is its task's task session, any other the main agent."""
-        from ...execution import binding as binding_file
+        from ...kernel import binding as binding_file
 
         try:
             root = binding_file.toplevel(self.where)
             bound = binding_file.load(root)
-        except binding_file.BindingError:
+        except KernelError:
             return self.primary, "main-agent", None
         if bound is None or root == self.primary:
             return root, "main-agent", None
@@ -849,13 +852,13 @@ class Project:
         refused with its own link, unchanged; an output that is no JSON object with
         ``step_failed``.
         """
-        from ...execution import binding as binding_file
+        from ...kernel import binding as binding_file
 
         tool = "workflow_step"
         try:
             root = binding_file.toplevel(self.where)
             bound = binding_file.load(root)
-        except binding_file.BindingError as error:
+        except KernelError as error:
             raise own(
                 tool,
                 "unbound_worktree",

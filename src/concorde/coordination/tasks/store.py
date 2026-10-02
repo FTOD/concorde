@@ -29,22 +29,16 @@ import re
 import subprocess
 import tempfile
 import time
-from contextlib import ExitStack, contextmanager
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 
-from ...method.delivery.commits import delivery_commits, delivery_mismatches
-from ...execution import binding as workspace_binding
-from ...execution.runs import (
-    RunError,
-    Store,
-    lock_holder,
-    waiting_runs,
-    workspace_lock,
-    workspace_runs,
-)
-from ...spec.typed_data import register
-from ...kernel.tracing import layout, locks, retention
+from ...execution.runs import Store, waiting_runs, workspace_runs
+from ...kernel import binding as workspace_binding
+from ...kernel import delivery, locking
+from ...kernel.refusal import KernelError
+from ...kernel.schema import register
+from ...kernel.tracing import layout, locks, retention, roots
 from ...kernel.tracing import node as trace
 from ...kernel.tracing.node import Node, concorde_commit, protocol_version
 
@@ -54,8 +48,41 @@ RECORD = "task.json"
 DECISIONS = "decisions.md"
 # Where the decision logs of ended tasks are committed on the primary branch, by history key.
 DECISION_LOGS = ".concorde/decisions"
+# The trace roots Tasks keeps, relative to the primary worktree's ``.concorde``: each current
+# task's folder, and the history, to which closing a task moves its folder whole and where nothing
+# changes again but what retention removes, its conversation records first.
+TASKS = "tasks"
+HISTORY = "history"
+# A task's workspace folder, which its binding names, inside the task's folder.
+WORKSPACE = "workspace"
+TRACE_ROOTS = (
+    roots.TraceRoot(
+        name="current tasks",
+        folder=TASKS,
+        place="primary",
+        kind="task",
+        state="current",
+        listed="always",
+    ),
+    roots.TraceRoot(
+        name="history",
+        folder=HISTORY,
+        place="primary",
+        kind="task",
+        state="closed",
+        listed="history",
+        period="history_days",
+        conversation_period="conversation_days",
+        # The transcripts of its task sessions and worker runs, and the folder Claude Code keeps
+        # beside a session's transcript.
+        conversation_files=("transcript.jsonl",),
+        conversation_folders=("transcript",),
+    ),
+)
+for _root in TRACE_ROOTS:
+    roots.register(_root)
 _TEXT = {"type": "string", "minLength": 1}
-# An object of any fields, such as an error link: Spec typed data admits unknown fields only
+# An object of any fields, such as an error link: a registered schema admits unknown fields only
 # through a schema-valued ``additionalProperties``.
 _OBJECT = {"type": "object", "additionalProperties": {}}
 # contract.tasks.task-trace, version 1
@@ -140,7 +167,7 @@ ATTEMPTS = 3
 # Where task worktrees go by default, relative to the primary worktree; Git must ignore it.
 WORKTREES = ".claude/worktrees"
 # How long open, close and merge wait for the merge lock by default, and how often they retry.
-MERGE_WAIT = 300.0
+MERGE_WAIT = locking.MERGE_WAIT
 LOCK_POLL = 0.2
 
 
@@ -203,16 +230,25 @@ def concorde(primary: Path) -> Path:
 
 
 def tasks_directory(primary: Path) -> Path:
-    return layout.tasks_folder(concorde(primary))
+    return concorde(primary) / TASKS
 
 
 def task_folder(primary: Path, task_id: str) -> Path:
     """The folder of a current task."""
-    return layout.task_folder(concorde(primary), task_id)
+    return tasks_directory(primary) / task_id
+
+
+def history_directory(primary: Path) -> Path:
+    return concorde(primary) / HISTORY
 
 
 def history_folder(primary: Path, key: str) -> Path:
-    return layout.history_folder(concorde(primary)) / key
+    return history_directory(primary) / key
+
+
+def workspace_folder(folder: Path) -> Path:
+    """The workspace folder a task's binding names, inside the task's folder."""
+    return Path(folder) / WORKSPACE
 
 
 def found_folder(primary: Path, task_id: str) -> Path | None:
@@ -221,7 +257,7 @@ def found_folder(primary: Path, task_id: str) -> Path | None:
     current = task_folder(primary, task_id)
     if (current / RECORD).is_file():
         return current
-    history = layout.history_folder(concorde(primary))
+    history = history_directory(primary)
     if HISTORY_KEY.match(task_id or "") and (history / task_id / RECORD).is_file():
         if "." in task_id or not (history / f"{task_id}.2").exists():
             return history / task_id
@@ -270,14 +306,24 @@ def history_key(primary: Path, task_id: str) -> str:
         path = committed_log(key)
         return (primary / path).exists() or _in_head(primary, path)
 
-    return layout.history_key(concorde(primary), task_id, taken)
+    history = history_directory(primary)
+
+    def used(key: str) -> bool:
+        return (history / key).exists() or taken(key)
+
+    if not used(task_id):
+        return task_id
+    number = 2
+    while used(f"{task_id}.{number}"):
+        number += 1
+    return f"{task_id}.{number}"
 
 
 def workspace_store(primary: Path, task_id: str, folder: Path | None = None) -> Store:
     """The run store of a task's workspace: its folder's ``workspace/``, locks under the primary
     worktree's ``.concorde``."""
     folder = folder or task_folder(primary, task_id)
-    return Store(concorde(primary), layout.workspace_folder(folder))
+    return Store(concorde(primary), workspace_folder(folder))
 
 
 def task_lock_path(primary: Path, task_id: str) -> Path:
@@ -431,7 +477,7 @@ def task_locked(primary: Path, task_id: str):
 
 
 def merge_lock_path(primary: Path) -> Path:
-    return layout.lock_file(concorde(primary), "merge")
+    return locking.merge_lock_path(concorde(primary))
 
 
 def attempt_lock_path(primary: Path, task_id: str) -> Path:
@@ -450,32 +496,32 @@ def _holder(path: Path) -> str:
 
 @contextmanager
 def merge_lock(primary: Path, command: str, task_id: str, wait: float = MERGE_WAIT):
-    """Hold the primary worktree's merge lock; yield the seconds spent waiting for it.
+    """Hold the primary worktree's merge lock, the Kernel's; yield the seconds spent waiting.
 
-    The lock is a ``flock`` of this process, so the kernel releases it however the process
-    ends. While holding it, the process names itself in the lock file for waiters that give up.
+    The lock is a ``flock`` of this process, so the operating system releases it however the
+    process ends. While holding it, the process names itself in the lock file for waiters that give
+    up.
     """
-    path = merge_lock_path(primary)
     try:
-        with locks.hold(
-            path,
+        with locking.merge_lock(
+            concorde(primary),
             f"`concorde task {command}` of task {task_id}",
             wait=wait,
             task=task_id,
         ) as waited:
             yield waited
-    except locks.LockBusy as busy:
+    except locking.LockRefused as busy:
         raise TaskError(
             "merge_busy",
             f"`concorde task {command}` of task {task_id} waited {wait:g} s for "
-            f"the merge lock {path} of the primary worktree {primary}, which "
+            f"the merge lock {busy.path} of the primary worktree {primary}, which "
             f"is still held by {busy.holder}; one merge, open or close runs at a time",
         ) from None
 
 
 def merge_lock_held(primary: Path) -> bool:
     """Whether a live process holds the merge lock now; never called while holding it."""
-    return locks.held(merge_lock_path(primary))
+    return locking.merge_lock_holder(concorde(primary)) is not None
 
 
 @contextmanager
@@ -490,19 +536,16 @@ def task_workspace_locked(
     waiting for a run of this task, such as a delivery still finishing, never holds up the merges
     of other tasks. The wait happens inside this process: a caller asks once and never polls.
     """
-    started = time.monotonic()
-    stack = ExitStack()
     try:
-        stack.enter_context(
-            workspace_lock(
-                workspace_store(primary, task_id),
-                task_id,
-                f"`concorde task {command}` of task {task_id}",
-                wait=wait,
-                task=task_id,
-            )
-        )
-    except RunError as error:
+        with locking.workspace_lock(
+            concorde(primary),
+            task_id,
+            f"`concorde task {command}` of task {task_id}",
+            wait=wait,
+            task=task_id,
+        ) as waited:
+            yield waited
+    except locking.LockRefused as error:
         raise TaskError(
             "workspace_busy",
             f"{error}; `concorde task {command}` waits up to {wait:g} s for the workspace "
@@ -510,8 +553,6 @@ def task_workspace_locked(
             "or worktree while the task is merged or closed, and `concorde task show "
             f"{task_id}` names the run holding it",
         ) from None
-    with stack:
-        yield round(time.monotonic() - started, 3)
 
 
 def _write(path: Path, data: bytes) -> None:
@@ -567,7 +608,7 @@ def _records(primary: Path, *, history: bool = False) -> list[dict]:
     folder-name order."""
     parents = [tasks_directory(primary)]
     if history:
-        parents.append(layout.history_folder(concorde(primary)))
+        parents.append(history_directory(primary))
     records = []
     for parent in parents:
         for path in sorted(parent.glob(f"*/{RECORD}")) if parent.is_dir() else []:
@@ -1306,7 +1347,7 @@ def _open_task(
             f"{created.returncode}: {created.stderr.strip()}",
         )
     folder = task_folder(primary, task_id)
-    workspace = layout.workspace_folder(folder)
+    workspace = workspace_folder(folder)
     try:
         workspace.mkdir(parents=True)
         workspace_binding.write(
@@ -1323,7 +1364,7 @@ def _open_task(
                 "concorde": os.path.realpath(concorde(primary)),
             },
         )
-    except (OSError, ValueError) as error:
+    except (OSError, KernelError) as error:
         shutil.rmtree(folder, ignore_errors=True)
         raise TaskError(
             "binding_failed",
@@ -1393,21 +1434,18 @@ def _prune(primary: Path) -> None:
 
 
 def deliveries(primary: Path, record: dict) -> list[dict]:
-    """The delivery commits of the task's workspace on its branch, oldest first, as Delivery's
-    reader recognises them by their subject; ``verified`` adds whether each has exactly one
-    parent."""
+    """The delivery commits of the task's workspace on its branch since its base, oldest first,
+    as the Kernel's convention recognizes them by their subject, each with its ``mismatches``:
+    how it fails to verify, empty when it has exactly one parent."""
     head = _git(
         primary, "rev-parse", "--verify", "--quiet", record["branch"], check=False
     ).stdout.strip()
     if not head:
         return []
-    return delivery_commits(primary, record["base_commit"], head, record["id"])
-
-
-def verified(primary: Path, delivery: dict) -> dict:
-    """The delivery commit with ``mismatches``: how it fails Delivery's own check, empty when
-    it verifies."""
-    return {**delivery, "mismatches": delivery_mismatches(primary, delivery)}
+    try:
+        return delivery.deliveries(primary, head, record["base_commit"], record["id"])
+    except KernelError as error:
+        raise TaskError(error.code, str(error)) from None
 
 
 def derived_state(primary: Path, record: dict, runs: list[dict] | None = None) -> str:
@@ -1425,7 +1463,7 @@ def derived_state(primary: Path, record: dict, runs: list[dict] | None = None) -
         delivered
         and delivered[-1]["commit"] == head
         and not _dirty(worktree)
-        and not delivery_mismatches(primary, delivered[-1])
+        and not delivered[-1]["mismatches"]
     ):
         return "delivered"
     if runs is None:
@@ -1468,10 +1506,12 @@ def show_task(primary: Path, task_id: str) -> dict:
     return {
         "record": record,
         "runs": runs,
-        "deliveries": [verified(primary, item) for item in deliveries(primary, record)],
+        "deliveries": deliveries(primary, record),
         "sessions": sessions(primary, record["id"], folder),
         "escalations": escalations(primary, record["id"], folder),
-        "busy": lock_holder(store, record["id"]) if current else None,
+        "busy": locking.workspace_lock_holder(store.concorde, record["id"])
+        if current
+        else None,
         "decision_log": (folder / DECISIONS).as_posix(),
         "folder": folder.as_posix(),
     }
@@ -1582,7 +1622,7 @@ def mergeable(primary: Path, task_id: str) -> tuple[dict, str]:
             f"{record['branch']} is at {head}, not at its last delivery commit "
             f"{delivered[-1]['commit']}; deliver again, or close it completed or failed",
         )
-    mismatches = delivery_mismatches(primary, delivered[-1])
+    mismatches = delivered[-1]["mismatches"]
     if mismatches:
         raise TaskError(
             "delivery_unverified",
@@ -1940,7 +1980,7 @@ def _move_to_history(primary: Path, task_id: str, key: str, again: str) -> None:
         # The runtime configuration of its task sessions is no trace.
         shutil.rmtree(target / "runtime", ignore_errors=True)
     for path in (
-        layout.lock_file(base, "workspace", task_id),
+        locking.workspace_lock_path(base, task_id),
         layout.lock_file(base, "workflow", task_id),
     ):
         path.unlink(missing_ok=True)
@@ -2173,5 +2213,4 @@ __all__ = [
     "task_workspace_locked",
     "unfinished_merge",
     "unwritten_decision_log",
-    "verified",
 ]

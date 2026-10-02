@@ -12,8 +12,8 @@ import json
 import subprocess
 from pathlib import Path
 
-from concorde.method.delivery.commits import commit_message
-from concorde.execution import binding
+from concorde.kernel import binding
+from concorde.kernel.delivery import message as delivery_message
 
 FIXED = "def add(a, b):\n    return a + b\n"
 IDENTITY = ("-c", "user.name=t", "-c", "user.email=t@t")
@@ -46,7 +46,7 @@ def deliver(
     head = git(worktree, "rev-parse", "HEAD")
     (worktree / path).write_text(text)
     git(worktree, "add", "-A")
-    message = commit_message(bound)
+    message = delivery_message(bound["workspace"], bound["goal"])
     if verifies:
         git(
             worktree,

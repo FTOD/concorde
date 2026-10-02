@@ -30,12 +30,20 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import NAMESPACE_URL, uuid5
 
-from ..kernel.errors import ERROR_SCHEMA
-from ..spec.changes import apply_files
-from ..spec.schema import ContractError, validate
-from ..spec.typed_data import checked_path
 from ..coordination.tasks import store as tasks
-from ..kernel.tracing import locks
+from ..kernel import locking
+from ..kernel.errors import ERROR_SCHEMA
+from ..kernel.files import apply_files
+from ..kernel.refusal import KernelError
+from ..kernel.schema import (
+    canonical,
+    check_schema,
+    checked_path,
+    decode,
+    digest,
+    validate,
+)
+from ..kernel.tracing import layout
 from .shapes import (
     ISSUE_ID,
     PROVENANCE,
@@ -47,8 +55,7 @@ from .shapes import (
     TIERED_VERSION,
     TIERS,
 )
-from ..spec.repository import SpecError, digest
-from ..spec.typed_data import TypedDataError, canonical, check_schema, decode
+from ..spec.repository import SpecError
 
 
 class IssueError(SpecError):
@@ -175,10 +182,10 @@ def _check_report(report: dict) -> None:
     if "error_chain" in report:
         try:
             validate(report["error_chain"], ERROR_SCHEMA)
-        except ContractError as error:
+        except KernelError as error:
             raise IssueError(
                 f"field error_chain: not an error link of the Framework's error contract: "
-                f"{error}",
+                f"{error.field or '/'}: {error}",
                 "invalid_issue",
             ) from error
     if ("issue_id" in report) != ("expected_revision" in report):
@@ -270,7 +277,7 @@ def parse(text: str, identifier: str) -> dict:
     try:
         record = decode(text[len(prefix) : -5])
         validate_record(record)
-    except TypedDataError as error:
+    except KernelError as error:
         where = f" field {error.field}" if error.field else ""
         raise IssueError(
             f"Issue {identifier}{where}: {error}", "invalid_issue"
@@ -716,14 +723,15 @@ def _writing(root: Path, what: str, wait: float, locked: bool):
         _refuse_unfinished_merge(primary, what)
         yield _recover(root)
         return
-    path = tasks.merge_lock_path(primary)
     try:
-        with locks.hold(path, f"an Issue write ({what})", wait=wait):
+        with locking.merge_lock(
+            layout.concorde_of(primary), f"an Issue write ({what})", wait=wait
+        ):
             _refuse_unfinished_merge(primary, what)
             yield _recover(root)
-    except locks.LockBusy as busy:
+    except locking.LockRefused as busy:
         raise IssueError(
-            f"{what} waited {wait:g} s for the merge lock {path} of the primary worktree "
+            f"{what} waited {wait:g} s for the merge lock {busy.path} of the primary worktree "
             f"{primary}, which is still held by {busy.holder}, and wrote nothing",
             "merge_busy",
         ) from None
@@ -866,12 +874,14 @@ def _publish_texts(root: Path, records: list[tuple[str, str, str, str | None]]) 
     ]
     try:
         apply_files(root, changes, {change["path"] for change in changes})
-    except SpecError as error:
+    except KernelError as error:
+        # The file transaction's refusal, as an Issue error naming its file.
+        refusal = IssueError(str(error), error.code, path=error.field or None)
         # Another program created or changed the record after this write read it.
         if error.code != "stale_proposal":
-            raise
+            raise refusal from error
         identifier, path, _, before = next(
-            (item for item in records if item[1] == error.path), records[0]
+            (item for item in records if item[1] == error.field), records[0]
         )
         happened = (
             "was created by another program while this write was creating it"
@@ -882,7 +892,7 @@ def _publish_texts(root: Path, records: list[tuple[str, str, str, str | None]]) 
             f"Issue {identifier} {happened}, so nothing was written",
             "stale_issue",
             path=path,
-            causes=(error,),
+            causes=(refusal,),
         ) from error
 
 
@@ -935,7 +945,7 @@ def report_issue(
     report: dict,
     source: dict,
     *,
-    wait: float = tasks.MERGE_WAIT,
+    wait: float = locking.MERGE_WAIT,
     locked: bool = False,
 ) -> dict:
     """Commit before replying. Identity is idempotent per trusted invocation and report key.
@@ -1067,7 +1077,7 @@ def dispose_issue(
     duplicate_of: str | None = None,
     duplicate_revision: str | None = None,
     created_at: str | None = None,
-    wait: float = tasks.MERGE_WAIT,
+    wait: float = locking.MERGE_WAIT,
     locked: bool = False,
 ) -> str:
     """Append the caller's disposition at exactly ``expected_revision``.
@@ -1142,7 +1152,7 @@ def dispose_issue(
 
 
 def recover_issues(
-    root: Path, *, wait: float = tasks.MERGE_WAIT, locked: bool = False
+    root: Path, *, wait: float = locking.MERGE_WAIT, locked: bool = False
 ) -> dict:
     """Under the merge lock, put back what Issue writes published but did not commit, as every
     write does before it acts, and say what was done and which changes were left as no Issue
@@ -1154,7 +1164,7 @@ def recover_issues(
 
 
 def archive_issues(
-    root: Path, *, wait: float = tasks.MERGE_WAIT, locked: bool = False
+    root: Path, *, wait: float = locking.MERGE_WAIT, locked: bool = False
 ) -> dict:
     """Under the merge lock, move every committed record whose folder does not match its status
     into the folder its status names, unchanged, in one commit, and say what was moved and which

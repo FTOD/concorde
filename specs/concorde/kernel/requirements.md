@@ -1,7 +1,8 @@
 # Kernel requirements
 
 The precise obligations of the [Kernel](module.md) and of its library. The formats they refer to are
-the [contracts](contracts.md); Tracing states its own.
+the [contracts](contracts.md), and the [scenarios](scenarios.md) show them at work; Tracing states its
+own.
 
 ## Independence
 
@@ -68,6 +69,16 @@ overwritten.
 ### req.kernel.transaction-unrestored-named — A refused restoration is named
 
 A file transaction whose restoration the operating system refuses SHALL fail with `system_error`, naming every file not restored, with the first failure as its first cause.
+
+## Locks
+
+### req.kernel.busy-lock-named — A busy lock is refused naming its holder
+
+A taker of the [workspace lock](../glossary.json#concept.workspace-lock) or the [merge lock](../glossary.json#concept.merge-lock) that gives up waiting SHALL be refused with `workspace_busy` or `merge_busy`, naming the holder its holder line names.
+
+A taker that waited for a workspace lock whose holder removed its file meanwhile, and that asked not
+to take a new file, is refused with `workspace_retired` instead, so that it never holds the lock of a
+workspace that was retired while it waited.
 
 ## Refusals
 

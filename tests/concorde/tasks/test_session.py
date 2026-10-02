@@ -15,8 +15,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 from concorde.spec.verification import verifies
+from concorde.distribution.install import TRACES
 from concorde.coordination.tasks import cli, session, store
-from concorde.kernel.tracing import layout
 from concorde.kernel.tracing import node as trace
 from tests.concorde.support.operation_project import OperationProject, commit
 from tests.concorde.tasks.deliveries import deliver
@@ -367,7 +367,7 @@ class EndOfTaskTests(unittest.TestCase):
         self.root = self.project.root
         gitignore = self.root / ".gitignore"
         gitignore.write_text(
-            gitignore.read_text() + "".join(f"{path}\n" for path in layout.IGNORED)
+            gitignore.read_text() + "".join(f"{path}\n" for path in TRACES)
         )
         subprocess.run(["git", "config", "user.name", "t"], cwd=self.root, check=True)
         subprocess.run(

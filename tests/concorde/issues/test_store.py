@@ -25,7 +25,7 @@ from concorde.issues.store import (
     resolve_report,
 )
 from concorde.spec.repository import SpecError
-from concorde.spec.typed_data import TypedDataError
+from concorde.kernel.refusal import KernelError
 from concorde.spec.verification import verifies
 from tests.concorde.support.issue_reports import git, git_project, report, source
 
@@ -443,7 +443,7 @@ class IssueStoreTests(unittest.TestCase):
         identifier = report_issue(self.root, report(), source())["issue_id"]
         _, revision = read_issue(self.root, identifier)
         before = self.issue_files()
-        with self.assertRaises(TypedDataError) as raised:
+        with self.assertRaises(KernelError) as raised:
             self.close(identifier, revision, evidence=[])
         self.assertEqual("invalid_field", raised.exception.code)
         self.assertEqual("/dispositions/0/evidence", raised.exception.field)
@@ -471,7 +471,7 @@ class IssueStoreTests(unittest.TestCase):
         ):
             with (
                 self.subTest(field=field),
-                self.assertRaises(TypedDataError) as raised,
+                self.assertRaises(KernelError) as raised,
             ):
                 report_issue(self.root, report(**changes), source())
             self.assertEqual(
@@ -501,7 +501,7 @@ class IssueStoreTests(unittest.TestCase):
         for path in ("../outside", "/etc/passwd", "specs/./module.md", "a\\b"):
             with (
                 self.subTest(path=path),
-                self.assertRaises(TypedDataError) as raised,
+                self.assertRaises(KernelError) as raised,
             ):
                 report_issue(
                     self.root,
@@ -520,7 +520,7 @@ class IssueStoreTests(unittest.TestCase):
         outside.mkdir()
         (self.root / ".concorde").mkdir()
         (self.root / ".concorde/issues").symlink_to(outside, target_is_directory=True)
-        with self.assertRaisesRegex(TypedDataError, "symlink") as raised:
+        with self.assertRaisesRegex(KernelError, "symbolic link") as raised:
             report_issue(self.root, report(), source())
         self.assertEqual("invalid_field", raised.exception.code)
         self.assertEqual([], list(outside.iterdir()))
@@ -717,10 +717,10 @@ class IssueStoreTests(unittest.TestCase):
     @verifies("scenario.issues.store-tier")
     def test_a_report_without_a_valid_tier_is_refused(self):
         untiered = {key: value for key, value in report().items() if key != "tier"}
-        with self.assertRaises(TypedDataError) as raised:
+        with self.assertRaises(KernelError) as raised:
             report_issue(self.root, untiered, source())
         self.assertEqual("/tier", raised.exception.field)
-        with self.assertRaises(TypedDataError) as raised:
+        with self.assertRaises(KernelError) as raised:
             report_issue(self.root, report(tier="blocking"), source())
         self.assertEqual("/tier", raised.exception.field)
         self.assertEqual({}, self.issue_files())
@@ -767,10 +767,10 @@ class IssueStoreTests(unittest.TestCase):
     @verifies("scenario.issues.store-severity")
     def test_a_report_without_a_valid_severity_is_refused(self):
         unrated = {key: value for key, value in report().items() if key != "severity"}
-        with self.assertRaises(TypedDataError) as raised:
+        with self.assertRaises(KernelError) as raised:
             report_issue(self.root, unrated, source())
         self.assertEqual("/severity", raised.exception.field)
-        with self.assertRaises(TypedDataError) as raised:
+        with self.assertRaises(KernelError) as raised:
             report_issue(self.root, report(severity="urgent"), source())
         self.assertEqual("/severity", raised.exception.field)
         self.assertEqual({}, self.issue_files())

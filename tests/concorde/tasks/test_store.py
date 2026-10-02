@@ -17,7 +17,7 @@ from unittest.mock import patch
 
 from concorde.kernel import errors
 from concorde.kernel.errors import ERROR_SCHEMA, codes
-from concorde.execution import binding
+from concorde.kernel import binding
 from concorde.execution.runs import workspace_lock
 from concorde.worker_harness import models
 from concorde.spec.schema import validate
