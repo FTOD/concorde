@@ -65,6 +65,19 @@ with locks.hold(layout.lock_file(concorde, "workspace", task), f"implement run {
 """
 
 
+# Claude Code answering as it does for a session it does not know, which every session these
+# tests record is. No test runs the developer's own `claude`, whose answers depend on its live
+# sessions and which its auto-update removes for a moment while it reinstalls it.
+NO_SESSIONS_CLAUDE = """\
+import sys
+if sys.argv[1] == "agents":
+    print("[]")
+    sys.exit(0)
+print(f"No job matching '{sys.argv[2]}'. Run 'claude agents' to list running sessions.")
+sys.exit(1)
+"""
+
+
 def snapshot(folder: Path) -> dict:
     """Every file below ``folder`` with its bytes."""
     return {
@@ -97,6 +110,21 @@ class TaskStoreTests(unittest.TestCase):
     def setUp(self):
         self.project = OperationProject(self)
         self.root = self.project.root
+        scratch = self.project.home / "claude-fake"
+        (scratch / "bin").mkdir(parents=True)
+        (scratch / "config").mkdir()
+        program = scratch / "bin/claude"
+        program.write_text(f"#!{sys.executable}\n{NO_SESSIONS_CLAUDE}")
+        program.chmod(0o755)
+        environ = patch.dict(
+            os.environ,
+            {
+                "PATH": f"{scratch / 'bin'}{os.pathsep}{os.environ['PATH']}",
+                "CLAUDE_CONFIG_DIR": str(scratch / "config"),
+            },
+        )
+        environ.start()
+        self.addCleanup(environ.stop)
 
     def command(self, *argv, cwd=None):
         output = io.StringIO()
@@ -602,9 +630,8 @@ class TaskStoreTests(unittest.TestCase):
         )
         self.assertEqual(before, snapshot(self.folder()))
         # The session is no real Claude Code session, so the close warns of its transcript.
-        self.assertEqual(
-            0, self.command("close", "t1", "--completed", "--note", "done")[0]
-        )
+        status, value = self.command("close", "t1", "--completed", "--note", "done")
+        self.assertEqual(0, status, value)
         self.assertEqual(
             (1, "task_closed"), self.refusal("report", "t1", "--text", "late")
         )

@@ -653,6 +653,11 @@ def _blank(match: re.Match) -> str:
     return " " * len(match.group(0))
 
 
+def _blank_wrapped(match: re.Match) -> str:
+    """``_blank`` for a match that may wrap: its line breaks are kept."""
+    return re.sub(r"[^\n]", " ", match.group(0))
+
+
 def prose_text(text: str) -> list[tuple[int, str]]:
     """Each prose line as a reader sees its words: code, links and anchors blanked out, headings
     left out. Blanking keeps every column, so a position found here is a position in the line.
@@ -662,9 +667,7 @@ def prose_text(text: str) -> list[tuple[int, str]]:
     """
     lines = walk_lines(text)
     # Links are blanked over the whole prose, since a link's text may wrap onto the next line.
-    block = LINK.sub(
-        lambda match: re.sub(r"[^\n]", " ", match.group(0)), _prose_block(lines)
-    ).split("\n")
+    block = LINK.sub(_blank_wrapped, _prose_block(lines)).split("\n")
     result = []
     for (number, kind, line), stripped in zip(lines, block):
         if kind != "prose" or HEADING.match(line):
@@ -683,8 +686,25 @@ def term_pattern(title: str) -> re.Pattern:
     return re.compile(rf"(?<![\w.-]){body}s?(?![\w-])", re.IGNORECASE)
 
 
+# What separates the words of a Module's title, which may wrap onto the next line.
+WRAP = r"\s+"
 # What may precede a word that starts a sentence, a list item, a quote or a table cell.
 SENTENCE_START = re.compile(r"(?:^|[.!?:|>]|^\s*(?:[-*+]|\d+[.)]))\s*$")
+
+
+def _paragraphs(lines: list[tuple[int, str]]) -> list[list[tuple[int, str]]]:
+    """The runs of adjacent non-blank lines among ``lines``, each one paragraph of prose."""
+    paragraphs: list[list[tuple[int, str]]] = []
+    previous = None
+    for number, line in lines:
+        if not line.strip():
+            previous = None
+            continue
+        if previous is None or number != previous + 1:
+            paragraphs.append([])
+        paragraphs[-1].append((number, line))
+        previous = number
+    return paragraphs
 
 
 def term_uses(
@@ -695,25 +715,35 @@ def term_uses(
     ``titles`` maps concept identities to titles. Where titles overlap the longest wins, so
     ``Task`` inside ``Task type`` is no use of ``Task``; a Module's own title, such as ``Tasks``,
     is never a use of a term. A one-word title does not count as the first word of a sentence,
-    list item, quote or table cell, where a capital letter says nothing about the word.
+    list item, quote or table cell, where a capital letter says nothing about the word. Titles
+    are matched over each paragraph, so a title whose words wrap onto the next line is still one
+    title and no shorter title's use; such a wrapped use itself is not reported.
     """
     ordered = sorted(titles.items(), key=lambda item: (-len(item[1]), item[0]))
     patterns = [(identity, term_pattern(title)) for identity, title in ordered]
     modules = [
-        re.compile(rf"(?<![\w.-]){re.escape(title)}(?![\w-])")
+        re.compile(rf"(?<![\w.-]){WRAP.join(map(re.escape, title.split()))}(?![\w-])")
         for title in sorted(module_titles, key=len, reverse=True)
+        if title.strip()
     ]
     found: dict[str, tuple[int, int, int]] = {}
-    for number, line in prose_text(text):
+    for paragraph in _paragraphs(prose_text(text)):
+        block = "\n".join(line for _, line in paragraph)
         for pattern in modules:
-            line = pattern.sub(_blank, line)
+            block = pattern.sub(_blank_wrapped, block)
         for identity, pattern in patterns:
             single = " " not in titles[identity]
-            for match in pattern.finditer(line):
-                if single and SENTENCE_START.search(line[: match.start()]):
+            for match in pattern.finditer(block):
+                start = block.rfind("\n", 0, match.start()) + 1
+                if "\n" in match.group(0) or (
+                    single and SENTENCE_START.search(block[start : match.start()])
+                ):
                     continue
-                found.setdefault(identity, (number, match.start(), match.end()))
-            line = pattern.sub(_blank, line)
+                row = paragraph[block.count("\n", 0, start)][0]
+                found.setdefault(
+                    identity, (row, match.start() - start, match.end() - start)
+                )
+            block = pattern.sub(_blank_wrapped, block)
     return found
 
 
