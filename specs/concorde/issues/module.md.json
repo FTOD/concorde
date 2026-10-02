@@ -81,6 +81,7 @@
       "meaning": "#realization.issues.tests",
       "entries": [
         "tests/concorde/issues/__init__.py",
+        "tests/concorde/issues/test_closed_folder.py",
         "tests/concorde/issues/test_command.py",
         "tests/concorde/issues/test_store.py",
         "tests/concorde/issues/test_store_check.py"

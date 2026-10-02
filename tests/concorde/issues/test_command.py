@@ -149,7 +149,14 @@ class IssueCommandTests(unittest.TestCase):
             source,
         )
         self.assertEqual(
-            (0, {"issue": record, "revision": revision}),
+            (
+                0,
+                {
+                    "issue": record,
+                    "revision": revision,
+                    "path": value["receipt"]["path"],
+                },
+            ),
             self.run_command("show", value["receipt"]["issue_id"]),
         )
 
@@ -399,9 +406,19 @@ class IssueCommandTests(unittest.TestCase):
         )
         self.assertEqual(0, status, closed)
         record, revision = read_issue(self.root, identifier)
+        closed_path = f".concorde/issues/closed/{identifier}.md"
         self.assertEqual(
-            {"issue_id": identifier, "status": "closed", "revision": revision}, closed
+            {
+                "issue_id": identifier,
+                "status": "closed",
+                "revision": revision,
+                "path": closed_path,
+            },
+            closed,
         )
+        # The close moved the record into closed/; show finds it there.
+        self.assertFalse((self.root / f".concorde/issues/{identifier}.md").exists())
+        self.assertEqual(closed_path, self.run_command("show", identifier)[1]["path"])
         disposition = record["dispositions"][0]
         self.assertEqual(
             ("resolved", "main-agent", ["commit abc123", "check.issues.store passed"]),
@@ -412,7 +429,11 @@ class IssueCommandTests(unittest.TestCase):
         )
         self.assertEqual(0, status, reopened)
         record, revision = read_issue(self.root, identifier)
-        self.assertEqual(("open", revision), (reopened["status"], reopened["revision"]))
+        self.assertEqual(
+            ("open", revision, f".concorde/issues/{identifier}.md"),
+            (reopened["status"], reopened["revision"], reopened["path"]),
+        )
+        self.assertFalse((self.root / closed_path).exists())
         self.assertEqual("reopened", record["dispositions"][-1]["reason"])
         self.assertEqual(1, len(record["reports"]))
 

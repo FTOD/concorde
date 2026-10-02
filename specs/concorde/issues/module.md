@@ -4,8 +4,9 @@
 
 Issues keeps one durable, project-wide record of each concrete problem found while working on a
 project, outliving the conversation, worker or task that found it: Issue records the primary
-worktree keeps under `.concorde/issues/`, the store that alone writes them and commits each write on
-the primary branch, dispositions closing or reopening one, and the bookkeeping command, which the
+worktree keeps under `.concorde/issues/`, the open ones there and the closed ones in its `closed/`
+folder, the store that alone writes them and commits each write on the primary branch, dispositions
+closing or reopening one, and the bookkeeping command, which the
 [project MCP server](../glossary.json#concept.project-mcp-server) also presents, that sessions
 record, close, reopen, list, show and check them with. Every report carries a **[tier](../glossary.json#concept.issue-tier)** saying who
 may handle the problem and a **[severity](../glossary.json#concept.issue-severity)** saying how much
@@ -21,8 +22,10 @@ A failure of the Issue system itself is never recorded as an Issue.
 
 <a id="concept.issue"></a><a id="concept.issue-report"></a>
 
-Each Issue is one file, `.concorde/issues/I-<32 hex digits>.md` of the primary worktree, holding its
-reports, dispositions and status. Its identity is unique in the project from the moment it is
+Each Issue is one file of the primary worktree, holding its reports, dispositions and status:
+`.concorde/issues/I-<32 hex digits>.md` while it is open and `.concorde/issues/closed/I-<32 hex
+digits>.md` once it is closed, so that the records seen directly in `.concorde/issues/` are the open
+Issues. Its identity is unique in the project from the moment it is
 reported, because it is derived from the reporting invocation and the reporter's key and every
 worktree writes the same store. Each report classifies the problem as a `bug`, a `gap` (an
 implementation/[Spec](../glossary.json#concept.spec) mismatch, a Spec conflict or a missing promise)
@@ -139,9 +142,10 @@ Issues are project-level: the primary worktree keeps them, like tasks, and every
 project, every session and every run reads and writes the same records. The store resolves the
 primary worktree from any worktree of the repository, reads the records there and writes only
 there. Each write holds the primary worktree's
-[merge lock](../glossary.json#concept.merge-lock), publishes the record and commits that one file on
-the primary branch, in a commit of its own whose trailer `Concorde-Issue` names the Issue, before it
-answers; other changes of the primary worktree, staged or not, stay as they were. So the records are
+[merge lock](../glossary.json#concept.merge-lock), publishes the record in the folder its status
+names and commits that one record on the primary branch, in a commit of its own whose trailer
+`Concorde-Issue` names the Issue, before it answers; a disposition that changes the status moves the
+record into the other folder in that same commit; other changes of the primary worktree, staged or not, stay as they were. So the records are
 versioned with the project and, once acknowledged, are committed; a write never lands between a
 task's merge commit and the checks that decide whether the merge stays, and while a merge is
 unfinished no write is made at all.
@@ -156,12 +160,15 @@ but not committed: no read shows it, and it is put back before any further write
 ### Recovering uncommitted records
 
 Every write, holding the merge lock and before it reads the record it changes, looks for what an
-earlier write published but did not commit: a record file of `.concorde/issues/` whose state,
-staged or not, differs from the last commit, and the temporary files of an interrupted
-[file transaction](../glossary.json#concept.file-transaction). A record file that holds a valid
-record of its Issue continuing the committed one, if any, with more reports or dispositions, is
-what a write leaves behind: it is put back to its committed version, or removed when no commit
-holds it, and the temporaries are removed. Nothing is committed in recovery, because a write that
+earlier write published but did not commit: a record file of `.concorde/issues/` or its `closed/`
+folder whose state, staged or not, differs from the last commit, and the temporary files of an
+interrupted [file transaction](../glossary.json#concept.file-transaction). A record file that holds
+a valid record of its Issue continuing the committed one, if any, with more reports or
+dispositions, is what a write leaves behind: it is put back to its committed version, or removed
+when no commit holds it, and the temporaries are removed. A write that moves a record between the
+folders publishes it in one before it removes it from the other, so a committed record whose file
+is gone while the other folder holds such a continuation is a move's leftover too: the record is
+restored where it was committed and the new file removed. Nothing is committed in recovery, because a write that
 gave no receipt recorded nothing: whoever made it was refused or never answered, and may repeat
 it. Any other change of a record, such as a deleted, edited or invalid record, was made by no
 write, so recovery leaves it as it is, and only a write of that very Issue is refused, with
@@ -173,15 +180,16 @@ back and which changes it left. The main agent runs it when such a record keeps 
 worktree from being clean, as before a task's merge, or after a refusal with `recovery_failed`
 once the cause the refusal names is fixed.
 
-A task branch holds the copy of `.concorde/issues/` of the commit it started from and never changes
-it: a task that finds, fixes or closes a problem changes the primary worktree's records directly,
+A task branch holds the copy of `.concorde/issues/`, both folders, of the commit it started from
+and never changes it: a task that finds, fixes or closes a problem changes the primary worktree's records directly,
 never its own copy, so a task branch brings no Issue change into its merge and Issue records never
 conflict in Git.
 
 ### Lifecycle
 
 An **Issue status** starts `open`. A **disposition**
-records a decision to close or reopen it, with a reason, note, evidence and actor. `resolved`,
+records a decision to close or reopen it, with a reason, note, evidence and actor, and moves the
+record into the folder of the new status in the same commit. `resolved`,
 `duplicate` and `not-actionable` are closing reasons, not extra statuses. The only statuses are
 `open` and `closed`:
 
@@ -212,6 +220,14 @@ propagate automatically. Reopening retains the identity and history; append a ne
 afterwards if the problem's description, tier, severity, classification or owner needs to change. A closed
 Issue cannot receive a new report or close again, and an open one cannot reopen. Rejected actions
 leave its record unchanged.
+
+A record lies in the folder of its status: `.concorde/issues/` while open, `.concorde/issues/closed/`
+once closed. A record that lies in the other folder is **misplaced**, such as a closed record
+committed before closed Issues had a folder of their own or one moved by hand. It is still read,
+listed, shown and written like any other, and a write leaves it in its place; `check` reports it,
+and `concorde issues archive` moves every misplaced record into its place, unchanged, in one commit
+under the merge lock. An Issue lives in exactly one place: one committed in both folders is refused
+by every read until someone removes the copy that is not its whole history.
 
 ### A repair
 
@@ -273,7 +289,7 @@ The bookkeeping command is the sessions' interface. In an installed project it i
 is `python3 scripts/concorde.py issues`, which routes to `python3 scripts/issues.py`. The project
 MCP server presents the same actions as the tools `issue_list`, `issue_show`, `issue_check`,
 `issue_report`, `issue_close` and `issue_reopen`, which answer and refuse exactly as the command
-does; `recover` is the command's alone. A session, the main agent or a [task session](../glossary.json#concept.task-session), uses
+does; `recover` and `archive` are the command's alone. A session, the main agent or a [task session](../glossary.json#concept.task-session), uses
 those tools because they record the calling session as reporter and actor, which the command cannot
 know; the command serves a task session's shell and the runs it starts as well. Whichever worktree a
 call starts from, it acts on the primary worktree's records.
@@ -317,24 +333,28 @@ A fixed Issue is closed by the merge of the task that resolves it, as [a repair]
 Close one by hand only for another reason, or when it was fixed without such a task: use
 `close <id> --reason <reason> --note <text> --evidence <item>...` or
 `reopen <id> --note <text> --evidence <item>...`, or the tools `issue_close` and `issue_reopen`;
-duplicate closure also needs `--duplicate-of <other-id>`. The command records `main-agent` as actor;
+duplicate closure also needs `--duplicate-of <other-id>`. Each prints the record's revision and its
+path, in `closed/` after a close and back in `.concorde/issues/` after a reopening. The command
+records `main-agent` as actor;
 the tools record the session. Each disposition needs a nonblank note and at least one evidence item.
 The store validates their form and the transition; it does not establish that the evidence proves
 the decision or that the actor had authority. Whoever disposes answers for that judgment. Closed
-records remain readable and are never deleted by the store. The exact state rules are in the
+records remain readable in `closed/` and are never deleted by the store. The exact state rules are in the
 [record interface](interface.md#record-file).
 
 ### Inspection and refusals
 
 `list` prints a summary row per committed Issue that passes its filters, with its severity and
 tier, by identity or, with `--sort severity` (the tool's `sort`), most severe first; `show <id>`
-the complete committed record and revision, and `check` validates every record file of the
-worktree it runs in: in the primary worktree the project's Issues, in a task worktree the copy its
-branch holds, which proves the branch's code still reads the records. `recover` puts back what
-writes left uncommitted. These commands never launch a model. The
+the complete committed record, its revision and its path, and `check` validates every record file
+of the worktree it runs in, in both folders: in the primary worktree the project's Issues, in a
+task worktree the copy its branch holds, which proves the branch's code still reads the records.
+`recover` puts back what writes left uncommitted, and `archive` moves misplaced records into their
+place. These commands never launch a model. The
 [configured check](../glossary.json#concept.configured-check) `check.issues.store` runs `check`
-whenever this Module's checks run; it fails malformed, misnamed or inconsistent records and open
-Issues with unregistered owners, but only notes closed Issues with unregistered owners. An open
+whenever this Module's checks run; it fails malformed, misnamed, misplaced or inconsistent records,
+an Issue recorded in both folders and open Issues with unregistered owners, naming the repair of
+each, but only notes closed Issues with unregistered owners. An open
 Issue with a valid owner does not by itself fail this check; readiness to deliver work is a separate
 decision.
 
@@ -403,20 +423,22 @@ the merging task, its commits and the `--resume` and `--abort` that finish it.
 
 <a id="realization.issues.store"></a>
 
-**The Issue store** is the only code that creates, appends to or disposes an Issue record, and it
-never deletes a committed record. Each file holds one identity heading and one JSON record, so no prose
+**The Issue store** is the only code that creates, appends to, disposes or moves an Issue record,
+and it never deletes a committed record: moving one between the folders removes it from one only
+in the commit that adds it to the other. Each file holds one identity heading and one JSON record, so no prose
 copy can drift from it, and reports are never rewritten: a later observation that classifies the
 problem differently is a new report. Each write refuses a root that is not the primary worktree,
 holds the merge lock, refuses while a task's merge is unfinished, puts back what earlier writes
 left uncommitted, checks the revision its caller read against the committed record, publishes
-through a [file transaction](../glossary.json#concept.file-transaction), syncs, and commits the
-record alone with `git commit --only`, so success means the record is committed and a concurrent
-writer is never silently overwritten. A failure after publication, a commit Git refuses among
+through a [file transaction](../glossary.json#concept.file-transaction) in the folder of the
+record's status, removes it from the other folder when it moves, syncs, and commits the record
+alone, with the path it left, with `git commit --only`, so success means the record is committed
+and a concurrent writer is never silently overwritten. A failure after publication, a commit Git refuses among
 them, puts the record back as it was and refuses the write. Reads ask Git for the records of the
 last commit, so they need no lock and see one commit's records at once. Identities are derived from
 the reporting invocation and the reporter's key rather than counted, so no allocation state is
 shared. Report and receipt shapes are [typed values](../glossary.json#concept.typed-value)
-registered as `concorde-issue-report@3` and `concorde-issue-receipt@1`, which Spec core does not
+registered as `concorde-issue-report@3` and `concorde-issue-receipt@2`, which Spec core does not
 know.
 
 The view below follows one write and what each refusal leaves; every refusal before publication
@@ -457,7 +479,7 @@ putback -> failed: putting back failed
 <a id="realization.issues.command"></a>
 
 **The bookkeeping command** is the sessions' face of the store — `report`/`close`/`reopen` write,
-`recover` puts back, `list`/`show`/the store check read — kept in `src/concorde/issues/command.py` so that
+`recover` puts back, `archive` moves misplaced records, `list`/`show`/the store check read — kept in `src/concorde/issues/command.py` so that
 `scripts/issues.py` and the project MCP server's Issue tools share every answer and refusal. It
 reads the [registry](../glossary.json#concept.registry) for which Modules exist, which is root, and
 which digest names a report's context. It supplies provenance rather than trusting report-file
@@ -477,6 +499,7 @@ is only noted.
 
 The **Issues tests** cover the store on Git repositories (the merge lock, commits, concurrent
 writers, malformed records, failed publications and commits, reads of committed records only,
-recovery after failed and killed writes, tiers, severities and the order by severity), every bookkeeping-command
+recovery after failed and killed writes, moves between the folders and their recovery, archiving,
+tiers, severities and the order by severity), every bookkeeping-command
 action with its refusals, from the primary and a linked worktree, and the configured store check on
 a fixture project.
