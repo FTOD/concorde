@@ -61,6 +61,29 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - THEN its brief names the task worktree's absolute path and tells it to give its tools absolute paths
 - AND it tells it to write every path of the task worktree in its result relative to the worktree, never as an absolute path
 
+### scenario.workers.brief-review-gaps — A Spec reviewer reports a gap and goes on
+
+- GIVEN a worker of task type `review-spec` or `review-architecture`
+- WHEN the host writes its brief
+- THEN the brief tells it to report a promise the Spec does not state, or a document it lacks, as a finding and to go on reviewing
+- AND to return `blocked` only when it cannot review at all
+- BUT a `specify`, `implement` or `test` worker is told to return `blocked` for a promise the Spec does not state
+
+### scenario.workers.project-interpreter — The project's interpreter comes first and is named
+
+- GIVEN a request naming the project's interpreter, such as the worktree's `.venv/bin/python`, on the Claude Code backend or the pi backend
+- WHEN the host launches the worker
+- THEN the worker's `PATH` starts with the interpreter's directory, followed by the host's own `PATH`
+- AND the brief names the interpreter as the one to run the project's code and tests with
+- BUT the host's own `PATH` is unchanged
+
+### scenario.workers.runtime-paths-readable — Host material the caller lists is readable, never writable
+
+- GIVEN a request whose runtime paths list a folder of check logs outside the worktree and a `.venv` inside it
+- WHEN the host prepares the worker on the Claude Code backend
+- THEN the Bash sandbox may read both and write neither, and no deny rule covers either
+- AND the grant the run record keeps is the request's grant, with the same context identity
+
 ## The boundary
 
 ### scenario.workers.undeclared-write-denied — A new undeclared file cannot be written
@@ -83,6 +106,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - WHEN it uses Read on either file, or Grep over a directory that holds them
 - THEN Read is denied with a generic permission message
 - AND Grep returns matches only from files the grant makes readable
+- BUT a file below a runtime path of the worker configuration inside the worktree, such as `.venv`, has no deny rule
 
 ### scenario.workers.bash-confined — Bash is confined by the sandbox
 
@@ -127,7 +151,13 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - GIVEN a `review-architecture` grant, whose task type reads every Module's Specs and writes nothing
 - WHEN the host is asked to start its worker
 - THEN the worker runs and ends `ok` with the read-only tool set
-- BUT a request naming a task type the Protocol does not define is refused before launch with `grant_unavailable`, naming a known task type as missing
+
+### scenario.workers.unknown-task-type-refused — A task type the Protocol does not define is refused
+
+- GIVEN a complete grant and a request naming the task type `review-everything`, which the Protocol does not define
+- WHEN the host is asked to start the worker
+- THEN it refuses before launch with `grant_unavailable` and the reason `input`, its detail naming `review-everything` and saying that a known task type is missing
+- AND it still writes the run record
 
 ### scenario.workers.malformed-grant-refused — A malformed grant is refused before launch
 
@@ -145,7 +175,15 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - WHEN the host audits the worktree
 - THEN the run ends `failed` with `audit_violation` and every violating path as host evidence
 - AND no configured check runs and no [resume round](../../glossary.json#concept.resume-round) follows
+- AND when the worker result is a valid `ok`, whose `error` is null, the error has no cause from the worker
 - BUT the host neither reverts nor commits the change
+
+### scenario.workers.audit-deleted — A deleted file is a violation named as deleted
+
+- GIVEN a worker round that ends with a valid result after a tracked file in the grant's `rw` list was deleted from the worktree
+- WHEN the host audits the worktree
+- THEN the round's audit lists the path in `changed` and the path followed by ` (deleted)` in `violations`, with the verdict `violation`
+- AND the run ends `failed` with `audit_violation`
 
 ### scenario.workers.violation-and-timeout — A round that timed out still reports its writes outside `rw`
 
@@ -179,6 +217,22 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - WHEN the run ends
 - THEN the host deletes the `rw` file
 - AND refuses the `ro` file and records the refusal
+
+### scenario.workers.deletion-repeated-absent — A repeated target is deleted once and an absent one recorded
+
+- GIVEN a clean audit and a worker result whose `proposed_deletions` names one `rw` file twice, once relative to the worktree and once absolute, and one `rw` path that does not exist
+- WHEN the run ends
+- THEN the host deletes the file once and records it once in `deleted`
+- AND it records the absent path in `deletions_absent`, never in `deletions_refused`
+- AND the run ends `ok`
+
+### scenario.workers.deletion-failed — A failed deletion fails the run after every other deletion
+
+- GIVEN a clean audit and a worker result whose `proposed_deletions` names a `rw` file whose deletion the operating system refuses, followed by another `rw` file
+- WHEN the run ends
+- THEN the host still deletes the second file and records it in `deleted`, and records the first in `deletions_failed`
+- AND the run ends `failed` with `deletion_failed` and the reason `environment`, its detail naming the file it could not delete with the error and the file it deleted
+- BUT the deleted file is not restored
 
 ## Rounds
 
@@ -283,6 +337,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - WHEN the [permission extension](../../glossary.json#concept.permission-extension) counts the turn
 - THEN it aborts the run and records the limit reached
 - AND the run ends `failed` with `worker_limit_reached`
+- AND the error's cause is the pi process's link with the limit and the value reached and the reason `exhausted`, never a Claude Code process's link
 
 ## Worker models
 
@@ -461,12 +516,19 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - WHEN a worker on that model is resolved
 - THEN it is refused with `model_unmapped`, saying that the map does not name the model at all
 
-### scenario.workers.model-map-checked — A whole configuration is checked against the map in one refusal
+### scenario.workers.model-map-checked — An Operation's workers are checked against the map in one refusal
 
-- GIVEN a worker configuration and a model map that lacks the ids of several of its models on the backends that would run them
-- WHEN the whole configuration is checked against the map
-- THEN one refusal names every model and backend the map lacks, with the workers that would take them
-- BUT once the map gives each its id, the check passes
+- GIVEN a worker configuration and a model map that lacks the ids of several models the workers of `spec_panel` would run on, on the backends that would run them, and of a model only another Operation's worker takes
+- WHEN the configuration reader checks the workers of `spec_panel` against the map, as that Operation's run asks before its first worker launches
+- THEN one `model_unmapped` refusal names every model and backend the map lacks for `spec_panel`, with the workers that would take each, and the map
+- BUT it names nothing of the other Operation
+- AND once the map gives each its id, the check passes
+
+### scenario.workers.refusal-reasons — Every refusal before a run has its fixed reason
+
+- GIVEN each refusal of the configuration reader: `config_missing`, `config_invalid`, `model_not_enabled`, `model_unresolved`, `backend_missing`, `model_map_missing`, `model_map_invalid` and `model_unmapped`
+- WHEN its reason is looked up
+- THEN the four refusals of the worker configuration give `input` and the program's and the model map's give `environment`
 
 ### scenario.workers.model-map-missing — A missing model map is refused, never ignored
 

@@ -4,7 +4,8 @@ The host runs read-only Git outside the worker. A snapshot records ``HEAD``, the
 the digest of every tracked change and untracked file; after a round the same measurement is taken
 again and every difference is judged: a changed or new file in the grant's ``rw`` list is allowed,
 anything else, including a deletion or a changed ``HEAD`` or index, is a violation. Paths Git
-ignores are not observed.
+ignores are not observed. A violation is one string: ``HEAD`` or ``index``, the path of a file
+written outside ``rw``, the path followed by `` (deleted)`` for a deleted file, or a glossary entry.
 
 The project glossary is the one writable file held by entry: every Module's concepts share it, so a
 task may change only the entries its bound Modules own. The snapshot keeps the glossary's bytes,
@@ -141,8 +142,10 @@ def audit(
         if old == new:
             continue
         changed.append(path)
-        if new is None or not rw_allows(rw, path):
-            violations.append(path)  # a deletion, or a write outside rw
+        if new is None:
+            violations.append(f"{path} (deleted)")
+        elif not rw_allows(rw, path):
+            violations.append(path)  # a write outside rw
         elif path == glossary:
             try:
                 foreign = ownership_violations(before.glossary, after.glossary, modules)

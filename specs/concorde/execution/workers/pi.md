@@ -53,7 +53,8 @@ The environment is cleared and then set to exactly:
 
 | Variable | Value |
 | --- | --- |
-| `PATH`, `LANG` | the host's values |
+| `PATH` | the host's value, preceded by the project interpreter's directory when the request names one ([Reading beside the grant](launch.md#reading-beside-the-grant)) |
+| `LANG` | the host's value |
 | `HOME` | `<runtime>/home` |
 | `TMPDIR` | `<runtime>/tmp` |
 | `CLAUDE_CODE_TMPDIR` | the same directory, which sandbox-runtime passes to the commands it runs as their `TMPDIR`; without it they get `/tmp/claude`, which need not exist and is then not writable |
@@ -98,7 +99,9 @@ as on Claude Code. `worker_limit_reached` is reported when the JSON event stream
 extension appends when it stops the run at a [limit](../../harness/pi.md#limits), with the limit and
 value it names. The **pi process's link** has the level `component`, the actor `pi process (pi -p)`,
 and states the exit status, the last assistant message's stop reason and error message, the number
-of turns and the tail of standard error.
+of turns and the tail of standard error. For a run the permission extension stopped at a limit it
+has the code `pi_limit_reached`, names the limit, the value reached and the maximum allowed, and
+gives the reason `exhausted`; otherwise it has the code `pi_error` and the reason `environment`.
 
 ## Requirements
 
@@ -118,9 +121,25 @@ A `read`, `write` or `edit` call the permission extension denies SHALL return th
 
 Every command the pi `bash`, `grep`, `find` or `ls` tool runs SHALL run inside the sandbox-runtime sandbox with the run's filesystem lists, no allowed network domain and a strict allowlist.
 
-### req.workers.pi-only-extension — Nothing else configures a pi worker
+### req.workers.pi-only-extension — The permission extension is a pi worker's only extension
 
-The host SHALL start every pi round with extension discovery, context files, skills and prompt templates disabled, the permission extension as the only extension, and its own `PI_CODING_AGENT_DIR`.
+The host SHALL start every pi round with extension discovery disabled and the permission extension as its only extension.
+
+### req.workers.pi-no-context-files — A pi worker reads no context file
+
+The host SHALL start every pi round with context files disabled.
+
+### req.workers.pi-no-skills — A pi worker loads no skill
+
+The host SHALL start every pi round with skills disabled.
+
+### req.workers.pi-no-prompt-templates — A pi worker loads no prompt template
+
+The host SHALL start every pi round with prompt templates disabled.
+
+### req.workers.pi-own-config-dir — A pi worker has its own configuration directory
+
+The host SHALL start every pi round with `PI_CODING_AGENT_DIR` set to the runtime directory's `config/`.
 
 ### req.workers.pi-settings-generated — A pi worker's settings are Concorde's own
 
@@ -136,7 +155,7 @@ The host SHALL copy from the user's pi configuration directory only `auth.json` 
 
 ### req.workers.pi-limits — pi runs stop at their limits
 
-The permission extension SHALL abort a pi run whose completed turns exceed `max_turns` or whose reported cost exceeds `max_budget_usd`.
+The permission extension SHALL abort a pi run whose completed turns exceed `max_turns`, or, when the worker configuration sets `max_budget_usd`, whose reported cost exceeds it.
 
 ### req.workers.pi-limit-recorded — A pi run records the limit it reached
 

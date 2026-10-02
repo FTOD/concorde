@@ -1,7 +1,7 @@
 """A deterministic stand-in for ``claude -p`` used by the worker tests.
 
 The test puts a plan in the worker instructions as ``FAKE-PLAN: <json>``: a list of rounds, each
-with ``writes`` (absolute path to content), ``result`` (the structured output, merged over a valid
+with ``writes`` (absolute path to content), ``removes`` (absolute paths to delete), ``result`` (the structured output, merged over a valid
 ``ok`` result), and optional ``sleep``, ``spawn`` (start a detached sleeper that records its PID),
 ``raw`` (print this instead of an envelope), ``envelope`` (fields merged over the result envelope,
 such as an error subtype), ``no_structured`` (omit the structured output) or ``actions``
@@ -67,6 +67,8 @@ def main() -> int:
     for path, content in step.get("writes", {}).items():
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         Path(path).write_text(content)
+    for path in step.get("removes", []):
+        Path(path).unlink()
     if step.get("spawn"):
         child = subprocess.Popen(
             [sys.executable, "-c", "import time; time.sleep(120)"],

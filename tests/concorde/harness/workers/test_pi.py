@@ -166,6 +166,18 @@ class PiRunTests(unittest.TestCase):
         self.assertEqual("10.0.0.0/8", first["env"]["no_proxy"])
         self.assertNotIn("ALL_PROXY", first["env"])
 
+    @verifies("scenario.workers.project-interpreter")
+    def test_the_project_interpreter_comes_first_on_pi(self):
+        python = (self.root / ".venv/bin/python").as_posix()
+        record = self.project.run([{}], project_python=python)
+        self.assertEqual("ok", record["status"], record["error"])
+        [first] = self.project.rounds(record)
+        self.assertEqual(
+            f"{self.root}/.venv/bin{os.pathsep}{os.environ.get('PATH')}",
+            first["env"]["PATH"],
+        )
+        self.assertIn(f"The project's own interpreter is {python}", first["prompt"])
+
     def test_a_resume_round_continues_the_same_pi_session(self):
         flag = str(self.root / "src/a/flag")
         record = self.project.run([{"writes": {flag: "bad"}}, {"writes": {flag: "ok"}}])
@@ -273,6 +285,9 @@ class PiRunTests(unittest.TestCase):
             (cause["code"], cause["unhandled"]["reason"]),
         )
         self.assertIn("turns limit (3 reached, at most 2 allowed)", cause["detail"])
+        self.assertEqual(
+            ("component", "pi process (pi -p)"), (cause["level"], cause["actor"])
+        )
 
     def test_an_error_of_pi_is_reported_with_its_cause(self):
         record = self.project.run([{"error": "429 rate limited", "exit": 1}])

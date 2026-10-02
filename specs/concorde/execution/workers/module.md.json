@@ -40,7 +40,9 @@
         "meaning": "#uses-checks",
         "relies_on": [
           "concept.configured-check",
-          "concept.check-result"
+          "concept.check-result",
+          "req.checks.service-link",
+          "req.checks.failure-link"
         ]
       },
       {

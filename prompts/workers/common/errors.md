@@ -16,13 +16,20 @@ one-line summary. Fill in:
   check, a command or a refused tool call caused it, quote its relevant output.
 - `evidence`: the files, Spec documents, commands and outputs that show it.
 - `attempts`: everything you tried, in order, and what each attempt gave.
-- `unhandled`: why you cannot handle the error yourself. `reason` is one of `permission` (you would
-  need a path or tool outside your boundary), `decision` (someone above you must decide, for
-  example what a Spec should promise), `scope` (the fix lies outside your task or bound Modules),
-  `capability` (you have no means to repair it), `exhausted` (you ran out of what you were
-  allowed), `environment` (the environment failed: a missing tool, a crashed command) or `input`
-  (the task you were given is contradictory or invalid). `explanation` says specifically why, for
-  example which path you would need and what for.
+- `unhandled`: why you cannot handle the error yourself. `reason` is one of:
+  - `permission`: you would need a path or tool outside your boundary. A refused read or write is
+    always `permission`, also when the task itself asks you to change a file your boundary lets you
+    only read: name the path, the access you lack and what you need it for.
+  - `decision`: someone above you must decide, for example what a Spec should promise.
+  - `scope`: the fix lies outside your task or bound Modules, though your boundary would allow it.
+  - `capability`: you have no means to repair it.
+  - `exhausted`: you ran out of what you were allowed, such as turns.
+  - `environment`: the environment failed: a missing tool, a crashed command.
+  - `input`: the task you were given contradicts itself or cannot be carried out by anyone, such
+    as two instructions that exclude each other. A task that needs a path your boundary withholds
+    is not `input` but `permission`.
+
+  `explanation` says specifically why, for example which path you would need and what for.
 - `options`: what the level above could do, each concrete enough to act on; `recommendation`: the
   option you would choose, and why.
 

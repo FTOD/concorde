@@ -508,20 +508,29 @@ def _local_model(chosen: dict, who: str, path: Path, mapped: dict) -> str:
     return local
 
 
-def check_mapped(config: dict, environ=None) -> None:
-    """Refuse with one error every model a worker of any Operation would take that the model map
-    does not give an id for its backend, such as before a test project's workers first run."""
+def check_mapped(config: dict, environ=None, operation: str | None = None) -> None:
+    """Refuse with one error every model a worker of ``operation`` would take that the model map
+    does not give an id for its backend, as that Operation's run asks before its first worker
+    launches; without ``operation``, the workers of every Operation, such as before a test
+    project's workers first run. A worker without a model is left to its own resolution."""
     validate_config(config)
+    ids = worker_ids()
+    if operation is not None and operation not in ids:
+        raise ModelConfigError(
+            "config_invalid", f"{operation} is no Operation that launches workers"
+        )
     path, mapped = load_model_map(environ)
     missing: dict[tuple[str, str], list[str]] = {}
-    for operation, workers in worker_ids().items():
+    for name, workers in ids.items():
+        if operation is not None and name != operation:
+            continue
         for worker in workers:
-            chosen = choice(config, operation, worker)
+            chosen = choice(config, name, worker)
             if chosen["model"] is not None and chosen["backend"] not in mapped.get(
                 chosen["model"], {}
             ):
                 missing.setdefault((chosen["model"], chosen["backend"]), []).append(
-                    f"{operation}/{worker}"
+                    f"{name}/{worker}"
                 )
     if missing:
         entries = "; ".join(
