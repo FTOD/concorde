@@ -31,7 +31,7 @@
       "title": "Command table",
       "meaning": "#realization.commands.catalog",
       "entries": [
-        "src/concorde/commands/"
+        "src/concorde/execution/commands/"
       ]
     }
   ],

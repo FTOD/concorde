@@ -163,7 +163,7 @@ The [definition](panel.md#the-panel-graph) gives the exact graph and its control
 ```d2
 review: Spec review {
   host: Review Operations {
-    "src/concorde/spec_review/"
+    "src/concorde/method/spec_review/"
   }
   checklist: Reviewer brief {
     "prompts/workers/review-spec.md"

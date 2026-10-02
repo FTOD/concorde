@@ -18,7 +18,7 @@ from tests.concorde.support.spec_project import PACKAGE, SpecProject, write_json
 
 SOURCE = REPOSITORY_ROOT / "src/concorde"
 # The packages of Spec tooling's Modules: Spec core, the Spec MCP server and Views.
-SPEC_TOOLING = ("spec", "spec_mcp", "views")
+SPEC_TOOLING = ("spec", "spec/mcp", "spec/views")
 # Error classes whose first positional argument is the code, and the rest whose second is.
 CODE_FIRST = {"TypedDataError", "ToolError"}
 ERROR_CLASSES = {"SpecError", "TypedDataError", "ToolError", "CheckError", "IssueError"}
@@ -58,11 +58,11 @@ class SpecErrorTests(unittest.TestCase):
             self.assertTrue(reason.strip() and remediation.strip(), code)
 
     def test_other_modules_register_the_codes_of_their_own_subclasses(self):
-        from concorde.harness.checks import CheckError
+        from concorde.execution.checks.checks import CheckError
         from concorde.issues.store import IssueError
 
         for error_class, path in (
-            (CheckError, SOURCE / "harness/checks.py"),
+            (CheckError, SOURCE / "execution/checks/checks.py"),
             (IssueError, SOURCE / "issues/store.py"),
         ):
             unregistered = literal_codes(path) - error_class.CODES.keys() - CODES.keys()
@@ -71,13 +71,13 @@ class SpecErrorTests(unittest.TestCase):
     @verifies("scenario.spec.error-independent")
     def test_spec_tooling_imports_no_framework_error_type(self):
         forbidden = (
-            "concorde.errors",
-            "concorde.harness",
-            "concorde.operations",
-            "concorde.tasks",
+            "concorde.kernel.errors",
+            "concorde.worker_harness",
+            "concorde.execution.operations",
+            "concorde.coordination.tasks",
         )
         for path in spec_tooling_files():
-            package = "concorde." + path.parent.name
+            package = ".".join(path.parent.relative_to(SOURCE.parent).parts)
             for node in ast.walk(ast.parse(path.read_text())):
                 if isinstance(node, ast.ImportFrom):
                     base = package.rsplit(".", node.level - 1)[0] if node.level else ""

@@ -7,9 +7,12 @@ import re
 import unittest
 from pathlib import Path
 
-from concorde.harness.runs import read_record
+from concorde.worker_harness.runs import read_record
 from concorde.spec.verification import verifies
-from concorde.specification.operation import SPEC_CHANGE_SCHEMA, WORKER_OUTPUT_SCHEMA
+from concorde.method.specification.operation import (
+    SPEC_CHANGE_SCHEMA,
+    WORKER_OUTPUT_SCHEMA,
+)
 from tests.concorde.support.operation_project import (
     OperationProject,
     commit,
@@ -406,8 +409,7 @@ class SpecifyTests(unittest.TestCase):
 class ContractTests(unittest.TestCase):
     def test_the_output_schema_is_the_spec_change_contract(self):
         text = (
-            REPOSITORY_ROOT
-            / "specs/concorde/method/specification/contracts.md"
+            REPOSITORY_ROOT / "specs/concorde/method/specification/contracts.md"
         ).read_text()
         fence = re.search(r"```concorde-contract\n(.*?)\n```", text, re.S).group(1)
         schema = json.loads(fence)["schema"]

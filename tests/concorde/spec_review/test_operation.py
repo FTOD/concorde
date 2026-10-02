@@ -8,13 +8,13 @@ import sys
 import unittest
 from pathlib import Path
 
-from concorde.harness.runs import read_record
+from concorde.worker_harness.runs import read_record
 from concorde.issues.store import list_issues, read_issue, report_issue
 from concorde.spec.grants import grant
 from concorde.spec.repository import SpecRepository
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
-from concorde.spec_review.operation import PAYLOAD_SCHEMA
+from concorde.method.spec_review.operation import PAYLOAD_SCHEMA
 from tests.concorde.support.operation_project import (
     OperationProject,
     link_at,

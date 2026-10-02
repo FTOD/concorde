@@ -14,7 +14,7 @@ import os
 import unittest
 from pathlib import Path
 
-from concorde.harness.workers import run_worker
+from concorde.worker_harness.workers import run_worker
 from concorde.spec.verification import verifies
 from tests.concorde.harness.workers.test_workers import WorkerProject
 

@@ -40,12 +40,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from ..dogfooding.develop import DevelopError, develop_source, guidance
-from ..errors import link
+from ..kernel.errors import link
 from ..spec.errors import SpecError
 from ..spec.initialize import bind_installation
-from ..tracing import layout, locks, reader
-from ..tracing.layout import IGNORED as TRACES
-from ..views.docsite_template import (
+from ..kernel.tracing import layout, locks, reader
+from ..kernel.tracing.layout import IGNORED as TRACES
+from ..spec.views.docsite_template import (
     DocsiteTemplateError,
     template_files,
     verify_package_root,

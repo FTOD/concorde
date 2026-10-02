@@ -29,8 +29,8 @@ import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ..errors import evidence
-from ..harness.models import DEFAULT_RUNTIME, ModelConfigError, load, runtime
+from ..kernel.errors import evidence
+from ..worker_harness.models import DEFAULT_RUNTIME, ModelConfigError, load, runtime
 from .runs import RunError
 
 # Git never runs a hook of the repository for the checkout: it is the runner's, not a checkout a

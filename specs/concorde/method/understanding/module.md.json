@@ -53,7 +53,7 @@
       "title": "Understanding Operations",
       "meaning": "#realization.understanding.operation",
       "entries": [
-        "src/concorde/understanding/",
+        "src/concorde/method/understanding/",
         "prompts/workers/understand.md",
         "prompts/workers/plan-review.md",
         "tests/concorde/understanding/"

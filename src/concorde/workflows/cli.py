@@ -13,7 +13,7 @@ import json
 import sys
 from pathlib import Path
 
-from .. import errors
+from ..kernel import errors
 from ..spec.schema import ContractError
 from .report import report
 from .step import WAIT, StepError, check_request, run_step

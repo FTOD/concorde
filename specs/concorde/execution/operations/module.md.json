@@ -39,7 +39,7 @@
       "title": "Catalog and worker steps",
       "meaning": "#realization.operations.catalog",
       "entries": [
-        "src/concorde/operations/"
+        "src/concorde/execution/operations/"
       ]
     },
     {

@@ -18,8 +18,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
-from ..errors import evidence, from_exception, link
-from ..harness.models import (
+from ..kernel.errors import evidence, from_exception, link
+from ..worker_harness.models import (
     CONFIG,
     HANDLING,
     ModelConfigError,
@@ -359,8 +359,8 @@ class RunContext:
         names host material outside the grant the worker may read as well, such as the logs of
         the checks the host ran for this run.
         """
-        from ..harness.checks import checked_modules
-        from ..harness.workers import WorkerRequest, run_worker
+        from .checks.checks import checked_modules
+        from ..worker_harness.workers import WorkerRequest, run_worker
         from ..spec.grants import grant
         from ..spec.repository import SpecRepository
         from ..spec.repository_base import SpecError
@@ -458,7 +458,7 @@ class RunContext:
     def project_interpreter(self) -> str | None:
         """The project's own interpreter, as its checks run it, or None when none is configured
         or it cannot be found."""
-        from ..harness.checks import CheckError, project_python
+        from .checks.checks import CheckError, project_python
         from ..spec.repository import SpecRepository
         from ..spec.repository_base import SpecError
 
@@ -597,7 +597,7 @@ class RunContext:
     def checks_unavailable(self, error, modules: list[str] | None = None) -> Stop:
         """Stop ``failed`` because Check execution could not run the configured checks; its own
         link is the cause."""
-        from ..harness.checks import service_error
+        from .checks.checks import service_error
 
         code = getattr(error, "code", None) or "checks_unavailable"
         names = ", ".join(modules or self.modules)

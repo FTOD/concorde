@@ -60,7 +60,12 @@
       "title": "Runner and run store",
       "meaning": "#realization.execution.runner",
       "entries": [
-        "src/concorde/execution/",
+        "src/concorde/execution/__init__.py",
+        "src/concorde/execution/binding.py",
+        "src/concorde/execution/checkout.py",
+        "src/concorde/execution/context.py",
+        "src/concorde/execution/runner.py",
+        "src/concorde/execution/runs.py",
         "tests/concorde/execution/",
         "tests/concorde/support/runs.py"
       ]

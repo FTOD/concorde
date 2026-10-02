@@ -1,0 +1,552 @@
+"""The check service: run the configured checks of some Modules of a worktree, read-only.
+
+Each check runs through ``execute_check`` with the worktree as project root, so a check can read
+the worktree but never change it. Before and after the run the service measures the Module's
+``check_revision`` (its implementation files, its checks' definitions and inputs, and the policy);
+a difference means the check vouched for input that changed, and the call fails. A selective
+check's measured digest also covers the selected Modules and the tests it selected.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import re
+import subprocess
+from pathlib import Path
+
+from ...kernel.errors import evidence, link
+from ...spec.repository import SpecRepository
+from ...spec.repository_base import SpecError, bound_by
+from ...spec.typed_data import register
+from ...kernel.tracing import layout
+from ...kernel.tracing.node import Node
+from .check_executor import CHECK_POLICY, CheckSandboxError, execute_check
+from ...worker_harness.runs import primary_root
+
+# contract.checks.check-trace, version 1: the content of one check's trace node.
+CHECK_TRACE = "concorde-check-trace"
+register(
+    CHECK_TRACE,
+    1,
+    {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["status", "exit_code", "source_digest", "argv", "selected_tests"],
+        "properties": {
+            "status": {"enum": ["passed", "failed", "timeout", "refused"]},
+            "exit_code": {"anyOf": [{"type": "null"}, {"type": "integer"}]},
+            "source_digest": {"type": "string", "minLength": 1},
+            "argv": {"type": "array", "items": {"type": "string"}},
+            "selected_tests": {
+                "type": "array",
+                "items": {"type": "string", "minLength": 1},
+            },
+        },
+    },
+)
+
+
+class CheckError(SpecError):
+    """A configured check that cannot be run or whose result cannot be trusted."""
+
+    CODES = {
+        "invalid_check": (
+            "a configured check needs a nonempty argv and a positive timeout_seconds",
+            "correct the check's entry in .concorde/checks/<its module>.json",
+        ),
+        "check_input_missing": (
+            "every declared input of a configured check must exist as a regular file or "
+            "directory, because its result is bound to the inputs' digest",
+            "restore the input or correct the check's inputs",
+        ),
+        "check_sandbox_unavailable": (
+            "configured checks run only inside the read-only bubblewrap boundary",
+            "install a root-owned system bubblewrap, or run on a host that allows it",
+        ),
+        "stale_evidence": (
+            "a check result vouches only for inputs that stayed the same while it ran",
+            "let the worktree settle and run the checks again",
+        ),
+        "unknown_module": (
+            "checks run only for Modules the registry registers",
+            "name registered Modules",
+        ),
+        "project_python_missing": (
+            "{python} in a check stands for the project's own interpreter, named by `python` "
+            "in .concorde/config.json, never Concorde's",
+            "set `python` in .concorde/config.json to the project's interpreter, or create it "
+            "where the configuration says",
+        ),
+    }
+
+
+def _file_digest(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _inputs(root: Path, check: dict) -> list[tuple[str, str]]:
+    digests = []
+    for relative in check.get("inputs", []):
+        path = root / relative
+        if path.is_symlink() or not path.exists():
+            raise CheckError(
+                f"input {relative} of check {check['id']} ({check['module']}) is missing "
+                "or a symbolic link",
+                "check_input_missing",
+            )
+        if path.is_dir():
+            for item in sorted(path.rglob("*")):
+                if "__pycache__" in item.parts or item.is_symlink():
+                    continue
+                if item.is_file():
+                    digests.append(
+                        (item.relative_to(root).as_posix(), _file_digest(item))
+                    )
+        elif path.is_file():
+            digests.append((relative, _file_digest(path)))
+        else:
+            raise CheckError(
+                f"input {relative} of check {check['id']} is not a regular file",
+                "check_input_missing",
+            )
+    return digests
+
+
+def check_revision(repository: SpecRepository, module: str) -> str:
+    """The digest a stored check result of ``module`` is current against."""
+    root = repository.root
+    implementation = [
+        (path, _file_digest(root / path)) for path in repository.bound_files(module)
+    ]
+    checks = [
+        check for check in repository.checks.values() if check["module"] == module
+    ]
+    value = {
+        "implementation": implementation,
+        "checks": [
+            {"definition": check, "inputs": _inputs(root, check)} for check in checks
+        ],
+        "policy": CHECK_POLICY,
+    }
+    return (
+        "sha256:"
+        + hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
+    )
+
+
+def affected_modules(repository: SpecRepository, changed) -> list[str]:
+    """Every Module whose SpecScope or ImplementationScope contains a changed path."""
+    result = []
+    for identity in repository.modules:
+        scope = set(repository.spec_scope(identity))
+        entries = repository.implementation_scope(identity)
+        if any(
+            path in scope or any(bound_by(entry, path) for entry in entries)
+            for path in changed
+        ):
+            result.append(identity)
+    return result
+
+
+def checked_modules(repository: SpecRepository, modules) -> list[str]:
+    """The Modules whose checks a change of ``modules`` runs: those Modules and every Module that
+    uses one of them, directly or through further uses, since their code runs against the change
+    (the Protocol's impact of a written file). A full test suite checked by the Module that uses
+    everything therefore runs whichever Module changes."""
+    selected = list(dict.fromkeys(modules))
+    reached = set(selected)
+    changed = True
+    while changed:
+        changed = False
+        for identity, module in repository.modules.items():
+            if identity not in reached and reached & set(module.uses):
+                reached.add(identity)
+                selected.append(identity)
+                changed = True
+    return selected
+
+
+def project_python(worktree: Path, config: dict, check_id: str) -> str:
+    """The project's interpreter, ``python`` in the configuration: an absolute path as it is, a
+    relative one in the worktree the check runs in or, when that has none (a task worktree
+    rarely has an environment of its own), in the primary worktree."""
+    configured = config.get("python")
+    if not isinstance(configured, str) or not configured.strip():
+        raise CheckError(
+            f"check {check_id} uses {{python}}, but .concorde/config.json names no project "
+            "interpreter in `python`",
+            "project_python_missing",
+        )
+    if os.path.isabs(configured):
+        candidates = [Path(configured)]
+    else:
+        candidates = [worktree / configured]
+        try:
+            primary = primary_root(worktree)
+        except (OSError, subprocess.CalledProcessError):
+            primary = None
+        if primary is not None and primary != worktree.resolve():
+            candidates.append(primary / configured)
+    for candidate in candidates:
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return candidate.as_posix()
+    raise CheckError(
+        f"check {check_id} uses {{python}}, the project interpreter {configured!r}, which is "
+        "not an executable file at "
+        + " or at ".join(candidate.as_posix() for candidate in candidates),
+        "project_python_missing",
+    )
+
+
+# A check whose argv holds {tests} is selective: it runs the tests that declare they verify a
+# scenario of the Modules being checked, many-to-many, whichever Module owns their files.
+TESTS = "{tests}"
+# When a check runs: in every round that runs checks, or only when readiness is decided
+# (validate and delivery), for a full suite too slow to run every round.
+WHEN = ("always", "readiness")
+
+
+def verified_tests(repository: SpecRepository, modules) -> list[str]:
+    """The tests declaring that they verify a scenario of ``modules``: a Python test as
+    ``path::Class::name``, a TypeScript test by its file."""
+    from ...spec.verification import TYPESCRIPT_SUFFIXES, scan_declarations
+
+    listed = sorted(
+        {
+            path
+            for identity in repository.modules
+            for path in repository.bound_files(identity)
+        }
+    )
+    wanted = set(modules)
+    scenarios = repository.scenario_nodes
+    tests: dict[str, None] = {}
+    for declaration in scan_declarations(repository.root, listed, []):
+        scenario = scenarios.get(declaration.scenario_id)
+        if scenario is None or scenario.owner not in wanted:
+            continue
+        if declaration.path.endswith(TYPESCRIPT_SUFFIXES):
+            tests[declaration.path] = None
+        else:
+            tests[f"{declaration.path}::{declaration.name.replace('.', '::')}"] = None
+    return sorted(tests)
+
+
+def measured_digest(
+    repository: SpecRepository, check: dict, modules, tests=None
+) -> str:
+    """The digest a result of ``check`` run for the selected ``modules`` is current against.
+
+    For an ordinary check it is its Module's ``check_revision``. A selective check also measures
+    the selected Modules, the tests it selects for them (``tests`` when already known) and the
+    digest of every selected test file, since another selection runs other tests."""
+    revision = check_revision(repository, check["module"])
+    if TESTS not in (check.get("argv") or []):
+        return revision
+    if tests is None:
+        tests = verified_tests(repository, modules)
+    files = sorted({test.split("::", 1)[0] for test in tests})
+    value = {
+        "check_revision": revision,
+        "modules": sorted(set(modules)),
+        "tests": list(tests),
+        "test_files": [(path, _file_digest(repository.root / path)) for path in files],
+    }
+    return (
+        "sha256:"
+        + hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
+    )
+
+
+def _argv(check: dict, python, tests=()) -> list[str]:
+    """The check's command; ``python`` gives the project interpreter for ``{python}`` and
+    ``tests`` the test identities ``{tests}`` stands for."""
+    argv = check.get("argv")
+    if (
+        not isinstance(argv, list)
+        or not argv
+        or any(not isinstance(item, str) or not item for item in argv)
+    ):
+        raise CheckError(f"check {check['id']} needs a nonempty argv", "invalid_check")
+    result: list[str] = []
+    for item in argv:
+        if item == "{python}":
+            result.append(python())
+        elif item == TESTS:
+            result.extend(tests)
+        else:
+            result.append(item)
+    return result
+
+
+def _timeout(check: dict) -> float:
+    value = check.get("timeout_seconds")
+    if type(value) not in (int, float) or value <= 0:
+        raise CheckError(
+            f"check {check['id']} needs a positive timeout_seconds", "invalid_check"
+        )
+    return float(value)
+
+
+ENV_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+# Transport configuration can be required by an enclosing sandbox. Keep this list exact:
+# runtime injection variables (e.g. PYTHONPATH, NODE_OPTIONS) do not belong to a check.
+TRANSPORT_ENV = (
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "ALL_PROXY",
+    "NO_PROXY",
+    "http_proxy",
+    "https_proxy",
+    "all_proxy",
+    "no_proxy",
+    "SSL_CERT_FILE",
+    "SSL_CERT_DIR",
+    "REQUESTS_CA_BUNDLE",
+    "CURL_CA_BUNDLE",
+    "NODE_EXTRA_CA_CERTS",
+)
+
+
+def environment(check: dict | None = None) -> dict[str, str]:
+    """Host PATH, LANG and explicit transport settings, overridden by the check's own env.
+
+    Runtime settings stay excluded; execute_check supplies its own scratch/cache settings.
+    """
+    base = {
+        "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+        "LANG": os.environ.get("LANG", "C.UTF-8"),
+        **{key: os.environ[key] for key in TRANSPORT_ENV if key in os.environ},
+    }
+    own = (check or {}).get("env", {})
+    if not isinstance(own, dict) or any(
+        not isinstance(key, str)
+        or not ENV_NAME.match(key)
+        or not isinstance(value, str)
+        for key, value in own.items()
+    ):
+        raise CheckError(
+            f"check {check['id']} has an env that is not an object of variable names to "
+            "strings",
+            "invalid_check",
+        )
+    return {**base, **own}
+
+
+def run_checks(
+    worktree: Path,
+    *,
+    modules=None,
+    changed=None,
+    trace_directory: Path,
+    stage: str = "work",
+    kinds: str = "all",
+) -> list[dict]:
+    """Run the configured checks of the selected Modules; one result per check, in order.
+
+    ``stage`` is ``readiness`` when readiness is decided, which also runs the checks marked
+    ``"when": "readiness"``. ``kinds`` narrows the run to the checks of the Modules
+    (``module``) or to the selective checks (``selective``), which run once for the whole
+    selection with the tests verifying its scenarios, and not at all when there are none."""
+    worktree = Path(worktree)
+    repository = SpecRepository(worktree)
+    selected = (
+        list(modules)
+        if modules is not None
+        else affected_modules(repository, changed or ())
+    )
+    for identity in selected:
+        if identity not in repository.modules:
+            raise CheckError(f"unregistered Module: {identity}", "unknown_module")
+    trace_directory = Path(trace_directory)
+    trace_directory.mkdir(parents=True, exist_ok=True)
+    results = []
+    tests: list[str] | None = None
+    for check in repository.checks.values():
+        when = check.get("when", "always")
+        if when not in WHEN:
+            raise CheckError(
+                f"check {check['id']} has when {when!r}; expected one of "
+                + ", ".join(WHEN),
+                "invalid_check",
+            )
+        if when == "readiness" and stage != "readiness":
+            continue
+        selective = TESTS in (check.get("argv") or [])
+        if selective:
+            if kinds == "module":
+                continue
+            if tests is None:
+                tests = verified_tests(repository, selected)
+            if not tests:
+                continue
+        elif kinds == "selective" or check["module"] not in selected:
+            continue
+        argv = _argv(
+            check,
+            lambda check=check: project_python(
+                worktree, repository.config, check["id"]
+            ),
+            tests or (),
+        )
+        timeout = _timeout(check)
+        before = measured_digest(repository, check, selected, tests)
+        folder = layout.check_folder(trace_directory, check["id"])
+        log = folder / "output.log"
+        chosen = list(tests or ()) if selective else []
+        node = Node(
+            folder,
+            check["id"],
+            "check",
+            content_type=CHECK_TRACE,
+            metadata={"check": check["id"], "module": check["module"]},
+            content=_check_content("passed", None, before, argv, chosen),
+        )
+        node.keep("output", "output.log")
+        node.start()
+        try:
+            outcome = execute_check(
+                worktree, argv, timeout=timeout, environment=environment(check)
+            )
+        except CheckSandboxError as error:
+            log.write_bytes(
+                (error.stdout or b"")
+                + b"\n"
+                + (error.stderr or b"")
+                + str(error).encode()
+            )
+            refusal = CheckError(
+                f"check {check['id']} could not run in the read-only boundary: {error}",
+                "check_sandbox_unavailable",
+            )
+            node.finish(
+                "failed",
+                outcome="refused",
+                error=service_error(refusal),
+                content=_check_content("refused", None, before, argv, chosen),
+            )
+            raise refusal from error
+        header = (
+            ("selected tests: " + " ".join(tests or ()) + "\n\n").encode()
+            if selective
+            else b""
+        )
+        log.write_bytes(header + outcome.stdout + b"\n" + outcome.stderr)
+        status = (
+            "timeout"
+            if outcome.timed_out
+            else ("passed" if outcome.returncode == 0 else "failed")
+        )
+        exit_code = -1 if outcome.timed_out else outcome.returncode
+        if measured_digest(SpecRepository(worktree), check, selected) != before:
+            stale = CheckError(
+                f"the input of check {check['id']} changed while it ran",
+                "stale_evidence",
+            )
+            node.finish(
+                "failed",
+                outcome="stale_evidence",
+                error=service_error(stale),
+                content=_check_content(status, exit_code, before, argv, chosen),
+            )
+            raise stale
+        result = {
+            "check_id": check["id"],
+            "module": check["module"],
+            "status": status,
+            "exit_code": exit_code,
+            "source_digest": before,
+            "log": log.as_posix(),
+            "log_digest": "sha256:" + _file_digest(log),
+        }
+        node.finish(
+            "ok" if status == "passed" else "failed",
+            outcome=status,
+            content=_check_content(status, exit_code, before, argv, chosen),
+        )
+        results.append(result)
+    return results
+
+
+def _check_content(status, exit_code, digest, argv, tests) -> dict:
+    return {
+        "status": status,
+        "exit_code": exit_code,
+        "source_digest": digest,
+        "argv": [str(item) for item in argv],
+        "selected_tests": list(tests),
+    }
+
+
+LOG_TAIL = 3000
+
+
+def check_error(result: dict) -> dict:
+    """The error link of one check result that did not pass, with the end of its log."""
+    try:
+        tail = Path(result["log"]).read_bytes()[-LOG_TAIL:].decode("utf-8", "replace")
+    except OSError as error:
+        tail = f"(the log cannot be read: {error})"
+    timeout = result["status"] == "timeout"
+    outcome = "timed out" if timeout else f"failed with exit code {result['exit_code']}"
+    return link(
+        "check",
+        result["check_id"],
+        "check_timed_out" if timeout else "check_failed",
+        f"the configured check {result['check_id']} of {result['module']} {outcome}; its "
+        f"log {result['log']} ends with:\n{tail.strip() or '(empty)'}",
+        reason="capability",
+        explanation="a configured check only measures the code it runs against",
+        evidence=[evidence("log", result["log"], result.get("log_digest", ""))],
+    )
+
+
+# Why a caller's Check execution link was not handled here, by the error's code; every other
+# code is a configuration or request only its sender can correct.
+SERVICE_REASONS = {
+    "check_sandbox_unavailable": "environment",
+    "stale_evidence": "environment",
+    "system_error": "environment",
+    "unexpected_error": "capability",
+}
+
+
+def service_error(error: BaseException) -> dict:
+    """Check execution's own error link for an error ``run_checks`` raised, which the caller
+    keeps as a cause under its own link."""
+    if not isinstance(error, SpecError):
+        return link(
+            "component",
+            "Check execution",
+            "system_error",
+            f"{type(error).__name__}: {error}",
+            reason="environment",
+            explanation="the operating system refused an operation Check execution needed",
+        )
+    where = error.where()
+    return link(
+        "component",
+        "Check execution",
+        error.code,
+        str(error) + (f" (at {where})" if where else ""),
+        reason=SERVICE_REASONS.get(error.code, "input"),
+        explanation=error.reason,
+        evidence=[evidence("location", where, "")] if where else [],
+        options=[error.remediation],
+        recommendation=error.remediation,
+        causes=[service_error(cause) for cause in error.causes],
+    )
+
+
+__all__ = [
+    "affected_modules",
+    "check_error",
+    "check_revision",
+    "checked_modules",
+    "measured_digest",
+    "run_checks",
+    "service_error",
+    "verified_tests",
+]

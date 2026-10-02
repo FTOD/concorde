@@ -7,12 +7,12 @@ import os
 import unittest
 from pathlib import Path
 
-from concorde.adoption.records import (
+from concorde.method.adoption.records import (
     ANSWERS_SCHEMA,
     DECOMPOSITION_SCHEMA,
     SPEC_DESCRIPTION_SCHEMA,
 )
-from concorde.harness.runs import read_record
+from concorde.worker_harness.runs import read_record
 from concorde.spec.verification import verifies
 from tests.concorde.support.adoption_case import (
     DB_HELPER,
@@ -307,7 +307,7 @@ class AdoptionTests(AdoptionCase):
         self.assertIn("client/", envelope["error"]["detail"])
 
     def test_narrowing_binds_only_what_the_directory_bound(self):
-        from concorde.adoption.records import narrowed_entries
+        from concorde.method.adoption.records import narrowed_entries
 
         root = self.project.base / "tree"
         for path in ("src/a/x.py", "src/b/y.py", "src/cache/__pycache__/z.pyc"):
@@ -321,7 +321,7 @@ class AdoptionTests(AdoptionCase):
         )
 
     def test_files_a_child_directory_does_not_bind_stay_with_the_parent(self):
-        from concorde.adoption.records import narrowed_entries
+        from concorde.method.adoption.records import narrowed_entries
 
         root = self.project.base / "site"
         for path in ("docs/index.rst", "docs/.nojekyll", "docs/_themes/.gitignore"):
@@ -594,7 +594,8 @@ class AdoptionTests(AdoptionCase):
 
         self.scaffolded()
         with patch(
-            "concorde.adoption.code_to_spec.describe", side_effect=RuntimeError("boom")
+            "concorde.method.adoption.code_to_spec.describe",
+            side_effect=RuntimeError("boom"),
         ):
             _, envelope = self.describe([{}])
         self.assertEqual("failed", envelope["status"])

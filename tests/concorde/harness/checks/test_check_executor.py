@@ -17,7 +17,7 @@ import uuid
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.harness.check_executor import (
+from concorde.execution.checks.check_executor import (
     CheckCancelled,
     CheckSandboxError,
     execute_check,
@@ -205,7 +205,7 @@ print(json.dumps(str(scratch)))
                 with self.assertRaises(CheckSandboxError):
                     self.run_check("open('new.txt','w').write('unsafe')")
         with patch(
-            "concorde.harness.check_executor._bubblewrap",
+            "concorde.execution.checks.check_executor._bubblewrap",
             side_effect=CheckSandboxError("bubblewrap missing"),
         ):
             with self.assertRaises(CheckSandboxError):
@@ -222,7 +222,9 @@ print(json.dumps(str(scratch)))
             launches.append((argv, kwargs["env"]))
             return process(argv, **kwargs)
 
-        with patch("concorde.harness.check_executor.subprocess.Popen", observe):
+        with patch(
+            "concorde.execution.checks.check_executor.subprocess.Popen", observe
+        ):
             result = execute_check(
                 self.root,
                 [
@@ -239,7 +241,7 @@ print(json.dumps(str(scratch)))
     @verifies("scenario.checks.unavailable")
     def test_real_bubblewrap_setup_failure_never_runs_command(self):
         # A vanished project after admission causes a genuine bwrap --chdir setup failure.
-        from concorde.harness.check_executor import BubblewrapBackend
+        from concorde.execution.checks.check_executor import BubblewrapBackend
 
         (self.parent / "shm").mkdir()
         with self.assertRaises(CheckSandboxError) as caught:
@@ -258,7 +260,7 @@ print(json.dumps(str(scratch)))
         code = """
 import os,sys,ctypes,ctypes.util,errno
 from pathlib import Path
-from concorde.harness.check_executor import execute_check,CheckSandboxError
+from concorde.execution.checks.check_executor import execute_check,CheckSandboxError
 # Install a real kernel filter in this disposable host subprocess. Refuse new user namespaces
 # while allowing ordinary subprocess creation, so an unsandboxed fallback would still be caught.
 lib=ctypes.CDLL(ctypes.util.find_library('seccomp'),use_errno=True)
@@ -296,7 +298,7 @@ else:
         self.assertEqual(0, result.returncode, result)
         self.assertIn(b"namespace-denied", result.stdout)
         with patch(
-            "concorde.harness.check_executor._bubblewrap",
+            "concorde.execution.checks.check_executor._bubblewrap",
             return_value="/missing/concorde-bwrap",
         ):
             with self.assertRaises(CheckSandboxError):

@@ -17,8 +17,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.commands import catalog as commands
-from concorde.errors import ERROR_SCHEMA, LINK_SCHEMA, codes
+from concorde.execution.commands import catalog as commands
+from concorde.kernel.errors import ERROR_SCHEMA, LINK_SCHEMA, codes
 from concorde.execution import binding as binding_file
 from concorde.execution import runs
 from concorde.execution.checkout import PREFIX
@@ -33,15 +33,15 @@ from concorde.execution.runner import (
     run_main,
 )
 from concorde.execution.runs import RESULT_SCHEMA
-from concorde.harness import models, pi_backend
-from concorde.harness.checks import run_checks
-from concorde.harness.runs import read_record
-from concorde.operations import catalog
+from concorde.worker_harness import models, pi_backend
+from concorde.execution.checks.checks import run_checks
+from concorde.worker_harness.runs import read_record
+from concorde.execution.operations import catalog
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
-from concorde.tasks import store
-from concorde.tracing import locks
-from concorde.tracing.node import TraceError
+from concorde.coordination.tasks import store
+from concorde.kernel.tracing import locks
+from concorde.kernel.tracing.node import TraceError
 from tests.concorde.harness.workers.test_pi import FAKE as FAKE_PI
 from tests.concorde.harness.workers.test_pi import fake_which
 from tests.concorde.harness.workers.test_workers import git
@@ -1644,7 +1644,9 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(binding_file.BINDING_SCHEMA, fence["schema"])
 
     def test_the_error_link_is_the_framework_contract(self):
-        text = (REPOSITORY_ROOT / "specs/concorde/kernel/tracing/contracts.md").read_text()
+        text = (
+            REPOSITORY_ROOT / "specs/concorde/kernel/tracing/contracts.md"
+        ).read_text()
         [fence] = [
             json.loads(block)
             for block in re.findall(

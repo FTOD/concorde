@@ -731,8 +731,8 @@ than carry the framework's function, so no diagram above draws them:
   `docs/README.md` as the site's home page.
 - <a id="realization.concorde.development-environment"></a>**Development environment** is this
   checkout's Python project and lock, pytest setup and shared test support, the reference
-  initializer, the Claude Code documentation fetcher, the docsite type check, and the tests of that
-  environment; see [Development environment](development.md).
+  initializer, the Claude Code documentation fetcher, the docsite type check, the part dependency
+  check, and the tests of that environment; see [Development environment](development.md).
 - <a id="realization.concorde.development-guidance"></a>**Development guidance** is the
   `concorde-development` skill's source, `prompts/development/skill.md`: how Concorde itself is
   developed in this checkout, which the build renders beside the `concorde` skill and which the

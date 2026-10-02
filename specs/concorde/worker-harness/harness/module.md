@@ -288,10 +288,9 @@ credentials.
 
 <a id="realization.harness.package"></a>
 
-The **Harness package** is `concorde.harness`'s Python package marker. The package also holds the
-code of Workers and Check execution, which bind their own files; a
-[Module](../../glossary.json#concept.module) need not match a package, and the code tasks that
-follow give the worker harness part its own package.
+The **Harness package** is `concorde.worker_harness`'s Python package marker, the package of the
+worker harness part in `src/concorde/worker_harness/`. The package also holds the code of Workers,
+which binds its own files; a [Module](../../glossary.json#concept.module) need not match a package.
 
 <a id="realization.harness.claude"></a>
 

@@ -15,7 +15,7 @@ import subprocess
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.tasks import store
+from concorde.coordination.tasks import store
 from tests.concorde.support import runs
 from tests.concorde.harness.workers.test_workers import WorkerProject
 

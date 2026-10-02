@@ -142,7 +142,7 @@ network listener — and success of its `validate` tool is evidence about struct
 ```d2
 mcp: Spec MCP server {
   server: Server program {
-    "src/concorde/spec_mcp/"
+    "src/concorde/spec/mcp/"
   }
 }
 ```

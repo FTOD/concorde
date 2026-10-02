@@ -15,16 +15,16 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde import errors
-from concorde.errors import ERROR_SCHEMA, codes
+from concorde.kernel import errors
+from concorde.kernel.errors import ERROR_SCHEMA, codes
 from concorde.execution import binding
 from concorde.execution.runs import workspace_lock
-from concorde.harness import models
+from concorde.worker_harness import models
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
-from concorde.tasks import cli, store
-from concorde.tracing import layout, locks
-from concorde.tracing import node as trace
+from concorde.coordination.tasks import cli, store
+from concorde.kernel.tracing import layout, locks
+from concorde.kernel.tracing import node as trace
 from tests.concorde.support.operation_project import OperationProject, commit
 from tests.concorde.support.paths import REPOSITORY_ROOT
 from tests.concorde.tasks.deliveries import deliver, write_run
@@ -37,7 +37,7 @@ TASK_CONTRACTS = "specs/concorde/coordination/tasks/contracts.md"
 RUNNER = """
 import json, signal, sys, time
 from pathlib import Path
-from concorde.tracing import layout, locks
+from concorde.kernel.tracing import layout, locks
 concorde, task, run_id, folder = Path(sys.argv[1]), sys.argv[2], sys.argv[3], Path(sys.argv[4])
 stopped = []
 signal.signal(signal.SIGTERM, lambda *_: stopped.append(True))

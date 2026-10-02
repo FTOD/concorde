@@ -1,7 +1,7 @@
 # Timing spans
 
 The precise obligations, scenarios and record formats of the timing recorder in
-`src/concorde/harness/timing.py`. The entry explains
+`src/concorde/execution/checks/timing.py`. The entry explains
 what a diagnostic span is for.
 
 ## Span record

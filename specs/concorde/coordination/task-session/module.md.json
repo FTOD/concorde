@@ -100,8 +100,8 @@
       "title": "Session starter",
       "meaning": "#realization.task-session.starter",
       "entries": [
-        "src/concorde/tasks/session.py",
-        "src/concorde/tasks/session_hook.py",
+        "src/concorde/coordination/tasks/session.py",
+        "src/concorde/coordination/tasks/session_hook.py",
         "tests/concorde/tasks/test_session.py"
       ]
     }

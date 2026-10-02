@@ -12,7 +12,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from concorde.spec.verification import verifies
-from concorde.tracing import locks
+from concorde.kernel.tracing import locks
 from tests.concorde.support.environment import child_environment
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
@@ -39,7 +39,7 @@ class LockLineTests(unittest.TestCase):
         descriptor = locks.acquire(path)
         code = (
             "import sys, time\n"
-            "from concorde.tracing import locks\n"
+            "from concorde.kernel.tracing import locks\n"
             f"with locks.hold({str(path)!r}, 'the merge', wait=0):\n"
             "    import os\n"
             f"    print(os.environ.get({locks.INHERITED!r}), flush=True)\n"

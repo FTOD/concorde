@@ -22,8 +22,8 @@ import sys
 import time
 from pathlib import Path
 
-from .. import errors
-from ..commands.catalog import COMMANDS
+from ..kernel import errors
+from ..execution.commands.catalog import COMMANDS
 from ..execution.runs import (
     RUN_ID_PATTERN,
     Store,

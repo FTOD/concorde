@@ -13,18 +13,18 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.errors import ERROR_SCHEMA
-from concorde.harness import runs as worker_runs
-from concorde.harness import write_hook
-from concorde.harness.claude_backend import proxy_environment
-from concorde.harness.settings import (
+from concorde.kernel.errors import ERROR_SCHEMA
+from concorde.worker_harness import runs as worker_runs
+from concorde.worker_harness import write_hook
+from concorde.worker_harness.claude_backend import proxy_environment
+from concorde.worker_harness.settings import (
     RunPaths,
     SettingsError,
     deny_rules,
     worker_settings,
     write_hook_source,
 )
-from concorde.harness.workers import (
+from concorde.worker_harness.workers import (
     WORKER_RESULT_SCHEMA,
     WorkerRequest,
     run_worker,
@@ -197,7 +197,7 @@ class WorkerProject:
                 pass
             remove(paths)
 
-        keeper = patch("concorde.harness.workers.remove_runtime", keeping)
+        keeper = patch("concorde.worker_harness.workers.remove_runtime", keeping)
         keeper.start()
         test.addCleanup(keeper.stop)
 
@@ -287,7 +287,7 @@ class SettingsTests(unittest.TestCase):
 
     @verifies("scenario.workers.read-denied")
     def test_inside_home_only_the_paths_to_the_worktree_stay_visible(self):
-        from concorde.harness.settings import outside_rules
+        from concorde.worker_harness.settings import outside_rules
 
         home = self.project.base
         rules = outside_rules(home, (self.project.root, self.run.work))
@@ -302,7 +302,7 @@ class SettingsTests(unittest.TestCase):
 
     @verifies("scenario.workers.git-hidden-outside-home")
     def test_every_git_path_is_hidden_with_the_primary_outside_home(self):
-        from concorde.harness.placement import place
+        from concorde.worker_harness.placement import place
 
         root, primary = self.project.root, self.project.primary
         # A nested repository's .git inside a writable directory, such as a vendored checkout.
@@ -734,7 +734,7 @@ class WorkerRunTests(unittest.TestCase):
         def covering(worktree, grant, run, runtime=(), home=None, primary=None, git=()):
             return [f"Read(/{run.root.as_posix()}/**)"]
 
-        with patch("concorde.harness.settings.deny_rules", covering):
+        with patch("concorde.worker_harness.settings.deny_rules", covering):
             record = self.project.run([{}])
         self.assertEqual("failed", record["status"])
         self.assertEqual("run_directory_denied", record["error"]["code"])
@@ -1112,12 +1112,12 @@ class WorkerRunTests(unittest.TestCase):
         self.assertEqual("failed", record["rounds"][-1]["checks"][0]["status"])
 
     def test_checks_that_cannot_run_keep_check_executions_link(self):
-        from concorde.harness.check_executor import CheckSandboxError
+        from concorde.execution.checks.check_executor import CheckSandboxError
 
         def refused(*_arguments, **_options):
             raise CheckSandboxError("no namespaces here")
 
-        with patch("concorde.harness.checks.execute_check", refused):
+        with patch("concorde.execution.checks.checks.execute_check", refused):
             record = self.project.run([{}])
         self.assertEqual("failed", record["status"])
         error = record["error"]

@@ -19,13 +19,13 @@ from pathlib import Path
 from typing import ClassVar
 from unittest.mock import patch
 
-from concorde import errors
-from concorde.commands.catalog import COMMANDS
+from concorde.kernel import errors
+from concorde.execution.commands.catalog import COMMANDS
 from concorde.execution.runs import Store, run_lock, workspace_lock, workspace_runs
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
-from concorde.tracing import locks
-from concorde.tracing import node as trace
+from concorde.kernel.tracing import locks
+from concorde.kernel.tracing import node as trace
 from concorde.workflows import catalog, store
 from concorde.workflows import step as steps
 from concorde.workflows.cli import refused
@@ -340,7 +340,7 @@ class StepTests(unittest.TestCase):
 
     @verifies("scenario.workflows.step-retired")
     def test_a_step_waiting_while_its_task_closes_is_refused(self):
-        from concorde.tasks import store as tasks
+        from concorde.coordination.tasks import store as tasks
 
         with self.starter(output=SURVEY_OUTPUT):
             run_step(self.space, self.request())

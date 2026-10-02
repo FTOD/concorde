@@ -10,8 +10,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from concorde.harness import models
-from concorde.harness.available_models import candidates
+from concorde.worker_harness import models
+from concorde.worker_harness.available_models import candidates
 from concorde.spec.verification import verifies
 from tests.concorde.support.agent_fakes import fake_agents
 from tests.concorde.support.paths import REPOSITORY_ROOT

@@ -33,13 +33,13 @@
       "title": "Tracing library",
       "meaning": "#realization.tracing.library",
       "entries": [
-        "src/concorde/tracing/__init__.py",
-        "src/concorde/tracing/layout.py",
-        "src/concorde/tracing/node.py",
-        "src/concorde/tracing/locks.py",
-        "src/concorde/tracing/reader.py",
-        "src/concorde/tracing/retention.py",
-        "src/concorde/tracing/watch.py"
+        "src/concorde/kernel/tracing/__init__.py",
+        "src/concorde/kernel/tracing/layout.py",
+        "src/concorde/kernel/tracing/node.py",
+        "src/concorde/kernel/tracing/locks.py",
+        "src/concorde/kernel/tracing/reader.py",
+        "src/concorde/kernel/tracing/retention.py",
+        "src/concorde/kernel/tracing/watch.py"
       ]
     },
     {
@@ -48,7 +48,7 @@
       "title": "Trace command",
       "meaning": "#realization.tracing.command",
       "entries": [
-        "src/concorde/tracing/command.py"
+        "src/concorde/kernel/tracing/command.py"
       ]
     },
     {
@@ -57,7 +57,7 @@
       "title": "Error chain code",
       "meaning": "#realization.tracing.error-chain",
       "entries": [
-        "src/concorde/errors.py",
+        "src/concorde/kernel/errors.py",
         "tests/concorde/test_errors.py"
       ]
     },

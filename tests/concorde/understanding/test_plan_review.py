@@ -11,10 +11,10 @@ import json
 import unittest
 from pathlib import Path
 
-from concorde.harness.models import validate_config
-from concorde.harness.runs import read_record
+from concorde.worker_harness.models import validate_config
+from concorde.worker_harness.runs import read_record
 from concorde.spec.verification import verifies
-from concorde.understanding.plan_review import REPORT_SCHEMA
+from concorde.method.understanding.plan_review import REPORT_SCHEMA
 from tests.concorde.support.operation_project import OperationProject, link_at
 from tests.concorde.support.paths import REPOSITORY_ROOT
 from tests.concorde.understanding.test_understand import assessment
@@ -348,8 +348,7 @@ class PlanReviewTests(unittest.TestCase):
 
     def test_the_contract_matches_the_spec(self):
         text = (
-            REPOSITORY_ROOT
-            / "specs/concorde/method/understanding/contracts.md"
+            REPOSITORY_ROOT / "specs/concorde/method/understanding/contracts.md"
         ).read_text()
         block = text.split("## Plan review report")[1].split("```concorde-contract")[1]
         contract = json.loads(block.split("```")[0])

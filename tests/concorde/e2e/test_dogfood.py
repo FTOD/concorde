@@ -50,8 +50,8 @@ class ScenarioTests(unittest.TestCase):
         # whichever backend a worker configuration chooses.
         chosen = dogfood.scenario("write-hook-rw-directories")
         faulted = {edit["file"] for edit in chosen["fault"]["edits"]}
-        self.assertIn("src/concorde/harness/write_hook.py", faulted)
-        self.assertIn("src/concorde/harness/pi_policy.ts", faulted)
+        self.assertIn("src/concorde/worker_harness/write_hook.py", faulted)
+        self.assertIn("src/concorde/worker_harness/pi_policy.ts", faulted)
 
     @verifies("scenario.dogfood-scenarios.unknown-scenario")
     def test_an_unknown_scenario_is_refused_naming_the_known_ones(self):

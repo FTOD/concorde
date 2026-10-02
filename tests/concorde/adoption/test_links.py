@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from concorde.adoption.test_links import link_file
+from concorde.method.adoption.test_links import link_file
 from concorde.spec.verification import scan_declarations
 from concorde.spec.verification import verifies
 

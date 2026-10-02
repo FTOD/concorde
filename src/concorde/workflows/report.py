@@ -12,7 +12,7 @@ import copy
 import json
 from datetime import UTC, datetime
 
-from .. import errors
+from ..kernel import errors
 from ..execution.runs import load_result, run_state
 from ..spec.schema import validate
 from . import store

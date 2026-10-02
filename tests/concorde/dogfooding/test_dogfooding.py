@@ -11,7 +11,7 @@ from pathlib import Path
 from concorde.distribution.build import build
 from concorde.distribution.install import InstallError, install, update
 from concorde.distribution.prompt_resolver import resolve_role_prompt
-from concorde.errors import link
+from concorde.kernel.errors import link
 from concorde.issues.shapes import REPORT
 from concorde.issues.store import validate_report
 from concorde.spec.verification import verifies

@@ -202,7 +202,7 @@ fields, never adding or removing one. See the [requirements](requirements.md) an
 <a id="realization.specification.operation"></a>
 
 The **Specify Operation** realization holds the Operation's steps, worker instructions and result
-schema in `src/concorde/specification/` (`operation.py` declares `SPECIFY`), prompt
+schema in `src/concorde/method/specification/` (`operation.py` declares `SPECIFY`), prompt
 `prompts/workers/specify.md`, tested against a fake worker.
 
 ## What it relies on

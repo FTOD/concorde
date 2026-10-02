@@ -6,11 +6,11 @@ import json
 import unittest
 from unittest.mock import patch
 
-from concorde.errors import ERROR_SCHEMA
+from concorde.kernel.errors import ERROR_SCHEMA
 from concorde.execution.context import Continue, Provider
-from concorde.harness import models
-from concorde.operations import catalog
-from concorde.spec_review.panel import WORKERS
+from concorde.worker_harness import models
+from concorde.execution.operations import catalog
+from concorde.method.spec_review.panel import WORKERS
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
 from tests.concorde.support.operation_project import OperationProject

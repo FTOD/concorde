@@ -14,7 +14,7 @@ from contextlib import redirect_stdout
 from functools import cache
 from pathlib import Path
 
-from concorde.errors import link
+from concorde.kernel.errors import link
 from concorde.issues.command import NOT_AN_ISSUE
 from concorde.issues.store import list_issues, read_issue
 from concorde.spec.repository import digest

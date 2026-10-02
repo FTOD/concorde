@@ -12,10 +12,13 @@ from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.harness import claude_backend
-from concorde.harness.runs import read_record
-from concorde.harness.settings import denied
-from concorde.implementation.operation import CODE_CHANGE_SCHEMA, TEST_REPORT_SCHEMA
+from concorde.worker_harness import claude_backend
+from concorde.worker_harness.runs import read_record
+from concorde.worker_harness.settings import denied
+from concorde.method.implementation.operation import (
+    CODE_CHANGE_SCHEMA,
+    TEST_REPORT_SCHEMA,
+)
 from concorde.execution.context import interpreter_roots
 from concorde.spec.repository import SpecRepository
 from concorde.spec.verification import verifies

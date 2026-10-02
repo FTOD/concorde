@@ -62,7 +62,7 @@
       "title": "Scaffold command",
       "meaning": "#realization.scaffold.command",
       "entries": [
-        "src/concorde/scaffold/",
+        "src/concorde/method/scaffold/",
         "tests/concorde/scaffold/"
       ]
     }

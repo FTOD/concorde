@@ -22,10 +22,10 @@ import subprocess
 import uuid
 from pathlib import Path
 
-from ..errors import from_exception, link
+from ..kernel.errors import from_exception, link
 from ..spec.repository import SpecError, digest
 from ..spec.typed_data import TypedDataError, decode
-from ..tasks.store import MERGE_WAIT
+from ..coordination.tasks.store import MERGE_WAIT
 from .shapes import SEVERITIES, TIERS
 from .store import (
     CLOSED,

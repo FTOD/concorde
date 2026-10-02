@@ -11,7 +11,7 @@ from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
-from concorde.views.docsite_template import (  # noqa: E402
+from concorde.spec.views.docsite_template import (  # noqa: E402
     SCAFFOLD_ONLY_DIRECTORIES,
     TEMPLATE_ROOT,
     WORKFLOW_TEMPLATE,
@@ -103,7 +103,7 @@ class DocsiteTemplateFakePackageTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             write_fake_package(root)
-            from concorde.views.docsite_template import workflow_template
+            from concorde.spec.views.docsite_template import workflow_template
 
             self.assertEqual(workflow_template(root), b"name: Deploy\n")
             self.assertEqual(WORKFLOW_TEMPLATE, "scaffold/deploy-docsite.yml")
@@ -113,7 +113,7 @@ class DocsiteTemplateFakePackageTests(unittest.TestCase):
             root = Path(temporary)
             write_fake_package(root)
             (root / "docsite/scaffold/deploy-docsite.yml").unlink()
-            from concorde.views.docsite_template import workflow_template
+            from concorde.spec.views.docsite_template import workflow_template
 
             with self.assertRaises(DocsiteTemplateError):
                 workflow_template(root)

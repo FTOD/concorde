@@ -11,7 +11,7 @@ plugin keeps the evidence the retired subprocess runner recorded:
 - ``--prior=PATH`` names an earlier summary: the report records its ``run_id`` and whether the
   declared inputs are the same; a summary that cannot be read is a usage error before any test runs;
 - every process that executes tests gets its own ``CONCORDE_DIAGNOSTIC_TIMING_DIR`` and each unit
-  its own subdirectory, so runtime spans written by ``concorde.harness.timing.timed`` fixtures are
+  its own subdirectory, so runtime spans written by ``concorde.execution.checks.timing.timed`` fixtures are
   nested under the unit that produced them and the controller aggregates them from the workers.
 
 Pass values with ``=`` (``--json=PATH``, ``--prior=PATH``): pytest chooses its rootdir from the
@@ -400,7 +400,7 @@ class ConcordeTiming:
             terminalreporter.write_line(message)
 
     def build_summary(self, exitstatus: int) -> dict:
-        from concorde.harness.timing import interval_record
+        from concorde.execution.checks.timing import interval_record
 
         option = self.config.option
         prior = self.prior

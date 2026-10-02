@@ -52,7 +52,7 @@
       "title": "Docsite scaffold",
       "meaning": "#realization.views.scaffold",
       "entries": [
-        "src/concorde/views/",
+        "src/concorde/spec/views/",
         "tests/concorde/views/"
       ]
     },

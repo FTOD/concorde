@@ -26,14 +26,14 @@ from concorde.distribution.build import (
 from concorde.distribution.install import InstallError, install, refusal, update
 from concorde.distribution.project_defaults import write_protocol_copy
 from concorde.distribution.tools import platform_key
-from concorde.errors import ERROR_SCHEMA
+from concorde.kernel.errors import ERROR_SCHEMA
 from concorde.execution.runs import Store, run_lock
 from concorde.spec.initialize import apply_project_proposal, project_proposal
 from concorde.spec.repository_base import SpecError
 from concorde.spec.schema import validate
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies
-from concorde.views.docsite_template import adapter_files, template_files
+from concorde.spec.views.docsite_template import adapter_files, template_files
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 COPIED = (

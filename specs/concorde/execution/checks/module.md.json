@@ -36,9 +36,7 @@
       "title": "Check runner",
       "meaning": "#realization.checks.runner",
       "entries": [
-        "src/concorde/harness/check_executor.py",
-        "src/concorde/harness/timing.py",
-        "src/concorde/harness/checks.py"
+        "src/concorde/execution/checks/"
       ]
     },
     {

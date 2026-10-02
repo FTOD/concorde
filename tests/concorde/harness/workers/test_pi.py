@@ -17,8 +17,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from concorde.harness import pi_backend
-from concorde.harness.settings import RunPaths, sandbox_filesystem
+from concorde.worker_harness import pi_backend
+from concorde.worker_harness.settings import RunPaths, sandbox_filesystem
 from concorde.spec.verification import verifies
 from tests.concorde.harness.workers.test_workers import LOOPBACK_PROXY, WorkerProject
 

@@ -78,11 +78,11 @@
       "title": "Worker runtime",
       "meaning": "#realization.workers.runtime",
       "entries": [
-        "src/concorde/harness/workers.py",
-        "src/concorde/harness/progress.py",
-        "src/concorde/harness/audit.py",
-        "src/concorde/harness/runs.py",
-        "src/concorde/harness/placement.py",
+        "src/concorde/worker_harness/workers.py",
+        "src/concorde/worker_harness/progress.py",
+        "src/concorde/worker_harness/audit.py",
+        "src/concorde/worker_harness/runs.py",
+        "src/concorde/worker_harness/placement.py",
         "tests/concorde/harness/workers/",
         "prompts/workers/common/"
       ]
@@ -93,7 +93,7 @@
       "title": "Claude Code backend",
       "meaning": "#realization.workers.claude",
       "entries": [
-        "src/concorde/harness/claude_backend.py"
+        "src/concorde/worker_harness/claude_backend.py"
       ]
     },
     {
@@ -102,7 +102,7 @@
       "title": "pi backend",
       "meaning": "#realization.workers.pi",
       "entries": [
-        "src/concorde/harness/pi_backend.py"
+        "src/concorde/worker_harness/pi_backend.py"
       ]
     },
     {
@@ -111,8 +111,8 @@
       "title": "Configuration reader",
       "meaning": "#realization.workers.models",
       "entries": [
-        "src/concorde/harness/models.py",
-        "src/concorde/harness/available_models.py",
+        "src/concorde/worker_harness/models.py",
+        "src/concorde/worker_harness/available_models.py",
         "scripts/available_models.py"
       ]
     }

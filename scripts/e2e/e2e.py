@@ -73,7 +73,7 @@ from common import (  # noqa: E402
 
 sys.path.insert(0, str(CHECKOUT / "src"))
 
-from concorde.harness import models  # noqa: E402
+from concorde.worker_harness import models  # noqa: E402
 
 SWE_BENCH = CHECKOUT / "references/swe-bench"
 REPO_LIST = SWE_BENCH / "swebench/harness/log_parsers/python.py"

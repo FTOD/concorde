@@ -75,7 +75,7 @@ added to the command line or diagnostic messages.
 ## Running checks
 
 `run_checks(worktree, *, modules, trace_directory, measured=None, tests=None, python=None,
-stage="work", kinds="all")` in `src/concorde/harness/checks.py`:
+stage="work", kinds="all")` in `src/concorde/execution/checks/checks.py`:
 
 1. takes the Modules to check from `modules`, as labels that select checks files. Which Modules a
    change concerns, and which Modules use one of them, is the caller's to decide, since it needs

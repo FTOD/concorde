@@ -9,14 +9,14 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.harness.claude_backend import ClaudeBackend
-from concorde.harness.runs import read_record
+from concorde.worker_harness.claude_backend import ClaudeBackend
+from concorde.worker_harness.runs import read_record
 from concorde.issues.store import list_issues, read_issue
 from concorde.spec.grants import grant
 from concorde.spec.repository import SpecRepository
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
-from concorde.spec_review.panel import PAYLOAD_SCHEMA, account
+from concorde.method.spec_review.panel import PAYLOAD_SCHEMA, account
 from tests.concorde.support.operation_project import (
     OperationProject,
     commit,

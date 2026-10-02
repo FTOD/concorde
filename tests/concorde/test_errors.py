@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from concorde import errors
+from concorde.kernel import errors
 from concorde.spec.schema import ContractError, admit, validate
 
 
