@@ -94,6 +94,14 @@ in the [contracts](contracts.md).
 - AND the result is `failed`, still carrying every finding
 - BUT no Issue records the refusal
 
+### scenario.code-review.without-issues — Without the issues part the findings stay in the report
+
+- GIVEN a project whose `concorde` does not offer `issues`, the issues part not being installed
+- WHEN the Operation reviews a change whose reviewer returns a finding of a blocking tier
+- THEN the Module is `changes_required`, its finding keeps `issue` null and its `earlier_issues` is null
+- AND the result's summary says the findings were not recorded as Issues
+- BUT no Issue is recorded
+
 ## Host checks
 
 ### scenario.code-review.unknown-basis — A finding citing an unknown promise is not reported

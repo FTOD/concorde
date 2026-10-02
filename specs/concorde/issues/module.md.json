@@ -42,6 +42,7 @@
         "target": "module.tasks",
         "meaning": "#uses-tasks",
         "relies_on": [
+          "contract.tasks.record",
           "req.tasks.merging-recorded",
           "req.tasks.merge-incomplete-refused"
         ]

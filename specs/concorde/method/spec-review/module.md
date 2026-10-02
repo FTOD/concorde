@@ -397,13 +397,16 @@ result's [error chain](../../glossary.json#concept.error-chain) unchanged.
 **Issues** is an [optional integration](../../glossary.json#concept.optional-integration): where
 the issues part is installed, it keeps the project's [Issues](../../glossary.json#concept.issue) in
 the primary worktree, whichever worktree the run works in, and where it is not, the review keeps its
-findings in its result alone, as [its core concepts](#core-concepts) say. Spec review relies on its store to list the open Issues of a
+findings in its result alone, as [its core concepts](#core-concepts) say. Spec review reaches Issues
+only through the issues part's [bookkeeping command](../../issues/interface.md#bookkeeping-command),
+`concorde issues`, never its code, and relies on its store, through that command, to list the open Issues of a
 Module with their latest [report](../../glossary.json#concept.issue-report) and
 [revision](../../glossary.json#concept.issue-revision), to record a new Issue or append a report at
 the revision read, committing it before it answers, and to refuse a stale append rather than
 overwrite it; on its [tiers](../../glossary.json#concept.issue-tier) for what a finding blocks; and on its
 [severities](../../glossary.json#concept.issue-severity) for how much a finding matters.
-The Operation supplies each report's provenance itself, as an Operation's host may. A refusal of
+The Operation supplies each report's provenance itself, as an Operation's host may, with
+`report --provenance`. A refusal of
 the store makes the Module's review `incomplete`, with the store's error as the cause; the
 Operation never retries it and never records it as an Issue.
 

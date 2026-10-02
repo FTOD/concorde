@@ -117,7 +117,8 @@ Sessions record and read Issues with the bookkeeping command, directly or throug
 on the project MCP server, which go through the Issue store; the store relies on the Kernel for its
 records, its file transactions and the merge lock, the command on Tracing for the error chains it
 checks and prints; where they are installed, the command reads Spec core's registry for which
-Modules exist and the store asks Tasks whether a merge is unfinished, and Tasks closes through the
+Modules exist and the store reads Tasks' [task records](../glossary.json#concept.task-record) for an unfinished merge, each through the
+file its owner's Spec defines and never through that part's code, and Tasks closes through the
 command the Issues a merged task resolves.
 
 ```d2
@@ -424,24 +425,38 @@ its refusals as a `component` link, as the [interface](interface.md#store-operat
 
 <a id="uses-spec"></a>
 
-**Spec core** is an [optional integration](../glossary.json#concept.optional-integration). Where
-the spec part is installed, the command reads its [registry](../glossary.json#concept.registry) for
-which Modules exist, which is root, and which digest names a report's context: a report's owner must
-be a registered Module, a `null` owner falls to the root Module, and the store check fails an open
-Issue whose owner is not registered. Where it is not installed, a Module is a plain label: a report
-must name its owner, which nothing checks, its context digest is that of no registry, and the store
-check notes nothing about owners.
+**Spec core** is an [optional integration](../glossary.json#concept.optional-integration), reached
+through its registry mirror alone, the [registry file](../spec-tooling/spec/contracts.md#registry-file)
+`.concorde/specs.json` Spec core defines, never through the spec part's code:
+the file itself tells whether the spec part is installed, a worktree without it having none. Where
+it is there, the command reads the [registry](../glossary.json#concept.registry) for which Modules
+exist, which is root, and which digest names a report's context: a report's owner must be a
+registered Module, a `null` owner falls to the root Module, and the store check fails an open Issue
+whose owner is not registered. Where it is not, a Module is a plain label: a report must name its
+owner, which nothing checks, its context digest is that of no registry, and the store check judges
+no owner and says, in a note, that the spec part is not installed.
 
 <a id="uses-tasks"></a>
 
-**Tasks** is an optional integration. Where the coordination part is installed, Tasks records
+**Tasks** is an optional integration, reached through its
+[task records](../coordination/tasks/contracts.md#contract.tasks.record) alone, never through
+the coordination part's code. Where the coordination part is installed, Tasks records
 [before its merge touches the primary branch](../coordination/tasks/requirements.md#req.tasks.merging-recorded)
-that a task is `merging`, and the store asks it before every write and refuses the write with
-`merge_incomplete` while one is, its message
-[Tasks' account of that merge](../coordination/tasks/requirements.md#req.tasks.merge-incomplete-refused):
-the merging task, its commits and the `--resume` and `--abort` that finish it. Where it is not
-installed there is no task merge, and no write waits for one. The primary worktree of any worktree
-of the repository the store finds through Git's common directory itself, needing no part.
+that a task is `merging`, and before every write the store reads the records of the current tasks,
+`.concorde/tasks/*/task.json`, and refuses the write with `merge_incomplete` while one is stored
+`merging`, its message
+[Tasks' account of that merge](../coordination/tasks/requirements.md#req.tasks.merge-incomplete-refused)
+built from the record's `merging`: the merging task, its process and start, its commits, where the
+primary branch is now and the `--resume` and `--abort` that finish it. A record that does not read
+as JSON cannot be told `merging` and is passed over, Tasks refusing its own commands on it. Where
+the coordination part is not installed there is no `.concorde/tasks/`, no task merge, and no write
+waits for one. The primary worktree of any worktree of the repository the store finds through Git's
+common directory itself, needing no part.
+
+A merge that holds the merge lock and closes the Issues its task resolves through the bookkeeping
+command hands the lock on to the command's process, as the Kernel's
+[merge lock](../glossary.json#concept.merge-lock) allows: the command's write then adopts the lock
+instead of waiting for it, as `locked` does for a caller of the library entry.
 
 ### Inside
 
@@ -513,7 +528,9 @@ given as `null` falls to the root Module. Attribution as `main-agent` or `task-s
 convention of the command and the tools, not authentication: the library accepts provenance from its
 caller. It is used by a model, which can only fix a request it understands, so every refusal names
 the Issue, report file and field or argument and says what is wrong, passing the store's own errors
-on unchanged.
+on unchanged. A part that may not import Issues' code, such as the method part's reviews, records
+the reports of its own run through the command too, giving with `--provenance` the provenance it
+vouches for, which the command records as given, as the store's library does for its callers.
 
 The store check is this Module's own, `concorde issues check` and the tool `issue_check`, and its
 configured check rather than part of Spec validation, so the Spec tooling stays unaware of Issues and

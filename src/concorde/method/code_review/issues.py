@@ -3,7 +3,7 @@
 The project's Issues, which the primary worktree keeps, are the review's memory. Before a reviewer
 judges, the host reads each reviewed Module's earlier Issues: its open Issues one of whose reports a
 ``code_review`` run made. Reading, settling and reporting them are every review's, in
-``operations.review_issues``; this module adds what is the code review's own: the reviewer's view
+``method.review_issues``; this module adds what is the code review's own: the reviewer's view
 of its earlier Issues and the Issue report of a code finding.
 """
 
@@ -13,9 +13,8 @@ import json
 import re
 
 from ...execution.context import RunContext, Stop
-from ...issues import command as issue_command  # noqa: F401 (callers catch its Refusal)
-from ...issues.shapes import BLOCKING, SEVERITIES, TIERS
-from ...execution.operations import review_issues
+from .. import review_issues
+from ..review_issues import SEVERITIES, TIERS, Refusal, is_blocking
 
 OPERATION = "code_review"
 ISSUE = r"^I-[0-9a-f]{32}$"
@@ -31,21 +30,23 @@ CLASSIFICATION = {
 LOCATION = re.compile(r"^(?P<path>.+?)(?::(?P<first>[0-9]+)(?:-(?P<last>[0-9]+))?)?$")
 
 
-def is_blocking(tier: str | None) -> bool:
-    return tier in BLOCKING
-
-
-def earlier_issues(ctx: RunContext, module: str) -> list[dict]:
+def earlier_issues(ctx: RunContext, module: str) -> list[dict] | None:
     """The Module's open Issues a code review reported, each as its latest report states it;
-    raises ``issue_command.Refusal`` when the project's Issues cannot be read."""
-    return [
-        {"issue": item["issue"], "module": module, **item}
-        for item in review_issues.earlier_issues(ctx, module, (OPERATION,))
-    ]
+    None where the issues part is not installed. Raises ``Refusal`` when the project's Issues
+    cannot be read."""
+    found = review_issues.earlier_issues(ctx, module, (OPERATION,))
+    if found is None:
+        return None
+    return [{"issue": item["issue"], "module": module, **item} for item in found]
 
 
-def material(earlier: list[dict]) -> str:
+def material(earlier: list[dict] | None) -> str:
     """The reviewer's view of its Modules' earlier Issues."""
+    if earlier is None:
+        return (
+            "## Earlier Issues\n\nThe project keeps no Issues (the issues part is not installed), "
+            "so there are no earlier Issues: report every finding as new and resolve none.\n"
+        )
     if not earlier:
         return (
             "## Earlier Issues\n\nNo earlier code review left an open Issue for the reviewed "
@@ -168,6 +169,7 @@ __all__ = [
     "SEVERITIES",
     "TIERS",
     "earlier_issues",
+    "Refusal",
     "is_blocking",
     "issue_report",
     "location",

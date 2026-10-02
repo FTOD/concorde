@@ -41,6 +41,7 @@ from ...spec.repository import SpecRepository
 from ...spec.repository_base import SpecError, is_identity
 from ...spec.schema import ContractError, validate
 from ...spec.typed_data import TypedDataError, safe_path
+from .. import review_issues
 from . import issues
 
 TASK_TYPE = "review-code"
@@ -564,7 +565,11 @@ def instructions(
             + f"{_listing(root, state.named)}\n"
             + f"### Diff\n\n```diff\n{diff}\n```\n\n"
         )
-    earlier = [item for review in reviews for item in review.earlier or []]
+    earlier = (
+        None
+        if all(review.earlier is None for review in reviews)
+        else [item for review in reviews for item in review.earlier or []]
+    )
     return (
         text
         + "### Check results (run by the host)\n\n"
@@ -691,7 +696,7 @@ def _read_earlier(
     for review in reviews:
         try:
             review.earlier = issues.earlier_issues(ctx, review.module)
-        except issues.issue_command.Refusal as refusal:
+        except issues.Refusal as refusal:
             return found, ctx.fail(
                 "failed",
                 "issues_unreadable",
@@ -705,6 +710,15 @@ def _read_earlier(
                     "repair the Issue records (issue_check), then run the review again"
                 ],
             )
+        if review.earlier is None:
+            found.append(
+                evidence(
+                    "earlier-issues",
+                    review.module,
+                    f"no earlier Issue offered: {review_issues.NOT_RECORDED}",
+                )
+            )
+            continue
         listed = ", ".join(item["issue"] for item in review.earlier)
         found.append(
             evidence(
@@ -807,6 +821,9 @@ def _judge(
             [item for item in resolved if item["issue"] in mine]
             + (unoffered if index == 0 else []),
         )
+        if review.earlier is None:
+            # No earlier Issue was read, so none is carried or resolved.
+            review.settled = None
         reported, stop = issues.report(
             ctx,
             state.scope,
@@ -865,7 +882,7 @@ def derive_verdict(ctx: RunContext):
     ctx.output = payload
     incomplete = [item for item in reviews if item.stop is not None]
     standing = sum(len(item.standing()) for item in reviews if item.stop is None)
-    counts = f"{standing} blocking Issue(s) stand"
+    counts = f"{standing} blocking Issue(s) stand{review_issues.statement(ctx)}"
     if not incomplete:
         return Stop("ok", f"Code review ({state.scope}): {verdict}; {counts}.")
     status = (

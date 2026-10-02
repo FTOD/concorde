@@ -133,6 +133,14 @@ fields are free
 strings apart from `context_id`; the store records them as given and derives the
 [Issue](../glossary.json#concept.issue) identity from `invocation_id` and the report key.
 
+A caller that vouches for its own provenance, such as an [Operation](../glossary.json#concept.operation)'s
+host recording the findings of its run, gives the whole provenance with `report --provenance` instead:
+its own `invocation_id`, such as its run's identity, `agent` `operation`, its name as `operation`,
+the Module it reviewed as `target_id`, the digest of its context and its workspace as `change_id`.
+The command then neither checks the report's owner against the primary worktree's registry nor its
+evidence paths, which the caller vouches for like the provenance, since a task's run may report on a
+Module its task adds and on a path its change removed.
+
 ## Record file
 
 The [lifecycle](module.md#lifecycle) explains the state transitions and their meaning to the
@@ -204,11 +212,11 @@ records. They fail in these ways:
   `stale_proposal` as its cause;
 - a value that the Kernel's [typed-value](../kernel/contracts.md#typed-values) checks
   refuse, such as a report or disposition that breaks its schema or an evidence path that is not a
-  canonical project-relative POSIX path, is refused by those checks with `TypedDataError` and its
+  canonical project-relative POSIX path, is refused by those checks with the Kernel's error and its
   code `invalid_field`, naming the field it concerns; a record, directory or lock path reached
   through a symbolic link is refused the same way, without a field;
-- a write the operating system refuses inside the file transaction fails with the transaction's
-  `system_error`;
+- a write the operating system refuses inside the file transaction is an `IssueError` with the
+  transaction's code `system_error`, naming the record file;
 - an operating-system error outside the file transaction, such as taking the lock, syncing the
   directory after publication or Git failing to list or read the committed records, propagates as
   the operating system's own `OSError`, after the write put back the record it had published;
@@ -219,7 +227,7 @@ records. They fail in these ways:
   write left, is an `IssueError` with `recovery_failed`, and a write of an Issue whose record holds
   a change no write left is an `IssueError` with `uncommitted_change`, naming the record file.
 
-The bookkeeping command reports a `TypedDataError` as `invalid_issue`, and a `system_error` or an
+The bookkeeping command reports a Kernel error as `invalid_issue`, and a `system_error` or an
 `OSError` as `io_error`.
 
 | Operation | Behaviour |
@@ -239,9 +247,12 @@ Every write refuses a `root` that is not the primary worktree (`not_primary`), t
 primary worktree's merge lock, `.concorde/locks/merge.lock`, the one Tasks' merges, opens and closes
 hold, waiting for it up to `wait` seconds (default 300) and refusing with `merge_busy`, naming the
 holder, after that; `locked` says the caller holds it already, as a task merge closing the Issues its
-task resolves does once it has closed the task, and then the write neither takes nor waits for it.
-Holding it, whether it took it or its caller holds it, a write refuses with `merge_incomplete` while
-a task is stored `merging`, recovers as below, refuses with
+task resolves does once it has closed the task, and then the write neither takes nor waits for it;
+a process that was handed the lock adopts it without waiting. Holding it, whether it took it or its
+caller holds it, a write refuses with `merge_incomplete` while a task is stored `merging`, which it
+reads in the current tasks' [task records](../coordination/tasks/contracts.md#contract.tasks.record)
+`.concorde/tasks/*/task.json` of the primary worktree, where the coordination part is installed,
+passing over a record that does not read as JSON; it then recovers as below, refuses with
 `uncommitted_change` when the record it writes holds a change recovery left, reads the committed
 record and checks its revision, and publishes the record at its place through a
 [file transaction](../glossary.json#concept.file-transaction): over the committed bytes when it is
@@ -308,6 +319,7 @@ disposition's actor. `recover` and `archive` have no tool.
 | `recover` | Runs `recover_issues` on the primary worktree, waiting for the merge lock, and prints its `{"recovered": [...], "left": [...]}` |
 | `archive` | Runs `archive_issues` on the primary worktree, waiting for the merge lock, and prints its `{"moved": [...], "left": [...]}` |
 | `report --file <report.json> [--task <task-id>]` | Records the report in the file with the provenance above and prints `{"receipt": <receipt>, "revision": <digest>}` |
+| `report --file <report.json> --provenance <provenance.json>` | Records the report in the file with the provenance in the provenance file, `{invocation_id, agent, operation, phase, target_id, context_id, change_id, head}`, which its caller vouches for, exactly as `report_issue` records it for a library caller, and prints `{"receipt": <receipt>, "revision": <digest>}` |
 | `report --file <report.json> --check` | Runs every check `report` runs on the file, records nothing and prints `{"valid": true, "file", "report_key", "reporting_module"}` |
 | `close <id> --reason resolved\|duplicate\|not-actionable --note <text> --evidence <item>... [--duplicate-of <id>]` | Closes the open Issue at its current revision, moving its record into `closed/`, and prints `{"issue_id", "status": "closed", "revision", "path"}` |
 | `reopen <id> --note <text> --evidence <item>...` | Reopens the closed Issue at its current revision, moving its record back into `.concorde/issues/`, and prints `{"issue_id", "status": "open", "revision", "path"}` |
@@ -321,7 +333,10 @@ must exist in the worktree `--root` or, for a report with an `origin`, in the or
 path the refusal then names. A report file may lie outside
 the project, such as a report another project wrote. When the owner is `null` the registry must have
 exactly one root Module, which becomes the reporting Module; where the spec part is not installed,
-there is no registry to find one, and a `null` owner is refused with `no_reporting_module`. A file with `issue_id` and
+there is no registry to find one, and a `null` owner is refused with `no_reporting_module`, whose
+message says the spec part is not installed. The spec part counts as installed for a worktree
+exactly when its registry file `.concorde/specs.json` exists; one that exists but does not read as
+the registry is refused with `unreadable_registry`. A file with `issue_id` and
 `expected_revision` appends to that Issue; the revision is the one `show`, `report`, `close` or
 `reopen` last printed for it.
 
@@ -385,7 +400,8 @@ in both folders, naming both paths and the repair, to keep the record whose repo
 dispositions begin with the other's and remove the other with `git rm` in a commit of its own, or,
 where the spec part is installed, an open Issue whose owner is not a registered Module (`<id> names unknown owner <module>`). A closed Issue with an unknown owner
 produces the same text as a note, which does not change the exit status. Without the spec part
-`check` reads no registry and judges no owner. An absent directory passes.
+`check` reads no registry, judges no owner and adds one note saying that the spec part is not
+installed, so that no owner was checked. An absent directory passes.
 Concorde's configuration registers it as the
 [configured check](../glossary.json#concept.configured-check) `check.issues.store` of
 `module.issues`, with the argument vector `["{python}", "scripts/issues.py", "check"]` and a

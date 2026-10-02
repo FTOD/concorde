@@ -37,6 +37,7 @@ from ...execution.operations.provider import (
     load_prompt,
 )
 from ...spec.schema import validate
+from .. import review_issues
 from . import operation as review
 from . import reporting
 
@@ -284,7 +285,7 @@ class Panel:
             + "\n"
             + section
             + "\n"
-            + reporting.material(self.subject.earlier or [])
+            + reporting.material(self.subject.earlier)
             + ("\n" + material if material else "")
             + review.criteria(self.ctx.worktree)
         )
@@ -702,7 +703,7 @@ def derive_verdict(ctx: RunContext):
         f"{blocking} blocking finding(s) and {len(reported) - blocking} suggestion(s) "
         f"merged from {raw} worker finding(s), "
         f"{sum(len(module['rejected']) for module in modules)} rejected; "
-        f"{standing} blocking Issue(s) stand"
+        f"{standing} blocking Issue(s) stand{review_issues.statement(ctx)}"
     )
     incomplete = [subject for subject in subjects if subject.stop is not None]
     if not incomplete:

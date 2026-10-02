@@ -207,10 +207,18 @@ task level or its workflow decides which runs next.
 ### Code
 
 The providers' and commands' code lives with their Modules. The standard worker sequence is today
-the run context's worker launch in Execution's runner package, the admission step and the review
-providers' shared handling of their Issues are in `src/concorde/execution/operations/`, and the brownfield
-script in `src/concorde/workflows/scripts/`; those Modules' realizations bind them until the code
-tasks that follow this Spec move them into Method's package.
+the run context's worker launch in Execution's runner package, the admission step is in
+`src/concorde/execution/operations/`, and the brownfield script in `src/concorde/workflows/scripts/`;
+those Modules' realizations bind them until the code tasks that follow this Spec move them into
+Method's package.
+
+<a id="realization.method.review-issues"></a>
+
+**Review Issues**, `src/concorde/method/review_issues.py`, is the review providers' shared handling
+of their Issues: reading a reviewed Module's earlier Issues, settling which a review carries or
+resolves and reporting its findings, all through the issues command as [Issues](#uses-issues) says,
+and stating in the result that the findings were not recorded where the issues part is not
+installed.
 
 ### The children
 
@@ -353,4 +361,9 @@ issues part is installed, `spec_review`, `spec_panel` and `code_review` report e
 Issue of the Module it concerns, read the earlier Issues of a reviewed Module and settle which a
 review carries or resolves; where it is not, they report nothing outside the run, every finding
 stays in the run result with its tier, and the result says that the findings were not recorded as
-Issues.
+Issues. They reach Issues only through the issues part's
+[bookkeeping command](../issues/interface.md#bookkeeping-command), `concorde issues` of the worktree
+the run started in, JSON in and out (`list`, `show`, and `report --provenance` with the provenance
+the Operation vouches for), never through its code; the issues part counts as not installed when
+that `concorde` refuses `issues` as a command of a part the project has not installed, or offers no
+such command at all.

@@ -79,6 +79,11 @@ def parser() -> Parser:
     report.add_argument("--file", required=True, help="Issue report JSON file")
     report.add_argument("--task", help="the task the report belongs to")
     report.add_argument(
+        "--provenance",
+        help="a JSON file of the provenance the caller vouches for, such as an Operation's "
+        "host reporting its findings; recorded as given, without --task",
+    )
+    report.add_argument(
         "--check",
         action="store_true",
         help="run every check of report and record nothing",
@@ -127,7 +132,11 @@ def main(argv=None) -> int:
         elif args.action == "report":
             emit(
                 command.report_action(
-                    root, file=Path(args.file), task=args.task, check_only=args.check
+                    root,
+                    file=Path(args.file),
+                    task=args.task,
+                    check_only=args.check,
+                    provenance=Path(args.provenance) if args.provenance else None,
                 )
             )
         else:

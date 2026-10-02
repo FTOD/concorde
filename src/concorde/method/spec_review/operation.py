@@ -42,6 +42,7 @@ from ...spec.repository_base import SpecError
 from ...spec.schema import ContractError, validate
 from ...spec.typed_data import TypedDataError, safe_path
 from ...spec.validation import validate_repository
+from .. import review_issues
 from . import reporting
 
 TASK_TYPE = "review-spec"
@@ -544,7 +545,7 @@ def read_earlier(ctx: RunContext, review: ModuleReview) -> list[dict]:
     the host evidence."""
     try:
         review.earlier = reporting.earlier_issues(ctx, review.module)
-    except reporting.issue_command.Refusal as refusal:
+    except reporting.Refusal as refusal:
         review.stop = ctx.fail(
             "failed",
             "issues_unreadable",
@@ -559,6 +560,14 @@ def read_earlier(ctx: RunContext, review: ModuleReview) -> list[dict]:
             ],
         )
         return []
+    if review.earlier is None:
+        return [
+            evidence(
+                "earlier-issues",
+                review.module,
+                f"no earlier Issue offered: {review_issues.NOT_RECORDED}",
+            )
+        ]
     names = ", ".join(item["issue"] for item in review.earlier)
     return [
         evidence(
@@ -574,6 +583,9 @@ def report_findings(
 ) -> list[dict]:
     """Settle the earlier Issues and report the findings as Issues; returns the host evidence."""
     review.summary = reporting.settle(review.earlier or [], review.findings, resolved)
+    if review.earlier is None:
+        # No earlier Issue was read, so none is carried or resolved.
+        review.summary = None
     found, stop = reporting.report(ctx, review.module, review.findings, identity)
     if stop is not None:
         review.stop = stop
@@ -642,7 +654,7 @@ def _check(ctx: RunContext, review: ModuleReview, prompt: str, findings: list[di
         + "\n"
         + _task_section(ctx, review, "checker")
         + "\n"
-        + reporting.material(review.earlier or [])
+        + reporting.material(review.earlier)
         + "\n"
         + _checker_material(findings)
         + criteria(ctx.worktree),
@@ -697,7 +709,7 @@ def derive_verdict(ctx: RunContext):
     ctx.output = payload
     incomplete = [review for review in reviews if review.stop is not None]
     standing = sum(review.standing for review in reviews if review.stop is None)
-    counts = f"{standing} blocking Issue(s) stand"
+    counts = f"{standing} blocking Issue(s) stand{review_issues.statement(ctx)}"
     if not incomplete:
         return Stop("ok", f"Spec review: {verdict}; {counts}.")
     status = (
