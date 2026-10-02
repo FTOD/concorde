@@ -425,11 +425,12 @@ inside one Operation.
 The Harness, Tracing and Spec tooling serve both halves without being a level.
 
 What an agent may know and touch is its harness, and the [Harness](harness/module.md) generates it
-for every level from the same code: a worker's from its grant — on Claude Code settings with deny
-rules, a [write hook](glossary.json#concept.write-hook) and the Bash sandbox, on pi a
-[permission extension](glossary.json#concept.permission-extension) with the same sandbox engine —
-and a task session's from its task. It guards against scope drift and mistakes, not a malicious
-actor; the Harness explains why these layers were chosen and what they leave out.
+for every level from the same code: a worker's from its grant — on Claude Code settings with
+[deny rules](glossary.json#concept.deny-rules), a [write hook](glossary.json#concept.write-hook) and
+the Bash sandbox, on pi a [permission extension](glossary.json#concept.permission-extension) with
+the same sandbox engine — and a task session's from its task. It guards against scope drift and
+mistakes, not a malicious actor; the Harness explains why these layers were chosen and what they
+leave out.
 
 Nearly every Module relies on [Spec tooling](spec-tooling/module.md): its Spec core loads and
 checks the Specs and computes the grants, and a Module refuses to act on a structure it reports

@@ -612,11 +612,14 @@ def _remote_reference(schema) -> bool:
     return False
 
 
-def _prose_block(lines) -> str:
-    """The reading with every non-prose line emptied and inline code blanked, one string whose
-    line breaks and columns are the reading's, so a link whose text wraps is one match."""
+def _prose_block(lines, filler: str = " ") -> str:
+    """The reading with every non-prose line emptied and inline code blanked with ``filler``, one
+    string whose line breaks and columns are the reading's, so a link whose text wraps is one
+    match."""
     return "\n".join(
-        INLINE_CODE.sub(_blank, line) if kind == "prose" else ""
+        INLINE_CODE.sub(lambda match: filler * len(match.group(0)), line)
+        if kind == "prose"
+        else ""
         for _, kind, line in lines
     )
 
@@ -649,25 +652,32 @@ def test_declarations(text: str) -> list[int]:
     ]
 
 
+# What blanks out text that is no word of prose: not whitespace, so that the words of a title
+# never match across it.
+BLANK = "\0"
+
+
 def _blank(match: re.Match) -> str:
-    return " " * len(match.group(0))
+    return BLANK * len(match.group(0))
 
 
 def _blank_wrapped(match: re.Match) -> str:
     """``_blank`` for a match that may wrap: its line breaks are kept."""
-    return re.sub(r"[^\n]", " ", match.group(0))
+    return re.sub(r"[^\n]", BLANK, match.group(0))
 
 
 def prose_text(text: str) -> list[tuple[int, str]]:
-    """Each prose line as a reader sees its words: code, links and anchors blanked out, headings
-    left out. Blanking keeps every column, so a position found here is a position in the line.
+    """Each prose line as a reader sees its words: code, links and anchors blanked out with
+    ``BLANK``, headings left out. Blanking keeps every column, so a position found here is a
+    position in the line.
 
     ``CHK.term.unlinked`` searches this text for term titles, so a title inside inline code, a
-    link's text or target, an anchor or a heading never counts as an unlinked use.
+    link's text or target, an anchor or a heading never counts as an unlinked use, and words
+    separated by any of them are never one title.
     """
     lines = walk_lines(text)
     # Links are blanked over the whole prose, since a link's text may wrap onto the next line.
-    block = LINK.sub(_blank_wrapped, _prose_block(lines)).split("\n")
+    block = LINK.sub(_blank_wrapped, _prose_block(lines, BLANK)).split("\n")
     result = []
     for (number, kind, line), stripped in zip(lines, block):
         if kind != "prose" or HEADING.match(line):
@@ -697,7 +707,7 @@ def _paragraphs(lines: list[tuple[int, str]]) -> list[list[tuple[int, str]]]:
     paragraphs: list[list[tuple[int, str]]] = []
     previous = None
     for number, line in lines:
-        if not line.strip():
+        if not line.replace(BLANK, " ").strip():
             previous = None
             continue
         if previous is None or number != previous + 1:
@@ -717,7 +727,8 @@ def term_uses(
     is never a use of a term. A one-word title does not count as the first word of a sentence,
     list item, quote or table cell, where a capital letter says nothing about the word. Titles
     are matched over each paragraph, so a title whose words wrap onto the next line is still one
-    title and no shorter title's use; such a wrapped use itself is not reported.
+    title and no shorter title's use, and is itself a use, placed on the line it starts on and
+    ending with that line.
     """
     ordered = sorted(titles.items(), key=lambda item: (-len(item[1]), item[0]))
     patterns = [(identity, term_pattern(title)) for identity, title in ordered]
@@ -735,14 +746,13 @@ def term_uses(
             single = " " not in titles[identity]
             for match in pattern.finditer(block):
                 start = block.rfind("\n", 0, match.start()) + 1
-                if "\n" in match.group(0) or (
-                    single and SENTENCE_START.search(block[start : match.start()])
-                ):
+                before = block[start : match.start()].replace(BLANK, " ")
+                if single and SENTENCE_START.search(before):
                     continue
                 row = paragraph[block.count("\n", 0, start)][0]
-                found.setdefault(
-                    identity, (row, match.start() - start, match.end() - start)
-                )
+                end = block.find("\n", match.start(), match.end())
+                end = match.end() if end < 0 else end
+                found.setdefault(identity, (row, match.start() - start, end - start))
             block = pattern.sub(_blank_wrapped, block)
     return found
 

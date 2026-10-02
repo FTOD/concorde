@@ -204,8 +204,8 @@ checks: Check execution {
 The timing recorder lives here because check runs and sandbox setup are the slowest deterministic
 steps a host takes; it is passive and holds no content, so it can stay on in any run. The open
 trace and the enclosing span are held per execution context, so each thread or asynchronous task
-records into the trace opened where its work started and gets its previous trace back when a scope
-ends; a failing sink is caught, marks the trace incomplete and writes the one
+writes its timings into the trace opened where its work started and gets its previous trace back
+when a scope ends; a failing sink is caught, marks the trace incomplete and writes the one
 `CONCORDE_TIMING_INCOMPLETE` line, and nothing else follows from it; the work's own result or
 exception passes through a span unchanged.
 

@@ -35,9 +35,10 @@ an earlier report. Ownership identifies the Module whose promise needs attention
 grant permission to change that Module.
 
 A report may name its **origin**, when the problem was seen in another project, such as a
-[defect report](../glossary.json#concept.defect-report) handed to the Concorde
-repository, and carry the whole [error chain](../glossary.json#concept.error-chain).
-The observation's origin is distinct from the provenance of the command that records it here.
+[defect report](../glossary.json#concept.defect-report) handed to the
+[Concorde repository](../glossary.json#concept.concorde-repository), and carry the whole
+[error chain](../glossary.json#concept.error-chain). The observation's origin is distinct from the
+provenance of the command that records it here.
 
 ### Tiers
 

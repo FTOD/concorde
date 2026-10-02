@@ -112,11 +112,11 @@ concorde delivery [--adoption] [--detach]
 It is an [execution command](../../../glossary.json#concept.execution-command): the
 [Execution runner](../../runner.md) runs it in the workspace whose
 [binding](../../../glossary.json#concept.workspace-binding) lies in the worktree it starts in, under
-the [workspace lock](../../../glossary.json#concept.workspace-lock), and records it in the run
-store. In a worktree without a binding it is refused with `binding_required` and commits nothing. It
-requires new work since the base commit, then decides the
-[readiness](../../../glossary.json#concept.readiness) of the whole workspace with Validation's own
-steps — the structural validation, the unbound-path check and the
+the [workspace lock](../../../glossary.json#concept.workspace-lock), and records it in the
+[run store](../../../glossary.json#concept.run-store). In a worktree without a binding it is refused
+with `binding_required` and commits nothing. It requires new work since the base commit, then
+decides the [readiness](../../../glossary.json#concept.readiness) of the whole workspace with
+Validation's own steps — the structural validation, the unbound-path check and the
 [configured checks](../../../glossary.json#concept.configured-check) a `task-validation` run
 performs, over every commit since the base and every uncommitted change — and requires it ready. An
 earlier `task-validation` run is only a preview; Delivery never trusts it or the checks of single
