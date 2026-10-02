@@ -55,7 +55,8 @@
           "concept.worker-configuration",
           "concept.model-map",
           "contract.workers.worker-configuration",
-          "contract.workers.model-map"
+          "contract.workers.model-map",
+          "scenario.workers.model-map-checked"
         ]
       },
       {

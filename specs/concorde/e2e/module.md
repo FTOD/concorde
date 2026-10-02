@@ -533,11 +533,13 @@ the interpreter `--python` names. `prepare` stops with `command_failed` when eit
 **Workers** owns the [worker configuration](../glossary.json#concept.worker-configuration) that
 `prepare` writes and the [model map](../glossary.json#concept.model-map) by which the developer's
 machine reaches each model, both defined by its [contracts](../execution/workers/contracts.md).
-Workers' check of a configuration validates it and resolves the model of every worker of every
-Operation through the map, refusing with `config_invalid`, `model_map_missing`, `model_map_invalid`
-or `model_unmapped`. `prepare` builds the configuration as a developer writes it, hands it to that
-check before anything is cloned, and passes a refusal on with its code and the map's path, preparing
-nothing.
+Workers' check of a whole configuration against the map
+([scenario.workers.model-map-checked](../execution/workers/scenarios.md#scenario.workers.model-map-checked))
+validates it and resolves the model of every worker of every Operation, refusing with
+`config_invalid`, `model_map_missing`, `model_map_invalid` or `model_unmapped`, the last naming
+every model and backend the map lacks with the workers that would take them. `prepare` builds the
+configuration as a developer writes it, hands it to that check before anything is cloned, and passes
+a refusal on with its code and the map's path, preparing nothing.
 
 <a id="uses-operations"></a>
 
