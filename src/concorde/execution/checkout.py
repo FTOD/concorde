@@ -12,7 +12,8 @@ has checked out at the commit ``HEAD`` records, such as a vendored external refe
 out the same way from its own repository, with the same sparse patterns. The environments the
 project configuration names as runtime paths and Git ignores, such as ``.venv`` and
 ``node_modules``, are never part of a commit, so they are linked from the starting worktree for the
-run's checks to use; nothing in the run writes them. However the run ends, the links, the
+run's checks to use; nothing in the run writes them. Which paths those are the run's definition
+says, through its runtime-path resolver; the runner reads no configuration itself. However the run ends, the links, the
 submodule checkouts and the checkout itself are removed, and a removal Git refuses is reported as
 host evidence.
 
@@ -26,11 +27,11 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..kernel.errors import evidence
-from ..worker_harness.models import DEFAULT_RUNTIME, ModelConfigError, load, runtime
 from .runs import RunError
 
 # Git never runs a hook of the repository for the checkout: it is the runner's, not a checkout a
@@ -129,13 +130,17 @@ def _primary(origin: Path) -> Path:
     return Path(os.path.realpath(first[0][len("worktree ") :]))
 
 
-def open_checkout(origin: Path, run_id: str) -> Checkout:
+def open_checkout(
+    origin: Path,
+    run_id: str,
+    runtime_paths: Callable[[Path], Sequence[str]] | None = None,
+) -> Checkout:
     """Check out ``origin``'s ``HEAD`` detached as ``.claude/worktrees/unbound-<run_id>`` of the
     repository's primary worktree.
 
-    Each relative runtime path of the checked-out worker configuration (``runtime`` of
-    ``.concorde/workers.json``, by default ``.venv`` and ``node_modules``) that exists in ``origin`` and that Git ignores is linked
-    into the checkout. ``RunError`` ``checkout_unavailable`` when ``HEAD`` names no commit, the
+    ``runtime_paths``, the definition's resolver, is called with the checkout's root, and each
+    relative path it returns that exists in ``origin`` and that Git ignores is linked into the
+    checkout. ``RunError`` ``checkout_unavailable`` when ``HEAD`` names no commit, the
     primary worktree's Git does not ignore the checkout's place, the place is taken or Git
     refuses the checkout, which is then left nowhere.
     """
@@ -187,7 +192,8 @@ def open_checkout(origin: Path, run_id: str) -> Checkout:
     checkout = Checkout(origin, path, commit)
     try:
         _submodules(checkout)
-        _environments(checkout, _runtime(path))
+        if runtime_paths is not None:
+            _environments(checkout, runtime_paths(path))
     except BaseException:
         checkout.close()
         raise
@@ -276,18 +282,6 @@ def _submodules(checkout: Checkout) -> None:
             checkout.evidence.append(
                 evidence("submodule", path, f"checked out at {commit} from {source}")
             )
-
-
-def _runtime(checkout: Path) -> list:
-    """``runtime`` of the checkout's worker configuration, or the default.
-
-    An unreadable or invalid configuration links the default here; the run's first worker launch
-    reports it in full.
-    """
-    try:
-        return list(runtime(load(checkout)))
-    except ModelConfigError:
-        return list(DEFAULT_RUNTIME)
 
 
 def _environments(checkout: Checkout, environments) -> None:

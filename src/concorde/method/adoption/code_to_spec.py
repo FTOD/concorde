@@ -26,13 +26,13 @@ import json
 
 from ...execution.context import (
     Continue,
-    Provider,
     RunContext,
     Stop,
     evidence,
     spec_cause,
     spec_finding,
 )
+from ..workers import operation, run_worker
 from ...execution.operations.provider import (
     load_prompt,
     protocol_guide,
@@ -299,13 +299,14 @@ def describe(ctx: RunContext):
     """Step 3: the worker. It never stops the run itself, so that ``tidy`` removes the stubs on
     every way out; ``observe`` returns what stopped it."""
 
-    outcome = ctx.run_worker(
+    outcome = run_worker(
+        ctx,
         instructions(ctx),
         task_type="code-to-spec",
         output_schema=DESCRIBE_WORKER_SCHEMA,
         checks=False,
         rounds=REPAIR_ROUNDS,
-        after_round=lambda: validation_repair(ctx),
+        validate=lambda: validation_repair(ctx),
     )
     if isinstance(outcome, Stop):
         ctx.state["stop"] = outcome
@@ -318,7 +319,10 @@ def describe(ctx: RunContext):
     ctx.state["unobserved"] = any(
         (item.get("audit") or {}).get("verdict") == "violation"
         for item in record.get("rounds") or []
-    ) or any(error["code"] == "audit_violation" for error in record.get("errors") or [])
+    ) or "audit_violation" in {
+        (record.get("error") or {}).get("code"),
+        (getattr(outcome, "error", None) or {}).get("code"),
+    }
     return Continue(evidence=outcome.evidence)
 
 
@@ -632,7 +636,7 @@ def link_described_tests(ctx: RunContext, output: dict):
     )
 
 
-CODE_TO_SPEC = Provider(
+CODE_TO_SPEC = operation(
     name="code_to_spec",
     task_type="code-to-spec",
     writes=True,

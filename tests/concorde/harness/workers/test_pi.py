@@ -188,9 +188,7 @@ class PiRunTests(unittest.TestCase):
             second["argv"][second["argv"].index("--session-id") + 1],
         )
         self.assertIn("check.a", second["prompt"])
-        self.assertEqual(
-            ["initial", "check_failures"], [r["prompt"] for r in record["rounds"]]
-        )
+        self.assertEqual(["initial", "repair"], [r["prompt"] for r in record["rounds"]])
 
     @verifies("scenario.workers.pi-runtime-missing")
     def test_a_pi_run_without_its_runtime_is_refused(self):

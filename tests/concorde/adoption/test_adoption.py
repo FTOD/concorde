@@ -866,7 +866,7 @@ class AdoptionTests(AdoptionCase):
             self.project.root / ".concorde", envelope["worker_runs"][-1]
         )
         self.assertEqual(
-            ["initial", "validation_failures", "validation_failures"],
+            ["initial", "repair", "repair"],
             [item["prompt"] for item in record["rounds"]],
         )
         self.assertIn("CHK.scenario", record["rounds"][0]["validation"])
@@ -900,7 +900,7 @@ class AdoptionTests(AdoptionCase):
             self.project.root / ".concorde", envelope["worker_runs"][-1]
         )
         self.assertEqual(
-            ["initial", "validation_failures"],
+            ["initial", "repair"],
             [item["prompt"] for item in record["rounds"]],
         )
         self.assertEqual("clean", record["rounds"][1]["validation"])

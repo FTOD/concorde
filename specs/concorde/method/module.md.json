@@ -98,6 +98,15 @@
   },
   "defines": [
     {
+      "id": "realization.method.workers",
+      "type": "realization",
+      "title": "Standard sequence",
+      "meaning": "#realization.method.workers",
+      "entries": [
+        "src/concorde/method/workers.py"
+      ]
+    },
+    {
       "id": "realization.method.review-issues",
       "type": "realization",
       "title": "Review Issues",

@@ -53,31 +53,14 @@ CODE_TASKS = (
 )
 # Code task -> (importing file under src/concorde/, imported module under concorde.) it removes.
 KNOWN_EXCEPTIONS = {
-    "worker harness": [
-        ("worker_harness/audit.py", "spec.glossary"),
-        ("worker_harness/models.py", "execution.operations.catalog"),
-        ("worker_harness/settings.py", "spec.grants"),
-        ("worker_harness/workers.py", "execution.checks.checks"),
-        ("worker_harness/workers.py", "spec.glossary"),
-        ("worker_harness/workers.py", "spec.grants"),
-        ("worker_harness/workers.py", "spec.repository_base"),
-    ],
     "execution": [
-        ("execution/checkout.py", "worker_harness.models"),
         ("execution/checks/checks.py", "spec.repository"),
         ("execution/checks/checks.py", "spec.repository_base"),
         ("execution/checks/checks.py", "spec.verification"),
-        ("execution/checks/checks.py", "worker_harness.runs"),
         ("execution/commands/catalog.py", "method.delivery.command"),
         ("execution/commands/catalog.py", "method.scaffold.command"),
         ("execution/commands/catalog.py", "method.validation.command"),
         ("execution/context.py", "spec.errors"),
-        ("execution/context.py", "spec.grants"),
-        ("execution/context.py", "spec.repository"),
-        ("execution/context.py", "spec.repository_base"),
-        ("execution/context.py", "worker_harness.models"),
-        ("execution/context.py", "worker_harness.workers"),
-        ("execution/operations/admission.py", "worker_harness.models"),
         ("execution/operations/catalog.py", "method.adoption.code_to_spec"),
         ("execution/operations/catalog.py", "method.adoption.survey"),
         ("execution/operations/catalog.py", "method.code_review.operation"),

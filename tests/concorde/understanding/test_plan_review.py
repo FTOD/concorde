@@ -11,6 +11,7 @@ import json
 import unittest
 from pathlib import Path
 
+from concorde.method.workers import declared_workers
 from concorde.worker_harness.models import validate_config
 from concorde.worker_harness.runs import read_record
 from concorde.spec.verification import verifies
@@ -338,7 +339,8 @@ class PlanReviewTests(unittest.TestCase):
                 "operations": {
                     "plan_review": {"workers": {"reviewer": {"model": "gpt-6.1-sol"}}}
                 },
-            }
+            },
+            declared_workers(),
         )
         project = json.loads((REPOSITORY_ROOT / ".concorde/workers.json").read_text())
         self.assertEqual(

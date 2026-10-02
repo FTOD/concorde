@@ -108,12 +108,11 @@ def read_record(root: Path, run_id: str) -> dict:
         }
         if content["audit"] is not None:
             entry["audit"] = content["audit"]
-        if content["checks"]:
-            entry["checks"] = [
-                {**check, "log": (item / check["log"]).as_posix()}
-                for check in content["checks"]
-            ]
         if content["validation"] is not None:
+            entry["evidence"] = [
+                {key: _absolute(value, item) for key, value in found.items()}
+                for found in content["evidence"]
+            ]
             entry["validation"] = content["validation"]
         rounds.append(entry)
     return {
@@ -147,6 +146,20 @@ def read_record(root: Path, run_id: str) -> dict:
         "error": node["error"],
         "run_directory": folder.as_posix(),
     }
+
+
+def _absolute(value, folder: Path):
+    """An evidence value of a round's node as the returned record gives it: a relative path
+    naming a file the round's folder holds made absolute, anything else unchanged."""
+    if (
+        isinstance(value, str)
+        and value
+        and not os.path.isabs(value)
+        and ".." not in value.split("/")
+        and (folder / value).is_file()
+    ):
+        return (folder / value).as_posix()
+    return value
 
 
 def remove_runtime(paths: RunPaths) -> None:

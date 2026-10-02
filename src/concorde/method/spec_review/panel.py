@@ -28,11 +28,11 @@ from typing import Annotated, TypedDict
 
 from ...execution.context import (
     Continue,
-    Provider,
     RunContext,
     Stop,
     evidence,
 )
+from ..workers import operation, run_worker
 from ...execution.operations.provider import (
     load_prompt,
 )
@@ -296,7 +296,8 @@ class Panel:
         """The worker ``worker``, one of the panel's worker ids, so that the worker
         configuration may give each worker its own backend, model and thinking level; returns
         (output or None, host evidence, context identity, stop or None)."""
-        result = self.ctx.run_worker(
+        result = run_worker(
+            self.ctx,
             instructions,
             task_type=task_type,
             output_schema=schema,
@@ -755,7 +756,7 @@ def add_arguments(parser) -> None:
     )
 
 
-SPEC_PANEL = Provider(
+SPEC_PANEL = operation(
     "spec_panel",
     TASK_TYPE,
     False,

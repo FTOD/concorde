@@ -311,7 +311,7 @@ def _checkout(chosen: Provider, context: RunContext) -> Checkout:
             f"{chosen.name} works only in a bound workspace, and {context.worktree} has no "
             f"workspace binding ({binding_file.BINDING})",
         )
-    checkout = open_checkout(context.worktree, context.run_id)
+    checkout = open_checkout(context.worktree, context.run_id, chosen.runtime_paths)
     context.origin, context.worktree = context.worktree, checkout.path
     context.commit = checkout.commit
     context.evidence.append(

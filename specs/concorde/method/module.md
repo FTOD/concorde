@@ -206,11 +206,19 @@ task level or its workflow decides which runs next.
 
 ### Code
 
-The providers' and commands' code lives with their Modules. The standard worker sequence is today
-the run context's worker launch in Execution's runner package, the admission step is in
-`src/concorde/execution/operations/`, and the brownfield script in `src/concorde/workflows/scripts/`;
-those Modules' realizations bind them until the code tasks that follow this Spec move them into
-Method's package.
+The providers' and commands' code lives with their Modules.
+
+<a id="realization.method.workers"></a>
+
+The **Standard sequence** realization, `src/concorde/method/workers.py`, holds the
+[standard worker sequence](../glossary.json#concept.standard-worker-sequence): the admission step
+`check_worker_models` and the helper that puts it first in every Operation definition Method
+registers, with the runtime-path resolver of one that may run unbound; the projection of Spec
+core's grant into the worker harness's grant input; the composition of the task instructions; the
+round validation and the glossary check after the worker run; and the mapping of a worker run
+record to a step outcome. The brownfield script is still in `src/concorde/workflows/scripts/`;
+its Module's realization binds it until the code tasks that follow this Spec move it into Method's
+package.
 
 <a id="realization.method.review-issues"></a>
 

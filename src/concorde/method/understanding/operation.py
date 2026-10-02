@@ -17,11 +17,11 @@ import json
 
 from ...execution.context import (
     Continue,
-    Provider,
     RunContext,
     spec_cause,
     evidence,
 )
+from ..workers import operation, run_worker
 from ...execution.operations.provider import (
     load_prompt,
 )
@@ -168,7 +168,8 @@ def instructions(ctx: RunContext) -> str:
 
 def assess(ctx: RunContext):
     """Steps 1 to 4: run the understand worker once, without checks or resume rounds."""
-    outcome = ctx.run_worker(
+    outcome = run_worker(
+        ctx,
         instructions(ctx),
         task_type="understand",
         output_schema=ASSESSMENT_SCHEMA,
@@ -312,7 +313,7 @@ def check_assessment(ctx: RunContext):
     )
 
 
-UNDERSTAND = Provider(
+UNDERSTAND = operation(
     name="understand",
     task_type="understand",
     writes=False,

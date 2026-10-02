@@ -5,12 +5,9 @@ the digest of every tracked change and untracked file; after a round the same me
 again and every difference is judged: a changed or new file in the grant's ``rw`` list is allowed,
 anything else, including a deletion or a changed ``HEAD`` or index, is a violation. Paths Git
 ignores are not observed. A violation is one string: ``HEAD`` or ``index``, the path of a file
-written outside ``rw``, the path followed by `` (deleted)`` for a deleted file, or a glossary entry.
-
-The project glossary is the one writable file held by entry: every Module's concepts share it, so a
-task may change only the entries its bound Modules own. The snapshot keeps the glossary's bytes,
-and a changed glossary is compared entry by entry; each entry changed although another Module owns
-it, before or after, is a violation named ``<glossary>#<concept>``.
+written outside ``rw`` or the path followed by `` (deleted)`` for a deleted file. Which parts of a
+writable file a worker may change, such as the entries of a shared glossary, is its caller's
+question, asked in its round validation.
 """
 
 from __future__ import annotations
@@ -20,8 +17,6 @@ import os
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-
-from ..spec.glossary import ownership_violations
 
 
 def _git(worktree: Path, *arguments: str) -> bytes:
@@ -74,18 +69,10 @@ class Snapshot:
     head: str
     index: str | None
     files: dict[str, str | None]
-    glossary: bytes | None = None
 
 
-def _read(worktree: Path, path: str | None) -> bytes | None:
-    if path is None:
-        return None
-    file = worktree / path
-    return file.read_bytes() if file.is_file() and not file.is_symlink() else None
-
-
-def snapshot(worktree: Path, glossary: str | None = None) -> Snapshot:
-    """The worktree's state; with ``glossary``, also that file's exact bytes."""
+def snapshot(worktree: Path) -> Snapshot:
+    """The worktree's state: ``HEAD``, the index digest and every changed file's digest."""
     head = _git(worktree, "rev-parse", "HEAD").decode().strip()
     index_path = Path(
         _git(worktree, "rev-parse", "--git-path", "index").decode().strip()
@@ -93,7 +80,7 @@ def snapshot(worktree: Path, glossary: str | None = None) -> Snapshot:
     if not index_path.is_absolute():
         index_path = worktree / index_path
     files = {path: _digest(worktree / path) for path in _changed_paths(worktree)}
-    return Snapshot(head, _digest(index_path), files, _read(worktree, glossary))
+    return Snapshot(head, _digest(index_path), files)
 
 
 def rw_allows(rw: list[str], path: str) -> bool:
@@ -120,16 +107,9 @@ class AuditResult:
         }
 
 
-def audit(
-    worktree: Path,
-    before: Snapshot,
-    rw: list[str],
-    glossary: str | None = None,
-    modules: list[str] | tuple[str, ...] = (),
-) -> AuditResult:
-    """Compare the worktree now with ``before`` and judge every change against ``rw``; a change
-    of the ``glossary`` is also judged entry by entry against the owners ``modules``."""
-    after = snapshot(worktree, glossary)
+def audit(worktree: Path, before: Snapshot, rw: list[str]) -> AuditResult:
+    """Compare the worktree now with ``before`` and judge every change against ``rw``."""
+    after = snapshot(worktree)
     violations: list[str] = []
     if after.head != before.head:
         violations.append("HEAD")
@@ -146,12 +126,6 @@ def audit(
             violations.append(f"{path} (deleted)")
         elif not rw_allows(rw, path):
             violations.append(path)  # a write outside rw
-        elif path == glossary:
-            try:
-                foreign = ownership_violations(before.glossary, after.glossary, modules)
-            except (ValueError, UnicodeError) as error:
-                foreign = [f"(unreadable: {error})"]
-            violations.extend(f"{path}#{item}" for item in foreign)
     return AuditResult(tuple(changed), tuple(dict.fromkeys(violations)))
 
 

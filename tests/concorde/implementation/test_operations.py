@@ -19,7 +19,7 @@ from concorde.method.implementation.operation import (
     CODE_CHANGE_SCHEMA,
     TEST_REPORT_SCHEMA,
 )
-from concorde.execution.context import interpreter_roots
+from concorde.method.workers import interpreter_roots
 from concorde.spec.repository import SpecRepository
 from concorde.spec.verification import verifies
 from tests.concorde.support.operation_project import (
@@ -184,7 +184,7 @@ class ImplementTests(unittest.TestCase):
         self.assertEqual(["src/a/flag"], envelope["output"]["created_files"])
         record = self.record(envelope)
         self.assertEqual(
-            ["initial", "check_failures"], [item["prompt"] for item in record["rounds"]]
+            ["initial", "repair"], [item["prompt"] for item in record["rounds"]]
         )
         self.assertEqual("fake-session-2", record["rounds"][-1]["session"])
         self.assertEqual(1, len(envelope["worker_runs"]))

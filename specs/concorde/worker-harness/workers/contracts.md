@@ -1300,7 +1300,7 @@ not stored; the run's trace node and its rounds' nodes are the record that is ke
       "level": "workers",
       "actor": "Workers run w-20261002T101500-a1b2c3 (implement worker)",
       "code": "audit_violation",
-      "detail": "round 1: the worker changed 3 path(s) outside the grant's writable paths: src/shop/legacy.py (deleted), src/shop/pricing.py, specs/concorde/glossary.json#concept.price (owner before: module.pricing, after: module.cart); the worker itself reported status ok",
+      "detail": "round 1: the worker changed 2 path(s) outside the grant's writable paths: src/shop/legacy.py (deleted), src/shop/pricing.py; the worker itself reported status ok",
       "evidence": [
         {
           "kind": "audit",
@@ -1311,11 +1311,6 @@ not stored; the run's trace node and its rounds' nodes are the record that is ke
           "kind": "audit",
           "ref": "1",
           "detail": "violation: src/shop/pricing.py"
-        },
-        {
-          "kind": "audit",
-          "ref": "1",
-          "detail": "violation: specs/concorde/glossary.json#concept.price (owner before: module.pricing, after: module.cart)"
         },
         {
           "kind": "trace",
@@ -1390,13 +1385,11 @@ not stored; the run's trace node and its rounds' nodes are the record that is ke
           "changed": [
             "src/shop/cart.py",
             "src/shop/legacy.py",
-            "src/shop/pricing.py",
-            "specs/concorde/glossary.json"
+            "src/shop/pricing.py"
           ],
           "violations": [
             "src/shop/legacy.py (deleted)",
-            "src/shop/pricing.py",
-            "specs/concorde/glossary.json#concept.price (owner before: module.pricing, after: module.cart)"
+            "src/shop/pricing.py"
           ]
         }
       }
