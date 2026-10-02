@@ -20,9 +20,11 @@ by default (`concorde task show <task>` prints its path):
 
 - **Use the worktree's own Concorde.** Run every `concorde` command for the task
   (`spec-validation`, `build`, `run <operation>`, `task-validation`, `delivery`) from the task
-  worktree with the worktree's own command, never the primary worktree's. Only the task branch's
-  copy knows the branch's Specs, Protocol and checks, and the worktree's workspace binding tells
-  every run which task's goal, Modules and base it works on. Prepare the worktree first, as the
+  worktree with the worktree's own command, never the primary worktree's. That command reads the
+  task branch's Specs, Protocol copy and checks, which only the task worktree holds, and the
+  worktree's workspace binding tells every run which task's goal, Modules and base it works on;
+  which Framework code it runs, the installed one it shares with the primary worktree or the
+  branch's own, is the installation's concern, not yours. Prepare the worktree first, as the
   project's own instructions say: what Git does not track, such as dependencies, submodules or
   build outputs, is yours to create there before anything else.
 - **Change directly or through Operations.** Inside the task worktree you may change Specs and
@@ -31,23 +33,26 @@ by default (`concorde task show <task>` prints its path):
   outside the task worktree except the task's decision log.
 - **Prepare the workers' environment.** A worker writes only files its Modules bind and new files
   inside the directories they bind, and a Module binds only files that exist. When the work needs
-  a new file anywhere else, such as one an `understand` plan lists in `new_files`, create it
-  yourself before you launch the worker that fills it, or fill it yourself: give it the least
-  content its format needs to be valid (empty where an empty file is valid), add it to the
+  a new implementation file anywhere else, such as one an `understand` plan lists in `new_files`,
+  create it yourself before you launch the worker that fills it, or fill it yourself: give it the
+  least content its format needs to be valid (empty where an empty file is valid), add it to the
   `entries` of the right realization in the metadata of the Module it realizes, check it with
-  `concorde spec-validation` and commit both together.
+  `concorde spec-validation` and commit both together. A new Spec document is not such a file:
+  never create one for a worker, since `specify` proposes it and the Operation creates it and
+  registers it in its Module's `owns`, refusing a path that already exists.
 - **Have your plan reviewed when it deserves it.** `plan_review` is optional: nothing requires it
-  before `task-validation` or `delivery`; run it when your brief asks for it or a change deserves
-  a second reading before any Spec or code changes. Write the plan yourself, possibly starting
-  from an `understand` plan, in a file of your task worktree such as `plan.md`, and delete that
-  file before `task-validation`, since `delivery` commits every uncommitted change and each run
+  before `task-validation` or `delivery`; run it when your task brief asks for it or a change
+  deserves a second reading before any Spec or code changes. Write the plan yourself, possibly
+  starting from an `understand` plan, in a file of your task worktree such as `plan.md`, and delete
+  that file before `task-validation`, since `delivery` commits every uncommitted change and each run
   keeps its own copy of the plan it reviewed. Run `concorde run plan_review --plan plan.md`. While
   its verdict is `changes_required`, answer **every** finding: accept it and revise the plan, or
-  reject it with your reason, then run it again with the previous run as `--input` and the
-  answers, `--accept <finding> "<how the plan settles it>"` or `--reject <finding> "<why>"`, until
-  the verdict is `accepted`. A finding the reviewer maintains after you rejected it, and that you
-  still reject, is a disagreement: do not run again on it, escalate it with both positions, and
-  state the answer you receive in your next `--reject` or `--accept`.
+  reject it with your reason, then run it again with the previous run as `--input` and the answers,
+  `--accept <finding> "<how the plan settles it>"` or `--reject <finding> "<why>"`, until the
+  verdict is `accepted`. A finding the reviewer maintains after you rejected it, and that you still
+  reject, is a disagreement: do not run again on it, escalate it with both positions, and state the
+  answer you receive in your next `--reject` or `--accept`. A maintained finding whose renewed
+  reasoning convinces you is no disagreement: accept it and revise the plan.
 - **Deliver.** `concorde task-validation` shows what would block; `concorde delivery` validates
   the whole workspace again and creates the delivery commit on the task branch, which alone marks
   the task delivered: the steps you commit yourself before it do not. Never rebase or switch
@@ -97,14 +102,16 @@ term exactly as defined, in Specs, code, the decision log and your reports, and 
 for one. A term the task needs that the glossary lacks is a glossary change within the task's
 Modules, or an escalation when another Module owns it.
 
-Read the task's decision log before you change anything: the main agent records there the task's
-brief, the developer's decisions the task carries out, which you do not revisit, and what it left
-for you to decide. Add your own entries below its entries.
+Read the task's decision log before you change anything: the main agent records there the **task
+brief**, the developer's decisions the task carries out, which you do not revisit, and what it left
+for you to decide. It is the main agent's handoff to you, not the brief an Operation gives each of
+its workers. Add your own entries below its entries.
 
 Decide ordinary questions inside the task's goal and Modules yourself: naming, internal
-structure, the order of steps, re-running an Operation with a clarified brief. Record each such
-decision, and every result that is not `ok`, in the task's decision log with its reason; append,
-never rewrite.
+structure, the order of steps, re-running an Operation with a clarified goal. Record each such
+decision, and every result that is not `ok` of the runs you start, in the task's decision log with
+its reason; append, never rewrite. Nobody else records them: the main agent records only its own
+decisions there.
 
 Escalate to the main agent instead of acting when a step would go beyond the task's goal or its
 Modules, when the goal needs a Spec change it does not already call for, or when a decision has
@@ -120,6 +127,17 @@ concorde task escalate <task> --by task-session [--run <run-id>…] [--error-fil
   [--option "<choice>"…] [--recommendation "<yours>"]
 ```
 
+Spec tooling's commands, such as `spec-validation`, `registry`, `grant` and `build`, and the Spec
+MCP server are the exception to error chains: they refuse with Spec tooling's own error record
+(`code`, `message`, `reason`, `location`, `remediation`, `causes`), which is no link, and
+`concorde task escalate` refuses it as `--error-file` with `invalid_error`. To escalate one,
+translate it into a `component` link and save that in a JSON file: `level` `component`, `actor`
+`Spec tooling (concorde <command>)`, the record's `code`, a `detail` holding its message, reason,
+location and remediation, `evidence`, `attempts` and `options` empty or what you know, a
+`recommendation`, `unhandled` with the reason that fits (`input` for Specs or arguments only you or
+the main agent can correct, `environment` otherwise) and its explanation, and as `causes` the
+record's causes translated the same way. Then name that file with `--error-file`.
+
 **Never ask in place.** Nobody answers you while you work, so never stop in the middle of the work
 to wait for one answer. When the task needs decisions that are not yours, carry on with every part
 of the work that does not depend on them, then gather every decision the task still needs and
@@ -128,23 +146,23 @@ escalate them together, in one report, rather than one at a time: record each wi
 the rest to the developer, and its answer carries every answer.
 
 **Workflows.** A task that follows a known procedure may run as its workflow, started in your task
-worktree as the installed `/concorde-<name>` workflow, in the mode the task's brief names:
+worktree as the installed `/concorde-<name>` workflow, in the mode the task brief names:
 
 ```json
 {"module": "<module>", "mode": "interactive", "answers": {}, "retry": [], "restart": {}}
 ```
 
-- `interactive`, also when the brief names no mode: the workflow ends at the first step that did
-  not end `ok` or whose decision points its answers did not settle. When its status is
+- `interactive`, also when the task brief names no mode: the workflow ends at the first step that
+  did not end `ok` or whose decision points its answers did not settle. When its status is
   `awaiting_decision`, escalate every point in `pending` at once, with `--error-file` naming its
-  report, whose chain names each point with its options and recommendation. When the main agent
-  has answered, start the same workflow again with `answers` mapping each step's base key (such as
-  `survey` or `describe:module.checkout`) to every answer given for it so far, each
-  `{"id": "<d. or q. identity>", "question": "<its text>", "answer": "<the answer>",
-  "answered_by": "<main-agent or developer>"}`, where `answered_by` names who settled it, as the
-  main agent's answer says; the run records a decision that follows an answer as decided by that
-  one. Steps that finished and are neither answered nor retried are not run again; the answered
-  step and every step after it run anew.
+  workflow result, whose chain names each point with its options and recommendation. When the main
+  agent has answered, start the same workflow again with `answers` mapping each step's base key
+  (such as `survey` or `describe:module.checkout`) to every answer given for it so far, each `{"id":
+  "<d. or q. identity>", "question": "<its text>", "answer": "<the answer>", "answered_by":
+  "<main-agent or developer>"}`, where `answered_by` names who settled it, as the main agent's
+  answer says; the run records a decision that follows an answer as decided by that one. Steps that
+  finished and are neither answered nor retried are not run again; the answered step and every step
+  after it run anew.
 - `no-ask`: the workflow decides those points itself and reports every decision at the end.
   Escalate a decision of major impact among those the workflow took, which carries no error,
   naming no run or file, so that your link, with its step, its options and your recommendation, is
@@ -191,9 +209,9 @@ much it matters: `critical` (wrong results, lost data, a security hole or a core
 workaround), `high` (a main flow broken or wrong with a workaround), `medium` (a secondary flow or
 an edge case) or `low` (cosmetic; nothing goes wrong).
 
-An Issue your task is to fix, named in your brief or found by a review you ran, you handle by its
-tier: fix an `obvious-fix` Issue yourself; fix a `preferred-fix` Issue with the better fix and say
-in your report which fix you chose and why; never settle a `decision-needed` Issue: escalate it,
+An Issue your task is to fix, named in your task brief or found by a review you ran, you handle by
+its tier: fix an `obvious-fix` Issue yourself; fix a `preferred-fix` Issue with the better fix and
+say in your report which fix you chose and why; never settle a `decision-needed` Issue: escalate it,
 naming it by its identity, with the options and your recommendation. A `suggestion` blocks nothing.
 Never close an Issue you fixed: add it to your task with `concorde task resolve <task> <issue>…`,
 and the task's merge closes it once the fix is on the primary branch. Say in your report which
@@ -209,7 +227,7 @@ code, is wrong: it is usually `decision-needed`, so escalate it rather than chan
 Issue the review lists as resolved you add to your task with `concorde task resolve` when your task
 fixed it, and otherwise close with `issue_close` as `resolved`, the review's run as evidence.
 `code_review --scope module` judges each named Module's whole code against all its Specs; run it
-when your brief asks for it or after a change large enough to deserve a whole-Module check.
+when your task brief asks for it or after a change large enough to deserve a whole-Module check.
 
 A refusal of the Issue tools whose reason is `environment`, such as `merge_busy` while a merge holds
 the lock, `merge_incomplete`, `commit_failed`, `recovery_failed` or `uncommitted_change`, is a
@@ -243,5 +261,7 @@ restarted or resumed under another name. The report is recorded already, so noth
 agent has rebound the task, printing its new `main`, and send the same report to that name, without
 recording it again. When the background command ends without that answer, start it again.
 
-Then stop until the main agent answers. Do not merge the task branch into the primary branch, close
+Then stop until the main agent answers. Its answer names the reports it answers by their number;
+an answer to a report you already acted on, which the main agent sends again after a restart since
+it cannot tell whether its message arrived, changes nothing: ignore it. Do not merge the task branch into the primary branch, close
 the task, start other sessions or record decisions for other tasks.

@@ -98,9 +98,10 @@ reviews when the change deserves them, then `task-validation` and
 branch; only that commit marks the task delivered, while the task session may commit verified
 steps before it. The task session prepares the workers' environment: a worker writes only the
 files its Modules bind and new files inside the directories they bind, and a Module binds only
-files that exist, so the task session itself creates any other new file the work needs, with the
-least content its format needs to be valid, and binds it to its Module before it launches the
-worker that fills it.
+files that exist, so the task session itself creates any other new implementation file the work
+needs, with the least content its format needs to be valid, and binds it to its Module before it
+launches the worker that fills it. A new Spec document is not prepared this way: `specify` proposes
+it and the Operation creates it and registers it in its Module's `owns`.
 
 `code_review` judges a task's change since its base. With `--scope module` it is a **Module
 review** instead: one reviewer per named Module judges that Module's whole code and tests against
@@ -147,8 +148,8 @@ you agree a change with the developer. An `--input` of such a run must be unboun
 A task that follows a known procedure runs as a **workflow**: a preset task whose Operations run
 in a fixed order, one at a time, ending with one workflow result. Like every run it works on the
 workspace of the worktree it starts in and never names the task, so the task's session starts it
-inside the task worktree. Open the task as usual and name in its brief (see "Keep the decision
-log") the workflow, its `module` and its **mode**. Ask the developer which mode to use unless they
+inside the task worktree. Open the task as usual and name in its task brief (see "Keep the
+decision log") the workflow, its `module` and its **mode**. Ask the developer which mode to use unless they
 already said:
 
 - `interactive`: the workflow ends at every point that needs a decision, and the task session
@@ -194,16 +195,30 @@ link is the Operation's; below it come the worker run, the worker's own report, 
 checks, Git or Spec findings, down to where the error started. Read the whole chain before
 deciding: the origin tells you what went wrong, and each `unhandled` tells you why nobody below
 could fix it. Standard error shows the same chain as indented text. Every other `concorde` command
-refuses with `{"error": <link>}` in the same shape.
+refuses with `{"error": <link>}` in the same shape, except Spec tooling's.
+
+Spec tooling's commands, such as `spec-validation`, `registry`, `grant` and `build`, and the Spec
+MCP server refuse with Spec tooling's own error record instead (`code`, `message`, `reason`,
+`location`, `remediation`, `causes`), which is no link of a chain: `concorde task escalate` refuses
+it as `--error-file` with `invalid_error`. To escalate one, translate it into a `component` link
+and save that in a JSON file: `level` `component`, `actor` `Spec tooling (concorde <command>)`, the
+record's `code`, a `detail` holding its message, reason, location and remediation, `evidence`,
+`attempts` and `options` empty or what you know, a `recommendation`, `unhandled` with the reason
+that fits (`input` for Specs or arguments the sender must correct, `environment` otherwise) and its
+explanation, and as `causes` the record's causes translated the same way. Then name that file with
+`--error-file`.
 
 ## Keep the decision log
 
 Each task has a decision log (`concorde task show <task>` prints its path). Before starting its
-task session, record there the task's **brief**: the developer's decisions the task carries out,
-the workflow and mode when one applies, anything the goal leaves out, and what you leave for the
-session to decide; the session reads it first. Record there too every result of the task's runs
-that is not `ok` and every decision you made without the developer, with the reason, and your
-answers to the session's escalations. Append; never rewrite earlier entries. When the task ends,
+task session, record there the **task brief**: the developer's decisions the task carries out, the
+workflow and mode when one applies, anything the goal leaves out, and what you leave for the
+session to decide; the session reads it first. It is your handoff of the task to its session, not
+the brief an Operation generates for each worker it launches. Record there too every decision you
+made for the task without the developer, with the reason; `concorde task answer` appends your
+answers to the session's reports. The task session records the rest: every result that is not `ok`
+of the runs it starts and every decision it made without the developer. Append; never rewrite
+earlier entries. When the task ends,
 its merge or close commits the log to the primary branch as `.concorde/decisions/<history key>.md`:
 it is the one record of the task that stays with the code once the local history is gone, so write
 it for a later reader of the code.
@@ -211,7 +226,7 @@ it for a later reader of the code.
 ## Decide, and escalate only what matters
 
 Decide design uncertainties of ordinary scope yourself: naming, internal structure, the order of
-tasks, re-running an Operation with a clarified brief, splitting a task. Record the decision in
+tasks, re-running an Operation with a clarified goal, splitting a task. Record the decision in
 the decision log and report it at the end.
 
 Ask the developer before acting only when a decision has a major impact: it changes what a Module
@@ -252,7 +267,7 @@ workspace.
 ## Task sessions
 
 Every task is worked by a task session, started from the primary worktree once the task is open and
-its brief recorded: a background Claude Code session whose working directory is the task worktree,
+its task brief recorded: a background Claude Code session whose working directory is the task worktree,
 which carries the task to delivery and reports to you. It is your own role at a smaller scale.
 Stay in the primary worktree while any runs.
 
@@ -261,7 +276,7 @@ name of every task you dispatched with its goal in one line, and use those names
 report on the tasks afterwards, so the developer can follow, ask about or stop each one.
 
 The session prepares its own worktree — dependencies, submodules, build outputs, whatever the
-project's own instructions name — so start it as soon as its task is open and its brief recorded.
+project's own instructions name — so start it as soon as its task is open and its task brief recorded.
 
 ```bash
 concorde task session <task> --main <your session name> [--model <model>]
@@ -287,7 +302,8 @@ report first with `concorde task report`, in the task record and decision log, s
 never reached you loses nothing: `concorde task show <task>` lists the task's `reports`, each with
 its `answer`, null while unanswered. Record your answer with
 `concorde task answer <task> --report <n>… --text "<your answer>"`, which appends it to the decision
-log too, then answer the session with SendMessage. Once a task has ended nobody answers its
+log too, then answer the session with SendMessage, naming in the message the numbers of the reports
+it answers: a session ignores an answer to a report it already acted on. Once a task has ended nobody answers its
 reports: its merge or close answers each one still unanswered itself, saying how the task ended,
 so merging a delivered task is also the answer to its delivery report.
 
@@ -306,6 +322,10 @@ for your session other than the one you gave your tasks, before anything else:
    name.
 3. Read each task's unanswered reports with `concorde task show <task>`, those whose `answer` is
    null, and answer them as above.
+4. For each task whose last report has an answer, send that latest recorded answer again to its
+   task session, naming the reports it answers: your restart may have come after
+   `concorde task answer` recorded it and before SendMessage sent it, and a session that already
+   received it changes nothing.
 
 A task session decides ordinary questions within its task and escalates the rest with
 `concorde task escalate <task> --by task-session …`. Answer what you may decide yourself, and pass
@@ -418,7 +438,7 @@ and its `severity`, how much the problem matters whoever handles it, most severe
 work of a task. Choose what to fix first from `issue_list` with `status` `open` and `sort`
 `severity`, which puts the most severe Issues first, then by tier, `decision-needed` first. Solve an Issue like any other work: open a task for the Issue's current Module and
 name the Issues it fixes, `concorde task open <task> … --resolves <issue>[,<issue>…]`, or later
-`task_resolve`. Tell its session in the brief which tier each Issue has: it fixes `obvious-fix` and
+`task_resolve`. Tell its session in the task brief which tier each Issue has: it fixes `obvious-fix` and
 `preferred-fix` Issues itself, reporting the fix it chose for a `preferred-fix` one, and escalates a
 `decision-needed` Issue, naming it by its identity, for you to decide or to put to the developer.
 A review
@@ -438,12 +458,15 @@ Check that the evidence supports every decision: the store checks its form, not 
 **When the Issue system fails.** Never record a failure of the Issue system itself, a refusal of the
 Issue tools or command whose reason is `environment`, such as `merge_busy`, `merge_incomplete`,
 `commit_failed`, `recovery_failed` or `uncommitted_change`, as an Issue: an Issue system that failed
-cannot be trusted to record its own failure. Treat it as any other failure, its error chain in the
-task's decision log and escalation. `merge_busy` means a merge, task open or close holds the merge
-lock that every Issue write takes: `register_wait` for the merge lock and write again once it is
-released. `recovery_failed` means a record an Issue write published could not be put back and stays
-uncommitted in the primary worktree, shown by no read: fix the cause the refusal names, such as a
-stale `index.lock` or a refusing commit hook, then run `concorde issues recover` (it has no MCP
+cannot be trusted to record its own failure. Treat it as any other failure of a task, its error
+chain in the task's decision log and escalation. When you met the failure for no task, such as on an
+Issue you recorded while discussing the project, there is no decision log or escalation to carry it:
+show the developer its whole error chain at once, as rendered, never a summary of it, and open a
+task only when the failure leads to work. `merge_busy` means a merge, task open or close holds the
+merge lock that every Issue write takes: `register_wait` for the merge lock and write again once it
+is released. `recovery_failed` means a record an Issue write published could not be put back and
+stays uncommitted in the primary worktree, shown by no read: fix the cause the refusal names, such
+as a stale `index.lock` or a refusing commit hook, then run `concorde issues recover` (it has no MCP
 tool), which puts it back, and write again. `uncommitted_change` means the record of the Issue you
 wrote holds a change no Issue write made, such as an edit by hand, which the Issue system neither
 overwrites nor discards: inspect it with `git diff` in the primary worktree, revert it, and write
