@@ -74,6 +74,10 @@ class BrownfieldProject:
         (self.home / ".claude").mkdir(parents=True)
         self.root.mkdir()
         git(self.root, "init", "-q")
+        # Concorde's own commits, such as a task close committing its decision log, need an
+        # identity of the repository's own: inside a check boundary no global one exists.
+        for key, value in (("user.name", "t"), ("user.email", "t@t")):
+            git(self.root, "config", key, value)
         for path, content in FILES.items():
             (self.root / path).parent.mkdir(parents=True, exist_ok=True)
             (self.root / path).write_text(content)

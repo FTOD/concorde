@@ -18,12 +18,13 @@ the
 
 ### Workers change or read code, checks decide
 
-Both Operations are worker-backed. `implement` uses
-[task type](../../../glossary.json#concept.task-type) `implement`: the files bound by the Modules'
-realizations are writable, their Specs stay read-only, and other
-implementation files show by name only. `test` uses task type `test`: the same files readable,
-nothing writable. Neither worker can change a Spec, so disagreement between Spec and code can only
-be reported.
+Both Operations are worker-backed, and both task types read the whole project's code, the
+Protocol's ProjectImplementation, as [Spec core's grants](../../../spec-tooling/spec/module.md#grants)
+explain. `implement` uses [task type](../../../glossary.json#concept.task-type) `implement`: the
+files bound by the bound Modules' realizations, their implementation scope, are the only writable
+ones, and their Specs stay read-only. `test` uses task type `test`: the same files readable, nothing
+writable. Neither worker can change a Spec, so disagreement between Spec and code can only be
+reported.
 
 Whether the code passes is never the worker's word. Checks run outside the worker and read-only,
 so it cannot fake a green result or change the worktree through one: in `implement` the
@@ -175,7 +176,10 @@ The worker can read, search, edit and write files and run commands — Read, Glo
 and Bash on the Claude Code backend, their counterparts on pi, the default
 [worker backend](../../../glossary.json#concept.worker-backend); both enforce the same grant.
 Commands run in the backend's sandbox — reads the granted files and toolchain, writes only the
-grant's writable files and the [run directory](../../../glossary.json#concept.run-directory), no
+grant's writable files and the `work/`, `home/` and `tmp/` directories of the worker's
+[runtime directory](../../../glossary.json#concept.runtime-directory), never its
+[run directory](../../../glossary.json#concept.run-directory), as
+[Workers' access tables](../../workers/launch.md#run-directory-and-runtime-directory) say, no
 network. When the configuration names the project's interpreter in `python`, the brief names it and
 puts it first on the worker's PATH as `python`, and the sandbox may read its environment and the
 installation it resolves to; since the sandbox allows a read at a path's real location, the

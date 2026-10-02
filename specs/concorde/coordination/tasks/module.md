@@ -63,8 +63,9 @@ recorded by Execution, and a copy could disagree with them after a crash or a ru
 
 **The [decision log](../../glossary.json#concept.decision-log)** lives at
 `.concorde/tasks/<task-id>/decisions.md`. Tasks creates it with a heading and the goal at open, then
-only appends escalations, reports and their answers, and how the task ended; the session working on
-the task, the main agent or the task's task session, appends directly: every uncertainty it decided
+only appends escalations, reports and their answers, and how the task ended; the main agent appends
+the task's brief before it starts the task's task session, and that session, working on the task,
+appends directly: every uncertainty it decided
 alone, with options and reason, every non-`ok` run result and what it did about it, and the
 decisions and problems of a workflow's report, which Workflows saves beside its own record and never
 writes here. `concorde task open` prints the log's path beside the new record, and `concorde task
@@ -407,8 +408,8 @@ shares, and ending one task leaves it for the others.
 
 ## Merging
 
-Several main sessions may work in one project, each entering a task worktree of its own and
-returning to the primary worktree to merge. Two merges at once would interleave in the one primary
+Several main sessions may work in one project, each delegating its tasks to task sessions that
+work in the tasks' worktrees, and each merging from the primary worktree. Two merges at once would interleave in the one primary
 checkout, so the main agent merges with one command:
 
 ```text
@@ -618,8 +619,9 @@ left behind ([requirements](requirements.md#req.tasks.refusal-inert), [contracts
 
 Tasks is the workspace of the task level of Concorde's
 [levels of work](../../module.md#the-levels-of-work) without being a level itself: the level is
-played by the main agent or by a task session it delegates to, and Tasks holds what either of them
-works in, the branch, worktree, record and decision log, the same way whichever plays it. It never
+played by the task session to which the main agent delegates each task, while the main agent
+manages the tasks and merges them from the primary worktree, and Tasks holds what the task level
+works in, the branch, worktree, record and decision log. It never
 appears in a call chain itself: the main agent and Task sessions call into it to read or write that
 workspace, and it calls none of them back.
 

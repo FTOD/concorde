@@ -396,7 +396,11 @@ validate_repository(root, target_id=None, package_root=None, *, registry_bytes=N
                     document_overrides=None) -> ToolResult
 ```
 
-`concorde spec-validation [target]` prints the same result as JSON. The result has
+`concorde spec-validation [target]` prints this result as JSON, with one addition of the command's
+own: in a project that a `concorde update` marked as not yet validated, the command adds
+Distribution's update findings to it and removes the mark once the project validates, as
+[Distribution](../../distribution/module.md#updating-an-installed-concorde) says. This function and
+every other caller of it return the result without those findings and never touch the mark. The result has
 `tool: "spec-validation"`, `target` (the requested Module or `.`), `status` (`success` or
 `invalid`, or `failed` when the command could not do its work), `artifacts` (the assessed Spec
 member paths and the project glossary), `findings` and `result`. A target must name a registered
