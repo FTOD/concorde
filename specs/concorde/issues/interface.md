@@ -232,8 +232,9 @@ Every write refuses a `root` that is not the primary worktree (`not_primary`), t
 primary worktree's merge lock, `.concorde/locks/merge.lock`, the one Tasks' merges, opens and closes
 hold, waiting for it up to `wait` seconds (default 300) and refusing with `merge_busy`, naming the
 holder, after that; `locked` says the caller holds it already, as a task merge closing the Issues its
-task resolves does, and then neither waits nor checks for a merge. Holding it, a write refuses with
-`merge_incomplete` while a task is stored `merging`, recovers as below, refuses with
+task resolves does once it has closed the task, and then the write neither takes nor waits for it.
+Holding it, whether it took it or its caller holds it, a write refuses with `merge_incomplete` while
+a task is stored `merging`, recovers as below, refuses with
 `uncommitted_change` when the record it writes holds a change recovery left, reads the committed
 record and checks its revision, publishes a staged file over the committed bytes through a
 [file transaction](../glossary.json#concept.file-transaction), syncs the directory and commits the
@@ -312,6 +313,29 @@ nonblank and distinct, and `--note` must be nonblank. `--duplicate-of` is requir
 like a missing argument or an unknown reason, itself before it reads the Issue, and refuses a
 violation with `usage`; a `--duplicate-of` naming the Issue being closed passes them and is
 refused by the store with `invalid_issue`.
+
+<a id="disposing-under-a-held-lock"></a>
+
+Code of other Modules disposes an Issue through the same action, the library entry of
+`concorde.issues.command` that `close` and `reopen` run:
+
+```python
+dispose(root, issue_id, reason, note, evidence, *, duplicate_of=None, actor="main-agent",
+        wait=300, locked=False) -> dict
+```
+
+`reason` is a closing reason, or `reopened` to reopen, `root` any worktree of the project, and the
+argument rules
+above are checked first, a violation refused with `usage`. It reads the Issue's current revision in
+the primary worktree, disposes it there at that revision as `dispose_issue` does, recording `actor`,
+and returns what `close` and `reopen` print, `{"issue_id", "status", "revision"}`. With `locked`
+its caller holds the merge lock itself, as a task merge closing the Issues its task resolves does
+once it has closed the task: the write neither takes nor waits for the lock, and is still refused
+with `merge_incomplete` while a task is stored `merging`. Every refusal is raised as the command's
+`Refusal`, whose `code` is the refusal code and whose `link` is the error link below, the one the
+command would print; its caller decides what the refusal means for its own work, as
+[Tasks](../coordination/tasks/module.md) does with a closure its merge could not make, and supplies
+the note and evidence its own [Spec](../glossary.json#concept.spec) names.
 
 Every refusal prints `{"error": <link>}`, commits nothing and leaves no record a read shows. It
 writes nothing either, with one exception: a write refused with `recovery_failed`, or a process

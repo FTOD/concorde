@@ -193,17 +193,33 @@ class IssueStoreTests(unittest.TestCase):
             )
         )
 
-    @verifies("scenario.issues.store-merge-lock")
-    def test_a_write_waits_for_the_merge_lock_and_is_refused_after_the_wait(self):
+    @verifies("scenario.issues.store-merge-busy")
+    def test_a_write_whose_wait_ends_first_is_refused(self):
+        from concorde.tracing import locks
+
         # The merge lock of the primary worktree, which task merges, opens and closes hold.
         lock = self.root / ".concorde/locks/merge.lock"
         lock.parent.mkdir(parents=True)
+        lock.write_bytes(
+            locks.line("`concorde task merge` of task other", 4242, task="other")
+        )
         with lock.open("a+b") as held:
             fcntl.flock(held.fileno(), fcntl.LOCK_EX)
             with self.assertRaises(IssueError) as raised:
                 report_issue(self.root, report(), source(), wait=0)
-            self.assertEqual("merge_busy", raised.exception.code)
-            self.assertIn(str(lock), str(raised.exception))
+        self.assertEqual("merge_busy", raised.exception.code)
+        self.assertIn(str(lock), str(raised.exception))
+        self.assertIn(
+            "`concorde task merge` of task other (process 4242", str(raised.exception)
+        )
+        self.assertEqual({}, self.issue_files())
+
+    @verifies("scenario.issues.store-merge-lock")
+    def test_a_write_waits_for_the_merge_lock(self):
+        lock = self.root / ".concorde/locks/merge.lock"
+        lock.parent.mkdir(parents=True)
+        with lock.open("a+b") as held:
+            fcntl.flock(held.fileno(), fcntl.LOCK_EX)
             with ThreadPoolExecutor(max_workers=1) as pool:
                 waiting = pool.submit(report_issue, self.root, report(), source())
                 with self.assertRaises(FutureTimeout):
@@ -277,6 +293,21 @@ class IssueStoreTests(unittest.TestCase):
             report_issue(self.root, report(), source())
         self.assertEqual("merge_incomplete", raised.exception.code)
         self.assertIn("interrupted", str(raised.exception))
+        # A caller holding the merge lock itself is refused all the same.
+        from concorde.issues import store
+
+        lock = self.root / ".concorde/locks/merge.lock"
+        lock.parent.mkdir(parents=True, exist_ok=True)
+        with lock.open("a+b") as held:
+            fcntl.flock(held.fileno(), fcntl.LOCK_EX)
+            for write in (
+                lambda: report_issue(self.root, report(), source(), locked=True),
+                lambda: store.recover_issues(self.root, locked=True),
+            ):
+                with self.assertRaises(IssueError) as raised:
+                    write()
+                self.assertEqual("merge_incomplete", raised.exception.code)
+                self.assertIn("interrupted", str(raised.exception))
         self.assertEqual({}, self.issue_files())
 
     @verifies("scenario.issues.store-disposition")
@@ -611,99 +642,141 @@ class IssueStoreTests(unittest.TestCase):
             "open", read_issue(self.root, receipt["issue_id"])[0]["status"]
         )
 
+    def committed_before(self, version, leave_out):
+        """A committed record of ``version`` whose one report lacks the field ``leave_out``, as
+        an earlier Concorde wrote it; the Issue's identity."""
+        from concorde.issues import store
+        from concorde.spec.repository import digest
+
+        receipt = report_issue(self.root, report(), source())
+        older, _ = read_issue(self.root, receipt["issue_id"])
+        older["schema_version"] = version
+        observation = older["reports"][0]
+        observation["report"] = {
+            key: value for key, value in report().items() if key != leave_out
+        }
+        observation["id"] = digest(
+            {"report": observation["report"], "source": observation["source"]}
+        )
+        (self.root / receipt["path"]).write_text(store.render(older))
+        git(self.root, "commit", "-qam", f"an Issue written before {leave_out} existed")
+        return receipt["issue_id"]
+
+    def refused_without(self, version, leave_out):
+        """The refusal of a record of ``version`` whose one report lacks ``leave_out``."""
+        from concorde.issues import store
+
+        receipt = report_issue(
+            self.root, report(report_key=f"{version}-{leave_out}"), source()
+        )
+        record = copy.deepcopy(read_issue(self.root, receipt["issue_id"])[0])
+        record["schema_version"] = version
+        del record["reports"][0]["report"][leave_out]
+        with self.assertRaises(IssueError) as raised:
+            store.render(record)
+        return raised.exception
+
     @verifies("scenario.issues.store-tier")
-    def test_every_report_carries_a_tier_and_older_records_stay_valid(self):
+    def test_a_report_without_a_valid_tier_is_refused(self):
         untiered = {key: value for key, value in report().items() if key != "tier"}
         with self.assertRaises(TypedDataError) as raised:
             report_issue(self.root, untiered, source())
         self.assertEqual("/tier", raised.exception.field)
-        with self.assertRaises(TypedDataError):
+        with self.assertRaises(TypedDataError) as raised:
             report_issue(self.root, report(tier="blocking"), source())
+        self.assertEqual("/tier", raised.exception.field)
         self.assertEqual({}, self.issue_files())
+
+    @verifies("scenario.issues.store-tier-recorded")
+    def test_a_tiered_report_creates_a_current_record(self):
         receipt = report_issue(self.root, report(tier="suggestion"), source())
         record, _ = read_issue(self.root, receipt["issue_id"])
         self.assertEqual(4, record["schema_version"])
         self.assertEqual("suggestion", list_issues(self.root)[0]["tier"])
-        # A record written before tiers keeps its untiered report and takes tiered ones.
-        from concorde.issues import store
-        from concorde.spec.repository import digest
 
-        older = copy.deepcopy(record)
-        older["schema_version"] = 2
-        observation = older["reports"][0]
-        observation["report"] = untiered
-        observation["id"] = digest(
-            {"report": untiered, "source": observation["source"]}
-        )
-        path = self.root / receipt["path"]
-        path.write_text(store.render(older))
-        git(self.root, "commit", "-qam", "an Issue written before tiers")
-        _, revision = read_issue(self.root, receipt["issue_id"])
+    @verifies("scenario.issues.store-tier-legacy")
+    def test_a_record_written_before_tiers_stays_valid(self):
+        identifier = self.committed_before(2, "tier")
+        record, _ = read_issue(self.root, identifier)
+        self.assertNotIn("tier", record["reports"][0]["report"])
         self.assertIsNone(list_issues(self.root)[0]["tier"])
+
+    @verifies("scenario.issues.store-tier-legacy-append")
+    def test_a_record_written_before_tiers_takes_a_tiered_report(self):
+        identifier = self.committed_before(2, "tier")
+        _, revision = read_issue(self.root, identifier)
         report_issue(
             self.root,
             report(
-                issue_id=receipt["issue_id"],
+                issue_id=identifier,
                 expected_revision=revision,
                 report_key="tiered-now",
                 tier="obvious-fix",
             ),
             source(invocation_id="worker-2"),
         )
-        record, _ = read_issue(self.root, receipt["issue_id"])
+        record, _ = read_issue(self.root, identifier)
         self.assertEqual(2, record["schema_version"])
         self.assertEqual("obvious-fix", list_issues(self.root)[0]["tier"])
-        # A record of a later version holds only tiered reports.
+
+    @verifies("scenario.issues.store-tier-missing")
+    def test_a_current_record_without_a_tier_is_refused(self):
         for version in (3, 4):
-            record["schema_version"] = version
-            with self.assertRaisesRegex(IssueError, "field tier"):
-                store.render(record)
+            refusal = self.refused_without(version, "tier")
+            self.assertEqual("invalid_issue", refusal.code)
+            self.assertIn("field tier", str(refusal))
 
     @verifies("scenario.issues.store-severity")
-    def test_every_report_carries_a_severity_and_older_records_stay_valid(self):
+    def test_a_report_without_a_valid_severity_is_refused(self):
         unrated = {key: value for key, value in report().items() if key != "severity"}
         with self.assertRaises(TypedDataError) as raised:
             report_issue(self.root, unrated, source())
         self.assertEqual("/severity", raised.exception.field)
-        with self.assertRaises(TypedDataError):
+        with self.assertRaises(TypedDataError) as raised:
             report_issue(self.root, report(severity="urgent"), source())
+        self.assertEqual("/severity", raised.exception.field)
         self.assertEqual({}, self.issue_files())
+
+    @verifies("scenario.issues.store-severity-recorded")
+    def test_a_report_with_a_severity_creates_a_current_record(self):
         receipt = report_issue(self.root, report(severity="low"), source())
         record, _ = read_issue(self.root, receipt["issue_id"])
         self.assertEqual(4, record["schema_version"])
         self.assertEqual("low", list_issues(self.root)[0]["severity"])
-        # A record written before severities keeps its report without one and takes rated ones.
-        from concorde.issues import store
-        from concorde.spec.repository import digest
 
-        older = copy.deepcopy(record)
-        older["schema_version"] = 3
-        observation = older["reports"][0]
-        observation["report"] = unrated
-        observation["id"] = digest({"report": unrated, "source": observation["source"]})
-        path = self.root / receipt["path"]
-        path.write_text(store.render(older))
-        git(self.root, "commit", "-qam", "an Issue written before severities")
-        _, revision = read_issue(self.root, receipt["issue_id"])
+    @verifies("scenario.issues.store-severity-legacy")
+    def test_a_record_written_before_severities_stays_valid(self):
+        from concorde.issues import store
+
+        identifier = self.committed_before(3, "severity")
+        record, _ = read_issue(self.root, identifier)
+        self.assertNotIn("severity", record["reports"][0]["report"])
         self.assertIsNone(list_issues(self.root)[0]["severity"])
         self.assertEqual([], list_issues(self.root, severities=list(store.SEVERITIES)))
+
+    @verifies("scenario.issues.store-severity-legacy-append")
+    def test_a_record_written_before_severities_takes_a_report_with_one(self):
+        identifier = self.committed_before(3, "severity")
+        _, revision = read_issue(self.root, identifier)
         report_issue(
             self.root,
             report(
-                issue_id=receipt["issue_id"],
+                issue_id=identifier,
                 expected_revision=revision,
                 report_key="rated-now",
                 severity="critical",
             ),
             source(invocation_id="worker-2"),
         )
-        record, _ = read_issue(self.root, receipt["issue_id"])
+        record, _ = read_issue(self.root, identifier)
         self.assertEqual(3, record["schema_version"])
         self.assertEqual("critical", list_issues(self.root)[0]["severity"])
-        # A record of the current version holds only reports with a severity.
-        record["schema_version"] = 4
-        with self.assertRaisesRegex(IssueError, "field severity"):
-            store.render(record)
+
+    @verifies("scenario.issues.store-severity-missing")
+    def test_a_current_record_without_a_severity_is_refused(self):
+        refusal = self.refused_without(4, "severity")
+        self.assertEqual("invalid_issue", refusal.code)
+        self.assertIn("field severity", str(refusal))
 
     @verifies("scenario.issues.store-severity-sort")
     def test_sorting_by_severity_puts_the_most_severe_first(self):
