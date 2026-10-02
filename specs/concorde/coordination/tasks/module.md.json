@@ -16,34 +16,17 @@
     "contains": [],
     "uses": [
       {
-        "target": "module.execution",
-        "meaning": "#uses-execution",
+        "target": "module.kernel",
+        "meaning": "#uses-kernel",
         "relies_on": [
           "concept.workspace",
           "concept.workspace-binding",
-          "contract.execution.workspace-binding",
-          "concept.run",
-          "concept.run-result",
-          "concept.run-progress-file",
-          "concept.run-store",
-          "concept.workspace-lock"
-        ]
-      },
-      {
-        "target": "module.delivery",
-        "meaning": "#uses-delivery",
-        "relies_on": [
+          "contract.kernel.workspace-binding",
+          "concept.workspace-lock",
+          "concept.merge-lock",
           "concept.delivery-commit",
-          "req.delivery.recovered-verified"
+          "concept.file-transaction"
         ]
-      },
-      {
-        "target": "module.spec",
-        "meaning": "#uses-spec"
-      },
-      {
-        "target": "module.task-session",
-        "meaning": "#uses-task-session"
       },
       {
         "target": "module.tracing",
@@ -52,8 +35,37 @@
           "contract.tracing.node",
           "contract.tracing.error",
           "concept.trace-node",
-          "concept.history",
           "concept.error-chain"
+        ]
+      },
+      {
+        "target": "module.task-session",
+        "meaning": "#uses-task-session"
+      },
+      {
+        "target": "module.distribution",
+        "meaning": "#uses-distribution",
+        "relies_on": [
+          "req.distribution.update-unvalidated",
+          "req.distribution.unvalidated-cleared"
+        ]
+      },
+      {
+        "target": "module.execution",
+        "meaning": "#uses-execution",
+        "relies_on": [
+          "concept.run",
+          "concept.run-result",
+          "concept.run-progress-file",
+          "concept.run-store",
+          "concept.run-lock"
+        ]
+      },
+      {
+        "target": "module.delivery",
+        "meaning": "#uses-delivery",
+        "relies_on": [
+          "req.delivery.recovered-verified"
         ]
       },
       {
@@ -65,11 +77,10 @@
         ]
       },
       {
-        "target": "module.distribution",
-        "meaning": "#uses-distribution",
+        "target": "module.spec",
+        "meaning": "#uses-spec",
         "relies_on": [
-          "req.distribution.update-unvalidated",
-          "req.distribution.unvalidated-cleared"
+          "concept.registry"
         ]
       }
     ],

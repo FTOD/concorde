@@ -8,11 +8,10 @@ name given with them.
 ## Report
 
 A report is the content of the file a session passes to `report --file`, the object it passes to
-the [project MCP server](../glossary.json#concept.project-mcp-server)'s `issue_report`, or what another caller passes to the store directly
+the `issue_report` tool, or what another caller passes to the store directly
 together with the provenance it vouches for. It is at most 64 KiB as canonical JSON; large logs are referenced by path, not copied.
-**Canonical JSON** here and below is the sorted, compact JSON that Spec core's
-[`canonical`](../spec-tooling/spec/contracts.md#typed-values) writes: keys sorted, no whitespace
-between tokens.
+**Canonical JSON** here and below is the sorted, compact JSON of the Kernel's
+[typed values](../kernel/contracts.md#typed-values): keys sorted, no whitespace between tokens.
 
 ```concorde-contract
 {
@@ -122,8 +121,8 @@ command, and the project MCP server's `issue_report` through it, supply these va
 | `agent` | who reports | `main-agent` from the command; from `issue_report`, `task-session` in a task worktree bound as a workspace and `main-agent` otherwise |
 | `operation` | the [Operation](../glossary.json#concept.operation) or command that reported | `issues` |
 | `phase` | the step of that invocation | `report` |
-| `target_id` | the reporting [Module](../glossary.json#concept.module) | the report's `owner_target_id`, or the root Module when it is `null` |
-| `context_id` | digest of the reporter's context | SHA-256 digest of the bytes of the reporting worktree's registry |
+| `target_id` | the reporting [Module](../glossary.json#concept.module) | the report's `owner_target_id`, or, where the spec part is installed, the root Module when it is `null` |
+| `context_id` | digest of the reporter's context | SHA-256 digest of the bytes of the reporting worktree's registry where the spec part is installed, and of no bytes otherwise |
 | `change_id` | the task, nullable | the `--task` argument, or `null`; from `issue_report`, the workspace the task worktree is bound as, or `null` |
 | `head` | the Git `HEAD`, nullable | `git rev-parse --verify HEAD` in the reporting worktree, or `null` when that fails |
 
@@ -200,12 +199,12 @@ records. They fail in these ways:
   and a message that states what is wrong; a refusal that concerns one stored Issue, such as a
   read, an append, a disposition or a publication, also names that Issue; this includes a record
   that another program created or changed between the store's read and its publication, which
-  the [file transaction](../spec-tooling/spec/contracts.md#file-transactions) refuses as
+  the Kernel's [file transaction](../kernel/contracts.md#file-transactions) refuses as
   `stale_proposal` and the store reports as `stale_issue`, naming the record file and keeping the
   `stale_proposal` as its cause;
-- a value that Spec core's [typed-value](../spec-tooling/spec/contracts.md#typed-values) checks
+- a value that the Kernel's [typed-value](../kernel/contracts.md#typed-values) checks
   refuse, such as a report or disposition that breaks its schema or an evidence path that is not a
-  canonical project-relative POSIX path, is refused by Spec core with `TypedDataError` and its
+  canonical project-relative POSIX path, is refused by those checks with `TypedDataError` and its
   code `invalid_field`, naming the field it concerns; a record, directory or lock path reached
   through a symbolic link is refused the same way, without a field;
 - a write the operating system refuses inside the file transaction fails with the transaction's
@@ -214,7 +213,7 @@ records. They fail in these ways:
   directory after publication or Git failing to list or read the committed records, propagates as
   the operating system's own `OSError`, after the write put back the record it had published;
 - a write that cannot hold the [merge lock](../glossary.json#concept.merge-lock) within its wait, is made while a task's merge is
-  unfinished, or whose commit Git refuses is an `IssueError` with `merge_busy`,
+  unfinished (where the coordination part is installed), or whose commit Git refuses is an `IssueError` with `merge_busy`,
   `merge_incomplete` or `commit_failed`;
 - a write that cannot put back an uncommitted record, its own after a failure or one an earlier
   write left, is an `IssueError` with `recovery_failed`, and a write of an Issue whose record holds
@@ -288,11 +287,12 @@ commits nothing. When something cannot be put back or removed, it tries the rest
 the current directory), which must contain `.concorde/config.json`. Every action but `check` acts on
 the project's Issues, the records of the primary worktree of the repository `--root` lies in, and
 refuses with `not_a_repository` outside one; `check` checks the record files of `--root` itself.
-The command reads the registry `.concorde/specs.json` whenever an action needs the registered
-Modules. `--task` supplies provenance only; the CLI neither requires nor looks up that task. In the
+Where the spec part is installed, the command reads the registry `.concorde/specs.json` whenever an
+action needs the registered Modules; where it is not, a Module is a plain label the command never
+checks. `--task` supplies provenance only; the CLI neither requires nor looks up that task. In the
 unified CLI, `python3 scripts/concorde.py issues` in a source checkout and `concorde issues` in an
 installed project route to this command. The actions live in `concorde.issues.command`, which the
-project MCP server's Issue tools call with the same arguments, so each tool answers exactly what the
+Issue tools ([below](#mcp-tools)) call with the same arguments, so each tool answers exactly what the
 action prints and refuses with the same link: `issue_list` (`status`, `module`, `tier` and `severity`,
 each of the last two a nonempty list, and `sort`, as `list`'s options), `issue_show`, `issue_check` (the
 primary worktree's `check`), `issue_report` (the report as an object `report` or a `file` relative to
@@ -314,12 +314,14 @@ disposition's actor. `recover` and `archive` have no tool.
 
 `report` reads the file as UTF-8 JSON and validates it as a [report](#contract.issues.report),
 including a given `error_chain` against the Framework's
-[error contract](../tracing/contracts.md#contract.tracing.error). Its `owner_target_id`, when not `null`,
-must be a Module of the primary worktree's registry, which keeps the Issue, and each evidence path
+[error contract](../kernel/tracing/contracts.md#contract.tracing.error). Its `owner_target_id`, when not `null`,
+must be a Module of the primary worktree's registry where the spec part is installed, and is taken as
+given otherwise; the Issue keeps it, and each evidence path
 must exist in the worktree `--root` or, for a report with an `origin`, in the origin project, whose
 path the refusal then names. A report file may lie outside
 the project, such as a report another project wrote. When the owner is `null` the registry must have
-exactly one root Module, which becomes the reporting Module. A file with `issue_id` and
+exactly one root Module, which becomes the reporting Module; where the spec part is not installed,
+there is no registry to find one, and a `null` owner is refused with `no_reporting_module`. A file with `issue_id` and
 `expected_revision` appends to that Issue; the revision is the one `show`, `report`, `close` or
 `reopen` last printed for it.
 
@@ -360,16 +362,16 @@ Every refusal prints `{"error": <link>}`, commits nothing and leaves no record a
 writes nothing either, with one exception: a write refused with `recovery_failed`, or a process
 killed while writing, may leave an uncommitted record in the primary worktree, which the next
 write or `recover` puts back, so a refused write may be repeated. The link is a `component` link of
-the Framework's [error chain](../tracing/contracts.md#contract.tracing.error) with the actor
+the Framework's [error chain](../kernel/tracing/contracts.md#contract.tracing.error) with the actor
 `Issues (concorde issues)`: its code is the refusal code, its detail names the Issue, the report
 file and field, or the argument concerned and states what is wrong, and its reason is
 `environment` for `io_error`, `merge_busy`, `merge_incomplete`, `commit_failed`,
 `recovery_failed`, `uncommitted_change` and `not_a_repository`, and `input` for every other code. These environment refusals are failures of
 the Issue system itself: each lists among its options that its [error chain](../glossary.json#concept.error-chain) is carried in the task's
 [decision log](../glossary.json#concept.decision-log) and escalation, or in the run's result, and never reported as an Issue. The Issue store raises `IssueError`,
-a subclass of Spec tooling's [error type](../spec-tooling/spec/errors.md) with its own registered
-codes; when a refusal comes from one, the link's explanation is the Issue rule that error states
-it breaks, and its option is the error's remediation. The exit status is 2 when the
+Issues' own error type with its own codes, each stating the Issue rule it breaks and its
+remediation; when a refusal comes from one, the link's explanation is that rule, and its option is
+that remediation. The exit status is 2 when the
 request is unusable (codes `usage`, `not_a_project`, `unreadable_file`) and 1 when the request is
 refused (every other code).
 
@@ -380,13 +382,34 @@ or not. Each error names the file: an entry that is not a regular file named
 record that does not read as valid, a misplaced record, naming its status and place and saying
 to run `concorde issues archive` in the primary worktree, which moves it there, an Issue recorded
 in both folders, naming both paths and the repair, to keep the record whose reports and
-dispositions begin with the other's and remove the other with `git rm` in a commit of its own, or
-an open Issue whose owner is not a registered Module (`<id> names unknown owner <module>`). A closed Issue with an unknown owner
-produces the same text as a note, which does not change the exit status. An absent directory passes.
+dispositions begin with the other's and remove the other with `git rm` in a commit of its own, or,
+where the spec part is installed, an open Issue whose owner is not a registered Module (`<id> names unknown owner <module>`). A closed Issue with an unknown owner
+produces the same text as a note, which does not change the exit status. Without the spec part
+`check` reads no registry and judges no owner. An absent directory passes.
 Concorde's configuration registers it as the
 [configured check](../glossary.json#concept.configured-check) `check.issues.store` of
 `module.issues`, with the argument vector `["{python}", "scripts/issues.py", "check"]` and a
 60-second timeout.
+
+## MCP tools
+
+The issues part registers these tools with the
+[project MCP server](../glossary.json#concept.project-mcp-server). Each answers as the
+[bookkeeping command](#bookkeeping-command)'s action it names and refuses with that action's link,
+its writes never waiting for the merge lock, and records the calling session as reporter and actor:
+`task-session` and its task in a task worktree bound as a workspace, `main-agent` without a task
+otherwise. Each write tool's description also says that the write first puts back what a killed
+Issue write left, and how its `recovery_failed` and `uncommitted_change` refusals are put right,
+recovery itself being `concorde issues recover`'s alone.
+
+| Tool | Arguments | Result |
+| --- | --- | --- |
+| `issue_list` | optional `status` (`open` or `closed`), `module`, `tier` (nonempty list of tiers), `severity` (nonempty list of severities), `sort` (`severity`) | as `concorde issues list` with `--status`, `--module`, `--tier` and `--severity` for each, and `--sort` |
+| `issue_show` | `issue` | as `concorde issues show <issue>` |
+| `issue_check` | none | as `concorde issues check` in the primary worktree, without its exit status |
+| `issue_report` | exactly one of `report`, a [report](#contract.issues.report) as an object, and `file`, a report file's path relative to the session's worktree; optional `check` | as `concorde issues report --file <file> [--check]` run in the session's worktree, never waiting for the merge lock, with the session's provenance: `task-session` and its task in a task worktree bound as a workspace, `main-agent` without a task otherwise; a call naming both or neither of `report` and `file` is refused with `invalid_input` |
+| `issue_close` | `issue`, `reason` (`resolved`, `duplicate` or `not-actionable`), `note`, `evidence` (nonempty); optional `duplicate_of` | as `concorde issues close`, never waiting for the merge lock, with the session as actor as for `issue_report` |
+| `issue_reopen` | `issue`, `note`, `evidence` (nonempty) | as `concorde issues reopen`, never waiting for the merge lock, with the session as actor |
 
 ## Errors
 
@@ -399,9 +422,9 @@ Concorde's configuration registers it as the
 | `closed_issue` | an append to, or a closing of, a closed Issue |
 | `open_issue` | a reopening of an open Issue |
 | `unknown_owner` | a report's `owner_target_id` is not a registered Module |
-| `no_reporting_module` | a report names no owner and the registry has no single root Module |
+| `no_reporting_module` | a report names no owner and the registry has no single root Module, or the spec part is not installed |
 | `missing_evidence` | a report's evidence path does not exist in the project |
-| `unreadable_registry` | the registry `.concorde/specs.json` cannot be read |
+| `unreadable_registry` | where the spec part is installed, the registry `.concorde/specs.json` cannot be read |
 | `io_error` | a file operation failed |
 | `usage` | the arguments do not form a request of the command |
 | `not_a_project` | `--root` has no `.concorde/config.json` |
@@ -409,7 +432,7 @@ Concorde's configuration registers it as the
 | `not_a_repository` | `--root` lies in no Git repository, whose primary worktree would keep the Issues |
 | `not_primary` | a store write names a root that is not the primary worktree |
 | `merge_busy` | the merge lock stayed held for the whole wait; the message names its holder |
-| `merge_incomplete` | a task's merge into the primary branch is unfinished; the message is Tasks' account of it |
+| `merge_incomplete` | where the coordination part is installed, a task's merge into the primary branch is unfinished; the message is Tasks' account of it |
 | `commit_failed` | the primary worktree's `HEAD` is detached or Git refused the commit of the record, which was put back |
 | `recovery_failed` | an uncommitted record, the write's own after a failure or one an earlier write left, could not be put back; it stays uncommitted and no read shows it |
 | `uncommitted_change` | the record the write would change differs from its committed version in a way no write leaves; it is left as it is |

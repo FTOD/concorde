@@ -5,7 +5,8 @@
 Spec core is Concorde's implementation of the [Spec](../../glossary.json#concept.spec) Protocol and
 the deterministic heart of Spec tooling. It loads a project's Specs, checks their structure, and
 computes from the declarations alone what a task may read and write and whom a change concerns. It
-uses no other [Module](../../glossary.json#concept.module) and never calls a model. It does not
+uses no other [Module](../../glossary.json#concept.module), depends on no other part and never
+calls a model. It does not
 judge whether a Spec explains enough or whether code keeps a promise, does not decide which
 [task type](../../glossary.json#concept.task-type) a piece of work gets, and never enforces a grant.
 
@@ -19,8 +20,7 @@ Modules above it.
 <a id="concept.registry"></a><a id="concept.protocol-binding"></a>
 
 Every program that needs the Specs loads the same things: the configuration
-`.concorde/config.json`, the [configured checks](../../glossary.json#concept.configured-check), one
-file per Module under `.concorde/checks/`, the **[registry](../../glossary.json#concept.registry)**
+`.concorde/config.json`, the **[registry](../../glossary.json#concept.registry)**
 `.concorde/specs.json`, the documents each entry registers and the project glossary the root entry
 declares, which holds every concept with its owner and one-sentence definition. The registry is the
 project-wide index of Modules, and it only mirrors each entry's `module` block: the entry is where
@@ -79,17 +79,16 @@ cover implementation files. The [Operation](../../glossary.json#concept.operatio
 worker freezes the grant into it at launch and the Spec MCP server returns the same computation;
 Spec core neither stores nor enforces it.
 
-### Typed values and file transactions
+### Its own data utilities
 
-<a id="concept.typed-value"></a><a id="concept.file-transaction"></a>
-
-Every structured value Modules exchange is a
-**[typed value](../../glossary.json#concept.typed-value)** `{type_id, schema_version, data}` whose
-owner registers its schema ([typed values](contracts.md#typed-values)). A
-**[file transaction](../../glossary.json#concept.file-transaction)** writes a set of files
-completely or, when a write or its final check fails, restores every file it wrote, each write bound
-to the digest it replaces; an interrupted process or a refused restore can leave it partly applied,
-and the latter is reported file by file.
+The records Spec core reads and writes are [typed values](../../glossary.json#concept.typed-value)
+`{type_id, schema_version, data}`, and every write it makes, such as initialization or a registry
+regeneration, is a [file transaction](../../glossary.json#concept.file-transaction). Both formats are
+the Kernel's ([typed values](../../kernel/contracts.md#typed-values),
+[file transactions](../../kernel/contracts.md#file-transactions)), but Spec core does not use the
+Kernel's code: it keeps its own copy of these utilities, of schema checking and of digests, with its
+own error types ([its interface](contracts.md#typed-values)), so that the spec part installs and
+works with no other part. The Spec MCP server and Views use the same copy.
 
 ## Overview
 
@@ -102,7 +101,6 @@ validator: Validator
 grants: Grant computation
 init: Project initializer
 writer: Transaction writer
-types: Typed values
 
 registry: Registry
 binding: Protocol binding
@@ -112,8 +110,6 @@ check: Structural check
 declaration: Verification declaration
 grant: Grant
 identity: Context identity
-value: Typed value
-transaction: File transaction
 
 model -> registry: loads
 model -> binding: verifies
@@ -126,8 +122,6 @@ validator -> registry: regenerates the mirror of
 grants -> sets: applies a task type to
 grants -> grant: computes
 grants -> identity: computes
-types -> value: checks
-writer -> transaction: applies
 init -> writer: writes through
 init -> validator: validates the result with
 ```
@@ -167,7 +161,8 @@ as `python3 scripts/concorde.py`, and one function:
   task type receives for the given Modules from that worktree's Specs.
 - `initialize(root, package, data)` first proposes the exact first files of a project and their
   digest, then applies exactly that proposal and keeps it only if the project validates; it refuses
-  `already_initialized` and `not_installed`. Which command exposes it is Distribution's decision.
+  `already_initialized` and `not_installed`. `concorde init` exposes it, as the spec part's install
+  contribution, which Distribution runs when it installs the spec part into a project.
 
 ### A worked example
 
@@ -308,20 +303,18 @@ Python sources are under `src/concorde/spec/` and tests under `tests/concorde/sp
 - <a id="realization.spec.model"></a>**Spec model** loads the registry and documents and computes
   every set and index from declarations alone, never reading implementation contents.
 - <a id="realization.spec.validator"></a>**Validator** evaluates every check over one loaded model,
-  reads verification declarations and
-  [configured-check](../../glossary.json#concept.configured-check) inputs without running anything,
-  and regenerates the registry mirror.
+  reads verification declarations without running anything, and regenerates the registry mirror.
 - <a id="realization.spec.grants"></a>**[Grant](../../glossary.json#concept.grant) computation**
   applies a task type to the bound Modules'
   [boundary sets](../../glossary.json#concept.boundary-set), computes the context identity and
   refuses unbound shared writes.
 - <a id="realization.spec.initializer"></a>**Project initializer** proposes and applies the first
   Spec of a project.
-- <a id="realization.spec.transactions"></a>**Transaction writer** applies digest-bound file
-  transactions.
-- <a id="realization.spec.typed-values"></a>**Typed values** hold the registration table, the offline
-  checker that checks data as JSON Schema does, shared schema building blocks, strict JSON, safe
-  paths and the front-matter parser.
+- <a id="realization.spec.transactions"></a>**Transaction writer** is Spec core's own copy of
+  digest-bound file transactions.
+- <a id="realization.spec.typed-values"></a>**Typed values** are Spec core's own copy of the
+  registration table and the offline checker that checks data as JSON Schema does, with shared
+  schema building blocks, strict JSON, safe paths and the front-matter parser.
 - <a id="realization.spec.errors"></a>**Spec tooling errors** are Spec tooling's own error type:
   code, message, location, reason, remediation and causes, as the [error record](errors.md) defines.
   They depend on no other Module.
@@ -354,7 +347,8 @@ runs in, so a [Spec change](../../glossary.json#concept.spec-change) on the task
 task's workers and nothing else.
 
 A grant that writes Specs makes the glossary file writable, since a concept is declared there; that
-its writes stay within the bound Modules' own entries is checked after the worker, by Workers'
+its writes stay within the bound Modules' own entries is checked after each round by the glossary
+ownership audit of the Method step that launched the worker, beside the worker harness's
 [write audit](../../glossary.json#concept.write-audit). The computation refuses to make writable a
 file that an unbound Module also binds, rather than silently narrowing the grant: narrowing would
 leave a worker unable to write a file its own Module binds, with nothing to tell it why, while the
@@ -396,22 +390,24 @@ shared -> refused: yes
 
 ### Validation
 
-The validator runs nothing: it parses verification declarations and reads configured checks only to
-confirm their inputs exist and are safe. Concerns other Modules own, such as
-[Issue](../../glossary.json#concept.issue) records or Concorde's own package, are their configured
-checks, run by Check execution outside `spec-validation`, which keeps it a pure function of the
-Specs and the files they bind.
+The validator runs nothing: it parses verification declarations and reads nothing a check would
+run. Concerns other Modules own, such as [Issue](../../glossary.json#concept.issue) records,
+[configured checks](../../glossary.json#concept.configured-check) and their inputs, or Concorde's
+own package, are checked by the parts that own them, outside `spec-validation`, which keeps it a
+pure function of the Specs and the files they bind and keeps the spec part free of every other
+part's file formats.
 
-### Typed values and file transactions
+### A private copy of the data utilities
 
-Registration inverts a dependency that would otherwise point upward: a record's owner decides its
-schema, and Spec core stays below every owner. A reference to another type is resolved by name at
-check time, so an owner never imports the owner of a type it embeds. The registration table, the
-checker, the shared building blocks, strict JSON, the safe-path rules and the front-matter parser
-live together because they change together. Initialization, registry regeneration and other
-Modules' deterministic steps all write through file transactions, so a
-failure they observe never leaves half an update behind, and a restore that fails is named instead
-of hidden.
+Typed values and file transactions are the Kernel's formats, which the other parts share through the
+Kernel's code. Spec core keeps a copy of its own instead, because the spec part must install and
+work with nothing else: a Spec tooling that imported the Kernel could not be used alone, and the few
+hundred lines it duplicates change rarely. The copy follows the Kernel's formats exactly, so a value
+or a transaction means the same on both sides, and it raises Spec tooling's own errors. Registration
+lets each record's owner decide its schema while the checker stays below every owner; a reference to
+another type is resolved by name at check time. Initialization and registry regeneration write
+through file transactions, so a failure they observe never leaves half an update behind, and a
+restore that fails is named instead of hidden.
 
 ### Initialization
 
@@ -463,8 +459,11 @@ Protocol is being written.
 
 ### Its place among the Modules
 
-Spec core uses no Module, so nothing it relies on can make its own answers wrong; everything else
-relies on it instead: Spec MCP server, Spec review, Views, Workers, Check execution, Operations,
-Tasks, Issues, Distribution and nearly every other Module. Each consumer declares its own `uses`
-with the promises it relies on, and none of them is a dependency of Spec core, so their changes
-never change what it promises.
+Spec core uses no Module, so nothing it relies on can make its own answers wrong; every Module that
+reads Specs relies on it instead: the Spec MCP server and Views in its own part, Method, whose
+Operations and commands compute their grants and readiness through it, and the [optional integrations](../../glossary.json#concept.optional-integration)
+of Coordination and Issues, which check a Module identity against the registry only where the spec
+part is installed. Each consumer declares its own `uses` with the promises it relies on, and none of
+them is a dependency of Spec core, so their changes never change what it promises. Its install
+contribution — the Protocol copy, the Protocol binding and `concorde init` — reaches a project
+through the spec part's registration with Distribution.

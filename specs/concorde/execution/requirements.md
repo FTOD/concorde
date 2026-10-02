@@ -19,6 +19,13 @@ No part of Execution SHALL read or write a [task record](../glossary.json#concep
 everything a run knows about its workspace comes from the workspace binding of the worktree it
 starts in.
 
+### req.execution.definitions-bring-specs — Execution reads no Spec and launches no worker
+
+No part of Execution SHALL read a [Spec](../glossary.json#concept.spec), compute a grant or launch a [worker](../glossary.json#concept.worker) itself; whatever a run needs of the Specs or of a worker is done by its definition's steps.
+
+So the runner treats the Modules a run names as names, and a definition that reads the Specs admits
+them itself, as Method's do; Execution installs and runs with the kernel part alone.
+
 ### req.execution.binding-trusted — Only a sound binding binds
 
 The runner SHALL refuse a run, before any step, whose worktree holds a binding that cannot be read,
@@ -130,11 +137,14 @@ allows unbound runs.
 
 ### req.execution.no-writing-worker — An unbound run launches no writing worker
 
-An unbound run SHALL NOT launch a worker whose grant would keep a writable path.
+No step of an unbound run SHALL launch a worker whose grant would keep a writable path.
+
+The runner tells every step of an unbound run, through its run context, that the run may only read;
+a definition whose steps launch workers, as Method's do, gives them reading grants only.
 
 ### req.execution.unbound-checkout — An unbound run works in a checkout of HEAD
 
-The runner SHALL run every step of an admitted unbound run, and every worker it launches, in an
+The runner SHALL run every step of an admitted unbound run, and so every worker its steps launch, in an
 [unbound checkout](../glossary.json#concept.unbound-checkout) of the commit at `HEAD` of the
 worktree the run started in.
 
@@ -240,9 +250,16 @@ remove the run's folder and the run lock file the runner left.
 The runner SHALL execute each of a definition's steps at most once, in their declared order, up to
 and including the first step that stops the run.
 
+### req.execution.runs-reported — The runs of a workspace are told to whoever prepared it
+
+Execution's integration for the parts that prepare workspaces SHALL report every run of a workspace, from its workspace folder and the [lobby](runner.md#the-lobby), as running, ended or lost by its [run lock](../glossary.json#concept.run-lock), and stop on request every run of the workspace that still runs, the runs waiting in the lobby included.
+
+Coordination uses it, where the execution part is installed, to derive whether a task is active and
+to stop a task's runs before it closes the task; it reads no other record of Execution's.
+
 ### req.execution.no-chaining — Runs do not start runs
 
 No step SHALL start another run.
 
-A [workflow](workflows/module.md) sequences runs from outside them, through the same command lines;
+A [workflow](../workflows/module.md) sequences runs from outside them, through the same command lines;
 calling a service such as Check execution or resuming a worker is not starting a run.

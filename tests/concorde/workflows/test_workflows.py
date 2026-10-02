@@ -243,7 +243,7 @@ class StepTests(unittest.TestCase):
         return patch.object(steps, "start_run", side_effect=start)
 
     def test_the_schemas_are_the_contracts(self):
-        path = "specs/concorde/execution/workflows/contracts.md"
+        path = "specs/concorde/workflows/contracts.md"
         for identity, schema in (
             ("contract.workflows.step", STEP_SCHEMA),
             ("contract.workflows.step-request", REQUEST_SCHEMA),

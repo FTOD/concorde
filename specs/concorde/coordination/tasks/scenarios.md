@@ -94,7 +94,7 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - GIVEN a task whose workspace has a run with a [run progress file](../../glossary.json#concept.run-progress-file) and no result, whose runner process no longer exists
 - WHEN the main agent shows the task
 - THEN the run is listed with the status `lost`
-- AND `busy` is null, since the kernel released the dead runner's workspace lock
+- AND `busy` is null, since the operating system released the dead runner's workspace lock
 - AND the task is `active`
 
 ### scenario.tasks.concurrent-update — Detect a concurrent change

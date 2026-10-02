@@ -37,7 +37,7 @@ When a task ends, Tasks SHALL commit its decision log on the primary branch at
 `concorde task merge` in the merge commit it makes, with the closing its close then appends, and
 any close whose primary branch does not already hold the log so, in a commit of that file alone.
 
-The copy in Git is what outlives [Tracing](../../tracing/module.md)'s retention; the task's folder
+The copy in Git is what outlives [Tracing](../../kernel/tracing/module.md)'s retention; the task's folder
 keeps its own log, which the copy never replaces.
 
 ### req.tasks.log-commit-alone — Committing a log commits nothing else
@@ -57,26 +57,26 @@ on the task, never by Tasks.
 
 ### req.tasks.registered-modules — Records name only registered Modules
 
-Tasks SHALL refuse to open a task that names a [Module](../../glossary.json#concept.module) absent
-from the primary worktree's registry.
+Where the spec part is installed, Tasks SHALL refuse to open a task that names a [Module](../../glossary.json#concept.module) absent from the primary worktree's registry.
 
-A record's Modules never change after the open; the Modules a run worked on are in its
+Where it is not, the Modules are plain labels that nothing checks. A record's Modules never change after the open; the Modules a run worked on are in its
 [run result](../../glossary.json#concept.run-result).
 
-### req.tasks.no-copies — Tasks keeps no copy of what Execution records
+### req.tasks.no-copies — Tasks keeps no copy of what the workspace records
 
 Tasks SHALL NOT store a task's runs, deliveries or workflow in its record.
 
-What happened in a task's workspace is read where Execution recorded it, each time it is needed,
+What happened in a task's workspace is read where it was recorded, each time it is needed,
 so no second copy can disagree with it.
 
-### req.tasks.no-foreign-writes — Tasks writes nothing Execution records
+### req.tasks.no-foreign-writes — Tasks writes nothing the workspace's runs record
 
 Tasks SHALL NOT write the [run store](../../glossary.json#concept.run-store), a
 [workflow record](../../glossary.json#concept.workflow-record) or a
 [delivery commit](../../glossary.json#concept.delivery-commit), apart from holding a task's
-[workspace lock](../../glossary.json#concept.workspace-lock) through Execution's own lock and moving
-the task's whole folder, workspace folder included, to the history when the task is closed.
+[workspace lock](../../glossary.json#concept.workspace-lock), moving the task's whole folder,
+workspace folder included, to the history when the task is closed, and the delivery commit of
+`task deliver` where the method part is not installed.
 
 The lock file lives under `.concorde/locks/workspaces/`, and its holder is named there while Tasks
 merges or closes the task, and nothing else in it is written.
@@ -109,7 +109,7 @@ Opening a task SHALL write the task record only after writing the new worktree's
 the workspace.
 
 The binding satisfies the
-[binding contract](../../execution/contracts.md#contract.execution.workspace-binding), names the
+[binding contract](../../kernel/contracts.md#contract.kernel.workspace-binding), names the
 task folder's `workspace/` as its workspace folder and the primary worktree's `.concorde` for its
 locks, and is never rewritten by Tasks afterwards; closing removes it with the worktree.
 
@@ -126,8 +126,7 @@ is `merging`.
 ### req.tasks.derived-state — Active and delivered are derived
 
 Tasks SHALL derive whether a task that is not closed or failed is `open`, `active` or `delivered`
-from its workspace's runs in its workspace folder, its branch and its worktree each time the task is
-listed or shown.
+from its workspace's runs in its workspace folder, where the execution part is installed, its branch and its worktree each time the task is listed or shown.
 
 A `merging` task is shown as `merging`. Otherwise it is `delivered` when the branch head is a
 delivery commit of the task's workspace that verifies and the worktree is clean, `active` when the workspace has a run, the branch moved past its base commit or the
@@ -138,7 +137,7 @@ path a sandbox hides behind a `/dev/null` mount, is no uncommitted change, as fo
 
 Tasks SHALL count a task as delivered, and merge it or close it as merged, only when its branch
 head is a [delivery commit](../../glossary.json#concept.delivery-commit) of its workspace that
-verifies by Delivery's own check: it has exactly one parent.
+verifies by the Kernel's [convention](../../kernel/contracts.md#delivery-commit): it has exactly one parent, whichever part made it.
 
 A head that does not verify is shown `active`, `task show` lists the mismatch with that delivery,
 and `merge` and `close --merged` refuse it with `delivery_unverified`, naming the mismatch, as
@@ -156,7 +155,7 @@ Tasks SHALL keep a closed or failed task in that state whatever its workspace re
 
 Closing removes the worktree and with it the workspace binding, and moves the task's folder, whose
 workspace folder the binding named, to the history, so no run of the task's workspace can start;
-one task runs one thing at a time by Execution's
+one task does one thing at a time by the Kernel's
 [workspace lock](../../glossary.json#concept.workspace-lock), not by the record.
 
 ### req.tasks.close-when-ended — A task moves to the history only once it has ended
@@ -169,7 +168,7 @@ worktree with its binding.
 Still holding both locks, the close then removes the workspace lock file and the workflow lock file.
 
 A run of the task therefore never writes into a folder that has moved: none runs while the close
-holds the lock, one waiting for it writes only in Execution's lobby and is refused with
+holds the lock, one waiting for it writes only in the execution part's lobby and is refused with
 `workspace_retired` once it takes the removed lock file or finds the binding gone, and none starts
 after it, since its binding is gone or names a folder that no longer exists. Nor does a workflow
 step of the workspace: one holding the workflow lock finishes its writes before the folder moves,
@@ -313,7 +312,7 @@ The [project MCP server](../../glossary.json#concept.project-mcp-server) makes t
 directs the merge's standard output and error to its `output.json` and `messages.log`, so the
 merge's whole answer and its messages stay with its attempt's node and move with the task to the
 [history](../../glossary.json#concept.history), where the merge finishes writing them
-([Tracing](../../tracing/module.md)). An attempt refused before it began records the primary
+([Tracing](../../kernel/tracing/module.md)). An attempt refused before it began records the primary
 worktree's branch and commit as it found them.
 
 ### req.tasks.wait-without-polling — A wait is woken, never polls
@@ -321,7 +320,7 @@ worktree's branch and commit as it found them.
 `concorde task wait` SHALL return when the task reaches one of the named states, its record names a
 main agent's session other than the one named, the run's runner holds no
 [run lock](../../glossary.json#concept.run-lock), nobody holds the lock, or no merge of the task
-holds its merge attempt lock, learning of each change from the kernel and blocking on the lock
+holds its merge attempt lock, learning of each change from the operating system and blocking on the lock
 itself rather than reading the records repeatedly.
 
 It answers at once when that is already so.
@@ -351,14 +350,18 @@ A merge refused before `git merge` is governed by
 
 ### req.tasks.merge-update-validated — An unvalidated update is validated by every merge
 
-While the primary worktree holds the mark of a `concorde update` not validated since,
-`concorde task merge` SHALL run the default check, `concorde spec-validation`, on the merged
+While the primary worktree holds the mark of a `concorde update` not validated since, and where the spec part is installed,
+`concorde task merge` SHALL run `concorde spec-validation` on the merged
 result after the `--check` commands it was given, unless they include it.
 
 [Distribution](../../distribution/module.md) promises that nothing merges before an update is
 validated; the checks a merge is given replace the default otherwise, and so could leave that
 validation out. A merge that validates clears the mark as any passing validation does, so the merge
 of a task that repairs what the update found still lifts the barrier.
+
+### req.tasks.merge-default-check — A merge without checks runs the Spec validation where it can
+
+`concorde task merge` given no `--check` SHALL run `concorde spec-validation` on the merged result where the spec part is installed, and otherwise run no check and say so in its answer.
 
 ### req.tasks.merging-recorded — A merge is recorded before it touches the primary branch
 
@@ -405,6 +408,9 @@ decided alone before it reports the task.
 Tasks SHALL record in a task's `resolves` only open [Issues](../../glossary.json#concept.issue) of
 the project, named at `open` or with `resolve` while the task has not ended.
 
+Where the issues part is not installed, `--resolves` and `resolve` are refused with `part_missing`,
+naming the part, and a task resolves nothing.
+
 ### req.tasks.merge-closes-resolved — A merge closes the Issues its task resolves
 
 `concorde task merge` SHALL, once its checks passed and while it holds the merge lock, close as
@@ -414,7 +420,8 @@ of the Issues, whatever it is, never keeps the merge from ending the task's sess
 its result.
 
 The fix is on the primary branch only once the merge stands, so an Issue closes with its merge and
-never earlier; a task that ends without merging closes none.
+never earlier; a task that ends without merging closes none. Where the issues part is not installed,
+no task resolves an Issue and a merge closes none.
 
 ### req.tasks.merge-own-sources — A merge runs the Concorde it started with
 
@@ -437,9 +444,9 @@ path here, by the same rule as a task worktree's changes. The refusal says that 
 nothing outside its worktree as well as that a merge starts from a clean primary worktree, since
 the paths may be a task's and not the developer's.
 
-Before it judges the primary worktree, holding the merge lock, the merge puts back what Issue
-writes published there and never committed, by the Issues' own recovery, as the next Issue write
-would; the refusal names what that recovery could not put back or left as no Issue write's.
+Before it judges the primary worktree, holding the merge lock, the merge puts back, where the issues
+part is installed, what Issue writes published there and never committed, by the Issues' own
+recovery, as the next Issue write would; the refusal names what that recovery could not put back or left as no Issue write's.
 
 ### req.tasks.merge-nothing-outside — A merge refuses what changed outside every task's reach
 
@@ -466,6 +473,32 @@ Every refusal of a `concorde task` command SHALL print an error link that names 
 ### req.tasks.escalation-kept — Escalations keep their whole chain
 
 An escalation SHALL record the escalated errors unchanged as the causes of the escalating session's link, in the task record and the decision log, and an escalation that names no error that link alone, with no causes.
+
+## Delivering without Method
+
+### req.tasks.deliver-without-method — Tasks delivers only where Method does not
+
+`concorde task deliver` SHALL refuse with `delivery_by_method`, naming `concorde delivery`, wherever the method part is installed.
+
+Method's `delivery` validates the whole workspace before it commits; a delivery that skipped that
+validation where it was available would let a task be merged that Method would have refused.
+
+### req.tasks.deliver-checked — A delivery follows its checks
+
+`concorde task deliver` SHALL make a [delivery commit](../../glossary.json#concept.delivery-commit) only after every `--check` command it was given passed in the task's worktree.
+
+At the first check that fails it refuses with `check_failed`, naming the check, its exit status and
+its log, and commits nothing.
+
+It runs only in the task's own worktree, holding the task's
+[workspace lock](../../glossary.json#concept.workspace-lock), and judges nothing but its checks.
+
+### req.tasks.deliver-convention — The delivery commit follows the Kernel's convention
+
+`concorde task deliver` SHALL commit every change of the task's worktree that Git does not ignore as one commit with the subject `concorde: deliver <task-id>`, the task's goal as body and the task branch's head as its only parent, and report a head that already is a delivery commit of the workspace that verifies, with a clean worktree, as delivered without committing.
+
+The commit follows the Kernel's [convention](../../kernel/contracts.md#delivery-commit), so Tasks
+derives `delivered` from it as from any delivery commit.
 
 ## Reports and the main agent's session
 

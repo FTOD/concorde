@@ -8,10 +8,13 @@ belongs to the Module as a whole.
 
 ### req.spec.no-owner-imports — Spec core depends on no other Module
 
-Spec core SHALL NOT import code of any other Concorde Module.
+Spec core SHALL NOT import code of any other Concorde Module, the Kernel's included.
 
-Schemas, policies and file locations that other Modules own reach Spec core only through its
-registration interface or as arguments of a call.
+Schemas, policies and file locations that other Modules own reach Spec core only as arguments of a
+call or, for a type of the spec part's own Modules, through its typed value registration. The
+utilities it shares in kind with the Kernel, typed values, file transactions, schema checking and
+digests, are its own copy, following the formats the
+[Kernel's contracts](../../kernel/contracts.md#typed-values) define.
 
 ## Loading
 
@@ -100,21 +103,6 @@ linked document.
 A link whose fragment is a concept identity is a term link, which the Protocol's `CHK.term.link`
 checks against the project glossary instead.
 
-### req.spec.check-inputs — Configured check inputs exist and are safe
-
-Validation SHALL report as an error every
-[configured-check](../../glossary.json#concept.configured-check) input that is missing, is not a
-canonical project-relative path, or is reached through a symbolic link.
-
-### req.spec.checks-files — Each Module's configured checks are a file of their own
-
-Spec core SHALL read the [configured checks](../../glossary.json#concept.configured-check) only
-from the [checks files](contracts.md#checks-files) `.concorde/checks/<module id>.json`, giving each
-check the Module its file is named after.
-
-A `checks` field in the configuration, a `module` field in a check entry and a checks file not
-named after a registered Module each refuse the project.
-
 ### req.spec.fixed-registry — The registry has one place
 
 Spec core SHALL read the registry only from `.concorde/specs.json`.
@@ -124,9 +112,8 @@ A configuration that still names a registry, a field no current profile has, is 
 
 ### req.spec.digest-per-assessment — Every result names what it assessed
 
-Every validation result SHALL carry a digest of the exact configuration, checks files, registry, document members, glossary,
-[Protocol binding](../../glossary.json#concept.protocol-binding) and configured-check input states
-it assessed.
+Every validation result SHALL carry a digest of the exact configuration, registry, document members, glossary and
+[Protocol binding](../../glossary.json#concept.protocol-binding) it assessed.
 
 The digest covers only those inputs. The files that Modules bind, the list of version-controlled
 files and the contents of the tests scanned for verification declarations are not in it, so findings

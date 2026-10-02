@@ -62,7 +62,7 @@ filesystem recursively read-only, replaces `/proc` with the sandbox's PID view a
 minimal private one, and binds only the scratch writable at its own path; shared memory is backed by
 the scratch. The runner starts only a bubblewrap whose file and parent directories are owned by
 root and writable by neither group nor others. A check running inside another check's boundary
-sees root as the kernel's overflow user, because its namespace cannot map root; there the runner
+sees root as the operating system's overflow user, because its namespace cannot map root; there the runner
 accepts that owner in place of root only for a file on a read-only mount, so a nested check can
 still use the system bubblewrap while a file the checking user owns is never trusted. The host
 closes inherited descriptors, gives the command a null standard input and reads both pipes;

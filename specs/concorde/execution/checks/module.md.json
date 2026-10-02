@@ -16,14 +16,6 @@
     "contains": [],
     "uses": [
       {
-        "target": "module.spec",
-        "meaning": "#uses-spec",
-        "relies_on": [
-          "concept.registry",
-          "concept.boundary-set"
-        ]
-      },
-      {
         "target": "module.tracing",
         "meaning": "#uses-tracing",
         "relies_on": [

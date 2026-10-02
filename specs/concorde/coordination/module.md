@@ -2,7 +2,8 @@
 
 ## Purpose
 
-Coordination is the upper of Concorde's two halves: project management and task-level parallelism.
+Coordination is the coordination [part](../glossary.json#concept.part) and the upper of Concorde's
+two halves: project management and task-level parallelism.
 It is where the developer and the [main agent](../glossary.json#concept.main-agent) decide what to
 work on, split it into [tasks](../glossary.json#concept.task), give each task its own branch and
 worktree, have every task worked by a [task session](../glossary.json#concept.task-session), one
@@ -11,11 +12,24 @@ matters and merge what was delivered. The developer and the main agent rely on i
 files of its own, and its three children do the work: the Main session, Tasks and Task sessions.
 
 Coordination does not do the bounded work itself. Inside a task's worktree the changes are made
-directly by the task session that works the task, or through [Execution](../execution/module.md),
-the lower half, which knows nothing of tasks: Coordination hands it a workspace by writing that
-worktree's [workspace binding](../glossary.json#concept.workspace-binding), and learns what happened
-there only from what Execution recorded. It decides direction, splitting and merging, never how a
+directly by the task session that works the task, or through the runs of the lower half,
+[Execution](../execution/module.md) with Method's Operations and commands, which knows nothing of
+tasks: Coordination hands it a workspace by writing that worktree's
+[workspace binding](../glossary.json#concept.workspace-binding), and learns what happened there only
+from what was recorded. It decides direction, splitting and merging, never how a
 [worker](../glossary.json#concept.worker) is bounded, launched or checked.
+
+The coordination part depends on the [Kernel](../kernel/module.md) alone: the binding it writes, the
+[workspace lock](../glossary.json#concept.workspace-lock) and
+[merge lock](../glossary.json#concept.merge-lock) it takes, the
+[delivery commits](../glossary.json#concept.delivery-commit) it recognizes and the
+[trace nodes](../glossary.json#concept.trace-node) it records are the Kernel's contracts. Everything
+else it can use is an [optional integration](../glossary.json#concept.optional-integration),
+described where it applies and summed up in [Optional integrations](#optional-integrations): runs
+where the execution part is installed, Issues where the issues part is, Spec checks where the spec
+part is, and Method's validated delivery where the method part is, with Coordination's own
+`concorde task deliver` where it is not. A project that installs only the kernel and coordination
+still opens, delegates, delivers, merges and closes tasks.
 
 ## Core concepts
 
@@ -43,7 +57,7 @@ session's level 1, is always played by a task session, never by the main agent i
 For now the main agent is a Claude Code session and every task session a background Claude Code
 session, while the workers that the runs of a task launch may run on pi.
 
-The **[workspace binding](../glossary.json#concept.workspace-binding)** is Execution's term and the
+The **[workspace binding](../glossary.json#concept.workspace-binding)** is the Kernel's term and the
 whole seam between the halves: the file in a task worktree that tells every run there which
 workspace, goal, Modules, branch and base it works on.
 
@@ -125,10 +139,10 @@ checks fail is undone and the failure handled as new work; and a task that reach
 a merge, or will not reach it, is closed as completed or failed instead. The [Main
 session](main-session/module.md) and [Tasks](tasks/module.md) give the details.
 
-### The seam with Execution
+### The seam with the lower half
 
-The upper half talks to the lower half only through the binding, Execution's commands and what
-Execution recorded:
+The upper half talks to the lower half only through the binding, the lower half's commands and what
+it recorded:
 
 ```d2 illustrative
 coordination: Coordination {
@@ -136,16 +150,18 @@ coordination: Coordination {
   main: Main session
   session: Task sessions
 }
-execution: Execution {
+kernel: Kernel {
   binding: Workspace binding
-  store: Run store
   commits: Delivery commits
 }
-coordination.tasks -> execution.binding: writes when a task opens
+execution: "Execution (optional)" {
+  store: Run store
+}
+coordination.tasks -> kernel.binding: writes when a task opens
 coordination.main -> execution: runs unbound in the primary worktree
 coordination.session -> execution: runs in its task worktree
 coordination.tasks -> execution.store: reads a task's runs
-coordination.tasks -> execution.commits: reads whether a task is delivered
+coordination.tasks -> kernel.commits: reads whether a task is delivered
 ```
 
 Tasks writes the [workspace binding](../glossary.json#concept.workspace-binding) of each task
@@ -156,7 +172,8 @@ worktree, never naming the task. Tasks reads back the task's runs in that part o
 [run store](../glossary.json#concept.run-store) and its
 [delivery commits](../glossary.json#concept.delivery-commit) on the task branch, and derives whether
 a task is active or delivered from them together with its branch head and whether its worktree is
-clean. A main session learns how the runs it did not start stand only by asking Tasks with
+clean; without the execution part there are no runs to read, and only the delivery commits, the
+branch head and the worktree count. A main session learns how the runs it did not start stand only by asking Tasks with
 `concorde task show`, and is woken only by the runs its own background Bash started and by the
 waits it registered with its own
 [project MCP server](../glossary.json#concept.project-mcp-server). No record is written by both
@@ -168,8 +185,9 @@ review that changes nothing; such a run has no workspace and belongs to no task.
 
 ### The children and what they rely on
 
-A task session gets its harness from the Harness, the main session gets only the guidance
-Distribution installs, and the task level gets its workspace from Tasks.
+A task session gets its harness from Task sessions' own
+[session boundary](../glossary.json#concept.session-boundary), the main session gets only the
+guidance Distribution installs, and the task level gets its workspace from Tasks.
 
 ```d2
 coordination: Coordination {
@@ -180,8 +198,8 @@ coordination: Coordination {
   main -> tasks
   task -> tasks
 }
-harness: Harness
-coordination.task -> harness
+kernel: Kernel
+coordination -> kernel
 ```
 
 ## Why it is built this way
@@ -214,26 +232,32 @@ the developer is asked once, from the main session, rather than once per questio
 
 ## Providers
 
+<a id="uses-kernel"></a>
+
+The **Kernel** is the one part Coordination depends on. Coordination relies on the
+[binding contract](../kernel/contracts.md#contract.kernel.workspace-binding) being the same file
+every part that works in the workspace reads, so that writing it is the whole hand-over; on the
+[workspace lock](../glossary.json#concept.workspace-lock) being the lock every run of a workspace
+holds, so that a merge or close that holds it knows no run of the task is changing its worktree; on
+the [merge lock](../glossary.json#concept.merge-lock) being the lock every change of the primary
+branch on Concorde's behalf takes, an [Issue](../glossary.json#concept.issue) write as much as a merge; on a
+[delivery commit](../glossary.json#concept.delivery-commit) being recognized by its subject and
+verified by its single parent, whichever part made it; and on Tracing's trace nodes, locks and
+error chain for every record it keeps.
+
 <a id="uses-execution"></a>
 
-**Execution** gets the bounded work done in a bound workspace and records it. Coordination relies
-on it working only on the workspace the binding names, never writing the binding, recording every
-run of a bound workspace as a [trace node](../glossary.json#concept.trace-node) in the workspace
-folder the binding names, and committing a delivery only as a delivery commit on the bound branch.
-It relies on nothing inside Execution beyond those records and the commands' results. A run whose
+**Execution** is an [optional integration](../glossary.json#concept.optional-integration). Where
+the execution part is installed, it gets the bounded work done in a bound workspace and records it.
+Coordination relies on it working only on the workspace the binding names, never writing the
+binding, and recording every run of a bound workspace as a
+[trace node](../glossary.json#concept.trace-node) in the workspace folder the binding names, its
+[run store](../glossary.json#concept.run-store), or in the lobby while it waits for the lock. It
+relies on nothing inside Execution beyond those records and the commands' results. A run whose
 runner ended without a result is taken as lost rather than trusted as running, and a run of another
 workspace named to Tasks is refused with `unknown_run`; [Tasks](tasks/module.md) gives the details.
-
-<a id="uses-harness"></a>
-
-The **Harness** generates the [agent harness](../glossary.json#concept.agent-harness) of a task
-session from its task: the [session boundary](../glossary.json#concept.session-boundary), which
-confines what the session's own file tools and shell write to its task worktree, its decision log,
-what its commits, runs and escalations write (the Git directory, the task's own folder and the
-locks) and the user's package caches. Tools that MCP servers add are outside it, and it guards
-against mistakes, not a malicious session; the [Harness](../harness/module.md) states its exact
-paths and limits. The main session's harness is its installed guidance alone, since Concorde places
-no permission limits on the main agent. A task session that cannot get its harness does not start.
+Where the execution part is not installed, no run exists: a task is never `active`, a close has no
+run to stop, and `concorde task wait --run` is refused naming the missing part.
 
 ## The children
 
@@ -253,4 +277,17 @@ merge of a delivered task into the primary branch under a lock.
 <a id="contains-task-session"></a>
 
 **Task sessions** is the task level delegated: it starts a background Claude Code task session in a
-task worktree, confines its writes with the session boundary, and ends it with its task.
+task worktree, confines its writes with its own session boundary, and ends it with its task.
+
+## Optional integrations
+
+Each reach of Coordination into a part it does not depend on, where it is described and what
+happens without the part:
+
+| Part | What Coordination does with it | Without it |
+| --- | --- | --- |
+| execution | counts a workspace's runs as the task's activity, stops them and those in the lobby when a task closes, waits for a run, lists [run locks](../glossary.json#concept.run-lock) ([Tasks](tasks/module.md)) | no run exists; a task goes from open to delivered; waiting for a run is refused naming the part |
+| issues | names the Issues a task resolves, closes them when it merges, puts back what a killed Issue write left before the merge audits the primary worktree, gives task sessions the Issue tools ([Tasks](tasks/module.md), [Main session](main-session/module.md)) | `--resolves` is refused naming the part; a merge closes nothing and its audit has no Issue records to put back |
+| spec | runs `concorde spec-validation` as a merge's default check, checks a task's Modules against the registry ([Tasks](tasks/module.md)) | a merge runs only the `--check` commands it is given; Modules are plain labels |
+| method | a task is validated with `task-validation` and delivered with `delivery` ([Task sessions](task-session/module.md)) | the task session delivers with `concorde task deliver`, which runs the checks it is given and makes the delivery commit ([Tasks](tasks/module.md)) |
+| workflow | a task session may run a workflow in its worktree; the workflow part contributes that guidance | no workflow runs; the guidance has no workflow section |

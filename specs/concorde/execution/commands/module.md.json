@@ -10,28 +10,14 @@
     "owns": [
       "specs/concorde/execution/commands/module.md"
     ],
-    "contains": [
-      {
-        "target": "module.validation",
-        "meaning": "#contains-validation"
-      },
-      {
-        "target": "module.delivery",
-        "meaning": "#contains-delivery"
-      },
-      {
-        "target": "module.scaffold",
-        "meaning": "#contains-scaffold"
-      }
-    ],
+    "contains": [],
     "uses": [
       {
         "target": "module.execution",
         "meaning": "#uses-execution",
         "relies_on": [
           "concept.execution-runner",
-          "concept.run-result",
-          "concept.workspace"
+          "concept.run-result"
         ]
       }
     ],

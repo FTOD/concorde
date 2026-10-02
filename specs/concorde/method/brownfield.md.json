@@ -1,0 +1,11 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.method.brownfield",
+    "owner": "module.method",
+    "role": "module"
+  },
+  "defines": [],
+  "relations": [],
+  "extensions": {}
+}

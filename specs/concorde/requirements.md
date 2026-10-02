@@ -4,6 +4,42 @@ These requirements hold for the Framework as a whole. Each [Module](glossary.jso
 states the precise behaviour it contributes; a requirement here promises what the Modules achieve
 together.
 
+## Parts
+
+### req.concorde.part-dependencies — A part relies only on the parts it depends on
+
+Every [part](glossary.json#concept.part) SHALL import code of, and require the installation of, only the parts it depends on, in the directions the root's [parts table](module.md#the-parts) lists.
+
+A Module's `uses` of a Module in a part its own part does not depend on is therefore one of two
+things, and its explanation says which. Either it relies on a format or convention that part
+defines, which the relying part implements or meets itself without importing it, as the Spec
+tooling keeps its own copy of the Kernel's [typed values](glossary.json#concept.typed-value) and every part meets the host promises of
+Distribution, the installation host present in every installation; or it is an
+[optional integration](glossary.json#concept.optional-integration), whose explanation says what the
+feature does with that part and without it. No part imports Distribution, which reaches the parts
+only through their [registrations](glossary.json#concept.part-registration).
+
+### req.concorde.part-alone — A part works with its dependencies alone
+
+Every part SHALL do its work when it is installed with only the parts it depends on.
+
+What it cannot do without another part is an optional integration, never a failure of its own
+work: the spec part checks, serves and publishes Specs with no other part installed, and the
+coordination part opens, delivers, merges and closes tasks with the kernel alone. Distribution, the
+installation host, is installed beside every selection and counts as no dependency: it depends on
+no part and reads only the registrations of the parts installed with it.
+
+### req.concorde.absent-part-stated — An absent part is stated, not failed
+
+An optional integration whose part is not installed SHALL be skipped with a statement that names the missing part, never making the rest of the work it belongs to fail.
+
+A command or MCP tool of a part that is not installed is absent rather than present and broken; a
+command that needs it is refused naming the part.
+
+### req.concorde.one-version — All parts carry one version
+
+Every part SHALL carry the version number of the [Concorde repository](glossary.json#concept.concorde-repository) it was built from, the same for every part.
+
 ## Runtime
 
 ### req.concorde.main-agent-program — The main agent runs on Claude Code
@@ -78,35 +114,39 @@ Every Spec statement that an Operation or an execution command writes from the c
 
 Concorde's flow is Spec first, and every other worker sees code at most by name when it writes a
 Spec. A project whose code came before its Specs is described through the
-[Adoption](execution/operations/adoption/module.md) Operations: their `code-to-spec` workers record
+[Adoption](method/adoption/module.md) Operations: their `code-to-spec` workers record
 behaviour as it is and return doubtful intent as
 [open questions](glossary.json#concept.open-question) instead of promises, and the one Adoption step
 without a worker, the execution command `scaffold`, writes only what such a worker proposed.
 
 ### req.concorde.grant-from-task-worktree — Grants come from the Specs the worker works on
 
-Every grant a worker receives SHALL be computed from the Specs of the checkout its run works in: the worktree of the run's [workspace](glossary.json#concept.workspace) for a bound run, and the [unbound checkout](glossary.json#concept.unbound-checkout) for an [unbound run](glossary.json#concept.unbound-run).
+Every grant Method computes for a worker it launches SHALL be computed from the Specs of the checkout its run works in: the worktree of the run's [workspace](glossary.json#concept.workspace) for a bound run, and the [unbound checkout](glossary.json#concept.unbound-checkout) for an [unbound run](glossary.json#concept.unbound-run).
 
 ### req.concorde.no-wider-than-type — A worker's grant never exceeds its task type
 
-The [grant](glossary.json#concept.grant) computed for a worker SHALL NOT make readable or writable any of the project's files beyond what its task type assigns to its bound Modules.
+The [grant](glossary.json#concept.grant) Method computes for a worker SHALL NOT make readable or writable any of the project's files beyond what its task type assigns to its bound Modules.
+
+These two promises are Method's, which computes every grant of Concorde's own workers. The worker
+harness, used alone, enforces and audits whatever grant its caller hands it and promises nothing
+about where that grant came from ([Worker harness](worker-harness/module.md)).
 
 The complete assignment, the level each task type gives every
 [boundary set](glossary.json#concept.boundary-set), is the task-type table of
 [Spec core's grants](spec-tooling/spec/contracts.md#grants), and Spec core's
 [boundary sets](spec-tooling/spec/contracts.md#boundary-sets) say which paths each set holds.
 
-The promise bounds the computed grant, which the [Harness](harness/module.md) then enforces on
+The promise bounds the computed grant, which the [Harness](worker-harness/harness/module.md) then enforces on
 both backends. On Claude Code that enforcement has one gap: a file created in the task worktree
 after the worker's [deny rules](glossary.json#concept.deny-rules) were generated has no rule of its
 own, so the file tools can read it unless a directory rule hides it, although the
 [write hook](glossary.json#concept.write-hook) still refuses to change it unless the grant makes it
 writable. The worker cannot create such a file itself, since it writes only writable paths; the
-Harness's [known limits](harness/module.md#known-limits-of-v1) state the gap.
+Harness's [known limits](worker-harness/harness/module.md#known-limits-of-v1) state the gap.
 
-Besides the project's files, the [Harness](harness/module.md) gives a worker its run's own working,
+Besides the project's files, the [Harness](worker-harness/harness/module.md) gives a worker its run's own working,
 home and temporary directories and leaves readable the system paths every program needs; its
-[known limits](harness/module.md#known-limits-of-v1) say what else it leaves out.
+[known limits](worker-harness/harness/module.md#known-limits-of-v1) say what else it leaves out.
 
 ### req.concorde.workers-no-git — Workers have no Git access
 
@@ -121,20 +161,22 @@ merges.
 
 ### req.concorde.detailed-errors — Errors are reported in detail
 
-Every Operation, execution command, worker, step, `concorde` command other than Spec tooling's deterministic commands, and the main agent SHALL report a failure to its parent as an error link that describes it completely: what failed, where, the exact message or output, the evidence and what was tried.
+Every Operation, execution command, worker, step, `concorde` command other than Spec tooling's deterministic commands and Distribution's `build` and `protocol-manifest`, and the main agent SHALL report a failure to its parent as an error link that describes it completely: what failed, where, the exact message or output, the evidence and what was tried.
 
 A status, a code or a one-line summary alone is never the whole report. The parent must be able to reason about the error from the link without asking the actor that wrote it.
 
-Spec tooling's deterministic commands and library, such as `concorde spec-validation`, are the one
+Spec tooling's deterministic commands and library, such as `concorde spec-validation`, are the
 exception: they depend on no other Module and report with Spec tooling's own, equally detailed error
-record, which a Module that cannot handle it translates into a link
-([Where links appear](tracing/contracts.md#where-links-appear)).
+record. Distribution's `build` and `protocol-manifest` print Spec core's shared envelope with that
+record too ([req.distribution.one-envelope](distribution/requirements.md#req.distribution.one-envelope)).
+A Module that cannot handle such a record translates it into a link
+([Where links appear](kernel/tracing/contracts.md#where-links-appear)).
 
 ### req.concorde.error-chain — An unhandled error keeps its chain
 
 An actor that cannot handle an error it received from a child SHALL pass the child's error on unchanged as a cause of its own link, which states the reason the actor cannot handle the error.
 
-The reasons are the fixed set of the [error contract](tracing/contracts.md#contract.tracing.error). The last receiver thereby reads one reason per level, from where the error started up to itself. Independent errors, such as several failing checks, are sibling causes.
+The reasons are the fixed set of the [error contract](kernel/tracing/contracts.md#contract.tracing.error). The last receiver thereby reads one reason per level, from where the error started up to itself. Independent errors, such as several failing checks, are sibling causes.
 
 ### req.concorde.structured-errors — The chain is structured data
 
@@ -171,16 +213,20 @@ A task SHALL count as delivered only through a [delivery commit](glossary.json#c
 The task level may commit verified steps on the task branch as it works; those commits deliver
 nothing. `delivery` validates everything the branch holds since its base commit together with what
 is not committed yet, and commits the delivery commit on top only when that whole workspace is
-ready, as [req.delivery.own-readiness](execution/commands/delivery/requirements.md#req.delivery.own-readiness)
-states.
+ready, as [req.delivery.own-readiness](method/delivery/requirements.md#req.delivery.own-readiness)
+states. Where the method part is not installed, `task deliver` commits it after the checks it was
+given pass, and judges nothing else.
 
-### req.concorde.delivery-commit-by-delivery — Only delivery makes a delivery commit
+### req.concorde.delivery-commit-by-delivery — Only a delivering command makes a delivery commit
 
-No actor other than the `delivery` execution command SHALL make a delivery commit.
+No actor other than a delivering command SHALL make a delivery commit: Method's `delivery` execution command, or, only where the method part is not installed, Coordination's `task deliver`.
 
-A delivery commit is recognized by its subject alone, so no task session, main agent or other
-command commits under that subject; Delivery gives it to its delivery commits alone
-([req.delivery.marked](execution/commands/delivery/requirements.md#req.delivery.marked)).
+A delivery commit is recognized by its subject alone
+([Kernel](kernel/contracts.md#delivery-commit)), so no task session, main agent or other command
+commits under that subject; Delivery gives it to its delivery commits alone
+([req.delivery.marked](method/delivery/requirements.md#req.delivery.marked)), and `task deliver`
+refuses wherever the method part is installed, so that a workspace Method could validate is never
+delivered without that validation.
 
 ### req.concorde.merge-by-main-agent — The main agent merges delivered tasks
 

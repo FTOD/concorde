@@ -1,0 +1,153 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.workers.module",
+    "owner": "module.workers",
+    "role": "module"
+  },
+  "module": {
+    "title": "Workers",
+    "owns": [
+      "specs/concorde/worker-harness/workers/module.md",
+      "specs/concorde/worker-harness/workers/launch.md",
+      "specs/concorde/worker-harness/workers/pi.md",
+      "specs/concorde/worker-harness/workers/contracts.md",
+      "specs/concorde/worker-harness/workers/scenarios.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.harness",
+        "meaning": "#uses-harness",
+        "relies_on": [
+          "concept.worker-settings",
+          "concept.deny-rules",
+          "concept.write-hook",
+          "concept.permission-extension"
+        ]
+      },
+      {
+        "target": "module.tracing",
+        "meaning": "#uses-tracing",
+        "relies_on": [
+          "contract.tracing.node",
+          "contract.tracing.error",
+          "concept.trace-node",
+          "concept.error-chain"
+        ]
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.harness.claude-code",
+        "reason": "the worker settings, deny rules, write hook and tool sets the Claude Code backend places in the runtime directory and launches with"
+      },
+      {
+        "kind": "document",
+        "target": "document.harness.pi",
+        "reason": "the permission extension's read and write tables, sandbox, limits and tool sets, whose decisions and denial reasons the pi backend's requirements and scenarios rely on"
+      },
+      {
+        "kind": "external",
+        "target": "references/claude-code/",
+        "reason": "Claude Code's settings, permission rules, hooks, sandbox and headless CLI, which the worker settings and launch rely on"
+      },
+      {
+        "kind": "external",
+        "target": "references/pi/",
+        "reason": "pi's extension API, built-in tools, path resolution, headless CLI and JSON event stream, which the pi backend and the permission extension rely on"
+      },
+      {
+        "kind": "external",
+        "target": "references/sandbox-runtime/",
+        "reason": "the sandbox engine both backends' command sandboxes run on, whose per-call filesystem configuration and strict network allowlist the pi backend relies on"
+      },
+      {
+        "kind": "external",
+        "target": "references/pi-packages/packages/pi-permission-system/",
+        "reason": "prior art for permission enforcement in pi, against which the permission extension's design was compared"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "realization.workers.runtime",
+      "type": "realization",
+      "title": "Worker runtime",
+      "meaning": "#realization.workers.runtime",
+      "entries": [
+        "src/concorde/harness/workers.py",
+        "src/concorde/harness/progress.py",
+        "src/concorde/harness/audit.py",
+        "src/concorde/harness/runs.py",
+        "src/concorde/harness/placement.py",
+        "tests/concorde/harness/workers/",
+        "prompts/workers/common/"
+      ]
+    },
+    {
+      "id": "realization.workers.claude",
+      "type": "realization",
+      "title": "Claude Code backend",
+      "meaning": "#realization.workers.claude",
+      "entries": [
+        "src/concorde/harness/claude_backend.py"
+      ]
+    },
+    {
+      "id": "realization.workers.pi",
+      "type": "realization",
+      "title": "pi backend",
+      "meaning": "#realization.workers.pi",
+      "entries": [
+        "src/concorde/harness/pi_backend.py"
+      ]
+    },
+    {
+      "id": "realization.workers.models",
+      "type": "realization",
+      "title": "Configuration reader",
+      "meaning": "#realization.workers.models",
+      "entries": [
+        "src/concorde/harness/models.py",
+        "src/concorde/harness/available_models.py",
+        "scripts/available_models.py"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "realization.workers.runtime",
+      "verb": "generates",
+      "target": "concept.brief"
+    },
+    {
+      "type": "relates",
+      "source": "realization.workers.runtime",
+      "verb": "writes",
+      "target": "concept.run-record"
+    },
+    {
+      "type": "relates",
+      "source": "realization.workers.runtime",
+      "verb": "keeps",
+      "target": "concept.progress-file"
+    },
+    {
+      "type": "relates",
+      "source": "realization.workers.runtime",
+      "verb": "launches",
+      "target": "realization.workers.claude"
+    },
+    {
+      "type": "relates",
+      "source": "realization.workers.runtime",
+      "verb": "launches",
+      "target": "realization.workers.pi"
+    }
+  ],
+  "extensions": {}
+}

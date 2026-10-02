@@ -3,7 +3,7 @@
 Validation answers one question: are the project's [Spec](../../glossary.json#concept.spec)
 declarations well formed and consistent with each other? This topic explains what the checks look
 at, how to read a finding, what Concorde checks in addition to the Protocol, what it deliberately
-leaves to [configured checks](../../glossary.json#concept.configured-check), and what a successful
+leaves to the parts that own other files, and what a successful
 run does and does not mean. The precise obligations are in the [requirements](requirements.md) and
 [scenarios](scenarios.md); the result format is in the
 [interface definitions](contracts.md#validation-result).
@@ -69,29 +69,28 @@ definition, or a definition in another document, is a `CONCORDE-LINK-001` error.
 fragment begins with `concept.` is a term link, which the Protocol's `CHK.term.link` checks
 against the glossary, so it never draws `CONCORDE-LINK-001`.
 
-**Configured check inputs.** Every input path a configured check declares must exist as a regular
-file or directory reached without symbolic links; a missing or unsafe input is a
-`CONCORDE-CHECK-001` error naming the check. Validation reads no input's content and runs no check.
-
 **Realization entries.** Every entry must exist (`CHK.binds.exists`): a realization records what
 exists, never an intent. A realization record that still carries Protocol 15's `pending` field
 fails `CHK.document.schema`, with no migration of its own; the Protocol's migration notes say how
 to remove it.
 
-## What validation leaves to configured checks
+## What validation leaves to other parts
 
 Some questions about a project are not questions about its Spec declarations, and validation does
-not answer them. Whether every [Issue](../../glossary.json#concept.issue) record is readable,
-whether Concorde's own package is consistent and whether tests pass are each answered by a
-configured check owned by the Module concerned and run by Check execution. Their results enter a
-task's evidence next to the validation result, not inside it, so `spec-validation` stays a pure
-function of the Specs and the files they bind.
+not answer them. Whether every [Issue](../../glossary.json#concept.issue) record is readable is the
+issues part's own check; whether every
+[configured check](../../glossary.json#concept.configured-check) is well formed and its inputs exist
+is Check execution's, in the execution part; whether Concorde's own package is consistent and
+whether tests pass are configured checks owned by the Module concerned and run by Check execution.
+Their results enter a task's evidence next to the validation result, not inside it, so
+`spec-validation` stays a pure function of the Specs and the files they bind, and the spec part
+reads no file format of another part.
 
 ## What success means
 
 A successful run means that these checks passed for the files assessed at the time of the run. The
-result carries a digest of the configuration, the registry, the Spec documents, the glossary, the
-Protocol binding and the configured-check inputs, so a caller can tell later whether any of those
+result carries a digest of the configuration, the registry, the Spec documents, the glossary and the
+Protocol binding, so a caller can tell later whether any of those
 has changed since. The digest does not cover everything the checks read: the files that Modules
 bind, the list of version-controlled files and the tests scanned for verification declarations are
 outside it, so findings about bindings, unbound files and scenario coverage can change while the

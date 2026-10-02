@@ -152,7 +152,7 @@ concorde task merge retry
   main agent and its task sessions run on Claude Code for now.
 
 These layers guard against scope drift and mistakes, not a malicious actor; the
-[Harness](specs/concorde/harness/module.md) Spec states their limits.
+[Harness](specs/concorde/worker-harness/harness/module.md) Spec states their limits.
 
 ## Get started
 

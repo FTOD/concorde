@@ -44,12 +44,13 @@ them through the store with the provenance it vouches for.
 
 ### req.issues.report-owner-registered — A report names a registered owner
 
-The bookkeeping command SHALL refuse a report whose `owner_target_id` is neither `null` nor a
-[Module](../glossary.json#concept.module) of the primary worktree's registry.
+Where the spec part is installed, the bookkeeping command SHALL refuse a report whose `owner_target_id` is neither `null` nor a [Module](../glossary.json#concept.module) of the primary worktree's registry.
 
 A `null` owner is accepted: the report's reporting Module is then the registry's root Module, and
 the command refuses the report with `no_reporting_module` when the registry has no single root
-([provenance](interface.md#provenance)).
+([provenance](interface.md#provenance)). Where the spec part is not installed, the owner is a plain
+label the command takes as given, and a `null` owner is refused with `no_reporting_module`, since
+no registry names a root.
 
 ### req.issues.report-evidence-present — A report's evidence exists
 
@@ -237,10 +238,26 @@ Writes so never overlap one another, or a task's merge, open or close.
 
 ### req.issues.no-write-during-merge — No Issue write while a merge is unfinished
 
-The Issue store SHALL refuse every write, whether it took the merge lock or its caller holds it,
-while a task's merge into the primary branch is unfinished.
+Where the coordination part is installed, the Issue store SHALL refuse every write, whether it took the merge lock or its caller holds it, while a task's merge into the primary branch is unfinished.
 
 A write so never commits between a merge commit and the checks that decide whether it stays.
+Without the coordination part there is no task merge, and the merge lock alone orders the writes.
+
+### req.issues.tools-as-command — The Issue tools answer as the command
+
+Each Issue tool the issues part registers with the [project MCP server](../glossary.json#concept.project-mcp-server) SHALL answer and refuse exactly as the bookkeeping command's action it names, never waiting for the merge lock.
+
+The tools are the issues part's own, registered through its
+[part registration](../glossary.json#concept.part-registration); where the issues part is not
+installed none of them exists ([MCP tools](interface.md#mcp-tools)).
+
+### req.issues.own-check — Issues checks its own records
+
+The Issue store's check, `concorde issues check` and the tool `issue_check`, SHALL be the only validation of Issue records, so that no other part's validation reads them.
+
+The Spec tooling knows nothing of Issues; the records are still checked whenever this Module's
+[configured check](../glossary.json#concept.configured-check) runs, and a merge's checks include it
+where the project configures them.
 
 ### req.issues.commit-alone — An Issue commit commits its record alone
 

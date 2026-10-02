@@ -28,7 +28,10 @@ from the clean primary worktree of a
 **[Concorde repository](../glossary.json#concept.concorde-repository)**: the independent Git
 repository of Concorde that the developer also changes, and in which the Concorde defects the
 project reports are fixed. Its receipt records the mode `develop`, and the main agent's guidance
-carries Dogfooding's section; otherwise it is an ordinary install.
+carries Dogfooding's section; otherwise it is an ordinary install of the
+[parts](../glossary.json#concept.part) the developer chooses. Since its main agent reports defects as
+Issues, Dogfooding's guidance is useful only where the coordination and issues parts are installed,
+and the section is composed into the guidance only there.
 
 ### Concorde defects and boundary cases
 
@@ -185,7 +188,7 @@ the main agent's link, without causes, is the whole chain and cites the run, whi
 `concorde task escalate` records when it names no run
 ([requirements](requirements.md#req.dogfooding.ok-run-defect)). Outside a task the main agent
 writes its link by hand in the shape of the Framework's
-[error contract](../tracing/contracts.md#contract.tracing.error), with the failure's own error, the
+[error contract](../kernel/tracing/contracts.md#contract.tracing.error), with the failure's own error, the
 refusal's or that of the run's result, as its only cause, and none for an `ok` run. The
 guidance lists every field the
 [Issue report contract](../issues/interface.md#contract.issues.report) requires, with an example,
@@ -304,7 +307,7 @@ main agent is told.
 [Issue report](../glossary.json#concept.issue-report) shape with its `origin` and
 `error_chain`. Dogfooding relies on the report command checking a report's evidence in its origin
 project and its error chain against the Framework's
-[error contract](../tracing/contracts.md#contract.tracing.error), so a defect report that
+[error contract](../kernel/tracing/contracts.md#contract.tracing.error), so a defect report that
 reaches the Concorde repository incomplete is refused with the field that is wrong.
 
 <a id="uses-tasks"></a>

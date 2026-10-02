@@ -121,9 +121,10 @@ task: the task worktree's [workspace binding](../../glossary.json#concept.worksp
 the run which task's goal, Modules, branch and base it works on, and one workspace runs one thing
 at a time. The background call lives as long as the run it started. A
 [workflow step](../../glossary.json#concept.workflow-step) is not such a run: its
-[step agents](../../glossary.json#concept.step-agent) start it through the server's `workflow_step`
-([`workflow_step` runs the worktree's own step command](#req.main-session.project-mcp-workflow-step)),
-which runs it as a process of the server and waits for it there.
+[step agents](../../glossary.json#concept.step-agent) start it through the `workflow_step` tool the
+workflow part registers with the server
+([Workflows](../../workflows/requirements.md#req.workflows.steps-through-server)), which runs it as a
+process of the server and waits for it there.
 
 ### req.main-session.task-session-quiet-before-validation — A task session stops its background commands before validating
 
@@ -199,7 +200,7 @@ The task-session guidance SHALL tell a task session to start a workflow that end
 
 A step that finished and is neither answered nor retried returns its recorded run; the answered
 step runs again and supersedes itself and every step recorded after it, which run anew, as
-[Workflows](../../execution/workflows/module.md) states for its
+[Workflows](../../workflows/module.md) states for its
 [step keys](../../glossary.json#concept.step-key).
 
 ### req.main-session.merge-without-authorization — Delivered tasks are merged
@@ -338,56 +339,33 @@ The Concorde block of the worktree's `CLAUDE.md` imports the glossary file, whic
 at launch. A worktree whose project declares no glossary, or whose declared glossary cannot be read,
 starts its sessions without terms and without an error; Spec validation reports a declared glossary
 it cannot read. A [worker](../../glossary.json#concept.worker) is not such a session: its context is
-only its [brief](../../glossary.json#concept.brief), as the [Harness](../../harness/module.md)
+only its [brief](../../glossary.json#concept.brief), as the [Harness](../../worker-harness/harness/module.md)
 describes.
 
 ## The project MCP server
 
 ### req.main-session.project-mcp-presentation — Queries and short writes answer as their commands
 
-Each tool of the [project MCP server](../../glossary.json#concept.project-mcp-server) whose row of
-its [contracts](contracts.md#tools) names a `concorde` command SHALL answer and refuse exactly as
+Each tool Coordination registers with the [project MCP server](../../glossary.json#concept.project-mcp-server) whose row of its [contracts](contracts.md#tools) names a `concorde` command SHALL answer and refuse exactly as
 that command does when it waits for no lock, from the
 [task records](../../glossary.json#concept.task-record), traces and locks of the primary worktree
 read afresh for that call, adding no other rule of its own.
 
-Those tools are the queries `task_list`, `task_show`, `trace_show`, `issue_list`, `issue_show` and
-`issue_check` and the short writes `task_open`, `task_escalate`, `task_rebind`, `task_report`,
-`task_answer`, `task_close`, `task_resolve`, `issue_report`, `issue_close` and `issue_reopen`. The primary worktree is that of
+Those tools are the queries `task_list`, `task_show` and `trace_show` and the short writes
+`task_open`, `task_escalate`, `task_rebind`, `task_report`, `task_answer`, `task_close` and
+`task_resolve`; the Issue tools answer as the Issues command does by the issues part's own
+[interface](../../issues/interface.md#mcp-tools). The primary worktree is that of
 the repository the server was started in, whichever worktree of the project it was started from.
-
-### req.main-session.project-mcp-current-code — Every call answers with the current Concorde
-
-The server SHALL answer every tool call with a process of the Concorde that the primary worktree's
-`concorde` command runs when the call arrives, never with Concorde code the server loaded before
-that call.
-
-So a merge or a `concorde update` while a session runs changes the code that answers the session's
-next call: its rules, its record formats and its refusals
-([Current code](module.md#current-code)). The same holds for the `concorde task wait` a registered
-wait runs and for the `concorde task merge` that `task_merge` starts.
-
-### req.main-session.project-mcp-tools-changed — The session hears that its tools changed
-
-When the tools of the Concorde that answered a call differ from those the server last listed to its
-session, the server SHALL tell the session that its tools changed and list the current code's tools
-when asked again.
-
-### req.main-session.project-mcp-call-failed — A call without an answer is refused
-
-When the process of a call ends, or exceeds its time, without an answer, the server SHALL refuse
-the call with its own `call_failed` link naming the command and the end of what it printed.
 
 ### req.main-session.project-mcp-record-queries — The other queries present records read-only
 
-The queries `run_result`, `workflow_report` and `locks` SHALL answer with the result and refuse
-with the codes their [contracts](contracts.md#tools) define, from the records and locks of the
+The queries `run_result` and `locks` SHALL answer with the result and refuse with the codes their [contracts](contracts.md#tools) define, from the records and locks of the
 primary worktree read afresh for that call, changing nothing.
 
 No `concorde` command answers them in that shape: they read a run's saved result,
 [run lock](../../glossary.json#concept.run-lock) and
-[run progress file](../../glossary.json#concept.run-progress-file), a task's saved workflow results, and the holder lines of the merge lock and the
-workspace locks.
+[run progress file](../../glossary.json#concept.run-progress-file), where the execution part is
+installed, and the holder lines of the merge lock and the workspace locks.
 
 ### req.main-session.project-mcp-merge-start — `task_merge` starts the command's merge
 
@@ -415,27 +393,6 @@ before the merge has written its answer. The attempt's folder moves with the tas
 and is found from the task by `task_show` and `trace_show` whatever became of the server, and the
 merge-end wait returns only once that answer is complete
 ([Tasks](../tasks/requirements.md#req.tasks.merge-attempt-lock)).
-
-### req.main-session.project-mcp-workflow-step — `workflow_step` runs the worktree's own step command
-
-`workflow_step` SHALL run `concorde workflow step --json <request> --wait <wait>` with the
-`concorde` of the session's worktree, from that worktree's root, as a process the server started,
-and answer with the step outcome it printed.
-
-The command is a process of the server's, so the
-[detached run](../../glossary.json#concept.detached-run) it starts depends on neither the relaying
-agent's turn nor one of the session's background commands, and lives until its run ends
-([contracts](contracts.md#starting-a-workflow-step)).
-
-### req.main-session.project-mcp-workflow-step-bound — `workflow_step` works only in a bound workspace
-
-`workflow_step` SHALL refuse with `unbound_worktree`, running nothing, when the session's worktree
-has no usable [workspace binding](../../glossary.json#concept.workspace-binding).
-
-### req.main-session.project-mcp-workflow-step-threads — A waiting step holds up no other call
-
-The server SHALL answer each `workflow_step` call on a thread of its own, so that its other calls
-are answered while a step call waits.
 
 ### req.main-session.project-mcp-wait-as-command — `register_wait` waits for what the command waits for
 
@@ -471,7 +428,7 @@ own, keeping both locked descriptors; the server itself never holds them.
 
 It answers at once when what it waits for already happened, and otherwise, with a channel, wakes its
 session with one channel event when it happens or ends another way, watching by blocking on the
-lock or on the kernel's notice of its changes, never by polling.
+lock or on the operating system's notice of its changes, never by polling.
 
 ### req.main-session.project-mcp-wait-ends — A wait ends with its server
 
@@ -527,7 +484,7 @@ asks for it again and may be refused again.
 
 The guidance SHALL tell the main agent that the `concorde` commands stay the source of truth.
 
-The kernel's lock is the same whichever path takes it, and everything the server does not present
+The operating system's lock is the same whichever path takes it, and everything the server does not present
 stays a command.
 
 ## Worker models
@@ -656,7 +613,7 @@ Spec tooling's commands, such as `spec-validation`, `registry`, `grant` and `bui
 MCP server refuse with Spec tooling's own
 [error record](../../spec-tooling/spec/errors.md#contract.spec.error), not with a link, and
 `concorde task escalate` refuses a file holding such a record with `invalid_error`;
-[Tracing](../../tracing/contracts.md#where-links-appear) has a Module that receives one and cannot
+[Tracing](../../kernel/tracing/contracts.md#where-links-appear) has a Module that receives one and cannot
 handle it translate it.
 
 ### req.main-session.unbound-failure — A failed unbound run reaches the developer whole
@@ -718,7 +675,7 @@ fills it.
 
 A realization binds only files that exist, and a worker writes only bound files and new files
 inside bound directories, so no worker creates such a file. A new Spec document is not such a file:
-[Specification](../../execution/operations/specification/module.md#new-and-deleted-documents)
+[Specification](../../method/specification/module.md#new-and-deleted-documents)
 creates each document a `specify` worker proposes, empty and registered in its Module's `owns`, and
 refuses a proposed path that already exists, so a session that created it first would make the
 proposal fail.
@@ -746,7 +703,7 @@ The task-session guidance SHALL tell a task session that runs `plan_review` to a
 of one iteration with `--accept` or `--reject` in the next run, with the previous run as `--input`,
 until the verdict is `accepted`.
 
-[Understanding](../../execution/operations/understanding/module.md) refuses a next run that leaves
+[Understanding](../../method/understanding/module.md) refuses a next run that leaves
 a finding of the previous one unanswered.
 
 ### req.main-session.task-session-plan-review-disagreement — A continuing disagreement is escalated

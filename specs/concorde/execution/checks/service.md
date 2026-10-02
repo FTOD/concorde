@@ -7,11 +7,15 @@ serve. The [entry](../../glossary.json#concept.configured-check) explains why it
 
 ## Declaring a configured check
 
+<a id="checks-files"></a>
+
 Each [Module](../../glossary.json#concept.module)'s checks are listed under `checks` in its own
-[checks file](../../spec-tooling/spec/contracts.md#checks-files),
-`.concorde/checks/<module id>.json`; the file's name is the Module the checks belong to, so an
-entry has no `module` field. The configuration order of the checks is the byte order of the file
-names, then the order of the entries in each file. Each entry has:
+**checks file**, `.concorde/checks/<module id>.json`, a Git-tracked file of Check execution's; the
+file's name is the Module the checks belong to, so an entry has no `module` field. For Check
+execution a Module identity is a label that names a checks file, never checked against a registry.
+The configuration order of the checks is the byte order of the file names, then the order of the
+entries in each file. A checks file is a JSON object with exactly one field, `checks`, a list of
+entries; each entry has:
 
 | Field | Meaning |
 | --- | --- |
@@ -22,7 +26,12 @@ names, then the order of the entries in each file. Each entry has:
 | `timeout_seconds` | A positive time limit |
 | `inputs` | Project-relative files or directories the result depends on, beyond the Module's own implementation files |
 
-The Spec core validates the files, `id` and `inputs` when it loads the Specs; the service
+Check execution validates every checks file whenever it reads the checks: a file that is not
+valid JSON, holds another field or an entry with a field the table does not name, a file whose name
+is not a Module identity, an `id` used twice in the project, an input that is not a canonical
+project-relative path or one that escapes the worktree is refused with `invalid_check`, naming the
+file and the entry; its `validate_checks(worktree)` does the same alone, for a caller that wants
+the checks files judged before any check runs, as Method's `task-validation` does. The service
 validates `argv`, `env`, `when` and `timeout_seconds` when it runs the check. An input names a
 regular file or a directory; below a directory the service measures every regular file outside
 `__pycache__` directories. An input that is missing, is itself a symbolic link or is neither a
@@ -30,7 +39,7 @@ regular file nor a directory stops the run before any command and names the chec
 the path.
 
 A **selective** check, one whose `argv` holds `{tests}`, runs at most once per call for the whole
-set of selected Modules, whichever Module it belongs to, with the tests whose
+set of selected Modules, whichever Module it belongs to, with the tests its caller names, those whose
 [verification declarations](../../glossary.json#concept.verification-declaration) name a scenario of
 any of them, and is skipped when there are none. Tests and scenarios are many-to-many: the tests a
 Module's change runs are those verifying its scenarios, wherever their files are bound, so the
@@ -39,8 +48,9 @@ Module that owns a test file only decides who may change it. A Python test is pa
 tests it selected. Because the same check runs other tests for another selection, its measured
 digest also covers the selected Modules and the selected tests.
 
-The project's interpreter is the configuration's `python`: an absolute path as it is, a relative
-one in the worktree the check runs in or, when that has none, in the primary worktree, since a
+The project's interpreter is the one the caller names, in Concorde the project configuration's
+`python`, which Method's steps pass: an absolute path as it is, a relative one in the worktree the
+check runs in or, when that has none, in the primary worktree, since a
 task worktree rarely has an environment of its own. It is never Concorde's interpreter, which runs
 in its own environment. A check that uses `{python}` without one, or with one that is not an
 executable file there, stops with `project_python_missing`, naming every place looked at. A check
@@ -64,27 +74,30 @@ added to the command line or diagnostic messages.
 
 ## Running checks
 
-`run_checks(worktree, *, modules=None, changed=None, trace_directory, stage="work", kinds="all")` in
-`src/concorde/harness/checks.py`:
+`run_checks(worktree, *, modules, trace_directory, measured=None, tests=None, python=None,
+stage="work", kinds="all")` in `src/concorde/harness/checks.py`:
 
-1. selects the Modules: those named in `modules`, or else every Module whose `ImplementationScope`
-   or `SpecScope` in `worktree` contains a path in `changed`, and fails with `unknown_module` for a
-   name the registry does not register. Callers compute `modules` with `checked_modules`, in the
-   same file: the Modules a change concerns together with every Module that uses one of them,
-   directly or through further uses, so a Module's checks run whenever code it uses changes;
+1. takes the Modules to check from `modules`, as labels that select checks files. Which Modules a
+   change concerns, and which Modules use one of them, is the caller's to decide, since it needs
+   the Specs: Method's steps select the Modules a change concerns together with every Module that
+   uses one of them, directly or through further uses, through the Spec tooling
+   ([Method](../../method/module.md#the-standard-worker-sequence)), so a Module's checks run whenever
+   code it uses changes;
 2. goes through the configured checks in configuration order and keeps a check marked
    `"when": "readiness"` only when `stage` is `readiness`, which `task-validation` and `delivery`
    pass; every other caller leaves the default `work`;
-3. keeps an ordinary check when its own Module is selected, and a selective check once, when some
-   test verifies a scenario of the selected Modules; `kinds` narrows the call to the ordinary checks
-   (`module`) or to the selective ones (`selective`), so that a caller can run each Module's own
-   checks separately and the selective checks once for the whole selection;
+3. keeps an ordinary check when its own Module is selected, and a selective check once, when
+   `tests` names some test for the selected Modules, which the caller computes from the tests'
+   [verification declarations](../../glossary.json#concept.verification-declaration); `kinds`
+   narrows the call to the ordinary checks (`module`) or to the selective ones (`selective`), so
+   that a caller can run each Module's own checks separately and the selective checks once for the
+   whole selection;
 4. for each kept check, computes its measured digest with `measured_digest`, in the same file. For
-   an ordinary check it is `check_revision` of the check's own Module: the digest of that Module's
-   implementation digest, each of its checks' definitions, the digest of every file below their
-   inputs, and `CHECK_POLICY`. For a selective check it is the digest of that `check_revision`
-   together with the sorted selected Modules, the tests it selected and the digest of every file
-   holding one of them;
+   an ordinary check it is `check_revision` of the check's own Module: the digest of the files the
+   caller names for that Module in `measured`, in Concorde its implementation files, each of its
+   checks' definitions, the digest of every file below their inputs, and `CHECK_POLICY`. For a
+   selective check it is the digest of that `check_revision` together with the sorted selected
+   Modules, the tests it selected and the digest of every file holding one of them;
 5. creates the check's [trace node](../../glossary.json#concept.trace-node)
    `<trace_directory>/<check id>/`, writes its `trace.json` with status `running`, runs the check
    through `execute_check` with `worktree` as project root and the default boundary, writes
@@ -92,7 +105,7 @@ added to the command line or diagnostic messages.
    selected, and writes `trace.json` again with the check's end; when the boundary refused the
    command, the log holds what it reported, the node ends `failed` with the service's error and the
    call fails with `check_sandbox_unavailable`;
-6. computes the measured digest again, selecting a selective check's tests anew, and fails the
+6. computes the measured digest again, over the same named files and selected tests, and fails the
    whole call with `stale_evidence` when it differs;
 7. returns one check result per check it ran, in configuration order.
 
@@ -113,7 +126,7 @@ is acceptable.
 | `log_digest` | The digest of the saved log |
 
 Every check the service runs is also a trace node of kind `check`, as
-[Tracing](../../tracing/contracts.md#contract.tracing.node) defines it, whose content is this value:
+[Tracing](../../kernel/tracing/contracts.md#contract.tracing.node) defines it, whose content is this value:
 
 ```concorde-contract
 {
@@ -189,23 +202,24 @@ for the same check and, for a selective check, the same selected Modules, and co
 
 ### Errors
 
-Check execution raises `CheckError`, a subclass of Spec tooling's
-[error type](../../spec-tooling/spec/errors.md) that registers its own codes: `invalid_check` (a
+Check execution raises its own `CheckError`, whose record carries a code, a message, a reason, a
+location, a remediation and causes, with these codes: `invalid_check` (a
 check without a nonempty argv or a positive timeout, with an `env` that is not an object of
 variable names to strings, or with a `when` other than `always` or `readiness`),
 `check_input_missing`, `project_python_missing` (a check uses `{python}` but the configuration
 names no project interpreter, or none that is an executable file where it was looked for),
 `check_sandbox_unavailable` (the read-only boundary cannot be established), `stale_evidence` (an
-input changed while the check ran) and `unknown_module`. Each carries the fields of that error
-record: its code, a message naming the check or Module concerned, the code's reason, its location,
-remediation and causes.
+input changed while the check ran) and `system_error` (an operating-system error). Each carries a
+message naming the check or Module concerned, the code's reason, its location, remediation and
+causes. Check execution depends on no part but the kernel, so its error type is its own; a caller
+never needs to translate it, since `service_error` makes the link.
 
 ### Check execution's error as a link
 
 `service_error(error)` turns an error `run_checks` raised into this Module's own link of the
-Framework's [error chain](../../tracing/contracts.md#contract.tracing.error), which every caller keeps
-unchanged as a cause under its own link: Execution's stop for checks that could not run, the
-Workers round that runs a worker's checks, and Validation's blocking `check` finding and its
+Framework's [error chain](../../kernel/tracing/contracts.md#contract.tracing.error), which every caller keeps
+unchanged as a cause under its own link: a run's stop for checks that could not run, the round
+validation that runs a worker's checks, and Validation's blocking `check` finding and its
 `inputs_changed` stop. The link has the level `component`, the actor `Check execution`, the error's
 code, a detail with its message and location, the code's reason as explanation, its remediation as
 option and recommendation, and the error's own causes nested the same way. Its unhandled reason
@@ -214,14 +228,14 @@ depends on the code:
 | Code | Reason |
 | --- | --- |
 | `check_sandbox_unavailable`, `stale_evidence` | `environment`: the host cannot establish the boundary, or something outside the service changed the input |
-| `system_error`: an operating-system error, raised as it is or reported by Spec core | `environment` |
-| `unexpected_error` of Spec core | `capability` |
-| every other code of `CheckError` or Spec core | `input`: the configuration or the Modules named are wrong, and only whoever supplied them can correct them |
+| `system_error`: an operating-system error | `environment` |
+| any other exception the service did not expect | `capability` |
+| every other code of `CheckError` | `input`: the checks files or the Modules named are wrong, and only whoever supplied them can correct them |
 
 ### A check that did not pass as an error link
 
 `check_error(result)` turns a check result whose status is not `passed` into the check's link of
-the Framework's [error chain](../../tracing/contracts.md#contract.tracing.error), so every consumer reports
+the Framework's [error chain](../../kernel/tracing/contracts.md#contract.tracing.error), so every consumer reports
 a failing check the same way: the level `check`, the check's identity as actor, the code
 `check_failed` or `check_timed_out`, a detail naming the Module, the exit code, the log path and the
 last 3,000 bytes of the log, the log as evidence, and the reason `capability`, because a check only
@@ -275,8 +289,8 @@ start.
 ### scenario.checks.service-run — The checks of changed Modules run and are logged
 
 - GIVEN a worktree whose Module A has one configured check and Module B none
-- WHEN the service runs with a changed path of A's realization or A's [Spec](../../glossary.json#concept.spec)
-- THEN it selects A, runs its check read-only and returns one result with its status, exit code, source digest and log path
+- WHEN the service runs for the Modules a changed path of A's realization or A's [Spec](../../glossary.json#concept.spec) concerns, as its caller selects them
+- THEN it runs A's check read-only and returns one result with its status, exit code, source digest and log path
 - AND the check's trace node, with its `output.log`, is written into the caller's trace directory
 
 ### scenario.checks.service-no-checks — A Module without checks gets no result

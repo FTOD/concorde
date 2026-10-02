@@ -349,7 +349,7 @@ class PlanReviewTests(unittest.TestCase):
     def test_the_contract_matches_the_spec(self):
         text = (
             REPOSITORY_ROOT
-            / "specs/concorde/execution/operations/understanding/contracts.md"
+            / "specs/concorde/method/understanding/contracts.md"
         ).read_text()
         block = text.split("## Plan review report")[1].split("```concorde-contract")[1]
         contract = json.loads(block.split("```")[0])

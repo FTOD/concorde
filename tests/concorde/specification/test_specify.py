@@ -407,7 +407,7 @@ class ContractTests(unittest.TestCase):
     def test_the_output_schema_is_the_spec_change_contract(self):
         text = (
             REPOSITORY_ROOT
-            / "specs/concorde/execution/operations/specification/contracts.md"
+            / "specs/concorde/method/specification/contracts.md"
         ).read_text()
         fence = re.search(r"```concorde-contract\n(.*?)\n```", text, re.S).group(1)
         schema = json.loads(fence)["schema"]

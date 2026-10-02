@@ -14,14 +14,22 @@ The developer and the [main agent](glossary.json#concept.main-agent) rely on it.
 chooses the developer's direction or repairs a Spec on its own. The main agent and its task sessions
 run on Claude Code for now; each worker runs on Claude Code or on pi.
 
+Concorde is made of [parts](glossary.json#concept.part) that a project installs alone or in any
+combination: the Spec tooling without any agent, the worker harness under another orchestrator, the
+task management without Concorde's method, or everything together. Each part works without the parts
+it does not depend on, and a feature that needs another part is an
+[optional integration](glossary.json#concept.optional-integration) that says plainly what is missing
+rather than failing.
+
 ## Core concepts
 
-Concorde rests on three ideas: a project described as Modules, each with its Spec; three kinds of
-agent that work on it, each at its own level; and a context and a boundary computed for every worker
-from the Specs. The [glossary](glossary.json), which this Module declares, defines every term of the
-project once. This section explains the terms this Module owns; every other Module explains its own,
-such as [Operation](glossary.json#concept.operation), [Task](glossary.json#concept.task),
-[Grant](glossary.json#concept.grant) or [Issue](glossary.json#concept.issue).
+Concorde rests on four ideas: a project described as Modules, each with its Spec; three kinds of
+agent that work on it, each at its own level; a context and a boundary computed for every worker
+from the Specs; and parts that can be installed apart. The [glossary](glossary.json), which this
+Module declares, defines every term of the project once. This section explains the terms this Module
+owns; every other Module explains its own, such as [Operation](glossary.json#concept.operation),
+[Task](glossary.json#concept.task), [Grant](glossary.json#concept.grant) or
+[Issue](glossary.json#concept.issue).
 
 ### Modules and Specs
 
@@ -61,7 +69,9 @@ which asks the developer before acting on a decision of major impact
 main agent changes the primary worktree itself only for a small change the developer approved
 ([req.main-session.small-change](coordination/main-session/requirements.md#req.main-session.small-change)). This Module states no
 decision policy of its own: a question that policy does not let a level settle goes up, with its
-error chain, until it reaches the developer.
+error chain, until it reaches the developer. Where the coordination part is not installed, there is
+no main agent or task session of Concorde's, and whoever drives the other parts settles every
+question itself.
 
 <a id="concept.task-session"></a>
 
@@ -75,11 +85,28 @@ together. [Task sessions](coordination/task-session/module.md) explains its life
 
 A **[worker](glossary.json#concept.worker)** is a headless AI process that receives a frozen grant
 for one job. Its answer is a proposal until the program that launched it verifies it; it cannot
-substitute its own judgement for the checks around it. [Workers](execution/workers/module.md)
-explains how it is launched, audited and recorded; Workers, plural, names that Execution code, not
-the AI process itself. [Agents at both ends, programs
+substitute its own judgement for the checks around it. [Workers](worker-harness/workers/module.md)
+explains how it is launched, audited and recorded; Workers, plural, names that code of the worker
+harness, not the AI process itself. [Agents at both ends, programs
 between](#agents-at-both-ends-programs-between) explains why model reasoning and deterministic steps
 occupy different levels.
+
+<a id="concept.agent-harness"></a>
+
+What an agent may know and touch, and the environment it runs in, is its
+**[agent harness](glossary.json#concept.agent-harness)**. The three agent levels need very
+different amounts of each, and a different part applies each:
+
+| | Main session | Task session | Worker |
+| --- | --- | --- | --- |
+| Context | the installed [guidance](glossary.json#concept.main-session-guidance) and whatever the developer's own configuration adds | the developer's configuration, the task-session guidance and the task's goal, Modules and decision log | only its [brief](glossary.json#concept.brief): its caller's instructions and the grant's `rw`, `ro` and `names` lists, from which it reads its [Spec context](glossary.json#concept.spec-context), [external context](glossary.json#concept.external-context), [implementation context](glossary.json#concept.implementation-context) and [task context](glossary.json#concept.task-context); its tool set is its [capability context](glossary.json#concept.capability-context) |
+| Permission | none | the file tools write only the task worktree and its decision log; the shell and everything else are open, kept inside the task by its guidance, and the merge audits only some working trees outside the task worktree ([Tasks](coordination/tasks/module.md#nothing-changed-outside-the-task)) | the grant: `rw` writable, `ro` readable, `names` named only, everything else hidden; no network, no Git |
+| Environment | the developer's | the developer's Claude Code configuration | its own configuration directory, a cleared environment, its own working directory and limits |
+| Applied by | Distribution, which installs the guidance | Coordination's [session boundary](glossary.json#concept.session-boundary) | the worker harness's [worker settings](glossary.json#concept.worker-settings) or [permission extension](glossary.json#concept.permission-extension) |
+
+The worker's column is the one computed from the Specs: Method computes its grant through the Spec
+tooling and the worker harness applies it. The task session's harness comes from its task, and the
+main agent's is its guidance alone, since Concorde places no permission limits on it.
 
 ### Context and boundaries
 
@@ -99,8 +126,8 @@ complete access table, which Spec core repeats with
 
 The **boundary** of a worker's job is the read and write limits its task type assigns to its bound
 Modules. The Protocol defines the sets and the task types; how far Concorde enforces the boundary of
-a worker is explained by the [Harness](harness/module.md). A Concorde Task has no task type and its
-task session no such boundary: the session receives the
+a worker is explained by the [Harness](worker-harness/harness/module.md). A Concorde Task has no task
+type and its task session no such boundary: the session receives the
 [session boundary](glossary.json#concept.session-boundary), which keeps its writes inside its task
 and leaves the rest of the session open.
 
@@ -159,17 +186,40 @@ status: it travels up as an [error chain](glossary.json#concept.error-chain) tha
 failure and why each receiving level could not handle it, and every level leaves a [trace
 node](glossary.json#concept.trace-node) of what it did.
 
+### Parts
+
+<a id="concept.part"></a>
+
+A **[part](glossary.json#concept.part)** is what a project installs: one top-level Module of this
+root with its children, packaged on its own, naming the parts it depends on. The installer installs
+any set of parts with the parts they depend on, and records which are installed; `concorde update`
+updates those. Each part contributes its own `concorde` commands, MCP tools, guidance and
+`.concorde/` files, and a part that is not installed contributes nothing, so its commands, tools and
+guidance are simply absent. All parts come from this one repository and carry one version number.
+Dogfooding and End-to-end testing are Modules of this repository's own development, not parts.
+
+<a id="concept.optional-integration"></a>
+
+A part relies only on the parts it depends on. Where its work can use more, it does so through an
+**[optional integration](glossary.json#concept.optional-integration)**: the feature works when the
+other part is installed and otherwise is skipped with a plain statement of what is missing. A task
+merge closes the Issues the task resolved only where the issues part is installed; a review reports
+its findings as Issues only there, and otherwise keeps them in its run result; the merge runs
+`concorde spec-validation` only where the spec part is installed; and without the spec part a
+task's Modules and an Issue's Module are plain labels that nothing checks against a registry. The
+Module that owns such a feature states, where it describes it, what it does in both cases.
+
 ## Overview
 
-Three pictures give the whole framework: the levels every piece of work passes through, the life of
-one task across them, and the Modules that carry them.
+Four pictures give the whole framework: the levels every piece of work passes through, the life of
+one task across them, the parts that carry them, and how the parts depend on each other.
 
 ### The levels of work
 
 Work on a Concorde project is organized in five levels, and every result and error travels back up
 them; a piece of work uses only the levels it needs, as when a task session changes a file itself or
 runs an Operation without a workflow. The first two are Coordination's, where agents decide what to
-work on; the other three are Execution's, where one bound workspace is worked on.
+work on; the other three run in one bound workspace, where it is worked on.
 
 ```d2 illustrative
 classes: {
@@ -184,7 +234,7 @@ coordination: "Coordination: project management" {
   task: "2  Task level\na task session,\none task worktree" {class: agent}
   main -> task: "opens a task and\ndelegates it"
 }
-execution: "Execution: the core, in one bound workspace" {
+workspace: "In one bound workspace" {
   class: layer
   workflow: "3  Workflow\norders one workspace's runs\nfor a known procedure" {class: program}
   run: "4  Run\nan Operation (with workers)\nor an execution command" {class: program}
@@ -193,17 +243,17 @@ execution: "Execution: the core, in one bound workspace" {
   run -> worker: launches
 }
 developer -> coordination.main: "discusses, decides"
-coordination.task -> execution.workflow: "starts, in the task worktree"
-coordination.task -> execution.run: "or runs directly"
+coordination.task -> workspace.workflow: "starts, in the task worktree"
+coordination.task -> workspace.run: "or runs directly"
 ```
 
-| Level | Who or what works there | What it does | Module |
+| Level | Who or what works there | What it does | Part |
 | --- | --- | --- | --- |
-| 1. Main session | the main agent, in the primary worktree | discusses the project with the developer, splits work into tasks, merges delivered tasks | [Main session](coordination/main-session/module.md) |
-| 2. Task | a task session, in one task worktree | changes Specs and code directly or through runs, keeps the [decision log](glossary.json#concept.decision-log), validates and delivers | [Task sessions](coordination/task-session/module.md), [Tasks](coordination/tasks/module.md) |
-| 3. Workflow | a procedure rendered as a Claude Code workflow | orders the workspace's runs for a known procedure and stops where a decision is needed | [Workflows](execution/workflows/module.md) |
-| 4. Run | the Execution runner | runs an [Operation](glossary.json#concept.operation), with workers, or an [execution command](glossary.json#concept.execution-command), without, and returns one [run result](glossary.json#concept.run-result) with evidence | [Execution](execution/module.md) |
-| 5. Worker | a headless `claude -p` or `pi -p` process | reasons within its grant on one bounded job and returns a [worker result](glossary.json#concept.worker-result) the run checks | [Workers](execution/workers/module.md) |
+| 1. Main session | the main agent, in the primary worktree | discusses the project with the developer, splits work into tasks, merges delivered tasks | coordination: [Main session](coordination/main-session/module.md) |
+| 2. Task | a task session, in one task worktree | changes Specs and code directly or through runs, keeps the [decision log](glossary.json#concept.decision-log), validates and delivers | coordination: [Task sessions](coordination/task-session/module.md), [Tasks](coordination/tasks/module.md) |
+| 3. Workflow | a procedure rendered as a Claude Code workflow | orders the workspace's runs for a known procedure and stops where a decision is needed | workflow: [Workflows](workflows/module.md) |
+| 4. Run | the Execution runner | runs an [Operation](glossary.json#concept.operation), with workers, or an [execution command](glossary.json#concept.execution-command), without, and returns one [run result](glossary.json#concept.run-result) with evidence | execution: [Execution](execution/module.md); the concrete Operations and commands are method's: [Method](method/module.md) |
+| 5. Worker | a headless `claude -p` or `pi -p` process | reasons within its grant on one bounded job and returns a [worker result](glossary.json#concept.worker-result) the run checks | worker harness: [Workers](worker-harness/workers/module.md) |
 
 Calls go only downward, and results and errors come back up; [Agents at both ends, programs
 between](#agents-at-both-ends-programs-between) explains why the levels are split this way.
@@ -214,9 +264,9 @@ review, directly in the primary worktree: it has no workspace, and its steps and
 throwaway detached checkout of that worktree's `HEAD`, so it examines what is committed there, never
 uncommitted changes. It changes no Spec or code, neither in that checkout nor in the worktree it
 started in; the one lasting change it may make besides its own record is publishing
-[Issues](glossary.json#concept.issue), as a review reports its findings: only through the
-[Issues](issues/module.md) store, which commits each on the primary branch as a commit of its own
-under the [merge lock](glossary.json#concept.merge-lock).
+[Issues](glossary.json#concept.issue), as a review reports its findings where the issues part is
+installed: only through the [Issues](issues/module.md) store, which commits each on the primary
+branch as a commit of its own under the [merge lock](glossary.json#concept.merge-lock).
 [Execution](execution/module.md#unbound-runs) explains it.
 
 ### The life of a task
@@ -227,14 +277,16 @@ opens it, which creates a branch and a worktree bound as the task's
 [workspace](glossary.json#concept.workspace), records its
 [task brief](glossary.json#concept.task-brief) in the
 [decision log](glossary.json#concept.decision-log) and starts a task session there. The task session
-changes Specs and code, itself or through runs of Execution, each of which returns a run result with
-evidence, and may commit each verified step on the task branch. Decisions that are not its own go up
-to the main agent together, which decides them or asks the developer, and the answers come back
-down. When the work is done, the task session delivers the workspace: `delivery` validates it whole
+changes Specs and code, itself or through runs, each of which returns a run result with evidence,
+and may commit each verified step on the task branch. Decisions that are not its own go up to the
+main agent together, which decides them or asks the developer, and the answers come back down. When
+the work is done, the task session delivers the workspace: Method's `delivery` validates it whole
 and, when it is ready, commits what is left in a
 [delivery commit](glossary.json#concept.delivery-commit), which alone marks the task delivered, and
 the main agent merges the delivered task. A task that follows a known procedure, such as describing
-existing code, runs as a [workflow](execution/workflows/module.md) inside the same path.
+existing code, runs as a [workflow](workflows/module.md) inside the same path. Where the method part
+is not installed, the task session delivers with Coordination's own `concorde task deliver`, which
+runs the checks it is given and makes the same kind of delivery commit without Method's validation.
 
 ```d2 illustrative
 grid-columns: 3
@@ -257,7 +309,7 @@ session: "Task session\ntask worktree" {
   deliver: "5. Validate and deliver"
   gap3: "" {style.opacity: 0}
 }
-execution: "Execution\nthe task's workspace" {
+workspace: "The task's workspace" {
   grid-columns: 1
   vertical-gap: 50
   gap1: "" {style.opacity: 0}
@@ -268,52 +320,65 @@ execution: "Execution\nthe task's workspace" {
 }
 main.open -> main.brief
 main.brief -> session.work: starts
-session.work <-> execution.run: "run and\nrun result"
+session.work <-> workspace.run: "run and\nrun result"
 session.work <-> main.answer: "escalations\nand answers"
 session.work -> session.deliver
-session.deliver -> execution.commit
-execution.commit -> main.merge: delivered
+session.deliver -> workspace.commit
+workspace.commit -> main.merge: delivered
 ```
 
 The commands behind each step, how tasks run in parallel and how a merge is checked are explained
 by [Main session](coordination/main-session/module.md), [Tasks](coordination/tasks/module.md) and
 [Task sessions](coordination/task-session/module.md); a run's steps by
-[Execution](execution/module.md).
+[Execution](execution/module.md) and the Operations' by [Method](method/module.md).
 
-### The Modules
+### The parts
 
-The levels are levels of work, not of Modules. [Coordination](coordination/module.md) holds levels 1
-and 2 and [Execution](execution/module.md) levels 3 to 5; the Harness and Tracing serve both halves
-without being a level, Issues keeps the problems worth remembering, and all of them rely on the Spec
-core of [Spec tooling](spec-tooling/module.md) to load and check the Specs. Each arrow is a declared
-`uses`, drawn from the child Module that declares it where that shows why the dependency exists: the
-Workers of Execution run under the Harness, the Tasks of Coordination keep their traces with
-Tracing, and the Main session records Issues.
+The levels are levels of work, not of Modules. Nine parts carry them, each a child of this root:
 
-```d2
-coordination: Coordination {
-  main: Main session
-  tasks: Tasks
-}
-execution: Execution {
-  workers: Workers
-}
-harness: Harness
-tracing: Tracing
-issues: Issues
-spec_tooling: Spec tooling {
-  spec: Spec core
-}
-coordination -> execution
-coordination -> harness
-coordination.main -> issues
-coordination.tasks -> tracing
-execution -> tracing
-execution.workers -> harness
-execution -> spec_tooling.spec
-harness -> spec_tooling.spec
-tracing -> spec_tooling.spec
-issues -> spec_tooling.spec
+| Part | Module | Holds | Depends on |
+| --- | --- | --- | --- |
+| spec | [Spec tooling](spec-tooling/module.md) | loading, checking and serving Specs: Spec core, the Spec MCP server, Views | nothing |
+| kernel | [Kernel](kernel/module.md) | the contracts the other parts cooperate through: error chain, trace node, typed values, file transactions, locks, the workspace binding and the delivery commit | nothing |
+| worker harness | [Worker harness](worker-harness/module.md) | launching, bounding, auditing and recording one worker under a grant it receives as data; the [worker configuration](glossary.json#concept.worker-configuration) and the [model map](glossary.json#concept.model-map) | kernel |
+| execution | [Execution](execution/module.md) | runs: the runner, the run store, the Operation and execution-command frameworks, Check execution | kernel |
+| workflow | [Workflows](workflows/module.md) | ordering a workspace's runs for a known procedure, decision points and the workflow result | execution, kernel |
+| issues | [Issues](issues/module.md) | the project's durable problem records | kernel |
+| coordination | [Coordination](coordination/module.md) | the main session, tasks, task sessions and their merges | kernel |
+| method | [Method](method/module.md) | Concorde's Spec-driven development work: the Operations, the execution commands `task-validation`, `delivery` and `scaffold`, the [brownfield workflow](glossary.json#concept.brownfield-workflow) and the standard worker sequence | spec, worker harness, execution, workflow, kernel |
+| distribution | [Distribution](distribution/module.md) | the build, the installer, `concorde update`, the `concorde` command and the project MCP server that compose the installed parts | nothing: installed with every selection as its host, it reads only the [part registrations](glossary.json#concept.part-registration) of the parts installed beside it |
+
+Each arrow below is a dependency between parts, the only directions in which one part may rely on
+another; every other reliance is an optional integration, drawn dashed for the ones that matter
+most. Distribution, the installation host installed beside whatever parts a project selects, is
+left out: it depends on no part, no part imports it, and it reaches only the parts installed beside
+it, through what they register. "Installed alone" below always means with that host.
+
+```d2 illustrative
+spec: spec
+kernel: kernel
+harness: worker harness
+execution: execution
+workflow: workflow
+issues: issues
+coordination: coordination
+method: method
+harness -> kernel
+execution -> kernel
+workflow -> execution
+workflow -> kernel
+issues -> kernel
+coordination -> kernel
+method -> spec
+method -> harness
+method -> execution
+method -> workflow
+method -> kernel
+method -> issues: optional {style.stroke-dash: 4}
+coordination -> issues: optional {style.stroke-dash: 4}
+coordination -> execution: optional {style.stroke-dash: 4}
+coordination -> spec: optional {style.stroke-dash: 4}
+coordination -> method: optional {style.stroke-dash: 4}
 ```
 
 ## How it is built
@@ -324,37 +389,79 @@ Because the Spec is the source of truth, every other choice follows from making 
 worker may read and write is computed from the Specs, a worker's answer is checked by a program
 rather than trusted, and a missing promise stops work instead of being inferred from code. A step
 needing an unstated promise stops with a [Spec gap](glossary.json#concept.spec-gap) instead; outside
-a `specify` run and the [Adoption](execution/operations/adoption/module.md) route, only the
+a `specify` run and the [Adoption](method/adoption/module.md) route, only the
 developer, the main agent and a task session within its task's goal change Specs.
 
 Concorde's normal flow is therefore Spec first: a promise is written, then realized. Only a project
 whose code came before its Specs is described the other way round, and only through one explicit
 route, the Protocol's `code-to-spec` task type, which the
-[Adoption](execution/operations/adoption/module.md) Operations use together with the `scaffold`
+[Adoption](method/adoption/module.md) Operations use together with the `scaffold`
 command that writes what a survey proposed. It writes down the behaviour it reads as it is and
 never changes what the code does: besides Specs it touches only existing tests, adding the
 `verifies` declarations that link them to the scenarios they verify
-([Adoption](execution/operations/adoption/requirements.md#req.adoption.no-code-change)). It turns
+([Adoption](method/adoption/requirements.md#req.adoption.no-code-change)). It turns
 every behaviour whose intent the code does not settle into an
 [open question](glossary.json#concept.open-question) rather than a promise, for the main agent or
 the developer to settle. Once a Module is described, work on it is Spec first again.
 
+### Parts that install apart
+
+A project may want only some of Concorde: Spec tooling to keep its architecture described and
+checked, the worker harness to bound workers some other program orchestrates, or task management
+without Concorde's own method. Layering the code alone would not give that, since one shared
+package would still install everything and a missing piece would fail at the first call that
+reached it. So each part is its own package with only its real dependencies, contributes its own
+commands, tools, guidance and files, and turns every reach into a part it does not depend on into an
+optional integration that its owner states.
+
+The dependency directions follow from what each part needs to do its job alone. The spec part
+depends on nothing, not even the kernel: it keeps its own copy of the few data utilities it shares
+with the kernel, accepting the duplication, so that a project can check and publish its Specs with
+nothing else installed. The kernel holds only what two parts must agree on without importing each
+other, such as the [workspace binding](glossary.json#concept.workspace-binding) one part writes
+and another reads; it has no behaviour of its own that a part could depend on by accident. The
+worker harness receives its grant as data and its round validation as a callback, so it bounds and
+records a worker without reading a Spec; Method is the part that takes the grant from the Spec
+tooling and hands it over. Execution runs what definitions tell it, launches no worker itself and
+knows no Spec. Coordination needs nothing but the kernel to open, delegate, merge and close tasks,
+and reaches runs, Issues, Specs and Method's delivery only where they are installed. Distribution is
+the installation host, present in every installation whatever parts it holds: it installs the
+selected parts and composes the `concorde` command and the
+[project MCP server](glossary.json#concept.project-mcp-server) from the
+[registrations](glossary.json#concept.part-registration) of those installed, depending on none of
+them, so a spec-only installation is the spec part and its host.
+
+A part's dependencies are package dependencies: what must be installed and may be imported. A
+Module's `uses`, the Protocol's relation, says something else, whose promises it relies on, and a
+`uses` into another part is one of two things. It is reliance on a format or convention that part
+defines, such as the Kernel's [typed values](glossary.json#concept.typed-value) the Spec tooling
+implements in its own copy, the error contract Distribution prints its refusals in, or the host
+promises of the always-present Distribution; the relying part implements or meets that format
+itself, imports nothing and needs nothing else installed. Or it is an
+[optional integration](glossary.json#concept.optional-integration), behaviour that runs only
+where the other part is installed.
+
 ### Two halves, one seam
 
-Project management and the execution core change for different reasons. How tasks are opened,
-parallelized, delegated and merged follows how the developer wants to work; how a worker is bounded
-by the Specs, launched, audited and checked follows the Protocol and is Concorde's core. So they are
-two halves with one narrow seam: the upper half reaches the lower one only through a
-[workspace binding](glossary.json#concept.workspace-binding), Execution's commands and what
-Execution recorded. It writes the binding into each task worktree, runs Execution's commands inside
-that worktree and reads what the lower half recorded: its runs in the
-[run store](glossary.json#concept.run-store), with their
-[run progress files](glossary.json#concept.run-progress-file), and its
-[delivery commits](glossary.json#concept.delivery-commit) on the task branch. The lower half reads
-the binding and never learns that tasks exist. No record is written by both, so whether a task is
-active or delivered is derived each time from what happened, together with the task branch's head
-and whether its worktree is clean, never kept as a second copy that could disagree; and the
-execution core can serve any workspace someone prepares, not only a task.
+Project management and the work done in a workspace change for different reasons. How tasks are
+opened, parallelized, delegated and merged follows how the developer wants to work; how a worker is
+bounded by the Specs, launched, audited and checked follows the Protocol and is Concorde's core. So
+they are two halves with one narrow seam: the upper half, Coordination, reaches the lower one only
+through a [workspace binding](glossary.json#concept.workspace-binding), the commands of the parts
+that work in a workspace, and what those parts recorded. It writes the binding into each task
+worktree, runs those commands inside that worktree and reads what the lower half recorded: its runs
+in the [run store](glossary.json#concept.run-store), with their
+[run progress files](glossary.json#concept.run-progress-file), where the execution part is
+installed, and its [delivery commits](glossary.json#concept.delivery-commit) on the task branch.
+The binding and the delivery commit are the kernel's contracts, so both halves agree on them
+without importing each other. The lower half reads the binding and never learns that tasks exist.
+No record is written by both: in an installation the delivery commits are made by exactly one
+delivering command, Method's `delivery` where the method part is installed and otherwise
+Coordination's `task deliver`, and whichever made it, a task's state follows from the Kernel's one
+rule for recognizing a delivery commit. So whether a task is active or delivered is derived each
+time from what happened, together with the task branch's head and whether its worktree is clean, never kept
+as a second copy that could disagree; and the parts of the lower half serve any workspace someone
+prepares, not only a task.
 
 ```d2 illustrative
 coordination: Coordination {
@@ -362,17 +469,23 @@ coordination: Coordination {
   task: Task sessions
   tasks: Tasks
 }
-execution: Execution {
+kernel: Kernel {
   binding: Workspace binding
-  runs: "Runs: Operations and\nexecution commands"
-  store: Run store and delivery commits
+  commit: Delivery commit
 }
-coordination.tasks -> execution.binding: writes
-coordination.main -> execution.runs: "starts unbound runs\nin the primary worktree"
-coordination.task -> execution.runs: starts in its worktree
-execution.runs -> execution.binding: read
-execution.runs -> execution.store: record
-coordination.tasks -> execution.store: reads
+lower: "Execution, Workflows, Method" {
+  runs: "Runs: Operations and\nexecution commands"
+  store: Run store
+}
+coordination.tasks -> kernel.binding: writes
+coordination.main -> lower.runs: "starts unbound runs\nin the primary worktree"
+coordination.task -> lower.runs: starts in its worktree
+lower.runs -> kernel.binding: read
+lower.runs -> lower.store: record
+lower.runs -> kernel.commit: "delivery makes,\nwhere Method is installed"
+coordination.task -> kernel.commit: "task deliver makes,\nwhere it is not"
+coordination.tasks -> lower.store: reads
+coordination.tasks -> kernel.commit: reads
 ```
 
 ### Agents at both ends, programs between
@@ -411,38 +524,40 @@ worktree's copy ([Distribution](distribution/module.md)).
 Calls go only downward, and a level may be skipped: the task level runs an Operation or a command
 directly whenever no workflow fits, and the execution commands use no worker at all. Nothing calls
 upward. A worker never touches Git, runs an Operation or starts an agent; a run never starts another
-run; a workflow never opens, merges or closes a task; nothing in Execution reads or writes a [task
-record](glossary.json#concept.task-record); and only the main agent merges a task into the primary
-branch, a task session merging only the primary branch into its own task branch when asked after a
-conflict or a `concorde update`. A run's steps, and the [Workers](execution/workers/module.md)
-code between a worker's rounds, call deterministic services such as
+run; a workflow never opens, merges or closes a task; nothing below the task level reads or writes a
+[task record](glossary.json#concept.task-record); and only the main agent merges a task into the
+primary branch, a task session merging only the primary branch into its own task branch when asked
+after a conflict or a `concorde update`. A run's steps, and the worker harness between a worker's
+rounds through the round validation its caller gives it, call deterministic services such as
 [Check execution](execution/checks/module.md) in-process; such a call is not a level of its own,
 starts no run and returns to the step that made it, so that failing checks can drive a repair loop
 inside one Operation.
 
-### Modules that serve both halves
+### What serves every level
 
-The Harness, Tracing and Spec tooling serve both halves without being a level.
+The kernel, the worker harness and the Spec tooling serve the levels without being one.
 
-What an agent may know and touch is its harness, and the [Harness](harness/module.md) generates it
-for every level from the same code: a worker's from its grant — on Claude Code settings with
-[deny rules](glossary.json#concept.deny-rules), a [write hook](glossary.json#concept.write-hook) and
-the Bash sandbox, on pi a [permission extension](glossary.json#concept.permission-extension) with
-the same sandbox engine — and a task session's from its task. It guards against scope drift and
-mistakes, not a malicious actor; the Harness explains why these layers were chosen and what they
-leave out.
+The [kernel](kernel/module.md) holds the contracts parts cooperate through. Its child
+[Tracing](kernel/tracing/module.md) gives every level the place and shape of its trace: each level
+records its own content, and Tracing decides the structure it is kept in, the locks kept apart from
+it and the error chain. While a task is current, its record, decision log and traces are one folder,
+`.concorde/tasks/<task>/`, which Tasks places and, when the task closes, moves to the
+[history](glossary.json#concept.history). A task's whole [trace](glossary.json#concept.trace), from
+its sessions down to each worker round with its cost, is read with `concorde trace show <task>`.
 
-Nearly every Module relies on [Spec tooling](spec-tooling/module.md): its Spec core loads and
-checks the Specs and computes the grants, and a Module refuses to act on a structure it reports
-untrustworthy. Its core uses no other Module, so the Specs can be checked,
-served and published without any agent.
+The [worker harness](worker-harness/module.md) applies a worker's agent harness from its grant — on
+Claude Code settings with [deny rules](glossary.json#concept.deny-rules), a
+[write hook](glossary.json#concept.write-hook) and the Bash sandbox, on pi a
+[permission extension](glossary.json#concept.permission-extension) with the same sandbox engine —
+and records the worker run. It guards against scope drift and mistakes, not a malicious actor; the
+[Harness](worker-harness/harness/module.md) explains why these layers were chosen and what they
+leave out. A task session's boundary is Coordination's own, applied by
+[Task sessions](coordination/task-session/module.md).
 
-Tracing gives every level the place and shape of its trace: each level records its own content,
-and [Tracing](tracing/module.md) decides the structure it is kept in. While a task is current, its
-record, decision log and traces are one folder, `.concorde/tasks/<task>/`; closing it moves that
-folder to the [history](glossary.json#concept.history). A task's whole
-[trace](glossary.json#concept.trace), from its sessions down to each worker round with its cost, is
-read with `concorde trace show <task>`.
+Every Module that reads Specs relies on the [Spec tooling](spec-tooling/module.md): its Spec core
+loads and checks the Specs and computes the grants, and a Module refuses to act on a structure it
+reports untrustworthy. It uses no other Module, so the Specs can be checked, served and published
+without any agent.
 
 ### Errors as a chain
 
@@ -451,24 +566,27 @@ Every run returns a structured result, and a failure carries an
 to Workers, the Operation adds its own, a workflow keeps each run's chain whole in its result, a
 task session escalates to the main agent with its link on top, and the main agent adds its link
 above that when the developer must decide. Every `concorde` command refuses in the same shape,
-except Spec tooling's deterministic commands, which keep their own error types.
-[Tracing](tracing/contracts.md#reading-an-error-chain) explains how to read a chain.
+except Spec tooling's deterministic commands, and Distribution's `build` and `protocol-manifest`,
+which report with Spec tooling's own error record.
+[Tracing](kernel/tracing/contracts.md#reading-an-error-chain) explains how to read a chain.
 
 Errors travel as a chain because every level handles some errors and must pass the others up:
-Workers resumes a worker for a failing check but not for a Spec gap, a run reruns nothing, and the
-main agent decides ordinary questions but not the project's direction, which it logs and escalates
-only when the impact is major. Every level therefore keeps the causes it received unchanged and
-adds its own reason on top, in the shape of the
-[error contract](tracing/contracts.md#contract.tracing.error), so the developer receives the whole
-path from the failing check to the question they are asked. The chain is part of what
-[Tracing](tracing/module.md#the-error-chain) retains, and it stays in band: each result carries its
-chain whole.
+Workers resumes a worker for what its caller's round validation reports but not for a Spec gap, a
+run reruns nothing, and the main agent decides ordinary questions but not the project's direction,
+which it logs and escalates only when the impact is major. Every level therefore keeps the causes it
+received unchanged and adds its own reason on top, in the shape of the
+[error contract](kernel/tracing/contracts.md#contract.tracing.error), so the developer receives the
+whole path from the failing check to the question they are asked. The chain is part of what
+[Tracing](kernel/tracing/module.md#the-error-chain) retains, and it stays in band: each result
+carries its chain whole.
 
 ### Around the framework
 
 Three Modules face the people who install, test and develop Concorde rather than a project's work:
-Distribution installs the [main-session guidance](glossary.json#concept.main-session-guidance), the
-workflows and the docsite of [Views](spec-tooling/views/module.md) into a project; Dogfooding runs a
+Distribution installs the parts a project chooses, with the
+[main-session guidance](glossary.json#concept.main-session-guidance) composed from the guidance each
+installed part contributes, the workflows and the docsite of
+[Views](spec-tooling/views/module.md); Dogfooding runs a
 [develop install](glossary.json#concept.develop-install) and reports Concorde's defects as Issues;
 and End-to-end testing runs installed Concorde on real codebases.
 
@@ -478,11 +596,7 @@ dogfooding: Dogfooding
 e2e: End-to-end testing
 main: Main session
 workflows: Workflows
-views: Views
 issues: Issues
-distribution -> main
-distribution -> workflows
-distribution -> views
 dogfooding -> distribution
 dogfooding -> main
 dogfooding -> issues
@@ -492,63 +606,90 @@ e2e -> workflows
 
 ## The children
 
-The root is the composition of nine child Modules, listed here by the part they play.
-
-<a id="contains-coordination"></a>
-
-**Coordination** is the upper half: the Main session at level 1 and the task level at level 2, where
-a task session carries each task the main agent hands it, with each task's workspace from Tasks. It
-hands work to Execution only by binding a task worktree and derives each task's state from what
-Execution recorded.
-
-<a id="contains-execution"></a>
-
-**Execution** is the lower half, levels 3 to 5 in one bound workspace: Workflows, the runner that
-runs Operations and execution commands, the
-[Operation catalog](glossary.json#concept.operation-catalog) and its providers, the
-command catalog with Validation, Delivery and Scaffold,
-Workers and Check execution. It knows no task and records every run in its run store.
-
-<a id="contains-harness"></a>
-
-The **Harness** derives each agent's harness — what it may know, what it may touch and the
-environment it runs in — and applies it through Claude Code's or pi's own configuration, the same
-code for every level.
-
-<a id="contains-tracing"></a>
-
-**Tracing** decides which information about the work is combined and retained, and in what
-structure: the uniform [trace node](glossary.json#concept.trace-node) every level records, nested
-from a task down to each worker round, the folder of each task and its
-[history](glossary.json#concept.history), the locks kept apart from the records, retention, the
-`concorde trace` command that reads them, and the
-[error chain](glossary.json#concept.error-chain). Every level produces its own content through it.
+The root is the composition of nine parts and the two Modules of Concorde's own development, listed
+here by the part they play.
 
 <a id="contains-spec-tooling"></a>
 
-**Spec tooling** maintains and serves Specs — loading, checking, computing
-[boundary sets](glossary.json#concept.boundary-set) and grants, answering agents over MCP, reviewing
-and publishing them. Every other Module relies on it to refuse an untrustworthy structure; its core
-uses no other Module.
+**Spec tooling**, the spec part, maintains and serves Specs — loading, checking, computing
+[boundary sets](glossary.json#concept.boundary-set) and grants, answering agents over MCP and
+publishing them. Every Module that reads Specs relies on it to refuse an untrustworthy structure; it
+uses no other Module and depends on no other part.
+
+<a id="contains-kernel"></a>
+
+The **Kernel**, the kernel part, holds the contracts parts cooperate through without importing each
+other: [typed values](glossary.json#concept.typed-value),
+[file transactions](glossary.json#concept.file-transaction), the
+[workspace binding](glossary.json#concept.workspace-binding) with the
+[workspace lock](glossary.json#concept.workspace-lock), the
+[merge lock](glossary.json#concept.merge-lock) and the
+[delivery commit](glossary.json#concept.delivery-commit), and, through its child Tracing, the
+uniform [trace node](glossary.json#concept.trace-node) every level records, the locks kept apart
+from the records, retention, the `concorde trace` command and the
+[error chain](glossary.json#concept.error-chain). It depends on no part.
+
+<a id="contains-worker-harness"></a>
+
+The **Worker harness**, the worker harness part, runs one headless worker under a grant it receives
+as data: the Harness derives the worker's settings or permission extension from the grant, and
+Workers launches, audits, resumes and records it, with the worker configuration and the model map.
+It depends on the kernel alone and reads no Spec.
+
+<a id="contains-execution"></a>
+
+**Execution**, the execution part, runs work in one bound workspace: the runner that runs
+Operations and execution commands from the definitions the installed parts register, the
+[Operation catalog](glossary.json#concept.operation-catalog) assembled from them, and Check
+execution. It knows no task and no Spec, launches no worker itself and records every run in its run
+store.
+
+<a id="contains-workflows"></a>
+
+**Workflows**, the workflow part, orders one workspace's runs for a known procedure and handles the
+[decision points](glossary.json#concept.decision-point) their outputs declare, ending with one
+[workflow result](glossary.json#concept.workflow-result). Its steps are only runs, so it depends on
+execution and the kernel and knows no particular Operation.
 
 <a id="contains-issues"></a>
 
-**Issues** keeps durable, project-level [Issue](glossary.json#concept.issue) records, each report
-with its tier and severity, so a problem worth keeping survives the task that found it and work can
-start from the most severe; solving one is ordinary
-work of a task, whose merge closes it. Recording a report never changes the outcome of the work that
-found the problem ([req.issues.report-no-outcome](issues/requirements.md#req.issues.report-no-outcome)),
-and a failure of the Issue system itself is never recorded as an Issue: it travels as an error chain
-in the decision log, an escalation or a run result
-([req.issues.own-failures](issues/requirements.md#req.issues.own-failures)).
+**Issues**, the issues part, keeps durable, project-level [Issue](glossary.json#concept.issue)
+records, each report with its tier and severity, so a problem worth keeping survives the task that
+found it and work can start from the most severe; solving one is ordinary work of a task, whose
+merge closes it where the coordination part is installed. Recording a report never changes the
+outcome of the work that found the problem
+([req.issues.report-no-outcome](issues/requirements.md#req.issues.report-no-outcome)), and a failure
+of the Issue system itself is never recorded as an Issue: it travels as an error chain in the
+decision log, an escalation or a run result
+([req.issues.own-failures](issues/requirements.md#req.issues.own-failures)). It depends on the
+kernel alone.
+
+<a id="contains-coordination"></a>
+
+**Coordination**, the coordination part, is the upper half: the Main session at level 1 and the
+task level at level 2, where a task session carries each task the main agent hands it, with each
+task's workspace from Tasks. It hands work to the lower half only by binding a task worktree and
+derives each task's state from what was recorded there. It depends on the kernel alone; runs,
+Issues, Specs, workflows and Method's delivery are its optional integrations.
+
+<a id="contains-method"></a>
+
+**Method**, the method part, is Concorde's Spec-driven way of working: the Operations that
+understand, specify, implement, test and review, the Adoption route for existing code, the execution
+commands that validate, deliver and scaffold, the brownfield workflow and the
+[standard worker sequence](glossary.json#concept.standard-worker-sequence), by which a step takes a
+grant from the Spec tooling and hands it to the worker harness. It depends on spec, worker harness,
+execution, workflow and the kernel, and on issues only as an optional integration.
 
 <a id="contains-distribution"></a>
 
-**Distribution** builds the package, provides the `concorde` CLI and installs Concorde into a
-project. Every flow above starts from such an install. The installer refuses before writing anything
-when a program it needs is missing
+**Distribution**, the distribution part, builds the packages, installs the parts a project chooses,
+updates them, and provides the `concorde` command and the
+[project MCP server](glossary.json#concept.project-mcp-server), composed from the installed parts'
+registrations. Every flow above starts from such an install. The installer refuses before writing
+anything when a program it needs is missing
 ([req.distribution.installer-programs-first](distribution/requirements.md#req.distribution.installer-programs-first))
-or a run holds its [run lock](glossary.json#concept.run-lock)
+or an installed part reports that work is running
 ([req.distribution.idle-install](distribution/requirements.md#req.distribution.idle-install)),
 and prints every refusal as an error link
 ([req.distribution.installer-error-links](distribution/requirements.md#req.distribution.installer-error-links)),

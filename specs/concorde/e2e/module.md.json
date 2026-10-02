@@ -70,9 +70,15 @@
         "target": "module.execution",
         "meaning": "#uses-execution",
         "relies_on": [
-          "concept.workspace-binding",
           "concept.run-store",
-          "concept.run-progress-file",
+          "concept.run-progress-file"
+        ]
+      },
+      {
+        "target": "module.kernel",
+        "meaning": "#uses-kernel",
+        "relies_on": [
+          "concept.workspace-binding",
           "concept.workspace-lock"
         ]
       },

@@ -1,0 +1,114 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.adoption.module",
+    "owner": "module.adoption",
+    "role": "module"
+  },
+  "module": {
+    "title": "Adoption",
+    "owns": [
+      "specs/concorde/method/adoption/module.md",
+      "specs/concorde/method/adoption/requirements.md",
+      "specs/concorde/method/adoption/scenarios.md",
+      "specs/concorde/method/adoption/contracts.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.execution",
+        "meaning": "#uses-execution",
+        "relies_on": [
+          "concept.execution-runner",
+          "concept.run-result",
+          "concept.unbound-run",
+          "req.execution.inputs-same-workspace",
+          "contract.execution.run-result"
+        ]
+      },
+      {
+        "target": "module.operations",
+        "meaning": "#uses-operations"
+      },
+      {
+        "target": "module.workers",
+        "meaning": "#uses-workers"
+      },
+      {
+        "target": "module.checks",
+        "meaning": "#uses-checks"
+      },
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec"
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.tracing.contracts",
+        "reason": "the Framework's error contract, which this Module's errors follow"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "realization.adoption.survey",
+      "type": "realization",
+      "title": "Survey Operation",
+      "meaning": "#realization.adoption.survey",
+      "entries": [
+        "src/concorde/adoption/survey.py",
+        "prompts/workers/survey.md"
+      ]
+    },
+    {
+      "id": "realization.adoption.code-to-spec",
+      "type": "realization",
+      "title": "Code to spec Operation",
+      "meaning": "#realization.adoption.code-to-spec",
+      "entries": [
+        "src/concorde/adoption/code_to_spec.py",
+        "src/concorde/adoption/test_links.py",
+        "prompts/workers/code-to-spec.md"
+      ]
+    },
+    {
+      "id": "realization.adoption.shared",
+      "type": "realization",
+      "title": "Adoption shared records",
+      "meaning": "#realization.adoption.shared",
+      "entries": [
+        "src/concorde/adoption/__init__.py",
+        "src/concorde/adoption/records.py"
+      ]
+    },
+    {
+      "id": "realization.adoption.tests",
+      "type": "realization",
+      "title": "Adoption tests",
+      "meaning": "#realization.adoption.tests",
+      "entries": [
+        "tests/concorde/adoption/",
+        "tests/concorde/support/brownfield_project.py",
+        "tests/concorde/support/adoption_case.py"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "realization.adoption.survey",
+      "verb": "validates proposals with",
+      "target": "realization.adoption.shared"
+    },
+    {
+      "type": "relates",
+      "source": "realization.adoption.code-to-spec",
+      "verb": "validates answers with",
+      "target": "realization.adoption.shared"
+    }
+  ],
+  "extensions": {}
+}

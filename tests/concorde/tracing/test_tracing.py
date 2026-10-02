@@ -23,7 +23,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 
 
 def spec_contract(identity: str) -> dict:
-    text = (REPOSITORY_ROOT / "specs/concorde/tracing/contracts.md").read_text()
+    text = (REPOSITORY_ROOT / "specs/concorde/kernel/tracing/contracts.md").read_text()
     for fence in re.findall(r"```concorde-contract\n(.*?)\n```", text, re.DOTALL):
         value = json.loads(fence)
         if value["id"] == identity:

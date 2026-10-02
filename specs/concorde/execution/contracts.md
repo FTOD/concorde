@@ -1,89 +1,9 @@
 # Execution contracts
 
 The canonical values of [Execution](module.md): the
-[workspace binding](../glossary.json#concept.workspace-binding) a run reads, the
 [run result](../glossary.json#concept.run-result) every run returns and the content of the trace node
 every run leaves. How the runner reads and fills
 them is in [How a run is executed](runner.md).
-
-## Workspace binding
-
-```concorde-contract
-{
-  "id": "contract.execution.workspace-binding",
-  "version": 2,
-  "schema": {
-    "type": "object",
-    "additionalProperties": false,
-    "required": [
-      "schema_version",
-      "workspace",
-      "root",
-      "branch",
-      "base_commit",
-      "goal",
-      "modules",
-      "traces",
-      "concorde"
-    ],
-    "properties": {
-      "schema_version": {
-        "const": 2
-      },
-      "workspace": {
-        "type": "string",
-        "pattern": "^[a-z0-9][a-z0-9-]{0,47}$"
-      },
-      "root": {
-        "type": "string",
-        "minLength": 1
-      },
-      "branch": {
-        "type": "string",
-        "minLength": 1
-      },
-      "base_commit": {
-        "type": "string",
-        "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
-      },
-      "goal": {
-        "type": "string",
-        "minLength": 1
-      },
-      "modules": {
-        "type": "array",
-        "minItems": 1,
-        "items": {
-          "type": "string",
-          "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
-        }
-      },
-      "traces": {
-        "type": "string",
-        "minLength": 1
-      },
-      "concorde": {
-        "type": "string",
-        "minLength": 1
-      }
-    }
-  },
-  "semantics": "The workspace binding .concorde/workspace.json at the root of a workspace. workspace names it, as runs, locks, workflow nodes and delivery commits name it. root is the absolute real path of the worktree the file lies in; a binding whose root is another worktree is refused. branch is the branch the workspace works on, which task-validation and delivery require the worktree's head to be on; base_commit is the commit its changes are measured from; goal is the text workers are briefed with and a delivery commit carries; modules are the Modules a run works on when it names none. traces is the absolute workspace folder in which Execution keeps the workspace's trace nodes: its runs under runs/ and its workflow under workflow/; whoever prepares the workspace chooses it, and it must exist. concorde is the absolute .concorde directory whose locks/ holds the workspace's locks and the run locks of its runs. Whoever prepares the workspace writes the file; Execution only reads it. A behaviour or field change increments the version.",
-  "example": {
-    "schema_version": 2,
-    "workspace": "retry",
-    "root": "/home/dev/shop/.claude/worktrees/retry",
-    "branch": "concorde/retry",
-    "base_commit": "4be1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9",
-    "goal": "Limit HTTP retries to three attempts.",
-    "modules": [
-      "module.http"
-    ],
-    "traces": "/home/dev/shop/.concorde/tasks/retry/workspace",
-    "concorde": "/home/dev/shop/.concorde"
-  }
-}
-```
 
 ## Run result
 
@@ -342,7 +262,7 @@ them is in [How a run is executed](runner.md).
       }
     }
   },
-  "semantics": "The result of one run, printed on standard output and saved as result.json in the run's trace node folder. kind is operation for an Operation and command for an execution command; name is the Operation's or command's name. workspace is the bound workspace's name, or null for an unbound run or a run whose binding was refused. commit is the commit an unbound run examined, the HEAD of the worktree it started in, which its throwaway checkout held; it is null for a bound run, which works on its workspace as it stands, uncommitted changes included, and for a run refused before its checkout existed. modules are the Modules the run worked on, empty when the run was refused before they were settled. status is ok when the run did what it promises, blocked when it needs a decision above it and failed otherwise. output is the definition's output, checked against its own contract when the status is ok; for task-validation it is Validation's readiness (contract.validation.readiness), whose check logs are relative to the run's trace node, while host_evidence and error name them by their absolute paths. worker is the last worker result unchanged, a claim, and worker_runs the identities of the worker runs the run started; both are empty for an execution command. host_evidence holds only what the runner and its steps observed themselves; kind is one of trace (the run's own trace node, by its run identity, with its folder in the detail), grant, context-identity, worker-model, audit, check, rounds, transcript, stderr, refused, cancelled, host-error, invalid-output, git, readiness, commit, removed-module (a Module the binding names that the workspace no longer registers, which the run left out), checkout (the throwaway checkout an unbound run worked in), submodule or submodule-absent (a submodule the checkout did or did not check out), environment or environment-not-linked (a runtime path the checkout did or did not link from the worktree the run started in) or checkout-not-removed (a part of the checkout Git would not remove, deleted directly), or a kind the definition's own Spec defines; ref names the path, command or identity concerned and detail explains it. Timestamps are RFC 3339 in UTC. error is null exactly when the status is ok; otherwise it is the run's own error link, level operation or command, whose causes are the errors it received, unchanged. A behaviour or field change increments the version.",
+  "semantics": "The result of one run, printed on standard output and saved as result.json in the run's trace node folder. kind is operation for an Operation and command for an execution command; name is the Operation's or command's name. workspace is the bound workspace's name, or null for an unbound run or a run whose binding was refused. commit is the commit an unbound run examined, the HEAD of the worktree it started in, which its throwaway checkout held; it is null for a bound run, which works on its workspace as it stands, uncommitted changes included, and for a run refused before its checkout existed. modules are the Modules the run worked on, empty when the run was refused before they were settled. status is ok when the run did what it promises, blocked when it needs a decision above it and failed otherwise. output is the definition's output, checked against its own contract when the status is ok; for task-validation it is Validation's readiness (contract.validation.readiness), whose check logs are relative to the run's trace node, while host_evidence and error name them by their absolute paths. worker is the last worker result unchanged, a claim, and worker_runs the identities of the worker runs the run's steps started through the worker harness; both are empty for an execution command. host_evidence holds only what the runner and its steps observed themselves; kind is one of trace (the run's own trace node, by its run identity, with its folder in the detail), grant, context-identity, worker-model, audit, check, rounds, transcript, stderr, refused, cancelled, host-error, invalid-output, git, readiness, commit, removed-module (a Module the binding names that the workspace no longer registers, which the run left out), checkout (the throwaway checkout an unbound run worked in), submodule or submodule-absent (a submodule the checkout did or did not check out), environment or environment-not-linked (a runtime path the checkout did or did not link from the worktree the run started in) or checkout-not-removed (a part of the checkout Git would not remove, deleted directly), or a kind the definition's own Spec defines; ref names the path, command or identity concerned and detail explains it. Timestamps are RFC 3339 in UTC. error is null exactly when the status is ok; otherwise it is the run's own error link, level operation or command, whose causes are the errors it received, unchanged. A behaviour or field change increments the version.",
   "example": {
     "kind": "command",
     "name": "task-validation",
@@ -461,7 +381,7 @@ them is in [How a run is executed](runner.md).
 ## Run trace
 
 Every run is a [trace node](../glossary.json#concept.trace-node) of kind `run` as
-[Tracing](../tracing/contracts.md#contract.tracing.node) defines it, whose content is this value.
+[Tracing](../kernel/tracing/contracts.md#contract.tracing.node) defines it, whose content is this value.
 
 ```concorde-contract
 {
@@ -574,7 +494,7 @@ Every run is a [trace node](../glossary.json#concept.trace-node) of kind `run` a
       }
     }
   },
-  "semantics": "The data of the typed value concorde-run-trace, the content of a run's trace node. kind and name are the run's definition; argv is its command line after the name, without --detach and --trace-at; exit_code is the exit status the runner returned (0 for ok, 1 otherwise), null while the run runs. steps lists, in order, every step of the definition that began, with when it began and ended and how: continue, stop (it ended the run with a status), raised (it raised and the run failed), cancelled (a signal ended it) or running; the runner's own work before the first step and after the last is not a step. worker_runs are the identities of the worker runs the run started, whose nodes lie in its workers/ folder. summary is the result's summary once the run ended, null before. The run's times, status, outcome (its status, or cancelled), duration, error, metadata, inputs (references input) and the files of its folder (result.json, status.json, host.out, readiness.json, tracebacks) are the uniform fields of its trace node. A behaviour or field change increments the version.",
+  "semantics": "The data of the typed value concorde-run-trace, the content of a run's trace node. kind and name are the run's definition; argv is its command line after the name, without --detach and --trace-at; exit_code is the exit status the runner returned (0 for ok, 1 otherwise), null while the run runs. steps lists, in order, every step of the definition that began, with when it began and ended and how: continue, stop (it ended the run with a status), raised (it raised and the run failed), cancelled (a signal ended it) or running; the runner's own work before the first step and after the last is not a step. worker_runs are the identities of the worker runs the run's steps started, whose nodes lie in its workers/ folder. summary is the result's summary once the run ended, null before. The run's times, status, outcome (its status, or cancelled), duration, error, metadata, inputs (references input) and the files of its folder (result.json, status.json, host.out, readiness.json, tracebacks) are the uniform fields of its trace node. A behaviour or field change increments the version.",
   "example": {
     "kind": "command",
     "name": "delivery",

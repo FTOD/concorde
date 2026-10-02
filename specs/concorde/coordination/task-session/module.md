@@ -36,9 +36,10 @@ configuration, because it does the main agent's own task-level work at a smaller
 configuration, such as a worker gets, would give it other tools and instructions than the main
 agent's.
 
-Its **[session boundary](../../glossary.json#concept.session-boundary)**, a term of the Harness, is
-the settings and write hook that keep its own file-writing tools inside its task. That is its one
-restriction: everything else of the session, its shell included, is as open as the main agent's.
+Its **[session boundary](../../glossary.json#concept.session-boundary)**, this Module's own, is
+the Claude Code settings and hook that keep its own file-writing tools inside its task. That is its
+one restriction: everything else of the session, its shell included, is as open as the main
+agent's. [The session boundary](#the-session-boundary) explains it.
 
 ## Overview
 
@@ -163,8 +164,7 @@ folder, and the session's [trace node](../../glossary.json#concept.trace-node) u
 [trace](../../glossary.json#concept.trace) holds every session.
 
 Task sessions writes the session's [session boundary](../../glossary.json#concept.session-boundary)
-— a settings file and the Harness's task-session [write
-hook](../../glossary.json#concept.write-hook) with the task's paths embedded — under
+— a settings file and its own task-session hook with the task's paths embedded — under
 `.concorde/tasks/severity/runtime/`, with an MCP configuration `mcp.json` there that gives the
 session the [project MCP server](../../glossary.json#concept.project-mcp-server), starts `claude
 --bg` in the task worktree with that configuration and the task-session guidance and the task's
@@ -234,11 +234,21 @@ only reach the session through `--settings`, so they change no approval anywhere
 
 ## The session boundary
 
-A task session is restricted in one thing: it changes nothing outside its task worktree. Its file
-tools are held to that by the [write hook](../../glossary.json#concept.write-hook), which lets Edit
-and Write change the task worktree and the task's decision log and denies every other path, an
-[Issue](../../glossary.json#concept.issue) record among them; the session writes Issues through the
-Issue command or the project MCP server's Issue tools, as the runs it starts do. Nothing else of
+<a id="concept.session-boundary"></a>
+
+A task session is restricted in one thing: it changes nothing outside its task worktree. Its
+**[session boundary](../../glossary.json#concept.session-boundary)** holds its file tools to that: a
+Claude Code settings file with a PreToolUse hook of its own on Edit, Write, MultiEdit and
+NotebookEdit, which lets them change the task worktree and the task's
+[decision log](../../glossary.json#concept.decision-log) and denies every other path, an
+[Issue](../../glossary.json#concept.issue) record among them, with a reason naming the task
+worktree. Once the task is closed its folder has moved to the
+[history](../../glossary.json#concept.history), and the hook refuses every write to the decision
+log, whose folder no longer exists, rather than recreate it. Where the issues part is installed, the
+session writes Issues through the Issue command or the Issue tools, as the runs it starts do. The
+boundary is Coordination's own: a worker's harness, with its grant, [deny rules](../../glossary.json#concept.deny-rules) and sandbox, is the
+worker harness's, and the two share no code, since the coordination part installs without the
+worker harness. [The contracts](contracts.md#task-session-settings) give the settings exactly. Nothing else of
 the session is restricted. Its commands run under no operating-system sandbox, with every path,
 process, socket, home-state file and network host open to them, so the session prepares its own
 worktree — dependencies, submodules, build outputs — probes the machine it runs on, and starts the
@@ -266,9 +276,9 @@ guidance and the session's shell. `bypassPermissions` would skip that check, and
 a background session in it only after the developer accepted a disclaimer once. A model without
 `auto` mode would fall back to asking and stall, so `--model` must name one that has it. Reads are
 open because the session needs the whole project's context. Tools that MCP servers add are outside
-the write hook, which guards Edit and Write only, and so are the server's own writes: the
-[project MCP server](../../glossary.json#concept.project-mcp-server) can change any task's record
-and take any lock, which the developer accepted, since it is a management tool and the guidance,
+the boundary's hook, which guards Edit and Write only, and so are the server's own writes: the
+[project MCP server](../../glossary.json#concept.project-mcp-server)'s task tools can change any
+task's record and take any lock, which the developer accepted, since it is a management tool and the guidance,
 not the boundary, says what a task session does with it.
 
 A run of the session's own, started with `concorde run`, `task-validation` or `delivery` in
@@ -280,11 +290,12 @@ would decide what the [delivery commit](../../glossary.json#concept.delivery-com
 
 <a id="workflow-runs-through-the-server"></a>
 
-**A task session's workflow runs start from the project MCP server.** The
+**A task session's workflow runs start from the project MCP server.** Where the workflow part is
+installed, the
 [step agents](../../glossary.json#concept.step-agent) of the session's
 [workflows](../../glossary.json#concept.workflow) start and await every step through that server's
 `workflow_step`, which runs the task worktree's own `concorde workflow step` as a process of the
-server ([Workflows](../../execution/workflows/module.md#steps-in-claude-code)). A
+server ([Workflows](../../workflows/module.md#steps-in-claude-code)). A
 [workflow step](../../glossary.json#concept.workflow-step) may outlast many relays, and a run
 started there depends on neither a relaying agent's turn nor a background command Claude Code ends
 after two hours or when the session is stopped. What bounds those runs is Concorde's own, as it
@@ -334,7 +345,7 @@ points:
 
 A task session's node is written when the session starts, and Concorde sees nothing of the session
 until its task ends; its figures then come from Claude Code's own records, as
-[Tracing](../../tracing/requirements.md#req.tracing.reported-usage) requires, and are written into
+[Tracing](../../kernel/tracing/requirements.md#req.tracing.reported-usage) requires, and are written into
 the node because retention later removes the transcript:
 
 - **usage**: the tokens read, written, and read from and written to the prompt cache, summed over
@@ -373,12 +384,15 @@ error codes are in the [contracts](contracts.md), the obligations in the
 
 ## What the started session relies on
 
-These three collaborations are the started session's, which follows its guidance; Task sessions
-itself starts no workflow or run and owes them nothing.
+These collaborations are the started session's, which follows its guidance; Task sessions itself
+starts no workflow or run and owes them nothing. Each is an
+[optional integration](../../glossary.json#concept.optional-integration): the guidance a session
+starts with holds the sections of the parts installed, so a session never reaches for a part the
+project does not have.
 
 <a id="uses-workflows"></a>
 
-**Workflows** is level 3, which a task session may start for its task when the work follows a known
+**Workflows**, where the workflow part is installed, is level 3, which a task session may start for its task when the work follows a known
 procedure. The session starts a [workflow](../../glossary.json#concept.workflow) for its own task
 only, in the [mode](../../glossary.json#concept.workflow-mode) its task brief names, interactive when it
 names none. An interactive workflow ends at its first
@@ -398,8 +412,9 @@ its own link alone. The workflow never merges or closes the task, which stays th
 
 <a id="uses-execution"></a>
 
-**Execution** is level 4, which a task session runs directly whenever no workflow fits: an
-[Operation](../../glossary.json#concept.operation) with `concorde run`, or the execution commands
+**Execution**, where the execution part is installed, is level 4, which a task session runs
+directly whenever no workflow fits: an [Operation](../../glossary.json#concept.operation) with
+`concorde run`, or, where the method part is installed, the execution commands
 `concorde task-validation` and `concorde delivery`, always inside its task worktree with the
 worktree's own `concorde`. Every run reads the worktree's
 [workspace binding](../../glossary.json#concept.workspace-binding), which Tasks wrote when the task
@@ -409,7 +424,9 @@ lock, so two runs of one task never overlap. The session relies on each
 worker claimed. A failed result is either repaired within the task, by a changed
 [Spec](../../glossary.json#concept.spec) or code and a new run, or escalated with the result's chain
 unchanged beneath the session's link. The session reaches a worker only through an Operation and
-never starts a worker or another agent itself. It prepares each worker's environment instead: a
+never starts a worker or another agent itself. Where the method part is not installed, the session
+delivers with `concorde task deliver` instead ([Tasks](../tasks/module.md#delivering-without-method)),
+with the checks its task brief names. It prepares each worker's environment instead: a
 realization binds only files that exist and a worker writes only bound files and new files inside
 bound directories, so the session itself creates any other new file the work needs, with the least
 content its format needs to be valid, and binds it to its Module before it starts the run that
@@ -419,7 +436,7 @@ fills it
 <a id="uses-operations"></a>
 
 **Operations** provides the catalog of the Operations a task session may run in its task, the same
-the main agent would run, with the same arguments.
+the main agent would run, with the same arguments: those the installed parts register.
 
 ## Inside and around it
 
@@ -433,20 +450,20 @@ tasksession: Task sessions {
 
 <a id="realization.task-session.starter"></a>
 
-The **session starter** (`session.py`) assembles the session's settings around the write hook and
+The **session starter** (`session.py`) assembles the session's settings around the hook and
 starts `claude --bg`, and ends a task's task sessions: their stop, the copy of their transcripts and
-their removal, which Tasks' close calls. The boundary files themselves, the task-session write hook
-among them, are the [Harness](../../harness/module.md)'s. The tests (`test_session.py` under
-`tests/concorde/tasks/`) run on real Git repositories with a fake `claude`.
+their removal, which Tasks' close calls; with it goes the task-session hook (`session_hook.py`)
+its settings install. The tests (`test_session.py` under `tests/concorde/tasks/`) run on real Git
+repositories with a fake `claude`.
 
-A start touches one piece of each provider: the session starter writes the Harness's boundary,
-prompts the session with the Main session's guidance and records the session in the task's trace
-through Tasks.
+A start touches one piece of each provider and its own boundary: the session starter writes the
+session boundary, prompts the session with the Main session's guidance and records the session in
+the task's trace through Tasks.
 
 ```d2
 starter: Session starter
 guidance: Main session / Main-session guidance
-boundary: Harness / Session boundary
+boundary: Session boundary
 task: Tasks / Task
 starter -> guidance: prompts with
 starter -> boundary: writes
@@ -462,28 +479,28 @@ that dispatches `session` here after checking that it runs in the primary worktr
 records a started session only through Tasks' record updates; Tasks refusing the update refuses
 the start.
 
-<a id="uses-harness"></a>
+<a id="uses-kernel"></a>
 
-The **Harness** provides the source of the
-[session boundary](../../glossary.json#concept.session-boundary): the task-session write hook, which
-Task sessions writes into place with the task's worktree and decision log embedded. Task sessions
-relies on it holding Edit and Write to those two and leaving everything else of the session open; it
-never widens the paths it hands over, and adds no restriction of its own around the hook. The
-boundary is written before the session starts, and `--dry-run` writes it without starting anything,
-so no session runs without its boundary.
+The **Kernel** gives Task sessions what a started session works within without depending on any
+other part: the [workspace binding](../../glossary.json#concept.workspace-binding) Tasks wrote into
+the task worktree, which every run the session starts reads, and the
+[merge lock](../../glossary.json#concept.merge-lock) that every Issue write and every merge takes,
+for which a session waits with `concorde task wait --lock merge` rather than polling.
 
 <a id="uses-issues"></a>
 
-**Issues** keeps the project's [Issues](../../glossary.json#concept.issue) in the primary worktree's
-`.concorde/issues/`, each write holding the [merge lock](../../glossary.json#concept.merge-lock) and
-committing its record alone on the primary branch. Task sessions relies on an Issue record lying
-outside every task worktree, so that the write hook refuses one and a task session reaches Issues
-only through the Issue command or the Issue tools, as the runs it starts do.
+**Issues**, where the issues part is installed, keeps the project's
+[Issues](../../glossary.json#concept.issue) in the primary worktree's `.concorde/issues/`, each write
+holding the merge lock and committing its record alone on the primary branch. Task sessions relies
+on an Issue record lying outside every task worktree, so that the session boundary refuses one and
+a task session reaches Issues only through the Issue command or the Issue tools, as the runs it
+starts do. Without the issues part there is no Issue to reach, and nothing changes for the
+boundary.
 
 <a id="uses-workers"></a>
 
-**Workers** launches the [workers](../../glossary.json#concept.worker) of the Operations a task
-session starts. Task sessions relies on each worker's
+**Workers**, where the worker harness part is installed, launches the
+[workers](../../glossary.json#concept.worker) of the Operations a task session starts. Task sessions relies on each worker's
 [worker backend](../../glossary.json#concept.worker-backend) coming from the
 [worker configuration](../../glossary.json#concept.worker-configuration), pi unless it chooses
 Claude Code, never from the program the task session runs on.
@@ -493,9 +510,11 @@ Claude Code, never from the program the task session runs on.
 **Main session** provides the
 [guidance](../../glossary.json#concept.main-session-guidance) a task session starts with: the
 rendered task-session guidance, which carries the same rules for working inside a task that the
-main agent follows. A missing rendered guidance refuses the start with `session_failed`. It also
-provides the [project MCP server](../../glossary.json#concept.project-mcp-server), which Task
-sessions configures for every task session it starts, without a channel (`CONCORDE_CHANNEL=0`).
+main agent follows, followed by the sections the other installed parts contribute. A missing
+rendered guidance refuses the start with `session_failed`. Task sessions also configures, for every
+task session it starts, the [project MCP server](../../glossary.json#concept.project-mcp-server),
+Distribution's host of the tools the installed parts register, without a channel
+(`CONCORDE_CHANNEL=0`).
 
 Two Modules call this one, both from level 1's side: the Main session's guidance has the main
 agent start task sessions, and Tasks dispatches `concorde task session` here after its own checks

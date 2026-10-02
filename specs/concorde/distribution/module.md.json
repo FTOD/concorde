@@ -24,7 +24,6 @@
           "concept.protocol-binding",
           "req.spec.init-explicit-envelope",
           "req.spec.installation-follows-record",
-          "concept.file-transaction",
           "contract.spec.error"
         ]
       },
@@ -37,14 +36,6 @@
         ]
       },
       {
-        "target": "module.main-session",
-        "meaning": "#uses-main-session",
-        "relies_on": [
-          "concept.main-session-guidance",
-          "concept.project-mcp-server"
-        ]
-      },
-      {
         "target": "module.dogfooding",
         "meaning": "#uses-dogfooding",
         "relies_on": [
@@ -52,68 +43,10 @@
         ]
       },
       {
-        "target": "module.execution",
-        "meaning": "#uses-execution",
-        "relies_on": [
-          "concept.run",
-          "concept.run-lock",
-          "concept.run-progress-file"
-        ]
-      },
-      {
-        "target": "module.workflows",
-        "meaning": "#uses-workflows"
-      },
-      {
-        "target": "module.commands",
-        "meaning": "#uses-commands",
-        "relies_on": [
-          "concept.execution-command"
-        ]
-      },
-      {
         "target": "module.tracing",
         "meaning": "#uses-tracing",
         "relies_on": [
-          "contract.tracing.node",
-          "contract.tracing.error",
-          "concept.trace"
-        ]
-      },
-      {
-        "target": "module.tasks",
-        "meaning": "#uses-tasks",
-        "relies_on": [
-          "concept.task",
-          "concept.task-record",
-          "contract.tasks.record"
-        ]
-      },
-      {
-        "target": "module.issues",
-        "meaning": "#uses-issues",
-        "relies_on": [
-          "concept.issue",
-          "contract.issues.receipt"
-        ]
-      },
-      {
-        "target": "module.spec-mcp",
-        "meaning": "#uses-spec-mcp",
-        "relies_on": [
-          "req.spec-mcp.one-root",
-          "req.spec-mcp.stdio-only"
-        ]
-      },
-      {
-        "target": "module.workers",
-        "meaning": "#uses-workers",
-        "relies_on": [
-          "concept.worker-backend",
-          "concept.worker-configuration",
-          "concept.model-map",
-          "concept.progress-file",
-          "req.workers.pi-sandbox"
+          "contract.tracing.error"
         ]
       }
     ],
@@ -237,14 +170,20 @@
     {
       "type": "relates",
       "source": "realization.distribution.installer",
-      "verb": "installs",
-      "target": "module.main-session"
+      "verb": "ships the docsite template selected by",
+      "target": "module.views"
+    },
+    {
+      "type": "relates",
+      "source": "realization.distribution.command",
+      "verb": "runs",
+      "target": "concept.project-mcp-server"
     },
     {
       "type": "relates",
       "source": "realization.distribution.installer",
-      "verb": "ships the docsite template selected by",
-      "target": "module.views"
+      "verb": "installs the parts named by",
+      "target": "concept.part-registration"
     }
   ],
   "extensions": {}

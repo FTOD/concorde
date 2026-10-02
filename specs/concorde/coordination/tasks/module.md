@@ -4,7 +4,7 @@
 
 Tasks manages the workspace of the task level: it gives every unit of work the
 [main agent](../../glossary.json#concept.main-agent) starts its own place, a Git branch, a worktree
-checked out on it and bound as an [Execution](../../execution/module.md) workspace, a
+checked out on it and bound as a [workspace](../../glossary.json#concept.workspace), a
 [task record](../../glossary.json#concept.task-record) and a
 [decision log](../../glossary.json#concept.decision-log), kept with the task's
 [trace](../../glossary.json#concept.trace) in one folder of its own that moves to the
@@ -12,22 +12,31 @@ checked out on it and bound as an [Execution](../../execution/module.md) workspa
 session it delegates every task to, rely on it to run pieces of work side by side without their
 changes mixing, to know each task's state, and to keep the reasons behind choices made without the
 developer. Tasks binds each task worktree when it opens the task and learns what happened in it only
-from what Execution recorded, the workspace's runs and its delivery commits; nothing below the task
-level reads or writes a task record. When the main agent merges a delivered task, Tasks does the
+from what was recorded there: the workspace's runs, where the execution part is installed, and its
+[delivery commits](../../glossary.json#concept.delivery-commit); nothing below the task level reads
+or writes a task record. When the main agent merges a delivered task, Tasks does the
 merge into the primary branch under a lock, so several main sessions never merge at once, and undoes
 it if the checks that follow fail; it records the merge in the task until the checks decided, so a
 merge interrupted halfway stops every task command that would build on it until it is resumed or
 aborted. When a task ends, merged or not, Tasks commits its decision log to the primary branch, so
-the reasons behind its choices travel with the code after the local records are gone. A task may name
-the [Issues](../../glossary.json#concept.issue) it resolves, which its merge closes once the fix is on
-the primary branch.
+the reasons behind its choices travel with the code after the local records are gone. Where the
+issues part is installed, a task may name the [Issues](../../glossary.json#concept.issue) it
+resolves, which its merge closes once the fix is on the primary branch. Where the method part is not
+installed, Tasks also delivers a task itself, with `concorde task deliver`.
+
+Tasks needs only the [Kernel](../../kernel/module.md): the workspace binding, the workspace and
+merge locks, the delivery commit, file transactions and Tracing's trace nodes are its contracts.
+Runs, Issues, the registry and Method's delivery are
+[optional integrations](../../glossary.json#concept.optional-integration), each described where it
+applies, and absent where its part is not installed.
 
 Tasks is independent of the sessions that work in its tasks: it does not start or follow them,
 which [Task sessions](../task-session/module.md) does, and it does not decide how work is split,
 which tasks run in parallel or when a task is merged. It never runs an
 [Operation](../../glossary.json#concept.operation) or an
-[execution command](../../glossary.json#concept.execution-command), never commits on a task branch,
-and never interprets the decision log, which it only copies into Git.
+[execution command](../../glossary.json#concept.execution-command), never commits on a task branch
+except the delivery commit of `task deliver` where the method part is not installed, and never
+interprets the decision log, which it only copies into Git.
 
 ## Core concepts
 
@@ -37,8 +46,8 @@ A **[task](../../glossary.json#concept.task)** is one unit of the main agent's w
 for each piece of work it wants isolated: a branch `concorde/<task-id>`, a worktree checked out on
 it and bound as the [workspace](../../glossary.json#concept.workspace) named after the task, and a
 folder of its own in the primary worktree. Parallelism exists only between tasks: none share a
-worktree, and Execution's [workspace lock](../../glossary.json#concept.workspace-lock) lets each
-workspace run one thing at a time. A task's goal and Modules are those named at open and never
+worktree, and the Kernel's [workspace lock](../../glossary.json#concept.workspace-lock) lets each
+workspace do one thing at a time. A task's goal and Modules are those named at open and never
 change; a run that names further Modules with `--modules` records them in its own
 [run result](../../glossary.json#concept.run-result).
 
@@ -48,7 +57,7 @@ Everything about a current task lives in its folder `.concorde/tasks/<task-id>/`
 worktree: its record `task.json`, its trace node `trace.json`, its decision log `decisions.md`, the
 boundary configuration of its task session under `runtime/`, the nodes of its task sessions under
 `sessions/` and of its merge attempts under `merges/`, and the workspace folder `workspace/` that
-Execution fills. **The [task record](../../glossary.json#concept.task-record)** holds only what the
+the runs of its workspace fill. **The [task record](../../glossary.json#concept.task-record)** holds only what the
 task commands need to act on the task: identity, goal, Modules, branch, worktree path, base commit,
 the [main agent](../../glossary.json#concept.main-agent)'s session its task sessions report to now
 with the ones it named before, the reports task sessions made to it with its answers,
@@ -57,7 +66,8 @@ stored state, the merge in progress and, once the task ended, how it ended
 task's node records when it was opened, every change of its stored state, every escalation and how
 it ended; each task session is a node below it, and so is each merge attempt with its checks
 ([exact content](contracts.md#task-trace)). Neither keeps runs, deliveries or workflow: those are
-recorded by Execution, and a copy could disagree with them after a crash or a run nobody announced.
+recorded where they happen, in the workspace folder and on the task branch, and a copy could
+disagree with them after a crash or a run nobody announced.
 
 <a id="concept.decision-log"></a>
 
@@ -76,17 +86,33 @@ branch as `.concorde/decisions/<history key>.md` ([below](#decision-log-in-git))
 a task that Git keeps. The log is free Markdown, since its readers are the main agent and the
 developer; Tasks gives it only a fixed place and lifetime.
 
-<a id="concept.merge-lock"></a>
+<a id="concept.history"></a>
 
-**The [merge lock](../../glossary.json#concept.merge-lock)** of the primary worktree keeps merges
-from interleaving in the one primary checkout. It is a `flock` held by the command's own process,
-so no session has to release it or announce that it is done: the kernel releases it when the
-process ends, even when it is killed, and a waiting command wakes as soon as it is free. A command
-that gives up waiting fails with `merge_busy`, naming the holder's command, task, process, start
-time and Claude Code session, which the holder writes into the lock file while it holds it. The
-command may also have been handed its locks by the process that started it, as the
-[project MCP server](../../glossary.json#concept.project-mcp-server) hands them to the merge it
-starts: it then holds them from its start without waiting, exactly as long as it runs.
+**The [history](../../glossary.json#concept.history)** is where a task's folder goes when the task
+ends. While a task is current everything about it, its state and its traces alike, lives in
+`.concorde/tasks/<task-id>/`; closing it, merged or not, moves that whole folder to
+`.concorde/history/<history key>/`, where it stays as it was when the task ended. Nothing in the
+history is ever changed, apart from the merge that closed the task finishing the answer it writes
+into its attempt's node; it may be copied out. The organising axis is the task's lifecycle, not a
+split between state and traces: a reader never joins a task's record, decision log, sessions and
+runs from several stores, and removing or exporting a task is one folder. Tasks registers the
+current task folders and the history with [Tracing](../../kernel/tracing/module.md) as two of its
+trace roots, so `concorde trace show` finds a task's nodes in either, and gives the history its
+retention: from each history folder of a task closed more than 30 days ago Tracing's prune removes
+its **conversation records**, the transcripts of its task sessions and worker runs, which make up
+most of its size and are read mostly while the task is fresh, and, when the project configures a
+longer period in its [Tracing configuration](../../kernel/tracing/contracts.md#contract.tracing.configuration),
+each history folder of a task closed longer ago than that, whole. Nothing of a current task is
+removed, and what a task decided outlives retention: its decision log is committed to Git when it
+ends ([below](#decision-log-in-git)). A task name used again after its branch was deleted gets a new
+history key, free both in the history and among the committed decision logs, so no closed task
+replaces another.
+
+Opening, merging and closing a task take the Kernel's
+[merge lock](../../glossary.json#concept.merge-lock) of the primary worktree, waiting for it inside
+the command and refusing with `merge_busy`, naming its holder, when it is still held after `--wait`;
+a merge started by the [project MCP server](../../glossary.json#concept.project-mcp-server) is handed
+its locks and holds them from its start without waiting, exactly as long as it runs.
 
 A merge also holds the task's **merge attempt lock**, `locks/attempts/<task>.lock`, from before it
 waits for its other locks until it has printed its whole answer, and removes it then. The close
@@ -105,7 +131,7 @@ run of the task could still write the worktree it removes.
 
 A task's **state** is partly stored and partly derived. Only merging and closing a task change its
 stored state; whether an open task is still open, active or delivered is derived each time the task
-is listed or shown from what Execution recorded and from Git ([Task state](#task-state)).
+is listed or shown from what the workspace recorded and from Git ([Task state](#task-state)).
 
 ## Overview
 
@@ -124,13 +150,13 @@ tasks: Tasks {
   record: Task record
   log: Decision log
   task: Task
-  lock: Merge lock
   store -> record: writes
   store -> log: creates, commits a copy of
-  store -> lock: holds while merging, opening or closing
   record -> task: describes
   log -> task: explains the choices of
 }
+lock: Kernel / Merge lock
+tasks.store -> lock: holds while merging, opening or closing
 ```
 
 ### Task state
@@ -165,10 +191,10 @@ delivered -> failed: task close --failed
 ```
 
 A task is **delivered** when its branch head is a delivery commit of its workspace that verifies,
-having exactly one parent as every commit Delivery creates has, and its worktree is clean;
+having exactly one parent as the Kernel's [convention](../../kernel/contracts.md#delivery-commit) requires, and its worktree is clean;
 **active** when its workspace has a run in the [run store](../../glossary.json#concept.run-store),
-running or finished, or its branch moved past the base commit, or its worktree has uncommitted
-changes; and **open** before any of these. A run that changes nothing, such as a review after
+running or finished, where the execution part is installed, or its branch moved past the base
+commit, or its worktree has uncommitted changes; and **open** before any of these. A run that changes nothing, such as a review after
 delivery, leaves a delivered task delivered; a change after the delivery commit, committed or not,
 makes it active until the next delivery. A new path Git cannot version, neither a file, a symbolic
 link nor a directory, such as one a sandbox hides behind a `/dev/null` mount, is no change of the
@@ -180,15 +206,15 @@ and the record keeps the outcome ([Ending a task](#ending-a-task)).
 
 ### Around it
 
-Tasks writes one thing into Execution, the binding, and reads the rest from what Execution and
-Delivery recorded:
+Tasks writes one thing for the lower half, the binding, and reads the rest from what was recorded
+there: the runs where the execution part is installed, and the delivery commits:
 
 ```d2
 store: Task store
-binding: Execution / Workspace binding
+binding: Kernel / Workspace binding
 runstore: Execution / Run store
-lock: Execution / Workspace lock
-commits: Delivery / Delivery commit
+lock: Kernel / Workspace lock
+commits: Kernel / Delivery commit
 store -> binding: writes when a task opens
 store -> runstore: reads the workspace's runs from
 store -> lock: holds while merging or closing, shows the holder of
@@ -205,8 +231,10 @@ The main agent opens a task for each piece of work it wants isolated, e.g. "let
 concorde task open severity --goal "let Issue reports carry a severity" --modules module.issues
 ```
 
-Tasks checks the identity is new and every named [Module](../../glossary.json#concept.module) exists
-in the [registry](../../glossary.json#concept.registry), creates branch `concorde/severity` from the
+Tasks checks the identity is new and, where the spec part is installed, that every named
+[Module](../../glossary.json#concept.module) exists in the
+[registry](../../glossary.json#concept.registry); without it the Modules are plain labels, written
+into the record and the binding unchecked. It then creates branch `concorde/severity` from the
 primary worktree's commit (or `--base <ref>`), adds a worktree at `.claude/worktrees/severity`
 inside the primary worktree, the only place a task worktree may be, creates the task's folder
 `.concorde/tasks/severity/` in the primary worktree, binds the worktree as a workspace, writes the
@@ -217,10 +245,11 @@ whatever the primary branch chooses later, and a change the task makes to its ow
 the task. The worktree path must be ignored by Git in the primary worktree, or the open is refused
 with `worktree_not_ignored`; the installer adds `.claude/worktrees/` to `.gitignore`.
 
-**The binding.** Binding the worktree is what makes it a place where Execution can work. Tasks
+**The binding.** Binding the worktree is what makes it a place where the parts that work in a
+workspace can work. Tasks
 writes its [workspace binding](../../glossary.json#concept.workspace-binding),
 `.concorde/workspace.json` at the worktree's root, as the
-[binding contract](../../execution/contracts.md#contract.execution.workspace-binding) defines:
+[binding contract](../../kernel/contracts.md#contract.kernel.workspace-binding) defines:
 
 ```json
 {
@@ -240,21 +269,22 @@ The workspace is named after the task, so its workspace lock and its delivery co
 the task identity. Its workspace folder is `workspace/` inside the task's own folder, so every run
 of the task, started directly or by a workflow, lands in the task's
 [trace](../../glossary.json#concept.trace), below the task's own node, and survives the worktree;
-its locks lie under the primary worktree's `.concorde/locks/`. Execution never learns that the
-folder belongs to a task. From then on the task's work happens inside that worktree with the
+its locks lie under the primary worktree's `.concorde/locks/`. Nothing that works in the workspace
+learns that the folder belongs to a task. From then on the task's work happens inside that worktree with the
 worktree's own `concorde`: every Operation, execution command and workflow started there reads the
 binding and works on this task's goal, Modules, branch and base without naming the task. Tasks
 writes the binding once and never again; closing removes it with the worktree. A binding the file
 system refuses ends the open with `binding_failed`, naming the worktree and branch left behind and
 how to remove them, and records no task.
 
-**Resolving Issues.** A task that fixes recorded problems names them: `--resolves <id>,<id>` on
+**Resolving Issues.** Where the issues part is installed, a task that fixes recorded problems names them: `--resolves <id>,<id>` on
 `task open`, or later `concorde task resolve <task> <id>...`, which the project MCP server presents as
 `task_resolve`, adds them to the record's `resolves`. Each must be an open Issue of the project,
 read from the primary worktree, or the command is refused with `invalid_issue`, naming each that is
 not; an ended task resolves nothing more (`task_closed`). Naming an Issue changes neither it nor the
 work: the task still fixes it by ordinary work, and only its merge closes it, as
-[Merging](#merging) says.
+[Merging](#merging) says. Where the issues part is not installed, `--resolves` and `task resolve`
+are refused with `part_missing`, naming the issues part.
 
 ## Listing and showing tasks
 
@@ -273,9 +303,10 @@ closed task is shown from the history the same way. `concorde trace show <task-i
 with its timing and cost.
 
 The record's Modules are not kept in step with the task worktree's registry: a Module the task
-branch removes or renames stays in the record and in the binding, and Execution leaves each bound
-Module the worktree does not register out of a run, with evidence saying so. Tasks reads a registry
-only to open a task.
+branch removes or renames stays in the record and in the binding, and a run whose definition checks
+its Modules against the worktree's registry leaves each bound Module the worktree does not register
+out of it, with evidence saying so. Tasks reads a registry only to open a task, and only where the
+spec part is installed.
 
 ## Escalating
 
@@ -371,8 +402,9 @@ history, `.concorde/history/<task-id>/`, keeping the branch; no run of the task'
 start there any more, and a closed or failed task stays so whatever happens afterwards. A task
 closes only once it has really ended: the close holds the task's workspace lock, so no run of it is
 running and none can start, while it moves the folder, and a close with `--completed` or `--failed`
-first stops the task's task sessions and the runs of the workspace that still run, those waiting in
-Execution's [lobby](../../execution/runner.md#the-lobby) for its lock included, then waits for the
+first stops the task's task sessions and, where the execution part is installed, the runs of the
+workspace that still run, those waiting in Execution's
+[lobby](../../execution/runner.md#the-lobby) for its lock included, then waits for the
 lock. A run that waits for the lock meanwhile writes nothing into the task's folder: it waits in the
 lobby, outside it, and when it takes the lock after the close, Execution refuses it with
 `workspace_retired`, since the close removed the worktree with its binding and, while still holding
@@ -387,10 +419,8 @@ workflow lock, the close waits for it only briefly. Just before the folder moves
 session's transcript into the session's node and finishes the node with the session's status, end
 and usage from Claude Code's records, and once the task is closed it removes those sessions
 from Claude's session list; what it could not keep or remove is named in the close's `warnings`,
-and never fails the close. The history is never changed afterwards;
-[Tracing](../../tracing/module.md)'s retention removes its conversation records after a while and
-may remove it whole. A task name used again after its branch was deleted gets a new history key,
-free both in the history and among the committed decision logs, so no closed task replaces another.
+and never fails the close. The [history](../../glossary.json#concept.history) is never changed afterwards; its
+retention removes its conversation records after a while and may remove it whole.
 
 <a id="decision-log-in-git"></a>
 
@@ -417,6 +447,37 @@ whatever the submodule's `ignore` setting, unless `--force`. The close never dei
 submodules: their registration lives in the repository's configuration, which every worktree
 shares, and ending one task leaves it for the others.
 
+## Delivering without Method
+
+Where the method part is installed, a task session delivers its task with Method's `delivery`,
+which validates the whole workspace before it makes the
+[delivery commit](../../glossary.json#concept.delivery-commit). Where it is not, Tasks delivers it
+itself, from the task worktree:
+
+```text
+concorde task deliver severity --check "npm test" --check "npm run lint"
+```
+
+`task deliver` runs in the task's worktree, the one its binding names, and only there
+(`not_task_worktree` elsewhere). It takes the task's
+[workspace lock](../../glossary.json#concept.workspace-lock), waiting up to `--wait` seconds
+(`workspace_busy` after), refuses an ended task (`task_closed`) or a worktree whose head is not on
+the task branch (`wrong_branch`), runs each `--check` command in the worktree in order, and refuses
+with `check_failed`, naming the check, its exit status and its log, at the first that fails; with no
+check given it runs none. When every check passed it stages every change of the worktree that Git
+does not ignore and commits it with the subject `concorde: deliver <task-id>` and the task's goal as
+body, by the Kernel's [delivery commit convention](../../kernel/contracts.md#delivery-commit), even
+when nothing is left to commit, as the mark of the delivery. A head that already is a delivery commit
+of the workspace that verifies, with a clean worktree, is reported as delivered and nothing is
+committed. Its node, a `deliveries/<n>/` node of the task's trace with each check a node below it,
+references the commit it made or found. The task is then **delivered** like any other, and the main
+agent merges it as usual.
+
+`task deliver` judges nothing but its checks: no [Spec](../../glossary.json#concept.spec) structure, no [configured check](../../glossary.json#concept.configured-check) and no
+scenario coverage, which are Method's. So it exists only where the method part is not installed:
+wherever it is, `task deliver` refuses with `delivery_by_method`, naming `concorde delivery`, so that
+a workspace Method could validate is never delivered without that validation.
+
 ## Merging
 
 Several main sessions may work in one project, each delegating its tasks to task sessions that
@@ -436,8 +497,8 @@ run still holding the workspace lock after that time refuses the merge with `wor
 naming the run. It refuses, before touching anything, a task that could not be closed as merged
 apart from not being merged yet (`not_merged`, `delivery_unverified`, `dirty_worktree`), reading the
 task's delivery commits from Git, a primary worktree with uncommitted or untracked paths or a
-detached `HEAD` (`primary_dirty`), once it has put back there what Issue writes left
-([below](#nothing-changed-outside-the-task)), and anything changed outside the task's worktree
+detached `HEAD` (`primary_dirty`), once it has put back there what Issue writes left where the
+issues part is installed ([below](#nothing-changed-outside-the-task)), and anything changed outside the task's worktree
 ([below](#nothing-changed-outside-the-task)). The branch head those checks accepted, the task's latest delivery
 commit, is the commit it merges: it records the task as **merging**, with the primary branch's
 commit before the merge, that checked commit, the history key the task will close under and the
@@ -451,17 +512,20 @@ explains it. A Git refusal of that commit aborts the merge, removes the log's co
 `git_failed`. A conflict is aborted and refused with `merge_conflict`, naming the paths: the
 conflict is resolved in the task worktree by merging the primary branch into the task branch,
 validating and delivering again, never in the primary worktree. After the merge, Tasks records the
-merge commit and runs the checks in the primary worktree: `concorde spec-validation` of the merged
-checkout by default, or exactly the `--check` commands given, such as a project that must build
-first, followed by `concorde spec-validation` while a `concorde update` is not validated yet, so
+merge commit and runs the checks in the primary worktree: exactly the `--check` commands given, such
+as a project that must build first, or, given none, `concorde spec-validation` of the merged
+checkout where the spec part is installed; where it is not and no check is given, the merge runs no
+check and its answer says so. While a `concorde update` is not validated yet, the merge runs
+`concorde spec-validation` after the given checks as well, where the spec part is installed, so
 that no checks let a merge pass that update's barrier. A failed check, or checks that leave
 uncommitted paths, returns the primary branch with `git reset --keep` to the commit it had and
 refuses with `check_failed`, naming the check, its exit
 status, its log in the merge attempt's node, and any paths the checks created, which the reset
 leaves in the primary worktree. Every merge attempt, whether it merged, conflicted, failed a check
 or was undone, is a node `merges/<n>/` of the task's trace, each check a node below it with its
-`output.log`. When everything passed, Tasks closes the task as merged, then, still holding the merge lock, closes
-each Issue the task resolves that is still open as `resolved`, with the note that the task fixed it
+`output.log`. When everything passed, Tasks closes the task as merged, then, where the issues part
+is installed and still holding the merge lock, closes each Issue the task resolves that is still
+open as `resolved`, with the note that the task fixed it
 and the merge commit and task as evidence, each closure a commit of its own on the primary branch
 after the merge; it prints the record with the Issues it closed (`resolved`), the commits before and
 after, each check, how long it waited and its warnings, such as a decision log nobody wrote in or an
@@ -491,9 +555,9 @@ before it merges, at each place whose state no task working in it accounts for:
   `.gitignore` the installer writes — or
   committed by the command that writes them, as an [Issue](../../glossary.json#concept.issue)
   record and a [decision log](../../glossary.json#concept.decision-log) are. An Issue write killed
-  between publishing its record and committing it leaves that record behind, so the merge first
-  runs the Issues' recovery, holding the merge lock as every Issue write does, which puts back
-  such records and nothing else. Uncommitted or untracked paths left after it refuse the merge as
+  between publishing its record and committing it leaves that record behind, so, where the issues
+  part is installed, the merge first runs the Issues' recovery, holding the merge lock as every
+  Issue write does, which puts back such records and nothing else. Uncommitted or untracked paths left after it refuse the merge as
   `primary_dirty`, whose detail also says that a task changes nothing outside its worktree, since
   the paths may be a task's and not the developer's, and names each Issue record whose change the
   recovery left as no Issue write's, to be inspected and reverted, or the recovery's own failure,
@@ -560,7 +624,7 @@ unchecked -> aborted: --abort
 
 **An interrupted merge.** A merge whose process ends before its checks decided, killed or crashed,
 leaves the task `merging` and perhaps an unchecked merge commit at the head of the primary branch.
-The kernel has released the merge lock, so nothing but the record says that the primary branch is
+The operating system has released the merge lock, so nothing but the record says that the primary branch is
 not to be built on. Every task command that changes something therefore looks for a `merging`
 task first: while no live process holds the merge lock, `open`, `merge`, `close`, `session` and
 `escalate`, in any main session and for any task, refuse with `merge_incomplete`, naming the task,
@@ -607,13 +671,15 @@ concorde task wait severity --merge
 task's record names a main agent's session other than the one given, `--run` once the run's
 runner holds no [run lock](../../glossary.json#concept.run-lock), with how the run ended, and
 `--lock` once nobody holds the merge lock or the task's workspace lock, with who held it, and
-`--merge` once no merge of the task runs, with its latest attempt's node and output files. Each
+`--merge` once no merge of the task runs, with its latest attempt's node and output files. `--run`
+needs the execution part, and is refused with `part_missing` naming it where that part is not
+installed. Each
 answers at once when that is already so and prints one JSON value, and `--timeout` bounds the wait.
 A task reaches `delivered`, `merging`, `closed` and `failed` only while its workspace lock is held,
-by a delivery run, a merge or a close, so a task wait learns from the kernel of every new holder of
+by a delivery run, a merge or a close, so a task wait learns from the operating system of every new holder of
 that lock, blocks on the lock until that holder lets it go, and reads the state again; those four
 are the states it admits, and a task that ends in another state ends the wait with
-`wait_unreachable`. A rebind wait learns from the kernel of every write of the task's record, and
+`wait_unreachable`. A rebind wait learns from the operating system of every write of the task's record, and
 of its folder moving to the history, and reads the record again; a task that ended ends it with
 `wait_unreachable`. A lock, run or merge wait blocks on the lock itself, so a holder that dies
 wakes it as surely as one that ends. The project MCP server's `register_wait` runs the same waits for a
@@ -661,8 +727,9 @@ exactly what workers and Delivery commit, so records kept there would be swept i
 `.concorde/tasks/` and `.concorde/history/` are thus local, Git-ignored state: what travels with the
 code is the [delivery commit](../../glossary.json#concept.delivery-commit) and, once the task ended,
 its decision log, which Tasks commits to the primary branch. Any process finds the primary worktree
-through Git's common directory. One folder per task, organized by the task's lifecycle as
-[Tracing](../../tracing/module.md) lays it out, means a task's record, log, sessions and runs are
+through Git's common directory. One folder per task, organized by the task's lifecycle as the
+[history](../../glossary.json#concept.history) explains, in the shape [Tracing](../../kernel/tracing/module.md) gives
+every trace node, means a task's record, log, sessions and runs are
 read in one place and ended in one move; the record stays small because the task's history is its
 trace, which only grows by new nodes.
 
@@ -681,7 +748,7 @@ while it moves the task's folder.
 The merge lock is held by the process doing the merge rather than recorded as an owner that others
 wait on and that must wake them: a recorded owner that crashed, was closed or forgot to notify
 would leave every waiter stuck, and the sessions that merge share no channel that would reliably
-notify each other. A kernel `flock` is released and wakes waiters whatever happens to its holder,
+notify each other. An operating-system `flock` is released and wakes waiters whatever happens to its holder,
 the same way for every kind of session. It only works if the whole critical section runs in one
 process, which is why merging, checking, undoing and closing are one command instead of steps the
 main agent issues one by one, and why conflicts are resolved in the task worktree: the lock is then
@@ -690,7 +757,7 @@ it also for `open` and `close` keeps both from reading a primary branch whose me
 reset, and every write of the project's Issues, which [Issues](../../issues/module.md) commits on the
 primary branch, takes it too, so no Issue commit lands between a merge commit and its checks.
 
-The lock alone cannot cover a merge whose process dies: the kernel releases the lock at once, and
+The lock alone cannot cover a merge whose process dies: the operating system releases the lock at once, and
 the next command would build on a merge commit no check accepted. So the merge writes `merging`
 into the record before `git merge` runs, and that stored state, not the lock, is what the other
 commands read; together they tell a merge that is still running (the lock is held) from one that
@@ -715,8 +782,8 @@ decisions taken without the developer, the escalations and their answers, the re
 transcripts of its sessions and workers, is large, local and removed by retention. So the log is
 committed when the task ends, and nothing else of the folder is.
 
-Tasks commits it, not Delivery, because Delivery is part of Execution and knows no task, while the
-log lives in the task's folder of the primary worktree and belongs to the task level. A merged task
+Tasks commits it, not Delivery, because Delivery works in the workspace and knows no task, while
+the log lives in the task's folder of the primary worktree and belongs to the task level. A merged task
 carries its log in its merge commit, so that Git itself relates the two: the commit that brings the
 delivery into the primary branch, whose second parent is the delivery commit, adds the log that
 explains it, and a merge undone by a failed check takes its log with it. That is why a merge always
@@ -746,17 +813,17 @@ update failed, or a run started by hand in the worktree would each leave the two
 disagreeing, and something would have to recover the record. So the record holds only the facts
 the task level alone knows: why the task exists, what it may touch, who escalated or reported what,
 which sessions work it, whom they report to and how it ended. Everything about what happened in
-the worktree is read where Execution recorded it, each time Tasks needs it: a task is active when its workspace has a run or a
+the worktree is read where it was recorded, each time Tasks needs it: a task is active when its workspace has a run or a
 change, delivered when Git shows a delivery commit of its workspace at the branch head with nothing
 after it and that commit has exactly one parent, and mergeable only then. The subject is a mark, not
-a proof: only the task level and Delivery commit on the branch, and the task level has no reason to
+a proof: only the task level and the delivering command commit on the branch, and the task level has no reason to
 forge the mark, while the one-parent check keeps a merge that happens to carry the subject, such as
 one resolving a conflict, from counting. With no second copy there is nothing to recover and nothing
 that can disagree.
 
 Deriving costs a scan of the workspace folder, a `git log` of the task branch and a Git read to
 verify its head whenever a task is listed or shown, which is small next to what a run costs, and it
-holds however a run ended: a run whose runner died is `lost` in the listing, and the kernel has
+holds however a run ended: a run whose runner died is `lost` in the listing, and the operating system has
 already released its workspace lock. See the [requirements](requirements.md) and
 [scenarios](scenarios.md).
 
@@ -768,41 +835,44 @@ The **[Task](../../glossary.json#concept.task) store** realization holds the `co
 commands (`cli.py`), the records, the derived state, the binding written at open and the record
 updates task sessions call, the reports and the main agent's session (`store.py`), the merge under
 the merge lock (`merge.py`), and their tests, run on real Git repositories with delivery commits
-and run store entries written the way Execution writes them. It is the only writer of task records,
+and run store entries written the way Execution writes them, and `task deliver`. It is the only writer of task records,
 writing each decision log once, at open, appending only escalations, reports, answers and closings,
 and committing a copy of it when the task ends. The
 command dispatches `concorde task session` to the code of Task sessions.
 
 ## Providers
 
-<a id="uses-execution"></a>
+<a id="uses-kernel"></a>
 
-**Execution** works in the task worktree once it is bound. Tasks writes the
+The **Kernel** gives Tasks every contract it cannot do without. Tasks writes the
 [workspace binding](../../glossary.json#concept.workspace-binding) as the
-[binding contract](../../execution/contracts.md#contract.execution.workspace-binding) requires, and
-relies on Execution only reading it, working on the Modules, branch and base it names, recording
-every run of the workspace as a trace node in the workspace folder it names, and holding the
-[workspace lock](../../glossary.json#concept.workspace-lock) for every bound run, so that Tasks,
-holding the same lock, after waiting for a running run to release it, while it merges or closes the
-task, knows no run of it is changing the branch or worktree meanwhile. It reads a run's
-[result](../../glossary.json#concept.run-result) for its status, Modules and error chain, and the
-run's [run progress file](../../glossary.json#concept.run-progress-file) while it runs, whose
-runner liveness tells a `running` run from a `lost` one; it never writes either. A run that is
-neither finished nor alive is shown as `lost` rather than trusted as running.
+[binding contract](../../kernel/contracts.md#contract.kernel.workspace-binding) requires, and
+relies on whatever works in the workspace only reading it, working on the Modules, branch and base
+it names, recording its runs in the workspace folder it names, and holding the
+[workspace lock](../../glossary.json#concept.workspace-lock) for every run, so that Tasks, holding
+the same lock while it merges, closes or delivers the task, knows nothing of the workspace is
+changing the branch or worktree meanwhile. It recognizes the task's deliveries by the
+[delivery commit](../../glossary.json#concept.delivery-commit) convention: the commits of the
+task's workspace on the task branch since its base commit, whatever part made them, to derive
+`delivered`, to list deliveries in `task show`, and to decide whether a task may be merged or closed
+as merged. A task branch with no delivery commit is refused with `not_merged`, and a head that does
+not verify, having another number of parents than one, with `delivery_unverified`, naming the
+mismatch. It takes the [merge lock](../../glossary.json#concept.merge-lock) to open, merge and close,
+the lock every Issue write takes too, and writes every record as a
+[file transaction](../../glossary.json#concept.file-transaction), complete or absent and bound to
+the bytes it replaces.
 
-<a id="uses-delivery"></a>
+<a id="uses-tracing"></a>
 
-**Delivery** commits a delivered workspace as a
-[delivery commit](../../glossary.json#concept.delivery-commit) on the bound
-branch, whose subject names the workspace. Tasks relies on that commit being the only record of a
-delivery and reads the delivery commits of the task's workspace on the task branch since its base
-commit, with Delivery's own reader, to derive `delivered`, to list deliveries in `task show`, and to
-decide whether a task may be merged or closed as merged. A task branch with no delivery commit is
-refused with `not_merged`. Tasks counts the head as delivered only when it verifies by Delivery's
-own check, the one Delivery applies before it reports a delivered head
-([req.delivery.recovered-verified](../../execution/commands/delivery/requirements.md#req.delivery.recovered-verified)):
-it has exactly one parent. A head that does not verify is refused with `delivery_unverified`,
-naming the mismatch, since Delivery did not create it.
+**Tracing**, the Kernel's child, gives the task, each session, each merge attempt and delivery and
+their checks the shape of a [trace node](../../glossary.json#concept.trace-node), the locks under
+`.concorde/locks/` and the error contract. Tasks writes those nodes through Tracing's library,
+registers the current task folders and the [history](../../glossary.json#concept.history) as trace roots with the
+history's retention, runs Tracing's retention at the start of every `task open` and `task close`,
+and reports in the error contract. It relies on the
+[layout](../../kernel/tracing/contracts.md#layout), the
+[locks](../../kernel/tracing/contracts.md#locks) and the
+[node contract](../../kernel/tracing/contracts.md#contract.tracing.node).
 
 <a id="uses-task-session"></a>
 
@@ -814,38 +884,52 @@ without a merge, to keep their transcripts in their nodes and finish those nodes
 moves and to remove them from Claude's session list afterwards, returning a warning, never a
 refusal, for what it could not keep or remove.
 
-<a id="uses-tracing"></a>
+<a id="uses-distribution"></a>
 
-**Tracing** lays out the task's folder, its history and the locks, and gives the task, each
-session, each merge attempt and its checks the shape of a
-[trace node](../../glossary.json#concept.trace-node). Tasks writes those nodes through Tracing's
-library, takes the task, workspace and merge locks under `.concorde/locks/`, runs Tracing's
-retention at the start of every `task open` and `task close`, and reports in the error contract.
-It relies on the [layout](../../tracing/contracts.md#layout), the
-[locks](../../tracing/contracts.md#locks) and the
-[node contract](../../tracing/contracts.md#contract.tracing.node).
+**Distribution**, present in every installation, installs and updates Concorde in the project and
+marks it Concorde unvalidated after an update until a validation passes. Tasks relies on that mark,
+`.concorde/update.json` of the primary worktree, to tell that a merge must also run
+`concorde spec-validation` where the spec part is installed, whatever checks it was given, so that
+nothing merges before an update is validated.
+
+<a id="uses-execution"></a>
+
+**Execution** is an [optional integration](../../glossary.json#concept.optional-integration).
+Where the execution part is installed, Tasks reads a run's
+[result](../../glossary.json#concept.run-result) for its status, Modules and error chain, and the
+run's [run progress file](../../glossary.json#concept.run-progress-file) and
+[run lock](../../glossary.json#concept.run-lock) while it runs, whose runner liveness tells a
+`running` run from a `lost` one; it never writes either. It reads the runs of a task's workspace in
+the [run store](../../glossary.json#concept.run-store) of its workspace folder and in the lobby, to
+derive `active`, to list them in `task show`, to stop them when a task closes and to wait for one. A
+run that is neither finished nor alive is shown as `lost` rather than trusted as running. Where the
+part is not installed, no run exists: the workspace folder holds none, a task is never active
+through a run, a close stops none, and `task wait --run` is refused with `part_missing`.
+
+<a id="uses-delivery"></a>
+
+**Delivery**, Method's, is an optional integration. Where the method part is installed, it makes
+the delivery commits of a task's workspace after validating it whole, and Tasks relies on it
+verifying a delivered head before it reports one as Tasks itself does
+([req.delivery.recovered-verified](../../method/delivery/requirements.md#req.delivery.recovered-verified)),
+and on its presence to refuse `task deliver`. Where it is not, Tasks delivers with `task deliver`.
 
 <a id="uses-issues"></a>
 
-**Issues** keeps the project's [Issues](../../glossary.json#concept.issue) in the primary worktree.
-Tasks relies on its store to read whether each Issue a task names as resolving exists and is open,
-and to put back, before a merge judges the primary worktree clean, what Issue writes left
-uncommitted there, for a caller that already holds the merge lock; and on its bookkeeping command
-to close them after the merge, for such a caller too, answering or refusing with its own error
-link, which Tasks passes on in a warning.
-
-<a id="uses-distribution"></a>
-
-**Distribution** installs and updates Concorde in the project and marks it Concorde unvalidated
-after an update until a validation passes. Tasks relies on that mark, `.concorde/update.json` of
-the primary worktree, to tell that a merge must also run `concorde spec-validation`, whatever
-checks it was given, so that nothing merges before an update is validated.
+**Issues** is an optional integration. Where the issues part is installed, it keeps the project's
+[Issues](../../glossary.json#concept.issue) in the primary worktree, and Tasks relies on its store to
+read whether each Issue a task names as resolving exists and is open, and to put back, before a
+merge judges the primary worktree clean, what Issue writes left uncommitted there, for a caller
+that already holds the merge lock; and on its bookkeeping command to close them after the merge,
+for such a caller too, answering or refusing with its own error link, which Tasks passes on in a
+warning. Where it is not installed, a task names no Issue (`part_missing`), a merge closes none and
+has no Issue records to put back.
 
 <a id="uses-spec"></a>
 
-**Spec core** provides two things Tasks relies on: its registry, so a record never names a Module
-that doesn't exist at open; and its
-[file transactions](../../glossary.json#concept.file-transaction), so every record write is
-complete or absent, bound to the bytes it replaces. Tasks reads the primary worktree's registry to
-open a task, since its worktree doesn't exist yet. If the Specs cannot be loaded, the command is
-refused and nothing is written.
+**Spec core** is an optional integration. Where the spec part is installed, Tasks reads the primary
+worktree's registry to open a task, since its worktree does not exist yet, so a record never names a
+Module that does not exist at open; if the Specs cannot be loaded, the open is refused and nothing
+is written. A merge also runs its `concorde spec-validation` as the default check and after an
+unvalidated update. Where it is not installed, a task's Modules are plain labels and a merge runs
+only the checks it is given.

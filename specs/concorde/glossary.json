@@ -4,9 +4,9 @@
     {
       "id": "concept.agent-harness",
       "title": "Agent harness",
-      "owner": "module.harness",
-      "definition": "The context, permission and environment Concorde gives one agent, derived from the Specs and the agent's task and applied through the agent program's own configuration.",
-      "explanation": "specs/concorde/harness/module.md#concept.agent-harness"
+      "owner": "module.concorde",
+      "definition": "The context, permission and environment Concorde gives one agent, applied through the agent program's own configuration: a worker's by the worker harness from its grant, a task session's by Coordination from its task, the main agent's by its installed guidance alone.",
+      "explanation": "specs/concorde/module.md#concept.agent-harness"
     },
     {
       "id": "concept.boundary",
@@ -39,15 +39,15 @@
       "id": "concept.brief",
       "title": "Brief",
       "owner": "module.workers",
-      "definition": "The prompt a worker receives: the Operation's task instructions followed by the grant's `rw`, `ro` and `names` lists as absolute paths and the rules of its boundary.",
-      "explanation": "specs/concorde/execution/workers/module.md#concept.brief"
+      "definition": "The prompt a worker receives: its caller's task instructions followed by the grant's `rw`, `ro` and `names` lists as absolute paths and the rules of its boundary.",
+      "explanation": "specs/concorde/worker-harness/workers/module.md#concept.brief"
     },
     {
       "id": "concept.brownfield-workflow",
       "title": "Brownfield workflow",
-      "owner": "module.workflows",
+      "owner": "module.method",
       "definition": "The workflow that describes a project whose code came before its Specs: survey, scaffold, code_to_spec per Module, spec review, task validation and delivery.",
-      "explanation": "specs/concorde/execution/workflows/module.md#concept.brownfield-workflow",
+      "explanation": "specs/concorde/method/module.md#concept.brownfield-workflow",
       "relates": [
         {
           "verb": "is a",
@@ -137,15 +137,15 @@
       "id": "concept.decision-point",
       "title": "Decision point",
       "owner": "module.workflows",
-      "definition": "A decision or open question in a run's output that the workflow leaves to be settled above the task, by the main agent when its authority covers it and otherwise by the developer: every open question, and every decision of a survey that the worker took itself rather than following an answer.",
-      "explanation": "specs/concorde/execution/workflows/module.md#concept.decision-point"
+      "definition": "An item a run's output lists, under the workflow step output convention, as to be settled above the task before an interactive workflow goes on, by the main agent when its authority covers it and otherwise by the developer; the Operation that produces it decides which of its decisions and open questions are such points.",
+      "explanation": "specs/concorde/workflows/module.md#concept.decision-point"
     },
     {
       "id": "concept.decomposition-proposal",
       "title": "Decomposition proposal",
       "owner": "module.adoption",
       "definition": "The output of a survey: the child Modules to create with their purposes, bound entries and uses, the checks it proposes, the decisions it took and its open questions.",
-      "explanation": "specs/concorde/execution/operations/adoption/module.md#concept.decomposition-proposal"
+      "explanation": "specs/concorde/method/adoption/module.md#concept.decomposition-proposal"
     },
     {
       "id": "concept.defect-report",
@@ -157,16 +157,16 @@
     {
       "id": "concept.delivery-commit",
       "title": "Delivery commit",
-      "owner": "module.delivery",
-      "definition": "The commit Delivery creates on top of a workspace's branch it validated, holding every change not yet committed, and marked as the delivery of the workspace by its subject `concorde: deliver <workspace>` alone.",
-      "explanation": "specs/concorde/execution/commands/delivery/module.md#concept.delivery-commit"
+      "owner": "module.kernel",
+      "definition": "A commit on a workspace's branch, since its base commit, whose subject is exactly `concorde: deliver <workspace>`, which alone marks the workspace delivered and which only a part's delivering command makes: Method's `delivery` after validating the workspace, or Coordination's `task deliver` where Method is not installed.",
+      "explanation": "specs/concorde/kernel/module.md#concept.delivery-commit"
     },
     {
       "id": "concept.deny-rules",
       "title": "Deny rules",
       "owner": "module.harness",
       "definition": "The `permissions.deny` entries of the worker settings that forbid the file tools every path the grant does not make readable or writable.",
-      "explanation": "specs/concorde/harness/module.md#concept.deny-rules"
+      "explanation": "specs/concorde/worker-harness/harness/module.md#concept.deny-rules"
     },
     {
       "id": "concept.detached-run",
@@ -194,7 +194,7 @@
       "title": "Error chain",
       "owner": "module.tracing",
       "definition": "The structured report of an error that travels up: one link per level that could not handle it, each with its detailed account and its reason for not handling it, and the errors it received from below nested as its causes.",
-      "explanation": "specs/concorde/tracing/module.md#concept.error-chain"
+      "explanation": "specs/concorde/kernel/tracing/module.md#concept.error-chain"
     },
     {
       "id": "concept.evidence",
@@ -227,9 +227,9 @@
     {
       "id": "concept.file-transaction",
       "title": "File transaction",
-      "owner": "module.spec",
-      "definition": "A set of whole-file writes, each bound to the digest of the bytes it replaces, that is applied completely or, when a write or its final check fails while the process runs, not at all.",
-      "explanation": "specs/concorde/spec-tooling/spec/module.md#concept.file-transaction"
+      "owner": "module.kernel",
+      "definition": "A set of whole-file writes, each bound to the digest of the bytes it replaces, whose failure observed by its process restores every file it wrote, a refused restoration being reported file by file.",
+      "explanation": "specs/concorde/kernel/module.md#concept.file-transaction"
     },
     {
       "id": "concept.grant",
@@ -248,9 +248,9 @@
     {
       "id": "concept.history",
       "title": "History",
-      "owner": "module.tracing",
+      "owner": "module.tasks",
       "definition": "The folder `.concorde/history/` to which closing a task moves the task's whole folder, record, decision log and trace, where it is never changed, apart from the merge that closed the task finishing its answer, and retention only removes its conversation records or the whole folder.",
-      "explanation": "specs/concorde/tracing/module.md#concept.history",
+      "explanation": "specs/concorde/coordination/tasks/module.md#concept.history",
       "contrasts": [
         {
           "target": "concept.task-record",
@@ -330,22 +330,22 @@
       "id": "concept.main-session-guidance",
       "title": "Main-session guidance",
       "owner": "module.main-session",
-      "definition": "The instructions, installed as a project skill for Claude Code and as a block of the project's `CLAUDE.md`, that tell the main agent how to work with Concorde.",
+      "definition": "The instructions, installed as a project skill for Claude Code and as a block of the project's `CLAUDE.md`, that tell the main agent how to work with Concorde: Coordination's working method followed by the guidance each other installed part contributes.",
       "explanation": "specs/concorde/coordination/main-session/module.md#concept.main-session-guidance"
     },
     {
       "id": "concept.merge-lock",
       "title": "Merge lock",
-      "owner": "module.tasks",
-      "definition": "The lock `.concorde/locks/merge.lock` of the primary worktree that one process at a time holds while it merges a task into the primary branch, opens a task, closes one or writes an Issue; the kernel releases it when that process ends.",
-      "explanation": "specs/concorde/coordination/tasks/module.md#concept.merge-lock"
+      "owner": "module.kernel",
+      "definition": "The lock `.concorde/locks/merge.lock` of the primary worktree that one process at a time holds while it changes the primary branch on Concorde's behalf, such as a task merge, open or close or an Issue write; the operating system releases it when that process ends.",
+      "explanation": "specs/concorde/kernel/module.md#concept.merge-lock"
     },
     {
       "id": "concept.model-map",
       "title": "Model map",
       "owner": "module.workers",
       "definition": "The user's JSON file outside every repository, `~/.config/concorde/models.json` unless `CONCORDE_MODEL_MAP` or `XDG_CONFIG_HOME` places it elsewhere, that gives each project model name of the worker configuration its local model id on pi, on Claude Code or both, and without whose entry for its backend a worker is refused.",
-      "explanation": "specs/concorde/execution/workers/module.md#concept.model-map",
+      "explanation": "specs/concorde/worker-harness/workers/module.md#concept.model-map",
       "contrasts": [
         {
           "target": "concept.worker-configuration",
@@ -365,30 +365,20 @@
       "title": "Open question",
       "owner": "module.adoption",
       "definition": "A behaviour the worker read but could not tell to be intended, reported with what it observed, why it is uncertain and the options, and written into no promise.",
-      "explanation": "specs/concorde/execution/operations/adoption/module.md#concept.open-question"
+      "explanation": "specs/concorde/method/adoption/module.md#concept.open-question"
     },
     {
       "id": "concept.operation",
       "title": "Operation",
       "owner": "module.operations",
-      "definition": "A named job that combines host steps, service calls and one or more AI worker runs under Spec-derived grants, started with `concorde run` in a workspace, and returns exactly one run result.",
-      "explanation": "specs/concorde/execution/operations/module.md#concept.operation",
-      "relates": [
-        {
-          "verb": "launches workers through",
-          "target": "module.workers"
-        },
-        {
-          "verb": "runs checks through",
-          "target": "module.checks"
-        }
-      ]
+      "definition": "A named job whose steps launch one or more AI workers, together with host steps and service calls, started with `concorde run` in a workspace, and that returns exactly one run result; the part that provides it registers its definition.",
+      "explanation": "specs/concorde/execution/operations/module.md#concept.operation"
     },
     {
       "id": "concept.operation-catalog",
       "title": "Operation catalog",
       "owner": "module.operations",
-      "definition": "The fixed list of Operations that gives, for each, its providing Module, its task type, the ids of its workers, whether it may run unbound, whether it may change the workspace and the contract of its output.",
+      "definition": "The list of Operations the installed parts register, giving for each its providing Module, its task type, the ids of its workers, whether it may run unbound, whether it may change the workspace and the contract of its output.",
       "explanation": "specs/concorde/execution/operations/module.md#concept.operation-catalog",
       "relates": [
         {
@@ -398,18 +388,51 @@
       ]
     },
     {
+      "id": "concept.optional-integration",
+      "title": "Optional integration",
+      "owner": "module.concorde",
+      "definition": "A feature of one part that uses a part it does not depend on, which works when that part is installed and otherwise is skipped with a plain statement of what is missing, never failing for its absence.",
+      "explanation": "specs/concorde/module.md#concept.optional-integration",
+      "relates": [
+        {
+          "verb": "connects",
+          "target": "concept.part"
+        }
+      ]
+    },
+    {
+      "id": "concept.part",
+      "title": "Part",
+      "owner": "module.concorde",
+      "definition": "One independently installable piece of Concorde, made of one top-level Module of the Framework with its children, that names the parts it depends on, works without every part it does not depend on and reaches any other only through an optional integration.",
+      "explanation": "specs/concorde/module.md#concept.part"
+    },
+    {
+      "id": "concept.part-registration",
+      "title": "Part registration",
+      "owner": "module.distribution",
+      "definition": "The plain data one installed part gives Distribution: its name, the parts it depends on, its commands, MCP tools, typed value types, guidance, install contributions and idle checks, from which the `concorde` command and the project MCP server are composed.",
+      "explanation": "specs/concorde/distribution/module.md#concept.part-registration",
+      "relates": [
+        {
+          "verb": "describes",
+          "target": "concept.part"
+        }
+      ]
+    },
+    {
       "id": "concept.permission-extension",
       "title": "Permission extension",
       "owner": "module.harness",
       "definition": "The pi extension the Harness generates from a grant, which checks every file tool against it, runs every command in the sandbox and receives the worker result.",
-      "explanation": "specs/concorde/harness/module.md#concept.permission-extension"
+      "explanation": "specs/concorde/worker-harness/harness/module.md#concept.permission-extension"
     },
     {
       "id": "concept.progress-file",
       "title": "Progress file",
       "owner": "module.workers",
       "definition": "A worker run's `status.json` in its [run directory](#concept.run-directory), which the host keeps current while the worker runs so the main session can show what it is doing.",
-      "explanation": "specs/concorde/execution/workers/module.md#concept.progress-file",
+      "explanation": "specs/concorde/worker-harness/workers/module.md#concept.progress-file",
       "contrasts": [
         {
           "target": "concept.run-progress-file",
@@ -420,9 +443,9 @@
     {
       "id": "concept.project-mcp-server",
       "title": "Project MCP server",
-      "owner": "module.main-session",
-      "definition": "The project's one stdio MCP server, `concorde project-mcp` registered as `concorde`, of which each Claude Code session runs its own process, that serves the project's tasks, traces and locks from the primary worktree, answers each call with a fresh process of the Concorde the primary worktree's `concorde` runs at that moment, takes locks without waiting and hands a granted lock to the detached process doing the work, and wakes its session through a Claude Code channel when a registered wait is over.",
-      "explanation": "specs/concorde/coordination/main-session/module.md#concept.project-mcp-server",
+      "owner": "module.distribution",
+      "definition": "The project's one stdio MCP server, `concorde project-mcp` registered as `concorde`, of which each Claude Code session runs its own process, that serves the MCP tools the installed parts register, answers each call with a fresh process of the Concorde the primary worktree's `concorde` runs at that moment, takes locks without waiting and hands a granted lock to the detached process doing the work, and wakes its session through a Claude Code channel when a registered wait is over.",
+      "explanation": "specs/concorde/distribution/module.md#concept.project-mcp-server",
       "contrasts": [
         {
           "target": "concept.merge-lock",
@@ -456,7 +479,7 @@
       "title": "Readiness",
       "owner": "module.validation",
       "definition": "The outcome of Validation's readiness steps in one `task-validation` or `delivery` run: whether the workspace may be delivered, with its blocking findings and the checks run, bound to a digest of the exact inputs examined.",
-      "explanation": "specs/concorde/execution/commands/validation/module.md#concept.readiness"
+      "explanation": "specs/concorde/method/validation/module.md#concept.readiness"
     },
     {
       "id": "concept.registry",
@@ -469,22 +492,22 @@
       "id": "concept.resume-round",
       "title": "Resume round",
       "owner": "module.workers",
-      "definition": "One continuation of the same worker session with the failures of the configured checks or, once they pass, with what the caller's own validation of the round reports to repair.",
-      "explanation": "specs/concorde/execution/workers/module.md#concept.resume-round"
+      "definition": "One continuation of the same worker session with what its caller's round validation reports to repair, such as the failures of configured checks or the structural errors of what the worker wrote.",
+      "explanation": "specs/concorde/worker-harness/workers/module.md#concept.resume-round"
     },
     {
       "id": "concept.review-finding",
       "title": "Review finding",
       "owner": "module.spec-review",
       "definition": "One problem a reviewer or architect establishes in the Specs of a reviewed Module, with its location, dimension, tier, evidence and a suggested repair, which the review reports as an Issue.",
-      "explanation": "specs/concorde/spec-tooling/spec-review/module.md#concept.review-finding"
+      "explanation": "specs/concorde/method/spec-review/module.md#concept.review-finding"
     },
     {
       "id": "concept.review-verdict",
       "title": "Review verdict",
       "owner": "module.spec-review",
       "definition": "The outcome of a Spec review or a Spec panel, derived by the Operation from the Issues that stand for each reviewed Module: `accepted`, `changes_required` or `incomplete`.",
-      "explanation": "specs/concorde/spec-tooling/spec-review/module.md#concept.review-verdict",
+      "explanation": "specs/concorde/method/spec-review/module.md#concept.review-verdict",
       "relates": [
         {
           "verb": "is derived from",
@@ -504,7 +527,7 @@
       "title": "Run directory",
       "owner": "module.workers",
       "definition": "The [trace node](#concept.trace-node) `workers/<run-id>/` of one worker run, inside the node of the run that launched it, holding its run record, progress file, grant, brief, transcript and one node per round.",
-      "explanation": "specs/concorde/execution/workers/module.md#concept.run-directory",
+      "explanation": "specs/concorde/worker-harness/workers/module.md#concept.run-directory",
       "relates": [
         {
           "verb": "holds",
@@ -540,8 +563,8 @@
       "id": "concept.run-record",
       "title": "Run record",
       "owner": "module.workers",
-      "definition": "The host's durable record of one worker run, the `trace.json` of its [run directory](#concept.run-directory): its grant and context identity, settings, transcript, audits, checks, rounds and result.",
-      "explanation": "specs/concorde/execution/workers/module.md#concept.run-record",
+      "definition": "The host's durable record of one worker run, the `trace.json` of its [run directory](#concept.run-directory): its grant and context identity, settings, transcript, audits, round validations, rounds and result.",
+      "explanation": "specs/concorde/worker-harness/workers/module.md#concept.run-record",
       "relates": [
         {
           "verb": "records",
@@ -582,7 +605,7 @@
       "title": "Runtime directory",
       "owner": "module.workers",
       "definition": "The private directory under `/tmp` that holds what one worker run needs only while it runs, its generated configuration, credential copies, home, temporary and working directories, and that the host removes when the run ends.",
-      "explanation": "specs/concorde/execution/workers/module.md#concept.runtime-directory",
+      "explanation": "specs/concorde/worker-harness/workers/module.md#concept.runtime-directory",
       "relates": [
         {
           "verb": "holds",
@@ -599,9 +622,9 @@
     {
       "id": "concept.session-boundary",
       "title": "Session boundary",
-      "owner": "module.harness",
-      "definition": "The settings and write hook that keep a task session's file-writing tools inside its task, its one restriction, everything else of the session being left open.",
-      "explanation": "specs/concorde/harness/module.md#concept.session-boundary"
+      "owner": "module.task-session",
+      "definition": "The Claude Code settings and write hook of its own that keep a task session's Edit and Write inside its task worktree and decision log, its one restriction, everything else of the session being left open.",
+      "explanation": "specs/concorde/coordination/task-session/module.md#concept.session-boundary"
     },
     {
       "id": "concept.spec",
@@ -615,7 +638,7 @@
       "title": "Spec change",
       "owner": "module.specification",
       "definition": "The result of one specify run: the documents the worker changed, the documents the Operation created for it, the worker's account of the promises it changed, the Modules affected and the validation outcome.",
-      "explanation": "specs/concorde/execution/operations/specification/module.md#concept.spec-change"
+      "explanation": "specs/concorde/method/specification/module.md#concept.spec-change"
     },
     {
       "id": "concept.spec-context",
@@ -629,21 +652,21 @@
       "title": "Spec gap",
       "owner": "module.understanding",
       "definition": "A promise that the stated goal relies on and that the Spec of a bound Module does not state, reported with where it belongs instead of being inferred.",
-      "explanation": "specs/concorde/execution/operations/understanding/module.md#concept.spec-gap"
+      "explanation": "specs/concorde/method/understanding/module.md#concept.spec-gap"
     },
     {
       "id": "concept.standard-worker-sequence",
       "title": "Standard worker sequence",
-      "owner": "module.operations",
-      "definition": "The fixed sequence by which an Operation's step launches one worker: the step computes and freezes the grant and settles the worker's backend and model, and Workers prepares the settings and brief, launches the worker, audits it, runs checks with resume rounds and records the worker run.",
-      "explanation": "specs/concorde/execution/operations/module.md#concept.standard-worker-sequence"
+      "owner": "module.method",
+      "definition": "The fixed sequence by which a step of a Method Operation launches one worker: it admits the worker against the worker configuration and model map, computes and freezes the grant from the workspace's Specs, composes the task instructions, and hands the grant and its round validation to the worker harness, which prepares the settings and brief, launches the worker, audits it, resumes it with what the round validation reports and records the worker run.",
+      "explanation": "specs/concorde/method/module.md#concept.standard-worker-sequence"
     },
     {
       "id": "concept.step-agent",
       "title": "Step agent",
       "owner": "module.workflows",
-      "definition": "The relay of a workflow step: a small Claude Code subagent that calls the project MCP server's `workflow_step` once, waiting at most 100 seconds, while the step function asks again until the run has finished.",
-      "explanation": "specs/concorde/execution/workflows/module.md#concept.step-agent",
+      "definition": "The relay of a workflow step: a small Claude Code subagent that calls the `workflow_step` tool Workflows registers with the project MCP server once, waiting at most 100 seconds, while the step function asks again until the run has finished.",
+      "explanation": "specs/concorde/workflows/module.md#concept.step-agent",
       "relates": [
         {
           "verb": "relays",
@@ -656,7 +679,7 @@
       "title": "Step key",
       "owner": "module.workflows",
       "definition": "The name of a workflow step within its workspace, made of the name the script gives it and, when a restart label or answers are passed, that label and a digest of those answers.",
-      "explanation": "specs/concorde/execution/workflows/module.md#concept.step-key"
+      "explanation": "specs/concorde/workflows/module.md#concept.step-key"
     },
     {
       "id": "concept.structural-check",
@@ -736,8 +759,8 @@
       "id": "concept.trace",
       "title": "Trace",
       "owner": "module.tracing",
-      "definition": "The tree of [trace nodes](#concept.trace-node) below one task or one unbound run, nested as the work was: a task's sessions, merges and workspace, the workspace's workflow and runs, each run's checks and worker runs, each worker run's rounds.",
-      "explanation": "specs/concorde/tracing/module.md#concept.trace",
+      "definition": "The tree of [trace nodes](#concept.trace-node) below one root node, such as a task or an unbound run, nested as the work was: a task's sessions, merges and workspace, the workspace's workflow and runs, each run's checks and worker runs, each worker run's rounds.",
+      "explanation": "specs/concorde/kernel/tracing/module.md#concept.trace",
       "relates": [
         {
           "verb": "is made of",
@@ -750,14 +773,14 @@
       "title": "Trace node",
       "owner": "module.tracing",
       "definition": "The folder one level of work leaves, holding its `trace.json` record in one uniform shape (identity, kind, times, status, own usage, error link, metadata, artifacts, references and its producer's content) with its files and the folders of the nodes below it.",
-      "explanation": "specs/concorde/tracing/module.md#concept.trace-node"
+      "explanation": "specs/concorde/kernel/tracing/module.md#concept.trace-node"
     },
     {
       "id": "concept.typed-value",
       "title": "Typed value",
-      "owner": "module.spec",
+      "owner": "module.kernel",
       "definition": "A versioned JSON record `{type_id, schema_version, data}` whose data is checked against the schema its owner registered for that type.",
-      "explanation": "specs/concorde/spec-tooling/spec/module.md#concept.typed-value"
+      "explanation": "specs/concorde/kernel/module.md#concept.typed-value"
     },
     {
       "id": "concept.unbound-checkout",
@@ -790,7 +813,7 @@
       "id": "concept.worker",
       "title": "Worker",
       "owner": "module.concorde",
-      "definition": "One headless Claude Code or pi process that performs one bounded task of one task type under a frozen grant and reports only to the Operation run that launched it.",
+      "definition": "One headless Claude Code or pi process that performs one bounded task of one task type under a frozen grant and reports only to the run that launched it through the worker harness.",
       "explanation": "specs/concorde/module.md#concept.worker"
     },
     {
@@ -798,7 +821,7 @@
       "title": "Worker backend",
       "owner": "module.workers",
       "definition": "The agent program a worker runs on, Claude Code or pi: the one the worktree's worker configuration chooses for the worker or its Operation, otherwise pi; both enforce the same grant.",
-      "explanation": "specs/concorde/execution/workers/module.md#concept.worker-backend",
+      "explanation": "specs/concorde/worker-harness/workers/module.md#concept.worker-backend",
       "relates": [
         {
           "verb": "pi applies",
@@ -815,7 +838,7 @@
       "title": "Worker configuration",
       "owner": "module.workers",
       "definition": "A worktree's Git-tracked `.concorde/workers.json`, required before any worker runs and the only source of a worker's model and reasoning level: the enabled models, each named by a project model name that depends on no installation and each with an optional level of its own, and a backend, a model and a reasoning level for every worker, for an Operation's workers and for one worker by its id, the most specific entry winning field by field, together with the limits of every worker launch and the runtime paths workers may read.",
-      "explanation": "specs/concorde/execution/workers/module.md#concept.worker-configuration",
+      "explanation": "specs/concorde/worker-harness/workers/module.md#concept.worker-configuration",
       "relates": [
         {
           "verb": "is resolved through",
@@ -828,21 +851,21 @@
       "title": "Worker id",
       "owner": "module.workers",
       "definition": "The stable name an Operation gives one worker it may launch, such as `spec_panel`'s `reviewer2` or `chair`, used alike in the worker configuration, the run record and the evidence.",
-      "explanation": "specs/concorde/execution/workers/module.md#concept.worker-id"
+      "explanation": "specs/concorde/worker-harness/workers/module.md#concept.worker-id"
     },
     {
       "id": "concept.worker-result",
       "title": "Worker result",
       "owner": "module.workers",
       "definition": "The structured answer a worker ends with, validated against a fixed schema, reporting its status, a summary, its own error link when it could not finish, and the deletions it proposes.",
-      "explanation": "specs/concorde/execution/workers/module.md#concept.worker-result"
+      "explanation": "specs/concorde/worker-harness/workers/module.md#concept.worker-result"
     },
     {
       "id": "concept.worker-settings",
       "title": "Worker settings",
       "owner": "module.harness",
       "definition": "The Claude Code settings file the Harness generates from a grant, carrying the Bash sandbox, the deny rules and the write hook of one worker run.",
-      "explanation": "specs/concorde/harness/module.md#concept.worker-settings",
+      "explanation": "specs/concorde/worker-harness/harness/module.md#concept.worker-settings",
       "relates": [
         {
           "verb": "carries",
@@ -859,7 +882,7 @@
       "title": "Workflow",
       "owner": "module.workflows",
       "definition": "A named procedure that orders the runs of one bound workspace and handles their results and decision points, written once and rendered as a Claude Code workflow.",
-      "explanation": "specs/concorde/execution/workflows/module.md#concept.workflow",
+      "explanation": "specs/concorde/workflows/module.md#concept.workflow",
       "relates": [
         {
           "verb": "runs",
@@ -880,7 +903,7 @@
       "title": "Workflow mode",
       "owner": "module.workflows",
       "definition": "Whether a workflow run is interactive, ending at the first decision point or the first step that did not end ok so that its decisions are settled above the task, through the main agent, before it goes on, or no-ask, keeping every decision its workers took and reporting it at the end.",
-      "explanation": "specs/concorde/execution/workflows/module.md#concept.workflow-mode",
+      "explanation": "specs/concorde/workflows/module.md#concept.workflow-mode",
       "relates": [
         {
           "verb": "decides what happens at",
@@ -893,7 +916,7 @@
       "title": "Workflow record",
       "owner": "module.workflows",
       "definition": "The `trace.json` of a workspace's workflow [trace node](#concept.trace-node), in which Workflows records the workflow's name, every step with its run and node, and every report.",
-      "explanation": "specs/concorde/execution/workflows/module.md#concept.workflow-record",
+      "explanation": "specs/concorde/workflows/module.md#concept.workflow-record",
       "relates": [
         {
           "verb": "lists",
@@ -906,14 +929,14 @@
       "title": "Workflow result",
       "owner": "module.workflows",
       "definition": "The envelope `concorde workflow report` assembles from the workflow record and the saved run results: status, steps, decisions, open questions, deviations, pending decision points, problems and the error chain.",
-      "explanation": "specs/concorde/execution/workflows/module.md#concept.workflow-result"
+      "explanation": "specs/concorde/workflows/module.md#concept.workflow-result"
     },
     {
       "id": "concept.workflow-script",
       "title": "Workflow script",
       "owner": "module.workflows",
-      "definition": "The JavaScript source of one workflow's procedure, rendered by the build into a Claude Code workflow.",
-      "explanation": "specs/concorde/execution/workflows/module.md#concept.workflow-script",
+      "definition": "The JavaScript source of one workflow's procedure, contributed by the part that owns the procedure and rendered by the build, with Workflows' Claude Code step adapter, into a Claude Code workflow.",
+      "explanation": "specs/concorde/workflows/module.md#concept.workflow-script",
       "relates": [
         {
           "verb": "defines",
@@ -926,7 +949,7 @@
       "title": "Workflow step",
       "owner": "module.workflows",
       "definition": "One run of a workflow, of an Operation or an execution command, named by a step key and started and awaited through `concorde workflow step`, which returns the recorded run for a key it has seen before.",
-      "explanation": "specs/concorde/execution/workflows/module.md#concept.workflow-step",
+      "explanation": "specs/concorde/workflows/module.md#concept.workflow-step",
       "relates": [
         {
           "verb": "is named by",
@@ -937,37 +960,37 @@
     {
       "id": "concept.workspace",
       "title": "Workspace",
-      "owner": "module.execution",
+      "owner": "module.kernel",
       "definition": "One worktree prepared for a bounded piece of work, with a name, a goal, the Modules it works on, the branch it works on and the commit it started from.",
-      "explanation": "specs/concorde/execution/module.md#concept.workspace"
+      "explanation": "specs/concorde/kernel/module.md#concept.workspace"
     },
     {
       "id": "concept.workspace-binding",
       "title": "Workspace binding",
-      "owner": "module.execution",
-      "definition": "The file `.concorde/workspace.json` at a workspace's root that names it, its goal, Modules, branch and base commit, the workspace folder where its runs are traced and the `.concorde` whose `locks/` holds its locks, written by whoever prepares the workspace and only read by Execution.",
-      "explanation": "specs/concorde/execution/module.md#concept.workspace-binding"
+      "owner": "module.kernel",
+      "definition": "The file `.concorde/workspace.json` at a workspace's root that names it, its goal, Modules, branch and base commit, the workspace folder where its runs are traced and the `.concorde` whose `locks/` holds its locks, written by whoever prepares the workspace and only read by the parts that work in it.",
+      "explanation": "specs/concorde/kernel/module.md#concept.workspace-binding"
     },
     {
       "id": "concept.workspace-lock",
       "title": "Workspace lock",
-      "owner": "module.execution",
-      "definition": "The lock file `locks/workspaces/<workspace>.lock` of one workspace, held by the process running one of its runs from before that run's admission until after its result, so that a workspace runs one thing at a time.",
-      "explanation": "specs/concorde/execution/module.md#concept.workspace-lock"
+      "owner": "module.kernel",
+      "definition": "The lock file `locks/workspaces/<workspace>.lock` of one workspace, held by the process running one of its runs from before that run's admission until after its result, or by whoever prepared the workspace while it merges or retires it, so that a workspace does one thing at a time.",
+      "explanation": "specs/concorde/kernel/module.md#concept.workspace-lock"
     },
     {
       "id": "concept.write-audit",
       "title": "Write audit",
       "owner": "module.workers",
       "definition": "The host's comparison, after each round and outside the worker, of the worktree's changes with the grant's `rw` list.",
-      "explanation": "specs/concorde/execution/workers/module.md#concept.write-audit"
+      "explanation": "specs/concorde/worker-harness/workers/module.md#concept.write-audit"
     },
     {
       "id": "concept.write-hook",
       "title": "Write hook",
       "owner": "module.harness",
-      "definition": "A small PreToolUse hook on Edit and Write that allows only the paths its policy names, a worker's grant's `rw` list or a task session's task worktree and decision log, and explains every denial.",
-      "explanation": "specs/concorde/harness/module.md#concept.write-hook"
+      "definition": "A small PreToolUse hook on Edit and Write that makes a worker's grant's `rw` list its exact write allowlist and explains every denial.",
+      "explanation": "specs/concorde/worker-harness/harness/module.md#concept.write-hook"
     }
   ]
 }

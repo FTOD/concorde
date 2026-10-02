@@ -423,7 +423,7 @@ This illustrates [Issue recovery](requirements.md#req.main-session.issues-recove
 - THEN the second call answers with the changed Concorde, the server tells its session that its tools changed, and its next `tools/list` lists the added tool, which answers
 - BUT once the primary worktree's `concorde` exits without an answer, a call is refused with the server's own `call_failed` link naming its exit status and what it printed
 
-This illustrates [every call answering with the current Concorde](requirements.md#req.main-session.project-mcp-current-code).
+This illustrates [every call answering with the current Concorde](../../distribution/requirements.md#req.distribution.mcp-current-code).
 
 ### scenario.main-session.project-mcp-short-writes — Short writes take structured arguments
 

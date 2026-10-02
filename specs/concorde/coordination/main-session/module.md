@@ -18,10 +18,13 @@ nothing here constrains the developer.
 For now the guidance serves Claude Code only: the main agent is a Claude Code session, and so is
 every task session, since a task session runs on the main agent's own program, while the
 [workers](../../glossary.json#concept.worker) of their runs may run on pi. Distribution renders and
-installs this [Module](../../glossary.json#concept.module)'s content. Beside the guidance the Module
-owns one program, the [project MCP server](../../glossary.json#concept.project-mcp-server): a thin
-MCP presentation of the task, trace and lock commands through which a Claude Code session queries
-and changes tasks, takes a lock without waiting, and is woken when something it waits for happens.
+installs this [Module](../../glossary.json#concept.module)'s content, composed with the guidance the
+other installed [parts](../../glossary.json#concept.part) contribute
+([Guidance by part](#guidance-by-part)). Beside the guidance the Module provides Coordination's
+tools on the [project MCP server](../../glossary.json#concept.project-mcp-server), Distribution's
+host of the tools every installed part registers: a thin MCP presentation of the task and lock
+commands through which a Claude Code session queries and changes tasks, takes a lock without
+waiting, and is woken when something it waits for happens.
 
 ## Core concepts
 
@@ -34,9 +37,34 @@ agent, and gives it a [working method](#the-working-method). Its task-session pa
 prompt of every task session. The guidance is instructions, not a program, because the main agent's
 work is judgment; the project MCP server beside it is a program, but one that only presents
 commands and adds no rule beyond taking locks without waiting. Everything that must hold regardless
-of judgment is enforced elsewhere — workers by the Harness, Operations by their own checks,
+of judgment is enforced elsewhere — workers by the worker harness, Operations by their own checks,
 readiness by `task-validation` and `delivery` — so an agent that ignores the guidance wastes effort
 but cannot widen a worker's boundary.
+
+<a id="guidance-by-part"></a>
+
+**Guidance by part.** The guidance a main agent reads is composed at install from the sections of
+the installed parts, each part contributing the section about its own commands and tools, and a part
+that is not installed contributing nothing, so the guidance never tells an agent to use what the
+project lacks. This Module owns Coordination's part, the frame every other section fits in: the
+working method, the escalation policy, the task brief, reports and the decision log, tasks, task
+sessions and their merges, and the method of working inside a task. The sections below that
+describe another part's commands are that part's contribution, described here as the main agent
+reads them:
+
+| Section | Contributed by | Present only where |
+| --- | --- | --- |
+| [The working method](#the-working-method), [Escalation policy](#escalation-policy), reports, merging, task sessions, Coordination's tools | coordination | always |
+| Running [Operations](../../glossary.json#concept.operation) and `plan_review`, `task-validation` and `delivery` in a task, [Questions without a task](#questions-without-a-task) | method, with execution | the method part is installed; otherwise the task session delivers with `concorde task deliver` |
+| [Worker models](#worker-models) | worker harness | the worker harness part is installed |
+| [Workflows](#workflows) | workflow, and method for the brownfield workflow | the workflow part is installed |
+| [Issues](#issues) | issues | the issues part is installed |
+| [Spec queries](#spec-queries), `spec-validation`, `registry --write` and translating Spec tooling's errors | spec | the spec part is installed |
+| [Develop installs](#develop-installs) | Dogfooding | a develop install |
+
+The sources of every section live with this Module's guidance today, and the code tasks that follow
+the parts' Specs move each part's section to that part; what each section tells the main agent is
+described here once.
 
 <a id="concept.task-brief"></a>
 
@@ -49,25 +77,24 @@ before it changes anything. It is written by the main agent for a task session, 
 [brief](../../glossary.json#concept.brief), which an Operation generates for each worker it launches
 from that worker's grant.
 
-<a id="concept.project-mcp-server"></a>
+<a id="coordination-tools"></a>
 
-The **[project MCP server](../../glossary.json#concept.project-mcp-server)** is the project's one
-stdio MCP server for the main-session side, `concorde project-mcp`, which the installer registers as
-`concorde` in the project's `.mcp.json`. Each Claude Code session that loads it runs its own server
-process, which lives exactly as long as that session; there is no daemon. Started from any worktree,
-it finds the primary worktree through Git's common directory and serves that project's tasks, traces
-and locks, read afresh on every call. It answers no call with code of its own: each call runs in a
-fresh process of the Concorde that the primary worktree's `concorde` command runs at that moment, so
-a merge or a `concorde update` during a session changes the code that answers the session's next
-call, and the long-lived process keeps only what must live as long as its session. It is a
-presentation: the `concorde` commands stay the source of truth, and every answer and refusal of a
-query or short write is the command's own. Its one rule of its own is that it never waits for a
-lock, so `task_merge` answers at once with the merge it started, and `register_wait` with the wait
-it registered, while the merge's result and the wait's answer arrive later. One tool,
-`workflow_step`, works on a workspace rather than on records: it starts and awaits the [workflow
-steps](../../glossary.json#concept.workflow-step) of the workspace its session works in, so that
-their runs are processes of the server rather than of a relaying agent's turn. Its tools and how it
-wakes a session are explained [below](#the-project-mcp-server).
+**Coordination's tools** are what this Module registers, for the coordination part, with the
+[project MCP server](../../glossary.json#concept.project-mcp-server), the project's one stdio MCP
+server that [Distribution](../../distribution/module.md) hosts and composes from what every
+installed part registers. Each Claude Code session that loads it runs its own server process, and
+each call is answered by a fresh process of the Concorde the primary worktree's `concorde` runs at
+that moment, so a merge or a `concorde update` during a session changes the code that answers its
+next call; that host behaviour is Distribution's. Coordination's tools are a presentation: the
+`concorde task` commands stay the source of truth, and every answer and refusal of a query or short
+write is the command's own. Their one rule of their own is that they never wait for a lock, so
+`task_merge` answers at once with the merge it started, and `register_wait` with the wait it
+registered, while the merge's result and the wait's answer arrive later. Among them are two queries over other parts' records, `trace_show`
+over Tracing's traces and, where the execution part is installed, `run_result` over a run's
+result. The other parts register their own tools beside them: the issues part the Issue tools and
+the workflow part `workflow_step` and `workflow_report`; a tool of a part that is not installed is
+simply absent. The tools and how they wake a session are explained
+[below](#the-project-mcp-server).
 
 <a id="owners"></a>
 
@@ -316,7 +343,7 @@ it. Spec tooling is the exception: its commands, such as `spec-validation`, `reg
 [error record](../../spec-tooling/spec/errors.md#contract.spec.error) — a code, a message, why it is
 an error, where, how to fix it and its causes — which is no link of the chain, so that
 `concorde task escalate` refuses a file holding one with `invalid_error`. As
-[Tracing](../../tracing/contracts.md#where-links-appear) requires of any Module that receives such
+[Tracing](../../kernel/tracing/contracts.md#where-links-appear) requires of any Module that receives such
 an error and cannot handle it, the guidance tells the main agent and task sessions to translate the
 record into a `component` link of actor `Spec tooling (concorde <command>)`, its detail keeping the
 record's message, reason, location and remediation and its causes being the record's causes
@@ -414,7 +441,7 @@ puts the rest to the developer at once and answers the session with every answer
 starts the same workflow again with its `answers` keyed by each step's base key, its
 [step key](../../glossary.json#concept.step-key) without a restart label or answer digest, each key
 holding every answer given for that step so far, not only the newest
-([Workflows](../../execution/workflows/module.md) defines the arguments). The session reads the
+([Workflows](../../workflows/module.md) defines the arguments). The session reads the
 workflow result from the file Workflows saves in the workflow's node beside the workspace's
 [workflow record](../../glossary.json#concept.workflow-record), in the task's workspace folder, and
 treats it like a run result: it copies the result's decisions and problems into the task's decision
@@ -476,7 +503,7 @@ otherwise with `issue_close` as `resolved`, naming the review's run as evidence.
 
 **A Module review.** Besides judging a task's change, `code_review --scope module` judges each named
 Module's whole code against all of its Specs, one reviewer per Module
-([Code review](../../execution/operations/code-review/module.md#two-scopes)). The guidance names it
+([Code review](../../method/code-review/module.md#two-scopes)). The guidance names it
 and when to use it: a whole-Module check after a large change, on code written before its Specs or
 by an earlier version, or on a project just adopted; unbound, in the primary worktree, it needs only
 `--modules`.
@@ -508,37 +535,29 @@ unchanged; a normal install carries no such section.
 
 ## The project MCP server
 
-The [project MCP server](../../glossary.json#concept.project-mcp-server) presents these tools; the exact tools and
-events are in the [contracts](contracts.md).
+The [project MCP server](../../glossary.json#concept.project-mcp-server) presents the tools of the
+installed parts; Coordination's are listed with the others' for the reader, and the exact tools and
+events Coordination registers are in the [contracts](contracts.md).
 
 <a id="current-code"></a>
 
-**Current code.** The server process lives as long as its Claude Code session, which may be hours,
-while Concorde itself changes under it: a task merge in Concorde's own checkout, or
-`concorde update` in an installed project. Code loaded once would then keep answering with the
-rules and record formats it started with, and refuse the records the new code writes. So the server
-runs none of its tools itself. Each call runs `concorde project-mcp --call <tool>` with the
-`concorde` of the primary worktree as it is when the call arrives, its `.concorde/bin/concorde` or,
-in Concorde's source checkout, its `scripts/concorde.py`, as a process of its own; the call's
-arguments and the session's provenance go to it as one JSON object, and its answer or refusal is
-the tool's. A waiting tool works the same way: the wait `register_wait` registers is that
-`concorde`'s `concorde task wait`, run as a process the server watches, and the merge `task_merge`
-starts is the very process the call ran in, which, having taken both locks and answered, replaces
-itself with `concorde task merge`. What stays in the server is what needs a process that lives with
-its session: the MCP session itself, the channel, and the wait and merge processes it watches. A
-call whose process gives no answer is refused with the server's own `call_failed` link, naming the
-command and what it printed. Each answer also says which tools the current code has; when they
-differ from those the session was given, the server tells its session that its tools changed, and
-Claude Code lists them again. Only the server's own session code, its few protocol messages and its
-instructions, stays what the session started with until the next session.
+**Current code.** The server answers every call with a fresh process of the primary worktree's
+current Concorde and keeps in its own long-lived process only what must live as long as its
+session: the MCP session, the channel, and the wait and merge processes it watches
+([Distribution](../../distribution/module.md)). For Coordination's tools that means: the wait
+`register_wait` registers is that `concorde`'s `concorde task wait`, run as a process the server
+watches, and the merge `task_merge` starts is the very process the call ran in, which, having taken
+both locks and answered, replaces itself with `concorde task merge`.
 
 - **Queries**: `task_list`, `task_show`, `trace_show` (one node, down to a `depth`, so a large
-  trace need not be read whole), `run_result`, `workflow_report` and `locks`, which says who holds
-  the merge lock and each task's [workspace lock](../../glossary.json#concept.workspace-lock).
+  trace need not be read whole), `run_result`, present where the execution part is installed, and
+  `locks`, which says who holds the merge lock and each task's
+  [workspace lock](../../glossary.json#concept.workspace-lock); beside them the workflow part's
+  `workflow_report`.
 - **Short writes** with structured arguments: `task_open`, `task_escalate`, whose error chain link
   is typed arguments rather than a command line to quote, `task_report`, `task_answer`,
   `task_rebind`, `task_resolve` and `task_close` without a merge.
-- **Issues**: `issue_list`, filtered by `status`, `module`, `tier` and `severity` and sorted by
+- **Issues**, registered by the issues part where it is installed: `issue_list`, filtered by `status`, `module`, `tier` and `severity` and sorted by
   severity as `concorde issues list` is, `issue_show` and `issue_check` read the project's
   [Issues](../../glossary.json#concept.issue), and `issue_report`, `issue_close` and
   `issue_reopen` write them, each as `concorde issues` does and without waiting for the merge lock
@@ -558,25 +577,16 @@ instructions, stays what the session started with until the next session.
   when the merge ends, however it ends, even when the session and its server end first. It returns
   at once with the merge it started, not the merge's result, which a channel event or the returned
   wait command delivers later.
-- **Workflow steps**: `workflow_step`, which the
-  [step agents](../../glossary.json#concept.step-agent) of a [workflow](../../glossary.json#concept.workflow) call, one call per relay, with the step
-  request as an object. It runs `concorde workflow step --json <request> --wait <wait>`, waiting at
-  most 100 seconds, with the `concorde` of the session's worktree, the Git worktree
-  `CLAUDE_PROJECT_DIR` or else the server's working directory lies in, which for a task session is
-  its task worktree, and answers with the step outcome that command printed. It refuses, with
-  `unbound_worktree`, a session whose worktree has no
-  [workspace binding](../../glossary.json#concept.workspace-binding), such as the main agent's in
-  the primary worktree, since a workflow runs only in a bound workspace. It exists because of where
-  the server runs: the step command is a process the server started, so the
-  [detached run](../../glossary.json#concept.detached-run) it starts depends on neither the
-  relaying agent's turn nor a background command of the session, and lives until its run ends
-  ([Workflows](../../execution/workflows/module.md#steps-through-the-server)). The server answers
-  these calls, which wait, each on a thread of its own, so the session's other calls are not held up
-  meanwhile.
+- **[Workflow steps](../../glossary.json#concept.workflow-step)**: `workflow_step`, which the workflow part registers where it is installed and
+  the [step agents](../../glossary.json#concept.step-agent) of a
+  [workflow](../../glossary.json#concept.workflow) call, one call per relay, so that a step's run
+  is a process of the server rather than of the relaying agent's turn
+  ([Workflows](../../workflows/module.md#steps-through-the-server)). Its exact shape is
+  [Workflows'](../../workflows/contracts.md).
 - **Waiting**: `register_wait` asks to be woken when a task becomes `delivered`, `merging`,
   `closed` or `failed`, when a task is rebound to a main agent's session other than a named one,
   when a run ends, or when a lock is released. The server watches by running the matching
-  `concorde task wait`, which waits without polling, blocking on the lock itself or on the kernel's
+  `concorde task wait`, which waits without polling, blocking on the lock itself or on the operating system's
   notice of each new holder, and wakes its session with a [Claude Code channel](#channels) event
   with that command's answer when it happens. The wait process ends with the server. It only
   notifies: it never takes a lock for the session it wakes, which asks again and may be refused
@@ -609,16 +619,16 @@ granted: "Both locks are free" {
   merge -> merge: "merge, run the checks,\nclose the task"
 }
 ended: "The merge ends" {
-  merge -> server: "exits once its answer is\nwritten, and the kernel\nreleases the locks"
+  merge -> server: "exits once its answer is\nwritten, and the operating\nsystem releases the locks"
   server -> session: "a merge_ended event, or, without a\nchannel, the background concorde\ntask wait --merge returns"
 }
 ```
 
-Using the server is recommended, not enforced. The kernel's `flock` stays the only lock: the CLI
+Using the server is recommended, not enforced. The operating system's `flock` stays the only lock: the CLI
 and the runs of task sessions take the same locks directly, so both paths see each other's
 holders. The server is the better path for the main agent whenever it would otherwise wait:
 `task_merge` instead of a `task merge --wait` that blocks a background command for minutes, and
-`register_wait` instead of watching a task. For workflow steps it is the path the Claude Code
+`register_wait` instead of watching a task. For workflow steps, where the workflow part is installed, it is the path the Claude Code
 workflow adapter always takes, since a step may outlast many relays. The CLI remains the way for
 everything else: `task session`, the runs a task session starts itself in background Bash, the
 Issues it writes from its shell, and anything the server does not present.
@@ -648,7 +658,7 @@ history. An organization that
 disabled channels drops the events silently; the guidance tells the agent to use the background
 Bash form then.
 
-**Task sessions** receive the server too, with the same tools: a task session may query its task
+**Task sessions** receive the server too, with the same tools of the same installed parts: a task session may query its task
 or register a wait, which answers it with the `concorde task wait` command for its background Bash
 since it has no channel, its workflows' step agents start their steps through `workflow_step`, and
 the developer does not consider its reach to other tasks' management a problem, so there is no split
@@ -658,7 +668,7 @@ empty MCP configuration.
 
 ## Spec queries
 
-The main agent may configure the Spec MCP server for its own session, to ask which Modules exist,
+Where the spec part is installed, the main agent may configure the Spec MCP server for its own session, to ask which Modules exist,
 what a Module's context is, or what grant a [task type](../../glossary.json#concept.task-type)
 gives. The server answers from the Specs of the worktree it is rooted in — the primary worktree for
 the main agent — and workers never receive it.
@@ -684,9 +694,10 @@ The main agent hands every task, even a single one, to a task session, so that i
 talk with the developer and to answer every session while tasks run, and every task runs under a
 boundary; a task session's writes are confined to its task by the
 [session boundary](../../glossary.json#concept.session-boundary), which
-[Task sessions](../task-session/module.md) obtains from the Harness, while the main agent stays
-unrestricted and alone merges; merging needs no authorization because `delivery` only commits what
-it found ready, and a merge is ordinary, revertible Git.
+[Task sessions](../task-session/module.md) writes for it, while the main agent stays
+unrestricted and alone merges; merging needs no authorization because a [delivery commit](../../glossary.json#concept.delivery-commit) is made
+only after its delivering command's checks, `delivery`'s readiness where the method part is
+installed, and a merge is ordinary, revertible Git.
 
 The escalation policy balances the same way: deciding ordinary questions keeps work moving,
 recording and reporting them keeps them reviewable, and reserving major-impact ones protects
@@ -696,7 +707,21 @@ and asks for it once per escalation rather than once per question.
 
 ## Down the levels
 
-The providers the main agent reaches down the levels of work.
+The providers the main agent reaches down the levels of work. Coordination depends on the
+[Kernel](../../kernel/module.md) alone, so every provider below that belongs to another part is an
+[optional integration](../../glossary.json#concept.optional-integration): the guidance section and
+the tools that need it are present only where that part is installed, since each part contributes
+its own ([Guidance by part](#guidance-by-part)), and the main agent never reaches for a part the
+project lacks.
+
+<a id="uses-kernel"></a>
+
+The **Kernel** gives the main agent's commands the
+[merge lock](../../glossary.json#concept.merge-lock) every change of the primary branch on
+Concorde's behalf takes, which the guidance relies on being one lock for merges and Issue writes
+alike, so that it tells the main agent to retry a `merge_busy` rather than work around it, and the
+[workspace binding](../../glossary.json#concept.workspace-binding) that names a task worktree's
+workspace to every run started there, so that no command the guidance names takes the task.
 
 <a id="uses-tasks"></a>
 
@@ -704,7 +729,7 @@ The providers the main agent reaches down the levels of work.
 a workspace, and its record — and the [decision log](../../glossary.json#concept.decision-log): the
 workspace of level 2, which a task session works. `concorde task show` lists the task's runs,
 deliveries and task sessions and the holder of its [workspace
-lock](../../glossary.json#concept.workspace-lock), read from what Execution recorded, so the main
+lock](../../glossary.json#concept.workspace-lock), read from what the workspace recorded, so the main
 agent learns a task's progress from one command, with the task sessions' reports and their answers.
 The guidance relies on the record naming the main agent's session a task session reports to, which
 `concorde task rebind` changes, on `concorde task report` recording a report before it is sent and
@@ -739,7 +764,7 @@ merges a delivered task itself.
 
 <a id="uses-workflows"></a>
 
-**Workflows** provides the [workflows](../../glossary.json#concept.workflow) the main agent names
+**Workflows**, where the workflow part is installed, provides the [workflows](../../glossary.json#concept.workflow) the main agent names
 in a task brief, their modes and the
 [workflow result](../../glossary.json#concept.workflow-result) read when one ends. The guidance
 relies on a workflow never opening, merging or closing a task and on its result keeping every
@@ -747,13 +772,16 @@ run's chain whole, so that a workflow's end is handled like a run's: an `awaitin
 makes the task session escalate every pending decision point at once, and the main agent answers
 them all before the session starts the same workflow again with the answers. Workflows never
 writes the decision log, so the guidance makes the task session copy a report's decisions and
-problems there.
+problems there. Without the workflow part the guidance has no workflow section, and the task
+session sequences its runs itself.
 
 <a id="uses-execution"></a>
 
-**Execution** runs the work a task session starts in its task worktree: `concorde run` for an
-Operation and the [execution commands](../../glossary.json#concept.execution-command)
-`concorde task-validation`, `concorde delivery` and `concorde scaffold`, each reading the
+**Execution**, where the execution part is installed, runs the work a task session starts in its
+task worktree: `concorde run` for an Operation and the
+[execution commands](../../glossary.json#concept.execution-command) the installed parts register,
+such as Method's `concorde task-validation`, `concorde delivery` and `concorde scaffold`, each
+reading the
 worktree's [workspace binding](../../glossary.json#concept.workspace-binding), and
 the Operations that run [unbound](../../glossary.json#concept.unbound-run) in the
 primary worktree. Each run returns a [run result](../../glossary.json#concept.run-result), in the
@@ -767,20 +795,24 @@ reads the run's [run lock](../../glossary.json#concept.run-lock) to tell whether
 waits for its release to learn that it ended, and reads the workspace lock Execution's runs hold.
 Execution records no owner in a run's records, so the guidance and the server never take a run's
 owner from them ([requirements](requirements.md#req.main-session.owner-recorded-by-coordination)).
+Without the execution part no run exists: a task session changes Specs and code itself and delivers
+with `concorde task deliver`.
 
 <a id="uses-operations"></a>
 
 **Operations** provides the [Operation](../../glossary.json#concept.operation)
-catalog: which Operations exist, what each takes and which may run unbound. The guidance names
-them, and the task session chooses which to run for a task's next step. What an Operation takes
-and returns is its provider's, and the guidance relies on four of them directly.
+catalog of the installed parts: which Operations exist, what each takes and which may run unbound.
+The guidance names them, and the task session chooses which to run for a task's next step. What an
+Operation takes and returns is its provider's; Concorde's own providers are the method part's, and
+the guidance relies on four of them directly where that part is installed, its method section
+being absent otherwise.
 
 <a id="uses-understanding"></a>
 
 **Understanding** provides `understand` and `plan_review`. The task-session guidance relies on
 `plan_review`'s iterations: a run given the previous run as `--input` must answer every finding of
 it once, with `--accept` or `--reject`, its reviewer answers those answers, and its verdict follows
-the findings that stand ([plan review](../../execution/operations/understanding/contracts.md#contract.understanding.plan-review)).
+the findings that stand ([plan review](../../method/understanding/contracts.md#contract.understanding.plan-review)).
 It relies too on an `understand` plan naming in `new_files` the files a change needs that do not
 exist yet, for the task session to create and bind before the run that fills them.
 
@@ -789,65 +821,77 @@ exist yet, for the task session to create and bind before the run that fills the
 **Specification** provides `specify`. The task-session guidance relies on it creating each new
 Spec document a `specify` worker proposes, empty and registered in its Module's `owns`, and
 refusing a proposed path that already exists
-([New and deleted documents](../../execution/operations/specification/module.md#new-and-deleted-documents)),
+([New and deleted documents](../../method/specification/module.md#new-and-deleted-documents)),
 so that a task session prepares implementation files for workers and never a Spec document.
 
 <a id="uses-spec-review"></a>
 
 **Spec review** provides `spec_review` and `spec_panel`. The guidance relies on each reporting every
-finding that stands as an Issue of the Module it concerns, closing none, and naming in its result
+finding that stands as an Issue of the Module it concerns, where the issues part is installed, closing none, and naming in its result
 each finding's Issue, the earlier Issues that still stand and those it found resolved
-([result](../../spec-tooling/spec-review/operation.md#contract.spec-review.payload)), with a
+([result](../../method/spec-review/operation.md#contract.spec-review.payload)), with a
 [review verdict](../../glossary.json#concept.review-verdict) derived from the Issues that stand.
 
 <a id="uses-code-review"></a>
 
 **Code review** provides `code_review`, which judges a task's change since its base or, with
 `--scope module`, each named Module's whole code against all its Specs. The guidance relies on it
-reporting every finding as an Issue, a `spec-challenge` finding among them, closing none, and
+reporting every finding as an Issue where the issues part is installed, a `spec-challenge` finding among them, closing none, and
 naming the earlier Issues that stand and those it found resolved, as Spec review does
-([Code review](../../execution/operations/code-review/module.md#two-scopes)).
+([Code review](../../method/code-review/module.md#two-scopes)).
 
 <a id="uses-commands"></a>
 
 **Commands** provides the catalog of
-[execution commands](../../glossary.json#concept.execution-command), the
-deterministic runs `task-validation`, `delivery` and `scaffold` that a task session starts by name
-in its task worktree. The guidance names them apart from the Operations, since they launch no worker
+[execution commands](../../glossary.json#concept.execution-command) the installed parts register,
+in Concorde the method part's deterministic runs `task-validation`, `delivery` and `scaffold`, that
+a task session starts by name in its task worktree. The guidance names them apart from the Operations, since they launch no worker
 and a caller starts them without `run`.
 
 <a id="uses-workers"></a>
 
-**Workers** owns the [worker configuration](../../glossary.json#concept.worker-configuration),
-which the guidance tells the main agent to edit directly; the guidance relies on Workers validating
+**Workers**, where the worker harness part is installed, owns the
+[worker configuration](../../glossary.json#concept.worker-configuration), which the guidance tells
+the main agent to edit directly; the guidance relies on Workers validating
 the whole file when a worker launches and reporting a malformed one with `config_invalid`. The
 separate discovery helper supplies suggestions without proving API access or gating edits.
 
 <a id="uses-tracing"></a>
 
-**Tracing** records the whole history of a task as its [trace](../../glossary.json#concept.trace),
+**Tracing**, the Kernel's child, records the whole history of a task as its [trace](../../glossary.json#concept.trace),
 a tree of [trace nodes](../../glossary.json#concept.trace-node) from its sessions down to each
 worker round. For that history with its cost, the guidance points the main agent to
-`concorde trace show <task>`, and to `concorde trace show <run-id>` for one run, which the
-project MCP server presents as `trace_show`. The server also relies on Tracing's locks: their
+`concorde trace show <task>`, and to `concorde trace show <run-id>` for one run, which
+Coordination presents on the project MCP server as `trace_show`. Coordination's tools also rely on Tracing's
+locks: their
 holder lines name the holder's session and task, which is how a refusal says who holds a lock; a
 held lock can be handed to a process that inherits its descriptor; and a wait for a release
-blocks on the lock itself, as Tracing's [locks](../../tracing/contracts.md#locks) state. Every
-refusal the server returns is a link of Tracing's
+blocks on the lock itself, as Tracing's [locks](../../kernel/tracing/contracts.md#locks) state. Every
+refusal Coordination's tools return is a link of Tracing's
 [error chain](../../glossary.json#concept.error-chain), in the shape of its
-[error contract](../../tracing/contracts.md#contract.tracing.error), and `trace_show` answers as
-Tracing's [trace view](../../tracing/contracts.md#contract.tracing.view).
+[error contract](../../kernel/tracing/contracts.md#contract.tracing.error), and `trace_show` answers as
+Tracing's [trace view](../../kernel/tracing/contracts.md#contract.tracing.view).
 
 ## Beside the levels
 
-Three providers serve the main agent without being a level below it.
+Four providers serve the main agent without being a level below it.
+
+<a id="uses-distribution"></a>
+
+**Distribution**, present in every installation, renders and installs the guidance, composed from
+the sections of the installed parts, and hosts the
+[project MCP server](../../glossary.json#concept.project-mcp-server) on which Coordination
+registers its tools through its [part registration](../../glossary.json#concept.part-registration).
+The guidance relies on the composed guidance holding exactly the sections of the installed parts,
+and Coordination's tools on the host running each call in a fresh process of the primary worktree's
+current Concorde and handing a lock a call took to the process that does the work.
 
 <a id="uses-issues"></a>
 
-**Issues** provides durable, project-level [Issue](../../glossary.json#concept.issue) records and
-the bookkeeping command for [reports](../../issues/interface.md#contract.issues.report) and
-[receipts](../../issues/interface.md#contract.issues.receipt), whose actions the project MCP server
-presents as its Issue tools, unchanged. The guidance relies on status following dispositions,
+**Issues**, where the issues part is installed, provides durable, project-level
+[Issue](../../glossary.json#concept.issue) records and the bookkeeping command for [reports](../../issues/interface.md#contract.issues.report) and
+[receipts](../../issues/interface.md#contract.issues.receipt), whose actions the issues part
+registers with the project MCP server as its Issue tools, unchanged. The guidance relies on status following dispositions,
 [revisions](../../glossary.json#concept.issue-revision) detecting concurrent writes and every
 report carrying its tier and severity. It tells sessions to inspect before recording, to fix by
 tier, starting from the most severe Issues, to have a
@@ -857,7 +901,8 @@ evidence.
 
 <a id="uses-spec"></a>
 
-**Spec core** provides the commands that check and regenerate the Specs a session works on:
+**Spec core**, where the spec part is installed, provides the commands that check and regenerate
+the Specs a session works on:
 `concorde spec-validation`, which reports every [structural check](../../glossary.json#concept.structural-check)
 finding of a worktree's Specs, and `concorde registry --write`, which regenerates the
 [registry](../../glossary.json#concept.registry) mirror after a Module's `module` block changed,
@@ -869,7 +914,7 @@ translates into a link of the chain before it escalates it ([Escalation policy](
 
 <a id="uses-spec-mcp"></a>
 
-The **Spec MCP server**, a child of Spec tooling, answers read-only queries about Modules, context
+The **Spec MCP server**, a child of Spec tooling installed with the spec part, answers read-only queries about Modules, context
 and grants from the worktree it is rooted in. The main agent configures it for its own session only
 when it wants to ask such questions; workers never receive it. Since a server rooted in the primary
 worktree knows only the primary branch's Specs, the guidance tells the main agent that a question
@@ -895,7 +940,7 @@ mainsession: Main session {
 
 <a id="realization.main-session.guidance"></a>
 
-The **guidance sources** live under `prompts/main-session/` (`skill.md`, installed as the project
+The **guidance sources** live under `prompts/main-session/`, today with every part's section, (`skill.md`, installed as the project
 skill `.claude/skills/concorde/SKILL.md`; `claude-md.md`, installed into the project's `CLAUDE.md`;
 and `task-session.md`, the first prompt `concorde task session` gives a task session) and are
 rendered by Distribution's build into `generated/main-session/`. Their tests, under
@@ -905,7 +950,9 @@ observes.
 
 <a id="realization.main-session.project-mcp"></a>
 
-The **project MCP server** lives in `src/concorde/project_mcp/`: `server.py` runs the stdio session,
+The **server program** in `src/concorde/project_mcp/` holds today both Distribution's host and the
+tools of every part, which the code tasks that follow these Specs split along the parts:
+`server.py` runs the stdio session,
 finds the project, decides whether the session listens to it as a channel and sends channel events
 from the threads that watch; `calls.py` runs each call in a fresh process of the primary worktree's
 current Concorde and watches the wait and merge processes; `tools.py` is what that process runs,
@@ -919,7 +966,8 @@ stdio connection and watch real locks, merges and channel events.
 ## Who relies on it
 
 Three Modules consume what this one authors. [Distribution](../../distribution/module.md) renders
-the guidance sources and installs the rendered guidance into a project;
+the guidance sources, composes them with the other installed parts' sections and installs the
+rendered guidance into a project;
 [Dogfooding](../../dogfooding/module.md) appends its own section to the guidance in a develop
 install and changes nothing else; and [Task sessions](../task-session/module.md) gives a task
 session the rendered task-session guidance as its first prompt, so every task follows the method

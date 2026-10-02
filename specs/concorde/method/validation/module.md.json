@@ -1,0 +1,87 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.validation.module",
+    "owner": "module.validation",
+    "role": "module"
+  },
+  "module": {
+    "title": "Validation",
+    "owns": [
+      "specs/concorde/method/validation/module.md",
+      "specs/concorde/method/validation/contracts.md",
+      "specs/concorde/method/validation/requirements.md",
+      "specs/concorde/method/validation/scenarios.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.execution",
+        "meaning": "#uses-execution",
+        "relies_on": [
+          "concept.run-result",
+          "req.execution.binding-trusted",
+          "req.execution.workspace-lock",
+          "req.execution.workspace-busy",
+          "contract.execution.run-result"
+        ]
+      },
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec"
+      },
+      {
+        "target": "module.checks",
+        "meaning": "#uses-checks",
+        "relies_on": [
+          "req.checks.service-link"
+        ]
+      },
+      {
+        "target": "module.commands",
+        "meaning": "#uses-commands",
+        "relies_on": [
+          "concept.execution-command"
+        ]
+      },
+      {
+        "target": "module.kernel",
+        "meaning": "#uses-kernel",
+        "relies_on": [
+          "concept.workspace-binding",
+          "concept.workspace-lock",
+          "contract.kernel.workspace-binding"
+        ]
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.tracing.contracts",
+        "reason": "the Framework's error contract, which this Module's errors follow"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "realization.validation.command",
+      "type": "realization",
+      "title": "Task validation command",
+      "meaning": "#realization.validation.command",
+      "entries": [
+        "src/concorde/validation/",
+        "tests/concorde/validation/"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "realization.validation.command",
+      "verb": "produces",
+      "target": "concept.readiness"
+    }
+  ],
+  "extensions": {}
+}

@@ -24,13 +24,13 @@ Modules achieve together.
 - AND the survey proposes child Modules, every `code_to_spec` run ends `ok` and `task-validation` finds the workspace ready
 - THEN the workflow runs `survey`, `scaffold`, one `code_to_spec` per described Module, `spec_review`, `task-validation` and `delivery` in the task's worktree, one run at a time
 - AND the delivered task branch holds child Modules whose entries describe the code they bind
-- AND no implementation file changed except existing tests, which gained only the `verifies` declarations and helper that [Adoption](execution/operations/adoption/requirements.md#req.adoption.test-edits-limited) adds
+- AND no implementation file changed except existing tests, which gained only the `verifies` declarations and helper that [Adoption](method/adoption/requirements.md#req.adoption.test-edits-limited) adds
 - AND the [workflow result](glossary.json#concept.workflow-result) lists every decision the workflow took and every [open question](glossary.json#concept.open-question) about intent it did not write as a promise
 - AND the main agent can merge the task branch into the primary branch
 
 A no-ask run in which a `code_to_spec` run did not end `ok` goes on as well, and may deliver a
 Module whose entry is still a stub or a partial description; its workflow result names that step's
-problem ([Workflows](execution/workflows/requirements.md#req.workflows.no-ask-describe-continues)).
+problem ([Workflows](workflows/requirements.md#req.workflows.no-ask-describe-continues)).
 
 ## Working on a task
 
@@ -58,7 +58,7 @@ problem ([Workflows](execution/workflows/requirements.md#req.workflows.no-ask-de
 - BUT the Operation does not retry the worker with a wider grant
 
 A write to a Git-ignored path, or one that lands on a throw-away filesystem and never reaches the
-worktree, is not seen by the audit ([Harness](harness/module.md#known-limits-of-v1)).
+worktree, is not seen by the audit ([Harness](worker-harness/harness/module.md#known-limits-of-v1)).
 
 ### scenario.concorde.parallel-tasks — Two tasks in parallel
 

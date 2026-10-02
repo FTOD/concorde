@@ -27,7 +27,7 @@ from tests.concorde.support.brownfield_project import git
 
 class AdoptionTests(AdoptionCase):
     def test_the_schemas_are_the_contracts(self):
-        path = "specs/concorde/execution/operations/adoption/contracts.md"
+        path = "specs/concorde/method/adoption/contracts.md"
         for identity, schema in (
             ("contract.adoption.decomposition", DECOMPOSITION_SCHEMA),
             ("contract.adoption.spec-description", SPEC_DESCRIPTION_SCHEMA),

@@ -1,9 +1,105 @@
 # Distribution contracts
 
-The exact results that [Distribution](module.md)'s installer and `concorde update` print when they
-succeed. Both print one JSON object on standard output and exit with status 0; every refusal
+The [part registration](../glossary.json#concept.part-registration) every part gives Distribution,
+and the exact results that [Distribution](module.md)'s installer and `concorde update` print when
+they succeed. Both print one JSON object on standard output and exit with status 0; every refusal
 instead prints `{"error": <link>}` and exits with status 1, as [Refusals](module.md#refusals)
 describes. Paths are relative to the project root unless stated otherwise.
+
+## Part registration
+
+Every part declares one registration, plain data that Distribution reads without importing the
+part's code beyond the functions the registration names. An entry is a Python function named
+`<module>:<function>` relative to the part's package; Distribution calls a command's entry with the
+rest of the command line, an MCP tool's entry with the call's JSON object, an idle check's entry with
+the project root, and an after-update entry with the project root, and each answers in its own
+part's shape.
+
+```concorde-contract
+{
+  "id": "contract.distribution.part-registration",
+  "version": 1,
+  "schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["part", "version", "module", "depends_on", "commands", "mcp_tools", "typed_types", "guidance", "install", "idle_check", "after_update"],
+    "properties": {
+      "part": {"type": "string", "pattern": "^[a-z][a-z-]*$"},
+      "version": {"type": "string", "minLength": 1},
+      "module": {"type": "string", "pattern": "^module\\.[a-z][a-z0-9-]*$"},
+      "depends_on": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z][a-z-]*$"}},
+      "commands": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "entry"],
+          "properties": {
+            "name": {"type": "string", "pattern": "^[a-z][a-z-]*$"},
+            "entry": {"type": "string", "minLength": 1}
+          }
+        }
+      },
+      "mcp_tools": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "entry", "worktree", "long_work"],
+          "properties": {
+            "name": {"type": "string", "pattern": "^[a-z][a-z_]*$"},
+            "entry": {"type": "string", "minLength": 1},
+            "worktree": {"enum": ["primary", "session"]},
+            "long_work": {"type": "boolean"}
+          }
+        }
+      },
+      "typed_types": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+      "guidance": {"type": ["string", "null"], "minLength": 1},
+      "install": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["files", "gitignore", "permissions", "programs"],
+        "properties": {
+          "files": {"type": "array", "items": {"type": "string", "minLength": 1}},
+          "gitignore": {"type": "array", "items": {"type": "string", "minLength": 1}},
+          "permissions": {"type": "array", "items": {"type": "string", "minLength": 1}},
+          "programs": {"type": "array", "items": {"type": "string", "minLength": 1}}
+        }
+      },
+      "idle_check": {"type": ["string", "null"], "minLength": 1},
+      "after_update": {"type": ["string", "null"], "minLength": 1}
+    }
+  },
+  "semantics": "The registration of one part. part is its installer name and version the version of the repository it was built from, the same for every part. module is the top-level Module the part is made of. depends_on names the parts it depends on; the installer installs them with it, and no other part is required for it to work. commands are the concorde subcommands it adds, each routed to its entry; mcp_tools the tools the project MCP server presents for it, each run in a fresh process of the primary worktree's concorde, or of the session's own worktree's when worktree is session, and, when long_work is true, allowed to take locks without waiting and hand them to the process doing the work. typed_types lists the typed value types its code registers. guidance is the build-relative path of its rendered guidance section, or null. install lists what the installer places for it: framework-relative files, .gitignore lines, Claude Code permission rules and programs it needs, such as the pi runtime. idle_check names the function reporting the part's work still running in the project, or null when it has none; after_update the function whose report an update result carries, such as the open tasks, or null. A behaviour or field change increments the version.",
+  "example": {
+    "part": "coordination",
+    "version": "9.0.0",
+    "module": "module.coordination",
+    "depends_on": ["kernel"],
+    "commands": [{"name": "task", "entry": "tasks.cli:main"}],
+    "mcp_tools": [
+      {"name": "task_show", "entry": "tasks.mcp:show", "worktree": "primary", "long_work": false},
+      {"name": "task_merge", "entry": "tasks.mcp:merge", "worktree": "primary", "long_work": true}
+    ],
+    "typed_types": ["concorde-task-record"],
+    "guidance": "generated/main-session/skill.md",
+    "install": {
+      "files": [],
+      "gitignore": [".concorde/tasks/", ".concorde/history/", ".concorde/workspace.json", ".claude/worktrees/"],
+      "permissions": [],
+      "programs": []
+    },
+    "idle_check": null,
+    "after_update": "tasks.update:open_tasks"
+  }
+}
+```
+
+The installer resolves the parts to install by following `depends_on` from the parts named, and
+refuses before any write a name no registration of the package carries, or a set whose
+dependencies name a part the package does not build. Two parts registering the same command or tool
+name are a build error, never resolved by order.
 
 ## Install result
 
@@ -213,7 +309,7 @@ what the update did. Its `update` is the mark it wrote to `.concorde/update.json
       "next": {"type": "array", "minItems": 2, "items": {"type": "string", "minLength": 1}}
     }
   },
-  "semantics": "The result of a successful concorde update. receipt is the install result of the update's install (contract.distribution.install-result), the new receipt. update is the mark .concorde/update.json the update wrote: state unvalidated; from and commits.from the version and installed commit before, those of the previous receipt or, when an earlier update's mark was still there, that mark's, each null when the record they come from has none; to and commits.to those just installed, commits.to null outside a Git checkout; protocol null when neither this update nor a kept earlier mark rebound the Protocol binding, and otherwise the binding before (null when the configuration had none) and after, each a {version, digest} object as the project configuration holds it; at the UTC time the mark was written. open_tasks lists, in the order of their folders, the tasks of the primary worktree that have not ended, each with its identity, branch and worktree as its task record names them, null when the record lacks one. next says what the developer does next: commit the updated files, run concorde spec-validation and repair what it reports, and, when the Protocol binding changed and a task is open, merge the primary branch into each open task. A behaviour or field change increments the version.",
+  "semantics": "The result of a successful concorde update. receipt is the install result of the update's install (contract.distribution.install-result), the new receipt. update is the mark .concorde/update.json the update wrote: state unvalidated; from and commits.from the version and installed commit before, those of the previous receipt or, when an earlier update's mark was still there, that mark's, each null when the record they come from has none; to and commits.to those just installed, commits.to null outside a Git checkout; protocol null when neither this update nor a kept earlier mark rebound the Protocol binding, and otherwise the binding before (null when the configuration had none) and after, each a {version, digest} object as the project configuration holds it; at the UTC time the mark was written. open_tasks lists what the coordination part's after-update report names, in the order of their folders: the tasks of the primary worktree that have not ended, each with its identity, branch and worktree as its task record names them, null when the record lacks one; it is empty where the coordination part is not installed. next says what the developer does next: commit the updated files, run concorde spec-validation and repair what it reports, and, when the Protocol binding changed and a task is open, merge the primary branch into each open task. A behaviour or field change increments the version.",
   "example": {
     "receipt": {
       "version": "9.0.0",

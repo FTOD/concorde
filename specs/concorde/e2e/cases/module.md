@@ -175,7 +175,7 @@ or [workspace binding](../../glossary.json#concept.workspace-binding) themselves
 
 **Specification** provides the `specify` Operation, whose
 [write audit](../../glossary.json#concept.write-audit) fails a run that changed code
-([requirement](../../execution/operations/specification/requirements.md#req.specification.audit)),
+([requirement](../../method/specification/requirements.md#req.specification.audit)),
 which keeps the repair from changing code.
 
 <a id="uses-spec-review"></a>

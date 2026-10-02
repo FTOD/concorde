@@ -16,14 +16,20 @@
     "contains": [],
     "uses": [
       {
+        "target": "module.kernel",
+        "meaning": "#uses-kernel",
+        "relies_on": [
+          "concept.merge-lock",
+          "concept.workspace-binding"
+        ]
+      },
+      {
         "target": "module.execution",
         "meaning": "#uses-execution",
         "relies_on": [
-          "concept.workspace-binding",
           "concept.run-result",
           "concept.unbound-run",
           "concept.run-lock",
-          "concept.workspace-lock",
           "contract.execution.run-result",
           "concept.run-progress-file"
         ]
@@ -87,7 +93,6 @@
         "relies_on": [
           "concept.task",
           "concept.decision-log",
-          "concept.merge-lock",
           "contract.tasks.record"
         ]
       },
@@ -140,6 +145,14 @@
           "concept.error-chain",
           "contract.tracing.error",
           "contract.tracing.view"
+        ]
+      },
+      {
+        "target": "module.distribution",
+        "meaning": "#uses-distribution",
+        "relies_on": [
+          "concept.project-mcp-server",
+          "concept.part-registration"
         ]
       }
     ],

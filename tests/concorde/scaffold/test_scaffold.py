@@ -21,7 +21,7 @@ class ScaffoldTests(AdoptionCase):
     def test_the_schema_is_the_contract(self):
         self.assertEqual(
             contract(
-                "specs/concorde/execution/commands/scaffold/contracts.md",
+                "specs/concorde/method/scaffold/contracts.md",
                 "contract.scaffold.record",
             ),
             SCAFFOLD_RECORD_SCHEMA,

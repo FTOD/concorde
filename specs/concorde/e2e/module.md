@@ -437,7 +437,7 @@ with `--retry` for the failed step's key runs that step again without Claude Cod
 runtime, reusing the steps before it that succeeded, and so points to whether Concorde or that
 runtime is at fault; without `--retry` it would only find the failed run recorded. A retry
 supersedes the retried step and every step recorded after it, as
-[Workflows](../execution/workflows/module.md#steps-and-their-keys) says, so every later step runs
+[Workflows](../workflows/module.md#steps-and-their-keys) says, so every later step runs
 anew too, those that had succeeded included, at their cost again and with new evidence. Since the
 workers are real, one such comparison is evidence, not proof.
 
@@ -512,7 +512,8 @@ the owners case checks.
 <a id="uses-distribution"></a>
 
 **Distribution** provides the installer and the `concorde` command that set a test project up the
-way a user's project is set up, routing each command to the Module that carries it out; a test
+way a user's project is set up, with every [part](../glossary.json#concept.part) installed, routing
+each command to the part that registered it; a test
 project always runs the Concorde of this checkout. When the installer, `concorde init` or
 `concorde task open` fails, `prepare` stops with `command_failed`
 naming that command, its exit status and its output, and leaves the partial project directory as it
@@ -532,9 +533,9 @@ the interpreter `--python` names. `prepare` stops with `command_failed` when eit
 
 **Workers** owns the [worker configuration](../glossary.json#concept.worker-configuration) that
 `prepare` writes and the [model map](../glossary.json#concept.model-map) by which the developer's
-machine reaches each model, both defined by its [contracts](../execution/workers/contracts.md).
+machine reaches each model, both defined by its [contracts](../worker-harness/workers/contracts.md).
 Workers' check of a whole configuration against the map
-([scenario.workers.model-map-checked](../execution/workers/scenarios.md#scenario.workers.model-map-checked))
+([scenario.workers.model-map-checked](../worker-harness/workers/scenarios.md#scenario.workers.model-map-checked))
 validates it and resolves the model of every worker of every Operation, refusing with
 `config_invalid`, `model_map_missing`, `model_map_invalid` or `model_unmapped`, the last naming
 every model and backend the map lacks with the workers that would take them. `prepare` builds the
@@ -543,13 +544,15 @@ a refusal on with its code and the map's path, preparing nothing.
 
 <a id="uses-operations"></a>
 
-**Operations** lists in its [Operation catalog](../glossary.json#concept.operation-catalog) every
-Operation with the ids of the workers it may launch, the workers whose models Workers' check
+**Operations** lists in its [Operation catalog](../glossary.json#concept.operation-catalog), assembled
+from what the installed parts register, in Concorde Method's Operations, every Operation with the
+ids of the workers it may launch, the workers whose models Workers' check
 resolves for `prepare`, so that a test project's first workflow finds a model for each of them.
 
 <a id="uses-workflows"></a>
 
-**Workflows** provides the workflows a test project runs, their rendered scripts and the stand-in
+**Workflows** runs the workflows a test project runs, such as Method's
+[brownfield workflow](../glossary.json#concept.brownfield-workflow), renders their scripts and the stand-in
 runtime of its tests that a driver run reuses, the workflow result a run ends with, and the
 workflow record of each workspace, where `run` finds the latest saved result and `watch` the steps.
 End-to-end testing relies on the record listing the saved results in order and each step with its
@@ -566,6 +569,13 @@ step and status, relying on them to name those fields. A run without a run progr
 its runner has not written it yet or died before writing it, is left out of the list rather than
 failing `watch`, which the developer may run at any moment; a run left out for the second reason
 stays out.
+
+<a id="uses-kernel"></a>
+
+**Kernel** defines the [workspace binding](../glossary.json#concept.workspace-binding) that names
+each test project's task workspace, which End-to-end testing reads and never writes, and the
+[workspace lock](../glossary.json#concept.workspace-lock), which the owners case holds to keep a run
+from starting its work before the case has looked, relying on a run waiting for it.
 
 <a id="uses-main-session"></a>
 
