@@ -426,12 +426,7 @@ def watch(project: Path) -> dict:
     """Every run of the project with its phase and outcome, the runs waiting in the lobby for
     their workspace's lock included, and each workspace's workflow steps."""
     runs = []
-    lobby = sorted(
-        item
-        for item in (sessions.records_of(project) / "lobby").glob("r-*")
-        if item.is_dir()
-    )
-    for directory in [*sessions.run_folders(project), *lobby]:
+    for directory in sessions.run_folders(project):
         status = directory / "status.json"
         if not status.is_file():
             continue

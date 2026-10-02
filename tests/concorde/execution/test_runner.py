@@ -718,7 +718,8 @@ class RunnerTests(unittest.TestCase):
             ),
         )
         self.assertEqual(
-            ["worker_step"], [step["name"] for step in node["content"]["data"]["steps"]]
+            ["check_worker_models", "worker_step"],
+            [step["name"] for step in node["content"]["data"]["steps"]],
         )
         progress = json.loads((run / "status.json").read_text())
         self.assertEqual(
