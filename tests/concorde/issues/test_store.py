@@ -27,6 +27,7 @@ from concorde.issues.store import (
 from concorde.kernel.refusal import KernelError
 from concorde.spec.verification import verifies
 from tests.concorde.support.issue_reports import git, git_project, report, source
+from tests.concorde.support.handed_lock import handed
 
 
 @contextmanager
@@ -323,10 +324,13 @@ class IssueStoreTests(unittest.TestCase):
         with lock.open("a+b") as held:
             fcntl.flock(held.fileno(), fcntl.LOCK_EX)
             for write in (
-                lambda: report_issue(self.root, report(), source(), locked=True),
-                lambda: store.recover_issues(self.root, locked=True),
+                lambda: report_issue(self.root, report(), source(), wait=0),
+                lambda: store.recover_issues(self.root, wait=0),
             ):
-                with self.assertRaises(IssueError) as raised:
+                with (
+                    handed(lock, held.fileno()),
+                    self.assertRaises(IssueError) as raised,
+                ):
                     write()
                 self.assertEqual("merge_incomplete", raised.exception.code)
                 self.assertIn("interrupted", str(raised.exception))
@@ -1193,9 +1197,11 @@ class IssueRecoveryTests(unittest.TestCase):
                 store.recover_issues(self.root, wait=0)
             self.assertEqual("merge_busy", raised.exception.code)
             self.assertIn(name, self.issue_files())
-            # A caller holding the lock, such as a task merge, recovers within it.
+            # A process handed the lock, such as the recovery a task merge starts, recovers
+            # within it.
+            with handed(lock, held.fileno()):
+                recovered = store.recover_issues(self.root, wait=0)["recovered"]
             self.assertEqual(
-                [{"path": f"{store.DIRECTORY}/{name}", "action": "removed"}],
-                store.recover_issues(self.root, locked=True)["recovered"],
+                [{"path": f"{store.DIRECTORY}/{name}", "action": "removed"}], recovered
             )
         self.assertEqual({"recovered": [], "left": []}, store.recover_issues(self.root))

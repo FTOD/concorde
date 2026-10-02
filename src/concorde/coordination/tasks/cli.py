@@ -1,5 +1,5 @@
-"""``concorde task open|list|show|session|rebind|close|merge|escalate|report|answer|wait``: print
-one JSON value; refusals exit 1, bad usage 2.
+"""``concorde task open|list|show|session|resolve|rebind|close|merge|deliver|escalate|report|answer|wait``:
+print one JSON value; refusals exit 1, bad usage 2.
 
 While a merge is unfinished, every one of them that changes something is refused with
 ``merge_incomplete`` apart from ``merge --resume`` and ``merge --abort`` of that task; ``list`` and ``show`` still answer.
@@ -15,7 +15,8 @@ took that the session may not keep alone.
 ``report`` records a task session's report in the task record and decision log before the
 session messages the main agent, and prints the main agent's session the task record names now;
 ``answer`` records the main agent's answer to reports, and ``rebind`` names a new main agent's
-session for a task, after the main agent's session name changed.
+session for a task, after the main agent's session name changed. ``deliver`` delivers a task from
+its worktree where the method part is not installed.
 """
 
 from __future__ import annotations
@@ -27,11 +28,10 @@ from contextlib import ExitStack
 from pathlib import Path
 
 from ...kernel import errors
-from ...execution.runs import load_result, result_path
 from ...kernel.tracing import reader
 from ...kernel.refusal import KernelError
 from ...kernel.schema import validate
-from . import merge, session, store, wait
+from . import deliver, merge, parts, runs, session, store, wait
 
 # Why Tasks cannot handle each refusal itself; every other code is an input the caller corrects.
 HANDLING = {
@@ -145,6 +145,24 @@ HANDLING = {
         "environment",
         "the kernel refused to watch the lock the wait depends on",
     ),
+    "part_missing": (
+        "input",
+        "the command, or an option of it, needs a part the project has not installed",
+    ),
+    "part_unknown": (
+        "environment",
+        "the worktree's own concorde could not be asked whether a part the command needs is "
+        "installed",
+    ),
+    "issues_unavailable": (
+        "environment",
+        "the issues command, through which Tasks reads the project's Issues, did not answer",
+    ),
+    "delivery_by_method": (
+        "input",
+        "the method part is installed, and its delivery validates the workspace before it "
+        "commits, which task deliver does not",
+    ),
 }
 OPTIONS = {
     "unknown_task": ["run concorde task list to see the tasks"],
@@ -234,6 +252,15 @@ OPTIONS = {
         "read the answer with concorde task show <task>; answer only the reports whose "
         "answer is null",
     ],
+    "part_missing": [
+        "install the missing part, or do without the option that needs it",
+    ],
+    "delivery_by_method": [
+        "run concorde task-validation, then concorde delivery, in the task worktree",
+    ],
+    "not_task_worktree": [
+        "run the command in the task's worktree, which concorde task show <task> names",
+    ],
     "decision_log_uncommitted": [
         "fix what Git refused in the primary worktree, such as a detached HEAD, an unfinished "
         "merge or a commit hook, then run the same close again, which commits the log and "
@@ -311,6 +338,10 @@ def parser() -> argparse.ArgumentParser:
     finishing = merging.add_mutually_exclusive_group()
     finishing.add_argument("--resume", action="store_true")
     finishing.add_argument("--abort", action="store_true")
+    delivering = commands.add_parser("deliver")
+    delivering.add_argument("task_id")
+    delivering.add_argument("--check", action="append", default=[])
+    delivering.add_argument("--wait", type=float, default=store.MERGE_WAIT)
     escalating = commands.add_parser("escalate")
     escalating.add_argument("task_id")
     escalating.add_argument("--code", required=True)
@@ -358,8 +389,9 @@ def _checked(value, source: str) -> dict:
 
 
 def _run_error(primary: Path, task: dict, run_id: str) -> dict:
-    workspace = store.workspace_store(primary, task["id"])
-    result = load_result(workspace, run_id)
+    concorde = store.concorde(primary)
+    workspace = store.workspace_folder(store.task_folder(primary, task["id"]))
+    result = runs.load_result(concorde, workspace, run_id)
     if result is None:
         # A run of another workspace or an unbound one: say whose it is when it can be found.
         try:
@@ -369,7 +401,7 @@ def _run_error(primary: Path, task: dict, run_id: str) -> dict:
             raise store.TaskError(
                 "unknown_run",
                 f"{run_id} has no readable result in the workspace folder of task "
-                f"{task['id']} ({result_path(workspace, run_id)})",
+                f"{task['id']} ({runs.result_path(concorde, workspace, run_id)})",
             ) from None
     if result.get("workspace") != task["id"]:
         raise store.TaskError(
@@ -503,6 +535,24 @@ def escalate(here: Path, arguments) -> dict:
     }
 
 
+def require_execution(here: Path) -> None:
+    """Refuse with ``part_missing`` where the execution part, whose runs a wait for a run waits
+    for, is not installed: the worktree's own ``concorde`` does not offer ``run``."""
+    worktree = store.worktree_of(here)
+    try:
+        offered = parts.offers(worktree, "run")
+    except parts.Failed as failure:
+        raise store.TaskError(
+            "part_unknown", f"a wait for a run needs the execution part, and {failure}"
+        ) from None
+    if not offered:
+        raise store.TaskError(
+            "part_missing",
+            f"a wait for a run needs the execution part, which is not installed in {worktree} "
+            "(`concorde run` is not offered), so no run exists to wait for",
+        )
+
+
 def wait_for(here: Path, arguments) -> dict:
     """``task wait``: one of a task state, a run's end or a lock's release."""
     if arguments.run is not None:
@@ -510,6 +560,7 @@ def wait_for(here: Path, arguments) -> dict:
             raise store.TaskError(
                 "invalid_input", "--run names the run alone, not a task"
             )
+        require_execution(here)
         return wait.wait_run(here, arguments.run, arguments.timeout)
     primary = store.primary_of(here)
     if arguments.merge:
@@ -635,6 +686,10 @@ def _answer(here: Path, command: str, arguments, held: ExitStack) -> tuple[int, 
                 resume=arguments.resume,
                 abort=arguments.abort,
                 held=held,
+            )
+        elif arguments.command == "deliver":
+            value = deliver.deliver_task(
+                here, arguments.task_id, arguments.check, arguments.wait
             )
         else:
             value = close(here, arguments)

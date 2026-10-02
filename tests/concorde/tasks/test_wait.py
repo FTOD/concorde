@@ -14,7 +14,7 @@ import unittest
 
 from concorde.kernel.errors import ERROR_SCHEMA
 from concorde.distribution.install import TRACES
-from concorde.execution.runs import workspace_lock
+from concorde.kernel.locking import workspace_lock
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
 from concorde.coordination.tasks import cli, store
@@ -51,7 +51,7 @@ class WaitTests(unittest.TestCase):
 
     @verifies("scenario.tasks.wait-task")
     def test_a_task_wait_returns_when_the_state_is_reached(self):
-        store_ = store.workspace_store(self.root, "t1")
+        store_ = store.concorde(self.root)
         entered, leave = threading.Event(), threading.Event()
 
         def delivery_run():
@@ -208,7 +208,7 @@ class WaitTests(unittest.TestCase):
 
     @verifies("scenario.tasks.wait-timeout")
     def test_a_wait_that_times_out_says_so(self):
-        store_ = store.workspace_store(self.root, "t1")
+        store_ = store.concorde(self.root)
         with workspace_lock(store_, "t1", "a long run"):
             status, value = self.command(
                 "wait", "t1", "--lock", "workspace", "--timeout", "0.3"

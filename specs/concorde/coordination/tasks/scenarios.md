@@ -294,7 +294,7 @@ This illustrates [resolving open Issues](requirements.md#req.tasks.resolves-open
 
 ### scenario.tasks.merge-issues-unavailable — A merge whose Issues fail still closes and answers
 
-- GIVEN a delivered task that resolves an open Issue, and a merge process that cannot load the Issues component
+- GIVEN a delivered task that resolves an open Issue, and a project whose `concorde issues` cannot run to an answer
 - WHEN the main agent merges the task and its checks pass
 - THEN the task is closed as merged, its sessions are ended and the merge prints its result with no Issue `resolved`
 - AND its warnings name the Issue with the error chain `issues_unavailable`, and the Issue stays open for the main agent to close
@@ -472,6 +472,60 @@ This illustrates [a merge running the Concorde it started with](requirements.md#
 - WHEN another main session runs `concorde task open`, or `session` or `escalate` for task `a`
 - THEN the command fails with `merge_busy` naming the holder, never with `merge_incomplete`
 - BUT a `session` or `escalate` for another task is not refused for the merge
+
+## Delivering without Method
+
+### scenario.tasks.deliver — Deliver a task where the method part is not installed
+
+- GIVEN a project whose own `concorde` does not offer `delivery`, and task `t1` whose worktree holds a change
+- WHEN its task session runs `concorde task deliver t1 --check <first> --check <second>` in the task worktree, and both checks pass
+- THEN the task branch's head is a new commit holding the change, with the subject `concorde: deliver t1`, the task's goal as body and the earlier head as its only parent, and the worktree is clean
+- AND the command prints the record in the derived state `delivered` and each check with its exit status
+- AND the task's trace holds the attempt as `deliveries/1/`, of kind `delivery`, `ok` with outcome `delivered` and the commit among its references and metadata, each check a `delivery-check` node below it with its `output.log`
+- AND `concorde task merge t1` then merges and closes the task as it does any delivered task
+
+This illustrates [a delivery following its checks](requirements.md#req.tasks.deliver-checked) and
+[the Kernel's convention](requirements.md#req.tasks.deliver-convention).
+
+### scenario.tasks.deliver-check-failed — A failed check delivers nothing
+
+- GIVEN a project without the method part and a task whose worktree holds a change
+- WHEN `concorde task deliver` runs three checks of which the second exits with status 3
+- THEN the command fails with `check_failed`, naming the check, its exit status, the end of its output and its `output.log`
+- AND the third check never runs, the branch head is unchanged, the change stays uncommitted and the task stays `active`
+- AND the attempt's node ended `failed` with outcome `check_failed`
+
+This illustrates [a delivery following its checks](requirements.md#req.tasks.deliver-checked).
+
+### scenario.tasks.deliver-recovered — A delivered head is reported, not committed again
+
+- GIVEN a project without the method part and a task whose worktree holds no change
+- WHEN `concorde task deliver` runs with no check
+- THEN it commits a delivery commit all the same, with nothing in it, as the mark of the delivery
+- AND run again, it reports that commit with `recovered` true and commits nothing, its node `ok` with outcome `recovered` and the commit as `found_commit`
+
+This illustrates [the Kernel's convention](requirements.md#req.tasks.deliver-convention).
+
+### scenario.tasks.deliver-refused — Deliver only in the task's worktree, without Method
+
+- GIVEN a project whose own `concorde` offers `delivery`
+- WHEN a task session runs `concorde task deliver` in its task worktree
+- THEN it fails with `delivery_by_method`, naming `concorde delivery`
+- AND in a project without the method part it fails with `not_task_worktree` run in the primary worktree, with `workspace_busy` while a run holds the task's workspace lock past `--wait`, and with `wrong_branch` naming the branch when the worktree is on another branch, committing nothing each time
+
+This illustrates [Tasks delivering only where Method does not](requirements.md#req.tasks.deliver-without-method).
+
+### scenario.tasks.coordination-alone — A project with the kernel and coordination alone
+
+- GIVEN a project whose own `concorde` offers neither `run`, `delivery` nor `issues`, and that has no registry mirror `.concorde/specs.json`
+- WHEN the main agent opens a task naming the [Module](../../glossary.json#concept.module) `module.anything`, its session changes the worktree and runs `concorde task deliver`, and the main agent runs `concorde task merge` with no `--check`
+- THEN the task opens with that Module as a plain label, shows no run, is `active` and then `delivered`, and the merge closes it as merged without running a check, a warning saying that no check ran because none was given and the spec part is not installed
+- AND `open --resolves` and `resolve` fail with `part_missing` naming the issues part, and `wait --run` with `part_missing` naming the execution part, recording nothing
+- AND an open naming a Module that is no Module identity, such as `m`, fails with `invalid_input` before any branch or worktree exists
+- AND another task closes with `--completed` as in any project
+
+This illustrates [the parts Coordination does without](../module.md#optional-integrations) and
+[a task resolving only open Issues](requirements.md#req.tasks.resolves-open-issues).
 
 ## Escalation
 

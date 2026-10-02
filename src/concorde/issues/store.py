@@ -785,20 +785,16 @@ def _untouched(recovery: dict, identifier: str) -> None:
 
 
 @contextmanager
-def _writing(root: Path, what: str, wait: float, locked: bool):
+def _writing(root: Path, what: str, wait: float):
     """Hold the merge lock of the primary worktree ``root`` for one write, putting back first
     what earlier writes published but did not commit; yields what ``_recover`` did.
 
-    ``locked`` says the caller, such as a task merge closing the Issues its task resolves, holds
-    it already, so the write neither takes nor waits for it; an unfinished merge refuses it all
-    the same. Refused with ``not_primary``, ``merge_busy``, ``merge_incomplete`` or
-    ``recovery_failed``.
+    A process that holds the lock, such as a task merge closing the Issues its task resolves,
+    hands it on to the ``concorde issues`` it starts, which adopts it without waiting; an
+    unfinished merge refuses the write all the same. Refused with ``not_primary``,
+    ``merge_busy``, ``merge_incomplete`` or ``recovery_failed``.
     """
     primary = _require_primary(root)
-    if locked:
-        _refuse_unfinished_merge(primary, what)
-        yield _recover(root)
-        return
     try:
         with locking.merge_lock(
             layout.concorde_of(primary), f"an Issue write ({what})", wait=wait
@@ -1076,12 +1072,11 @@ def report_issue(
     source: dict,
     *,
     wait: float = locking.MERGE_WAIT,
-    locked: bool = False,
 ) -> dict:
     """Commit before replying. Identity is idempotent per trusted invocation and report key.
 
     ``root`` is the primary worktree (``project_root``); the write waits up to ``wait`` seconds
-    for its merge lock unless the caller holds it (``locked``).
+    for its merge lock, which a caller holding it hands on.
     Source is the provenance the caller supplies, never part of the report. Reusing a key with changed
     contents is an error, not an overwrite. An append needs a current byte digest; retrying the
     exact accepted append returns its receipt even after later updates, its path where the record
@@ -1097,7 +1092,7 @@ def report_issue(
         "report_id": observation_id,
         "path": issue_path(identifier),
     }
-    with _writing(root, f"a report to Issue {identifier}", wait, locked) as recovery:
+    with _writing(root, f"a report to Issue {identifier}", wait) as recovery:
         _untouched(recovery, identifier)
         checked_path(root, receipt["path"])
         # The committed record alone: a report found there is committed, so its receipt holds.
@@ -1208,7 +1203,6 @@ def dispose_issue(
     duplicate_revision: str | None = None,
     created_at: str | None = None,
     wait: float = locking.MERGE_WAIT,
-    locked: bool = False,
 ) -> str:
     """Append the caller's disposition at exactly ``expected_revision``.
 
@@ -1226,9 +1220,7 @@ def dispose_issue(
             "duplicate disposition names another Issue",
             "invalid_issue",
         )
-    with _writing(
-        root, f"a disposition of Issue {identifier}", wait, locked
-    ) as recovery:
+    with _writing(root, f"a disposition of Issue {identifier}", wait) as recovery:
         _untouched(recovery, identifier)
         record, revision, committed = locate_issue(root, identifier)
         if revision != expected_revision:
@@ -1281,30 +1273,22 @@ def dispose_issue(
         return digest(render(updated).encode())
 
 
-def recover_issues(
-    root: Path, *, wait: float = locking.MERGE_WAIT, locked: bool = False
-) -> dict:
+def recover_issues(root: Path, *, wait: float = locking.MERGE_WAIT) -> dict:
     """Under the merge lock, put back what Issue writes published but did not commit, as every
     write does before it acts, and say what was done and which changes were left as no Issue
     write's: ``{"recovered": [{path, action}], "left": [{path, reason}]}``."""
-    with _writing(
-        root, "a recovery of uncommitted Issue records", wait, locked
-    ) as recovery:
+    with _writing(root, "a recovery of uncommitted Issue records", wait) as recovery:
         return recovery
 
 
-def archive_issues(
-    root: Path, *, wait: float = locking.MERGE_WAIT, locked: bool = False
-) -> dict:
+def archive_issues(root: Path, *, wait: float = locking.MERGE_WAIT) -> dict:
     """Under the merge lock, move every committed record whose folder does not match its status
     into the folder its status names, unchanged, in one commit, and say what was moved and which
     misplaced records were left: ``{"moved": [{issue_id, from, to}], "left": [{path, reason}]}``.
 
     A record committed in both folders, or whose file holds a change no Issue write made, is left.
     """
-    with _writing(
-        root, "an archive of misplaced Issue records", wait, locked
-    ) as recovery:
+    with _writing(root, "an archive of misplaced Issue records", wait) as recovery:
         records = _committed(root, _head(root), [f"{DIRECTORY}/", f"{CLOSED}/"])
         places = {}
         for path in records:
