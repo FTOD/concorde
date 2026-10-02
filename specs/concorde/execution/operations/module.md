@@ -205,7 +205,9 @@ task level or its workflow decides which runs next.
 
 <a id="realization.operations.catalog"></a>
 
-The **Catalog and worker steps** realization holds the catalog (`catalog.py`), the prompt and
+The **Catalog and worker steps** realization holds the catalog (`catalog.py`), the step it puts
+first in every Operation that launches workers, checking them all against the
+[model map](../../glossary.json#concept.model-map) (`admission.py`), the prompt and
 brief helpers of worker-backed providers (`provider.py`) and the review providers' shared handling
 of their Issues (`review_issues.py`): reading a reviewed Module's earlier Issues by the Operations
 that reported them, settling which a review names, resolves or carries, and reporting each finding
@@ -214,6 +216,13 @@ standard worker sequence itself is
 the run context's worker launch, which the
 [Runner and run store](../module.md#realization.execution.runner) realization binds. The providers'
 own code lives with their Modules.
+
+<a id="realization.operations.tests"></a>
+
+The **Operations tests**, under `tests/concorde/operations/`, run an Operation through the runner in
+a real task worktree with a stand-in provider and show that the catalog's first step checks all its
+workers against the model map before any of the provider's own steps; the worker sequence's own
+scenarios are verified with the runner's tests.
 
 ### Workers and Check execution
 

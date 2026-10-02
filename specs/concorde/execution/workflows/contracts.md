@@ -1620,7 +1620,7 @@ causes.
 | `awaiting_decision` | result | `decision` | an interactive run ended at [decision points](../../glossary.json#concept.decision-point); the evidence names each pending point |
 | `step_blocked` | result | `decision` | the procedure stopped at a step that ended `blocked`, or at a validation that was not ready; the step's error is the cause |
 | `step_failed` | result | `decision` | the procedure stopped at a step that ended `failed`; the step's error is the cause |
-| `step_lost` | step outcome, result | `environment` | a step's run has no result and no living runner, its link carrying the end of the runner's output `host.out` as evidence and cause; or the script reported the key with nothing recorded |
+| `step_lost` | step outcome, result | `environment` | a step's run has no result and no living runner, its link carrying the end of the runner's output `host.out` as evidence and as its one cause, a `component` link of the actor `Execution runner of <run-id>` with the code `host_ended` and reason `environment`, whose detail says the runner ended without a result and gives the end of that output, `(nothing)` when it wrote none; or the script reported the key with nothing recorded |
 | `step_refused` | step outcome, result | `input` | the runner rejected the step's command line (its message is the cause) or the detached runner did not start (the `detach_failed` link is the cause) |
 | `step_running` | result | `exhausted` | a report was taken while a current step still runs |
 | `step_rejected` | step outcome | `input` | the workflow record refused the step (`workflow_conflict`, `step_conflict`, `record_unreadable`), its `Workflows (workflow record)` link the cause; nothing was started or recorded, and the outcome has state `refused` |

@@ -45,9 +45,12 @@ task worktree, every Git administrative path of the repository, `~/.claude` and 
 directory's `control/` and `config/`; the
 [Claude Code mechanics](claude-code.md#deny-rules) list them exactly. They hold under
 `bypassPermissions` and make Grep silently omit denied files. Since Claude Code applies `Read`
-denials to Bash too, they never cover system directories or the **runtime paths**: the paths Bash
-itself needs to read, such as the toolchain, `.venv` or `node_modules`, which Workers passes with
-the run as [one of its inputs](../execution/workers/launch.md#inputs) and the Harness only receives.
+denials to Bash too, they never cover system directories or the **runtime paths**: the read-only
+material outside the grant that every tool of the worker, Bash and the file tools alike, may read
+and none may write, such as the toolchain, `.venv`, `node_modules` or the folder of the check logs a
+caller admits for one run, which Workers passes with the run exactly as the caller lists them
+([Reading beside the grant](../execution/workers/launch.md#reading-beside-the-grant)) and the
+Harness only receives.
 The **[write hook](../glossary.json#concept.write-hook)** makes `rw` the exact write allowlist,
 denying any other Edit or Write with a reason naming the path's level; for a path outside the
 grant the reason says both that a file no Module declares needs a `specify` task first and that a

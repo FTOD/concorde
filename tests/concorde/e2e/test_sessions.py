@@ -221,8 +221,16 @@ class HeadlessSessionTests(unittest.TestCase):
             live.pid,
             folder=concorde / "unbound/r-unbound",
         )
+        # A bound run queued behind its busy workspace, still in the lobby.
+        make(
+            "r-queued",
+            "2026-09-27T10:08:00Z",
+            "running",
+            live.pid,
+            folder=concorde / "lobby/r-queued",
+        )
         store = Store(concorde)
-        for name in ("r-running", "r-earlier", "r-step", "r-unbound"):
+        for name in ("r-running", "r-earlier", "r-step", "r-unbound", "r-queued"):
             self.enterContext(run_lock(store, name, "test runner"))
         (concorde / "locks/runs/r-gone.lock").write_text("")
         # The progress file of the running Operation's worker is no run of its own.
@@ -237,12 +245,13 @@ class HeadlessSessionTests(unittest.TestCase):
                 {"run": "r-stopped", "why": "stopped_with_turn"},
                 {"run": "r-step", "why": "running"},
                 {"run": "r-unbound", "why": "running"},
+                {"run": "r-queued", "why": "running"},
             ],
             found,
         )
         # A cancellation long before the round ended was the session's own doing.
         self.assertEqual(
-            ["r-running", "r-step", "r-unbound"],
+            ["r-running", "r-step", "r-unbound", "r-queued"],
             [
                 item["run"]
                 for item in sessions.unsettled_runs(
@@ -256,7 +265,7 @@ class HeadlessSessionTests(unittest.TestCase):
                 self.project,
                 since,
                 time.time(),
-                {"r-running", "r-stopped", "r-step", "r-unbound"},
+                {"r-running", "r-stopped", "r-step", "r-unbound", "r-queued"},
             ),
         )
 

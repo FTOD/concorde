@@ -150,7 +150,8 @@ When a round ends, the tool looks at the [runs](../../glossary.json#concept.run)
 [execution commands](../../glossary.json#concept.execution-command) started since the session began
 that it has not reported yet ([requirements](requirements.md#req.headless-sessions.wake-once)), in
 the [run store](../../glossary.json#concept.run-store) of the session's project: the workspace
-folders of the current tasks and `.concorde/unbound/` of the `.concorde` its
+folders of the current tasks, `.concorde/unbound/` and the lobby `.concorde/lobby/`, where a bound
+run waits for its workspace's lock, of the `.concorde` its
 [workspace binding](../../glossary.json#concept.workspace-binding) names when the session runs in a
 task worktree, otherwise of the worktree's own. Every run started there since the session began
 counts as the session's, including the runs of the tasks it opened, whose workspace folders lie
