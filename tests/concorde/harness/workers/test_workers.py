@@ -271,6 +271,21 @@ class SettingsTests(unittest.TestCase):
         self.assertFalse(any(self.run.work.as_posix() in rule for rule in rules))
 
     @verifies("scenario.workers.read-denied")
+    def test_a_runtime_path_inside_the_worktree_has_no_deny_rule(self):
+        venv = self.project.root / ".venv"
+        (venv / "lib").mkdir(parents=True)
+        (venv / "lib/site.py").write_text("")
+        rules = deny_rules(
+            self.project.root,
+            self.project.grant,
+            self.run,
+            (venv,),
+            home=self.project.home,
+        )
+        self.assertFalse(any(venv.as_posix() in rule for rule in rules), rules)
+        self.assertIn(f"Read(/{self.project.root}/checks/**)", rules)
+
+    @verifies("scenario.workers.read-denied")
     def test_inside_home_only_the_paths_to_the_worktree_stay_visible(self):
         from concorde.harness.settings import outside_rules
 
@@ -499,8 +514,18 @@ class SpecRuleTests(unittest.TestCase):
     def test_a_code_to_spec_worker_describes_the_code(self):
         self.assertIn("Describing the code you read", spec_rule("code-to-spec"))
 
+    @verifies("scenario.workers.brief-review-gaps")
+    def test_a_spec_reviewer_reports_a_gap_and_goes_on(self):
+        for task_type in ("review-spec", "review-architecture"):
+            with self.subTest(task_type=task_type):
+                rule = spec_rule(task_type)
+                self.assertIn("report it as a finding", rule)
+                self.assertIn("go on reviewing", rule)
+                self.assertIn("only when you cannot review at all", rule)
+
+    @verifies("scenario.workers.brief-review-gaps")
     def test_other_workers_return_blocked(self):
-        for task_type in ("specify", "implement", "test", "review-spec"):
+        for task_type in ("specify", "implement", "test"):
             with self.subTest(task_type=task_type):
                 rule = spec_rule(task_type)
                 self.assertIn("do not infer it from code", rule)
@@ -533,12 +558,20 @@ class WorkerRunTests(unittest.TestCase):
         self.assertEqual(
             "Read,Glob,Grep", call["argv"][call["argv"].index("--tools") + 1]
         )
+
+    @verifies("scenario.workers.unknown-task-type-refused")
+    def test_a_task_type_the_protocol_does_not_define_is_refused(self):
         unknown = self.project.run(
-            [{}], task_type="review-everything", grant=reviewing, check_modules=None
+            [{}], task_type="review-everything", check_modules=None
         )
         self.assertEqual("failed", unknown["status"])
-        self.assertEqual("grant_unavailable", unknown["error"]["code"])
-        self.assertIn("a known task type", unknown["error"]["detail"])
+        error = unknown["error"]
+        self.assertEqual("grant_unavailable", error["code"])
+        self.assertEqual("input", error["unhandled"]["reason"])
+        self.assertIn("'review-everything'", error["detail"])
+        self.assertIn("a known task type", error["detail"])
+        self.assertEqual([], unknown["rounds"])
+        self.assertTrue((Path(unknown["run_directory"]) / "trace.json").exists())
 
     def test_the_progress_file_follows_a_claude_run(self):
         command = f"pytest -q {self.root}/tests\nsecond line"
@@ -762,6 +795,21 @@ class WorkerRunTests(unittest.TestCase):
         self.assertNotIn("checks", record["rounds"][0])
         self.assertEqual(1, len(record["rounds"]))
         self.assertEqual("SECRET = 2\n", (self.root / "src/bmod/secret.py").read_text())
+        # The worker's result was a valid ok, whose error is null: no cause from the worker.
+        self.assertEqual("ok", record["worker_result"]["status"])
+        self.assertEqual([], record["error"]["causes"])
+
+    @verifies("scenario.workers.audit-deleted")
+    def test_a_deleted_file_is_a_violation_named_as_deleted(self):
+        record = self.project.run(
+            [{"removes": [f"{self.root}/src/a/calc.py"]}], check_modules=None
+        )
+        self.assertEqual("failed", record["status"])
+        self.assertEqual("audit_violation", record["error"]["code"])
+        audit = record["rounds"][0]["audit"]
+        self.assertEqual("violation", audit["verdict"])
+        self.assertEqual(["src/a/calc.py"], audit["changed"])
+        self.assertEqual(["src/a/calc.py (deleted)"], audit["violations"])
 
     @verifies("scenario.workers.proposed-deletion")
     def test_the_host_performs_proposed_deletions(self):
@@ -797,6 +845,117 @@ class WorkerRunTests(unittest.TestCase):
         )
         self.assertFalse((self.root / "src/a/old.py").exists())
         self.assertTrue((self.root / "specs/a/module.md").exists())
+
+    def commit(self, files: dict) -> None:
+        for path, content in files.items():
+            (self.root / path).write_text(content)
+        git(self.root, "add", "-A")
+        git(
+            self.root,
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@t",
+            "commit",
+            "-qm",
+            "files to delete",
+        )
+
+    @verifies("scenario.workers.deletion-repeated-absent")
+    def test_a_repeated_target_is_deleted_once_and_an_absent_one_recorded(self):
+        self.commit({"src/a/old.py": "OLD = 1\n"})
+        record = self.project.run(
+            [
+                {
+                    "result": {
+                        "proposed_deletions": [
+                            "src/a/old.py",
+                            f"{self.root}/src/a/old.py",
+                            "src/a/never.py",
+                        ]
+                    }
+                }
+            ],
+            check_modules=None,
+        )
+        self.assertEqual("ok", record["status"], record["error"])
+        self.assertEqual(["src/a/old.py"], record["deleted"])
+        self.assertEqual(["src/a/never.py"], record["deletions_absent"])
+        self.assertEqual([], record["deletions_refused"])
+        self.assertFalse((self.root / "src/a/old.py").exists())
+        stored = worker_runs.read_record(self.project.base, record["run_id"])
+        self.assertEqual(["src/a/never.py"], stored["deletions_absent"])
+
+    @verifies("scenario.workers.deletion-failed")
+    def test_a_failed_deletion_fails_the_run_after_every_other_deletion(self):
+        self.commit({"src/a/locked.py": "LOCKED = 1\n", "src/a/old.py": "OLD = 1\n"})
+        original = Path.unlink
+
+        def unlink(path, missing_ok=False):
+            if path.name == "locked.py":
+                raise PermissionError(13, "Permission denied", str(path))
+            return original(path, missing_ok=missing_ok)
+
+        with patch.object(Path, "unlink", unlink):
+            record = self.project.run(
+                [
+                    {
+                        "result": {
+                            "proposed_deletions": ["src/a/locked.py", "src/a/old.py"]
+                        }
+                    }
+                ],
+                check_modules=None,
+            )
+        self.assertEqual("failed", record["status"])
+        error = record["error"]
+        self.assertEqual("deletion_failed", error["code"])
+        self.assertEqual("environment", error["unhandled"]["reason"])
+        self.assertIn("src/a/locked.py (Permission denied)", error["detail"])
+        self.assertIn("it deleted src/a/old.py", error["detail"])
+        self.assertEqual(["src/a/old.py"], record["deleted"])
+        self.assertEqual(["src/a/locked.py"], record["deletions_failed"])
+        self.assertTrue((self.root / "src/a/locked.py").exists())
+        self.assertFalse((self.root / "src/a/old.py").exists())
+
+    @verifies("scenario.workers.project-interpreter")
+    def test_the_project_interpreter_comes_first_and_is_named(self):
+        python = (self.root / ".venv/bin/python").as_posix()
+        host_path = os.environ.get("PATH")
+        record = self.project.run([{}], check_modules=None, project_python=python)
+        self.assertEqual("ok", record["status"], record["error"])
+        [call] = self.project.rounds(record)
+        self.assertEqual(
+            f"{self.root}/.venv/bin{os.pathsep}{host_path}", call["env"]["PATH"]
+        )
+        self.assertIn(f"The project's own interpreter is {python}", call["prompt"])
+        self.assertEqual(host_path, os.environ.get("PATH"))
+
+    @verifies("scenario.workers.runtime-paths-readable")
+    def test_host_material_the_caller_lists_is_readable_never_writable(self):
+        logs = self.project.trace / "checks"
+        logs.mkdir()
+        venv = self.root / ".venv"
+        (venv / "lib").mkdir(parents=True)
+        frozen = json.loads(json.dumps(self.project.grant))
+        record = self.project.run([{}], check_modules=None, runtime=(logs, venv))
+        self.assertEqual("ok", record["status"], record["error"])
+        settings = json.loads(
+            (self.project.runtime(record) / "control/settings.json").read_text()
+        )
+        sandbox = settings["sandbox"]["filesystem"]
+        for path in (logs, venv):
+            self.assertIn(path.as_posix(), sandbox["allowRead"])
+            self.assertNotIn(path.as_posix(), sandbox["allowWrite"])
+            self.assertFalse(
+                any(
+                    path.as_posix() in rule for rule in settings["permissions"]["deny"]
+                ),
+                path,
+            )
+        kept = json.loads((Path(record["run_directory"]) / "grant.json").read_text())
+        self.assertEqual(frozen, kept)
+        self.assertEqual(frozen["context_identity"], record["context_identity"])
 
     @verifies("scenario.workers.check-failure-resume")
     def test_a_failing_check_resumes_the_same_worker(self):
@@ -868,7 +1027,7 @@ class WorkerRunTests(unittest.TestCase):
             self.assertTrue((run / name).is_file(), name)
         node = json.loads((run / "trace.json").read_text())
         self.assertEqual(
-            ("worker-run", "ok", "concorde-worker-run-trace", 3, 2),
+            ("worker-run", "ok", "concorde-worker-run-trace", 4, 2),
             (
                 node["kind"],
                 node["status"],

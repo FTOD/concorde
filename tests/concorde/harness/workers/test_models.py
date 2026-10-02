@@ -782,7 +782,58 @@ class ModelMapTests(unittest.TestCase):
         ):
             self.assertIn(part, str(error))
 
-    @verifies("scenario.workers.model-unmapped", "scenario.workers.model-map-checked")
+    @verifies("scenario.workers.model-map-checked")
+    def test_an_operations_workers_are_checked_against_the_map_at_once(self):
+        self.write(
+            {"schema_version": 1, "models": {"claude-opus-5-5": {"claude": "x"}}}
+        )
+        with self.assertRaises(models.ModelConfigError) as raised:
+            models.check_mapped(self.config, self.environ, operation="spec_panel")
+        error = raised.exception
+        self.assertEqual("model_unmapped", error.code)
+        for part in (
+            f"the model map {self.map}",
+            "`models.gpt-6-astra.claude` (for spec_panel/chair)",
+            "`models.claude-opus-5-5.pi` (for spec_panel/reviewer1)",
+            "spec_panel/reviewer2",
+        ):
+            self.assertIn(part, str(error))
+        self.assertNotIn("implement/", str(error))
+        self.write(
+            {
+                "schema_version": 1,
+                "models": {
+                    "gpt-6-astra": {"pi": "a", "claude": "b"},
+                    "claude-opus-5-5": {"pi": "c"},
+                },
+            }
+        )
+        models.check_mapped(self.config, self.environ, operation="spec_panel")
+        with self.assertRaises(models.ModelConfigError) as unknown:
+            models.check_mapped(self.config, self.environ, operation="no_such")
+        self.assertEqual("config_invalid", unknown.exception.code)
+
+    @verifies("scenario.workers.refusal-reasons")
+    def test_every_refusal_before_a_run_has_its_fixed_reason(self):
+        self.assertEqual(
+            {
+                "config_missing": "input",
+                "config_invalid": "input",
+                "model_not_enabled": "input",
+                "model_unresolved": "input",
+                "backend_missing": "environment",
+                "model_map_missing": "environment",
+                "model_map_invalid": "environment",
+                "model_unmapped": "environment",
+            },
+            {
+                code: reason
+                for code, (reason, _, _) in models.HANDLING.items()
+                if code != "discovery_failed"
+            },
+        )
+
+    @verifies("scenario.workers.model-unmapped")
     def test_a_model_the_map_does_not_name_is_refused(self):
         self.write(
             {"schema_version": 1, "models": {"claude-opus-5-5": {"claude": "x"}}}

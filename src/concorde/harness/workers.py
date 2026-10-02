@@ -53,11 +53,11 @@ _PATHS = {"type": "array", "items": {"type": "string", "minLength": 1}}
 _NULLABLE_TEXT = {"anyOf": [{"type": "null"}, {"type": "string", "minLength": 1}]}
 # A free-form object: the typed-value check closes an object without additionalProperties.
 _OBJECT = {"type": "object", "additionalProperties": {}}
-# contract.workers.worker-run-trace, version 3
+# contract.workers.worker-run-trace, version 4
 WORKER_RUN_TRACE = "concorde-worker-run-trace"
 register(
     WORKER_RUN_TRACE,
-    3,
+    4,
     {
         "type": "object",
         "additionalProperties": False,
@@ -71,6 +71,8 @@ register(
             "worker_result",
             "deleted",
             "deletions_refused",
+            "deletions_absent",
+            "deletions_failed",
             "rounds",
         ],
         "properties": {
@@ -93,15 +95,17 @@ register(
             "worker_result": {"anyOf": [{"type": "null"}, _OBJECT]},
             "deleted": _PATHS,
             "deletions_refused": _PATHS,
+            "deletions_absent": _PATHS,
+            "deletions_failed": _PATHS,
             "rounds": {"type": "integer", "minimum": 0},
         },
     },
 )
-# contract.workers.worker-round-trace, version 2
+# contract.workers.worker-round-trace, version 3
 WORKER_ROUND_TRACE = "concorde-worker-round-trace"
 register(
     WORKER_ROUND_TRACE,
-    2,
+    3,
     {
         "type": "object",
         "additionalProperties": False,
@@ -120,7 +124,21 @@ register(
             "prompt": {"enum": ["initial", "check_failures", "validation_failures"]},
             "session": _NULLABLE_TEXT,
             "exit": {"anyOf": [{"type": "null"}, {"type": "integer"}]},
-            "audit": {"anyOf": [{"type": "null"}, _OBJECT]},
+            "audit": {
+                "anyOf": [
+                    {"type": "null"},
+                    {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": ["verdict", "changed", "violations"],
+                        "properties": {
+                            "verdict": {"enum": ["clean", "violation"]},
+                            "changed": _PATHS,
+                            "violations": _PATHS,
+                        },
+                    },
+                ]
+            },
             "checks": {"type": "array", "items": _OBJECT},
             "validation": {"anyOf": [{"type": "null"}, {"type": "string"}]},
             "agent": _OBJECT,
@@ -225,6 +243,12 @@ def spec_rule(task_type: str) -> str:
         return (
             "- When the Spec does not state a promise the goal needs, do not infer it from code: "
             "report it as a Spec gap in your assessment and end `ok`.\n"
+        )
+    if task_type in ("review-spec", "review-architecture"):
+        return (
+            "- When the Spec does not state a promise, or you lack a document you need, do not "
+            "infer it from code: report it as a finding, as your task says, and go on reviewing. "
+            "Return `blocked` only when you cannot review at all.\n"
         )
     return (
         "- When the Spec does not state a promise you need, do not infer it from code: return "
@@ -479,7 +503,8 @@ def _consistency(result: dict) -> str | None:
 
 
 def run_worker(request: WorkerRequest) -> dict:
-    """Run one worker to its end and return its run record (also written as its trace node)."""
+    """Run one worker to its end and return its run record as contract.workers.worker-run-record
+    defines it; the record kept is its trace node and its rounds' nodes."""
     from .checks import check_error
 
     worktree = Path(os.path.realpath(request.worktree))
@@ -532,6 +557,8 @@ def run_worker(request: WorkerRequest) -> dict:
         "worker_result": None,
         "deleted": [],
         "deletions_refused": [],
+        "deletions_absent": [],
+        "deletions_failed": [],
         "status": "failed",
         "error": None,
         "run_directory": trace.as_posix(),
@@ -611,6 +638,23 @@ def run_worker(request: WorkerRequest) -> dict:
                 evidence=found,
                 **extra,
             ),
+        )
+
+    def deletion_failure(failed: list[str], cause, attempts: list[str]) -> dict:
+        def listed(paths) -> str:
+            return ", ".join(paths) or "none"
+
+        return fail(
+            "deletion_failed",
+            f"the host could not delete {len(failed)} of the worker's proposed deletion(s): "
+            f"{', '.join(failed)}; it deleted {listed(record['deleted'])}, refused "
+            f"{listed(record['deletions_refused'])} and found already absent "
+            f"{listed(record['deletions_absent'])}; the deletions it made stay done",
+            "environment",
+            "Workers deletes only what the worker proposed and does not retry a deletion the "
+            "operating system refused",
+            attempts=attempts,
+            causes=[cause],
         )
 
     def attempt() -> dict:
@@ -861,8 +905,10 @@ def run_worker(request: WorkerRequest) -> dict:
                 _finish_round(
                     round_node, round_record, result["status"], result["status"]
                 )
-                _finalize(worktree, record, result, clean=True)
                 cause = worker_link(record, result)
+                failed = _finalize(worktree, record, result)
+                if failed:
+                    return deletion_failure(failed, cause, attempts)
                 return finish(
                     result["status"],
                     link(
@@ -889,7 +935,9 @@ def run_worker(request: WorkerRequest) -> dict:
                 repair = _after_round(request, number, round_record, attempts)
                 if repair is None:
                     _finish_round(round_node, round_record, "ok", "ok")
-                    _finalize(worktree, record, result, clean=True)
+                    failed = _finalize(worktree, record, result)
+                    if failed:
+                        return deletion_failure(failed, None, attempts)
                     return finish("ok")
                 _finish_round(round_node, round_record, "failed", "validation_failed")
                 prompt, kind = repair, "validation_failures"
@@ -922,7 +970,9 @@ def run_worker(request: WorkerRequest) -> dict:
                 repair = _after_round(request, number, round_record, attempts)
                 if repair is None:
                     _finish_round(round_node, round_record, "ok", "ok")
-                    _finalize(worktree, record, result, clean=True)
+                    failed = _finalize(worktree, record, result)
+                    if failed:
+                        return deletion_failure(failed, None, attempts)
                     return finish("ok")
                 _finish_round(round_node, round_record, "failed", "validation_failed")
                 prompt, kind = repair, "validation_failures"
@@ -991,6 +1041,8 @@ def _run_content(record: dict) -> dict:
         "worker_result": record["worker_result"],
         "deleted": list(record["deleted"]),
         "deletions_refused": list(record["deletions_refused"]),
+        "deletions_absent": list(record["deletions_absent"]),
+        "deletions_failed": list(record["deletions_failed"]),
         "rounds": len(record["rounds"]),
     }
 
@@ -1068,8 +1120,10 @@ def _keep_transcript(source: str | None, trace: Path) -> None:
         pass
 
 
-def _finalize(worktree: Path, record: dict, result: dict, *, clean: bool) -> None:
-    """Perform the proposed deletions after a clean audit."""
+def _finalize(worktree: Path, record: dict, result: dict) -> list[str]:
+    """Perform the proposed deletions after a clean audit; return each failed one with its
+    error. A repeated entry is dropped, an absent one recorded as absent, and a failure does not
+    stop the others."""
     rw = [
         entry["path"]
         for entry in json.loads(
@@ -1077,20 +1131,32 @@ def _finalize(worktree: Path, record: dict, result: dict, *, clean: bool) -> Non
         )["entries"]
         if entry["level"] == "rw"
     ]
-    if not clean:
-        return
+    seen: set[Path] = set()
+    failures: list[str] = []
     for proposed in result.get("proposed_deletions", []):
         absolute = Path(os.path.normpath(os.path.join(worktree, proposed)))
+        if absolute in seen:
+            continue
+        seen.add(absolute)
         try:
             relative = absolute.relative_to(worktree).as_posix()
         except ValueError:
             record["deletions_refused"].append(proposed)
             continue
-        if rw_allows(rw, relative) and absolute.is_file():
-            absolute.unlink()
-            record["deleted"].append(relative)
-        else:
+        exists = os.path.lexists(absolute)
+        if not rw_allows(rw, relative) or (exists and not absolute.is_file()):
             record["deletions_refused"].append(proposed)
+        elif not exists:
+            record["deletions_absent"].append(relative)
+        else:
+            try:
+                absolute.unlink()
+            except OSError as error:
+                record["deletions_failed"].append(relative)
+                failures.append(f"{relative} ({error.strerror or error})")
+            else:
+                record["deleted"].append(relative)
+    return failures
 
 
 __all__ = [

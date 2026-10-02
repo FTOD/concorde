@@ -25,8 +25,9 @@ A run is requested with:
 | instructions | The [Operation](../../glossary.json#concept.operation)'s task-specific part of the brief |
 | checks | The [configured checks](../../glossary.json#concept.configured-check) to run after each round, possibly none |
 | validation | Optionally the caller's own validation, run after a round whose checks pass: nothing to repair, or the text naming what to repair |
-| runtime paths | Extra absolute paths Bash may read, such as the toolchain, `.venv` or `node_modules` |
-| limits | Timeout per round, `--max-turns`, `--max-budget-usd`, and the number of [resume rounds](../../glossary.json#concept.resume-round) (default 3) |
+| runtime paths | Extra absolute paths, outside the grant, that every tool of the worker may read and none may write, exactly as the caller lists them: the worker configuration's runtime paths that exist, such as `.venv` or `node_modules`, the directories the project interpreter needs, and the host material the caller admits for this run alone, such as the folder of the check logs its own run recorded ([Reading beside the grant](#reading-beside-the-grant)) |
+| project interpreter | Optionally the absolute path of the project's own Python interpreter, which the caller resolved from the project's configuration as its checks run it; its directory comes first on the worker's `PATH` and the brief names it |
+| limits | Timeout per round, the turn limit, the budget limit when the configuration sets one, and the number of [resume rounds](../../glossary.json#concept.resume-round) (default 3) |
 | model | The project model name the run worktree's [worker configuration](../../glossary.json#concept.worker-configuration) chooses for the worker's id, which every Operation gives, recorded only |
 | local model, model map | The model's local id on the backend, which the [model map](../../glossary.json#concept.model-map) gives it and which is passed with `--model`, and the path of that map, recorded only |
 | operation, worker | The Operation and the [worker id](../../glossary.json#concept.worker-id) the model was chosen for, recorded only |
@@ -55,6 +56,27 @@ them from every tool ([Claude Code mechanics](../../harness/claude-code.md#deny-
 a worker runs in lies in the primary worktree, the Harness also hides the primary worktree as a
 whole but for the way to the worktree, the runtime paths and what the grant makes readable, as it
 hides the user's home.
+
+## Reading beside the grant
+
+The grant is the whole of what a worker may read of the project; the runtime paths are the only
+other material it may read, and its caller alone decides them. Workers hands them to the Harness
+exactly as given, adding none and widening none, and the Harness makes each readable, and none
+writable, to every tool on both backends ([Claude Code
+mechanics](../../harness/claude-code.md#deny-rules), [pi mechanics](../../harness/pi.md#read-table)).
+They change neither the grant nor its context identity; they reach the generated worker settings
+or permission extension, whose digest the run record keeps.
+
+A caller that lets a worker read host material, such as the full logs of the checks its own run
+recorded, lists the folder that holds only that material, never the trace node or task folder
+around it, and names the files its worker should read in its task instructions, since the brief
+lists only the grant. The worker reads them at their absolute paths, like any `ro` file.
+
+The project interpreter is the one other thing a caller may give: Workers puts its directory first
+on every round's `PATH`, on both backends, ahead of the host's own `PATH`, and the brief names it,
+so that `python` is the project's interpreter; the host's own environment is never changed. Workers
+never resolves the interpreter itself, and running it needs its environment and the installation it
+links to readable, which the caller therefore lists among the runtime paths.
 
 ## Run directory and runtime directory
 
@@ -146,8 +168,12 @@ On the Claude Code backend the first round runs, with the runtime directory's `w
 claude -p --settings <runtime>/control/settings.json --tools <tool set>
        --json-schema <worker result schema> --output-format stream-json --verbose
        --permission-mode bypassPermissions --allow-dangerously-skip-permissions
-       --strict-mcp-config --max-turns <n> --max-budget-usd <x> [--model <model>] [--effort <level>]
+       --strict-mcp-config --max-turns <n> [--max-budget-usd <x>] [--model <model>]
+       [--effort <level>]
 ```
+
+`--max-budget-usd` is passed only when the worker configuration sets `max_budget_usd`; without it
+the run has no budget limit.
 
 A resume round runs the same command with `--resume <latest session id>` and the check failures, or
 the text of the caller's validation, as the prompt.
@@ -156,7 +182,8 @@ The environment is cleared and then set to exactly:
 
 | Variable | Value |
 | --- | --- |
-| `PATH`, `LANG` | the host's values |
+| `PATH` | the host's value, preceded by the project interpreter's directory when the request names one ([Reading beside the grant](#reading-beside-the-grant)) |
+| `LANG` | the host's value |
 | `HOME` | `<runtime>/home` |
 | `TMPDIR` | `<runtime>/tmp` |
 | `CLAUDE_CONFIG_DIR` | `<runtime>/config` |
@@ -216,9 +243,37 @@ compares.
 | a changed `HEAD`, index or branch | violation |
 | a change under a path Git ignores | not observed |
 
-After the last round, and only when its audit was clean, the host deletes each path in
-`proposed_deletions` that is in the `rw` list; a proposed deletion outside `rw` is refused and
-recorded. This happens after the last round's checks, so the recorded
+Each round records its audit as an object with:
+
+| Field | Content |
+| --- | --- |
+| `verdict` | `clean` when nothing is a violation, otherwise `violation` |
+| `changed` | every path, relative to the worktree and in path order, whose file was created, changed or deleted since the snapshot |
+| `violations` | each violation as one string, in path order after any Git state: `HEAD` or `index` for a changed `HEAD` or index; the path of a file created or changed outside `rw`; the path followed by ` (deleted)` for a deleted file; `<glossary>#<concept> (owner before: <Module>, after: <Module>)` for a glossary entry another [Module](../../glossary.json#concept.module) owns, `none` standing for a missing owner; and `<glossary>#(unreadable: <error>)` when the glossary cannot be compared by entry |
+
+A round whose audit did not run, such as one whose command could not be started, has `audit` null
+in its node. The [returned run record](contracts.md#contract.workers.worker-run-record)'s example shows an
+audit with violations.
+
+### Proposed deletions
+
+After the last round, and only when its audit was clean, the host performs the worker's
+`proposed_deletions`. The worker writes each relative to the worktree, as the brief asks of every
+path in its result; the host also accepts an absolute path, which it reads as the same path in the
+worktree once normalized, and refuses one that normalizes to a path outside the worktree. An entry
+naming a path an earlier entry already named is dropped. The host then takes each remaining entry
+in order:
+
+| The proposed path | Outcome | Recorded in |
+| --- | --- | --- |
+| outside the worktree, outside the `rw` list, or an existing entry that is not a file, such as a directory | refused, nothing changes | `deletions_refused`, as the worker gave it |
+| in the `rw` list and absent from the worktree | nothing to do | `deletions_absent`, relative to the worktree |
+| an existing file in the `rw` list | deleted | `deleted`, relative to the worktree |
+| an existing file in the `rw` list whose deletion fails | left in place; the host goes on with the next | `deletions_failed`, relative to the worktree |
+
+When a deletion failed, the run ends `failed` with `deletion_failed` whatever status it would
+otherwise have had, its error listing what was deleted and what was not; the deletions that
+succeeded stay done. This happens after the last round's checks, so the recorded
 [check results](../../glossary.json#concept.check-result) describe the worktree before these
 deletions.
 
@@ -266,8 +321,11 @@ model, each as the envelope gave it and null when it gave none. The checks of a 
 nodes of Check execution below it. A worker run's own usage records nothing, since its rounds hold
 what it consumed.
 
-Besides the files, the host returns the run record to the Operation that asked, with every round's
-content, so that the Operation reads the audits and checks without reading the files.
+Besides the files, the host returns the run record to the Operation that asked as the
+[returned run record](contracts.md#contract.workers.worker-run-record): the run node's content with, in place of
+the number of rounds, the ordered list of every round's content, so that the Operation reads the
+audits and checks without reading the files. That value is never stored; the trace nodes are the
+record that is kept.
 
 ## Errors
 
@@ -287,14 +345,15 @@ by every code whose round had one, even when the round also timed out or failed 
 | `snapshot_failed` | the Git command that failed and its output | `environment` | none |
 | `launch_failed` | the command that could not be started and the operating system's error | `environment` | none |
 | `worker_timeout` | the round and the timeout | `exhausted` | none |
-| `worker_limit_reached` | the round and the limit Claude Code reported | `exhausted` | the Claude Code process's link |
+| `worker_limit_reached` | the round and the limit the agent program reported: on Claude Code its turn or budget subtype, on pi the limit and the value the permission extension names | `exhausted` | the agent process's link: the Claude Code process's link, or the pi process's link with that limit and value |
 | `claude_failed` | the round and the error Claude Code reported, or that it printed no envelope (Claude Code backend) | `environment` | the Claude Code process's link |
 | `pi_runtime_missing`, `pi_failed` | see [the pi run mechanics](pi.md#errors) | `environment` | the pi process's link for `pi_failed` |
 | `worker_result_invalid` | the schema violation, or the worker's final text when it gave no structured result | `capability` | none |
-| `audit_violation` | every violating path and the worker's own reported status | `permission` | the worker's link, when its result was valid |
+| `audit_violation` | every violating path and the worker's own reported status, or that its result was invalid | `permission` | the worker's link, when its result was valid and carries an `error`; none for a valid `ok` result, whose `error` is null, or an invalid one |
 | `worker_blocked`, `worker_failed` | the worker's code and detail | `capability` | the worker's link |
 | `checks_unavailable` | the Modules and Check execution's error | `environment` | Check execution's link |
 | `checks_failed` | every check still failing and the rounds used; `attempts` lists each round's failures | `exhausted` | one link per failing check, from Check execution |
+| `deletion_failed` | every proposed deletion the host performed, every one that failed with the operating system's error, and those it refused or found already absent | `environment` | the worker's link, when its result carries an `error` |
 | `interrupted` | what ended the run from outside before it finished, such as a signal or the cancellation of the launching Operation | `environment` | none |
 
 The **Claude Code process's link** has the level `component` and states the envelope's subtype,
@@ -304,6 +363,30 @@ error; its reason is `exhausted` for the `error_max_turns` and `error_max_budget
 `worker`, the actor naming the run and the latest session, and no causes; Workers copies it
 unchanged.
 
+## Refusals before a run
+
+The configuration reader settles a worker's backend, model and level, and checks its program and
+the model map, when the Operation's step asks, before the step calls the host. Its refusals
+therefore come before any worker run exists: no run directory, progress file or run record is
+made for them, and Workers writes no error link of its own. Each refusal carries one of these codes
+and a message that names the file concerned, the worker configuration or the model map, says what
+is wrong and how to repair it:
+
+| Code | What the message names | Reason |
+| --- | --- | --- |
+| `config_missing` | the missing `.concorde/workers.json`, what it must hold and that it must be committed | `input` |
+| `config_invalid` | the file and its first problem, or the retired file and how to move it | `input` |
+| `model_not_enabled` | the entry, the model, the enabled models and how to repair the entry | `input` |
+| `model_unresolved` | the worker, every entry its model may come from and how to set one | `input` |
+| `backend_missing` | the worker, its program, the source of its backend and how to choose the other program | `environment` |
+| `model_map_missing` | the map's path and what it holds | `environment` |
+| `model_map_invalid` | the map's path, or the relative path `CONCORDE_MODEL_MAP` gives, and what is wrong | `environment` |
+| `model_unmapped` | the map, each worker with its backend and model and where each came from, and the exact entry to add | `environment` |
+
+The step that asked turns a refusal into a `component` link with the actor
+`Workers (worker configuration)`, the code, the message as its detail, the reason above and no
+causes, and makes it the cause of its own link, which Operations names `worker_model_unavailable`.
+
 ## Requirements
 
 ### req.workers.frozen-grant — One grant for the whole run
@@ -312,7 +395,11 @@ The host SHALL generate a run's settings, write hook, tool set and brief from on
 
 ### req.workers.every-task-type — A worker of every Protocol task type launches
 
-The host SHALL launch a worker of each of the eight Protocol task types and refuse, before launch, a request naming any other task type.
+The host SHALL launch a worker of each of the eight Protocol task types.
+
+### req.workers.unknown-task-type — A task type the Protocol does not define is refused
+
+The host SHALL refuse, before launch, a request naming a task type that is not one of the eight Protocol task types.
 
 ### req.workers.malformed-grant — Nothing is generated from a malformed grant
 
@@ -332,26 +419,67 @@ On the Claude Code backend the write hook SHALL deny every Edit or Write whose t
 
 ### req.workers.read-denials — File tools cannot read what the grant withheld when the rules were generated
 
-On the Claude Code backend the [deny rules](../../glossary.json#concept.deny-rules) SHALL forbid Read, Glob and Grep on every worktree path that exists when the host generates them and whose level is neither `ro` nor `rw`.
+On the Claude Code backend the [deny rules](../../glossary.json#concept.deny-rules) SHALL forbid Read, Glob and Grep on every worktree path that exists when the host generates them, whose level is neither `ro` nor `rw` and that lies below none of the run's runtime paths.
+
+A runtime path inside the worktree, such as `.venv` or `node_modules`, is one the tracked worker
+configuration lists, since a caller admits nothing else of the worktree beside the grant: the
+Harness leaves it readable because Claude Code applies a Read denial to Bash too, and Bash must run
+the toolchain below it ([Claude Code mechanics](../../harness/claude-code.md#deny-rules)). What a
+worker may read beside its grant is therefore decided by the worker configuration's `runtime` list,
+and changing that list is a change of the worker configuration, reviewed and merged like any other
+change of the project.
 
 ### req.workers.bash-sandbox — Bash runs sandboxed without network
 
-On the Claude Code backend every Bash command of a worker SHALL run in Claude Code's sandbox with no allowed network domain, with a strict allowlist so that an unlisted host is denied rather than approved by the permission mode, and with unsandboxed commands disabled.
+On the Claude Code backend every Bash command of a worker SHALL run in Claude Code's sandbox with no allowed network domain.
+
+### req.workers.bash-strict-network — An unlisted host is denied, never approved
+
+On the Claude Code backend the Bash sandbox SHALL use a strict network allowlist, so that a request to a host it does not list is denied rather than approved by the permission mode.
+
+### req.workers.bash-no-unsandboxed — No Bash command runs outside the sandbox
+
+On the Claude Code backend the worker settings SHALL disable unsandboxed commands, so that a request to run a command outside the sandbox still runs it sandboxed.
 
 ### req.workers.working-directory — The worker never works in the worktree
 
-A worker's working directory SHALL be its runtime directory's `work/` directory, which is never the worktree, lies outside the run directory, and lies outside every path a deny rule names.
+A worker's working directory SHALL be its runtime directory's `work/` directory.
 
-### req.workers.result-paths-relative — Tools take absolute paths, results relative ones
+Since the runtime directory is a private directory of its own under the system's temporary
+directory, `work/` is never the worktree and lies outside the run directory.
 
-The host SHALL tell every worker in its brief to give its tools absolute paths and to write every path in the task worktree that its result names relative to the worktree.
+### req.workers.working-directory-not-denied — A run the deny rules would disable is refused
 
-The working directory is not the worktree, so a tool needs the absolute path; every Operation's
-output names project paths relative to the worktree, so a result must not copy the tools' form.
+The host SHALL refuse to launch a worker when a deny rule it generated covers the runtime directory's `work/`, `home/` or `tmp/`.
+
+### req.workers.tool-paths-absolute — Tools take absolute paths
+
+The host SHALL tell every worker in its brief to give its tools absolute paths.
+
+The working directory is not the worktree, so a tool needs the absolute path.
+
+### req.workers.result-paths-relative — Results name paths relative to the worktree
+
+The host SHALL tell every worker in its brief to write every path in the task worktree that its result names relative to the worktree.
+
+Every Operation's output names project paths relative to the worktree, so a result must not copy
+the tools' form.
 
 ### req.workers.clean-environment — Nothing ambient reaches the worker
 
 The host SHALL start every worker round with only the environment variables listed in [Launch](#launch), or on the pi backend in [the pi launch](pi.md#launch).
+
+### req.workers.project-interpreter-first — The project's interpreter comes first on the worker's `PATH`
+
+When the request names a project interpreter, the host SHALL start every worker round, on both backends, with that interpreter's directory first on `PATH`, followed by the host's own `PATH`.
+
+### req.workers.project-interpreter-named — The brief names the project's interpreter
+
+When the request names a project interpreter, the host SHALL name it in the brief as the interpreter to run the project's code and tests with.
+
+### req.workers.runtime-paths-exact — A worker reads beside its grant only what its caller lists
+
+The host SHALL hand the Harness the request's runtime paths exactly as given, adding none, beside a grant and context identity left as the request gave them.
 
 ### req.workers.configured-model — A worker's model comes from its worker configuration alone
 
@@ -376,6 +504,14 @@ Every refusal the model map causes SHALL name the map's file.
 ### req.workers.model-map-entry — An unmapped model's refusal names the entry to add
 
 The refusal of a worker whose model the map gives no id for its backend SHALL name the exact entry to add to the map.
+
+### req.workers.model-map-whole-operation — An Operation's workers are checked against the map at once
+
+When asked to check the workers of one Operation against the model map, the configuration reader SHALL refuse with one `model_unmapped` that names every model and backend the map lacks for them, with the workers that would take each.
+
+### req.workers.refusal-reason — Every refusal before a run has its fixed reason
+
+Every refusal of the configuration reader SHALL carry the code and reason that [Refusals before a run](#refusals-before-a-run) list for it and a message naming the file it concerns.
 
 ### req.workers.proxy-passed — A worker's model calls use the host's proxy
 
@@ -429,6 +565,18 @@ Every run that does not end `ok` SHALL carry Workers' error link with the worker
 
 The host SHALL delete a file only when the worker proposed it, the file is in the `rw` list and the audit was clean.
 
+### req.workers.deletion-once — A repeated deletion is performed once
+
+The host SHALL take a path the worker's `proposed_deletions` names more than once, relatively or absolutely, as one proposed deletion.
+
+### req.workers.deletion-absent — An absent target is recorded, not refused
+
+The host SHALL record a proposed deletion in the `rw` list whose path does not exist as already absent.
+
+### req.workers.deletion-failure — A failed deletion fails the run without stopping the others
+
+When a proposed deletion fails, the host SHALL still attempt every other proposed deletion and end the run `failed` with `deletion_failed`, naming what it deleted and what it did not.
+
 ### req.workers.no-precreation — The host creates no file for the worker
 
 The host SHALL NOT create any file or directory in the worktree before or while the worker runs.
@@ -441,9 +589,13 @@ The host SHALL kill the worker's whole process group when a round ends.
 
 The host SHALL keep a run's progress file current from preparation until the run is finished, on both backends.
 
-### req.workers.always-recorded — Every run leaves a record
+### req.workers.recorded-at-start — A run is recorded before its launch
 
-The host SHALL write a run record for every run it was asked to start, before its launch and again when it ends, including one refused before launch.
+The host SHALL write the run record of every run it was asked to start before it launches the worker, with status `running`.
+
+### req.workers.always-recorded — Every run leaves a final record
+
+The host SHALL write the final run record of every run it was asked to start when the run ends, including one refused before launch.
 
 ### req.workers.transcript-kept — The transcript is kept before the runtime directory goes
 

@@ -147,7 +147,8 @@ relies on, how one run progresses, and what a run leaves behind.
 Workers carries the agent half of level 5, the bottom of Concorde's
 [levels of work](../../module.md#the-levels-of-work). Its own code is not an agent: it runs in the
 Execution runner's process, on behalf of the Operation run at level 4 that called it, and launches
-the one process that is, the headless worker. Only a worker-backed step of an Operation calls it —
+the one process that is, the headless worker. Only a worker-backed step of an Operation calls it in
+Concorde's own flows —
 the [standard worker sequence](../../glossary.json#concept.standard-worker-sequence) of
 [Operations](../operations/module.md) and the providers that run workers, such as Understanding,
 Specification, Implementation, Code review, Adoption and Spec review. No
@@ -157,6 +158,11 @@ nor a [task session](../../glossary.json#concept.task-session) ever starts one. 
 calls nothing of Concorde's: it never touches Git, runs an Operation or starts an agent. Between
 rounds the Workers host code, not the worker, calls Check execution, so that a failing check can
 drive another round inside the same Operation.
+
+The host can also be called directly, without an Operation run, as Workers' own tests call it with
+a request they build: such a run has no Operation run to name, so its progress file's
+`operation_run_id` is null, and when the request names no trace node folder its run directory lies
+in the unbound runs of the worktree's `.concorde`. No Concorde command launches a worker that way.
 
 Results travel up in one direction. The worker ends with its worker result; Workers keeps it
 verbatim in the run record beside its own evidence and returns the record to the Operation's step,
@@ -176,11 +182,13 @@ spec: Spec core
 harness: Harness
 checks: Check execution
 execution: Execution
+tracing: Tracing
 operations -> workers
 workers -> spec
 workers -> harness
 workers -> checks
 workers -> execution
+workers -> tracing
 workers -> operations
 ```
 
@@ -291,9 +299,13 @@ denial means the path is outside its grant; and that a promise the
 [Spec](../../glossary.json#concept.spec) does not state is never inferred from code. What the worker
 does instead depends on its task type: a `review-code` worker reports such behaviour as a
 `spec-gap` finding, an `understand` worker reports the missing promise as a [Spec
-gap](../../glossary.json#concept.spec-gap) and ends `ok`, and a `code-to-spec` worker is told that
-describing the code it reads is its task and that doubtful intent is reported, never promised;
-every other worker returns `blocked`.
+gap](../../glossary.json#concept.spec-gap) and ends `ok`, a `code-to-spec` worker is told that
+describing the code it reads is its task and that doubtful intent is reported, never promised, and
+a `review-spec` or `review-architecture` worker reports a missing promise or a document it lacks as
+a finding and goes on, ending `blocked` only when it cannot review at all, since the review's own
+instructions say how it reports such a gap; every other worker returns `blocked`. When the caller
+gives the project's own interpreter, the brief also names it as the `python` first on the worker's
+`PATH`, to run the project's code and tests with.
 
 A worker returns its worker result through `--json-schema` on Claude Code and as the argument of its
 `concorde_result` tool on pi. Its `error` carries the link's code, detail, evidence, attempt, the
@@ -377,8 +389,9 @@ set by the entry that chose the model or by a more specific entry; otherwise the
 in `enabled_models`; otherwise one a less specific entry sets; otherwise none, which leaves the
 program's built-in default level. A worker whose entries set no model is refused: it never runs on
 its program's default model. A backend no entry sets is pi. The same file holds the `limits` of
-every worker launch and the `runtime` paths, which [the worker
-limits](../operations/workers.md#worker-limits) describe:
+every worker launch and the `runtime` paths, which [the worker configuration
+contract](contracts.md#contract.workers.worker-configuration) defines with their defaults and the
+Operation's step reads for each launch:
 
 ```json
 {
@@ -463,6 +476,14 @@ model name has no id for its backend there with `model_unmapped`, naming the wor
 model and where each came from, the map and the exact entry to add. Each refusal comes before the
 worker launches, and none falls back: the project model name is never taken as the local id, and
 nothing else of the user's environment chooses a model.
+
+So that a run does not stop after its first workers have run, the configuration reader also checks
+every worker one Operation may launch against the map at once, which the Operation's run asks for
+when it is admitted, before its first worker launches: it resolves each worker's backend and model
+and refuses with one `model_unmapped` naming every model and backend the map lacks, with the
+workers that would take each. A worker whose entries set no model is left to its own resolution,
+which refuses it with `model_unresolved`. Every refusal before a run, with its code and reason, is
+listed in [the run mechanics](launch.md#refusals-before-a-run).
 
 Because the file is tracked, a [task](../../glossary.json#concept.task) carries the configuration of
 its base commit: a later change on the primary branch never reaches a task already open, a change
@@ -630,7 +651,11 @@ dir -> settings: holds
 **Check execution** is a service the Workers host code calls. It runs the
 [configured checks](../../glossary.json#concept.configured-check)
 on the worktree in its read-only boundary, returning a [check
-result](../../glossary.json#concept.check-result) per check with its log. Workers relies on
+result](../../glossary.json#concept.check-result) per check with its log, in the shape its
+[service](../checks/service.md#check-result) defines, which each round keeps as its `checks`;
+a failure of the service reaches Workers as Check execution's own link
+([req.checks.service-link](../checks/service.md#req.checks.service-link)), and a check that did not
+pass as the link [req.checks.failure-link](../checks/service.md#req.checks.failure-link) promises. Workers relies on
 Check execution keeping checks from writing the worktree's files directly and refusing a result
 whose inputs changed while it ran; it runs them only after a clean audit, feeds failures into the
 next round, and records every result. Checks that cannot run, or whose result Check execution
