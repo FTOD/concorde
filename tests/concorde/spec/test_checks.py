@@ -12,7 +12,7 @@ from pathlib import Path
 from concorde.spec.registry import registry_command
 from concorde.spec.repository import SpecError
 from concorde.spec.schema import KEYWORDS
-from concorde.spec.syntax import D2_KEYWORDS
+from concorde.spec.syntax import D2_KEYWORDS, term_uses
 from concorde.spec.verification import verifies
 from tests.concorde.support.paths import REPOSITORY_ROOT
 from tests.concorde.support.spec_project import (
@@ -287,6 +287,27 @@ class CheckTests(unittest.TestCase):
             "A kept [Thing](../glossary.json#concept.provider.thing) stays.",
         )
         self.assertEqual([], self.project.findings("CHK.term.unlinked"))
+
+    @verifies("scenario.spec.term-unlinked")
+    def test_titles_wrapped_across_lines_are_still_one_title(self):
+        titles = {
+            "concept.spec": "Spec",
+            "concept.task": "Task",
+            "concept.type": "Task type",
+        }
+        text = (
+            "# Wrapping\n\n"
+            "Results are read the way Spec\ncore's validation result is read.\n"
+            "A Task\n  type is chosen first.\n\n"
+            "A kept Task\n\ntype stays apart.\n"
+        )
+        # The Module title "Spec core" and the term "Task type" each wrap onto the next line, so
+        # neither "Spec" nor that first "Task" is a use; a blank line ends the paragraph, so the
+        # last "Task" is one.
+        self.assertEqual(
+            {"concept.task": (8, 7, 11)},
+            term_uses(text, titles, ["Spec core"]),
+        )
 
     @verifies("scenario.spec.node-checks")
     def test_an_anchor_left_empty_by_the_next_group_is_named(self):
