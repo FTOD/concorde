@@ -283,9 +283,12 @@ contract](contracts.md#contract.distribution.part-registration) and a command or
 parts register ([requirements](requirements.md#req.distribution.unique-names)). The prompt
 roots are the Protocol's `prompts/protocol/principles.md` and `prompts/protocol/kinds/module.md`
 every file directly in `prompts/workers/`, `prompts/main-session/`, `prompts/dogfooding/` and
-`prompts/development/`, and the prompt of every part's registered guidance, `prompts/<path>` for its
-`generated/<path>`, each rendered to the same path under `generated/`; the two
-[skills](#realization.distribution.build) are rendered from two of them. `build --check` only
+`prompts/development/`, and the prompt of every guidance section a part registers, `prompts/<path>`
+for its `generated/<path>`, each rendered to the same path under `generated/`. The build then
+[composes the guidance](#guidance-composition) of every part of the package, the `concorde` skill
+`generated/skills/concorde/SKILL.md` and the task-session prompt
+`generated/guidance/task-session.md`, and renders the development skill from its prompt root
+([skills](#realization.distribution.build)). `build --check` only
 reports what is stale, writing nothing
 ([requirements](requirements.md#req.distribution.build-check-read-only)). `generated/` is
 Git-ignored, so a checkout always rebuilds. `protocol-manifest --write --bind-project` accepts a
@@ -423,14 +426,17 @@ project where every check passes, it goes through these steps in order:
    with the caller's `PYTHONPATH`, `PYTHONHOME` and user site-packages left out, so an activated
    project venv never becomes Concorde's interpreter
    ([requirements](requirements.md#req.distribution.own-python)).
-6. **It installs the guidance.** The main-session guidance, composed of Coordination's working
-   method followed by the guidance every other installed part contributes, in the order of the parts
-   table, becomes the project skill `.claude/skills/concorde/SKILL.md`, the build's renders of
-   those parts composed unchanged, and a block between
+6. **It installs the guidance.** The main-session guidance, [composed](#guidance-composition) of
+   Coordination's working method followed by the guidance every other installed part contributes,
+   in the order of the parts table, becomes the project skill `.claude/skills/concorde/SKILL.md`,
+   the build's renders of those parts composed unchanged, and a block between
    `<!-- concorde:start -->` and `<!-- concorde:end -->` in the project's `CLAUDE.md`, replaced in
-   place on a later install, leaving the rest of the file untouched, and ending with an `@<path>`
-   import of the project's glossary once one is declared
-   ([requirements](requirements.md#req.distribution.glossary-import)). Distribution's `init` entry
+   place on a later install, leaving the rest of the file untouched, and ending, where the spec part
+   is installed, with an `@<path>` import of the project's glossary once one is declared
+   ([requirements](requirements.md#req.distribution.glossary-import)). The task-session prompt
+   composed of the same parts replaces the build's composition of every part in the Framework copy,
+   `.concorde/framework/generated/guidance/task-session.md`, where Coordination reads it, and is
+   removed there when the coordination part is not installed. Distribution's `init` entry
    point also adds that import after an `init --apply` that created the first glossary, as
    [the command entry points](#realization.distribution.command) describe. The guidance is for Claude
    Code alone, since the main agent and its task sessions run on Claude Code for now; nothing is
@@ -802,16 +808,34 @@ nothing is deduplicated. A text needed twice in one root is therefore kept in tw
 leftover is removed only when its bytes still match the
 previous manifest; an edited leftover, a link or an unknown file stops the build first.
 
-The build also renders each **skill**, a prompt root that agents load as an Agent Skill, a second
-time as `generated/skills/<name>/SKILL.md`: the root's render under the front matter naming the
-skill and describing it ([requirements](requirements.md#req.distribution.skills-rendered)). The
-`concorde` skill is the main-session guidance, composed of Coordination's working method and the
-guidance each other part contributes: the build renders each part's guidance, and the installer
-composes the renders of the installed parts in the order of the parts table without changing them, adding only
-Dogfooding's section in a develop install; `concorde-development` is the root Module's guidance for
-developing Concorde in its own source checkout, which that checkout loads beside `concorde` and no
-installation places. Rendering the front matter in the build rather than in the installer lets the
-checkout and every installed project load the very same file.
+The build also renders the **skills** agents load as Agent Skills, each as
+`generated/skills/<name>/SKILL.md` under the front matter naming the skill and describing it
+([requirements](requirements.md#req.distribution.skills-rendered)). The `concorde` skill is the
+main-session guidance [composed](#guidance-composition) of every part of the package, the
+composition the installer makes for the installed parts with a description that presents the
+session as the main agent only where the coordination part is installed; `concorde-development` is
+the render of the root Module's guidance for developing Concorde in its own source checkout, which
+that checkout loads beside `concorde` and no installation places. Rendering the skill in the build
+rather than only in the installer lets the checkout and an installation of every part load the very
+same file.
+
+<a id="guidance-composition"></a>
+
+The **guidance composition**, `guidance.py`, is the one code that composes the guidance from a set
+of part registrations, for the build and the installer alike. Each part registers up to three
+rendered sections under `guidance`: its section of the project skill (`skill`), of the task-session
+prompt (`task_session`) and of the `CLAUDE.md` block (`claude_md`). A composition of one kind is
+the sections of that kind of the given parts, Coordination's first, the others in the order of the
+[parts table](#parts-and-their-registrations) and a part the table does not name after them by
+name, each unchanged and separated by one blank line
+([requirements](requirements.md#req.distribution.composed-guidance)); the skill carries its front
+matter. Without the coordination
+part the skill and the block are the installed parts' sections alone and there is no task-session
+prompt, since task sessions are Coordination's. Coordination's sections live in
+[Main session](../coordination/main-session/module.md)'s `prompts/main-session/`, every other
+part's in `prompts/guidance/<part directory>/`, each bound by its part's top Module, and each
+section says what happens where a part it mentions is not installed. Dogfooding's develop section
+is no part's: the installer appends it to the composed skill and block in a develop install.
 
 <a id="realization.distribution.command"></a>
 
@@ -876,6 +900,16 @@ validation in the primary worktree, therefore stops until the project validates 
 Concorde ([requirements](requirements.md#req.distribution.update-unvalidated),
 [reported](requirements.md#req.distribution.unvalidated-reported),
 [cleared](requirements.md#req.distribution.unvalidated-cleared)).
+
+<a id="realization.distribution.guidance"></a>
+
+The **Distribution guidance** is the part's sections of the [main-session
+guidance](../glossary.json#concept.main-session-guidance), kept in `prompts/guidance/distribution/`
+and registered under `guidance` in the part's registration, which [the composition
+below](#guidance-composition) composes after Coordination's working method wherever the part is
+installed: the project skill's "Installed parts and updates", what `concorde` is, `part_missing` and
+`concorde update`, and the `CLAUDE.md` block's sentence on them, the one section every install
+holds. Each section says what happens where a part it mentions is not installed.
 
 <a id="realization.distribution.tests"></a>
 

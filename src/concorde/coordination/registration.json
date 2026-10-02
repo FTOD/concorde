@@ -142,7 +142,11 @@
     "concorde-delivery-trace",
     "concorde-delivery-check-trace"
   ],
-  "guidance": "generated/main-session/skill.md",
+  "guidance": {
+    "skill": "generated/main-session/skill.md",
+    "task_session": "generated/main-session/task-session.md",
+    "claude_md": "generated/main-session/claude-md.md"
+  },
   "renders": null,
   "install": {
     "files": [],

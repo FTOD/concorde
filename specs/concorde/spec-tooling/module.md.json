@@ -28,7 +28,17 @@
     "includes": [],
     "participates": []
   },
-  "defines": [],
+  "defines": [
+    {
+      "id": "realization.spec-tooling.guidance",
+      "type": "realization",
+      "title": "Spec tooling guidance",
+      "meaning": "#realization.spec-tooling.guidance",
+      "entries": [
+        "prompts/guidance/spec/"
+      ]
+    }
+  ],
   "relations": [],
   "extensions": {}
 }

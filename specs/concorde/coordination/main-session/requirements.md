@@ -129,8 +129,9 @@ process of the server and waits for it there.
 ### req.main-session.task-session-quiet-before-validation — A task session stops its background commands before validating
 
 The task-session guidance SHALL tell a task session to let every run of its workspace finish and to
-stop every other background command it started, confirming each ended, before it starts
-`task-validation` or `delivery`.
+stop every other background command it started, confirming each ended, before it validates and
+delivers: before `task-validation` or `delivery` where the method part is installed, and before
+`task deliver` otherwise.
 
 A run that still runs holds the [workspace lock](../../glossary.json#concept.workspace-lock), which
 refuses both commands, and `delivery` commits every uncommitted change, so a command still writing
@@ -271,8 +272,9 @@ The task-session guidance SHALL tell a task session to merge the primary branch 
 branch when the main agent asks for it after a `merge_conflict` or after a `concorde update`.
 
 The session then resolves the conflicts within the task's goal, verifies and commits the merge and
-runs `task-validation` and `delivery` again; a task not delivered yet goes on with its work after
-`task-validation` and delivers when it is done. It is the only merge a task session makes.
+validates and delivers again, with `task-validation` and `delivery` where the method part is
+installed and with `task deliver` otherwise; a task not delivered yet goes on with its work after
+validating and delivers when it is done. It is the only merge a task session makes.
 
 ### req.main-session.no-polling — Waiting never polls
 

@@ -1,8 +1,9 @@
 """The rendered main-session guidance states every rule of the Main session Module.
 
 The guidance is advice to a model; what a main agent then does is judgment no deterministic test
-can observe. These tests check that the rendered text the installer places tells the main agent
-each rule the scenarios describe, in the words the scenarios rely on.
+can observe. These tests check that the guidance the installer places for every part tells the main
+agent each rule the scenarios describe, in the words the scenarios rely on, whichever part's section
+says it.
 """
 
 from __future__ import annotations
@@ -10,14 +11,23 @@ from __future__ import annotations
 import re
 import unittest
 
+from concorde.distribution import guidance, parts
 from concorde.distribution.build import build
 from concorde.spec.verification import verifies
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
+KINDS = {"skill": "skill", "task-session": "task_session", "claude-md": "claude_md"}
+
 
 def rendered(name: str) -> str:
+    """The guidance of kind ``name`` composed of every part, as an installation of them all has it."""
     outputs = {output.path: output.content for output in build(REPOSITORY_ROOT).outputs}
-    return re.sub(r"\s+", " ", outputs[f"generated/main-session/{name}.md"].decode())
+    composed = guidance.compose(
+        parts.package_parts(REPOSITORY_ROOT),
+        KINDS[name],
+        lambda path: outputs[path].decode(),
+    )
+    return re.sub(r"\s+", " ", composed)
 
 
 class GuidanceTests(unittest.TestCase):
@@ -390,9 +400,7 @@ class GuidanceTests(unittest.TestCase):
             "primary branch",
             self.skill,
         )
-        self.assertIn(
-            "run `task-validation` and `delivery` again and report", self.skill
-        )
+        self.assertIn("deliver again and report", self.skill)
         session = self.session
         self.assertIn(
             "merge the primary branch it names into your task branch", session
@@ -410,8 +418,7 @@ class GuidanceTests(unittest.TestCase):
             self.skill,
         )
         self.assertIn(
-            "then to run `task-validation` again, and `delivery` too when it had delivered, "
-            "and report.",
+            "then to validate again, and deliver again when it had delivered, and report.",
             self.skill,
         )
         session = self.session
@@ -426,12 +433,8 @@ class GuidanceTests(unittest.TestCase):
             session,
         )
         self.assertIn("Never rebase or switch branches", session)
-        self.assertIn(
-            "never merge the task branch into the primary branch", session
-        )
-        self.assertIn(
-            "after a `concorde update` that asks for it", self.block
-        )
+        self.assertIn("never merge the task branch into the primary branch", session)
+        self.assertIn("after a `concorde update` that asks for it", self.block)
 
     @verifies("scenario.main-session.small-change")
     def test_a_small_change_needs_the_developers_approval(self):
@@ -473,7 +476,7 @@ class GuidanceTests(unittest.TestCase):
         self.assertIn("started with `--wait <seconds>`", self.skill)
         self.assertIn("never polling with `sleep`", self.block)
         self.assertIn(
-            "Run Operations, `task-validation` and `delivery` in background Bash",
+            "Run every long command, runs and your delivery above all, in background Bash",
             self.session,
         )
         session = self.session
@@ -537,8 +540,9 @@ class GuidanceTests(unittest.TestCase):
         self.assertIn("never configured automatically", self.skill)
         self.assertIn("`survey`", self.skill)
         self.assertIn(
-            "run a task that follows a known procedure as its workflow", self.block
+            "Run a task that follows a known procedure as its workflow", self.block
         )
+        self.assertIn("describe that code with the `brownfield` workflow", self.block)
 
     @verifies("scenario.main-session.ordinary-decision")
     def test_ordinary_decisions_are_made_recorded_and_reported(self):
@@ -627,8 +631,7 @@ class GuidanceTests(unittest.TestCase):
     @verifies("scenario.main-session.unbound-failure")
     def test_a_failed_unbound_run_reaches_the_developer_whole(self):
         self.assertIn(
-            "The decision log and `concorde task escalate` belong to a task, so they cover the "
-            "runs of a task. An unbound run belongs to none",
+            "An unbound run belongs to no task",
             self.skill,
         )
         self.assertIn(
@@ -636,7 +639,7 @@ class GuidanceTests(unittest.TestCase):
         )
         self.assertIn("never a summary of it", self.skill)
         self.assertIn(
-            "When the failure leads to work, open a task for that work and escalate in it with "
+            "open a task for that work and escalate in it with "
             "`--error-file .concorde/unbound/<run-id>/result.json`",
             self.skill,
         )
@@ -805,7 +808,7 @@ class GuidanceTests(unittest.TestCase):
             (skill, "then run `concorde issues recover` (it has no MCP tool)"),
             (skill, "`uncommitted_change` means the record of the Issue you wrote"),
             (skill, "Never commit such a record by hand."),
-            (merging, "It first puts back the Issue records a killed Issue write left"),
+            (merging, "it first puts back the Issue records a killed Issue write left"),
             (merging, "inspect it with `git diff` and revert it"),
             (
                 merging,
@@ -864,7 +867,7 @@ class GuidanceTests(unittest.TestCase):
             "what the worktree's `.concorde/workers.json` chooses", self.skill
         )
         self.assertIn("The file is tracked by Git", self.skill)
-        self.assertIn("A task carries the file of its base commit", self.skill)
+        self.assertIn("a task carries the file of its base commit", self.skill)
         self.assertIn("Change worker models only when the developer asks", self.skill)
         self.assertIn("commit that file alone on the primary branch", self.skill)
         self.assertIn("reaches the primary branch when the task merges", self.skill)

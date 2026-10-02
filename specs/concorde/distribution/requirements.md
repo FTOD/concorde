@@ -7,14 +7,14 @@ in concrete situations.
 
 ### req.distribution.build-owned-outputs — The build writes only where it owns
 
-The build SHALL write only inside `generated/protocol/`, `generated/workers/`, `generated/main-session/`, `generated/dogfooding/`, `generated/development/`, `generated/skills/` and `generated/workflows/` and to `generated/build-manifest.json`.
+The build SHALL write only inside `generated/protocol/`, `generated/workers/`, `generated/main-session/`, `generated/dogfooding/`, `generated/development/`, `generated/guidance/`, `generated/skills/` and `generated/workflows/` and to `generated/build-manifest.json`.
 
 Other locations under `generated/` belong to other producers, and the build never judges or removes
 them. Each new prompt root adds its own owned location in the same change.
 
 ### req.distribution.skills-rendered — Every skill is rendered with its front matter
 
-The build SHALL render each skill, `concorde` from `prompts/main-session/skill.md` and `concorde-development` from `prompts/development/skill.md`, as `generated/skills/<name>/SKILL.md`: front matter with the skill's `name` and a double-quoted `description`, followed by the render of its prompt root.
+The build SHALL render each skill, `concorde` composed of every part's skill section and `concorde-development` from `prompts/development/skill.md`, as `generated/skills/<name>/SKILL.md`: front matter with the skill's `name` and a double-quoted `description`, followed by that composition or the render of its prompt root.
 
 The installer places the `concorde` skill from that file, so an installed project and Concorde's
 own source checkout load the same text.
@@ -96,14 +96,16 @@ The build SHALL fail when two parts register the same command or the same MCP to
 
 The installed [main-session guidance](../glossary.json#concept.main-session-guidance) SHALL be Coordination's working method followed by the rendered guidance section of every other installed part, in the order of the parts, and hold no section of a part that is not installed.
 
-Without the coordination part there is no main-session guidance to compose, and the installer
-places the sections of the installed parts as the project skill alone.
+This holds for each of its three compositions, the project skill, the [task-session](../glossary.json#concept.task-session) prompt and the
+`CLAUDE.md` block. Without the coordination part there is no main-session guidance to compose: the
+installer places the sections of the installed parts as the project skill and the `CLAUDE.md` block
+alone, and there is no task-session prompt.
 
 ## Installation
 
 ### req.distribution.glossary-import — The CLAUDE.md block imports the glossary
 
-The installed `CLAUDE.md` block SHALL import the glossary the project's registry declares, and nothing when none is declared.
+Where the spec part is installed, the installed `CLAUDE.md` block SHALL import the glossary the project's registry declares, and nothing when none is declared.
 
 ### req.distribution.receipt-complete — The receipt names every owned file
 

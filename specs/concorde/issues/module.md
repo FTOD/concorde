@@ -549,3 +549,13 @@ recovery after failed and killed writes, moves between the folders and their rec
 tiers, severities and the order by severity), every bookkeeping-command
 action with its refusals, from the primary and a linked worktree, and the configured store check on
 a fixture project.
+
+<a id="realization.issues.guidance"></a>
+
+The **Issues guidance** is the part's sections of the [main-session
+guidance](../glossary.json#concept.main-session-guidance), kept in `prompts/guidance/issues/` and
+registered under `guidance` in the part's registration, which
+[Distribution](../distribution/module.md#guidance-composition) composes after Coordination's working
+method wherever the part is installed: the project skill's and the task-session prompt's "Issues":
+recording, tiers, severities, fixing and failures of the Issue system. Each section says what
+happens where a part it mentions is not installed.

@@ -43,7 +43,11 @@
   "typed_types": [
     "concorde-project-proposal"
   ],
-  "guidance": null,
+  "guidance": {
+    "skill": "generated/guidance/spec/skill.md",
+    "task_session": "generated/guidance/spec/task-session.md",
+    "claude_md": "generated/guidance/spec/claude-md.md"
+  },
   "renders": null,
   "install": {
     "files": [],

@@ -122,6 +122,20 @@ A failure never becomes a silently narrower answer. Spec core refuses with its e
 of returning part of a result; the Spec MCP server turns every refusal into a tool error, never a
 partial answer; and a failed Views build deletes its candidate and keeps the published site.
 
+### Guidance
+
+<a id="realization.spec-tooling.guidance"></a>
+
+The **Spec tooling guidance** is the part's sections of the [main-session
+guidance](../glossary.json#concept.main-session-guidance), kept in `prompts/guidance/spec/` and
+registered under `guidance` in the part's registration, which
+[Distribution](../distribution/module.md#guidance-composition) composes after Coordination's working
+method wherever the part is installed: the project skill's "Project terms" and "Specs"
+(`spec-validation`, `grant`, `registry --write`, the Spec MCP server and how to escalate Spec
+tooling's own error record), the task-session prompt's project terms and Spec tooling's errors, and
+the `CLAUDE.md` block's sentence on the project terms, beside which the installer imports the
+glossary. Each section says what happens where a part it mentions is not installed.
+
 ## The children
 
 - <a id="contains-spec"></a>**Spec core** implements the Spec Protocol: loading, validation, the

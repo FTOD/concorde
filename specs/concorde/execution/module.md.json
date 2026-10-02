@@ -70,6 +70,15 @@
         "src/concorde/execution/idle.py",
         "src/concorde/execution/registration.json"
       ]
+    },
+    {
+      "id": "realization.execution.guidance",
+      "type": "realization",
+      "title": "Execution guidance",
+      "meaning": "#realization.execution.guidance",
+      "entries": [
+        "prompts/guidance/execution/"
+      ]
     }
   ],
   "relations": [

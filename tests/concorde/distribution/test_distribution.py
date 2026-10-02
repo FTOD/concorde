@@ -23,6 +23,7 @@ from concorde.distribution.build import (
     verify_fresh,
     write_build,
 )
+from concorde.distribution import guidance, parts
 from concorde.distribution.install import InstallError, install, refusal, update
 from concorde.distribution.project_defaults import CopyError, write_protocol_copy
 from concorde.spec.views.docsite_template import DocsiteTemplateError
@@ -194,9 +195,38 @@ class BuildTests(unittest.TestCase):
         root = package_copy(self)
         write_build(root)
         manifest = json.loads((root / "generated/build-manifest.json").read_text())
-        for name, source in (
-            ("concorde", "main-session/skill.md"),
-            ("concorde-development", "development/skill.md"),
+        everything = parts.package_parts(root)
+
+        def composed(kind):
+            return (
+                "\n\n".join(
+                    (root / path).read_text().strip("\n")
+                    for path in guidance.sections(everything, kind)
+                )
+                + "\n"
+            )
+
+        # Coordination's working method first, then the other parts in the parts table's order.
+        self.assertEqual(
+            [
+                "generated/main-session/skill.md",
+                "generated/guidance/spec/skill.md",
+                "generated/guidance/kernel/skill.md",
+                "generated/guidance/worker_harness/skill.md",
+                "generated/guidance/execution/skill.md",
+                "generated/guidance/workflows/skill.md",
+                "generated/guidance/issues/skill.md",
+                "generated/guidance/method/skill.md",
+                "generated/guidance/distribution/skill.md",
+            ],
+            guidance.sections(everything, "skill"),
+        )
+        for name, body in (
+            ("concorde", composed("skill")),
+            (
+                "concorde-development",
+                (root / "generated/development/skill.md").read_text(),
+            ),
         ):
             with self.subTest(skill=name):
                 skill = (root / f"generated/skills/{name}/SKILL.md").read_text()
@@ -204,9 +234,70 @@ class BuildTests(unittest.TestCase):
                 self.assertEqual(name, fields["name"])
                 self.assertTrue(fields["description"])
                 self.assertIn('description: "', skill)
-                body = (root / f"generated/{source}").read_text()
                 self.assertTrue(skill.endswith("---\n\n" + body))
                 self.assertIn(f"generated/skills/{name}/SKILL.md", manifest["outputs"])
+        self.assertEqual(
+            composed("task_session"),
+            (root / guidance.TASK_SESSION).read_text(),
+        )
+        self.assertTrue(
+            (root / guidance.TASK_SESSION)
+            .read_text()
+            .startswith("# Concorde task session")
+        )
+        self.assertIn(guidance.TASK_SESSION, manifest["outputs"])
+
+    @verifies("scenario.distribution.composed-guidance")
+    def test_the_guidance_is_composed_of_the_given_parts_alone(self):
+        everything = parts.package_parts(REPOSITORY_ROOT)
+        # Each section stands for itself, so the composition's order and content show.
+        read = lambda path: f"<{path}>\n"  # noqa: E731
+
+        def of(names):
+            chosen = {name: everything[name] for name in names}
+            return {
+                kind: guidance.compose(chosen, kind, read)
+                for kind in parts.GUIDANCE_FIELDS
+            }
+
+        three = of(["distribution", "spec", "coordination"])
+        self.assertTrue(
+            three["skill"].endswith(
+                "<generated/main-session/skill.md>\n\n<generated/guidance/spec/skill.md>"
+                "\n\n<generated/guidance/distribution/skill.md>\n"
+            )
+        )
+        self.assertIn(
+            "Concorde's main agent",
+            strict_frontmatter(self, three["skill"])["description"],
+        )
+        self.assertEqual(
+            "<generated/main-session/task-session.md>\n\n"
+            "<generated/guidance/spec/task-session.md>\n",
+            three["task_session"],
+        )
+        self.assertEqual(
+            "<generated/main-session/claude-md.md>\n\n<generated/guidance/spec/claude-md.md>"
+            "\n\n<generated/guidance/distribution/claude-md.md>\n",
+            three["claude_md"],
+        )
+        self.assertNotIn("issues", "".join(three.values()))
+        alone = of(["spec", "distribution"])
+        fields = strict_frontmatter(self, alone["skill"])
+        self.assertEqual("concorde", fields["name"])
+        self.assertNotIn("main agent", fields["description"])
+        self.assertTrue(
+            alone["skill"].endswith(
+                "---\n\n<generated/guidance/spec/skill.md>\n\n"
+                "<generated/guidance/distribution/skill.md>\n"
+            )
+        )
+        self.assertEqual(
+            "<generated/guidance/spec/claude-md.md>\n\n"
+            "<generated/guidance/distribution/claude-md.md>\n",
+            alone["claude_md"],
+        )
+        self.assertIsNone(alone["task_session"])
 
     @verifies("scenario.distribution.build-workflows")
     def test_the_build_renders_every_workflow_for_claude_code(self):
@@ -609,6 +700,13 @@ class InstallTests(unittest.TestCase):
         )
         self.assertTrue(
             (project / ".concorde/framework/generated/main-session/skill.md").exists()
+        )
+        # The task-session prompt of the installed parts, all of them, which Coordination reads.
+        self.assertEqual(
+            (package / "generated/guidance/task-session.md").read_text(),
+            (
+                project / ".concorde/framework/generated/guidance/task-session.md"
+            ).read_text(),
         )
         # Standalone discovery ships with the runtime and runs from outside Git.
         discovery = project / ".concorde/framework/scripts/available_models.py"

@@ -14,7 +14,11 @@
   "mcp_definitions": null,
   "mcp_instructions": null,
   "typed_types": [],
-  "guidance": null,
+  "guidance": {
+    "skill": "generated/guidance/kernel/skill.md",
+    "task_session": null,
+    "claude_md": null
+  },
   "renders": null,
   "install": {
     "files": [],

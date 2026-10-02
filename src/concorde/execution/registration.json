@@ -22,7 +22,11 @@
     "concorde-run-trace",
     "concorde-check-trace"
   ],
-  "guidance": null,
+  "guidance": {
+    "skill": "generated/guidance/execution/skill.md",
+    "task_session": null,
+    "claude_md": "generated/guidance/execution/claude-md.md"
+  },
   "renders": null,
   "install": {
     "files": [],

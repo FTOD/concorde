@@ -15,7 +15,11 @@
     "concorde-worker-run-trace",
     "concorde-worker-round-trace"
   ],
-  "guidance": null,
+  "guidance": {
+    "skill": "generated/guidance/worker_harness/skill.md",
+    "task_session": null,
+    "claude_md": "generated/guidance/worker_harness/claude-md.md"
+  },
   "renders": null,
   "install": {
     "files": [

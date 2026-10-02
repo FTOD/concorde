@@ -15,11 +15,21 @@ Concrete situations that show the [requirements](requirements.md) at work.
 
 ### scenario.distribution.build-skills — Render every skill with its front matter
 
-- GIVEN a checkout with the prompt roots `prompts/main-session/skill.md` and `prompts/development/skill.md`
+- GIVEN a checkout whose parts register their guidance sections, Coordination's skill section `prompts/main-session/skill.md` among them, and the prompt root `prompts/development/skill.md`
 - WHEN the developer runs `build`
 - THEN `generated/skills/concorde/SKILL.md` and `generated/skills/concorde-development/SKILL.md` each start with front matter naming the skill and describing it in a double-quoted string
-- AND each continues with the render of its prompt root, byte for byte
-- AND the [build manifest](../glossary.json#concept.build-manifest) records both
+- AND the `concorde` skill continues with the render of Coordination's skill section followed by the render of every other part's skill section in the order of the parts table, each byte for byte and separated by one blank line
+- AND the development skill continues with the render of its prompt root, byte for byte
+- AND `generated/guidance/task-session.md` is the [task-session](../glossary.json#concept.task-session) sections of every part composed the same way
+- AND the [build manifest](../glossary.json#concept.build-manifest) records them
+
+### scenario.distribution.composed-guidance — Compose the guidance of a set of parts
+
+- GIVEN the registrations of the coordination, spec and distribution parts alone
+- WHEN Distribution composes their guidance
+- THEN the skill is Coordination's skill section followed by the spec part's and then Distribution's, the task-session prompt Coordination's followed by the spec part's, and the `CLAUDE.md` block Coordination's followed by the spec part's and Distribution's
+- AND none holds a section of a part not given, such as the issues part's
+- AND composed for the spec and distribution parts alone, the skill is their sections alone under a description that does not present the session as the main agent, the `CLAUDE.md` block their sections alone, and there is no task-session prompt
 
 ### scenario.distribution.build-workflows — Render every workflow for Claude Code
 

@@ -28,7 +28,7 @@ an installed part's registration. What each kind of entry is called with and ans
 ```concorde-contract
 {
   "id": "contract.distribution.part-registration",
-  "version": 2,
+  "version": 3,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -70,7 +70,21 @@ an installed part's registration. What each kind of entry is called with and ans
       "mcp_definitions": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/entry"}]},
       "mcp_instructions": {"type": ["string", "null"], "minLength": 1},
       "typed_types": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
-      "guidance": {"type": ["string", "null"], "minLength": 1},
+      "guidance": {
+        "oneOf": [
+          {"type": "null"},
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["skill", "task_session", "claude_md"],
+            "properties": {
+              "skill": {"$ref": "#/$defs/section"},
+              "task_session": {"$ref": "#/$defs/section"},
+              "claude_md": {"$ref": "#/$defs/section"}
+            }
+          }
+        ]
+      },
       "renders": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/entry"}]},
       "install": {
         "type": "object",
@@ -90,10 +104,11 @@ an installed part's registration. What each kind of entry is called with and ans
       "after_update": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/entry"}]}
     },
     "$defs": {
-      "entry": {"type": "string", "pattern": "^[a-z_][a-z0-9_]*(\\.[a-z_][a-z0-9_]*)*:[A-Za-z_][A-Za-z0-9_]*$"}
+      "entry": {"type": "string", "pattern": "^[a-z_][a-z0-9_]*(\\.[a-z_][a-z0-9_]*)*:[A-Za-z_][A-Za-z0-9_]*$"},
+      "section": {"oneOf": [{"type": "null"}, {"type": "string", "pattern": "^generated/[a-z0-9_./-]+\\.md$"}]}
     }
   },
-  "semantics": "The registration of one part, the file registration.json of its directory of src/concorde/. part is its installer name and module the top-level Module the part is made of; the part carries the version of the package it was built from, the same for every part, which concorde.json names. depends_on names the parts it depends on; the installer installs them with it, and no other part is required for it to work. loads names the part's modules that register what its code provides when they load (typed value types, trace roots, Operation and command definitions, workflows), which Distribution imports for every installed part before it routes a command of a part, answers an MCP tool or renders the build. commands are the concorde subcommands it adds, each routed to its entry, which prints its own output or, with output envelope, answers Spec core's shared envelope for concorde to print. mcp_tools are the tools the project MCP server presents for it, each answered by its entry in a fresh process of the primary worktree's concorde, or of the session's own worktree's when worktree is session; long_work allows it to take locks without waiting and become the work it starts, handing them on; threaded serves its calls on a thread of their own, for calls that wait; requires names parts without which the tool is not presented. mcp_definitions names the mapping from each of its tool names to its description and inputSchema, and mcp_instructions the sentence it adds to the server's instructions. typed_types lists the typed value types its code registers. guidance is the build-relative path of its rendered guidance section, generated/<path> rendered from prompts/<path>, or null. renders names the entry through which the build renders the part's own outputs, such as the workflow part's Claude Code workflows. install lists what the installer places for it: framework-relative files, Concorde-owned defaults written where absent by project path, .gitignore lines, Claude Code permission rules and programs it needs, such as the pi runtime; prepare names the service deciding, before any write, the files it places or refusing the install, and bind the service binding the installed files after the receipt. idle_check names the function reporting the part's work still running in the project, or null when it has none; after_update the function whose report an update result carries, such as the open tasks, or null. Every entry is <module>:<attribute> relative to the part's own package. A behaviour or field change increments the version.",
+  "semantics": "The registration of one part, the file registration.json of its directory of src/concorde/. part is its installer name and module the top-level Module the part is made of; the part carries the version of the package it was built from, the same for every part, which concorde.json names. depends_on names the parts it depends on; the installer installs them with it, and no other part is required for it to work. loads names the part's modules that register what its code provides when they load (typed value types, trace roots, Operation and command definitions, workflows), which Distribution imports for every installed part before it routes a command of a part, answers an MCP tool or renders the build. commands are the concorde subcommands it adds, each routed to its entry, which prints its own output or, with output envelope, answers Spec core's shared envelope for concorde to print. mcp_tools are the tools the project MCP server presents for it, each answered by its entry in a fresh process of the primary worktree's concorde, or of the session's own worktree's when worktree is session; long_work allows it to take locks without waiting and become the work it starts, handing them on; threaded serves its calls on a thread of their own, for calls that wait; requires names parts without which the tool is not presented. mcp_definitions names the mapping from each of its tool names to its description and inputSchema, and mcp_instructions the sentence it adds to the server's instructions. typed_types lists the typed value types its code registers. guidance names the part's guidance sections, or is null when it has none: skill its section of the project skill, task_session its section of the task-session prompt and claude_md its section of the CLAUDE.md block, each the build-relative path of a rendered section, generated/<path> rendered from prompts/<path>, or null when the part contributes no section of that kind; Distribution composes each kind from the sections of a set of parts, Coordination's first and the others in the order of the parts table. renders names the entry through which the build renders the part's own outputs, such as the workflow part's Claude Code workflows. install lists what the installer places for it: framework-relative files, Concorde-owned defaults written where absent by project path, .gitignore lines, Claude Code permission rules and programs it needs, such as the pi runtime; prepare names the service deciding, before any write, the files it places or refusing the install, and bind the service binding the installed files after the receipt. idle_check names the function reporting the part's work still running in the project, or null when it has none; after_update the function whose report an update result carries, such as the open tasks, or null. Every entry is <module>:<attribute> relative to the part's own package. A behaviour or field change increments the version.",
   "example": {
     "part": "coordination",
     "module": "module.coordination",
@@ -108,7 +123,11 @@ an installed part's registration. What each kind of entry is called with and ans
     "mcp_definitions": "tasks.tools:TOOLS",
     "mcp_instructions": "Tasks: task_show reads a task; task_merge starts its merge without waiting.",
     "typed_types": ["concorde-task-trace"],
-    "guidance": "generated/main-session/skill.md",
+    "guidance": {
+      "skill": "generated/main-session/skill.md",
+      "task_session": "generated/main-session/task-session.md",
+      "claude_md": "generated/main-session/claude-md.md"
+    },
     "renders": null,
     "install": {
       "files": [],

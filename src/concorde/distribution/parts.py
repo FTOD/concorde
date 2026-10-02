@@ -52,6 +52,10 @@ FIELDS = (
     "idle_check",
     "after_update",
 )
+# The guidance sections a part may contribute: the project skill, the task-session prompt and the
+# ``CLAUDE.md`` block.
+GUIDANCE_FIELDS = ("skill", "task_session", "claude_md")
+GUIDANCE_PATH = re.compile(r"^generated/[a-z0-9_./-]+\.md$")
 INSTALL_FIELDS = (
     "files",
     "defaults",
@@ -200,7 +204,17 @@ def check(data, path: str) -> dict:
         )
     _optional(path, "mcp_instructions", data["mcp_instructions"])
     _strings(path, "typed_types", data["typed_types"])
-    _optional(path, "guidance", data["guidance"])
+    if data["guidance"] is not None:
+        _exact(path, "guidance", data["guidance"], GUIDANCE_FIELDS)
+        for kind, section in data["guidance"].items():
+            _optional(path, f"guidance.{kind}", section)
+            if section is not None and (
+                not GUIDANCE_PATH.match(section) or ".." in section.split("/")
+            ):
+                raise _fail(
+                    path,
+                    f"guidance.{kind} {section!r} is no Markdown render under generated/",
+                )
     _optional(path, "renders", data["renders"], ENTRY)
     install = data["install"]
     _exact(path, "install", install, INSTALL_FIELDS)

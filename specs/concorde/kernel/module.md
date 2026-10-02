@@ -211,3 +211,13 @@ The **Kernel tests** exercise the library on the scenarios of the Kernel's
 [scenarios](scenarios.md): bindings read and refused, deliveries listed and verified, types
 registered and values checked, transactions refused, restored and unrestored, and busy locks
 refused.
+
+<a id="realization.kernel.guidance"></a>
+
+The **Kernel guidance** is the part's sections of the [main-session
+guidance](../glossary.json#concept.main-session-guidance), kept in `prompts/guidance/kernel/` and
+registered under `guidance` in the part's registration, which
+[Distribution](../distribution/module.md#guidance-composition) composes after Coordination's working
+method wherever the part is installed: the project skill's "Traces and error chains": `concorde
+trace show` and how to read an error chain. Each section says what happens where a part it mentions
+is not installed.

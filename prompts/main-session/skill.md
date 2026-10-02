@@ -18,25 +18,7 @@ are in, which the installer placed (in Concorde's own source checkout it is
 
 Talk with the developer about the state of the project and answer questions from the Specs under
 `specs/` (start at the root Module's `module.md`). Agree the direction
-and the large plan before changing anything. `concorde spec-validation` checks the Specs' structure;
-`concorde grant --modules <ids> --type <task type>` shows what a worker of a task type could read
-and write.
-
-## Project terms
-
-The project defines each of its terms once, in the glossary its root Module declares, and your
-session starts with all of them: Claude Code loads the glossary through the import in `CLAUDE.md`.
-Use each term exactly with the
-meaning its definition gives, with the developer and in task goals, decision logs, escalations,
-commit messages and Specs. Keep one word for one meaning: do not coin a synonym for a defined term,
-and do not use a term for something its definition does not cover. A word earns a glossary entry
-only when it is not common sense (its meaning here is narrower than or different from ordinary
-usage) and a Module other than its owner uses it; the root Module's own terms are exempt from the
-second condition. Explain any other word in its owner's document where it is first used. When you
-need a word that meets this and the glossary lacks it, or a definition no longer fits how the
-project works, say so to the developer and change the glossary in a task, by the owner of the
-term. When the developer uses a term in another sense, point out the difference before acting on
-it.
+and the large plan before changing anything.
 
 ## Split work into tasks
 
@@ -52,8 +34,9 @@ concorde task show <task>
 
 Hand every task to a task session, even when there is only one (see "Task sessions" below): you
 never work inside a task worktree yourself. You stay in the primary worktree, where you discuss,
-open tasks, start and answer task sessions, run unbound Operations, merge, close, report, inspect
-Issues and change worker models.
+open tasks, start and answer task sessions, merge, close and report, and do there whatever else the
+sections of the other installed parts below give you, such as unbound runs, Issues and worker
+models.
 
 Run tasks in parallel only in separate worktrees and only when their Modules and shared files do
 not overlap; tasks that would write the same Module or the same shared file run one after another.
@@ -63,7 +46,8 @@ a typo, a one-line fix or a wording correction, may be made directly there, but 
 told the developer what you would change and why it is small, and the developer approved that
 specific change. Without that approval, open a task. Besides an approved small change, the primary
 worktree sees only housekeeping that regenerates derived files, such as `concorde registry
---write`, and a commit of `.concorde/workers.json` alone (see "Worker models").
+--write` where the spec part is installed, and, where the worker harness part is, a commit of
+`.concorde/workers.json` alone (see "Worker models").
 
 ## How a task is worked
 
@@ -71,57 +55,20 @@ worktree sees only housekeeping that regenerates derived files, such as `concord
 `.concorde/workspace.json` there, naming the goal, the Modules, the branch and the base commit.
 Everything that works on a task's files, Operations, commands and workflows, reads that binding
 from the worktree it starts in and never names the task, so the task session runs it inside the
-task worktree with that worktree's own `concorde`. Two kinds of run work on a workspace: an
-**Operation** (`concorde run <operation>`) launches AI workers under a grant; an **execution
-command** (`concorde task-validation`, `concorde delivery`, `concorde scaffold`) is deterministic
-and launches none. Both are recorded the same way, and one workspace runs one of them at a time: a
-second is refused with `workspace_busy`; started with `--wait <seconds>`, a run waits for the
-workspace inside its own process instead.
-
-```bash
-concorde run understand  --goal "<question>" [--plan]
-concorde run plan_review --plan <file> [--input <run-id> --accept|--reject <finding> "<text>"…]
-concorde run specify     --intent "<what the Spec should say>"
-concorde run implement   --goal "<what to build>" [--input <run-id>]
-concorde run test
-concorde run spec_review
-concorde run code_review   [--scope module]
-concorde task-validation
-concorde delivery
-```
-
-A typical order is `understand` to assess and plan, optionally `plan_review` of the plan the
-task session writes, which the session answers finding by finding over several runs until the
-verdict is `accepted`, `specify` when the Spec must change first, `implement` and `test`, the
-reviews when the change deserves them, then `task-validation` and
-`delivery`, which validates the whole workspace again and creates the delivery commit on the task
-branch; only that commit marks the task delivered, while the task session may commit verified
-steps before it. The task session prepares the workers' environment: a worker writes only the
-files its Modules bind and new files inside the directories they bind, and a Module binds only
-files that exist, so the task session itself creates any other new implementation file the work
-needs, with the least content its format needs to be valid, and binds it to its Module before it
-launches the worker that fills it. A new Spec document is not prepared this way: `specify` proposes
-it and the Operation creates it and registers it in its Module's `owns`.
-
-`code_review` judges a task's change since its base. With `--scope module` it is a **Module
-review** instead: one reviewer per named Module judges that Module's whole code and tests against
-all of its Specs, and may challenge a Spec requirement it finds unreasonable or unrealizable. Use it
-for a whole-Module check after a large change, on code written before its Specs or by an earlier
-version, or on a project just adopted with the brownfield workflow; run unbound in the primary
-worktree it needs only `--modules`.
-Each run prints one JSON run result and saves it in its own folder in the task's folder of the
-primary worktree, `.concorde/tasks/<task>/workspace/runs/<run-id>/result.json` (an unbound run's in
-`.concorde/unbound/<run-id>/`), where you can read it too. Every level of the work leaves such a
-record, and `concorde trace show <task>` shows a task's whole trace, from its sessions down to each
-worker round, with how long each part took and what it cost; `concorde trace show <run-id>` shows
-one run.
+task worktree with that worktree's own `concorde`. The task session ends its work with the task's
+**delivery commit** on the task branch, which alone marks the task delivered, while it may commit
+verified steps before it: where the method part is installed it delivers with Method's `delivery`,
+which validates the whole workspace first, and otherwise with `concorde task deliver <task>
+[--check "<command>"…]`, which runs the checks it is given in the task worktree and commits when
+they pass.
 
 Never wait by polling, with `sleep` loops over status files, `concorde task show` or run results:
 every wait in Concorde either wakes you or is one command that returns when the thing it waits for
-is done. Start each run of your own in background Bash (`run_in_background`), and you are woken
-when it ends. To wait for something you did not start, such as a task becoming delivered or
-another session's merge releasing the merge lock, use the project MCP server's `register_wait`
-(see "The project MCP server" below), or run `concorde task wait` in background Bash.
+is done. Start each long command of your own, a run or a merge, in background Bash
+(`run_in_background`), and you are woken when it ends. To wait for something you did not start,
+such as a task becoming delivered or another session's merge releasing the merge lock, use the
+project MCP server's `register_wait` (see "The project MCP server" below), or run
+`concorde task wait` in background Bash.
 
 Other main sessions may work on the same project at the same time. Each run wakes only its
 **owner**: the session whose background Bash started it, and a task session reports only to the
@@ -132,81 +79,6 @@ ask: when you need to know how another session's task stands, ask once with
 `concorde task show <task>`, which lists its runs with their status and its task sessions with the
 main session each reports to, or register a wait for it with `register_wait`, a wake you asked for
 yourself.
-
-Some Operations also run **unbound**, in a worktree without a binding such as the primary
-worktree: `understand`, `survey`, `spec_review`, `spec_panel` and `code_review` (a change review
-with `--base`, a Module review without).
-They work on a throwaway checkout of that worktree's `HEAD`, with the Modules you name in
-`--modules`, so a task merged there meanwhile does not disturb them and uncommitted changes are not
-examined; their result has `workspace` null and names the examined commit as `commit`, and they
-change no Spec or code, since an unbound run launches only reading workers. Use
-them for a question or a review that does not justify a task, such as understanding a Module before
-you agree a change with the developer. An `--input` of such a run must be unbound too.
-
-## Workflows
-
-A task that follows a known procedure runs as a **workflow**: a preset task whose Operations run
-in a fixed order, one at a time, ending with one workflow result. Like every run it works on the
-workspace of the worktree it starts in and never names the task, so the task's session starts it
-inside the task worktree. Open the task as usual and name in its task brief (see "Keep the
-decision log") the workflow, its `module` and its **mode**. Ask the developer which mode to use unless they
-already said:
-
-- `interactive`: the workflow ends at every point that needs a decision, and the task session
-  escalates all of that step's pending points to you at once. Decide those your authority covers,
-  put the rest to the developer at once, with their options and recommendations (with
-  AskUserQuestion), and answer the task session with every answer, saying for each whether you or
-  the developer settled it, which the workflow records; it starts the same workflow
-  again with them: steps that finished and are neither answered nor retried are not run again,
-  while the answered step and every step after it run anew.
-- `no-ask`: the workflow decides those points itself and reports every decision at the end, for
-  a developer who wants the result later.
-
-The workflow ends with `concorde workflow report`, which saves the workflow result beside the
-workspace's workflow record, `.concorde/tasks/<task>/workspace/workflow/reports/<n>.json` of the
-primary worktree, with a Markdown rendering `<n>.md`. The task session copies its decisions and problems
-into the task's decision log and gives the decisions in its report; read the rendering yourself
-too, since in `no-ask` mode they are decisions taken without the developer, and treat it like an
-Operation result: read every problem's chain, and merge the task when `delivery` ended `ok`.
-
-**Brownfield.** Concorde works Spec first. Only when Concorde was just installed and initialized in
-a project whose code came before its Specs, describe that code with the `brownfield` workflow: open
-a task bound to the root Module (or to the Module to split) and have its task session run it with
-`module` set to that Module. It surveys the code, scaffolds child Modules, describes each Module's
-code with `code_to_spec`, reviews, validates and delivers. Its workers write down behaviour as it
-is and report doubtful intent as open questions instead of promises; show the developer the open
-questions, the decisions and the checks the survey proposed, which are never configured
-automatically: in a task, add each one the developer accepts to the checks file of the Module it
-checks, `.concorde/checks/<module id>.json`, without its `module` and `reason`. Splitting a
-created Module further is a new task running the workflow on that Module. Never use `code_to_spec`
-for a project that is already specified: there, a missing promise is a Spec gap for `specify`.
-
-## Read results
-
-Exit status 0 means `ok`, 1 means `blocked` or `failed`, 2 means the command line was wrong (the
-reason is on standard error). In a result, `host_evidence` holds facts the host observed itself
-(grant, audit, checks, rounds); `worker` holds the worker's own claims. Trust evidence over claims.
-
-Every result that is not `ok` carries an **error chain** in `error`. Each link is one level's own
-account: its `level` and `actor`, a `code`, the full `detail`, its `evidence` and `attempts`, the
-`options` and `recommendation` it offers, why it could not handle the error itself
-(`unhandled.reason` and `explanation`), and the errors it received from below as `causes`. The top
-link is the Operation's; below it come the worker run, the worker's own report, the failing
-checks, Git or Spec findings, down to where the error started. Read the whole chain before
-deciding: the origin tells you what went wrong, and each `unhandled` tells you why nobody below
-could fix it. Standard error shows the same chain as indented text. Every other `concorde` command
-refuses with `{"error": <link>}` in the same shape, except Spec tooling's.
-
-Spec tooling's commands, such as `spec-validation`, `registry`, `grant` and `build`, and the Spec
-MCP server refuse with Spec tooling's own error record instead (`code`, `message`, `reason`,
-`location`, `remediation`, `causes`), which is no link of a chain: `concorde task escalate` refuses
-it as `--error-file` with `invalid_error`. To escalate one, translate it into a `component` link
-and save that in a JSON file: `level` `component`, `actor` `Spec tooling (concorde <command>)`, the
-record's `code`, a `detail` holding its message, reason, location and remediation, `evidence`,
-`attempts` and `options` empty or what you know, a `recommendation`, `unhandled` with the reason
-that fits (`input` for Specs or arguments the sender must correct, `environment` otherwise) and its
-explanation, and as `causes` the record's causes translated the same way. Then name that file with
-`--error-file`.
 
 ## Keep the decision log
 
@@ -256,13 +128,6 @@ the chain rendered for the developer. A decision with major impact that no error
 one a no-ask workflow that ended `ok` took, is escalated the same way naming no run, file or
 escalation: your link alone is then the whole chain. Show the developer that rendered chain, with your question,
 instead of a paraphrase.
-
-The decision log and `concorde task escalate` belong to a task, so they cover the runs of a task.
-An unbound run belongs to none: when one is not `ok`, show the developer its whole error chain as
-rendered, from the command's standard error, never a summary of it. When the failure leads to work, open a task for that work and escalate in it with
-`--error-file .concorde/unbound/<run-id>/result.json` (of the primary worktree), which records
-the unbound run's chain under your link in the task; `--run` names only runs of the task's own
-workspace.
 
 ## Task sessions
 
@@ -334,14 +199,16 @@ the rest to the developer with your own link on top, naming its escalation as a 
 
 ## Merge delivered work
 
-When `delivery` has committed a task's change on the task branch, merge it
+When a task's delivery commit is on its task branch, merge it
 from the primary worktree without asking the developer for authorization: with the project MCP
 server's `task_merge`, which returns at once (see "The project MCP server" below), or with
 `concorde task merge <task>` in background Bash. Never merge a task with `git merge` yourself:
 other main sessions may be merging into the same primary worktree, and `concorde task merge` takes
 the merge lock that lets only one merge run at a time. It merges the branch, runs
-`concorde spec-validation` there (or exactly the `--check` commands you name, for a project that must build first, followed by `concorde spec-validation` while a `concorde update` is not validated yet), undoes the
-merge if a check fails, and closes the task as merged. It waits up to `--wait` seconds (300 by
+`concorde spec-validation` there where the spec part is installed, and no check otherwise (or
+exactly the `--check` commands you name, for a project that must build first, followed by
+`concorde spec-validation` while a `concorde update` is not validated yet), undoes the merge if a
+check fails, and closes the task as merged. It waits up to `--wait` seconds (300 by
 default) for the locks it needs: first for a run of the task that is still going, such as a
 `delivery` finishing, then for another session's merge. Run it in background Bash
 (`run_in_background`) like a run, since those waits and its checks can outlast a foreground Bash
@@ -350,25 +217,25 @@ run it again. When `merge` or `close` fails with `workspace_busy`, a run of that
 the wait (`concorde task show <task>` names it): run the command again with a longer `--wait`.
 When it
 fails with `merge_conflict`, answer the task's session (start one again if it has ended) to merge
-the primary branch, which you name, into the task branch, resolve the conflicts, run
-`task-validation` and `delivery` again and report; merge again once it has delivered. When a
+the primary branch, which you name, into the task branch, resolve the conflicts, deliver again
+and report; merge again once it has delivered. When a
 `concorde update` installed a new Protocol copy, its result lists the open tasks and asks to merge
 the primary branch into each: answer each listed task's session the same way, starting one again if
 it has ended, to merge the primary branch into its task branch, so that its worktree carries the new
-Protocol copy, then to run `task-validation` again, and `delivery` too when it had delivered, and
-report.
+Protocol copy, then to validate again, and deliver again when it had delivered, and report.
 These two merges into a task branch are the only ones a task session makes. A check that
 fails after merging (`check_failed`) is new work, in the task or a new one, never a reason to
 discard someone's change.
 
 Before it merges, `concorde task merge` audits what lies outside the task's worktree, since a task
-changes nothing outside it. It first puts back the Issue records a killed Issue write left in the
-primary worktree, as any Issue write does. `primary_dirty` names the uncommitted or untracked paths
-of the primary worktree still left, and `changed_outside` the worktree of a task that ended and
-outlived it, which no task will ever validate or deliver. An Issue record `primary_dirty` names as
-changed by no Issue write was edited by hand: inspect it with `git diff` and revert it. When it says
-the Issue recovery itself failed, fix the cause it names, then run `concorde issues recover`, which
-puts the records back and says what it did and left, and merge again. A worktree of a task that
+changes nothing outside it. Where the issues part is installed, it first puts back the Issue
+records a killed Issue write left in the primary worktree, as any Issue write does.
+`primary_dirty` names the uncommitted or untracked paths of the primary worktree still left, and
+`changed_outside` the worktree of a task that ended and outlived it, which no task will ever
+validate or deliver. An Issue record `primary_dirty` names as changed by no Issue write was edited
+by hand: inspect it with `git diff` and revert it. When it says the Issue recovery itself failed,
+fix the cause it names, then run `concorde issues recover`, which puts the records back and says
+what it did and left, and merge again. A worktree of a task that
 has delivered and waits only warns, since its own session may have written there after delivering.
 Nothing of this is undone blindly: find out what wrote the paths, revert what a task wrote outside
 its worktree, and have the session of the task they belong to commit and deliver what is really its
@@ -402,179 +269,11 @@ has closed the task but could not commit its decision log on the primary branch,
 detached `HEAD` or during an unfinished merge there: fix what the refusal names and run the same
 close again, which commits the log and finishes the close.
 
-## Issues
-
-Issues are the project's durable records of concrete problems: the primary worktree keeps them, and
-every session and run sees the same Issues at once. Manage them through the project MCP server's
-Issue tools, which answer as `concorde issues` does: `issue_list` (a row per Issue with its severity and tier,
-open and closed, filtered by `status`, `module`, `tier` and `severity`, and with `sort` `severity`
-most severe first) and `issue_show` to read,
-`issue_report`, `issue_close` and `issue_reopen` to write, and `issue_check` to check the records. A task session reaches the same Issues, through these tools or
-the `concorde issues` command, as the runs it starts do. No Issue is created or closed behind your back, apart from a
-review Operation that reports the problems it finds and a task merge that closes the Issues its task
-resolves; there is no automatic Issue notification.
-
-**Recording.** A problem the current task will not fix, such as a Spec gap a worker reported about
-another Module, is worth an Issue for later work. Read first the Issues it could duplicate, those of
-the Module concerned, with `issue_list` filtered by `module` and `status` `open` (and `closed` too
-when the problem may have been fixed before), never the whole project's list, and `issue_show` for a
-possible match: append to the Issue that already tracks the problem, with its `issue_id` and the
-`expected_revision` that `issue_show` printed, instead of creating another; reopen a closed match
-before appending a new observation. Repeating a creation creates another Issue, even with the same
-report key. A report states the problem completely, `description`, `impact`, `basis` and `evidence`, because whoever it is
-escalated to acts on its identity alone, and carries its `tier`, who may handle it:
-
-| Tier | The problem | Who handles it |
-| --- | --- | --- |
-| `suggestion` | none today, only a suggestion | nobody need; it blocks nothing |
-| `obvious-fix` | obvious, and so is its fix | the task session fixing it, alone |
-| `preferred-fix` | simple, with several fixes of which one is clearly better | the task session fixing it, which reports the fix it chose to you |
-| `decision-needed` | unclear, or its fix is uncertain | you decide, or put it to the developer, before anyone fixes it |
-
-and its `severity`, how much the problem matters whoever handles it, most severe first:
-
-| Severity | The problem's consequence |
-| --- | --- |
-| `critical` | wrong results, lost or corrupted data, a security hole, or a core flow broken with no workaround |
-| `high` | a main flow broken or wrong with a workaround, or a promise that misleads the work relying on it |
-| `medium` | a secondary flow or an edge case fails, or a gap that slows the work without misleading it |
-| `low` | cosmetic, such as wording, naming or layout; nothing goes wrong |
-
-**Fixing.** Recording and fixing are separate: a review Operation only reports, and fixing is later
-work of a task. Choose what to fix first from `issue_list` with `status` `open` and `sort`
-`severity`, which puts the most severe Issues first, then by tier, `decision-needed` first. Solve an Issue like any other work: open a task for the Issue's current Module and
-name the Issues it fixes, `concorde task open <task> … --resolves <issue>[,<issue>…]`, or later
-`task_resolve`. Tell its session in the task brief which tier each Issue has: it fixes `obvious-fix` and
-`preferred-fix` Issues itself, reporting the fix it chose for a `preferred-fix` one, and escalates a
-`decision-needed` Issue, naming it by its identity, for you to decide or to put to the developer.
-A review
-(`spec_review`, `spec_panel`, `code_review`) reports each of its findings as an Issue with the severity and tier
-its reviewer or chair gave it, and lists in its result the earlier Issues that still stand and those it found
-resolved; the task session fixes the first by their tier in later `specify` or `implement` work and
-closes the resolved ones, through its task when the task fixed them. Starting, fixing or delivering
-the task changes no Issue; once `task merge` has merged it and its
-checks passed, the merge closes each Issue the task resolves as `resolved` with the merge commit as
-evidence and lists them as `resolved`, and names in its warnings any it could not close. A task that
-ends without merging closes none. Close an Issue by hand with `issue_close` only for another reason,
-`duplicate` (with `duplicate_of`, another open Issue) or `not-actionable`, or when it was fixed
-without such a task; for recurrence use `issue_reopen`, which keeps every report and disposition.
-Check that the evidence supports every decision: the store checks its form, not its truth. On
-`stale_issue`, read the record again and reconsider before retrying.
-
-**When the Issue system fails.** Never record a failure of the Issue system itself, a refusal of the
-Issue tools or command whose reason is `environment`, such as `merge_busy`, `merge_incomplete`,
-`commit_failed`, `recovery_failed` or `uncommitted_change`, as an Issue: an Issue system that failed
-cannot be trusted to record its own failure. Treat it as any other failure of a task, its error
-chain in the task's decision log and escalation. When you met the failure for no task, such as on an
-Issue you recorded while discussing the project, there is no decision log or escalation to carry it:
-show the developer its whole error chain at once, as rendered, never a summary of it, and open a
-task only when the failure leads to work. `merge_busy` means a merge, task open or close holds the
-merge lock that every Issue write takes: `register_wait` for the merge lock and write again once it
-is released. `recovery_failed` means a record an Issue write published could not be put back and
-stays uncommitted in the primary worktree, shown by no read: fix the cause the refusal names, such
-as a stale `index.lock` or a refusing commit hook, then run `concorde issues recover` (it has no MCP
-tool), which puts it back, and write again. `uncommitted_change` means the record of the Issue you
-wrote holds a change no Issue write made, such as an edit by hand, which the Issue system neither
-overwrites nor discards: inspect it with `git diff` in the primary worktree, revert it, and write
-again; writes of other Issues are not held up. Never commit such a record by hand.
-
-## Worker models
-
-Every worker runs on what the worktree's `.concorde/workers.json` chooses, and only on that:
-Concorde never takes a worker's model or reasoning level from your or the developer's own pi or
-Claude Code settings; only credentials and pi's provider definitions come from there. The file is
-tracked by Git like the project's code, and no worker runs without it: a run whose worktree has
-none fails with `config_missing`. The installer does not write it, since the models are the
-developer's choice: when the project has none, ask the developer which models workers may use and
-which is the default, then write the file and commit it alone on the primary branch before any
-Operation runs.
-
-The file names every model by a **project model name** that depends on no installation, such as
-`gpt-6-astra` or `claude-opus-5-5`: letters, digits, `.`, `_` and `-`. The id a program takes, such
-as pi's `local-openai/gpt-6-astra`, is a fact about one machine and never goes into the file: the
-**model map**, the developer's own `~/.config/concorde/models.json` (or `$XDG_CONFIG_HOME/concorde/`,
-or the file `CONCORDE_MODEL_MAP` names), gives each project model name its local id on `pi`, on
-`claude` or both, and is never committed:
-
-```json
-{
-  "schema_version": 1,
-  "models": {
-    "gpt-6-astra": {"pi": "local-openai/gpt-6-astra"},
-    "claude-opus-5-5": {"pi": "anthropic/claude-opus-5-5", "claude": "claude-opus-5-5"}
-  }
-}
-```
-
-The map belongs to the developer's machine, so write or change it only when the developer asks or
-agrees, and when a model they choose for the file is new, tell them the entry the map needs. A
-worker whose model has no id for its program in the map is refused with `model_unmapped`, a
-missing map with `model_map_missing` and an unreadable one with `model_map_invalid`, each naming
-the map and the entry to add; the project model name is never used as the id.
-
-The file holds `schema_version: 2` and the required `enabled_models`, every model a worker may
-run on by its project model name, each `{}` or with its own `reasoning` level. Every model an entry
-names must be enabled, or every worker is refused with `model_not_enabled`. The file holds a `default`
-and, per Operation, a `default` and one entry per **worker id** under
-`operations.<operation>.default` and `operations.<operation>.workers.<worker-id>`: the name each
-Operation gives the workers it launches, `worker` for most Operations with one worker, `reviewer`
-for `plan_review`, `reviewer` and `checker` for `spec_review`, `reviewer1` to `reviewer5`,
-`architect1`, `architect2` and `chair` for `spec_panel`. Each entry
-may set a `backend` (`pi` or `claude`), a `model` and a `reasoning` level, and the most specific
-entry that sets a field wins. Workers run on pi, although you run on Claude Code, unless an entry sets
-`backend: "claude"`; an entry that only chooses a backend keeps the model and level it inherits,
-which the map must then give an id on that program. A worker whose entries name no model is refused with
-`model_unresolved`, so give the `default` a model. A worker takes the level set by the entry that
-chose its model or a more specific one, otherwise its model's own level in `enabled_models`,
-otherwise one a less specific entry sets, otherwise its program's built-in default. Remove a field
-to inherit it rather than writing null. The file also holds the `limits` of every worker launch
-(`timeout_seconds`, `max_turns`, `max_budget_usd`, `rounds`) and the `runtime` paths workers may
-read besides their grant (by default `.venv` and `node_modules`):
-
-```json
-{
-  "schema_version": 2,
-  "enabled_models": {"gpt-6-astra": {"reasoning": "medium"}, "claude-opus-5-5": {}},
-  "default": {"model": "gpt-6-astra"},
-  "operations": {
-    "spec_panel": {"workers": {"chair": {"backend": "claude", "model": "claude-opus-5-5"}}}
-  }
-}
-```
-
-A task carries the file of its base commit, so a later change on the primary branch never reaches
-a task already open. Change worker models only when the developer asks, by editing the JSON
-directly and preserving unrelated entries; there is no editor. A model the developer adds for a
-worker goes into `enabled_models` too. For future tasks, edit the primary
-worktree's `.concorde/workers.json` and commit that file alone on the primary branch: a change of
-nothing but this file is one of the few changes you commit directly in the primary worktree, beside
-an approved small change and regenerated derived files, never while a
-`concorde task merge` is unfinished. A task may change its own models while it works, as any
-tracked file of its branch; the change stays with the task and reaches the primary branch when the
-task merges. An unbound run reads the committed file of the commit it examines, so commit a
-change before an unbound run is to use it.
-
-For suggestions, run `python3 scripts/available_models.py --backend pi` or `--backend claude`,
-optionally with `--json`. In an installed project the script is under
-`.concorde/framework/scripts/available_models.py`. It works outside Git and calls no inference
-API: pi lists configured credentialed candidates; Claude's aliases and settings-derived names
-are incomplete and do not prove account access. Each candidate shows the project model names the
-map already gives it, and pi's listing also names the map's pi ids pi no longer lists, such as one
-a changed pi configuration renamed: those are the map entries to update. Discovery failure or an empty list does not block
-custom/offline model names. AI may use these suggestions when the developer asks for options;
-if a requested model is already known, edit it directly without a mandatory question flow.
-
-Workers validate the whole file when a worker launches. The chosen backend must be installed then,
-but need not be installed to edit the file. A missing program causes `backend_missing`, never
-fallback, and a malformed file `config_invalid` naming the field; a file of `schema_version: 1`,
-whose models were local ids, is refused saying how to rename them and map them. An Operation whose
-worker cannot be configured ends `failed` with `worker_model_unavailable`, naming the worker, file,
-map entry or missing program.
-
 ## The project MCP server
 
-The project's `.mcp.json` registers the **project MCP server** `concorde` (`concorde project-mcp`):
-tools that present the task and trace commands to your session. Each session runs its own server,
+The project's `.mcp.json` registers the **project MCP server** `concorde` (`concorde project-mcp`),
+which presents the tools of the installed parts to your session; Coordination's present the task
+and trace commands. Each session runs its own server,
 which serves the whole project's tasks, traces and locks from the primary worktree, whatever
 worktree it started in, reading them afresh on every call. The `concorde` commands stay the source
 of truth: every answer and refusal of a query or short write is the command's own, every refusal an
@@ -583,9 +282,9 @@ error chain link. Its only rule of its own is that it never waits for a lock, so
 merge's result or the wait's answer comes later.
 
 - Queries: `task_list`, `task_show`, `trace_show` (a node with a `depth`, so a large trace is read
-  a level at a time), `run_result`, `workflow_report`, and `locks`, which says who holds the merge
-  lock and each task's workspace lock: the holder's command, process, start time, session and
-  task.
+  a level at a time), `run_result` where the execution part is installed, and `locks`, which says
+  who holds the merge lock and each task's workspace lock: the holder's command, process, start
+  time, session and task.
 - Short writes with structured arguments: `task_open`, `task_escalate` (your link of the error
   chain as arguments, with the `runs`, `error_files` and `escalations` it adds as causes),
   `task_rebind`, `task_report`, `task_answer` and `task_close` with `outcome` `completed` or
@@ -601,7 +300,7 @@ merge's result or the wait's answer comes later.
   background Bash) and call `task_merge` again once you are woken: you may be refused again.
 - `register_wait`: asks to be woken when a task becomes `delivered`, `merging`, `closed` or
   `failed` (`task` with `until`), when a task is rebound to a main agent's session other than one
-  it names (`task` with `rebound`), when a run ends (`run`), or when a lock is released (`lock`
+  it names (`task` with `rebound`), when a run ends (`run`, where the execution part is installed), or when a lock is released (`lock`
   `merge`, or `workspace` with `task`). It answers at once when that already happened. It only
   notifies: when you are woken for a lock, ask for it again, and you may be refused again.
 
@@ -627,13 +326,6 @@ recommended, not required: the kernel lock is the same whichever path takes it, 
 server does not present, such as `concorde task session`, stays a command. Task sessions receive
 the server too, but without a channel, since Claude Code never wakes a background session with
 channel events: they wait with `concorde task wait` in background Bash. Workers never receive it.
-
-## Spec queries
-
-You may configure the Spec MCP server for your own session, for example in the project's
-`.mcp.json` with the command `concorde spec-mcp`, to ask which Modules exist, what a Module's
-context is, which Modules some paths concern and what grant a task type would receive. It answers
-from the worktree it is rooted in. Workers never receive it.
 
 ## Report
 
