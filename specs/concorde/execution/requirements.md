@@ -244,5 +244,5 @@ and including the first step that stops the run.
 
 No step SHALL start another run.
 
-A [workflow](workflows/module.md) sequences runs from outside them, through the same command lines;
+A [workflow](../workflows/module.md) sequences runs from outside them, through the same command lines;
 calling a service such as Check execution or resuming a worker is not starting a run.

@@ -809,7 +809,7 @@ creates a new file only inside a directory its Module binds; any other new file 
 bound to its Module by the task session before the worker that fills it runs.
 
 These layers guard against scope drift and mistakes, not against a malicious actor. Their known
-limits are stated in the [Harness](https://ftod.github.io/concorde/specs/concorde/harness/module)
+limits are stated in the [Harness](https://ftod.github.io/concorde/specs/concorde/worker-harness/harness/module)
 Spec.
 
 ## Record problems as Issues

@@ -210,9 +210,9 @@ dependencies; an installed copy has no `.venv` and runs on Concorde's own enviro
 | `task open`, `list`, `show`, `close`, `merge`, `escalate` or `wait` | opens, lists, shows, closes, merges or escalates tasks, or waits for a task, run or lock; prints the task command's own JSON | [Tasks](../coordination/tasks/module.md) |
 | `run <operation>` | runs one [Operation](../glossary.json#concept.operation) in the workspace of the current worktree or, when the Operation allows it, unbound; prints the [run result](../glossary.json#concept.run-result) | [Execution](../execution/module.md), with the catalog of [Operations](../execution/operations/module.md) |
 | `task-validation`, `delivery` or `scaffold` | runs one execution command in the workspace of the current worktree; prints the run result | [Execution](../execution/module.md), with the catalog of [Commands](../execution/commands/module.md) |
-| `workflow step` or `report` | runs one [workflow step](../glossary.json#concept.workflow-step), or reports a workflow's result; prints its own JSON | [Workflows](../execution/workflows/module.md) |
+| `workflow step` or `report` | runs one [workflow step](../glossary.json#concept.workflow-step), or reports a workflow's result; prints its own JSON | [Workflows](../workflows/module.md) |
 | `issues list`, `show`, `check`, `report`, `close` or `reopen` | the Issues bookkeeping command `scripts/issues.py`; prints its own JSON | [Issues](../issues/module.md) |
-| `trace show`, `list` or `prune` | shows a [trace](../glossary.json#concept.trace) with its timing and cost rolled up, lists traces, or removes what retention allows; prints its own JSON | [Tracing](../tracing/module.md) |
+| `trace show`, `list` or `prune` | shows a [trace](../glossary.json#concept.trace) with its timing and cost rolled up, lists traces, or removes what retention allows; prints its own JSON | [Tracing](../kernel/tracing/module.md) |
 | `build [--check]` | renders or checks the generated files | Distribution |
 | `protocol-manifest [--write] [--bind-project]` | [reconciles the Protocol manifest](#reconciling-the-protocol-manifest) | Distribution |
 | `update [--from <checkout>]` | updates the installed Concorde, as described below; prints its [update result](contracts.md#contract.distribution.update-result) | Distribution |
@@ -315,7 +315,7 @@ project where every check passes, it goes through these steps in order:
    server, and leaves the file as it is when that entry is already there
    ([requirements](requirements.md#req.distribution.installer-project-mcp),
    [the rest kept](requirements.md#req.distribution.installer-mcp-kept)).
-8. **It records the install.** It adds ignore rules for the folders [Tracing](../tracing/module.md)
+8. **It records the install.** It adds ignore rules for the folders [Tracing](../kernel/tracing/module.md)
    keeps, `.concorde/tasks/`, `.concorde/history/`, `.concorde/unbound/` and `.concorde/locks/`,
    for `.concorde/runs/`, where Dogfooding keeps [defect reports](../glossary.json#concept.defect-report) and End-to-end testing its session
    logs,
@@ -491,7 +491,7 @@ incomplete, the update is run again with `install-concorde.py --update` from the
 
 Every refusal of the installer and of `concorde update` prints `{"error": <link>}` and exits with
 status 1: one link of the Framework's [error chain](../glossary.json#concept.error-chain), in the
-shape of its [error contract](../tracing/contracts.md#contract.tracing.error),
+shape of its [error contract](../kernel/tracing/contracts.md#contract.tracing.error),
 whose actor is `Installer (install-concorde)` or `concorde update`, whose code is the refusal's,
 whose detail names what is wrong and where, and whose reason is `input` when only a different
 project, Concorde checkout or argument corrects it and `environment` otherwise
@@ -604,7 +604,7 @@ starting after that.
 
 **Tracing** owns `trace`: the entry point hands it the rest of the command line, and Tracing's
 trace command prints its own output. The installer takes from Tracing's
-[layout](../tracing/contracts.md#layout) the folders it has Git ignore and the run locks it reads,
+[layout](../kernel/tracing/contracts.md#layout) the folders it has Git ignore and the run locks it reads,
 relying on a runner holding its run lock for as long as it runs.
 
 <a id="uses-commands"></a>
@@ -653,7 +653,7 @@ so the entry point prints no envelope; Distribution resolves no root and answers
 [worker configuration](../glossary.json#concept.worker-configuration) and the
 [model map](../glossary.json#concept.model-map). Distribution ships what Workers needs from an
 install: the pi runtime, the sandbox engine in which
-[pi commands run](../execution/workers/pi.md#req.workers.pi-sandbox), whose absence Workers
+[pi commands run](../worker-harness/workers/pi.md#req.workers.pi-sandbox), whose absence Workers
 refuses with `pi_runtime_missing`, and Workers' discovery entry point
 `scripts/available_models.py` with the Framework runtime. It writes neither the configuration nor
 the map, and its busy check leaves out a worker's [progress

@@ -157,13 +157,13 @@
     {
       "id": "module.spec-review",
       "title": "Spec review",
-      "entry": "specs/concorde/spec-tooling/spec-review/module.md",
+      "entry": "specs/concorde/method/spec-review/module.md",
       "owns": [
-        "specs/concorde/spec-tooling/spec-review/module.md",
-        "specs/concorde/spec-tooling/spec-review/operation.md",
-        "specs/concorde/spec-tooling/spec-review/panel.md",
-        "specs/concorde/spec-tooling/spec-review/requirements.md",
-        "specs/concorde/spec-tooling/spec-review/scenarios.md"
+        "specs/concorde/method/spec-review/module.md",
+        "specs/concorde/method/spec-review/operation.md",
+        "specs/concorde/method/spec-review/panel.md",
+        "specs/concorde/method/spec-review/requirements.md",
+        "specs/concorde/method/spec-review/scenarios.md"
       ],
       "contains": [],
       "uses": [
@@ -270,11 +270,11 @@
     {
       "id": "module.harness",
       "title": "Harness",
-      "entry": "specs/concorde/harness/module.md",
+      "entry": "specs/concorde/worker-harness/harness/module.md",
       "owns": [
-        "specs/concorde/harness/module.md",
-        "specs/concorde/harness/claude-code.md",
-        "specs/concorde/harness/pi.md"
+        "specs/concorde/worker-harness/harness/module.md",
+        "specs/concorde/worker-harness/harness/claude-code.md",
+        "specs/concorde/worker-harness/harness/pi.md"
       ],
       "contains": [],
       "uses": [
@@ -298,13 +298,13 @@
     {
       "id": "module.workers",
       "title": "Workers",
-      "entry": "specs/concorde/execution/workers/module.md",
+      "entry": "specs/concorde/worker-harness/workers/module.md",
       "owns": [
-        "specs/concorde/execution/workers/module.md",
-        "specs/concorde/execution/workers/launch.md",
-        "specs/concorde/execution/workers/pi.md",
-        "specs/concorde/execution/workers/contracts.md",
-        "specs/concorde/execution/workers/scenarios.md"
+        "specs/concorde/worker-harness/workers/module.md",
+        "specs/concorde/worker-harness/workers/launch.md",
+        "specs/concorde/worker-harness/workers/pi.md",
+        "specs/concorde/worker-harness/workers/contracts.md",
+        "specs/concorde/worker-harness/workers/scenarios.md"
       ],
       "contains": [],
       "uses": [
@@ -513,7 +513,7 @@
       "entry": "specs/concorde/execution/operations/module.md",
       "owns": [
         "specs/concorde/execution/operations/module.md",
-        "specs/concorde/execution/operations/workers.md",
+        "specs/concorde/method/workers.md",
         "specs/concorde/execution/operations/requirements.md",
         "specs/concorde/execution/operations/scenarios.md"
       ],
@@ -578,12 +578,12 @@
     {
       "id": "module.understanding",
       "title": "Understanding",
-      "entry": "specs/concorde/execution/operations/understanding/module.md",
+      "entry": "specs/concorde/method/understanding/module.md",
       "owns": [
-        "specs/concorde/execution/operations/understanding/module.md",
-        "specs/concorde/execution/operations/understanding/requirements.md",
-        "specs/concorde/execution/operations/understanding/scenarios.md",
-        "specs/concorde/execution/operations/understanding/contracts.md"
+        "specs/concorde/method/understanding/module.md",
+        "specs/concorde/method/understanding/requirements.md",
+        "specs/concorde/method/understanding/scenarios.md",
+        "specs/concorde/method/understanding/contracts.md"
       ],
       "contains": [],
       "uses": [
@@ -622,12 +622,12 @@
     {
       "id": "module.specification",
       "title": "Specification",
-      "entry": "specs/concorde/execution/operations/specification/module.md",
+      "entry": "specs/concorde/method/specification/module.md",
       "owns": [
-        "specs/concorde/execution/operations/specification/module.md",
-        "specs/concorde/execution/operations/specification/requirements.md",
-        "specs/concorde/execution/operations/specification/scenarios.md",
-        "specs/concorde/execution/operations/specification/contracts.md"
+        "specs/concorde/method/specification/module.md",
+        "specs/concorde/method/specification/requirements.md",
+        "specs/concorde/method/specification/scenarios.md",
+        "specs/concorde/method/specification/contracts.md"
       ],
       "contains": [],
       "uses": [
@@ -665,12 +665,12 @@
     {
       "id": "module.implementation",
       "title": "Implementation",
-      "entry": "specs/concorde/execution/operations/implementation/module.md",
+      "entry": "specs/concorde/method/implementation/module.md",
       "owns": [
-        "specs/concorde/execution/operations/implementation/module.md",
-        "specs/concorde/execution/operations/implementation/requirements.md",
-        "specs/concorde/execution/operations/implementation/scenarios.md",
-        "specs/concorde/execution/operations/implementation/contracts.md"
+        "specs/concorde/method/implementation/module.md",
+        "specs/concorde/method/implementation/requirements.md",
+        "specs/concorde/method/implementation/scenarios.md",
+        "specs/concorde/method/implementation/contracts.md"
       ],
       "contains": [],
       "uses": [
@@ -712,12 +712,12 @@
     {
       "id": "module.code-review",
       "title": "Code review",
-      "entry": "specs/concorde/execution/operations/code-review/module.md",
+      "entry": "specs/concorde/method/code-review/module.md",
       "owns": [
-        "specs/concorde/execution/operations/code-review/module.md",
-        "specs/concorde/execution/operations/code-review/requirements.md",
-        "specs/concorde/execution/operations/code-review/scenarios.md",
-        "specs/concorde/execution/operations/code-review/contracts.md"
+        "specs/concorde/method/code-review/module.md",
+        "specs/concorde/method/code-review/requirements.md",
+        "specs/concorde/method/code-review/scenarios.md",
+        "specs/concorde/method/code-review/contracts.md"
       ],
       "contains": [],
       "uses": [
@@ -771,12 +771,12 @@
     {
       "id": "module.validation",
       "title": "Validation",
-      "entry": "specs/concorde/execution/commands/validation/module.md",
+      "entry": "specs/concorde/method/validation/module.md",
       "owns": [
-        "specs/concorde/execution/commands/validation/module.md",
-        "specs/concorde/execution/commands/validation/contracts.md",
-        "specs/concorde/execution/commands/validation/requirements.md",
-        "specs/concorde/execution/commands/validation/scenarios.md"
+        "specs/concorde/method/validation/module.md",
+        "specs/concorde/method/validation/contracts.md",
+        "specs/concorde/method/validation/requirements.md",
+        "specs/concorde/method/validation/scenarios.md"
       ],
       "contains": [],
       "uses": [
@@ -825,12 +825,12 @@
     {
       "id": "module.delivery",
       "title": "Delivery",
-      "entry": "specs/concorde/execution/commands/delivery/module.md",
+      "entry": "specs/concorde/method/delivery/module.md",
       "owns": [
-        "specs/concorde/execution/commands/delivery/module.md",
-        "specs/concorde/execution/commands/delivery/contracts.md",
-        "specs/concorde/execution/commands/delivery/requirements.md",
-        "specs/concorde/execution/commands/delivery/scenarios.md"
+        "specs/concorde/method/delivery/module.md",
+        "specs/concorde/method/delivery/contracts.md",
+        "specs/concorde/method/delivery/requirements.md",
+        "specs/concorde/method/delivery/scenarios.md"
       ],
       "contains": [],
       "uses": [
@@ -875,12 +875,12 @@
     {
       "id": "module.tracing",
       "title": "Tracing",
-      "entry": "specs/concorde/tracing/module.md",
+      "entry": "specs/concorde/kernel/tracing/module.md",
       "owns": [
-        "specs/concorde/tracing/module.md",
-        "specs/concorde/tracing/contracts.md",
-        "specs/concorde/tracing/requirements.md",
-        "specs/concorde/tracing/scenarios.md"
+        "specs/concorde/kernel/tracing/module.md",
+        "specs/concorde/kernel/tracing/contracts.md",
+        "specs/concorde/kernel/tracing/requirements.md",
+        "specs/concorde/kernel/tracing/scenarios.md"
       ],
       "contains": [],
       "uses": [
@@ -1221,12 +1221,12 @@
     {
       "id": "module.workflows",
       "title": "Workflows",
-      "entry": "specs/concorde/execution/workflows/module.md",
+      "entry": "specs/concorde/workflows/module.md",
       "owns": [
-        "specs/concorde/execution/workflows/module.md",
-        "specs/concorde/execution/workflows/requirements.md",
-        "specs/concorde/execution/workflows/scenarios.md",
-        "specs/concorde/execution/workflows/contracts.md"
+        "specs/concorde/workflows/module.md",
+        "specs/concorde/workflows/requirements.md",
+        "specs/concorde/workflows/scenarios.md",
+        "specs/concorde/workflows/contracts.md"
       ],
       "contains": [],
       "uses": [
@@ -1304,12 +1304,12 @@
     {
       "id": "module.adoption",
       "title": "Adoption",
-      "entry": "specs/concorde/execution/operations/adoption/module.md",
+      "entry": "specs/concorde/method/adoption/module.md",
       "owns": [
-        "specs/concorde/execution/operations/adoption/module.md",
-        "specs/concorde/execution/operations/adoption/requirements.md",
-        "specs/concorde/execution/operations/adoption/scenarios.md",
-        "specs/concorde/execution/operations/adoption/contracts.md"
+        "specs/concorde/method/adoption/module.md",
+        "specs/concorde/method/adoption/requirements.md",
+        "specs/concorde/method/adoption/scenarios.md",
+        "specs/concorde/method/adoption/contracts.md"
       ],
       "contains": [],
       "uses": [
@@ -1825,12 +1825,12 @@
     {
       "id": "module.scaffold",
       "title": "Scaffold",
-      "entry": "specs/concorde/execution/commands/scaffold/module.md",
+      "entry": "specs/concorde/method/scaffold/module.md",
       "owns": [
-        "specs/concorde/execution/commands/scaffold/module.md",
-        "specs/concorde/execution/commands/scaffold/requirements.md",
-        "specs/concorde/execution/commands/scaffold/scenarios.md",
-        "specs/concorde/execution/commands/scaffold/contracts.md"
+        "specs/concorde/method/scaffold/module.md",
+        "specs/concorde/method/scaffold/requirements.md",
+        "specs/concorde/method/scaffold/scenarios.md",
+        "specs/concorde/method/scaffold/contracts.md"
       ],
       "contains": [],
       "uses": [

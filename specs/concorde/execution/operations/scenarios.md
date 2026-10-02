@@ -3,7 +3,7 @@
 Concrete situations that show the [requirements](requirements.md) of [Operations](module.md). What
 every run does, whatever its definition, is shown by the [Execution scenarios](../scenarios.md); how
 an [Operation](../../glossary.json#concept.operation) runs its workers is in
-[How an Operation runs its workers](workers.md).
+[How an Operation runs its workers](../../method/workers.md).
 
 ## Worker-backed runs
 

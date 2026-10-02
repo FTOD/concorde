@@ -54,7 +54,7 @@ is a file under `locks/workspaces/` of the binding's `.concorde`, apart from eve
 outside the workspace, so a run that only reads the workspace leaves it untouched. Runs are not its
 only takers: whoever prepares the workspace may take it too, as Concorde's task level does to merge
 or close a task, so Execution names a holder only by the holder line
-[Tracing](../tracing/contracts.md#locks) keeps in the lock file, never assuming that it is a run.
+[Tracing](../kernel/tracing/contracts.md#locks) keeps in the lock file, never assuming that it is a run.
 
 ### Runs and their results
 
@@ -66,9 +66,9 @@ A **run** is one execution of an Operation or of an execution command in one wor
 [task type](../glossary.json#concept.task-type) assigns, computed from the workspace's Specs; the
 catalog of [Operations](operations/module.md) lists them. An
 [execution command](../glossary.json#concept.execution-command) is deterministic and launches no
-worker: [`task-validation`](commands/validation/module.md) decides whether the workspace is ready to
-deliver, [`delivery`](commands/delivery/module.md) decides that readiness again and commits the
-workspace, and [`scaffold`](commands/scaffold/module.md) creates the child Modules a survey proposed;
+worker: [`task-validation`](../method/validation/module.md) decides whether the workspace is ready to
+deliver, [`delivery`](../method/delivery/module.md) decides that readiness again and commits the
+workspace, and [`scaffold`](../method/scaffold/module.md) creates the child Modules a survey proposed;
 the catalog of [Commands](commands/module.md) lists them. Both kinds are **runs**: the same runner
 parses their command line, resolves the workspace, takes the workspace lock, runs their steps and
 writes one run result, so a workflow, the task level or an observer treats them alike. The
@@ -153,9 +153,9 @@ A sandboxed command cannot hand the run to a process outside either, since the s
 even Unix sockets. Whoever needs a run to outlive a sandboxed call starts it from a process outside
 the sandbox, as a [workflow step](../glossary.json#concept.workflow-step) does through the
 [project MCP server](../glossary.json#concept.project-mcp-server)
-([Workflows](workflows/module.md#steps-in-claude-code)), or keeps the call alive as long as the run.
+([Workflows](../workflows/module.md#steps-in-claude-code)), or keeps the call alive as long as the run.
 Which callers those are is not Execution's to say: a worker's Bash is sandboxed on the Claude Code
-backend ([req.workers.bash-sandbox](workers/launch.md#req.workers.bash-sandbox)) and a
+backend ([req.workers.bash-sandbox](../worker-harness/workers/launch.md#req.workers.bash-sandbox)) and a
 [main agent](../glossary.json#concept.main-agent)'s own session may be, while a
 [task session](../glossary.json#concept.task-session)'s calls are not
 ([req.task-session.no-sandbox](../coordination/task-session/requirements.md#req.task-session.no-sandbox)),
@@ -168,20 +168,20 @@ Execution itself does not see which namespace it was started in and promises no 
 <a id="concept.run-store"></a>
 
 Every run is a [trace node](../glossary.json#concept.trace-node) of
-[Tracing](../tracing/module.md): a folder with its `trace.json`, its
+[Tracing](../kernel/tracing/module.md): a folder with its `trace.json`, its
 [run progress file](../glossary.json#concept.run-progress-file), its result and, below it, the nodes
 of the checks it ran and of the worker runs it launched, each worker run with its
 [run record](../glossary.json#concept.run-record) and rounds. The **run store** is where those
 folders lie: a run started directly lies in `runs/<run-id>/` of the workspace folder, a run a
 [workflow step](../glossary.json#concept.workflow-step) started inside that step's node of
-[Workflows](workflows/module.md)' workflow node in the same folder, and an unbound run in
+[Workflows](../workflows/module.md)' workflow node in the same folder, and an unbound run in
 `.concorde/unbound/<run-id>/` of the worktree it started in, never in its checkout. A bound run that
 does not hold its workspace's lock yet lies in the lobby, `.concorde/lobby/<run-id>/` of the
 `.concorde` its binding names, and stays there when it is refused before it holds it, so that
 nothing is written into a workspace folder by a run that has not entered it. Git ignores all of
 them. Whoever prepared a workspace reads its runs in its workspace folder, and the runs waiting in
 the lobby for its lock, to know what happened in it. `concorde trace` finds a run by its identity
-wherever [Tracing looks](../tracing/contracts.md#reading-traces): among the tasks, the history, the
+wherever [Tracing looks](../kernel/tracing/contracts.md#reading-traces): among the tasks, the history, the
 unbound runs and the lobby of the `.concorde` directories it searches, which hold every run of a
 workspace Concorde's task level prepared. A run of a workspace whose folder another preparer placed
 elsewhere is found by the path of its node folder instead.
@@ -312,12 +312,12 @@ them in full. `--modules` names the Modules the run works on (default: the bindi
 workspace no longer registers); `--input` admits the output of an earlier `ok` run of the same
 workspace, such as a plan or a survey. `concorde workflow step|report …` also works on the bound
 workspace without naming it, but is not itself a run: it starts and awaits runs through
-[Workflows](workflows/module.md).
+[Workflows](../workflows/module.md).
 
 A run of `implement` in a task worktree, for example, reads the binding (workspace `retry`,
 [Module](../glossary.json#concept.module) `module.http`, base `4be1…`), takes the lock of `retry`,
 computes the implement grant for `module.http` from the worktree's Specs, launches one worker
-through [Workers](workers/module.md), audits and checks its change, and prints its run result and
+through [Workers](../worker-harness/workers/module.md), audits and checks its change, and prints its run result and
 saves it in the run's trace node, `<workspace folder>/runs/<run-id>/result.json`. The command exits
 0 for `ok`, 1 for `blocked` or `failed`, and 2 for a malformed command line, which starts nothing.
 
@@ -486,7 +486,7 @@ load.
 **Workers** runs one headless worker under a frozen grant for the Operation that asked, audits it,
 runs its checks and records the worker run in the run store, and owns the tracked worker
 configuration. The runner relies on two of its promises when a run is cancelled
-([Where a run's files live](workers/module.md#where-a-runs-files-live)): it tells the launching
+([Where a run's files live](../worker-harness/workers/module.md#where-a-runs-files-live)): it tells the launching
 run each worker run's identity as soon as the worker run exists, not when it returns, and it ends
 a worker run interrupted from outside as `failed` with `interrupted`, its
 [progress file](../glossary.json#concept.progress-file) finished, before the interruption travels
@@ -518,8 +518,8 @@ relies on it refusing Specs that cannot be loaded rather than reading them in pa
 **Tracing** gives every run its trace node's shape and place and every lock its file: the runner
 writes the run's node at its start and its end through Tracing's library, takes the run lock and the
 workspace lock under `locks/`, and reports its errors in the error contract. Execution relies on the
-[node contract](../tracing/contracts.md#contract.tracing.node), the
-[layout](../tracing/contracts.md#layout) and the [locks](../tracing/contracts.md#locks), and
+[node contract](../kernel/tracing/contracts.md#contract.tracing.node), the
+[layout](../kernel/tracing/contracts.md#layout) and the [locks](../kernel/tracing/contracts.md#locks), and
 records nothing that Tracing's node contract refuses.
 
 The runner, its run store and the execution commands rely on no Module of the upper half, and
@@ -529,6 +529,6 @@ One child reaches upward all the same: Workflows' Claude Code workflows start ea
 [project MCP server](../glossary.json#concept.project-mcp-server)'s `workflow_step`, which
 [Main session](../coordination/main-session/module.md) provides, so that the step's run is started
 by a process outside the session's sandboxed Bash and outlives it
-([Workflows](workflows/module.md#uses-main-session)). A workflow therefore runs in Claude Code only
+([Workflows](../workflows/module.md#uses-main-session)). A workflow therefore runs in Claude Code only
 where the project registers that server; the runner itself, and every run started from a command
 line, needs nothing of it.

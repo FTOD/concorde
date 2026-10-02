@@ -16,7 +16,7 @@ task level can read it later. Work that needs a model is not an execution comman
 
 Commands never chooses the next run, asks the developer anything or reads a
 [task record](../../glossary.json#concept.task-record): whoever works the workspace, directly or
-through a [workflow](../workflows/module.md), decides what runs. The other `concorde` commands are
+through a [workflow](../../workflows/module.md), decides what runs. The other `concorde` commands are
 not execution commands, even those of Execution: `run` starts an Operation, `workflow` a
 [workflow step](../../glossary.json#concept.workflow-step), and the rest belong to Coordination, Spec tooling, Issues or Distribution, as the
 table of subcommands of the
@@ -49,12 +49,12 @@ catalog of this version:
 
 | Command | Provider | Writes | Output |
 | --- | --- | --- | --- |
-| `task-validation` | [Validation](validation/module.md) | nothing in the workspace | a [readiness](validation/contracts.md#contract.validation.readiness) |
-| `delivery` | [Delivery](delivery/module.md) | one [delivery commit](../../glossary.json#concept.delivery-commit) on the bound branch | the [delivery commit](delivery/contracts.md#contract.delivery.output) |
-| `scaffold` | [Scaffold](scaffold/module.md) | the new child Modules' Specs, the parent's entry and the registry | a [scaffold record](scaffold/contracts.md#contract.scaffold.record) |
+| `task-validation` | [Validation](../../method/validation/module.md) | nothing in the workspace | a [readiness](../../method/validation/contracts.md#contract.validation.readiness) |
+| `delivery` | [Delivery](../../method/delivery/module.md) | one [delivery commit](../../glossary.json#concept.delivery-commit) on the bound branch | the [delivery commit](../../method/delivery/contracts.md#contract.delivery.output) |
+| `scaffold` | [Scaffold](../../method/scaffold/module.md) | the new child Modules' Specs, the parent's entry and the registry | a [scaffold record](../../method/scaffold/contracts.md#contract.scaffold.record) |
 
 For a project whose code came before its Specs, `scaffold` sits between the Operations `survey` and
-`code_to_spec`, usually run by the [brownfield workflow](../workflows/module.md).
+`code_to_spec`, usually run by the [brownfield workflow](../../workflows/module.md).
 
 ## Overview
 
@@ -95,7 +95,7 @@ concorde delivery
 ```
 
 `task-validation` is the preview: it decides the workspace's
-[readiness](validation/contracts.md#contract.validation.readiness) and writes nothing. When the
+[readiness](../../method/validation/contracts.md#contract.validation.readiness) and writes nothing. When the
 workspace is ready its run result has status `ok` and a readiness with `ready` true; otherwise it
 is `blocked` and names every blocking finding at once, to repair before trying again. `delivery`
 then decides the readiness again itself rather than trusting the preview and, when it is ready,

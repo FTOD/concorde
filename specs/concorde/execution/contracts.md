@@ -461,7 +461,7 @@ them is in [How a run is executed](runner.md).
 ## Run trace
 
 Every run is a [trace node](../glossary.json#concept.trace-node) of kind `run` as
-[Tracing](../tracing/contracts.md#contract.tracing.node) defines it, whose content is this value.
+[Tracing](../kernel/tracing/contracts.md#contract.tracing.node) defines it, whose content is this value.
 
 ```concorde-contract
 {

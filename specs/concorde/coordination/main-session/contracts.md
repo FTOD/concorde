@@ -5,7 +5,7 @@ The exact session, tools and events of the
 [Main session](module.md#the-project-mcp-server). Every tool is a presentation of a command
 that already exists; where a row says "as" a command, the result and every refusal are that
 command's when it waits for no lock, as [Tasks](../tasks/contracts.md#commands),
-[Tracing](../../tracing/contracts.md) and [Issues](../../issues/interface.md#bookkeeping-command)
+[Tracing](../../kernel/tracing/contracts.md) and [Issues](../../issues/interface.md#bookkeeping-command)
 define them. `run_result`, `workflow_report` and `locks`
 present records no command prints in that shape: their rows define their results, and their
 refusals are the codes below. `task_merge` and `register_wait` answer at once with the start and the
@@ -69,7 +69,7 @@ an organization policy that disables channels leaves it believing it has one.
 
 Every tool returns one text content item holding one JSON value. A refusal sets `isError: true`
 and its value is `{"error": <link>}`, a link of the
-[error contract](../../tracing/contracts.md#contract.tracing.error): the link of the component that
+[error contract](../../kernel/tracing/contracts.md#contract.tracing.error): the link of the component that
 refused, unchanged, which is `Tasks (concorde task <command>)` for a refusal of Tasks,
 `Issues (concorde issues)` for a refusal of the Issues command, or the server's own `component` link of actor `Concorde project MCP server (<tool>)`:
 
@@ -113,10 +113,10 @@ refused, unchanged, which is `Tasks (concorde task <command>)` for a refusal of 
 | `issue_reopen` | `issue`, `note`, `evidence` (nonempty) | as `concorde issues reopen`, never waiting for the merge lock, with the session as actor |
 | `task_merge` | `task`; optional `checks`, or `resume` or `abort` true | the start below |
 | `register_wait` | exactly one of `until` (with `task`), `rebound` (a [main agent](../../glossary.json#concept.main-agent)'s session, with `task`), `run`, and `lock` (`merge`, or `workspace` with `task`) | the registration below |
-| `workflow_step` | `request`, a [step request](../../execution/workflows/contracts.md#contract.workflows.step-request) as an object; optional `wait`, whole seconds from 0 to 100 (default 100) | the [step outcome](../../execution/workflows/contracts.md#contract.workflows.step) below |
+| `workflow_step` | `request`, a [step request](../../workflows/contracts.md#contract.workflows.step-request) as an object; optional `wait`, whole seconds from 0 to 100 (default 100) | the [step outcome](../../workflows/contracts.md#contract.workflows.step) below |
 
 A holder line is the object a lock file holds while it is held,
-[Tracing's](../../tracing/contracts.md#locks) `{"holder", "pid", "since"}` with `session` and
+[Tracing's](../../kernel/tracing/contracts.md#locks) `{"holder", "pid", "since"}` with `session` and
 `task` when they are known.
 
 ### Starting a merge
@@ -138,7 +138,7 @@ the task's attempts so far, prints the start below and replaces itself with
 `messages.log` of that folder, which it names in `CONCORDE_MERGE_ATTEMPT`, so that the merge
 records its attempt's node there, refused or not. The merge keeps the three locked descriptors,
 named in its environment variable `CONCORDE_INHERITED_LOCKS` as
-[Tracing](../../tracing/contracts.md#handing-a-lock-on) states, and the server never holds any, so
+[Tracing](../../kernel/tracing/contracts.md#handing-a-lock-on) states, and the server never holds any, so
 the locks are released exactly when the merge ends. When the operating system refuses to run
 `concorde task merge`, the call's process removes the folder again, prints a `start_failed`
 refusal after the start and exits, which releases the locks, and the call is refused with it.
@@ -184,7 +184,7 @@ its own and lives until its run ends, whatever becomes of the calls that asked f
 session and its server.
 
 The answer is the JSON object the command printed, unchanged, whatever its exit status: a
-[step outcome](../../execution/workflows/contracts.md#contract.workflows.step), finished, running,
+[step outcome](../../workflows/contracts.md#contract.workflows.step), finished, running,
 lost or refused. An object without a step outcome's `key` whose `error` is a link is the step
 command's refusal and is returned as the tool's refusal, that link unchanged; output that is no
 JSON object is refused with `step_failed`.

@@ -1,0 +1,87 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.harness.module",
+    "owner": "module.harness",
+    "role": "module"
+  },
+  "module": {
+    "title": "Harness",
+    "owns": [
+      "specs/concorde/worker-harness/harness/module.md",
+      "specs/concorde/worker-harness/harness/claude-code.md",
+      "specs/concorde/worker-harness/harness/pi.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec",
+        "relies_on": [
+          "concept.grant"
+        ]
+      }
+    ],
+    "includes": [
+      {
+        "kind": "external",
+        "target": "references/pi/",
+        "reason": "pi's extension API (tool registration, tool_call interception, tools that end a run) and how pi resolves tool paths, which the pi harness relies on"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "realization.harness.package",
+      "type": "realization",
+      "title": "Harness package",
+      "meaning": "#realization.harness.package",
+      "entries": [
+        "src/concorde/harness/__init__.py"
+      ]
+    },
+    {
+      "id": "realization.harness.claude",
+      "type": "realization",
+      "title": "Claude Code harness",
+      "meaning": "#realization.harness.claude",
+      "entries": [
+        "src/concorde/harness/settings.py",
+        "src/concorde/harness/write_hook.py",
+        "src/concorde/tasks/session_hook.py"
+      ]
+    },
+    {
+      "id": "realization.harness.pi",
+      "type": "realization",
+      "title": "pi harness",
+      "meaning": "#realization.harness.pi",
+      "entries": [
+        "src/concorde/harness/pi_permission.ts",
+        "src/concorde/harness/pi_policy.ts"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "realization.harness.claude",
+      "verb": "generates",
+      "target": "concept.worker-settings"
+    },
+    {
+      "type": "relates",
+      "source": "realization.harness.pi",
+      "verb": "provides",
+      "target": "concept.permission-extension"
+    },
+    {
+      "type": "relates",
+      "source": "realization.harness.claude",
+      "verb": "provides the write hook of",
+      "target": "concept.session-boundary"
+    }
+  ],
+  "extensions": {}
+}

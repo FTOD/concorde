@@ -314,7 +314,7 @@ disposition's actor. `recover` and `archive` have no tool.
 
 `report` reads the file as UTF-8 JSON and validates it as a [report](#contract.issues.report),
 including a given `error_chain` against the Framework's
-[error contract](../tracing/contracts.md#contract.tracing.error). Its `owner_target_id`, when not `null`,
+[error contract](../kernel/tracing/contracts.md#contract.tracing.error). Its `owner_target_id`, when not `null`,
 must be a Module of the primary worktree's registry, which keeps the Issue, and each evidence path
 must exist in the worktree `--root` or, for a report with an `origin`, in the origin project, whose
 path the refusal then names. A report file may lie outside
@@ -360,7 +360,7 @@ Every refusal prints `{"error": <link>}`, commits nothing and leaves no record a
 writes nothing either, with one exception: a write refused with `recovery_failed`, or a process
 killed while writing, may leave an uncommitted record in the primary worktree, which the next
 write or `recover` puts back, so a refused write may be repeated. The link is a `component` link of
-the Framework's [error chain](../tracing/contracts.md#contract.tracing.error) with the actor
+the Framework's [error chain](../kernel/tracing/contracts.md#contract.tracing.error) with the actor
 `Issues (concorde issues)`: its code is the refusal code, its detail names the Issue, the report
 file and field, or the argument concerned and states what is wrong, and its reason is
 `environment` for `io_error`, `merge_busy`, `merge_incomplete`, `commit_failed`,

@@ -316,7 +316,7 @@ it. Spec tooling is the exception: its commands, such as `spec-validation`, `reg
 [error record](../../spec-tooling/spec/errors.md#contract.spec.error) — a code, a message, why it is
 an error, where, how to fix it and its causes — which is no link of the chain, so that
 `concorde task escalate` refuses a file holding one with `invalid_error`. As
-[Tracing](../../tracing/contracts.md#where-links-appear) requires of any Module that receives such
+[Tracing](../../kernel/tracing/contracts.md#where-links-appear) requires of any Module that receives such
 an error and cannot handle it, the guidance tells the main agent and task sessions to translate the
 record into a `component` link of actor `Spec tooling (concorde <command>)`, its detail keeping the
 record's message, reason, location and remediation and its causes being the record's causes
@@ -414,7 +414,7 @@ puts the rest to the developer at once and answers the session with every answer
 starts the same workflow again with its `answers` keyed by each step's base key, its
 [step key](../../glossary.json#concept.step-key) without a restart label or answer digest, each key
 holding every answer given for that step so far, not only the newest
-([Workflows](../../execution/workflows/module.md) defines the arguments). The session reads the
+([Workflows](../../workflows/module.md) defines the arguments). The session reads the
 workflow result from the file Workflows saves in the workflow's node beside the workspace's
 [workflow record](../../glossary.json#concept.workflow-record), in the task's workspace folder, and
 treats it like a run result: it copies the result's decisions and problems into the task's decision
@@ -476,7 +476,7 @@ otherwise with `issue_close` as `resolved`, naming the review's run as evidence.
 
 **A Module review.** Besides judging a task's change, `code_review --scope module` judges each named
 Module's whole code against all of its Specs, one reviewer per Module
-([Code review](../../execution/operations/code-review/module.md#two-scopes)). The guidance names it
+([Code review](../../method/code-review/module.md#two-scopes)). The guidance names it
 and when to use it: a whole-Module check after a large change, on code written before its Specs or
 by an earlier version, or on a project just adopted; unbound, in the primary worktree, it needs only
 `--modules`.
@@ -570,7 +570,7 @@ instructions, stays what the session started with until the next session.
   the server runs: the step command is a process the server started, so the
   [detached run](../../glossary.json#concept.detached-run) it starts depends on neither the
   relaying agent's turn nor a background command of the session, and lives until its run ends
-  ([Workflows](../../execution/workflows/module.md#steps-through-the-server)). The server answers
+  ([Workflows](../../workflows/module.md#steps-through-the-server)). The server answers
   these calls, which wait, each on a thread of its own, so the session's other calls are not held up
   meanwhile.
 - **Waiting**: `register_wait` asks to be woken when a task becomes `delivered`, `merging`,
@@ -780,7 +780,7 @@ and returns is its provider's, and the guidance relies on four of them directly.
 **Understanding** provides `understand` and `plan_review`. The task-session guidance relies on
 `plan_review`'s iterations: a run given the previous run as `--input` must answer every finding of
 it once, with `--accept` or `--reject`, its reviewer answers those answers, and its verdict follows
-the findings that stand ([plan review](../../execution/operations/understanding/contracts.md#contract.understanding.plan-review)).
+the findings that stand ([plan review](../../method/understanding/contracts.md#contract.understanding.plan-review)).
 It relies too on an `understand` plan naming in `new_files` the files a change needs that do not
 exist yet, for the task session to create and bind before the run that fills them.
 
@@ -789,7 +789,7 @@ exist yet, for the task session to create and bind before the run that fills the
 **Specification** provides `specify`. The task-session guidance relies on it creating each new
 Spec document a `specify` worker proposes, empty and registered in its Module's `owns`, and
 refusing a proposed path that already exists
-([New and deleted documents](../../execution/operations/specification/module.md#new-and-deleted-documents)),
+([New and deleted documents](../../method/specification/module.md#new-and-deleted-documents)),
 so that a task session prepares implementation files for workers and never a Spec document.
 
 <a id="uses-spec-review"></a>
@@ -797,7 +797,7 @@ so that a task session prepares implementation files for workers and never a Spe
 **Spec review** provides `spec_review` and `spec_panel`. The guidance relies on each reporting every
 finding that stands as an Issue of the Module it concerns, closing none, and naming in its result
 each finding's Issue, the earlier Issues that still stand and those it found resolved
-([result](../../spec-tooling/spec-review/operation.md#contract.spec-review.payload)), with a
+([result](../../method/spec-review/operation.md#contract.spec-review.payload)), with a
 [review verdict](../../glossary.json#concept.review-verdict) derived from the Issues that stand.
 
 <a id="uses-code-review"></a>
@@ -806,7 +806,7 @@ each finding's Issue, the earlier Issues that still stand and those it found res
 `--scope module`, each named Module's whole code against all its Specs. The guidance relies on it
 reporting every finding as an Issue, a `spec-challenge` finding among them, closing none, and
 naming the earlier Issues that stand and those it found resolved, as Spec review does
-([Code review](../../execution/operations/code-review/module.md#two-scopes)).
+([Code review](../../method/code-review/module.md#two-scopes)).
 
 <a id="uses-commands"></a>
 
@@ -832,11 +832,11 @@ worker round. For that history with its cost, the guidance points the main agent
 project MCP server presents as `trace_show`. The server also relies on Tracing's locks: their
 holder lines name the holder's session and task, which is how a refusal says who holds a lock; a
 held lock can be handed to a process that inherits its descriptor; and a wait for a release
-blocks on the lock itself, as Tracing's [locks](../../tracing/contracts.md#locks) state. Every
+blocks on the lock itself, as Tracing's [locks](../../kernel/tracing/contracts.md#locks) state. Every
 refusal the server returns is a link of Tracing's
 [error chain](../../glossary.json#concept.error-chain), in the shape of its
-[error contract](../../tracing/contracts.md#contract.tracing.error), and `trace_show` answers as
-Tracing's [trace view](../../tracing/contracts.md#contract.tracing.view).
+[error contract](../../kernel/tracing/contracts.md#contract.tracing.error), and `trace_show` answers as
+Tracing's [trace view](../../kernel/tracing/contracts.md#contract.tracing.view).
 
 ## Beside the levels
 

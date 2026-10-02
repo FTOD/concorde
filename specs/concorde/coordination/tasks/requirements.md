@@ -37,7 +37,7 @@ When a task ends, Tasks SHALL commit its decision log on the primary branch at
 `concorde task merge` in the merge commit it makes, with the closing its close then appends, and
 any close whose primary branch does not already hold the log so, in a commit of that file alone.
 
-The copy in Git is what outlives [Tracing](../../tracing/module.md)'s retention; the task's folder
+The copy in Git is what outlives [Tracing](../../kernel/tracing/module.md)'s retention; the task's folder
 keeps its own log, which the copy never replaces.
 
 ### req.tasks.log-commit-alone — Committing a log commits nothing else
@@ -313,7 +313,7 @@ The [project MCP server](../../glossary.json#concept.project-mcp-server) makes t
 directs the merge's standard output and error to its `output.json` and `messages.log`, so the
 merge's whole answer and its messages stay with its attempt's node and move with the task to the
 [history](../../glossary.json#concept.history), where the merge finishes writing them
-([Tracing](../../tracing/module.md)). An attempt refused before it began records the primary
+([Tracing](../../kernel/tracing/module.md)). An attempt refused before it began records the primary
 worktree's branch and commit as it found them.
 
 ### req.tasks.wait-without-polling — A wait is woken, never polls

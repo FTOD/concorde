@@ -7,7 +7,7 @@ are in the [requirements](requirements.md).
 
 Every [task session](../../glossary.json#concept.task-session) is a
 [trace node](../../glossary.json#concept.trace-node) of kind `session` below its task's node, as
-[Tracing](../../tracing/contracts.md#contract.tracing.node) defines it; its content is this value.
+[Tracing](../../kernel/tracing/contracts.md#contract.tracing.node) defines it; its content is this value.
 
 ```concorde-contract
 {

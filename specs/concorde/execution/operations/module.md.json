@@ -9,7 +9,7 @@
     "title": "Operations",
     "owns": [
       "specs/concorde/execution/operations/module.md",
-      "specs/concorde/execution/operations/workers.md",
+      "specs/concorde/method/workers.md",
       "specs/concorde/execution/operations/requirements.md",
       "specs/concorde/execution/operations/scenarios.md"
     ],

@@ -78,7 +78,7 @@ Every Spec statement that an Operation or an execution command writes from the c
 
 Concorde's flow is Spec first, and every other worker sees code at most by name when it writes a
 Spec. A project whose code came before its Specs is described through the
-[Adoption](execution/operations/adoption/module.md) Operations: their `code-to-spec` workers record
+[Adoption](method/adoption/module.md) Operations: their `code-to-spec` workers record
 behaviour as it is and return doubtful intent as
 [open questions](glossary.json#concept.open-question) instead of promises, and the one Adoption step
 without a worker, the execution command `scaffold`, writes only what such a worker proposed.
@@ -96,17 +96,17 @@ The complete assignment, the level each task type gives every
 [Spec core's grants](spec-tooling/spec/contracts.md#grants), and Spec core's
 [boundary sets](spec-tooling/spec/contracts.md#boundary-sets) say which paths each set holds.
 
-The promise bounds the computed grant, which the [Harness](harness/module.md) then enforces on
+The promise bounds the computed grant, which the [Harness](worker-harness/harness/module.md) then enforces on
 both backends. On Claude Code that enforcement has one gap: a file created in the task worktree
 after the worker's [deny rules](glossary.json#concept.deny-rules) were generated has no rule of its
 own, so the file tools can read it unless a directory rule hides it, although the
 [write hook](glossary.json#concept.write-hook) still refuses to change it unless the grant makes it
 writable. The worker cannot create such a file itself, since it writes only writable paths; the
-Harness's [known limits](harness/module.md#known-limits-of-v1) state the gap.
+Harness's [known limits](worker-harness/harness/module.md#known-limits-of-v1) state the gap.
 
-Besides the project's files, the [Harness](harness/module.md) gives a worker its run's own working,
+Besides the project's files, the [Harness](worker-harness/harness/module.md) gives a worker its run's own working,
 home and temporary directories and leaves readable the system paths every program needs; its
-[known limits](harness/module.md#known-limits-of-v1) say what else it leaves out.
+[known limits](worker-harness/harness/module.md#known-limits-of-v1) say what else it leaves out.
 
 ### req.concorde.workers-no-git — Workers have no Git access
 
@@ -128,13 +128,13 @@ A status, a code or a one-line summary alone is never the whole report. The pare
 Spec tooling's deterministic commands and library, such as `concorde spec-validation`, are the one
 exception: they depend on no other Module and report with Spec tooling's own, equally detailed error
 record, which a Module that cannot handle it translates into a link
-([Where links appear](tracing/contracts.md#where-links-appear)).
+([Where links appear](kernel/tracing/contracts.md#where-links-appear)).
 
 ### req.concorde.error-chain — An unhandled error keeps its chain
 
 An actor that cannot handle an error it received from a child SHALL pass the child's error on unchanged as a cause of its own link, which states the reason the actor cannot handle the error.
 
-The reasons are the fixed set of the [error contract](tracing/contracts.md#contract.tracing.error). The last receiver thereby reads one reason per level, from where the error started up to itself. Independent errors, such as several failing checks, are sibling causes.
+The reasons are the fixed set of the [error contract](kernel/tracing/contracts.md#contract.tracing.error). The last receiver thereby reads one reason per level, from where the error started up to itself. Independent errors, such as several failing checks, are sibling causes.
 
 ### req.concorde.structured-errors — The chain is structured data
 
@@ -171,7 +171,7 @@ A task SHALL count as delivered only through a [delivery commit](glossary.json#c
 The task level may commit verified steps on the task branch as it works; those commits deliver
 nothing. `delivery` validates everything the branch holds since its base commit together with what
 is not committed yet, and commits the delivery commit on top only when that whole workspace is
-ready, as [req.delivery.own-readiness](execution/commands/delivery/requirements.md#req.delivery.own-readiness)
+ready, as [req.delivery.own-readiness](method/delivery/requirements.md#req.delivery.own-readiness)
 states.
 
 ### req.concorde.delivery-commit-by-delivery — Only delivery makes a delivery commit
@@ -180,7 +180,7 @@ No actor other than the `delivery` execution command SHALL make a delivery commi
 
 A delivery commit is recognized by its subject alone, so no task session, main agent or other
 command commits under that subject; Delivery gives it to its delivery commits alone
-([req.delivery.marked](execution/commands/delivery/requirements.md#req.delivery.marked)).
+([req.delivery.marked](method/delivery/requirements.md#req.delivery.marked)).
 
 ### req.concorde.merge-by-main-agent — The main agent merges delivered tasks
 

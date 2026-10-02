@@ -113,7 +113,7 @@ is acceptable.
 | `log_digest` | The digest of the saved log |
 
 Every check the service runs is also a trace node of kind `check`, as
-[Tracing](../../tracing/contracts.md#contract.tracing.node) defines it, whose content is this value:
+[Tracing](../../kernel/tracing/contracts.md#contract.tracing.node) defines it, whose content is this value:
 
 ```concorde-contract
 {
@@ -203,7 +203,7 @@ remediation and causes.
 ### Check execution's error as a link
 
 `service_error(error)` turns an error `run_checks` raised into this Module's own link of the
-Framework's [error chain](../../tracing/contracts.md#contract.tracing.error), which every caller keeps
+Framework's [error chain](../../kernel/tracing/contracts.md#contract.tracing.error), which every caller keeps
 unchanged as a cause under its own link: Execution's stop for checks that could not run, the
 Workers round that runs a worker's checks, and Validation's blocking `check` finding and its
 `inputs_changed` stop. The link has the level `component`, the actor `Check execution`, the error's
@@ -221,7 +221,7 @@ depends on the code:
 ### A check that did not pass as an error link
 
 `check_error(result)` turns a check result whose status is not `passed` into the check's link of
-the Framework's [error chain](../../tracing/contracts.md#contract.tracing.error), so every consumer reports
+the Framework's [error chain](../../kernel/tracing/contracts.md#contract.tracing.error), so every consumer reports
 a failing check the same way: the level `check`, the check's identity as actor, the code
 `check_failed` or `check_timed_out`, a detail naming the Module, the exit code, the log path and the
 last 3,000 bytes of the log, the log as evidence, and the reason `capability`, because a check only

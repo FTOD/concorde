@@ -284,7 +284,7 @@ would decide what the [delivery commit](../../glossary.json#concept.delivery-com
 [step agents](../../glossary.json#concept.step-agent) of the session's
 [workflows](../../glossary.json#concept.workflow) start and await every step through that server's
 `workflow_step`, which runs the task worktree's own `concorde workflow step` as a process of the
-server ([Workflows](../../execution/workflows/module.md#steps-in-claude-code)). A
+server ([Workflows](../../workflows/module.md#steps-in-claude-code)). A
 [workflow step](../../glossary.json#concept.workflow-step) may outlast many relays, and a run
 started there depends on neither a relaying agent's turn nor a background command Claude Code ends
 after two hours or when the session is stopped. What bounds those runs is Concorde's own, as it
@@ -334,7 +334,7 @@ points:
 
 A task session's node is written when the session starts, and Concorde sees nothing of the session
 until its task ends; its figures then come from Claude Code's own records, as
-[Tracing](../../tracing/requirements.md#req.tracing.reported-usage) requires, and are written into
+[Tracing](../../kernel/tracing/requirements.md#req.tracing.reported-usage) requires, and are written into
 the node because retention later removes the transcript:
 
 - **usage**: the tokens read, written, and read from and written to the prompt cache, summed over
@@ -436,7 +436,7 @@ tasksession: Task sessions {
 The **session starter** (`session.py`) assembles the session's settings around the write hook and
 starts `claude --bg`, and ends a task's task sessions: their stop, the copy of their transcripts and
 their removal, which Tasks' close calls. The boundary files themselves, the task-session write hook
-among them, are the [Harness](../../harness/module.md)'s. The tests (`test_session.py` under
+among them, are the [Harness](../../worker-harness/harness/module.md)'s. The tests (`test_session.py` under
 `tests/concorde/tasks/`) run on real Git repositories with a fake `claude`.
 
 A start touches one piece of each provider: the session starter writes the Harness's boundary,

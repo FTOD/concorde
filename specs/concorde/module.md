@@ -75,7 +75,7 @@ together. [Task sessions](coordination/task-session/module.md) explains its life
 
 A **[worker](glossary.json#concept.worker)** is a headless AI process that receives a frozen grant
 for one job. Its answer is a proposal until the program that launched it verifies it; it cannot
-substitute its own judgement for the checks around it. [Workers](execution/workers/module.md)
+substitute its own judgement for the checks around it. [Workers](worker-harness/workers/module.md)
 explains how it is launched, audited and recorded; Workers, plural, names that Execution code, not
 the AI process itself. [Agents at both ends, programs
 between](#agents-at-both-ends-programs-between) explains why model reasoning and deterministic steps
@@ -99,7 +99,7 @@ complete access table, which Spec core repeats with
 
 The **boundary** of a worker's job is the read and write limits its task type assigns to its bound
 Modules. The Protocol defines the sets and the task types; how far Concorde enforces the boundary of
-a worker is explained by the [Harness](harness/module.md). A Concorde Task has no task type and its
+a worker is explained by the [Harness](worker-harness/harness/module.md). A Concorde Task has no task type and its
 task session no such boundary: the session receives the
 [session boundary](glossary.json#concept.session-boundary), which keeps its writes inside its task
 and leaves the rest of the session open.
@@ -201,9 +201,9 @@ coordination.task -> execution.run: "or runs directly"
 | --- | --- | --- | --- |
 | 1. Main session | the main agent, in the primary worktree | discusses the project with the developer, splits work into tasks, merges delivered tasks | [Main session](coordination/main-session/module.md) |
 | 2. Task | a task session, in one task worktree | changes Specs and code directly or through runs, keeps the [decision log](glossary.json#concept.decision-log), validates and delivers | [Task sessions](coordination/task-session/module.md), [Tasks](coordination/tasks/module.md) |
-| 3. Workflow | a procedure rendered as a Claude Code workflow | orders the workspace's runs for a known procedure and stops where a decision is needed | [Workflows](execution/workflows/module.md) |
+| 3. Workflow | a procedure rendered as a Claude Code workflow | orders the workspace's runs for a known procedure and stops where a decision is needed | [Workflows](workflows/module.md) |
 | 4. Run | the Execution runner | runs an [Operation](glossary.json#concept.operation), with workers, or an [execution command](glossary.json#concept.execution-command), without, and returns one [run result](glossary.json#concept.run-result) with evidence | [Execution](execution/module.md) |
-| 5. Worker | a headless `claude -p` or `pi -p` process | reasons within its grant on one bounded job and returns a [worker result](glossary.json#concept.worker-result) the run checks | [Workers](execution/workers/module.md) |
+| 5. Worker | a headless `claude -p` or `pi -p` process | reasons within its grant on one bounded job and returns a [worker result](glossary.json#concept.worker-result) the run checks | [Workers](worker-harness/workers/module.md) |
 
 Calls go only downward, and results and errors come back up; [Agents at both ends, programs
 between](#agents-at-both-ends-programs-between) explains why the levels are split this way.
@@ -234,7 +234,7 @@ down. When the work is done, the task session delivers the workspace: `delivery`
 and, when it is ready, commits what is left in a
 [delivery commit](glossary.json#concept.delivery-commit), which alone marks the task delivered, and
 the main agent merges the delivered task. A task that follows a known procedure, such as describing
-existing code, runs as a [workflow](execution/workflows/module.md) inside the same path.
+existing code, runs as a [workflow](workflows/module.md) inside the same path.
 
 ```d2 illustrative
 grid-columns: 3
@@ -324,17 +324,17 @@ Because the Spec is the source of truth, every other choice follows from making 
 worker may read and write is computed from the Specs, a worker's answer is checked by a program
 rather than trusted, and a missing promise stops work instead of being inferred from code. A step
 needing an unstated promise stops with a [Spec gap](glossary.json#concept.spec-gap) instead; outside
-a `specify` run and the [Adoption](execution/operations/adoption/module.md) route, only the
+a `specify` run and the [Adoption](method/adoption/module.md) route, only the
 developer, the main agent and a task session within its task's goal change Specs.
 
 Concorde's normal flow is therefore Spec first: a promise is written, then realized. Only a project
 whose code came before its Specs is described the other way round, and only through one explicit
 route, the Protocol's `code-to-spec` task type, which the
-[Adoption](execution/operations/adoption/module.md) Operations use together with the `scaffold`
+[Adoption](method/adoption/module.md) Operations use together with the `scaffold`
 command that writes what a survey proposed. It writes down the behaviour it reads as it is and
 never changes what the code does: besides Specs it touches only existing tests, adding the
 `verifies` declarations that link them to the scenarios they verify
-([Adoption](execution/operations/adoption/requirements.md#req.adoption.no-code-change)). It turns
+([Adoption](method/adoption/requirements.md#req.adoption.no-code-change)). It turns
 every behaviour whose intent the code does not settle into an
 [open question](glossary.json#concept.open-question) rather than a promise, for the main agent or
 the developer to settle. Once a Module is described, work on it is Spec first again.
@@ -414,7 +414,7 @@ upward. A worker never touches Git, runs an Operation or starts an agent; a run 
 run; a workflow never opens, merges or closes a task; nothing in Execution reads or writes a [task
 record](glossary.json#concept.task-record); and only the main agent merges a task into the primary
 branch, a task session merging only the primary branch into its own task branch when asked after a
-conflict or a `concorde update`. A run's steps, and the [Workers](execution/workers/module.md)
+conflict or a `concorde update`. A run's steps, and the [Workers](worker-harness/workers/module.md)
 code between a worker's rounds, call deterministic services such as
 [Check execution](execution/checks/module.md) in-process; such a call is not a level of its own,
 starts no run and returns to the step that made it, so that failing checks can drive a repair loop
@@ -424,7 +424,7 @@ inside one Operation.
 
 The Harness, Tracing and Spec tooling serve both halves without being a level.
 
-What an agent may know and touch is its harness, and the [Harness](harness/module.md) generates it
+What an agent may know and touch is its harness, and the [Harness](worker-harness/harness/module.md) generates it
 for every level from the same code: a worker's from its grant — on Claude Code settings with
 [deny rules](glossary.json#concept.deny-rules), a [write hook](glossary.json#concept.write-hook) and
 the Bash sandbox, on pi a [permission extension](glossary.json#concept.permission-extension) with
@@ -438,7 +438,7 @@ untrustworthy. Its core uses no other Module, so the Specs can be checked,
 served and published without any agent.
 
 Tracing gives every level the place and shape of its trace: each level records its own content,
-and [Tracing](tracing/module.md) decides the structure it is kept in. While a task is current, its
+and [Tracing](kernel/tracing/module.md) decides the structure it is kept in. While a task is current, its
 record, decision log and traces are one folder, `.concorde/tasks/<task>/`; closing it moves that
 folder to the [history](glossary.json#concept.history). A task's whole
 [trace](glossary.json#concept.trace), from its sessions down to each worker round with its cost, is
@@ -452,16 +452,16 @@ to Workers, the Operation adds its own, a workflow keeps each run's chain whole 
 task session escalates to the main agent with its link on top, and the main agent adds its link
 above that when the developer must decide. Every `concorde` command refuses in the same shape,
 except Spec tooling's deterministic commands, which keep their own error types.
-[Tracing](tracing/contracts.md#reading-an-error-chain) explains how to read a chain.
+[Tracing](kernel/tracing/contracts.md#reading-an-error-chain) explains how to read a chain.
 
 Errors travel as a chain because every level handles some errors and must pass the others up:
 Workers resumes a worker for a failing check but not for a Spec gap, a run reruns nothing, and the
 main agent decides ordinary questions but not the project's direction, which it logs and escalates
 only when the impact is major. Every level therefore keeps the causes it received unchanged and
 adds its own reason on top, in the shape of the
-[error contract](tracing/contracts.md#contract.tracing.error), so the developer receives the whole
+[error contract](kernel/tracing/contracts.md#contract.tracing.error), so the developer receives the whole
 path from the failing check to the question they are asked. The chain is part of what
-[Tracing](tracing/module.md#the-error-chain) retains, and it stays in band: each result carries its
+[Tracing](kernel/tracing/module.md#the-error-chain) retains, and it stays in band: each result carries its
 chain whole.
 
 ### Around the framework

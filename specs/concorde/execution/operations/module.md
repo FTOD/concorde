@@ -13,7 +13,7 @@ is an [execution command](../../glossary.json#concept.execution-command) of its 
 
 Operations never chooses the next Operation, runs one Operation from another, asks the developer
 anything or changes a [Spec](../../glossary.json#concept.spec) on its own initiative: whoever works
-the workspace, directly or through a [workflow](../workflows/module.md), orders the runs. How a run
+the workspace, directly or through a [workflow](../../workflows/module.md), orders the runs. How a run
 is started, recorded, locked and reported is the
 [Execution runner](../../glossary.json#concept.execution-runner)'s, which runs an Operation's steps
 like any other definition's.
@@ -47,16 +47,16 @@ The **Operation catalog** of this version:
 
 | Operation | Provider | [Task type](../../glossary.json#concept.task-type) | [Worker ids](../../glossary.json#concept.worker-id) | Unbound | May change | Output |
 | --- | --- | --- | --- | --- | --- | --- |
-| `understand` | [Understanding](understanding/module.md) | `understand` | `worker` | yes | no | [an assessment](understanding/contracts.md#contract.understanding.assessment), with a plan when asked |
-| `plan_review` | [Understanding](understanding/module.md) | `review-code` | `reviewer` | no | no | a [plan review report](understanding/contracts.md#contract.understanding.plan-review) with findings and a verdict |
-| `specify` | [Specification](specification/module.md) | `specify` | `worker` | no | Specs of the bound Modules, including documents it creates, and the registry mirror | a [Spec change](../../glossary.json#concept.spec-change) ([contract](specification/contracts.md#contract.specification.spec-change)) |
-| `implement` | [Implementation](implementation/module.md) | `implement` | `worker` | no | code of the bound Modules | [a code change](implementation/contracts.md#contract.implementation.code-change) |
-| `test` | [Implementation](implementation/module.md) | `test` | `worker` | no | no | a test report ([contract](implementation/contracts.md#contract.implementation.test-report)) |
-| `spec_review` | [Spec review](../../spec-tooling/spec-review/module.md) | `review-spec` | `reviewer`, `checker` | yes | no | [review findings](../../glossary.json#concept.review-finding) and a verdict ([contract](../../spec-tooling/spec-review/operation.md#contract.spec-review.payload)) |
-| `spec_panel` | [Spec review](../../spec-tooling/spec-review/module.md) | `review-spec`; `review-architecture` for its architects, and for its chair when it has an architect | `reviewer1` … `reviewer5`, `architect1`, `architect2`, `chair` | yes | no | a panel report merged from independent reviews, and a verdict ([contract](../../spec-tooling/spec-review/panel.md#contract.spec-review.panel-payload)) |
-| `code_review` | [Code review](code-review/module.md) | `review-code` | `worker` | yes (`--base` for a change review) | no | a code review report of a change or of whole Modules, each finding reported as an [Issue](../../glossary.json#concept.issue), and a verdict ([contract](code-review/contracts.md#contract.code-review.review)) |
-| `survey` | [Adoption](adoption/module.md) | `code-to-spec`, Specs withheld | `worker` | yes | no | a [decomposition proposal](adoption/contracts.md#contract.adoption.decomposition) |
-| `code_to_spec` | [Adoption](adoption/module.md) | `code-to-spec` | `worker` | no | Specs of the bound Modules, the registry mirror and the `verifies` links of the existing tests it describes | a [Spec description](adoption/contracts.md#contract.adoption.spec-description) |
+| `understand` | [Understanding](../../method/understanding/module.md) | `understand` | `worker` | yes | no | [an assessment](../../method/understanding/contracts.md#contract.understanding.assessment), with a plan when asked |
+| `plan_review` | [Understanding](../../method/understanding/module.md) | `review-code` | `reviewer` | no | no | a [plan review report](../../method/understanding/contracts.md#contract.understanding.plan-review) with findings and a verdict |
+| `specify` | [Specification](../../method/specification/module.md) | `specify` | `worker` | no | Specs of the bound Modules, including documents it creates, and the registry mirror | a [Spec change](../../glossary.json#concept.spec-change) ([contract](../../method/specification/contracts.md#contract.specification.spec-change)) |
+| `implement` | [Implementation](../../method/implementation/module.md) | `implement` | `worker` | no | code of the bound Modules | [a code change](../../method/implementation/contracts.md#contract.implementation.code-change) |
+| `test` | [Implementation](../../method/implementation/module.md) | `test` | `worker` | no | no | a test report ([contract](../../method/implementation/contracts.md#contract.implementation.test-report)) |
+| `spec_review` | [Spec review](../../method/spec-review/module.md) | `review-spec` | `reviewer`, `checker` | yes | no | [review findings](../../glossary.json#concept.review-finding) and a verdict ([contract](../../method/spec-review/operation.md#contract.spec-review.payload)) |
+| `spec_panel` | [Spec review](../../method/spec-review/module.md) | `review-spec`; `review-architecture` for its architects, and for its chair when it has an architect | `reviewer1` … `reviewer5`, `architect1`, `architect2`, `chair` | yes | no | a panel report merged from independent reviews, and a verdict ([contract](../../method/spec-review/panel.md#contract.spec-review.panel-payload)) |
+| `code_review` | [Code review](../../method/code-review/module.md) | `review-code` | `worker` | yes (`--base` for a change review) | no | a code review report of a change or of whole Modules, each finding reported as an [Issue](../../glossary.json#concept.issue), and a verdict ([contract](../../method/code-review/contracts.md#contract.code-review.review)) |
+| `survey` | [Adoption](../../method/adoption/module.md) | `code-to-spec`, Specs withheld | `worker` | yes | no | a [decomposition proposal](../../method/adoption/contracts.md#contract.adoption.decomposition) |
+| `code_to_spec` | [Adoption](../../method/adoption/module.md) | `code-to-spec` | `worker` | no | Specs of the bound Modules, the registry mirror and the `verifies` links of the existing tests it describes | a [Spec description](../../method/adoption/contracts.md#contract.adoption.spec-description) |
 
 "May change" covers both what a worker's grant makes writable and what the provider's own host
 steps change in the workspace; each provider's Spec gives the rule.
@@ -79,7 +79,7 @@ the grant through Spec core and hands it to Workers, which performs the rest; th
 the outcome means. Configured checks are the project's commands for a Module's code, such as an
 `implement` step asks for; a step's own validation is the provider's check of what its worker
 wrote, such as the structural validation a Spec-writing step runs instead of configured checks.
-See [How an Operation runs its workers](workers.md).
+See [How an Operation runs its workers](../../method/workers.md).
 
 ## Overview
 
@@ -140,7 +140,7 @@ op.result -> caller.decide
 
 Operations is called only through the
 [Execution runner](../../glossary.json#concept.execution-runner): by the task level with
-`concorde run`, or by a [workflow](../workflows/module.md) step that runs the same command detached.
+`concorde run`, or by a [workflow](../../workflows/module.md) step that runs the same command detached.
 The runner reads the [workspace binding](../../glossary.json#concept.workspace-binding), holds the
 workspace lock and writes the result; an Operation's steps call only downward, into Workers and
 services such as Check execution. Nothing below calls back up: a worker never runs an Operation, and
@@ -184,7 +184,7 @@ only [unbound runs](../../glossary.json#concept.unbound-run) of Operations, from
 worktree, where `understand` or a review answers a question about its `HEAD` before any change is
 agreed. For a project whose code came before its Specs, `survey`, the execution
 command `scaffold` and `code_to_spec` describe the code in Specs, usually run by the
-[brownfield workflow](../workflows/module.md).
+[brownfield workflow](../../workflows/module.md).
 
 ## How it is built
 
@@ -295,9 +295,9 @@ acting on an Issue is the task level's decision.
 
 **Adoption** provides `survey` and `code_to_spec`, the Operations that describe existing code in
 Specs for a project whose code came before them: a read-only survey proposes child Modules, the
-execution command `scaffold` of [Scaffold](../commands/scaffold/module.md) creates them between the
+execution command `scaffold` of [Scaffold](../../method/scaffold/module.md) creates them between the
 two, and `code-to-spec` workers describe each Module's code. The
-[brownfield workflow](../workflows/module.md) usually runs them in that order.
+[brownfield workflow](../../workflows/module.md) usually runs them in that order.
 
 <a id="uses-spec-review"></a>
 

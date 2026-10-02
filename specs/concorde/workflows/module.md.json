@@ -1,0 +1,145 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.workflows.module",
+    "owner": "module.workflows",
+    "role": "module"
+  },
+  "module": {
+    "title": "Workflows",
+    "owns": [
+      "specs/concorde/workflows/module.md",
+      "specs/concorde/workflows/requirements.md",
+      "specs/concorde/workflows/scenarios.md",
+      "specs/concorde/workflows/contracts.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.execution",
+        "meaning": "#uses-execution",
+        "relies_on": [
+          "concept.execution-runner",
+          "concept.run",
+          "concept.run-result",
+          "concept.workspace-binding",
+          "concept.workspace-lock",
+          "concept.detached-run",
+          "concept.run-store",
+          "req.execution.workspace-lock",
+          "req.execution.workspace-busy",
+          "req.execution.no-chaining",
+          "contract.execution.run-result"
+        ]
+      },
+      {
+        "target": "module.main-session",
+        "meaning": "#uses-main-session",
+        "relies_on": [
+          "concept.project-mcp-server"
+        ]
+      },
+      {
+        "target": "module.operations",
+        "meaning": "#uses-operations"
+      },
+      {
+        "target": "module.validation",
+        "meaning": "#uses-validation",
+        "relies_on": [
+          "contract.validation.readiness"
+        ]
+      },
+      {
+        "target": "module.delivery",
+        "meaning": "#uses-delivery"
+      },
+      {
+        "target": "module.adoption",
+        "meaning": "#uses-adoption"
+      },
+      {
+        "target": "module.scaffold",
+        "meaning": "#uses-scaffold",
+        "relies_on": [
+          "contract.scaffold.record"
+        ]
+      },
+      {
+        "target": "module.commands",
+        "meaning": "#uses-commands",
+        "relies_on": [
+          "concept.execution-command"
+        ]
+      },
+      {
+        "target": "module.tracing",
+        "meaning": "#uses-tracing",
+        "relies_on": [
+          "contract.tracing.node",
+          "contract.tracing.error",
+          "concept.trace-node",
+          "concept.error-chain"
+        ]
+      }
+    ],
+    "includes": [],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "realization.workflows.commands",
+      "type": "realization",
+      "title": "Workflow commands",
+      "meaning": "#realization.workflows.commands",
+      "entries": [
+        "src/concorde/workflows/__init__.py",
+        "src/concorde/workflows/catalog.py",
+        "src/concorde/workflows/cli.py",
+        "src/concorde/workflows/step.py",
+        "src/concorde/workflows/report.py",
+        "src/concorde/workflows/store.py"
+      ]
+    },
+    {
+      "id": "realization.workflows.scripts",
+      "type": "realization",
+      "title": "Workflow scripts",
+      "meaning": "#realization.workflows.scripts",
+      "entries": [
+        "src/concorde/workflows/scripts/"
+      ]
+    },
+    {
+      "id": "realization.workflows.tests",
+      "type": "realization",
+      "title": "Workflows tests",
+      "meaning": "#realization.workflows.tests",
+      "entries": [
+        "tests/concorde/workflows/",
+        "tests/concorde/support/brownfield_project.py"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "realization.workflows.scripts",
+      "verb": "runs steps through",
+      "target": "realization.workflows.commands"
+    },
+    {
+      "type": "relates",
+      "source": "realization.workflows.commands",
+      "verb": "records steps in",
+      "target": "concept.workflow-record"
+    },
+    {
+      "type": "relates",
+      "source": "realization.workflows.commands",
+      "verb": "starts runs through",
+      "target": "module.execution"
+    }
+  ],
+  "extensions": {}
+}

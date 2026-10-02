@@ -1644,7 +1644,7 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(binding_file.BINDING_SCHEMA, fence["schema"])
 
     def test_the_error_link_is_the_framework_contract(self):
-        text = (REPOSITORY_ROOT / "specs/concorde/tracing/contracts.md").read_text()
+        text = (REPOSITORY_ROOT / "specs/concorde/kernel/tracing/contracts.md").read_text()
         [fence] = [
             json.loads(block)
             for block in re.findall(

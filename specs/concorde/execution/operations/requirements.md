@@ -8,7 +8,7 @@ rely in particular on
 [req.execution.reasons](../requirements.md#req.execution.reasons) and
 [req.execution.error-detail](../requirements.md#req.execution.error-detail). How an
 [Operation](../../glossary.json#concept.operation) runs its workers is in
-[How an Operation runs its workers](workers.md), and the scenarios show the obligations at work.
+[How an Operation runs its workers](../../method/workers.md), and the scenarios show the obligations at work.
 
 ## Workers
 
@@ -48,7 +48,7 @@ worker step settles the worker's grant, backend and model.
 
 A run refused before that, such as one whose [worker
 configuration](../../glossary.json#concept.worker-configuration) cannot be read, launches no
-worker, as [the standard worker sequence](workers.md#standard-worker-sequence) shows.
+worker, as [the standard worker sequence](../../method/workers.md#standard-worker-sequence) shows.
 
 A job that needs no model is an [execution command](../../glossary.json#concept.execution-command)
 of its own [Module](../../glossary.json#concept.module) instead.

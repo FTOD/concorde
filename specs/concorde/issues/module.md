@@ -388,7 +388,7 @@ fails.
 <a id="uses-tracing"></a>
 
 **Tracing** provides the Framework's
-[error contract](../tracing/contracts.md#contract.tracing.error), on which the command relies twice:
+[error contract](../kernel/tracing/contracts.md#contract.tracing.error), on which the command relies twice:
 it checks a report's `error_chain` against it, refusing one the contract does not accept, and it
 prints every refusal as one `component` link of it, so that a session or run carries the refusal on
 in its own error chain unchanged.

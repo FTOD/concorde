@@ -225,7 +225,7 @@ exception passes through a span unchanged.
 **Tracing** gives every check the shape of a [trace node](../../glossary.json#concept.trace-node),
 which the check service writes through Tracing's library before the command starts and after it
 ended, in the folder its caller names, and the error contract its failures follow. It relies on the
-[node contract](../../tracing/contracts.md#contract.tracing.node).
+[node contract](../../kernel/tracing/contracts.md#contract.tracing.node).
 
 <a id="uses-spec"></a>
 

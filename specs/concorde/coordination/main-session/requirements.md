@@ -199,7 +199,7 @@ The task-session guidance SHALL tell a task session to start a workflow that end
 
 A step that finished and is neither answered nor retried returns its recorded run; the answered
 step runs again and supersedes itself and every step recorded after it, which run anew, as
-[Workflows](../../execution/workflows/module.md) states for its
+[Workflows](../../workflows/module.md) states for its
 [step keys](../../glossary.json#concept.step-key).
 
 ### req.main-session.merge-without-authorization — Delivered tasks are merged
@@ -338,7 +338,7 @@ The Concorde block of the worktree's `CLAUDE.md` imports the glossary file, whic
 at launch. A worktree whose project declares no glossary, or whose declared glossary cannot be read,
 starts its sessions without terms and without an error; Spec validation reports a declared glossary
 it cannot read. A [worker](../../glossary.json#concept.worker) is not such a session: its context is
-only its [brief](../../glossary.json#concept.brief), as the [Harness](../../harness/module.md)
+only its [brief](../../glossary.json#concept.brief), as the [Harness](../../worker-harness/harness/module.md)
 describes.
 
 ## The project MCP server
@@ -656,7 +656,7 @@ Spec tooling's commands, such as `spec-validation`, `registry`, `grant` and `bui
 MCP server refuse with Spec tooling's own
 [error record](../../spec-tooling/spec/errors.md#contract.spec.error), not with a link, and
 `concorde task escalate` refuses a file holding such a record with `invalid_error`;
-[Tracing](../../tracing/contracts.md#where-links-appear) has a Module that receives one and cannot
+[Tracing](../../kernel/tracing/contracts.md#where-links-appear) has a Module that receives one and cannot
 handle it translate it.
 
 ### req.main-session.unbound-failure — A failed unbound run reaches the developer whole
@@ -718,7 +718,7 @@ fills it.
 
 A realization binds only files that exist, and a worker writes only bound files and new files
 inside bound directories, so no worker creates such a file. A new Spec document is not such a file:
-[Specification](../../execution/operations/specification/module.md#new-and-deleted-documents)
+[Specification](../../method/specification/module.md#new-and-deleted-documents)
 creates each document a `specify` worker proposes, empty and registered in its Module's `owns`, and
 refuses a proposed path that already exists, so a session that created it first would make the
 proposal fail.
@@ -746,7 +746,7 @@ The task-session guidance SHALL tell a task session that runs `plan_review` to a
 of one iteration with `--accept` or `--reject` in the next run, with the previous run as `--input`,
 until the verdict is `accepted`.
 
-[Understanding](../../execution/operations/understanding/module.md) refuses a next run that leaves
+[Understanding](../../method/understanding/module.md) refuses a next run that leaves
 a finding of the previous one unanswered.
 
 ### req.main-session.task-session-plan-review-disagreement — A continuing disagreement is escalated

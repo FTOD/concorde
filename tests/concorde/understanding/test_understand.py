@@ -291,7 +291,7 @@ class ContractTests(unittest.TestCase):
     def test_the_output_schema_is_the_assessment_contract(self):
         text = (
             REPOSITORY_ROOT
-            / "specs/concorde/execution/operations/understanding/contracts.md"
+            / "specs/concorde/method/understanding/contracts.md"
         ).read_text()
         fence = re.search(r"```concorde-contract\n(.*?)\n```", text, re.S).group(1)
         self.assertEqual(json.loads(fence)["schema"], ASSESSMENT_SCHEMA)

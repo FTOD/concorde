@@ -8,7 +8,7 @@ definition: its steps, its arguments, whether it may run unbound and its output 
 envelope is the [run result contract](contracts.md#contract.execution.run-result) and the binding
 the [workspace binding contract](contracts.md#contract.execution.workspace-binding). What an
 [Operation](../glossary.json#concept.operation) adds, its worker sequence, is in
-[How an Operation runs its workers](operations/workers.md).
+[How an Operation runs its workers](../method/workers.md).
 
 ## Command lines
 
@@ -84,7 +84,7 @@ time, the definition's name with `-` written as `_`, and random digits, and the 
 folder `--trace-at` names, or `.concorde/unbound/<run-id>/` for an unbound run. A bound run's node
 starts in the [lobby](#the-lobby) and moves to its place in the workspace folder when the run
 enters its workspace. The folder holds
-`trace.json`, the run's node as [Tracing](../tracing/contracts.md#contract.tracing.node) defines it
+`trace.json`, the run's node as [Tracing](../kernel/tracing/contracts.md#contract.tracing.node) defines it
 with the [run trace](contracts.md#contract.execution.run-trace) as content; `result.json`, the run
 result exactly as printed; the run progress file `status.json`; the nodes of the checks the run ran
 under `checks/`; the nodes of the worker runs it launched under `workers/`, each with its
@@ -107,7 +107,7 @@ and writes its own output on in the copy. A node it cannot move refuses the run 
 `run_store_unwritable`, and the run stays in the lobby. A run refused or cancelled before it entered
 its workspace, in the binding check, the lock or the second reading of the binding, never enters
 it: its node, with its result, stays in the lobby, where every reader that looks a run up by its
-identity finds it, and where [Tracing](../tracing/module.md)'s retention removes it as it removes an
+identity finds it, and where [Tracing](../kernel/tracing/module.md)'s retention removes it as it removes an
 unbound run. A run with a broken binding is recorded as an unbound run instead, as the
 [workspace binding](#workspace-binding) section says.
 
@@ -261,7 +261,7 @@ here called its origin:
    `git worktree list` names, with `git worktree add --detach` of that commit from the origin's
    repository, with none of the repository's Git hooks run. It lies there because a worker runs
    only in a worktree directly inside `.claude/worktrees/` of its primary worktree
-   ([Workers](workers/launch.md#placement)). A run identity always holds an upper-case `T`, which
+   ([Workers](../worker-harness/workers/launch.md#placement)). A run identity always holds an upper-case `T`, which
    no task name may hold, so the checkout never takes a task worktree's place. Before creating
    anything the runner asks Git whether the primary worktree ignores that path, so that the
    checkout never appears there as untracked files. Only Git's administrative files of the
@@ -355,7 +355,7 @@ holds it, before each step and when the result is written:
 | `commit` | the commit an unbound run examines once its checkout exists; null otherwise |
 | `phase` | `running`, then `finished` once `result.json` is written |
 | `step` | the step running now, `workspace-lock` while the run waits for the workspace lock, or null |
-| `waiting_for` | while this run waits for the workspace lock, its holder as the holder line [Tracing](../tracing/contracts.md#locks) keeps in the lock file describes it: a run's runner, such as `implement run <run-id>`, or another taker such as a task's merge or close, with its process, start time and, when its holder line names them, its session and task; null otherwise |
+| `waiting_for` | while this run waits for the workspace lock, its holder as the holder line [Tracing](../kernel/tracing/contracts.md#locks) keeps in the lock file describes it: a run's runner, such as `implement run <run-id>`, or another taker such as a task's merge or close, with its process, start time and, when its holder line names them, its session and task; null otherwise |
 | `status`, `summary` | null while running; the result's status and summary once finished |
 | `host_pid` | the runner's process identifier in its own PID namespace, for display and for the process that started it; never a sign that the run still runs |
 | `started_at`, `updated_at` | UTC times |
@@ -366,7 +366,7 @@ A failed write never changes the run, except the first, without which the run ru
 ## Errors
 
 When a run does not end `ok`, the result's `error` is the run's own link of the
-[error chain](../tracing/contracts.md#contract.tracing.error): the level `operation` for an Operation and
+[error chain](../kernel/tracing/contracts.md#contract.tracing.error): the level `operation` for an Operation and
 `command` for an execution command, the actor `Operation <name> <run-id> (workspace <workspace>)`,
 `Command <name> <run-id> (workspace <workspace>)` or, unbound, `… (unbound, <origin> at <commit>)`,
 where `<origin>` is the worktree the run started in, never its checkout, without ` at <commit>`

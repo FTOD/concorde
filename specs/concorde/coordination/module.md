@@ -231,7 +231,7 @@ session from its task: the [session boundary](../glossary.json#concept.session-b
 confines what the session's own file tools and shell write to its task worktree, its decision log,
 what its commits, runs and escalations write (the Git directory, the task's own folder and the
 locks) and the user's package caches. Tools that MCP servers add are outside it, and it guards
-against mistakes, not a malicious session; the [Harness](../harness/module.md) states its exact
+against mistakes, not a malicious session; the [Harness](../worker-harness/harness/module.md) states its exact
 paths and limits. The main session's harness is its installed guidance alone, since Concorde places
 no permission limits on the main agent. A task session that cannot get its harness does not start.
 

@@ -388,7 +388,7 @@ session's transcript into the session's node and finishes the node with the sess
 and usage from Claude Code's records, and once the task is closed it removes those sessions
 from Claude's session list; what it could not keep or remove is named in the close's `warnings`,
 and never fails the close. The history is never changed afterwards;
-[Tracing](../../tracing/module.md)'s retention removes its conversation records after a while and
+[Tracing](../../kernel/tracing/module.md)'s retention removes its conversation records after a while and
 may remove it whole. A task name used again after its branch was deleted gets a new history key,
 free both in the history and among the committed decision logs, so no closed task replaces another.
 
@@ -662,7 +662,7 @@ exactly what workers and Delivery commit, so records kept there would be swept i
 code is the [delivery commit](../../glossary.json#concept.delivery-commit) and, once the task ended,
 its decision log, which Tasks commits to the primary branch. Any process finds the primary worktree
 through Git's common directory. One folder per task, organized by the task's lifecycle as
-[Tracing](../../tracing/module.md) lays it out, means a task's record, log, sessions and runs are
+[Tracing](../../kernel/tracing/module.md) lays it out, means a task's record, log, sessions and runs are
 read in one place and ended in one move; the record stays small because the task's history is its
 trace, which only grows by new nodes.
 
@@ -800,7 +800,7 @@ commit, with Delivery's own reader, to derive `delivered`, to list deliveries in
 decide whether a task may be merged or closed as merged. A task branch with no delivery commit is
 refused with `not_merged`. Tasks counts the head as delivered only when it verifies by Delivery's
 own check, the one Delivery applies before it reports a delivered head
-([req.delivery.recovered-verified](../../execution/commands/delivery/requirements.md#req.delivery.recovered-verified)):
+([req.delivery.recovered-verified](../../method/delivery/requirements.md#req.delivery.recovered-verified)):
 it has exactly one parent. A head that does not verify is refused with `delivery_unverified`,
 naming the mismatch, since Delivery did not create it.
 
@@ -821,9 +821,9 @@ session, each merge attempt and its checks the shape of a
 [trace node](../../glossary.json#concept.trace-node). Tasks writes those nodes through Tracing's
 library, takes the task, workspace and merge locks under `.concorde/locks/`, runs Tracing's
 retention at the start of every `task open` and `task close`, and reports in the error contract.
-It relies on the [layout](../../tracing/contracts.md#layout), the
-[locks](../../tracing/contracts.md#locks) and the
-[node contract](../../tracing/contracts.md#contract.tracing.node).
+It relies on the [layout](../../kernel/tracing/contracts.md#layout), the
+[locks](../../kernel/tracing/contracts.md#locks) and the
+[node contract](../../kernel/tracing/contracts.md#contract.tracing.node).
 
 <a id="uses-issues"></a>
 

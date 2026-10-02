@@ -1,0 +1,87 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.code-review.module",
+    "owner": "module.code-review",
+    "role": "module"
+  },
+  "module": {
+    "title": "Code review",
+    "owns": [
+      "specs/concorde/method/code-review/module.md",
+      "specs/concorde/method/code-review/requirements.md",
+      "specs/concorde/method/code-review/scenarios.md",
+      "specs/concorde/method/code-review/contracts.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.operations",
+        "meaning": "#uses-operations"
+      },
+      {
+        "target": "module.execution",
+        "meaning": "#uses-execution",
+        "relies_on": [
+          "concept.execution-runner",
+          "concept.run-result",
+          "concept.workspace",
+          "concept.unbound-run"
+        ]
+      },
+      {
+        "target": "module.workers",
+        "meaning": "#uses-workers"
+      },
+      {
+        "target": "module.checks",
+        "meaning": "#uses-checks"
+      },
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec"
+      },
+      {
+        "target": "module.issues",
+        "meaning": "#uses-issues",
+        "relies_on": [
+          "concept.issue",
+          "concept.issue-report",
+          "concept.issue-revision",
+          "concept.issue-tier",
+          "concept.issue-severity"
+        ]
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.tracing.contracts",
+        "reason": "the Framework's error contract, which this Module's errors follow"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "realization.code-review.operation",
+      "type": "realization",
+      "title": "Code review Operation",
+      "meaning": "#realization.code-review.operation",
+      "entries": [
+        "src/concorde/code_review/",
+        "prompts/workers/review-code.md",
+        "tests/concorde/code_review/"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "realization.code-review.operation",
+      "verb": "reports findings as Issues through",
+      "target": "module.issues"
+    }
+  ],
+  "extensions": {}
+}

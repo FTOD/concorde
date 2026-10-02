@@ -72,7 +72,7 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 
 - GIVEN an [Operation](../glossary.json#concept.operation) that allows unbound runs
 - WHEN an unbound run of it asks for a `specify`, `implement` or `code-to-spec` worker without withholding every writable level of its grant
-- THEN no worker starts and the result is `failed` with `unbound_write`, the refusal [How an Operation runs its workers](operations/workers.md) defines, its actor naming the run as unbound
+- THEN no worker starts and the result is `failed` with `unbound_write`, the refusal [How an Operation runs its workers](../method/workers.md) defines, its actor naming the run as unbound
 
 ### scenario.execution.command-run — An execution command is a run without a worker
 

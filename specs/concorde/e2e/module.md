@@ -437,7 +437,7 @@ with `--retry` for the failed step's key runs that step again without Claude Cod
 runtime, reusing the steps before it that succeeded, and so points to whether Concorde or that
 runtime is at fault; without `--retry` it would only find the failed run recorded. A retry
 supersedes the retried step and every step recorded after it, as
-[Workflows](../execution/workflows/module.md#steps-and-their-keys) says, so every later step runs
+[Workflows](../workflows/module.md#steps-and-their-keys) says, so every later step runs
 anew too, those that had succeeded included, at their cost again and with new evidence. Since the
 workers are real, one such comparison is evidence, not proof.
 
@@ -532,9 +532,9 @@ the interpreter `--python` names. `prepare` stops with `command_failed` when eit
 
 **Workers** owns the [worker configuration](../glossary.json#concept.worker-configuration) that
 `prepare` writes and the [model map](../glossary.json#concept.model-map) by which the developer's
-machine reaches each model, both defined by its [contracts](../execution/workers/contracts.md).
+machine reaches each model, both defined by its [contracts](../worker-harness/workers/contracts.md).
 Workers' check of a whole configuration against the map
-([scenario.workers.model-map-checked](../execution/workers/scenarios.md#scenario.workers.model-map-checked))
+([scenario.workers.model-map-checked](../worker-harness/workers/scenarios.md#scenario.workers.model-map-checked))
 validates it and resolves the model of every worker of every Operation, refusing with
 `config_invalid`, `model_map_missing`, `model_map_invalid` or `model_unmapped`, the last naming
 every model and backend the map lacks with the workers that would take them. `prepare` builds the

@@ -524,7 +524,7 @@ in the [requirements](requirements.md).
 
 A task is a [trace node](../../glossary.json#concept.trace-node) of kind `task`, and each of its merge attempts one of kind
 `merge` with its checks as `merge-check` nodes below it, as
-[Tracing](../../tracing/contracts.md#contract.tracing.node) defines them; their contents are these values. The nodes of its task
+[Tracing](../../kernel/tracing/contracts.md#contract.tracing.node) defines them; their contents are these values. The nodes of its task
 sessions are [Task sessions](../task-session/contracts.md#session-trace)'.
 
 ```concorde-contract
@@ -832,7 +832,7 @@ session escalates and reports from its task worktree; they find the primary work
 the task folders, through Git's common directory.
 Every command prints one JSON value on standard output and exits with status 0 on success. A
 refusal prints `{"error": <link>}`, where the link is a
-[`component` link](../../tracing/contracts.md#contract.tracing.error) of the actor
+[`component` link](../../kernel/tracing/contracts.md#contract.tracing.error) of the actor
 `Tasks (concorde task <command>)` whose code is one of the error codes below or, for `session` and
 the record updates, one of the [Task session codes](../task-session/contracts.md#commands), whose
 detail names the
@@ -934,7 +934,7 @@ for the whole command and releases it when it ends, and so does every write of t
 itself `an Issue write (<what it writes>)`; the kernel releases it when the process dies,
 however it dies. While holding it, the process keeps in the file one JSON object
 `{"holder": "`concorde task <open|close|merge>` of task <task-id>", "pid": <pid>, "since": "<RFC 3339 time>", "session": "<Claude Code session>", "task": "<task-id>"}`, the holder line of every lock under `.concorde/locks/`, with `session` only when the process's environment names one in `CLAUDE_CODE_SESSION_ID`.
-A merge started with its locks inherited, as [Tracing](../../tracing/contracts.md#handing-a-lock-on)
+A merge started with its locks inherited, as [Tracing](../../kernel/tracing/contracts.md#handing-a-lock-on)
 states, adopts them without waiting and writes its own holder line into each. A merge whose
 environment variable `CONCORDE_MERGE_ATTEMPT` names the task's next attempt folder `merges/<n>/`,
 made for it and holding no node yet, removes the variable and records its attempt's node there:

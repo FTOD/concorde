@@ -113,7 +113,7 @@ The installer's `concorde_busy` refusal SHALL name each run it found running.
 ### req.distribution.installer-error-links — Installer refusals are error links
 
 Every refusal of the installer and of `concorde update` SHALL be printed as one error link of the
-Framework's [error contract](../tracing/contracts.md#contract.tracing.error), naming the refusal's code and
+Framework's [error contract](../kernel/tracing/contracts.md#contract.tracing.error), naming the refusal's code and
 what is wrong.
 
 ### req.distribution.installer-no-specs — The installer writes no Spec but its installation realization

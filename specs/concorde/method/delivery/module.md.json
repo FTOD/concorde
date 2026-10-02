@@ -1,0 +1,77 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.delivery.module",
+    "owner": "module.delivery",
+    "role": "module"
+  },
+  "module": {
+    "title": "Delivery",
+    "owns": [
+      "specs/concorde/method/delivery/module.md",
+      "specs/concorde/method/delivery/contracts.md",
+      "specs/concorde/method/delivery/requirements.md",
+      "specs/concorde/method/delivery/scenarios.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.execution",
+        "meaning": "#uses-execution",
+        "relies_on": [
+          "concept.run-result",
+          "concept.workspace-binding",
+          "concept.workspace-lock",
+          "req.execution.workspace-lock",
+          "req.execution.workspace-busy",
+          "contract.execution.run-result",
+          "contract.execution.workspace-binding"
+        ]
+      },
+      {
+        "target": "module.validation",
+        "meaning": "#uses-validation"
+      },
+      {
+        "target": "module.commands",
+        "meaning": "#uses-commands",
+        "relies_on": [
+          "concept.execution-command"
+        ]
+      },
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec"
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.tracing.contracts",
+        "reason": "the Framework's error contract, which this Module's errors follow"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "realization.delivery.command",
+      "type": "realization",
+      "title": "Delivery command",
+      "meaning": "#realization.delivery.command",
+      "entries": [
+        "src/concorde/delivery/",
+        "tests/concorde/delivery/"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "realization.delivery.command",
+      "verb": "creates",
+      "target": "concept.delivery-commit"
+    }
+  ],
+  "extensions": {}
+}
