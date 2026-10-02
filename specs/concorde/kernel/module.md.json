@@ -47,6 +47,15 @@
       "entries": [
         "tests/concorde/kernel/"
       ]
+    },
+    {
+      "id": "realization.kernel.guidance",
+      "type": "realization",
+      "title": "Kernel guidance",
+      "meaning": "#realization.kernel.guidance",
+      "entries": [
+        "prompts/guidance/kernel/"
+      ]
     }
   ],
   "relations": [

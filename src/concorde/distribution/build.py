@@ -1,10 +1,13 @@
 """The build: render the Protocol bundle and every prompt root into ``generated/``.
 
 Prompts are authored under ``prompts/`` with ``@include`` directives and rendered to plain files
-the runtime reads. The prompt roots that are skills are rendered once more, with the Agent Skills
-front matter, as ``generated/skills/<name>/SKILL.md``, the one file the installer places in a
-project and Concorde's own source checkout loads. The build records every source and output digest in
-``generated/build-manifest.json`` so a stale render is detected instead of used.
+the runtime reads. Every part's registered guidance sections are prompt roots too, and the build
+composes them for every part of the package: the ``concorde`` skill
+``generated/skills/concorde/SKILL.md``, which Concorde's own source checkout loads, and the
+task-session prompt Coordination reads; the installer composes the same sections for the parts it
+installs. The development skill is its prompt root's render under the Agent Skills front matter.
+The build records every source and output digest in ``generated/build-manifest.json`` so a stale
+render is detected instead of used.
 """
 
 from __future__ import annotations
@@ -15,7 +18,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
-from . import parts
+from . import guidance, parts
 from .prompt_resolver import (
     PromptResolverError,
     find_unreachable_prompts,
@@ -48,18 +51,10 @@ PROMPT_ROOT_DIRECTORIES: tuple[str, ...] = (
     "prompts/development",
 )
 
-# The skills the build renders: name -> (prompt root, description). `concorde` is the main-session
-# guidance every installation places; `concorde-development` holds the rules for developing
-# Concorde in its own source checkout, which loads both.
+# The skills the build renders from one prompt root each: name -> (prompt root, description).
+# `concorde-development` holds the rules for developing Concorde in its own source checkout, which
+# loads it beside the `concorde` skill the build composes of every part's guidance.
 SKILLS: dict[str, tuple[str, str]] = {
-    "concorde": (
-        "prompts/main-session/skill.md",
-        (
-            "Work as Concorde's main agent in this project: split work into tasks, hand each "
-            "to a task session and answer it, read results, keep decision logs and merge "
-            "delivered work."
-        ),
-    ),
     "concorde-development": (
         "prompts/development/skill.md",
         (
@@ -78,6 +73,7 @@ GENERATED_OWNED_DIRS: tuple[str, ...] = (
     "generated/main-session",
     "generated/dogfooding",
     "generated/development",
+    "generated/guidance",
     "generated/skills",
     "generated/workflows",
 )
@@ -100,23 +96,20 @@ def registrations(project_root: Path) -> dict[str, parts.Registration]:
 
 
 def guidance_roots(project_root: Path) -> tuple[str, ...]:
-    """The prompt root of every part's registered guidance: ``generated/<path>`` is rendered from
-    ``prompts/<path>``."""
+    """The prompt root of every guidance section a part registers: ``generated/<path>`` is rendered
+    from ``prompts/<path>``."""
     roots = []
     for registration in registrations(project_root).values():
-        guidance = registration.data["guidance"]
-        if guidance is None:
-            continue
-        if not guidance.startswith("generated/") or not guidance.endswith(".md"):
-            raise BuildError(
-                f"{registration.path}: guidance {guidance} is no Markdown render under generated/"
-            )
-        root = "prompts/" + guidance.removeprefix("generated/")
-        if not (project_root / root).is_file():
-            raise BuildError(
-                f"{registration.path}: the guidance {guidance} has no prompt root {root}"
-            )
-        roots.append(root)
+        sections = registration.data["guidance"] or {}
+        for section in sections.values():
+            if section is None:
+                continue
+            root = "prompts/" + section.removeprefix("generated/")
+            if not (project_root / root).is_file():
+                raise BuildError(
+                    f"{registration.path}: the guidance {section} has no prompt root {root}"
+                )
+            roots.append(root)
     return tuple(roots)
 
 
@@ -175,27 +168,59 @@ def skill_path(name: str) -> str:
     return f"generated/skills/{name}/SKILL.md"
 
 
-def skill_header(name: str) -> str:
-    """The Agent Skills front matter of a skill.
-
-    The description is written as a JSON string, which YAML reads as a double-quoted scalar: its
-    ": " would otherwise make the front matter invalid YAML, which skill readers refuse.
-    """
-    return f"---\nname: {name}\ndescription: {json.dumps(SKILLS[name][1])}\n---\n\n"
-
-
 def render_skills(rendered: dict[str, BuildOutput]) -> list[BuildOutput]:
-    """Each skill: its prompt root's render under the skill's front matter."""
+    """Each skill of one prompt root: its render under the skill's front matter."""
     outputs = []
-    for name, (root, _) in SKILLS.items():
+    for name, (root, description) in SKILLS.items():
         body = rendered.get(output_path(root))
         if body is None:
             raise BuildError(f"skill {name}: its prompt root {root} is missing")
         outputs.append(
             BuildOutput(
                 path=skill_path(name),
-                content=skill_header(name).encode("utf-8") + body.content,
+                content=guidance.skill_header(name, description).encode("utf-8")
+                + body.content,
                 sources=body.sources,
+            )
+        )
+    return outputs
+
+
+def render_guidance(
+    project_root: Path, rendered: dict[str, BuildOutput]
+) -> list[BuildOutput]:
+    """The guidance composed of every part's rendered sections: the ``concorde`` skill and the
+    task-session prompt. The ``CLAUDE.md`` block is composed only by the installer, which alone
+    places it."""
+    found = registrations(project_root)
+
+    def read(path: str) -> str:
+        if path not in rendered:
+            raise BuildError(f"the guidance section {path} was not rendered")
+        return rendered[path].content.decode("utf-8")
+
+    outputs = []
+    for kind, path in (
+        ("skill", skill_path(guidance.SKILL)),
+        ("task_session", guidance.TASK_SESSION),
+    ):
+        content = guidance.compose(found, kind, read)
+        if content is None:
+            continue
+        sections = guidance.sections(found, kind)
+        outputs.append(
+            BuildOutput(
+                path=path,
+                content=content.encode("utf-8"),
+                sources=tuple(
+                    sorted(
+                        {
+                            source
+                            for item in sections
+                            for source in rendered[item].sources
+                        }
+                    )
+                ),
             )
         )
     return outputs
@@ -283,9 +308,11 @@ def build(project_root: str | Path) -> BuildResult:
     root = Path(project_root)
     roots = prompt_roots(root)
     prompts = [render_prompt(root, item) for item in roots]
+    rendered = {output.path: output for output in prompts}
     outputs = (
         prompts
-        + render_skills({output.path: output for output in prompts})
+        + render_skills(rendered)
+        + render_guidance(root, rendered)
         + render_workflows(root)
         + [render_parts_index(root)]
     )

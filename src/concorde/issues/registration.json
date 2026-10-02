@@ -70,7 +70,11 @@
     "concorde-issue-report",
     "concorde-issue-receipt"
   ],
-  "guidance": null,
+  "guidance": {
+    "skill": "generated/guidance/issues/skill.md",
+    "task_session": "generated/guidance/issues/task-session.md",
+    "claude_md": null
+  },
   "renders": null,
   "install": {
     "files": [],

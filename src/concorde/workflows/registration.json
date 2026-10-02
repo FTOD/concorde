@@ -39,7 +39,11 @@
     "concorde-workflow-trace",
     "concorde-step-trace"
   ],
-  "guidance": null,
+  "guidance": {
+    "skill": "generated/guidance/workflows/skill.md",
+    "task_session": "generated/guidance/workflows/task-session.md",
+    "claude_md": "generated/guidance/workflows/claude-md.md"
+  },
   "renders": "catalog:build_renders",
   "install": {
     "files": [],

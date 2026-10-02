@@ -84,7 +84,9 @@ The installer places:
   with your project;
 - the main agent's guidance, as the Claude Code skill `.claude/skills/concorde/SKILL.md` and a short
   block between `<!-- concorde:start -->` and `<!-- concorde:end -->` in your `CLAUDE.md` (the
-  rest of the file is left untouched);
+  rest of the file is left untouched). Each Concorde part contributes its own section of it, after
+  the part that runs tasks, so the guidance tells your sessions only about the parts you installed;
+  a task session's first prompt is composed the same way;
 - the project MCP server, registered as `concorde` in your `.mcp.json` (other servers there are
   kept), which gives Claude Code sessions your tasks, traces and locks as tools;
 - the [`d2`](https://github.com/d2lang/d2) program that draws your Specs' diagrams, as
@@ -917,7 +919,7 @@ Neither user documents nor custom docs may contain a registered Spec document.
 | `.concorde/tracing.json`                   | How long unbound runs, closed tasks and their transcripts are kept (optional).          |
 | `.concorde/decisions/`                     | The decision logs of ended tasks, committed when each task ends.                        |
 | `.concorde/issues/`                        | Open Issue records; closed ones are in its `closed/` folder.                            |
-| `.claude/skills/concorde/SKILL.md`         | The main agent's guidance.                                                              |
+| `.claude/skills/concorde/SKILL.md`         | The main agent's guidance, composed of the installed parts' sections.                   |
 
 ## Learn more
 

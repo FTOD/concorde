@@ -137,6 +137,15 @@
       "entries": [
         "src/concorde/method/review_issues.py"
       ]
+    },
+    {
+      "id": "realization.method.guidance",
+      "type": "realization",
+      "title": "Method guidance",
+      "meaning": "#realization.method.guidance",
+      "entries": [
+        "prompts/guidance/method/"
+      ]
     }
   ],
   "relations": [],

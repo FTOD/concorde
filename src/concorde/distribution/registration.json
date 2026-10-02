@@ -29,7 +29,11 @@
   "mcp_definitions": null,
   "mcp_instructions": null,
   "typed_types": [],
-  "guidance": null,
+  "guidance": {
+    "skill": "generated/guidance/distribution/skill.md",
+    "task_session": null,
+    "claude_md": "generated/guidance/distribution/claude-md.md"
+  },
   "renders": null,
   "install": {
     "files": [],

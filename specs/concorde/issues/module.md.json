@@ -88,6 +88,15 @@
         "tests/concorde/issues/test_store.py",
         "tests/concorde/issues/test_store_check.py"
       ]
+    },
+    {
+      "id": "realization.issues.guidance",
+      "type": "realization",
+      "title": "Issues guidance",
+      "meaning": "#realization.issues.guidance",
+      "entries": [
+        "prompts/guidance/issues/"
+      ]
     }
   ],
   "relations": [

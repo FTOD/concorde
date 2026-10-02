@@ -250,6 +250,18 @@ resolves and reporting its findings, all through the issues command as [Issues](
 and stating in the result that the findings were not recorded where the issues part is not
 installed.
 
+<a id="realization.method.guidance"></a>
+
+The **Method guidance** is the part's sections of the [main-session
+guidance](../glossary.json#concept.main-session-guidance), kept in `prompts/guidance/method/` and
+registered under `guidance` in the part's registration, which
+[Distribution](../distribution/module.md#guidance-composition) composes after Coordination's working
+method wherever the part is installed: the project skill's "Operations", with the brownfield
+workflow, the [task-session](../glossary.json#concept.task-session) prompt's "Method's Operations",
+with preparing the workers' environment, `plan_review`, delivering with `task-validation` and
+`delivery` and the reviews, and the `CLAUDE.md` block's sentence on `brownfield`. Each section says
+what happens where a part it mentions is not installed.
+
 ### The children
 
 <a id="contains-understanding"></a>

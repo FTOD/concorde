@@ -55,7 +55,9 @@ from ...kernel.tracing import node as trace
 from . import session_hook, store
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[4]
-PROMPT = "generated/main-session/task-session.md"
+# The task-session guidance Distribution composes of the installed parts' sections: the build's
+# composition of every part in a source checkout, the installer's in a project's Framework copy.
+PROMPT = "generated/guidance/task-session.md"
 # The project MCP server's name in the session's MCP configuration.
 SERVER = "concorde"
 # Claude Code's managed settings folder on Linux, which every session reads.
@@ -229,7 +231,7 @@ def mcp_config(python: str) -> dict:
 
 
 def brief(primary: Path, record: dict, main: str) -> str:
-    """The session's first prompt: the rendered task-session guidance and this task."""
+    """The session's first prompt: the composed task-session guidance and this task."""
     path = PACKAGE_ROOT / PROMPT
     if not path.is_file():
         raise store.TaskError(

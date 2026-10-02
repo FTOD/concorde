@@ -183,6 +183,18 @@ say, in its instructions and its validation: in Concorde an `understand` worker 
 ends `ok`, a review worker reports one as a finding and goes on, and every other worker ends
 `blocked`, which no round resumes; Method's round validation never asks a worker to repair a gap.
 
+### Guidance
+
+<a id="realization.worker-harness.guidance"></a>
+
+The **Worker harness guidance** is the part's sections of the [main-session
+guidance](../glossary.json#concept.main-session-guidance), kept in
+`prompts/guidance/worker_harness/` and registered under `guidance` in the part's registration, which
+[Distribution](../distribution/module.md#guidance-composition) composes after Coordination's working
+method wherever the part is installed: the project skill's "Worker models", the worker configuration
+and the model map, and the `CLAUDE.md` block's sentence on them. Each section says what happens
+where a part it mentions is not installed.
+
 ### The children
 
 <a id="contains-harness"></a>

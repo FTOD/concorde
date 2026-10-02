@@ -24,7 +24,17 @@
     "includes": [],
     "participates": []
   },
-  "defines": [],
+  "defines": [
+    {
+      "id": "realization.worker-harness.guidance",
+      "type": "realization",
+      "title": "Worker harness guidance",
+      "meaning": "#realization.worker-harness.guidance",
+      "entries": [
+        "prompts/guidance/worker_harness/"
+      ]
+    }
+  ],
   "relations": [],
   "extensions": {}
 }

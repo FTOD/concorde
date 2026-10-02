@@ -112,6 +112,15 @@
         "tests/concorde/workflows/",
         "tests/concorde/support/brownfield_project.py"
       ]
+    },
+    {
+      "id": "realization.workflows.guidance",
+      "type": "realization",
+      "title": "Workflows guidance",
+      "meaning": "#realization.workflows.guidance",
+      "entries": [
+        "prompts/guidance/workflows/"
+      ]
     }
   ],
   "relations": [

@@ -509,9 +509,11 @@ Claude Code, never from the program the task session runs on.
 
 **Main session** provides the
 [guidance](../../glossary.json#concept.main-session-guidance) a task session starts with: the
-rendered task-session guidance, which carries the same rules for working inside a task that the
-main agent follows, followed by the sections the other installed parts contribute. A missing
-rendered guidance refuses the start with `session_failed`. Task sessions also configures, for every
+task-session guidance, which carries the same rules for working inside a task that the main agent
+follows, followed by the sections the other installed parts contribute, as Distribution composes it
+into `generated/guidance/task-session.md` of the Concorde package that runs, the build's
+composition of every part in a source checkout and the installer's of the installed parts in a
+project's Framework copy. A missing composition refuses the start with `session_failed`. Task sessions also configures, for every
 task session it starts, the [project MCP server](../../glossary.json#concept.project-mcp-server),
 Distribution's host of the tools the installed parts register, without a channel
 (`CONCORDE_CHANNEL=0`).

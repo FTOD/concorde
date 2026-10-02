@@ -44,27 +44,36 @@ but cannot widen a worker's boundary.
 <a id="guidance-by-part"></a>
 
 **Guidance by part.** The guidance a main agent reads is composed at install from the sections of
-the installed parts, each part contributing the section about its own commands and tools, and a part
-that is not installed contributing nothing, so the guidance never tells an agent to use what the
-project lacks. This Module owns Coordination's part, the frame every other section fits in: the
-working method, the escalation policy, the task brief, reports and the decision log, tasks, task
-sessions and their merges, and the method of working inside a task. The sections below that
-describe another part's commands are that part's contribution, described here as the main agent
-reads them:
+the installed parts, each part contributing the sections about its own commands and tools, and a
+part that is not installed contributing nothing, so the guidance never tells an agent to use what
+the project lacks. Each of the three compositions, the project skill, the task-session prompt and
+the `CLAUDE.md` block, is this Module's section followed by the other installed parts' sections of
+that kind in the order of Distribution's parts table, as
+[Distribution](../../distribution/module.md#guidance-composition) composes them. This Module owns
+Coordination's sections, the frame every other section fits in: the working method, the escalation
+policy, the task brief, reports and the decision log, tasks, task sessions and their merges,
+Coordination's tools, and the method of working inside a task. Each other part keeps its sections
+in `prompts/guidance/<part directory>/`, bound by its top Module, and each section says what happens
+where a part it mentions is not installed: Coordination's own sections say, for instance, that a
+task session delivers with Method's `delivery` where the method part is installed and with
+`concorde task deliver` otherwise, and that a merge runs `concorde spec-validation` only where the
+spec part is installed. The sections that describe another part's commands are that part's
+contribution, described here as the main agent reads them:
 
 | Section | Contributed by | Present only where |
 | --- | --- | --- |
-| [The working method](#the-working-method), [Escalation policy](#escalation-policy), reports, merging, task sessions, Coordination's tools | coordination | always |
-| Running [Operations](../../glossary.json#concept.operation) and `plan_review`, `task-validation` and `delivery` in a task, [Questions without a task](#questions-without-a-task) | method, with execution | the method part is installed; otherwise the task session delivers with `concorde task deliver` |
+| [The working method](#the-working-method), [Escalation policy](#escalation-policy), reports, merging, task sessions, Coordination's tools; in the task-session prompt, working inside the task, deciding and escalating, merging the primary branch and reporting | coordination | the coordination part is installed, without which there is no main agent and no task session |
+| Project terms, Spec queries, `spec-validation`, `grant`, `registry --write` and translating Spec tooling's errors ([Spec queries](#spec-queries)); the glossary import of the `CLAUDE.md` block | spec | the spec part is installed |
+| `concorde trace show` and reading an error chain | kernel | the kernel part is installed |
 | [Worker models](#worker-models) | worker harness | the worker harness part is installed |
-| [Workflows](#workflows) | workflow, and method for the brownfield workflow | the workflow part is installed |
+| Runs, their results and unbound runs ([Questions without a task](#questions-without-a-task)) | execution | the execution part is installed |
+| [Workflows](#workflows), `workflow_report` and `workflow_step` | workflow | the workflow part is installed |
 | [Issues](#issues) | issues | the issues part is installed |
-| [Spec queries](#spec-queries), `spec-validation`, `registry --write` and translating Spec tooling's errors | spec | the spec part is installed |
-| [Develop installs](#develop-installs) | Dogfooding | a develop install |
+| Method's Operations and their order, preparing the workers' environment, `plan_review`, `task-validation` and `delivery`, reviews and the brownfield workflow | method | the method part is installed; otherwise the task session delivers with `concorde task deliver` |
+| What `concorde` is, `part_missing` and `concorde update` | distribution | always, since Distribution is installed with any part |
+| [Develop installs](#develop-installs) | Dogfooding | a develop install, appended after every part's section |
 
-The sources of every section live with this Module's guidance today, and the code tasks that follow
-the parts' Specs move each part's section to that part; what each section tells the main agent is
-described here once.
+What each section tells the main agent is described here once.
 
 <a id="concept.task-brief"></a>
 
@@ -940,13 +949,14 @@ mainsession: Main session {
 
 <a id="realization.main-session.guidance"></a>
 
-The **guidance sources** live under `prompts/main-session/`, today with every part's section, (`skill.md`, installed as the project
-skill `.claude/skills/concorde/SKILL.md`; `claude-md.md`, installed into the project's `CLAUDE.md`;
-and `task-session.md`, the first prompt `concorde task session` gives a task session) and are
-rendered by Distribution's build into `generated/main-session/`. Their tests, under
-`tests/concorde/main_session/`, check that the rendered guidance states every rule the
-[scenarios](scenarios.md) describe; what the main agent then does is judgment no deterministic test
-observes.
+The **guidance sources** of Coordination's sections live under `prompts/main-session/` (`skill.md`,
+which opens the project skill `.claude/skills/concorde/SKILL.md`; `claude-md.md`, which opens the
+block of the project's `CLAUDE.md`; and `task-session.md`, which opens the first prompt
+`concorde task session` gives a task session), registered under `guidance` in the coordination
+part's registration and rendered by Distribution's build into `generated/main-session/`. Their
+tests, under `tests/concorde/main_session/`, check that the guidance composed of every part states
+every rule the [scenarios](scenarios.md) describe, whichever part's section says it; what the main
+agent then does is judgment no deterministic test observes.
 
 <a id="realization.main-session.project-mcp"></a>
 
@@ -967,5 +977,5 @@ the guidance sources, composes them with the other installed parts' sections and
 rendered guidance into a project;
 [Dogfooding](../../dogfooding/module.md) appends its own section to the guidance in a develop
 install and changes nothing else; and [Task sessions](../task-session/module.md) gives a task
-session the rendered task-session guidance as its first prompt, so every task follows the method
+session the task-session guidance composed of the installed parts as its first prompt, so every task follows the method
 this Module sets.

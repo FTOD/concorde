@@ -546,6 +546,17 @@ rendered script in a small JavaScript sandbox that stands in for Claude Code's
 workflow runtime, verifying the [requirements](requirements.md) and
 [scenarios](scenarios.md).
 
+<a id="realization.workflows.guidance"></a>
+
+The **Workflows guidance** is the part's sections of the [main-session
+guidance](../glossary.json#concept.main-session-guidance), kept in `prompts/guidance/workflows/` and
+registered under `guidance` in the part's registration, which
+[Distribution](../distribution/module.md#guidance-composition) composes after Coordination's working
+method wherever the part is installed: the project skill's and the task-session prompt's
+"Workflows", their modes, reports and the `workflow_report` and `workflow_step` tools, and the
+`CLAUDE.md` block's sentence on workflows. Each section says what happens where a part it mentions
+is not installed.
+
 ## What Workflows relies on
 
 <a id="uses-tracing"></a>

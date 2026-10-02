@@ -3,9 +3,10 @@
 It copies the package's runtime (``src``, ``scripts``, ``prompts``, ``protocol`` and the rendered
 ``generated`` outputs) to ``.concorde/framework/``, with the docsite template under
 ``.concorde/framework/docsite/`` selected by Views' template inventory rule, writes the
-``.concorde/bin/concorde`` command, the Protocol copy under ``.concorde/protocol/``, the main-session guidance as the project skill
-``.claude/skills/concorde/SKILL.md`` (the build's rendered skill) and a delimited block in
-``CLAUDE.md``, the project MCP server's entry ``concorde`` in ``.mcp.json``, Concorde-owned
+``.concorde/bin/concorde`` command, the Protocol copy under ``.concorde/protocol/``, the guidance
+composed of the installed parts' rendered sections as the project skill
+``.claude/skills/concorde/SKILL.md``, a delimited block in ``CLAUDE.md`` and the task-session
+prompt of its Framework copy, the project MCP server's entry ``concorde`` in ``.mcp.json``, Concorde-owned
 defaults when absent, the pinned ``d2`` program under ``.concorde/tools/``, ignore rules for local
 state and task worktrees, and a receipt ``.concorde/install.json``. ``uv`` owns Concorde's Python:
 it creates Concorde's own environment under ``.concorde/framework/python/`` on an interpreter that
@@ -41,8 +42,8 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
-from . import formats, parts
-from .build import BuildError, skill_path, verify_fresh
+from . import formats, guidance, parts
+from .build import BuildError, verify_fresh
 from .project_defaults import (
     PROTOCOL_MANIFEST_PATH,
     CopyError,
@@ -138,16 +139,21 @@ def refusal(
     return formats.link(actor, code, message, reason=reason, explanation=explanation)
 
 
-def _guidance(package: Path, name: str) -> str:
-    """The rendered skill ``concorde``, with its front matter, or another main-session render."""
-    path = package / (
-        skill_path("concorde")
-        if name == "skill"
-        else f"generated/main-session/{name}.md"
-    )
-    if not path.is_file():
-        raise InstallError("stale_build", f"{path} is missing; run the build")
-    return path.read_text(encoding="utf-8")
+def _guidance(package: Path, registrations: dict) -> dict[str, str | None]:
+    """The guidance composed of the rendered sections of the parts ``registrations`` holds, by
+    kind (``skill``, ``task_session``, ``claude_md``), None for a kind no part contributes."""
+
+    def read(path: str) -> str:
+        if not (package / path).is_file():
+            raise InstallError(
+                "stale_build", f"{package / path} is missing; run the build"
+            )
+        return (package / path).read_text(encoding="utf-8")
+
+    return {
+        kind: guidance.compose(registrations, kind, read)
+        for kind in parts.GUIDANCE_FIELDS
+    }
 
 
 def _source_commit(package: Path) -> str | None:
@@ -437,8 +443,8 @@ def install(
         protocol = protocol_files(package) if "spec" in registrations else {}
     except CopyError as error:
         raise InstallError("stale_build", str(error)) from error
-    skill = _guidance(package, "skill")
-    block = _guidance(package, "claude-md")
+    composed = _guidance(package, registrations)
+    skill, block = composed["skill"] or "", composed["claude_md"] or ""
     installed_from = None
     if develop:
         checked = _develop(package)
@@ -507,6 +513,7 @@ def install(
             protocol=protocol,
             skill=skill,
             block=block,
+            task_session=composed["task_session"],
             installed_from=installed_from,
             develop=develop,
             requirement=requirement,
@@ -545,6 +552,7 @@ def _place(
     protocol: dict[str, bytes],
     skill: str,
     block: str,
+    task_session: str | None,
     installed_from: dict | None,
     develop: bool,
     requirement: str,
@@ -569,6 +577,14 @@ def _place(
             (project / path).parent.mkdir(parents=True, exist_ok=True)
             (project / path).write_bytes(content)
     _copy_runtime(package, project / FRAMEWORK)
+    # The task-session prompt Coordination reads from its Framework copy, composed of the
+    # installed parts' sections in place of the build's composition of every part.
+    prompt = project / FRAMEWORK / guidance.TASK_SESSION
+    if task_session is None:
+        prompt.unlink(missing_ok=True)
+    else:
+        prompt.parent.mkdir(parents=True, exist_ok=True)
+        prompt.write_text(task_session, encoding="utf-8")
     # What the parts' install services prepared, such as the spec part's docsite template under
     # the Framework copy, from which `concorde docsite --propose` scaffolds a project's site.
     for path, content in prepared.items():
@@ -606,7 +622,12 @@ def _place(
     command.chmod(0o755)
     (project / SKILL).parent.mkdir(parents=True, exist_ok=True)
     (project / SKILL).write_text(skill, encoding="utf-8")
-    _amend(project, CLAUDE_MD, with_glossary(block, project))
+    # The glossary import belongs to the spec part, which alone declares a glossary.
+    _amend(
+        project,
+        CLAUDE_MD,
+        with_glossary(block, project) if "spec" in registrations else block,
+    )
     for path, source in placed.items():
         (project / path).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, project / path)

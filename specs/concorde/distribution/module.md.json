@@ -76,7 +76,8 @@
       "meaning": "#realization.distribution.build",
       "entries": [
         "src/concorde/distribution/build.py",
-        "src/concorde/distribution/prompt_resolver.py"
+        "src/concorde/distribution/prompt_resolver.py",
+        "src/concorde/distribution/guidance.py"
       ]
     },
     {
@@ -133,6 +134,15 @@
       "meaning": "#realization.distribution.tests",
       "entries": [
         "tests/concorde/distribution/"
+      ]
+    },
+    {
+      "id": "realization.distribution.guidance",
+      "type": "realization",
+      "title": "Distribution guidance",
+      "meaning": "#realization.distribution.guidance",
+      "entries": [
+        "prompts/guidance/distribution/"
       ]
     }
   ],
