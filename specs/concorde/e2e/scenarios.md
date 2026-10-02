@@ -69,6 +69,7 @@ Concrete situations that show the [requirements](requirements.md) of
 - WHEN the developer starts a headless run of the [brownfield workflow](../glossary.json#concept.brownfield-workflow) with `--restart scaffold=2`
 - THEN the `claude -p` session has `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS` set to `0`
 - AND its command line grants the workflow and its step and report commands
+- AND its command line gives the session the [project MCP server](../glossary.json#concept.project-mcp-server), started as the installer registers it
 - AND the workflow's arguments, the restart label `2` of `scaffold` included, reach the session's prompt
 - AND the prompt places the session in the task's worktree as the task's [task session](../glossary.json#concept.task-session) and has it report with `concorde workflow report`
 - AND its appended system prompt is the headless note alone, without the test procedure of a headless main session
@@ -76,14 +77,14 @@ Concrete situations that show the [requirements](requirements.md) of
 
 ### scenario.e2e.stale-result — A result an earlier run saved is not the run's
 
-- GIVEN a test project whose task's [workflow record](../glossary.json#concept.workflow-record) holds one result an earlier run saved
+- GIVEN a test project whose task's [workflow record](../glossary.json#concept.workflow-record) holds one result an earlier run saved, and in which nobody else reports a workflow while the run runs
 - WHEN a `run` ends without its workflow saving a result
 - THEN `run` fails with `no_result`, naming that the record held one result before the run and one after it
 - AND the earlier run's result is not printed
 
 ### scenario.e2e.newest-result — A run prints the newest result it saved
 
-- GIVEN a test project whose task's workflow record holds one result an earlier run saved
+- GIVEN a test project whose task's workflow record holds one result an earlier run saved, and in which nobody else reports a workflow while the run runs
 - WHEN a `run` ends after its workflow saved two results
 - THEN `run` prints the second of them
 
@@ -107,6 +108,13 @@ Concrete situations that show the [requirements](requirements.md) of
 - WHEN `owners`, with `--wake 2` and `--grace 1`, plays a run the first session starts in background Bash and the run writes its result
 - THEN the case observes the sessions for 3 seconds after the result, the sum of the two, and then judges the phase
 - AND the case ends `failed`, naming that the owner `claude-1` was not woken when its run ended, and with no error
+
+### scenario.e2e.owners-run-refused — A run refused for a busy workspace stops the case
+
+- GIVEN a test project with a task `t1` with a worktree, and live sessions of two Claude Code main sessions in its primary worktree
+- WHEN `owners` plays a run that waits in the lobby for the [workspace lock](../glossary.json#concept.workspace-lock) the case holds, and once the case released it is refused with `workspace_busy`, as when another run took the lock first and held it past the run's wait
+- THEN the case stops with `workspace_busy`, naming the phase and the refused run's result in the lobby
+- AND it judges no phase of that run
 
 ### scenario.e2e.owners-too-few-sessions — The owners case needs two sessions
 

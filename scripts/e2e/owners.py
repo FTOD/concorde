@@ -12,8 +12,10 @@ and plays two phases on the project's open task:
 2. **owned by Claude Code**: the first session starts it in background Bash.
 
 Each run is held back by the case, which holds the task's workspace lock until the run is in the
-run store, so that the run outlives its launch and its end is a wake rather than the launching
-tool's own answer. Once the run has written its result, the case observes for a bounded window:
+run store, waiting in its lobby, so that the run outlives its launch and its end is a wake rather
+than the launching tool's own answer. The case holds the lock at most ``limit`` seconds from the
+launch, and the run waits for it twice as long (``--wait``), so its wait never expires while the
+case holds the lock. Once the run has written its result, the case observes for a bounded window:
 until the owner has been woken and ended its turn, but at most ``wake`` seconds, and then a grace
 period more. The window ends whether or not the owner was woken, so an owner never woken is a
 problem of the verdict, not an error. In it the owner must have been woken and every other session
@@ -81,13 +83,21 @@ def workspace_held(records: Path, workspace: str, limit: float = LIMIT_SECONDS):
             stream.close()
 
 
+def queue_wait(limit: float) -> int:
+    """The ``--wait`` of a run the case launches: twice the case's ``limit``, which bounds how long
+    the case holds the workspace lock after the launch, so the run's wait outlasts every hold."""
+    return int(2 * limit)
+
+
 def _run_folders(records: Path) -> list[Path]:
     """Every run folder under the ``.concorde`` ``records``: the current tasks' workspace
-    folders, their workflow steps, and the unbound runs (Tracing's layout)."""
+    folders, their workflow steps, the unbound runs, and the lobby, where a bound run waits for
+    its workspace lock (Tracing's layout)."""
     return [
         *sorted(records.glob("tasks/*/workspace/runs/r-*")),
         *sorted(records.glob("tasks/*/workspace/workflow/steps/*/run")),
         *sorted(records.glob("unbound/r-*")),
+        *sorted(records.glob("lobby/r-*")),
     ]
 
 
@@ -137,6 +147,14 @@ def result_of(records: Path, run_id: str) -> dict | None:
         return None
 
 
+def refused_busy(result: dict) -> bool:
+    """Whether ``result`` is Execution's refusal of a run whose wait for the workspace lock
+    expired."""
+    return "workspace_busy" in [
+        item.get("ref") for item in result.get("host_evidence") or []
+    ]
+
+
 def until(condition, limit: float, what: str, poll: float = 0.5, **evidence) -> None:
     deadline = time.monotonic() + limit
     while not condition():
@@ -157,7 +175,7 @@ def observe(condition, limit: float, poll: float = 0.5) -> bool:
 
 
 def owner_prompt(worktree: Path, limit: float) -> str:
-    wait = str(int(limit))
+    wait = str(queue_wait(limit))
     return (
         "Run this command with the Bash tool in the background (run_in_background true), then "
         "end your turn at once, replying only STARTED:\n"
@@ -240,8 +258,11 @@ def phase(
     """One phase: a run held back until it is in the run store, released, ended, observed for a
     bounded window, judged, and then looked up by every session that does not own it."""
     known = known_runs(records)
-    started = time.time()
     with workspace_held(records, task, limit):
+        started = time.time()
+        # The owner's launching turn and the run's appearance share one deadline, so the case
+        # holds the lock at most ``limit`` seconds after the launch.
+        hold = time.monotonic() + limit
         if owner is None:
             log = (directory / f"{name}-run.log").open("w")
             subprocess.Popen(
@@ -249,7 +270,7 @@ def phase(
                     str(worktree / ".concorde/bin/concorde"),
                     "task-validation",
                     "--wait",
-                    str(int(limit)),
+                    str(queue_wait(limit)),
                 ],
                 cwd=worktree,
                 stdout=log,
@@ -259,11 +280,11 @@ def phase(
             baseline = started
         else:
             prompted = owner.send(owner_prompt(worktree, limit))
-            owner.wait_settled(prompted, limit)
+            owner.wait_settled(prompted, max(hold - time.monotonic(), 0.0))
             baseline = time.time()
         until(
             lambda: new_run(records, task, known) is not None,
-            limit,
+            max(hold - time.monotonic(), 0.0),
             f"no run of {task} appeared in the run store of {records} for the phase {name}",
             log=str(owner.log) if owner else None,
         )
@@ -275,6 +296,15 @@ def phase(
         f"run {run_id} wrote no result",
         progress=str(run_folder(records, run_id) / "status.json"),
     )
+    if refused_busy(result_of(records, run_id) or {}):
+        # The run did no work: another run took the lock after the case released it and held it
+        # past the run's wait, so there is no run end to judge.
+        raise E2EError(
+            "workspace_busy",
+            f"run {run_id} of the phase {name} was refused with workspace_busy: another run held "
+            f"the workspace lock of {task} after the case released it",
+            result=str(run_folder(records, run_id) / "result.json"),
+        )
     if owner is not None:
         # An owner not woken by the deadline is judged below, as a problem of the verdict.
         observe(lambda: owner.woken(released) and owner.settled(released), wake)
