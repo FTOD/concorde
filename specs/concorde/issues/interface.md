@@ -136,8 +136,9 @@ strings apart from `context_id`; the store records them as given and derives the
 
 ## Record file
 
-The [lifecycle](module.md#lifecycle) explains the state transitions and their meaning to the main
-agent; this section fixes their representation and validity rules.
+The [lifecycle](module.md#lifecycle) explains the state transitions and their meaning to the
+[main agent](../glossary.json#concept.main-agent); this section fixes their representation and
+validity rules.
 
 A record lives at `.concorde/issues/<issue_id>.md` of the primary worktree and is exactly: the line `# <issue_id>`, a blank
 line, a `json` fence holding the record serialized with two-space indentation, and the closing

@@ -21,10 +21,10 @@ keep passing. Each list may be a JSON list or a string holding one, as the datas
 **Working a case.** The developer builds the case's own Python environment outside the project (its
 interpreter and pinned dependencies, never the project installed in it), prepares the case's
 repository at its base commit under the case's name with `--python` naming that interpreter, which
-`concorde init` records as the project's for its checks' `{python}`, adopts it with the brownfield
-workflow, configures its checks, repairs the adopted Specs with `repair-specs`, and then works the
-issue through Concorde as a main agent would, from `understand` to the merge. Finally `grade` grades
-the merged change.
+`concorde init` records as the project's for its checks' `{python}`, adopts it with the
+[brownfield workflow](../../glossary.json#concept.brownfield-workflow), configures its checks,
+repairs the adopted Specs with `repair-specs`, and then works the issue through Concorde as a main
+agent would, from `understand` to the merge. Finally `grade` grades the merged change.
 
 ## Overview
 

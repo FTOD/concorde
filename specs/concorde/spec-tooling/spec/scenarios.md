@@ -136,7 +136,8 @@ to it.
 - GIVEN a document whose prose uses the title of a concept outside code, headings and links, and never links that concept
 - WHEN the validator runs
 - THEN it reports a `CHK.term.unlinked` warning naming the term, the line and the link to write
-- BUT a Module's title, a shorter title inside a longer one, and a one-word title as the first word of a sentence or table cell are no use of a term
+- AND a title whose words wrap onto the next line is a use, reported on the line it starts on
+- BUT a Module's title, a shorter title inside a longer one, a title's words apart by code or a link, and a one-word title as the first word of a sentence or table cell are no use of a term
 
 ### scenario.spec.concept-local — A concept only its owner uses
 

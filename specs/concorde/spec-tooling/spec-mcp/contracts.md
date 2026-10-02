@@ -81,6 +81,7 @@ same way for its one Module.
 
 <a id="boundary-participation"></a>
 
-**Participation.** The server provides this contract, version 1, to external callers: the main
-agent and agents of other projects. It keeps the result equal to Spec core's grant for the same
-root, Modules and task type, and a change to the grant's shape increments the version.
+**Participation.** The server provides this contract, version 1, to external callers: the
+[main agent](../../glossary.json#concept.main-agent) and agents of other projects. It keeps the
+result equal to Spec core's grant for the same root, Modules and task type, and a change to the
+grant's shape increments the version.

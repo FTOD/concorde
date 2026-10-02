@@ -282,9 +282,9 @@ with `interrupted` and its progress file as finished before the interruption tra
 reader sees a worker that runs forever. The launching Operation learns the run's identity as soon
 as the run exists, so it can name the run even when it is interrupted before the run returns. A
 host killed outside its control, by `SIGKILL`, finishes nothing: its worker run's record stays
-`running`, which [Tracing](../../tracing/module.md) shows as `lost` once no process holds the run
-lock of the run that launched it, and its runtime directory, with the credential copies, is left to
-the system's temporary-file cleaning.
+`running`, which [Tracing](../../tracing/module.md) shows as `lost` once no process holds the
+[run lock](../../glossary.json#concept.run-lock) of the run that launched it, and its runtime
+directory, with the credential copies, is left to the system's temporary-file cleaning.
 
 ### The brief
 

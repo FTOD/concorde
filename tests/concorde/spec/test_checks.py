@@ -302,12 +302,25 @@ class CheckTests(unittest.TestCase):
             "A kept Task\n\ntype stays apart.\n"
         )
         # The Module title "Spec core" and the term "Task type" each wrap onto the next line, so
-        # neither "Spec" nor that first "Task" is a use; a blank line ends the paragraph, so the
-        # last "Task" is one.
+        # neither "Spec" nor that first "Task" is a use; the wrapped "Task type" is a use itself,
+        # placed on the line it starts on. A blank line ends the paragraph, so the last "Task" is
+        # a use of "Task".
         self.assertEqual(
-            {"concept.task": (8, 7, 11)},
+            {"concept.type": (5, 2, 6), "concept.task": (8, 7, 11)},
             term_uses(text, titles, ["Spec core"]),
         )
+
+    @verifies("scenario.spec.term-unlinked")
+    def test_words_apart_by_code_or_a_link_are_no_title(self):
+        titles = {"concept.record": "Task record"}
+        text = (
+            "# Apart\n\n"
+            "In a task\n`concorde task escalate` records it.\n"
+            "Each task [here](x.md) records one.\n"
+        )
+        # Code and links are no words a reader sees between the two words, on one line or
+        # wrapped, so neither "task ... records" is the term.
+        self.assertEqual({}, term_uses(text, titles, []))
 
     @verifies("scenario.spec.node-checks")
     def test_an_anchor_left_empty_by_the_next_group_is_named(self):

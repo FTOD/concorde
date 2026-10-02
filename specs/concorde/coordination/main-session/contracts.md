@@ -25,9 +25,9 @@ instructions naming its tools and events.
 
 At start it finds the **project**: the primary worktree of the Git repository that
 `CLAUDE_PROJECT_DIR` lies in, or its working directory when that variable is unset, found through
-Git's common directory as every `concorde task` command finds it. Every call reads the task
-records, traces and locks of that primary worktree afresh. Outside a Git repository every call is
-refused with `no_project`.
+Git's common directory as every `concorde task` command finds it. Every call reads the
+[task records](../../glossary.json#concept.task-record), traces and locks of that primary worktree
+afresh. Outside a Git repository every call is refused with `no_project`.
 
 **Every call runs the current Concorde.** The server answers `tools/list` and every `tools/call`
 with a process of its own per request, started with the primary worktree's `concorde` as it is at
