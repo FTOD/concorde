@@ -2,9 +2,10 @@
 
 A scenario (``scenarios/<name>.json`` beside this file) names a project, a fault, the prompt a
 developer gives the main agent and what the session must achieve. ``prepare`` clones this
-checkout's committed Concorde into a scenario directory, injects the fault there as a commit of its
-own, builds it, clones the project, makes a develop install of it from the faulty clone, writes the
-project's worker configuration and records the baselines. ``run`` drives a headless session in the
+checkout's committed Concorde into a scenario directory, ``test-<name>`` of the end-to-end root,
+injects the fault there as a commit of its own, builds it, clones the project, makes a develop
+install of it from the faulty clone, writes the project's worker configuration and records the
+baselines. ``run`` drives a headless session in the
 project with the scenario's prompt; ``evaluate`` then decides, from files alone, whether the
 session left Concorde untouched, wrote defect reports that pass ``issues report --check`` and are
 accepted by a clone of the Concorde repository, classified the defect as expected and did not work
@@ -23,7 +24,14 @@ import tempfile
 from pathlib import Path
 
 import sessions
-from common import CHECKOUT, E2EError, clone, repository_url, run
+from common import (
+    CHECKOUT,
+    E2EError,
+    clone,
+    repository_url,
+    run,
+    test_directory,
+)
 
 SCENARIOS = Path(__file__).resolve().parent / "scenarios"
 FIELDS = ("name", "description", "project", "fault", "prompt", "expect")
@@ -119,7 +127,7 @@ def prepare(
     """Set a scenario up under ``root``: the faulty Concorde clone and the project, with
     ``workers`` as the project's worker configuration."""
     chosen = scenario(name)
-    base = root / (directory or name)
+    base = test_directory(root, directory or name)
     if base.exists():
         raise E2EError(
             "scenario_exists",

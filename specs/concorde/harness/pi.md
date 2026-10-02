@@ -13,7 +13,8 @@ The [runtime directory](../glossary.json#concept.runtime-directory)'s `control/p
 policy embedded. The
 policy holds, as absolute paths, the task worktree, the grant's `rw`, `ro` and `names` lists, the
 host-only directories (`control/`, `config/`), the worker's own directories (`work/`, `home/`,
-`tmp/`) of the runtime directory, the runtime paths, the user's real home directory, the sandbox's filesystem
+`tmp/`) of the runtime directory, the runtime paths, the Git administrative paths and the primary
+worktree Workers hands over, the user's real home directory, the sandbox's filesystem
 configuration, the programs `rg` and `fd`, the limits and the
 [worker result](../glossary.json#concept.worker-result) schema. The extension registers exactly
 these tools, replacing pi's built-ins of the same name:
@@ -48,13 +49,13 @@ path decides it:
 
 | Path | Decision | Reason given to the worker |
 | --- | --- | --- |
-| the task worktree's `.git` or below it | deny | Git metadata is not available to workers |
+| a Git administrative path or below one, or a `.git` entry of the task worktree at any depth or below one | deny | Git metadata is not available to workers |
 | a `rw` or `ro` path of the task worktree | allow | — |
 | a `names` path | deny | only the path's name is visible to this task |
 | another path in the task worktree | deny | the path is not in this task's grant |
 | `control/` or `config/` of the runtime directory | deny | the path belongs to the host |
 | the runtime directory's `work/`, `home/` or `tmp/`, or a runtime path | allow | — |
-| another path inside the user's home | deny | the path is outside this task's boundary |
+| another path inside the user's home or the primary worktree | deny | the path is outside this task's boundary |
 | any other path | allow | — |
 
 The last row keeps system directories readable, as on the Claude Code backend.
@@ -64,14 +65,16 @@ The last row keeps system directories readable, as on the Claude Code backend.
 A write or edit is judged on the resolved path with its directories' symbolic links resolved and a
 final symbolic link judged by its own name, exactly as
 [the write hook](claude-code.md#write-hook) judges it, with
-the same rows, decisions and reasons, including the `.git` row.
+the same rows, decisions and reasons, including the `.git` row, and also denies a Git
+administrative path with the `.git` row's reason.
 
 ### Sandbox
 
 `bash`, `grep`, `find` and `ls` run their command through `@anthropic-ai/sandbox-runtime`, the
 engine Claude Code's own sandbox uses. The extension initializes it once per process with no allowed
 network domain and a strict allowlist, and passes the filesystem configuration with every command:
-`denyRead` the task worktree, the user's home and the runtime directory's `control/` and `config/`;
+`denyRead` the task worktree, the user's home, the primary worktree, every Git administrative path
+and the runtime directory's `control/` and `config/`;
 `allowRead` each `ro` and `rw` path, the runtime paths, the worker's own directories and the sandbox-runtime's own
 helper programs; `allowWrite` each `rw` path and the worker's own directories. These are the lists of
 the Claude Code backend's [sandbox](claude-code.md#worker-settings), computed by the same code. The

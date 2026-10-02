@@ -9,6 +9,10 @@ The Module-wide obligations of [End-to-end testing](module.md). The
 
 The tool SHALL prepare only repositories SWE-bench's harness names, unless the developer passes `--any`.
 
+### req.e2e.root-outside-checkout — No test project lies inside the checkout
+
+The tool SHALL refuse an end-to-end root, the default or `CONCORDE_E2E_ROOT`, whose real path is this checkout or lies inside it.
+
 ### req.e2e.fresh-project — A test project is prepared into a new directory
 
 `prepare` SHALL refuse a project directory that already exists.

@@ -27,6 +27,8 @@ export interface Policy {
   hidden: string[];
   own: string[];
   runtime: string[];
+  git: string[];
+  primary: string;
   userHome: string;
   sandbox: { denyRead: string[]; allowRead: string[]; allowWrite: string[] };
   programs: { rg: string; fd: string };
@@ -87,11 +89,18 @@ export function levelOf(
   return null;
 }
 
+/** Whether a worktree-relative path is the worktree's `.git`, a submodule's, or below one. */
 function isGit(relative: string): boolean {
-  return relative === ".git" || relative.startsWith(".git/");
+  return relative.split("/").includes(".git");
+}
+
+/** Whether an absolute path is one of the Git administrative paths or below one. */
+function inGit(policy: Policy, path: string): boolean {
+  return policy.git.some((base) => within(path, base));
 }
 
 function readOne(policy: Policy, path: string): string | null {
+  if (inGit(policy, path)) return "Git metadata is not available to workers";
   if (within(path, policy.worktree)) {
     const relative = relativeTo(path, policy.worktree);
     if (isGit(relative)) return "Git metadata is not available to workers";
@@ -105,7 +114,7 @@ function readOne(policy: Policy, path: string): string | null {
     return `${path} belongs to the host`;
   if ([...policy.own, ...policy.runtime].some((base) => within(path, base)))
     return null;
-  if (within(path, policy.userHome))
+  if (within(path, policy.userHome) || within(path, policy.primary))
     return `${path} is outside this task's boundary`;
   return null;
 }
@@ -130,7 +139,8 @@ export function writeDecision(policy: Policy, path: string): string | null {
     return `${path} is outside the task worktree`;
   }
   const relative = relativeTo(resolved, policy.worktree);
-  if (isGit(relative)) return "Git metadata is not available to workers";
+  if (isGit(relative) || inGit(policy, resolved))
+    return "Git metadata is not available to workers";
   if (listed(relative, policy.rw)) return null;
   if (listed(relative, policy.ro))
     return `${relative} is read-only for this task`;
@@ -169,7 +179,8 @@ export function searchDecision(policy: Policy, path: string): string | null {
     }
     if (directory && within(candidate, policy.worktree)) {
       const relative = relativeTo(candidate, policy.worktree);
-      if (isGit(relative)) return "Git metadata is not available to workers";
+      if (isGit(relative) || inGit(policy, candidate))
+        return "Git metadata is not available to workers";
       if (!readableBelow(policy, relative))
         return `${relative || policy.worktree} holds nothing this task may read`;
       continue;

@@ -205,11 +205,17 @@ An admitted [unbound run](../glossary.json#concept.unbound-run) works in its
 [unbound checkout](../glossary.json#concept.unbound-checkout), never in the worktree it started in,
 here called its origin:
 
-1. The runner resolves the origin's `HEAD` to a commit and creates a new private directory in the
-   system's temporary directory, named `concorde-unbound-…`, holding the checkout
-   `<directory>/<run-id>`, made with `git worktree add --detach` of that commit from the origin's
-   repository, with none of the repository's Git hooks run. Only Git's administrative files of the
-   repository change; no file of the origin and not its index.
+1. The runner resolves the origin's `HEAD` to a commit and creates the checkout
+   `.claude/worktrees/unbound-<run-id>` of the repository's primary worktree, the first worktree
+   `git worktree list` names, with `git worktree add --detach` of that commit from the origin's
+   repository, with none of the repository's Git hooks run. It lies there because a worker runs
+   only in a worktree directly inside `.claude/worktrees/` of its primary worktree
+   ([Workers](workers/launch.md#placement)). A run identity always holds an upper-case `T`, which
+   no task name may hold, so the checkout never takes a task worktree's place. Before creating
+   anything the runner asks Git whether the primary worktree ignores that path, so that the
+   checkout never appears there as untracked files. Only Git's administrative files of the
+   repository and the checkout's own directory change; no other file of the origin or of the
+   primary worktree, and not their index.
 2. Each submodule the commit records that the origin has checked out, and whose repository holds
    the recorded commit, is checked out in the checkout the same way, `git worktree add --detach` of
    that commit from the submodule's repository, with the origin's sparse-checkout patterns when
@@ -230,13 +236,16 @@ here called its origin:
    checkout's path.
 5. Before the result is composed, however the steps ended, including a refusal, a raised error or
    a cancellation, the runner removes the links, the submodule checkouts and the checkout with
-   `git worktree remove --force`, then the temporary directory. A removal Git refuses is done
-   directly, deleting the directory and pruning Git's worktree list, and reported with
-   `checkout-not-removed` evidence; it never changes the result's status. A runner killed outside
-   its control, by `SIGKILL`, leaves the directory to the system's temporary-file cleaning and its
-   worktree entry to Git's own pruning.
+   `git worktree remove --force`, then whatever is left of the checkout's directory, never the
+   `.claude/worktrees/` that holds it. A removal Git refuses is done directly, deleting the
+   directory and pruning Git's worktree list, and reported with `checkout-not-removed` evidence; it
+   never changes the result's status. A runner killed outside its control, by `SIGKILL`, leaves the
+   checkout and its worktree entry behind, which `git worktree remove --force` of that path
+   removes.
 
-When the origin's `HEAD` names no commit, or Git refuses the checkout, the run is refused in the
+When the origin's `HEAD` names no commit, the repository has no primary worktree, the primary
+worktree's Git does not ignore the checkout's path, the path is taken, or Git refuses the checkout,
+the run is refused in the
 lock row, where an unbound run creates its checkout, with `checkout_unavailable`, whose cause is
 the `Execution (unbound checkout)` link with Git's output, and nothing is left behind; the runner
 never falls back to working in the origin.

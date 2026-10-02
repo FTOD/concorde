@@ -21,6 +21,7 @@ Concrete situations that show the [requirements](requirements.md) of
 - WHEN the runner commits the initialized project
 - THEN the commit holds the project's [worker configuration](../../glossary.json#concept.worker-configuration), the one [End-to-end testing](../module.md) gives a [test project](../../glossary.json#concept.test-project) prepared with `--worker-model fast`
 - AND `dogfood.json` names `fast` as its enabled model
+- AND the scenario directory is `test-<scenario>` of the end-to-end root
 
 ### scenario.dogfood-scenarios.unmapped-model — A model the model map cannot resolve is refused
 

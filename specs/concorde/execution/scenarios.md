@@ -42,17 +42,17 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 
 - GIVEN a primary worktree at commit `C` with an uncommitted change, a `.venv` Git ignores and a submodule it has checked out sparsely
 - WHEN an unbound `understand` run is started there and a main session commits a merge in the primary worktree while its worker works
-- THEN the run's steps and worker work in a detached checkout of `C` in a private temporary directory, reading `C`'s files without the uncommitted change, the primary worktree's `.venv` through a link, and the submodule with the same sparse patterns
+- THEN the run's steps and worker work in a detached checkout of `C`, `.claude/worktrees/unbound-<run-id>` of the primary worktree, reading `C`'s files without the uncommitted change, the primary worktree's `.venv` through a link, and the submodule with the same sparse patterns
 - AND the worker's audit of the checkout is clean, and its model is the one `C`'s committed [worker configuration](../glossary.json#concept.worker-configuration) chooses, not an uncommitted change of it
 - AND the result is `ok`, names `C` as `commit`, has `checkout` evidence and is saved in the primary worktree's `.concorde/unbound/`
-- AND the checkout and its temporary directory are gone once the result is written, and the primary worktree keeps its uncommitted change, its `.venv` and the merge
+- AND the checkout is gone once the result is written, and the primary worktree keeps its uncommitted change, its `.venv` and the merge
 
 ### scenario.execution.unbound-checkout-removed — The checkout is removed when a step raises
 
 - GIVEN a primary worktree at commit `C`
 - WHEN a step of an unbound run started there raises an error
 - THEN the result is `failed` with `host_error`, names `C` as `commit` and has `checkout` evidence
-- AND the checkout and its temporary directory are gone once the result is written, and the repository lists no worktree but its own
+- AND the checkout is gone once the result is written, and the repository lists no worktree but its own
 
 ### scenario.execution.unbound-no-commit — A worktree without a commit refuses an unbound run
 
@@ -60,6 +60,13 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 - WHEN an unbound run is started there
 - THEN the run is refused with `checkout_unavailable`, reason `environment`, before any step or worker
 - AND the result names no `commit` and is saved in the worktree's `.concorde/unbound/`
+
+### scenario.execution.unbound-not-ignored — A primary worktree that does not ignore its worktrees refuses an unbound run
+
+- GIVEN a primary worktree with a commit whose Git does not ignore `.claude/worktrees/`
+- WHEN an unbound run is started there
+- THEN the run is refused with `checkout_unavailable`, its cause naming the path Git does not ignore
+- AND no `.claude/` directory is created and the repository lists no worktree but its own
 
 ### scenario.execution.unbound-read-only — An unbound run never launches a writing worker
 

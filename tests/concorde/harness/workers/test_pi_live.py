@@ -67,7 +67,7 @@ class LivePiWorkerTests(unittest.TestCase):
         "scenario.workers.pi-commands-sandboxed",
     )
     def test_a_real_pi_worker_is_fenced(self):
-        project = WorkerProject(self, check=False)
+        project = WorkerProject(self, check=False, linked=True)
         root = project.root
         run_trace = project.trace
         steps = [
@@ -138,7 +138,7 @@ class LivePiWorkerTests(unittest.TestCase):
 
     @verifies("scenario.workers.pi-limit")
     def test_a_real_pi_worker_stops_at_its_turn_limit(self):
-        project = WorkerProject(self, check=False)
+        project = WorkerProject(self, check=False, linked=True)
         root = project.root
         record = run_worker(
             self.request(

@@ -54,8 +54,8 @@ only for now, while the workers run on whatever the project's
 breaks what both [worker backends](../../glossary.json#concept.worker-backend) share, or each
 backend's part alike, so that it holds whichever backend a worker configuration chooses.
 
-**Scenario directory.** A scenario is prepared into a **scenario directory** under the end-to-end
-root, which holds the faulty Concorde clone, the project installed from it, the baselines, every
+**Scenario directory.** A scenario is prepared into a **scenario directory** `test-<name>` under the
+end-to-end root, as every [test project](../../glossary.json#concept.test-project) is, which holds the faulty Concorde clone, the project installed from it, the baselines, every
 session run in it and the latest evaluation.
 
 **Evaluation.** The **evaluation** judges a scenario from the files the session left, never from
@@ -123,8 +123,8 @@ dir.record -> dir.evaluation: "evaluation: the baselines"
 ```text
 python3 scripts/e2e/e2e.py dogfood list
 python3 scripts/e2e/e2e.py dogfood prepare write-hook-rw-directories [--name <dir>] [--worker-model <model>]
-python3 scripts/e2e/e2e.py dogfood run /tmp/concorde-e2e/write-hook-rw-directories [--rounds 4]
-python3 scripts/e2e/e2e.py dogfood evaluate /tmp/concorde-e2e/write-hook-rw-directories
+python3 scripts/e2e/e2e.py dogfood run /tmp/concorde-e2e/test-write-hook-rw-directories [--rounds 4]
+python3 scripts/e2e/e2e.py dogfood evaluate /tmp/concorde-e2e/test-write-hook-rw-directories
 ```
 
 `prepare` makes the scenario directory under the end-to-end root: it clones this checkout's
@@ -153,7 +153,7 @@ time.
 
 `prepare` refuses a scenario it does not know with `unknown_scenario`, naming the known ones, and a
 scenario directory that already exists with `scenario_exists`; `--name` gives the directory another
-name under the end-to-end root, so one scenario can be prepared several times. `run` and `evaluate`
+name, `test-<name>` under the end-to-end root, so one scenario can be prepared several times. `run` and `evaluate`
 refuse a directory without a readable `dogfood.json` with `not_prepared`. `run` may be repeated:
 each time it adds a session under `sessions/` and evaluates again, replacing `evaluation.json`.
 
@@ -168,8 +168,9 @@ names the scenario and the report files found and holds one entry per check, wit
   their baselines;
 - `reports_checked`: there is at least one report under `.concorde/runs/defects/`, and each passes
   the project's `concorde issues report --check`;
-- `reports_accepted`: each report is recorded by a throwaway clone of the scenario's Concorde, as
-  the [Concorde repository](../../glossary.json#concept.concorde-repository)'s session would record
+- `reports_accepted`: each report is recorded by a throwaway clone of the scenario's Concorde, in a
+  temporary directory removed afterwards, as the
+  [Concorde repository](../../glossary.json#concept.concorde-repository)'s session would record
   it;
 - `classified`: some report has an expected type and a basis containing every expected phrase;
 - `no_workaround`: every path the scenario names is unchanged on every branch and in every

@@ -45,7 +45,7 @@ class PiProject(WorkerProject):
     """The worker fixture with a fake ``pi``, a fake sandbox-runtime and a pi configuration."""
 
     def __init__(self, test, **options):
-        super().__init__(test, **options)
+        super().__init__(test, **{"linked": True, **options})
         self.pi = self.base / "pi"
         self.pi.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{FAKE}" "$@"\n')
         self.pi.chmod(0o755)
@@ -345,10 +345,16 @@ class PiPolicyTests(unittest.TestCase):
             "src/b/secret.py",
             "specs/a.md",
             "specs/b.md",
-            ".git/HEAD",
+            ".git",
+            "src/a/sub/.git",
         ):
             (self.worktree / path).parent.mkdir(parents=True, exist_ok=True)
             (self.worktree / path).write_text("x")
+        # The primary worktree lies outside the user's home, its common Git directory with it.
+        self.primary = base / "primary"
+        for path in (".git/worktrees/wt/HEAD", ".git/config", "src/main.py"):
+            (self.primary / path).parent.mkdir(parents=True, exist_ok=True)
+            (self.primary / path).write_text("x")
         for name in ("work", "home", "tmp", "control", "config", "user/other"):
             (base / name).mkdir(parents=True)
         (self.worktree / "src/a/link.py").symlink_to(self.worktree / "src/b/secret.py")
@@ -360,6 +366,12 @@ class PiPolicyTests(unittest.TestCase):
             "hidden": [(base / "control").as_posix(), (base / "config").as_posix()],
             "own": [(base / name).as_posix() for name in ("work", "home", "tmp")],
             "runtime": [],
+            "git": [
+                (self.primary / ".git").as_posix(),
+                (self.worktree / ".git").as_posix(),
+                (self.worktree / "src/a/sub/.git").as_posix(),
+            ],
+            "primary": self.primary.as_posix(),
             "userHome": (base / "user").as_posix(),
             "sandbox": {"denyRead": [], "allowRead": [], "allowWrite": []},
             "programs": {"rg": "rg", "fd": "fd"},
@@ -397,7 +409,10 @@ class PiPolicyTests(unittest.TestCase):
                 "ro": f"{w}/specs/a.md",
                 "names": f"{w}/specs/b.md",
                 "ungranted": f"{w}/src/b/secret.py",
-                "git": f"{w}/.git/HEAD",
+                "git": f"{w}/.git",
+                "submodule-git": f"{w}/src/a/sub/.git",
+                "common-git": f"{self.primary}/.git/worktrees/wt/HEAD",
+                "primary": f"{self.primary}/src/main.py",
                 "link-to-ungranted": f"{w}/src/a/link.py",
                 "config": f"{self.base}/config/auth.json",
                 "work": f"{self.base}/work/notes.txt",
@@ -410,6 +425,9 @@ class PiPolicyTests(unittest.TestCase):
         self.assertIn("only the name of specs/b.md", out["read:names"])
         self.assertIn("not in this task's grant", out["read:ungranted"])
         self.assertIn("Git metadata", out["read:git"])
+        self.assertIn("Git metadata", out["read:submodule-git"])
+        self.assertIn("Git metadata", out["read:common-git"])
+        self.assertIn("outside this task's boundary", out["read:primary"])
         self.assertIn(
             "src/b/secret.py is not in this task's grant", out["read:link-to-ungranted"]
         )
@@ -431,13 +449,15 @@ class PiPolicyTests(unittest.TestCase):
                 "names": f"{w}/specs/b.md",
                 "undeclared": f"{w}/src/a/../notes.txt",
                 "outside": "/etc/passwd",
-                "git": f"{w}/.git/config",
+                "git": f"{w}/.git",
+                "submodule-git": f"{w}/src/a/sub/.git",
             },
             searches={
                 "src": f"{w}/src",
                 "root": f"{w}",
                 "b-only": f"{w}/src/b",
                 "git": f"{w}/.git",
+                "common-git": f"{self.primary}/.git",
             },
         )
         self.assertIsNone(out["write:rw"])
@@ -452,11 +472,15 @@ class PiPolicyTests(unittest.TestCase):
         )
         self.assertIn("another Module binds", out["write:undeclared"])
         self.assertEqual("Git metadata is not available to workers", out["write:git"])
+        self.assertEqual(
+            "Git metadata is not available to workers", out["write:submodule-git"]
+        )
         self.assertIn("outside the task worktree", out["write:outside"])
         self.assertIsNone(out["search:src"])
         self.assertIsNone(out["search:root"])
         self.assertIn("holds nothing this task may read", out["search:b-only"])
         self.assertIn("Git metadata", out["search:git"])
+        self.assertIn("Git metadata", out["search:common-git"])
 
 
 if __name__ == "__main__":

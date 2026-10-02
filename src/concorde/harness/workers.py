@@ -39,6 +39,7 @@ from .pi_backend import PiBackend
 from ..spec.typed_data import register
 from ..tracing import layout
 from ..tracing.node import Node
+from .placement import PlacementError, place
 from .progress import Progress
 from .runs import create_run, now, remove_runtime
 from .settings import SettingsError, grant_view
@@ -671,7 +672,18 @@ def run_worker(request: WorkerRequest) -> dict:
         schema_text = json.dumps(schema, separators=(",", ":"))
         (paths.control / "result.schema.json").write_text(schema_text)
         try:
-            configuration = backend.prepare(request, worktree, paths, schema)
+            placement = place(worktree, request.runtime)
+        except PlacementError as error:
+            return fail(
+                error.code,
+                str(error),
+                "environment",
+                "Workers hides a repository's Git metadata from a worker only where it knows "
+                "it, so it never launches a worker in another placement and cannot move the "
+                "worktree itself",
+            )
+        try:
+            configuration = backend.prepare(request, worktree, paths, schema, placement)
         except BackendRefusal as refusal:
             return fail(
                 refusal.code, refusal.detail, refusal.reason, refusal.explanation

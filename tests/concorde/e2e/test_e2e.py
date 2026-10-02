@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
 import json
 import os
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -21,6 +24,8 @@ SPEC = importlib.util.spec_from_file_location(
 )
 e2e = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(e2e)
+# The module the end-to-end tool loads its shared parts from.
+e2e_common = sys.modules["common"]
 
 
 def workflow_node(workspace: Path, steps: list[dict], reports: list[dict] = ()) -> None:
@@ -90,12 +95,61 @@ class E2ETests(unittest.TestCase):
         with self.assertRaises(e2e.E2EError) as raised:
             e2e.prepare("someone/else", "v1", Path(tempfile.mkdtemp()), "adopt")
         self.assertEqual("unknown_repository", raised.exception.code)
-        # Test projects are throwaway: they never land in the developer's home.
+        # Test projects lie in concorde-e2e of the system's temporary directory, as test-<name>.
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("CONCORDE_E2E_ROOT", None)
             root = e2e.e2e_root()
         self.assertEqual(Path(tempfile.gettempdir()) / "concorde-e2e", root)
-        self.assertFalse(root.is_relative_to(Path.home()))
+        self.assertEqual(root / "test-requests", e2e.test_directory(root, "requests"))
+
+    @verifies("scenario.e2e.root-inside-checkout")
+    def test_a_root_inside_the_checkout_is_refused(self):
+        outside = Path(tempfile.mkdtemp())
+        self.addCleanup(
+            lambda: subprocess.run(["rm", "-rf", str(outside)], check=False)
+        )
+        for named, refused in (
+            (REPOSITORY_ROOT / ".claude/worktrees", True),
+            (REPOSITORY_ROOT, True),
+            (outside, False),
+        ):
+            with (
+                self.subTest(root=named),
+                patch.dict(os.environ, {"CONCORDE_E2E_ROOT": str(named)}),
+            ):
+                if not refused:
+                    self.assertEqual(named, e2e.e2e_root())
+                    continue
+                with self.assertRaises(e2e.E2EError) as raised:
+                    e2e.e2e_root()
+                self.assertEqual("root_inside_checkout", raised.exception.code)
+                self.assertIn("CONCORDE_E2E_ROOT", raised.exception.detail)
+                self.assertIn("CLAUDE.md", raised.exception.detail)
+        # The default root is refused alike when the temporary directory lies in the checkout.
+        with (
+            patch.dict(os.environ, {}, clear=False),
+            patch.object(
+                e2e_common, "DEFAULT_ROOT", REPOSITORY_ROOT / "tmp/concorde-e2e"
+            ),
+        ):
+            os.environ.pop("CONCORDE_E2E_ROOT", None)
+            with self.assertRaises(e2e.E2EError) as raised:
+                e2e.e2e_root()
+        self.assertEqual("root_inside_checkout", raised.exception.code)
+        self.assertIn("default end-to-end root", raised.exception.detail)
+        # prepare refuses it before cloning anything.
+        printed = io.StringIO()
+        with (
+            patch.dict(os.environ, {"CONCORDE_E2E_ROOT": str(REPOSITORY_ROOT)}),
+            patch.object(e2e, "clone") as clone,
+            contextlib.redirect_stdout(printed),
+        ):
+            status = e2e.main(["prepare", "psf/requests", "--rev", "v2.31.0"])
+        self.assertEqual(1, status)
+        self.assertEqual(
+            "root_inside_checkout", json.loads(printed.getvalue())["error"]["code"]
+        )
+        clone.assert_not_called()
 
     def prepare_committing(self, worker_model: str | None) -> tuple[dict, dict]:
         """Prepare a test project with the clone and every command stood in for; what `prepare`

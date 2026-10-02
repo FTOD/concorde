@@ -39,8 +39,16 @@ Concrete situations that show the [requirements](requirements.md) of
 ### scenario.e2e.default-root — Test projects live in the temporary directory
 
 - GIVEN an environment without `CONCORDE_E2E_ROOT`
-- WHEN the tool resolves the end-to-end root
-- THEN it is `concorde-e2e` in the system's temporary directory, outside the developer's home
+- WHEN the tool resolves the end-to-end root and the directory of the test project `requests`
+- THEN the root is `concorde-e2e` in the system's temporary directory and the project's directory `test-requests` there
+
+### scenario.e2e.root-inside-checkout — A root inside the checkout is refused
+
+- GIVEN `CONCORDE_E2E_ROOT` naming this checkout or a directory inside it, or no `CONCORDE_E2E_ROOT` and a system temporary directory inside this checkout
+- WHEN the tool resolves the end-to-end root, as `prepare` does first
+- THEN it refuses with `root_inside_checkout`, naming the root, the checkout and that Claude Code would load the checkout's `CLAUDE.md` into the test project's sessions
+- AND `prepare` clones nothing
+- BUT a `CONCORDE_E2E_ROOT` outside the checkout is the root
 
 ### scenario.e2e.trust — Trusting a test project
 

@@ -7,10 +7,13 @@ file tree:
 - inside the task worktree, every path the grant gives no level or only ``names`` is denied for
   ``Read`` and ``Edit``, every ``ro`` path for ``Edit``; a directory holding nothing readable is
   denied as a whole;
-- outside it, within the user's home, every sibling of the directories leading to the worktree,
-  to the run's own directories and to the runtime paths is denied, so other projects, other task
-  worktrees and ``~/.claude`` stay hidden;
-- the run's ``control/`` and ``config/`` directories and the worktree's Git metadata are denied.
+- outside it, within the user's home and within the primary worktree, every sibling of the
+  directories leading to the worktree, to the run's own directories and to the runtime paths is
+  denied, so other projects, other task worktrees, the primary worktree and ``~/.claude`` stay
+  hidden wherever the repository lies;
+- the run's ``control/`` and ``config/`` directories and every Git administrative path Workers
+  hands over (the common Git directory, the worktree's Git directory, every ``.git`` entry of the
+  worktree and the Git directories they point to) are denied.
 
 System directories and the declared runtime paths stay readable, because Bash needs them to run
 anything. The write hook makes the grant's ``rw`` paths the only ones Edit and Write may change,
@@ -220,7 +223,7 @@ def worktree_rules(
     def visit(directory: Path) -> None:
         for child in sorted(directory.iterdir(), key=lambda item: item.name):
             relative = child.relative_to(worktree).as_posix()
-            if child.name == ".git" and directory == worktree:
+            if child.name == ".git":
                 rules.extend(
                     [
                         _rule("Read", child, child.is_dir()),
@@ -290,20 +293,38 @@ def outside_rules(home: Path, keep: tuple[Path, ...]) -> list[str]:
     return rules
 
 
+def _boundaries(home: Path, primary: Path | None) -> list[Path]:
+    """The directories hidden but for the paths leading to what the worker needs."""
+    return [home] + ([primary] if primary is not None and primary != home else [])
+
+
+def _git_rules(git: tuple[Path, ...]) -> list[str]:
+    rules: list[str] = []
+    for path in git:
+        directory = path.is_dir() and not path.is_symlink()
+        rules += [_rule("Read", path, directory), _rule("Edit", path, directory)]
+    return rules
+
+
 def deny_rules(
     worktree: Path,
     grant: dict,
     run: RunPaths,
     runtime: tuple[Path, ...] = (),
     home: Path | None = None,
+    primary: Path | None = None,
+    git: tuple[Path, ...] = (),
 ) -> list[str]:
     """Every deny rule of one worker (see the module docstring)."""
     worktree = Path(os.path.realpath(worktree))
     home = Path(os.path.realpath(home or Path.home()))
+    primary = Path(os.path.realpath(primary)) if primary is not None else None
     view = grant_view(grant)
     runtime = tuple(Path(os.path.realpath(path)) for path in runtime)
     rules = worktree_rules(worktree, view, (*runtime, *run.own()))
-    rules += outside_rules(home, (worktree, *run.own(), *runtime))
+    for boundary in _boundaries(home, primary):
+        rules += outside_rules(boundary, (worktree, *run.own(), *runtime))
+    rules += _git_rules(git)
     for directory in (run.control, run.config):
         rules += [_rule("Read", directory, True), _rule("Edit", directory, True)]
     return list(dict.fromkeys(rules))
@@ -331,15 +352,20 @@ def sandbox_filesystem(
     run: RunPaths,
     runtime: tuple[Path, ...] = (),
     home: Path | None = None,
+    primary: Path | None = None,
+    git: tuple[Path, ...] = (),
 ) -> dict:
     """The sandbox's filesystem lists of one worker, shared by both backends.
 
-    Everything in the task worktree and the user's home is hidden except the grant's ``ro`` and
-    ``rw`` paths, the runtime paths and the run's own directories; only ``rw`` paths and the run's
-    own directories are writable; the run's ``control/`` and ``config/`` are hidden.
+    Everything in the task worktree, the user's home and the primary worktree is hidden except the
+    grant's ``ro`` and ``rw`` paths, the runtime paths and the run's own directories; only ``rw``
+    paths and the run's own directories are writable; the run's ``control/`` and ``config/`` and
+    every Git administrative path are hidden. A Git path inside a re-allowed ``ro`` or ``rw``
+    directory stays hidden, since a narrower ``denyRead`` wins inside a wider ``allowRead``.
     """
     worktree = Path(os.path.realpath(worktree))
     home = Path(os.path.realpath(home or Path.home()))
+    primary = Path(os.path.realpath(primary)) if primary is not None else None
     view = grant_view(grant)
     readable = [
         (worktree / path.rstrip("/")).as_posix() for path in view.paths("ro", "rw")
@@ -347,12 +373,17 @@ def sandbox_filesystem(
     writable = [(worktree / path.rstrip("/")).as_posix() for path in view.paths("rw")]
     own = [directory.as_posix() for directory in run.own()]
     return {
-        "denyRead": [
-            worktree.as_posix(),
-            home.as_posix(),
-            run.control.as_posix(),
-            run.config.as_posix(),
-        ],
+        "denyRead": list(
+            dict.fromkeys(
+                [
+                    worktree.as_posix(),
+                    *(boundary.as_posix() for boundary in _boundaries(home, primary)),
+                    *(path.as_posix() for path in git),
+                    run.control.as_posix(),
+                    run.config.as_posix(),
+                ]
+            )
+        ),
         "allowRead": sorted(
             set(
                 readable
@@ -389,11 +420,13 @@ def worker_settings(
     python: str,
     runtime: tuple[Path, ...] = (),
     home: Path | None = None,
+    primary: Path | None = None,
+    git: tuple[Path, ...] = (),
 ) -> dict:
     """The complete ``settings.json`` of one worker."""
     worktree = Path(os.path.realpath(worktree))
     home = Path(os.path.realpath(home or Path.home()))
-    rules = deny_rules(worktree, grant, run, runtime, home)
+    rules = deny_rules(worktree, grant, run, runtime, home, primary, git)
     for directory in run.own():
         if denied(rules, directory):
             raise SettingsError(
@@ -419,7 +452,9 @@ def worker_settings(
             "enabled": True,
             "autoAllowBashIfSandboxed": True,
             "allowUnsandboxedCommands": False,
-            "filesystem": sandbox_filesystem(worktree, grant, run, runtime, home),
+            "filesystem": sandbox_filesystem(
+                worktree, grant, run, runtime, home, primary, git
+            ),
             "network": {"allowedDomains": [], "strictAllowlist": True},
         },
     }

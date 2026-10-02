@@ -55,8 +55,17 @@ record, not the progress file, is the run's evidence.
 
 ### What the worker gets
 
+A worker runs only in a worktree that lies directly in `.claude/worktrees/` of its repository's
+primary worktree, a task worktree or an
+[unbound checkout](../../glossary.json#concept.unbound-checkout): that one placement tells Workers
+where all of the repository's Git metadata is, wherever the repository lies, inside or outside the
+user's home. Workers refuses a worker in any other placement before it generates anything, and
+otherwise finds the repository's Git administrative paths with read-only Git, its common Git
+directory, the worktree's own and every `.git` entry inside it, as
+[the run mechanics](launch.md#placement) list them.
+
 Before the first round Workers asks the Harness for the worker's configuration from the frozen
-grant and the run's own paths: on Claude Code the [worker
+grant, the run's own paths, the primary worktree and those Git paths: on Claude Code the [worker
 settings](../../glossary.json#concept.worker-settings) with their [deny
 rules](../../glossary.json#concept.deny-rules), [write
 hook](../../glossary.json#concept.write-hook) and Bash sandbox, on pi the permission
@@ -267,7 +276,7 @@ as the run exists, so it can name the run even when it is interrupted before the
 host killed outside its control, by `SIGKILL`, finishes nothing: its worker run's record stays
 `running`, which [Tracing](../../tracing/module.md) shows as `lost` once no process holds the run
 lock of the run that launched it, and its runtime directory, with the credential copies, is left to
-the system's temporary-file cleaning, as the Execution runner leaves its unbound checkout.
+the system's temporary-file cleaning.
 
 ### The brief
 
@@ -512,7 +521,8 @@ The runtime drives every run and hands the agent process to one of two backends;
 configuration stands apart, because the Operation's step, not the runtime, asks it for a worker's
 backend, model and limits before calling Workers.
 
-- <a id="realization.workers.runtime"></a>The **worker runtime** writes the brief, decides rounds,
+- <a id="realization.workers.runtime"></a>The **worker runtime** checks a worker's placement and
+  finds the Git administrative paths, writes the brief, decides rounds,
   runs the write audit, keeps the progress file, manages run directories/records, and supplies the
   worker prompt snippets every Operation includes, e.g. reporting an error. Its tests, under
   `tests/concorde/harness/workers/`, also exercise the Harness's
@@ -590,13 +600,17 @@ unreadable grant is a host failure before launch.
 <a id="uses-harness"></a>
 
 The **Harness** generates the worker's [agent harness](../../glossary.json#concept.agent-harness)
-from the frozen grant and the run's paths: the
+from the frozen grant, the run's paths, the primary worktree and the Git administrative paths
+Workers found: the
 [worker settings](../../glossary.json#concept.worker-settings) with their
 [deny rules](../../glossary.json#concept.deny-rules) and write hook on Claude Code, the
 [permission extension](../../glossary.json#concept.permission-extension) on pi, and the tool set of
 the task type. Workers relies on them confining the worker's tools to the grant, keeps them
 unchanged for every round, and refuses to launch when a generated deny rule would cover the run's
-own directories. It never edits what the Harness generated.
+own directories. It relies on the Harness hiding every Git administrative path it hands over, and
+the primary worktree but for the way to the worktree, through every tool, which together with the
+placement is what keeps a worker from Git metadata wherever the repository lies. It never edits
+what the Harness generated.
 
 Which of the Harness's parts reaches a worker depends on its backend, and the runtime directory holds
 what was generated:
@@ -634,7 +648,9 @@ file](../../glossary.json#concept.run-progress-file). Workers relies on the runn
 unbound run's writing worker before it reaches Workers, and never reads a [workspace binding](../../glossary.json#concept.workspace-binding) itself.
 For an unbound run the step passes the run's checkout as the worktree and reads the backend,
 model and limits from the worker configuration committed in that checkout, as every other input of
-the run, so Workers never learns that the worktree it audits is a checkout.
+the run, so Workers never learns that the worktree it audits is a checkout. Workers relies on the
+runner placing that checkout in `.claude/worktrees/` of the primary worktree, where a worker may
+run; a task worktree opened anywhere else runs no worker.
 
 <a id="uses-tracing"></a>
 

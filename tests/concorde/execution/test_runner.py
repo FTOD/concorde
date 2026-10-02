@@ -477,8 +477,10 @@ class RunnerTests(unittest.TestCase):
         # gone once the run ended.
         checkout = Path(self.worker_progress(envelope)["worktree"])
         self.assertNotEqual(self.root, checkout)
-        self.assertTrue(checkout.parent.name.startswith(PREFIX), checkout)
-        self.assertFalse(checkout.parent.exists())
+        self.assertEqual(
+            self.root / ".claude/worktrees" / f"{PREFIX}{envelope['run_id']}", checkout
+        )
+        self.assertFalse(checkout.exists())
         self.assertEqual([self.root, self.worktree], worktrees(self.root))
         self.assertEqual(before, store.load_task(self.root, "t1"))
         # The run's node lies with the unbound runs of the worktree it started in.
@@ -1501,7 +1503,9 @@ class UnboundCheckoutTests(unittest.TestCase):
             (str(self.root), examined, examined),
             (probe["started_in"], probe["commit"], envelope["commit"]),
         )
-        self.assertTrue(checkout.parent.name.startswith(PREFIX), checkout)
+        self.assertEqual(
+            self.root / ".claude/worktrees" / f"{PREFIX}{envelope['run_id']}", checkout
+        )
         self.assertEqual("def add(a, b):\n    return a - b\n", probe["calc"])
         self.assertEqual(str(self.root / ".venv"), probe["venv"])
         self.assertEqual(["passed"], probe["checks"])
@@ -1527,7 +1531,7 @@ class UnboundCheckoutTests(unittest.TestCase):
         self.assertEqual(
             (str(checkout), examined), (progress["worktree"], progress["commit"])
         )
-        self.assertFalse(checkout.parent.exists())
+        self.assertFalse(checkout.exists())
         self.assertEqual([self.root], worktrees(self.root))
         # The starting worktree keeps its change, its environment and the commit made meanwhile.
         self.assertEqual("uncommitted\n", (self.root / "src/a/calc.py").read_text())
@@ -1629,6 +1633,22 @@ class UnboundCheckoutTests(unittest.TestCase):
         self.assertTrue(
             (empty / ".concorde/unbound" / envelope["run_id"] / "result.json").exists()
         )
+
+    @verifies("scenario.execution.unbound-not-ignored")
+    def test_a_primary_worktree_not_ignoring_its_worktrees_refuses_an_unbound_run(self):
+        bare = self.project.base / "unignored"
+        bare.mkdir()
+        (bare / "a.txt").write_text("a\n")
+        git(bare, "init", "-q")
+        git(bare, "add", "-A")
+        git(bare, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "a")
+        status, envelope = self.probe(cwd=bare)
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+        self.assertEqual(["refused", "checkout_unavailable"], codes(envelope["error"]))
+        [cause] = envelope["error"]["causes"]
+        self.assertIn("does not ignore .claude/worktrees/unbound-", cause["detail"])
+        self.assertFalse((bare / ".claude").exists())
+        self.assertEqual([bare], worktrees(bare))
 
 
 class BindingTests(unittest.TestCase):

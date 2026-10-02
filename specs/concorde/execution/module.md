@@ -109,7 +109,7 @@ command is refused unbound with `binding_required`.
 <a id="concept.unbound-checkout"></a>
 
 An unbound run never works in the worktree it starts in. The runner checks out that worktree's
-`HEAD` detached in a private temporary directory, the
+`HEAD` detached as `.claude/worktrees/unbound-<run-id>` of the repository's primary worktree, the
 **[unbound checkout](../glossary.json#concept.unbound-checkout)**, where the run's steps and workers
 work, and removes it before it writes the result, which names the commit examined as `commit`. What
 the run examines is that commit, never uncommitted changes; [Running unbound](#running-unbound)
@@ -388,8 +388,10 @@ primary worktree against merges for a review's whole life would stall every othe
 tolerating changes would make the audit meaningless. A checkout of one commit gives the run a fixed
 input that no other session touches, and naming that commit in the result tells the caller exactly
 what was examined. The checkout is Git's own linked worktree (`git worktree add --detach`), which
-shares the repository's objects, so it costs no clone and needs no copying code; it lives outside
-the project in a private temporary directory, and the runner removes it through Git again. What a
+shares the repository's objects, so it costs no clone and needs no copying code; it lives in the
+primary worktree's `.claude/worktrees/`, which Git ignores, beside the task worktrees, because
+that is the one placement where Workers lets a worker run and knows every Git administrative path
+to hide from it, and the runner removes it through Git again. What a
 commit never holds, the environments Git ignores and the checkouts of submodules, comes from the
 worktree the run started in: the environments linked, since the run only reads them, and each
 submodule checked out from its own repository at the commit the checkout records.

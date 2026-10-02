@@ -118,13 +118,21 @@ def prerequisites(request, worktree: Path) -> tuple[dict, list[str]]:
 
 
 def policy(
-    request, worktree: Path, paths, programs: dict, user_home: Path, schema: dict
+    request,
+    worktree: Path,
+    paths,
+    programs: dict,
+    user_home: Path,
+    schema: dict,
+    placement=None,
 ) -> dict:
     """The permission extension's policy: every path absolute, lists from the frozen grant."""
     view = grant_view(request.grant)
     package = Path(programs["sandbox_runtime"])
+    primary = placement.primary if placement else None
+    git = placement.git if placement else ()
     filesystem = sandbox_filesystem(
-        worktree, request.grant, paths, request.runtime, user_home
+        worktree, request.grant, paths, request.runtime, user_home, primary, git
     )
     filesystem["allowRead"] = sorted(
         set(filesystem["allowRead"]) | {(package / "vendor").as_posix()}
@@ -139,6 +147,9 @@ def policy(
         "runtime": [
             Path(os.path.realpath(path)).as_posix() for path in request.runtime
         ],
+        "git": [path.as_posix() for path in git],
+        # Without a placement the primary worktree is the home, which the home row covers.
+        "primary": (primary or user_home).as_posix(),
         "userHome": user_home.as_posix(),
         "sandbox": filesystem,
         "programs": {"rg": programs["rg"], "fd": programs["fd"]},
@@ -317,7 +328,9 @@ class PiBackend:
     def tools(self, task_type: str, grant: dict | None = None) -> str:
         return tool_set(TOOL_SETS, task_type, grant)
 
-    def prepare(self, request, worktree: Path, paths, schema: dict) -> Path:
+    def prepare(
+        self, request, worktree: Path, paths, schema: dict, placement=None
+    ) -> Path:
         programs, missing = prerequisites(request, worktree)
         if missing:
             raise BackendRefusal(
@@ -331,7 +344,9 @@ class PiBackend:
         self._configure(request, paths)
         user_home = Path(os.path.realpath(request.home or Path.home()))
         try:
-            value = policy(request, worktree, paths, programs, user_home, schema)
+            value = policy(
+                request, worktree, paths, programs, user_home, schema, placement
+            )
         except SettingsError as error:
             raise BackendRefusal(
                 error.code,
