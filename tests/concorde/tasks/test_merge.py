@@ -419,6 +419,39 @@ class MergeTests(unittest.TestCase):
         self.assertNotIn("spec-validation", first_log + second_log)
         self.assertFalse((attempt / "checks/3").exists())
 
+    @verifies("scenario.tasks.merge-update-validated")
+    def test_an_unvalidated_update_adds_the_default_check(self):
+        self.project.open_task("t1")
+        self.deliver()
+        before = self.head()
+        # An update not validated since: the project's validation fails until it is repaired.
+        mark = self.root / ".concorde/update.json"
+        # An installed project ignores the mark, as Distribution's installer arranges.
+        with (self.root / ".git/info/exclude").open("a") as exclude:
+            exclude.write("/.concorde/update.json\n")
+        mark.write_text('{"state": "unvalidated", "from": "1.0.0", "to": "2.0.0"}\n')
+        passing = python("pass")
+        busy = self.refusal("merge", "t1", "--check", passing)
+        self.assertEqual("check_failed", busy["code"], busy)
+        self.assertIn("spec-validation", busy["detail"])
+        self.assertEqual(before, self.head())
+        self.assertTrue(mark.is_file())
+        record = store.show_task(self.root, "t1")["record"]
+        self.assertEqual("delivered", record["state"])
+        attempt = store.task_folder(self.root, "t1") / "merges/1"
+        self.assertEqual(
+            [shlex.split(passing), merge.default_checks()[0]],
+            trace.read(attempt)["content"]["data"]["checks"],
+        )
+        # Without the mark, the named checks alone run again.
+        mark.unlink()
+        status, value = self.command("merge", "t1", "--check", passing)
+        self.assertEqual(0, status, value)
+        self.assertEqual(
+            [shlex.split(passing)],
+            [check["argv"] for check in value["merge"]["checks"]],
+        )
+
     @verifies("scenario.tasks.merge-waits", "scenario.tasks.merge-busy")
     def test_a_second_merge_waits_for_the_first(self):
         self.project.open_task("t1")

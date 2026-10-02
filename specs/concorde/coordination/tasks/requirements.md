@@ -349,6 +349,17 @@ A merge refused before `git merge` is governed by
 [req.tasks.merge-clean-primary](#req.tasks.merge-clean-primary) and
 [req.tasks.refusal-inert](#req.tasks.refusal-inert).
 
+### req.tasks.merge-update-validated — An unvalidated update is validated by every merge
+
+While the primary worktree holds the mark of a `concorde update` not validated since,
+`concorde task merge` SHALL run the default check, `concorde spec-validation`, on the merged
+result after the `--check` commands it was given, unless they include it.
+
+[Distribution](../../distribution/module.md) promises that nothing merges before an update is
+validated; the checks a merge is given replace the default otherwise, and so could leave that
+validation out. A merge that validates clears the mark as any passing validation does, so the merge
+of a task that repairs what the update found still lifts the barrier.
+
 ### req.tasks.merging-recorded — A merge is recorded before it touches the primary branch
 
 `concorde task merge` SHALL store the task as `merging`, with the primary branch's name and commit

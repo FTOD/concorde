@@ -453,8 +453,10 @@ conflict is resolved in the task worktree by merging the primary branch into the
 validating and delivering again, never in the primary worktree. After the merge, Tasks records the
 merge commit and runs the checks in the primary worktree: `concorde spec-validation` of the merged
 checkout by default, or exactly the `--check` commands given, such as a project that must build
-first. A failed check, or checks that leave uncommitted paths, returns the primary branch with
-`git reset --keep` to the commit it had and refuses with `check_failed`, naming the check, its exit
+first, followed by `concorde spec-validation` while a `concorde update` is not validated yet, so
+that no checks let a merge pass that update's barrier. A failed check, or checks that leave
+uncommitted paths, returns the primary branch with `git reset --keep` to the commit it had and
+refuses with `check_failed`, naming the check, its exit
 status, its log in the merge attempt's node, and any paths the checks created, which the reset
 leaves in the primary worktree. Every merge attempt, whether it merged, conflicted, failed a check
 or was undone, is a node `merges/<n>/` of the task's trace, each check a node below it with its
@@ -831,6 +833,13 @@ and to put back, before a merge judges the primary worktree clean, what Issue wr
 uncommitted there, for a caller that already holds the merge lock; and on its bookkeeping command
 to close them after the merge, for such a caller too, answering or refusing with its own error
 link, which Tasks passes on in a warning.
+
+<a id="uses-distribution"></a>
+
+**Distribution** installs and updates Concorde in the project and marks it Concorde unvalidated
+after an update until a validation passes. Tasks relies on that mark, `.concorde/update.json` of
+the primary worktree, to tell that a merge must also run `concorde spec-validation`, whatever
+checks it was given, so that nothing merges before an update is validated.
 
 <a id="uses-spec"></a>
 

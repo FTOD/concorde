@@ -210,7 +210,8 @@ than `git merge`.
 
 [Tasks](../tasks/module.md) holds the [merge lock](../../glossary.json#concept.merge-lock) during
 the merge, runs `concorde spec-validation` of the merged checkout, or exactly the `--check`
-commands given, and undoes a merge whose checks fail.
+commands given, followed by `concorde spec-validation` while a `concorde update` is not validated
+yet, and undoes a merge whose checks fail.
 
 ### req.main-session.merge-interrupted — An interrupted merge is finished first
 

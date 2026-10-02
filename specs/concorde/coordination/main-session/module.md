@@ -260,7 +260,8 @@ The installed guidance gives the main agent this working method:
   that `delivery` committed, from the primary worktree with `concorde task merge`, never with
   `git merge`: it holds the [merge lock](../../glossary.json#concept.merge-lock) so merges of
   several main sessions never interleave, runs `concorde spec-validation` on the primary branch, or
-  exactly the `--check` commands given, undoes a merge whose checks fail and closes the task.
+  exactly the `--check` commands given, with `concorde spec-validation` after them while a
+  `concorde update` is not validated yet, undoes a merge whose checks fail and closes the task.
   Retry a `merge_busy`, and a `workspace_busy` once the task's run ended; have the task's session
   resolve a conflict by merging the primary branch into its task branch and delivering again, and
   after a `concorde update` that installed a new Protocol copy have the session of each open task

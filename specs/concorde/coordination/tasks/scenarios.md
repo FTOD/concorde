@@ -326,6 +326,13 @@ This illustrates [a merge running the Concorde it started with](requirements.md#
 - THEN exactly those two commands run, in that order, in the primary worktree after the merge
 - AND the default check does not run
 
+### scenario.tasks.merge-update-validated — An unvalidated update adds the default check
+
+- GIVEN a delivered task and the primary worktree's mark `.concorde/update.json` of an update not validated since, in a project whose `concorde spec-validation` fails
+- WHEN the main agent runs `concorde task merge <task-id>` with one passing `--check`
+- THEN the given check runs and then `concorde spec-validation`, recorded among the attempt's checks, which fails, so the merge is undone with `check_failed`, the task is delivered again and the mark stays
+- AND once the mark is gone, the same merge runs the given check alone
+
 ### scenario.tasks.merge-waits — A second merge waits for the first
 
 - GIVEN one process holding the [merge lock](../../glossary.json#concept.merge-lock) for task `a`

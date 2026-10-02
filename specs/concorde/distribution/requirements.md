@@ -160,7 +160,8 @@ While the project is Concorde unvalidated, a `concorde spec-validation` in its p
 
 A validation that finds no error instead clears the mark ([below](#req.distribution.unvalidated-cleared))
 and reports no `CONCORDE-UPDATE-001`. Nothing merges before the update is validated, since a `task
-merge` runs that validation by default.
+merge` runs that validation on the merged result while the mark exists, whatever checks it is given
+([Tasks](../coordination/tasks/requirements.md#req.tasks.merge-update-validated)).
 
 ### req.distribution.unvalidated-cleared — The first clean validation clears the mark
 

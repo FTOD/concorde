@@ -340,7 +340,7 @@ server's `task_merge`, which returns at once (see "The project MCP server" below
 `concorde task merge <task>` in background Bash. Never merge a task with `git merge` yourself:
 other main sessions may be merging into the same primary worktree, and `concorde task merge` takes
 the merge lock that lets only one merge run at a time. It merges the branch, runs
-`concorde spec-validation` there (or exactly the `--check` commands you name, for a project that must build first), undoes the
+`concorde spec-validation` there (or exactly the `--check` commands you name, for a project that must build first, followed by `concorde spec-validation` while a `concorde update` is not validated yet), undoes the
 merge if a check fails, and closes the task as merged. It waits up to `--wait` seconds (300 by
 default) for the locks it needs: first for a run of the task that is still going, such as a
 `delivery` finishing, then for another session's merge. Run it in background Bash

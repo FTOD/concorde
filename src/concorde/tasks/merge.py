@@ -44,6 +44,7 @@ from contextlib import ExitStack
 from pathlib import Path
 
 from .. import errors
+from ..distribution.install import UPDATE_STATE
 from ..spec.typed_data import register
 from ..tracing import locks
 from ..tracing import node as trace
@@ -303,6 +304,17 @@ LISTED = 20
 def default_checks() -> list[list[str]]:
     """``concorde spec-validation`` of the primary worktree, by this Python and this package."""
     return [[sys.executable, "-m", "concorde", "spec-validation"]]
+
+
+def with_update_check(primary: Path, commands: list[list[str]]) -> list[list[str]]:
+    """The checks a merge runs: while ``concorde update``'s mark says the project is Concorde
+    unvalidated, the default ``spec-validation`` runs after the given checks too, so that no
+    checks given to a merge let it pass the update's barrier, and a merge that validates clears
+    the mark as any validation does."""
+    default = default_checks()[0]
+    if (primary / UPDATE_STATE).is_file() and default not in commands:
+        return [*commands, default]
+    return commands
 
 
 def parse_checks(texts: list[str]) -> list[list[str]]:
@@ -846,7 +858,7 @@ def _merge_new(
         "branch": branch,
         "after": None,
         "history": store.history_key(primary, task_id),
-        "checks": commands,
+        "checks": with_update_check(primary, commands),
         "since": store.now(),
         "pid": os.getpid(),
     }
@@ -1080,4 +1092,5 @@ __all__ = [
     "next_attempt",
     "parse_checks",
     "reserved_attempt",
+    "with_update_check",
 ]
