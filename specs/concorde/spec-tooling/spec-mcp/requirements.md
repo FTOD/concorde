@@ -46,9 +46,9 @@ A tool call whose request is rejected, or whose Specs a tool other than `validat
 SHALL return a tool error carrying the failure's code and no result.
 
 The failure's code is one of the server's own codes or Spec core's, as the
-[contracts](contracts.md#session) list them. `validate` reports Specs it cannot load the way Spec
-core's validation result does: with status `invalid` and an error finding that describes the load
-failure.
+[contracts](contracts.md#session) list them. `validate` reports Specs it cannot load the way
+Spec core's validation result does: with status `invalid` and an error finding that describes the
+load failure.
 
 ## Safety
 

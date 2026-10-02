@@ -119,8 +119,9 @@ existing file and whose entry says nothing is specified yet. The
 [main agent](../../../glossary.json#concept.main-agent) opens a task bound to that Module and hands
 it to the task's [task session](../../../glossary.json#concept.task-session), which runs the three
 steps in order in its task worktree, directly or through the
-[brownfield workflow](../../workflows/module.md); the main agent settles the decision points within
-its authority and puts the rest to the developer:
+[brownfield workflow](../../workflows/module.md); the main agent settles the
+[decision points](../../../glossary.json#concept.decision-point) within its authority and puts the
+rest to the developer:
 
 ```text
 concorde run survey --modules <module-id> [--answers <file>] [--input <run-id>]…
