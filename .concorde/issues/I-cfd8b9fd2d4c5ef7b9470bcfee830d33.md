@@ -4,7 +4,7 @@
 {
   "schema_version": 3,
   "id": "I-cfd8b9fd2d4c5ef7b9470bcfee830d33",
-  "status": "open",
+  "status": "closed",
   "reports": [
     {
       "id": "sha256:9621e56570560fd20912b5b0ece26ab575e0986cb52d6f533824d39bbbde3fe2",
@@ -72,6 +72,18 @@
       }
     }
   ],
-  "dispositions": []
+  "dispositions": [
+    {
+      "reason": "resolved",
+      "note": "Fixed by task fix-small-modules, merged into the primary branch at 2c71660ef9b2c42840e3089f6eeaa62036e57b35.",
+      "evidence": [
+        "merge commit 2c71660ef9b2c42840e3089f6eeaa62036e57b35",
+        "task fix-small-modules"
+      ],
+      "duplicate_of": null,
+      "actor": "main-agent",
+      "created_at": "2026-10-02T02:16:58.933446+00:00"
+    }
+  ]
 }
 ```
