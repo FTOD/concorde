@@ -175,7 +175,7 @@ EARLIER_ISSUES: dict = {
     ]
 }
 
-# contract.code-review.review, version 4 (contracts.md); a test keeps the two equal.
+# contract.code-review.review, version 5 (contracts.md); a test keeps the two equal.
 REVIEW_SCHEMA: dict = {
     "type": "object",
     "additionalProperties": False,
@@ -188,9 +188,12 @@ REVIEW_SCHEMA: dict = {
         "checks",
         "verdict",
         "modules",
+        "workflow",
     ],
     "properties": {
         "scope": {"enum": list(SCOPES)},
+        # The workflow object of the step output convention, whose own contract defines it.
+        "workflow": {"type": "object"},
         "base": {"anyOf": [_STRING, {"type": "null"}]},
         "focus": {"anyOf": [_STRING, {"type": "null"}]},
         "reviewed_paths": _STRINGS,
@@ -882,6 +885,21 @@ def derive_verdict(ctx: RunContext):
         "checks": check_results(state.results),
         "verdict": verdict,
         "modules": modules,
+        "workflow": review_issues.review_output(
+            "code_review",
+            verdict,
+            [
+                {
+                    "module": item["module"],
+                    "outcome": item["outcome"],
+                    "findings": {
+                        tier: sum(1 for f in item["findings"] if f["tier"] == tier)
+                        for tier in review_issues.TIERS
+                    },
+                }
+                for item in modules
+            ],
+        ),
     }
     validate(payload, REVIEW_SCHEMA)
     ctx.output = payload

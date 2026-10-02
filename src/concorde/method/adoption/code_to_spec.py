@@ -46,6 +46,7 @@ from .records import (
     load_answers,
     repeated_ids,
     resolved_decisions,
+    workflow_object,
     worktree_relative,
 )
 from .survey import answers_failure
@@ -501,6 +502,12 @@ def observe(ctx: RunContext):
             "preexisting_errors": len(ctx.state["old"]),
         },
     }
+    output["workflow"] = workflow_object(
+        output["decisions"],
+        output["open_questions"],
+        output["deviations"],
+        survey=False,
+    )
     ctx.output = output
     found = [
         evidence(

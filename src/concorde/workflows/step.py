@@ -34,23 +34,13 @@ from ..execution.runs import (
 )
 from ..kernel.schema import validate
 from . import store
+from .output import ANSWER, BLOCKING, declared, pending
 from .store import WorkflowError, Workspace, WorkspaceRetired
 
 WAIT = 540.0
 POLL = 0.5
 KEY_PATTERN = "^[a-z][a-z0-9_:.-]*$"
-ANSWER = {
-    "type": "object",
-    "additionalProperties": False,
-    "required": ["id", "question", "answer", "answered_by"],
-    "properties": {
-        "id": {"type": "string", "pattern": "^[dq]\\.[a-z0-9-]+$"},
-        "question": {"type": "string", "minLength": 1},
-        "answer": {"type": "string", "minLength": 1},
-        "answered_by": {"enum": ["main-agent", "developer"]},
-    },
-}
-# contract.workflows.step-request, version 5
+# contract.workflows.step-request, version 6
 REQUEST_SCHEMA: dict = {
     "type": "object",
     "additionalProperties": False,
@@ -76,12 +66,8 @@ REQUEST_SCHEMA: dict = {
         },
     },
 }
-MODULE_ID = {
-    "type": "string",
-    "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$",
-}
 NAME = {"type": "string", "pattern": "^[a-z][a-z_-]*$"}
-# contract.workflows.step, version 5
+# contract.workflows.step, version 6
 STEP_SCHEMA: dict = {
     "type": "object",
     "additionalProperties": False,
@@ -96,8 +82,8 @@ STEP_SCHEMA: dict = {
         "summary",
         "result_path",
         "decision_points",
-        "created_modules",
-        "ready",
+        "blocking",
+        "data",
         "error",
     ],
     "properties": {
@@ -121,19 +107,8 @@ STEP_SCHEMA: dict = {
             "anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]
         },
         "decision_points": {"type": "integer", "minimum": 0},
-        "created_modules": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "additionalProperties": False,
-                "required": ["id", "uses"],
-                "properties": {
-                    "id": MODULE_ID,
-                    "uses": {"type": "array", "items": MODULE_ID},
-                },
-            },
-        },
-        "ready": {"anyOf": [{"type": "boolean"}, {"type": "null"}]},
+        "blocking": {"anyOf": [{"type": "null"}, BLOCKING]},
+        "data": {"type": "object"},
         "error": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/error"}]},
     },
     "$defs": copy.deepcopy(errors.DEFS),
@@ -332,41 +307,6 @@ def answered(path: str | None) -> set[str]:
         return set()
 
 
-def created_modules(store: Store, output: dict | None) -> list[dict]:
-    """The Modules a scaffold created, each with the other created Modules its survey said it
-    uses, in the scaffold's order."""
-    if not output or "created" not in output:
-        return []
-    created = [item["id"] for item in output["created"]]
-    survey = load_result(store, output.get("survey_run")) or {}
-    uses = {
-        child["id"]: [use["target"] for use in child.get("uses", [])]
-        for child in ((survey.get("output") or {}).get("children") or [])
-    }
-    return [
-        {"id": identity, "uses": [t for t in uses.get(identity, []) if t in created]}
-        for identity in created
-    ]
-
-
-def decision_points(name: str, output: dict | None, settled=frozenset()) -> int:
-    """Open questions, and for a survey decisions the worker took, that no answer settled."""
-    if not output:
-        return 0
-    count = sum(
-        1
-        for item in output.get("open_questions") or []
-        if item.get("id") not in settled
-    )
-    if name == "survey":
-        count += sum(
-            1
-            for item in output.get("decisions") or []
-            if item.get("decided_by") == "worker" and item.get("id") not in settled
-        )
-    return count
-
-
 def outcome(
     space: Workspace,
     workflow: str,
@@ -378,7 +318,7 @@ def outcome(
     settled=frozenset(),
 ) -> dict:
     result = load_result(space.store, run_id) if state == "finished" else None
-    output = (result or {}).get("output")
+    declaration = declared((result or {}).get("output"))
     value = {
         "workflow": workflow,
         "workspace": space.name,
@@ -391,13 +331,9 @@ def outcome(
         "result_path": (
             result_path(space.store, run_id).as_posix() if run_id else None
         ),
-        "decision_points": decision_points(name, output, settled),
-        "created_modules": created_modules(space.store, output)
-        if name == "scaffold"
-        else [],
-        "ready": output.get("ready")
-        if name == "task-validation" and isinstance(output, dict)
-        else None,
+        "decision_points": len(pending(declaration, settled)),
+        "blocking": declaration["blocking"],
+        "data": declaration["data"],
         "error": error,
     }
     if state == "lost" and error is None:

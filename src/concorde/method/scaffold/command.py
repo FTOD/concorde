@@ -28,6 +28,7 @@ from ..adoption.records import (
     obj,
     proposal_problems,
 )
+from ...workflows.output import step_output
 from ...execution.context import (
     Continue,
     RunContext,
@@ -36,7 +37,7 @@ from ...execution.context import (
 )
 from ..specs import admission, spec_cause, spec_finding
 
-# contract.scaffold.record, version 2
+# contract.scaffold.record, version 3
 SCAFFOLD_RECORD_SCHEMA = obj(
     {
         "parent": MODULE_ID,
@@ -56,6 +57,8 @@ SCAFFOLD_RECORD_SCHEMA = obj(
         "parent_entries_before": {"type": "array", "items": S},
         "parent_entries_after": {"type": "array", "items": S},
         "files_written": {"type": "array", "items": S},
+        # The workflow object of the step output convention, whose own contract defines it.
+        "workflow": {"type": "object"},
     }
 )
 
@@ -470,6 +473,7 @@ def plan(ctx: RunContext):
         "parent_entries_before": before_entries,
         "parent_entries_after": after_entries,
         "files_written": sorted(change["path"] for change in changes),
+        "workflow": handoff(children, created),
     }
     return Continue(
         evidence=[
@@ -479,6 +483,31 @@ def plan(ctx: RunContext):
                 f"{len(created)} Module(s), {len(changes)} file(s)",
             )
         ]
+    )
+
+
+def handoff(children: list[dict], created: list[dict]) -> dict:
+    """What a workflow script needs to describe the created Modules (req.scaffold.step-output):
+    each created Module, in the record's order, with the uses the survey proposed among them."""
+    identities = [item["id"] for item in created]
+    uses = {
+        child["id"]: [use["target"] for use in child.get("uses", [])]
+        for child in children
+    }
+    return step_output(
+        data={
+            "created_modules": [
+                {
+                    "id": identity,
+                    "uses": [
+                        target
+                        for target in uses.get(identity, [])
+                        if target in identities
+                    ],
+                }
+                for identity in identities
+            ]
+        }
     )
 
 

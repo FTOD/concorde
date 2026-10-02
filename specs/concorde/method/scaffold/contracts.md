@@ -20,7 +20,7 @@ The `output` of `scaffold`, entirely observed by its steps.
 ```concorde-contract
 {
   "id": "contract.scaffold.record",
-  "version": 2,
+  "version": 3,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -31,7 +31,8 @@ The `output` of `scaffold`, entirely observed by its steps.
       "externals",
       "parent_entries_before",
       "parent_entries_after",
-      "files_written"
+      "files_written",
+      "workflow"
     ],
     "properties": {
       "parent": {
@@ -122,10 +123,13 @@ The `output` of `scaffold`, entirely observed by its steps.
           "type": "string",
           "minLength": 1
         }
+      },
+      "workflow": {
+        "type": "object"
       }
     }
   },
-  "semantics": "What one scaffold did. parent is the surveyed Module and survey_run the admitted survey. created lists every Module created, with its entry path and the entries its realization binds. parent_entries_before and parent_entries_after are the union of the parent's realization entries before and after. The scaffold never configures the proposal's checks. files_written lists every file the transaction wrote. externals are the vendored paths the scaffold made external inclusions of their users. A behaviour or field change increments the version.",
+  "semantics": "What one scaffold did. parent is the surveyed Module and survey_run the admitted survey. created lists every Module created, with its entry path and the entries its realization binds. parent_entries_before and parent_entries_after are the union of the parent's realization entries before and after. The scaffold never configures the proposal's checks. files_written lists every file the transaction wrote. externals are the vendored paths the scaffold made external inclusions of their users. workflow is the object of Workflows' step output convention, which defines its fields: its data holds created_modules, each created Module in the record's order with the uses the survey proposed among the created Modules (req.scaffold.step-output). A behaviour or field change increments the version.",
   "example": {
     "parent": "module.shop",
     "survey_run": "r-20260925T101500-survey-1a2b3c4d",
@@ -169,7 +173,28 @@ The `output` of `scaffold`, entirely observed by its steps.
       "specs/shop/inventory/module.md.json",
       "specs/shop/module.md",
       "specs/shop/module.md.json"
-    ]
+    ],
+    "workflow": {
+      "decision_points": [],
+      "decisions": [],
+      "deviations": [],
+      "notes": [],
+      "blocking": null,
+      "data": {
+        "created_modules": [
+          {
+            "id": "module.checkout",
+            "uses": [
+              "module.inventory"
+            ]
+          },
+          {
+            "id": "module.inventory",
+            "uses": []
+          }
+        ]
+      }
+    }
   }
 }
 ```

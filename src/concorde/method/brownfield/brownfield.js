@@ -3,9 +3,15 @@
 //
 // args: { module, mode: "interactive" | "no-ask", answers: { <base key>: [answer, ...] },
 //         retry: [<base key>, ...] }
-// The adapter defines step(key, argv), report(lost) and note(text). A step outcome is the
-// contract.workflows.step value, or null when the step agent returned nothing. Every stop ends
-// with report(), which builds the result from what the hosts recorded.
+// The adapter defines step(key, argv), report(lost) and note(text), and the build the constants
+// WORKFLOW and LAST_STEP ("delivery", as Method registers it). A step outcome is the
+// contract.workflows.step value, or null when the step agent returned nothing; what a run hands
+// this script is in the outcome's data, under the step output convention. Every stop ends with
+// report(), which builds the result from what the hosts recorded.
+
+if (!args.module) {
+  throw new Error("the brownfield workflow needs args { module, mode }: the Module to describe")
+}
 
 const INTERACTIVE = args.mode === "interactive"
 
@@ -74,7 +80,8 @@ note("Scaffolding the proposed Modules")
 const scaffold = await step("scaffold", ["scaffold", "--input", survey.run_id])
 if (broken(scaffold) || !ok(scaffold)) return await finish(scaffold, "scaffold")
 
-const described = providersFirst(scaffold.created_modules).concat([args.module])
+// Scaffold hands the Modules it created, each with the uses among them (req.scaffold.step-output).
+const described = providersFirst((scaffold.data || {}).created_modules || []).concat([args.module])
 for (const id of described) {
   note("Describing " + id)
   const outcome = await step("describe:" + id, ["code_to_spec", "--modules", id])
@@ -87,11 +94,13 @@ if (broken(reviewed) || (INTERACTIVE && !ok(reviewed))) return await finish(revi
 
 note("Validating the workspace")
 const validation = await step("validate", ["task-validation"])
-if (broken(validation) || !ok(validation) || validation.ready !== true) {
+// A validation that found the workspace not ready ends ok and declares itself blocking
+// (req.validation.step-output).
+if (broken(validation) || !ok(validation) || validation.blocking || (validation.data || {}).ready !== true) {
   return await finish(validation, "validate")
 }
 
 note("Delivering the workspace")
 // An adoption describes existing code, so scenarios need no new verifying test to be delivered.
-const delivery = await step("delivery", ["delivery", "--adoption"])
-return await finish(delivery, "delivery")
+const delivery = await step(LAST_STEP, ["delivery", "--adoption"])
+return await finish(delivery, LAST_STEP)

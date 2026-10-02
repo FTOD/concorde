@@ -120,6 +120,15 @@
       ]
     },
     {
+      "id": "realization.method.brownfield",
+      "type": "realization",
+      "title": "Brownfield procedure",
+      "meaning": "#realization.method.brownfield",
+      "entries": [
+        "src/concorde/method/brownfield/"
+      ]
+    },
+    {
       "id": "realization.method.review-issues",
       "type": "realization",
       "title": "Review Issues",

@@ -130,13 +130,15 @@ IDENTITY: dict = {
     ]
 }
 
-# contract.spec-review.panel-payload, version 4 (panel.md); a test keeps the two equal.
+# contract.spec-review.panel-payload, version 5 (panel.md); a test keeps the two equal.
 PAYLOAD_SCHEMA: dict = {
     "type": "object",
-    "required": ["verdict", "modules"],
+    "required": ["verdict", "modules", "workflow"],
     "additionalProperties": False,
     "properties": {
         "verdict": {"enum": OUTCOMES},
+        # The workflow object of the step output convention, whose own contract defines it.
+        "workflow": {"type": "object"},
         "modules": {
             "type": "array",
             "minItems": 1,
@@ -693,7 +695,13 @@ def derive_verdict(ctx: RunContext):
         _module_payload(subject, panels.get(subject.module)) for subject in subjects
     ]
     verdict = max((item["outcome"] for item in modules), key=OUTCOMES.index)
-    payload = {"verdict": verdict, "modules": modules}
+    payload = {
+        "verdict": verdict,
+        "modules": modules,
+        "workflow": review_issues.review_output(
+            "spec_panel", verdict, review.blocking_counts(modules)
+        ),
+    }
     validate(payload, PAYLOAD_SCHEMA)
     ctx.output = payload
     reported = [item for module in modules for item in module["findings"]]

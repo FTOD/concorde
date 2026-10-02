@@ -15,6 +15,7 @@ from pathlib import Path
 
 from ..kernel import errors
 from ..kernel.refusal import KernelError
+from .output import StepOutputError
 from .report import report
 from .step import WAIT, StepError, check_request, run_step
 from .store import WorkflowError, WorkspaceRetired, workspace
@@ -161,6 +162,22 @@ def main(argv, cwd: Path | None = None) -> int:
         status, value = run_step(space, request, arguments.wait)
     except StepError as refusal:
         sys.stdout.write(json.dumps({"error": refusal.link}, indent=2) + "\n")
+        return 1
+    except StepOutputError as error:
+        link = errors.link(
+            "component",
+            "Workflows (concorde workflow step)",
+            "invalid_step_output",
+            f"step {request['key']} of workspace {space.name}: {error}",
+            reason="input",
+            explanation="a workflow reads only the workflow object of a run's output, and "
+            "cannot hand on what breaks the step output convention",
+            options=[
+                "repair the Operation or command that wrote the object, then run the step "
+                "again with retry"
+            ],
+        )
+        sys.stdout.write(json.dumps({"error": link}, indent=2) + "\n")
         return 1
     sys.stdout.write(json.dumps(value, indent=2, ensure_ascii=False) + "\n")
     return status

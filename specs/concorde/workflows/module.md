@@ -167,7 +167,8 @@ once, in plain JavaScript without asynchronous helper functions, kept apart from
 The part that owns a procedure contributes its script, registering the workflow's name, description
 and last step with Workflows' catalog; the script reads from each step outcome the `data` its runs
 handed it, such as the Modules a scaffold created, and Workflows never reads those values. The build
-wraps it with a `meta` block naming its last step and the Claude Code step adapter, Workflows' own,
+wraps it with a `meta` block, the constants `WORKFLOW`, its name, and `LAST_STEP`, the last step
+its owner registered, and the Claude Code step adapter, Workflows' own,
 whose step function's **[step agent](../glossary.json#concept.step-agent)** is a subagent that calls
 the tool `workflow_step`, which the workflow part registers with the
 [project MCP server](../glossary.json#concept.project-mcp-server), once
@@ -500,9 +501,11 @@ workflows: Workflows {
     "src/concorde/workflows/__init__.py"
     "src/concorde/workflows/catalog.py"
     "src/concorde/workflows/cli.py"
+    "src/concorde/workflows/output.py"
     "src/concorde/workflows/step.py"
     "src/concorde/workflows/report.py"
     "src/concorde/workflows/store.py"
+    "src/concorde/workflows/tools.py"
   }
   scripts: Workflow scripts {
     "src/concorde/workflows/scripts/"
@@ -515,20 +518,20 @@ workflows: Workflows {
 
 The **[Workflow](../glossary.json#concept.workflow) commands** realization holds the workflow
 catalog (`catalog.py`: each workflow's name, description, script and last step, as the part that
-owns the procedure registers them), the workflow record with its workflow lock, answers, saved
-reports and step nodes (`store.py`), the `concorde workflow step` and `report` commands, which the
-workflow part registers with the `concorde` command, and the step outcome, step request, step output
-and workflow result schemas. The code of the `workflow_step` and `workflow_report` tools lies today
-with the project MCP server's own code, which [Main session](../coordination/main-session/module.md)
-binds, until the code task that follows this Spec moves it into the workflow part's package and
-registers it from there.
+owns the procedure registers them when its code loads, and their rendering), the step output
+convention (`output.py`), the workflow record with its workflow lock, answers, saved reports and
+step nodes (`store.py`), the `concorde workflow step` and `report` commands, which the workflow part
+registers with the `concorde` command, the step outcome, step request and workflow result schemas,
+and the code of the `workflow_step` and `workflow_report` tools (`tools.py`). Until Distribution
+composes the `concorde` command and the project MCP server from the part registrations, its own
+wiring presents these tools and loads the procedures' registering modules.
 
 <a id="realization.workflows.scripts"></a>
 
 The **Workflow scripts** realization holds the Claude Code step adapter (`claude.js`) the build
-wraps every procedure with. It also binds, for now, the one procedure Concorde has,
-`brownfield.js`, which is Method's [brownfield workflow](../glossary.json#concept.brownfield-workflow)
-script and moves into Method's package with the code task that follows this Spec.
+wraps every procedure with. It holds no procedure: Method's
+[brownfield workflow](../glossary.json#concept.brownfield-workflow) script lies in Method's package,
+beside the module that registers it.
 
 <a id="realization.workflows.tests"></a>
 

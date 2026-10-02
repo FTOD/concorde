@@ -216,7 +216,7 @@ class BuildTests(unittest.TestCase):
         self.assertTrue(claude.startswith("export const meta = {"))
         self.assertIn('"name": "concorde-brownfield"', claude)
         procedure = (
-            (root / "src/concorde/workflows/scripts/brownfield.js").read_text().strip()
+            (root / "src/concorde/method/brownfield/brownfield.js").read_text().strip()
         )
         self.assertIn(procedure, claude)
         self.assertIn("function step(key, argv)", claude)
@@ -231,9 +231,9 @@ class BuildTests(unittest.TestCase):
         )
         self.assertFalse((root / "generated/workflows/pi").exists())
         self.assertIn(
-            "src/concorde/workflows/scripts/brownfield.js", manifest["sources"]
+            "src/concorde/method/brownfield/brownfield.js", manifest["sources"]
         )
-        script = root / "src/concorde/workflows/scripts/brownfield.js"
+        script = root / "src/concorde/method/brownfield/brownfield.js"
         script.write_text(script.read_text() + "\n// changed\n")
         ok, differences = check_build(root)
         self.assertFalse(ok)

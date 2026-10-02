@@ -166,12 +166,13 @@ The [run result](../../glossary.json#concept.run-result) carries this payload as
 ```concorde-contract
 {
   "id": "contract.spec-review.payload",
-  "version": 5,
+  "version": 6,
   "schema": {
     "type": "object",
     "required": [
       "verdict",
-      "modules"
+      "modules",
+      "workflow"
     ],
     "additionalProperties": false,
     "properties": {
@@ -181,6 +182,9 @@ The [run result](../../glossary.json#concept.run-result) carries this payload as
           "changes_required",
           "incomplete"
         ]
+      },
+      "workflow": {
+        "type": "object"
       },
       "modules": {
         "type": "array",
@@ -463,7 +467,7 @@ The [run result](../../glossary.json#concept.run-result) carries this payload as
       }
     }
   },
-  "semantics": "The outcome of one Spec review. Each Module's outcome is incomplete when it could not be reviewed or its Issues could not be read or all written, changes_required when an Issue of a blocking tier (obvious-fix, preferred-fix, decision-needed) stands for it, reported by this review or an earlier Issue it carried, and accepted otherwise; the verdict is incomplete if any Module is incomplete, else changes_required if any Module requires changes, else accepted. Findings, severities, tiers and checker statuses are worker claims; check is null when no checker ran. context_identity is null only when no grant could be computed. Each finding's issue is the Issue the Operation reported it to, and null when the checker disputed it or it was not reported because the Issue store refused an earlier report; earlier, present only when the Operation appended the finding to an earlier Issue it offered, names that Issue. earlier_issues is null when the Module's earlier Issues were never read; otherwise carried lists the earlier Issues no finding named and no resolution resolved, which still stand, with their severity, tier and title; resolved lists the earlier Issues the reviewer found the Specs no longer have, with its reason, for the task to close, since the Operation closes none; ignored lists the names of Issues a finding or resolution gave that were not offered or already settled, with why. A behaviour or field change increments the version.",
+  "semantics": "The outcome of one Spec review. Each Module's outcome is incomplete when it could not be reviewed or its Issues could not be read or all written, changes_required when an Issue of a blocking tier (obvious-fix, preferred-fix, decision-needed) stands for it, reported by this review or an earlier Issue it carried, and accepted otherwise; the verdict is incomplete if any Module is incomplete, else changes_required if any Module requires changes, else accepted. Findings, severities, tiers and checker statuses are worker claims; check is null when no checker ran. context_identity is null only when no grant could be computed. Each finding's issue is the Issue the Operation reported it to, and null when the checker disputed it or it was not reported because the Issue store refused an earlier report; earlier, present only when the Operation appended the finding to an earlier Issue it offered, names that Issue. earlier_issues is null when the Module's earlier Issues were never read; otherwise carried lists the earlier Issues no finding named and no resolution resolved, which still stand, with their severity, tier and title; resolved lists the earlier Issues the reviewer found the Specs no longer have, with its reason, for the task to close, since the Operation closes none; ignored lists the names of Issues a finding or resolution gave that were not offered or already settled, with why. workflow is the object of Workflows' step output convention, which defines its fields: one review note whose data holds the verdict and each Module's outcome with its count of blocking findings that stand. A behaviour or field change increments the version.",
   "example": {
     "verdict": "changes_required",
     "modules": [
@@ -502,7 +506,30 @@ The [run result](../../glossary.json#concept.run-result) carries this payload as
           "ignored": []
         }
       }
-    ]
+    ],
+    "workflow": {
+      "decision_points": [],
+      "decisions": [],
+      "deviations": [],
+      "notes": [
+        {
+          "kind": "review",
+          "text": "spec_review verdict changes_required: module.checkout changes_required",
+          "data": {
+            "verdict": "changes_required",
+            "modules": [
+              {
+                "module": "module.checkout",
+                "outcome": "changes_required",
+                "blocking": 1
+              }
+            ]
+          }
+        }
+      ],
+      "blocking": null,
+      "data": {}
+    }
   }
 }
 ```

@@ -31,14 +31,16 @@ FAKE_REVIEWER = Path(__file__).with_name("fake_reviewer.py")
 NO_ISSUES = [
     sys.executable,
     "-c",
-    "import sys; sys.stderr.write(\"concorde: error: argument command: invalid choice: "
+    'import sys; sys.stderr.write("concorde: error: argument command: invalid choice: '
     "'issues'\\n\"); sys.exit(2)",
 ]
 
 
 def without_issues():
     """Patch the reviews' ``concorde`` so that it offers no ``issues``."""
-    return patch("concorde.method.review_issues.concorde_command", return_value=NO_ISSUES)
+    return patch(
+        "concorde.method.review_issues.concorde_command", return_value=NO_ISSUES
+    )
 
 
 def finding(path, tier="obvious-fix", module="module.a", **extra):
@@ -238,6 +240,11 @@ class SpecReviewTests(unittest.TestCase):
         self.assertEqual((0, "ok"), (exit_status, envelope["status"]), envelope)
         output = envelope["output"]
         self.assertEqual("changes_required", output["verdict"])
+        # The verdict reaches a workflow as a review note (the step output convention).
+        [note] = output["workflow"]["notes"]
+        self.assertEqual(
+            ("review", "changes_required"), (note["kind"], note["data"]["verdict"])
+        )
         findings = output["modules"][0]["findings"]
         self.assertEqual(
             ["specs/a/obligations.md", "specs/a/module.md"],

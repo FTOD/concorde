@@ -514,6 +514,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     if words and words[0] == "workflow":
         # A workflow step tells an execution command from an Operation by the command catalog.
         load_definitions()
+        # The report names a workflow's last step from the catalog the parts register when their
+        # code loads; until the parts register with Distribution, loading Method's registering
+        # module is what registers the brownfield workflow.
+        from ..method import brownfield as _brownfield  # noqa: F401
         from ..workflows.cli import main as workflow_main
 
         return workflow_main(words[1:])

@@ -94,6 +94,7 @@ class BrownfieldFlowTests(unittest.TestCase):
         import shutil
 
         from concorde.method.scaffold.command import child_reading
+        from concorde.method import brownfield  # noqa: F401 -- registers the workflow
         from concorde.workflows.catalog import render
         from tests.concorde.support.brownfield_project import FILES
 
@@ -323,7 +324,8 @@ class BrownfieldFlowTests(unittest.TestCase):
         self.assertEqual("adopt", result["workspace"])
         self.assertEqual(["d.db-helper"], [item["id"] for item in result["decisions"]])
         self.assertEqual(
-            ["q.payment-retry"], [item["id"] for item in result["open_questions"]]
+            ["d.db-helper", "q.payment-retry"],
+            [item["id"] for item in result["decision_points"]],
         )
         head = git(project, "rev-parse", "concorde/adopt")
         changed = git(

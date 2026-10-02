@@ -37,6 +37,7 @@ from .records import (
     narrowed_entries,
     proposal_problems,
     resolved_decisions,
+    workflow_object,
     worktree_relative,
 )
 
@@ -261,6 +262,12 @@ def check(ctx: RunContext):
         "checks": claims["checks"],
         "decisions": claims["decisions"],
         "open_questions": claims["open_questions"],
+        "workflow": workflow_object(
+            claims["decisions"],
+            claims["open_questions"],
+            checks=claims["checks"],
+            survey=True,
+        ),
     }
     return Continue(
         output=output,

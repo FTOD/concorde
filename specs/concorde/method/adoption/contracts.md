@@ -24,7 +24,7 @@ The `output` of a `survey`. `remaining_entries` is computed by the host, never b
 ```concorde-contract
 {
   "id": "contract.adoption.decomposition",
-  "version": 6,
+  "version": 7,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -36,7 +36,8 @@ The `output` of a `survey`. `remaining_entries` is computed by the host, never b
       "remaining_entries",
       "checks",
       "decisions",
-      "open_questions"
+      "open_questions",
+      "workflow"
     ],
     "properties": {
       "module": {
@@ -309,10 +310,13 @@ The `output` of a `survey`. `remaining_entries` is computed by the host, never b
             }
           }
         }
+      },
+      "workflow": {
+        "type": "object"
       }
     }
   },
-  "semantics": "The decomposition a survey proposes for module. children are the Modules to create: a new identity, a unique title, a purpose paragraph, the entries each binds (existing paths the surveyed Module's realizations cover, a directory ending in /) and the Modules it uses with the reason. remaining_entries are the entries the surveyed Module keeps once every child's entries and every external are removed, computed by the host with the rule of Adoption's shared records that the scaffold applies again: an entry no child entry or external touches stays; an entry a child entry or an external covers goes; and a directory entry that contains a child's entry or an external is replaced by the entries below it that nothing took, a subdirectory staying one entry when nothing inside it was taken and a file being listed exactly. Files the directory exclusion rule skips were never bound and are not listed. checks are proposed checks, in the shape of configured checks, for the surveyed Module or a child, each with the reason it was found; nothing configures them but the developer. decisions are the choices the worker took where the code left several open, written by the host: the worker names each option by an identity of its own and its choice by that identity, and the host records the options' texts, the chosen option's text as chosen and decided_by worker, or, for a decision an answer settles, the answer as chosen and that answer's answered_by, main-agent or developer, as decided_by; the worker never copies an option's text. Every path in children's entries, externals, check inputs and open questions' evidence is relative to the worktree: the host writes a path that begins with the worktree's absolute path, or its real path, relative to it before checking the proposal. open_questions are behaviours whose intent the worker could not tell; the worker wrote no promise about them. A proposed check may carry an env of variable names to strings, and its argv names the project's own interpreter as {python}; its inputs are canonical project-relative paths. externals are third-party code the project vendors, each with its path among the surveyed Module's paths, the Module that uses it and the reason: the scaffold takes them out of the parent's entries and makes each an external inclusion of its user, never a Module, so nobody describes or reviews it as the project's code. A proposed check may carry when: readiness for a full suite that runs only when readiness is decided. A behaviour or field change increments the version.",
+  "semantics": "The decomposition a survey proposes for module. children are the Modules to create: a new identity, a unique title, a purpose paragraph, the entries each binds (existing paths the surveyed Module's realizations cover, a directory ending in /) and the Modules it uses with the reason. remaining_entries are the entries the surveyed Module keeps once every child's entries and every external are removed, computed by the host with the rule of Adoption's shared records that the scaffold applies again: an entry no child entry or external touches stays; an entry a child entry or an external covers goes; and a directory entry that contains a child's entry or an external is replaced by the entries below it that nothing took, a subdirectory staying one entry when nothing inside it was taken and a file being listed exactly. Files the directory exclusion rule skips were never bound and are not listed. checks are proposed checks, in the shape of configured checks, for the surveyed Module or a child, each with the reason it was found; nothing configures them but the developer. decisions are the choices the worker took where the code left several open, written by the host: the worker names each option by an identity of its own and its choice by that identity, and the host records the options' texts, the chosen option's text as chosen and decided_by worker, or, for a decision an answer settles, the answer as chosen and that answer's answered_by, main-agent or developer, as decided_by; the worker never copies an option's text. Every path in children's entries, externals, check inputs and open questions' evidence is relative to the worktree: the host writes a path that begins with the worktree's absolute path, or its real path, relative to it before checking the proposal. open_questions are behaviours whose intent the worker could not tell; the worker wrote no promise about them. A proposed check may carry an env of variable names to strings, and its argv names the project's own interpreter as {python}; its inputs are canonical project-relative paths. externals are third-party code the project vendors, each with its path among the surveyed Module's paths, the Module that uses it and the reason: the scaffold takes them out of the parent's entries and makes each an external inclusion of its user, never a Module, so nobody describes or reviews it as the project's code. A proposed check may carry when: readiness for a full suite that runs only when readiness is decided. workflow is the object of Workflows' step output convention, which defines its fields: every open question and every decision the worker took itself as a decision point, every decision, and every proposed check as a note of kind proposed-check whose data is the check (req.adoption.step-output). A behaviour or field change increments the version.",
   "example": {
     "module": "module.shop",
     "summary": "The shop has a checkout service and an inventory service that share one database helper; they become two Modules and the helper stays with the root.",
@@ -381,7 +385,61 @@ The `output` of a `survey`. `remaining_entries` is computed by the host, never b
         "decided_by": "worker"
       }
     ],
-    "open_questions": []
+    "open_questions": [],
+    "workflow": {
+      "decision_points": [
+        {
+          "id": "d.db-helper",
+          "kind": "decision",
+          "question": "Does the shared database helper get a Module of its own?",
+          "options": [
+            "a Module of its own",
+            "stay with the root"
+          ],
+          "recommendation": "the worker chose 'stay with the root': it is 40 lines of connection setup with no behaviour of its own",
+          "module": "module.shop"
+        }
+      ],
+      "decisions": [
+        {
+          "id": "d.db-helper",
+          "question": "Does the shared database helper get a Module of its own?",
+          "options": [
+            "a Module of its own",
+            "stay with the root"
+          ],
+          "decision": "stay with the root",
+          "reason": "it is 40 lines of connection setup with no behaviour of its own",
+          "decided_by": "worker",
+          "module": "module.shop"
+        }
+      ],
+      "deviations": [],
+      "notes": [
+        {
+          "kind": "proposed-check",
+          "text": "check.checkout.tests for module.checkout: pyproject.toml configures pytest and tests/checkout tests only the checkout package",
+          "data": {
+            "id": "check.checkout.tests",
+            "module": "module.checkout",
+            "argv": [
+              "{python}",
+              "-m",
+              "pytest",
+              "tests/checkout"
+            ],
+            "timeout_seconds": 300,
+            "inputs": [
+              "src/checkout",
+              "tests/checkout"
+            ],
+            "reason": "pyproject.toml configures pytest and tests/checkout tests only the checkout package"
+          }
+        }
+      ],
+      "blocking": null,
+      "data": {}
+    }
   }
 }
 ```
@@ -396,7 +454,7 @@ choice.
 ```concorde-contract
 {
   "id": "contract.adoption.spec-description",
-  "version": 4,
+  "version": 5,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -412,7 +470,8 @@ choice.
       "deviations",
       "linked_tests",
       "unlinked_tests",
-      "validation"
+      "validation",
+      "workflow"
     ],
     "properties": {
       "modules": {
@@ -762,10 +821,13 @@ choice.
             "minimum": 0
           }
         }
+      },
+      "workflow": {
+        "type": "object"
       }
     }
   },
-  "semantics": "What one code_to_spec run described for modules. changed_documents are the documents whose reading or metadata changed, created_documents the prepared stubs the worker filled, removed_stubs the prepared stubs the host removed because the worker left them unchanged or proposed their deletion. promises are the promises the worker wrote, each with source code when it describes behaviour read in code or answer when it states intent a developer answer gave, and then question naming the answered question. decisions and open_questions have the shapes of the decomposition proposal, and the host writes the decisions from the worker's claims as it does there; no open question is written as a promise. The host writes a path in a promise's tests or an open question's evidence that begins with the worktree's absolute path, or its real path, relative to the worktree. deviations list every answered question whose stated intent differs from the observed code. validation holds in new_errors the structural errors the run counts as its own, those new since the baseline and every error located in a document a described Module owns even when the baseline had it, and in preexisting_errors the count of the other errors, which existed before the run; no error is counted in both. A scenario promise may name, in tests, the existing tests it was taken from (path::name or path::Class::name); linked_tests are the tests the host then marked with a verifies decorator, and unlinked_tests every link it left undone with the reason. A behaviour or field change increments the version.",
+  "semantics": "What one code_to_spec run described for modules. changed_documents are the documents whose reading or metadata changed, created_documents the prepared stubs the worker filled, removed_stubs the prepared stubs the host removed because the worker left them unchanged or proposed their deletion. promises are the promises the worker wrote, each with source code when it describes behaviour read in code or answer when it states intent a developer answer gave, and then question naming the answered question. decisions and open_questions have the shapes of the decomposition proposal, and the host writes the decisions from the worker's claims as it does there; no open question is written as a promise. The host writes a path in a promise's tests or an open question's evidence that begins with the worktree's absolute path, or its real path, relative to the worktree. deviations list every answered question whose stated intent differs from the observed code. validation holds in new_errors the structural errors the run counts as its own, those new since the baseline and every error located in a document a described Module owns even when the baseline had it, and in preexisting_errors the count of the other errors, which existed before the run; no error is counted in both. A scenario promise may name, in tests, the existing tests it was taken from (path::name or path::Class::name); linked_tests are the tests the host then marked with a verifies decorator, and unlinked_tests every link it left undone with the reason. workflow is the object of Workflows' step output convention, which defines its fields: every open question as a decision point of kind question, every decision and every deviation (req.adoption.step-output). A behaviour or field change increments the version.",
   "example": {
     "modules": [
       "module.checkout"
@@ -831,6 +893,40 @@ choice.
     "validation": {
       "new_errors": [],
       "preexisting_errors": 0
+    },
+    "workflow": {
+      "decision_points": [
+        {
+          "id": "q.payment-retry",
+          "kind": "question",
+          "question": "retrying a declined payment: a declined payment is retried once after two seconds, but a timed-out one is not",
+          "options": [
+            "retry declined payments once, never timeouts",
+            "retry both",
+            "retry neither"
+          ],
+          "recommendation": "ask whether a timeout should be retried; the current behaviour may be an oversight",
+          "module": "module.checkout"
+        }
+      ],
+      "decisions": [
+        {
+          "id": "d.order-term",
+          "question": "Is the stored record called an order or a purchase?",
+          "options": [
+            "Order",
+            "Purchase"
+          ],
+          "decision": "Order",
+          "reason": "the table, the class and the API all say order; purchase appears once in a log message",
+          "decided_by": "worker",
+          "module": "module.checkout"
+        }
+      ],
+      "deviations": [],
+      "notes": [],
+      "blocking": null,
+      "data": {}
     }
   }
 }

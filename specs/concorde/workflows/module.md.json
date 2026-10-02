@@ -86,9 +86,11 @@
         "src/concorde/workflows/__init__.py",
         "src/concorde/workflows/catalog.py",
         "src/concorde/workflows/cli.py",
+        "src/concorde/workflows/output.py",
         "src/concorde/workflows/step.py",
         "src/concorde/workflows/report.py",
-        "src/concorde/workflows/store.py"
+        "src/concorde/workflows/store.py",
+        "src/concorde/workflows/tools.py"
       ]
     },
     {

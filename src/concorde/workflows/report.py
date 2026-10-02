@@ -15,23 +15,21 @@ from datetime import UTC, datetime
 from ..kernel import errors
 from ..execution.runs import load_result, run_state
 from ..kernel.schema import validate
-from . import store
-from .step import (
-    NAME,
-    STEP_SCHEMA,
-    answered,
-    decision_points,
-    lost_link,
-    workflow_link,
+from . import catalog, store
+from .output import (
+    MODULE_ID,
+    DECISION,
+    DECISION_POINT,
+    DEVIATION,
+    NOTE,
+    declared,
+    pending,
 )
+from .step import NAME, STEP_SCHEMA, answered, lost_link, workflow_link
 from .store import WorkflowError, Workspace
 
 RUN = STEP_SCHEMA["properties"]["run_id"]["anyOf"][0]
 KEY = STEP_SCHEMA["properties"]["key"]
-MODULE_ID = {
-    "type": "string",
-    "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$",
-}
 S = {"type": "string", "minLength": 1}
 
 
@@ -54,7 +52,18 @@ STEP_ROW = obj(
         "summary": {"anyOf": [S, {"type": "null"}]},
     }
 )
-# contract.workflows.result, version 7
+
+
+def located(item: dict) -> dict:
+    """A declared item of the step output convention with the step and run that declared it."""
+    return {
+        **item,
+        "required": ["step", "run_id", *item["required"]],
+        "properties": {"step": KEY, "run_id": RUN, **item["properties"]},
+    }
+
+
+# contract.workflows.result, version 8
 RESULT_SCHEMA: dict = {
     "$defs": copy.deepcopy(errors.DEFS),
     **obj(
@@ -68,110 +77,11 @@ RESULT_SCHEMA: dict = {
             "summary": S,
             "steps": {"type": "array", "items": STEP_ROW},
             "superseded": {"type": "array", "items": STEP_ROW},
-            "decisions": {
-                "type": "array",
-                "items": obj(
-                    {
-                        "step": KEY,
-                        "run_id": RUN,
-                        "id": {"type": "string", "pattern": "^d\\.[a-z0-9-]+$"},
-                        "module": MODULE_ID,
-                        "question": S,
-                        "options": {"type": "array", "minItems": 2, "items": S},
-                        "chosen": S,
-                        "reason": S,
-                        "decided_by": {"enum": ["worker", "main-agent", "developer"]},
-                    }
-                ),
-            },
-            "open_questions": {
-                "type": "array",
-                "items": obj(
-                    {
-                        "step": KEY,
-                        "run_id": RUN,
-                        "id": {"type": "string", "pattern": "^q\\.[a-z0-9-]+$"},
-                        "module": MODULE_ID,
-                        "subject": S,
-                        "observed": S,
-                        "evidence": {"type": "array", "minItems": 1, "items": S},
-                        "why_uncertain": S,
-                        "options": {"type": "array", "minItems": 1, "items": S},
-                        "recommendation": S,
-                    }
-                ),
-            },
-            "deviations": {
-                "type": "array",
-                "items": obj(
-                    {
-                        "step": KEY,
-                        "run_id": RUN,
-                        "module": MODULE_ID,
-                        "question": {"type": "string", "pattern": "^q\\.[a-z0-9-]+$"},
-                        "intended": S,
-                        "observed": S,
-                    }
-                ),
-            },
-            "reviews": {
-                "type": "array",
-                "items": obj(
-                    {
-                        "step": KEY,
-                        "run_id": RUN,
-                        "verdict": {
-                            "enum": ["accepted", "changes_required", "incomplete"]
-                        },
-                        "modules": {"type": "array", "items": {"type": "object"}},
-                    }
-                ),
-            },
-            "proposed_checks": {
-                "type": "array",
-                "items": obj(
-                    {
-                        "step": KEY,
-                        "run_id": RUN,
-                        "id": {
-                            "type": "string",
-                            "pattern": "^check\\.[a-z0-9-]+(?:\\.[a-z0-9-]+)*$",
-                        },
-                        "module": MODULE_ID,
-                        "argv": {"type": "array", "minItems": 1, "items": S},
-                        "env": {"type": "object", "additionalProperties": S},
-                        "when": {"enum": ["always", "readiness"]},
-                        "timeout_seconds": {"type": "integer", "minimum": 1},
-                        "inputs": {"type": "array", "items": S},
-                        "reason": S,
-                    },
-                    required=[
-                        "step",
-                        "run_id",
-                        "id",
-                        "module",
-                        "argv",
-                        "timeout_seconds",
-                        "inputs",
-                        "reason",
-                    ],
-                ),
-            },
-            "pending": {
-                "type": "array",
-                "items": obj(
-                    {
-                        "step": KEY,
-                        "run_id": RUN,
-                        "kind": {"enum": ["decision", "open_question"]},
-                        "id": {"type": "string", "pattern": "^[dq]\\.[a-z0-9-]+$"},
-                        "module": MODULE_ID,
-                        "question": S,
-                        "options": {"type": "array", "items": S},
-                        "recommendation": S,
-                    }
-                ),
-            },
+            "decisions": {"type": "array", "items": located(DECISION)},
+            "decision_points": {"type": "array", "items": located(DECISION_POINT)},
+            "deviations": {"type": "array", "items": located(DEVIATION)},
+            "notes": {"type": "array", "items": located(NOTE)},
+            "pending": {"type": "array", "items": located(DECISION_POINT)},
             "problems": {
                 "type": "array",
                 "items": obj(
@@ -193,8 +103,6 @@ RESULT_SCHEMA: dict = {
         }
     ),
 }
-# The procedure's last step: a workflow whose last current step is this and ok is done.
-LAST_STEP = {"brownfield": "delivery"}
 
 
 def now() -> str:
@@ -218,7 +126,8 @@ class Row:
         if state == "finished" and self.result is None:
             state = "running"
         self.status = self.result["status"] if self.result is not None else state
-        self.output = (self.result or {}).get("output") or {}
+        # What the run declared under the step output convention; nothing until it finished.
+        self.declared = declared((self.result or {}).get("output"))
         self.error = (self.result or {}).get("error") or step.get("error")
         if self.status == "lost":
             self.error = lost_link(space, workflow, self.key, self.name, self.run_id)
@@ -270,42 +179,6 @@ def lost_row(workflow: str, workspace: str, key: str) -> dict:
     }
 
 
-def pending_points(workflow: str, row: Row) -> list[dict]:
-    points = []
-    for item in row.output.get("open_questions") or []:
-        if item["id"] in row.settled:
-            continue
-        points.append(
-            {
-                "step": row.key,
-                "run_id": row.run_id,
-                "kind": "open_question",
-                "id": item["id"],
-                "module": item["module"],
-                "question": f"{item['subject']}: {item['observed']}",
-                "options": item["options"],
-                "recommendation": item["recommendation"],
-            }
-        )
-    if row.name == "survey":
-        for item in row.output.get("decisions") or []:
-            if item["decided_by"] == "worker" and item["id"] not in row.settled:
-                points.append(
-                    {
-                        "step": row.key,
-                        "run_id": row.run_id,
-                        "kind": "decision",
-                        "id": item["id"],
-                        "module": item["module"],
-                        "question": item["question"],
-                        "options": item["options"],
-                        "recommendation": f"the worker chose {item['chosen']!r}: "
-                        f"{item['reason']}",
-                    }
-                )
-    return points
-
-
 def build(space: Workspace, lost: list[str] = ()) -> dict:
     """The workflow result of a workspace, from its workflow record and its runs' results."""
     record = store.load(space)
@@ -328,29 +201,12 @@ def build(space: Workspace, lost: list[str] = ()) -> dict:
         if key not in keys
         and store.base_key(key) not in {store.base_key(k) for k in keys}
     ]
-    decisions, questions, deviations, reviews, checks, problems = [], [], [], [], [], []
+    items = {"decisions": [], "decision_points": [], "deviations": [], "notes": []}
+    problems = []
     for row in rows:
         where = {"step": row.key, "run_id": row.run_id}
-        if row.status in ("ok", "blocked", "failed") and row.result is not None:
-            decisions += [
-                {**where, **item} for item in row.output.get("decisions") or []
-            ]
-            questions += [
-                {**where, **item} for item in row.output.get("open_questions") or []
-            ]
-            deviations += [
-                {**where, **item} for item in row.output.get("deviations") or []
-            ]
-            if row.name == "spec_review" and row.output.get("verdict"):
-                reviews.append(
-                    {
-                        **where,
-                        "verdict": row.output["verdict"],
-                        "modules": row.output.get("modules") or [],
-                    }
-                )
-            if row.name == "survey":
-                checks += [{**where, **item} for item in row.output.get("checks") or []]
+        for field, found in items.items():
+            found += [{**where, **item} for item in row.declared[field]]
         if row.status != "ok":
             problems.append(
                 {
@@ -369,9 +225,16 @@ def build(space: Workspace, lost: list[str] = ()) -> dict:
                 "error": item["error"],
             }
         )
+    # The procedure's last step, which the part that owns the workflow named when it registered
+    # it; a workflow no installed part registered has none, so it can never be ok.
+    try:
+        last_step = catalog.get(workflow).last_step
+    except catalog.WorkflowError:
+        last_step = None
     last = rows[-1] if rows else None
-    pending: list[dict] = []
+    pending_points: list[dict] = []
     stop = None
+    evidence = []
     if any(row.status == "running" for row in rows):
         status, code, reason = "running", "step_running", "exhausted"
         stop = [row for row in rows if row.status == "running"]
@@ -393,18 +256,31 @@ def build(space: Workspace, lost: list[str] = ()) -> dict:
     elif last.status == "blocked":
         status, code, reason = "blocked", "step_blocked", "decision"
         stop = [last]
-    elif mode == "interactive" and decision_points(
-        last.name, last.output, last.settled
-    ):
+    elif last.declared["blocking"] is not None:
+        status, code, reason = "blocked", "step_blocked", "decision"
+        blocking = last.declared["blocking"]
+        evidence = [
+            errors.evidence(
+                "blocking", f"{last.key} {blocking['code']}", blocking["detail"]
+            )
+        ]
+    elif mode == "interactive" and pending(last.declared, last.settled):
         status, code, reason = "awaiting_decision", "awaiting_decision", "decision"
-        pending = pending_points(workflow, last)
-    elif last.name == LAST_STEP.get(workflow, "delivery"):
+        where = {"step": last.key, "run_id": last.run_id}
+        pending_points = [
+            {**where, **item} for item in pending(last.declared, last.settled)
+        ]
+        evidence = [
+            errors.evidence(
+                "pending", f"{point['step']} {point['id']}", point["question"]
+            )
+            for point in pending_points
+        ]
+    elif last_step is not None and store.base_key(last.key) == last_step:
         status, code, reason = "ok", None, None
     else:
         status, code, reason = "failed", "incomplete", "capability"
-    summary = summarize(
-        workflow, space.name, status, rows, decisions, questions, problems, checks
-    )
+    summary = summarize(workflow, space.name, status, rows, items, problems)
     error = None
     if status != "ok":
         causes = [row.error for row in (stop or []) if row.error] + [
@@ -414,14 +290,19 @@ def build(space: Workspace, lost: list[str] = ()) -> dict:
             "running": "the workflow is still running a step",
             "failed": "the workflow stopped at a step that failed, was refused or was lost",
             "blocked": "the workflow stopped at a blocked step",
-            "awaiting_decision": f"the workflow stopped for {len(pending)} decision point(s) "
-            "to be settled above the task",
+            "awaiting_decision": f"the workflow stopped for {len(pending_points)} decision "
+            "point(s) to be settled above the task",
         }[status]
         if code == "incomplete":
             detail = (
                 "the workflow's steps end after "
                 + (f"step {last.key} ({last.name})" if last else "no step")
-                + f" without reaching its last step, {LAST_STEP.get(workflow, 'delivery')}"
+                + (
+                    f" without reaching its last step, {last_step}"
+                    if last_step is not None
+                    else f", and no installed part registers the workflow {workflow}, "
+                    "so it has no last step to reach"
+                )
             )
         error = workflow_link(
             workflow,
@@ -437,14 +318,7 @@ def build(space: Workspace, lost: list[str] = ()) -> dict:
                 "end, and it cannot run the missing steps from a report",
                 "exhausted": "the report was taken before the procedure ended",
             }[reason],
-            evidence=[
-                errors.evidence(
-                    "pending",
-                    f"{point['step']} {point['id']}",
-                    point["question"],
-                )
-                for point in pending
-            ],
+            evidence=evidence,
             options={
                 "awaiting_decision": [
                     (
@@ -473,26 +347,21 @@ def build(space: Workspace, lost: list[str] = ()) -> dict:
         "steps": [row.value() for row in rows]
         + [{k: v for k, v in item.items() if k != "error"} for item in extra],
         "superseded": superseded,
-        "decisions": decisions,
-        "open_questions": questions,
-        "deviations": deviations,
-        "reviews": reviews,
-        "proposed_checks": checks,
-        "pending": pending,
+        **items,
+        "pending": pending_points,
         "problems": problems,
         "error": error,
         "reported_at": now(),
     }
 
 
-def summarize(
-    workflow, workspace, status, rows, decisions, questions, problems, checks
-) -> str:
+def summarize(workflow, workspace, status, rows, declared, problems) -> str:
     ran = ", ".join(f"{row.key} {row.status}" for row in rows) or "no step"
     return (
         f"workflow {workflow} of workspace {workspace} is {status} after {ran}; "
-        f"{len(problems)} problem(s), {len(decisions)} decision(s), "
-        f"{len(questions)} open question(s), {len(checks)} proposed check(s)"
+        f"{len(problems)} problem(s), {len(declared['decisions'])} decision(s), "
+        f"{len(declared['decision_points'])} decision point(s), "
+        f"{len(declared['deviations'])} deviation(s), {len(declared['notes'])} note(s)"
     )
 
 
@@ -507,31 +376,31 @@ def rendered(result: dict) -> str:
     if result["decisions"]:
         lines.append("\nDecisions:\n\n")
         lines += [
-            f"- {d['id']} ({d['step']}, {d['decided_by']}): {d['question']} Chose "
-            f"{d['chosen']!r}: {d['reason']}\n"
+            f"- {d['id']} ({d['step']}, {d['decided_by']}): {d['question']} Decided "
+            f"{d['decision']!r}: {d['reason']}\n"
             for d in result["decisions"]
         ]
-    if result["open_questions"]:
-        lines.append("\nOpen questions, written as no promise:\n\n")
+    if result["decision_points"]:
+        lines.append("\nDecision points:\n\n")
         lines += [
-            f"- {q['id']} ({q['module']}): {q['subject']}. Observed: {q['observed']} "
-            f"Uncertain because {q['why_uncertain']} Recommendation: {q['recommendation']}\n"
-            for q in result["open_questions"]
+            f"- {p['id']} ({p['step']}, {p['kind']}"
+            + (f", {p['module']}" if p.get("module") else "")
+            + f"): {p['question']} Options: {'; '.join(p['options']) or '(none)'}. "
+            f"Recommendation: {p['recommendation']}\n"
+            for p in result["decision_points"]
         ]
     if result["deviations"]:
-        lines.append("\nDeviations between stated intent and code:\n\n")
+        lines.append("\nDeviations:\n\n")
         lines += [
-            f"- {d['question']} ({d['module']}): intended {d['intended']}; observed "
-            f"{d['observed']}\n"
+            f"- {d['subject']} ({d['step']}"
+            + (f", {d['module']}" if d.get("module") else "")
+            + f"): intended {d['intended']}; observed {d['observed']}\n"
             for d in result["deviations"]
         ]
-    for review in result["reviews"]:
-        lines.append(f"\nSpec review {review['run_id']}: {review['verdict']}\n")
-    if result["proposed_checks"]:
-        lines.append("\nProposed checks, not configured:\n\n")
+    if result["notes"]:
+        lines.append("\nNotes:\n\n")
         lines += [
-            f"- {c['id']} for {c['module']}: `{' '.join(c['argv'])}` ({c['reason']})\n"
-            for c in result["proposed_checks"]
+            f"- {n['kind']} ({n['step']}): {n['text']}\n" for n in result["notes"]
         ]
     for problem in result["problems"]:
         lines.append(

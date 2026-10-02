@@ -77,8 +77,14 @@ class ValidateTests(unittest.TestCase):
         self.assertTrue((folder / readiness["checks"][0]["log"]).is_file())
         check_node = json.loads((folder / "checks/check.a/trace.json").read_text())
         self.assertEqual("check", check_node["kind"])
+        # The saved readiness is the output without the workflow object, which hands a workflow
+        # the readiness under the step output convention (req.validation.step-output).
         saved = folder / "readiness.json"
+        workflow = readiness.pop("workflow")
         self.assertEqual(json.loads(saved.read_text()), readiness)
+        self.assertEqual(
+            ({"ready": True}, None), (workflow["data"], workflow["blocking"])
+        )
         self.assertEqual(snapshot(self.worktree), before)
         # An execution command of the bound workspace launches no worker.
         self.assertEqual(
@@ -108,6 +114,10 @@ class ValidateTests(unittest.TestCase):
         self.assertEqual((status, envelope["status"]), (1, "blocked"), envelope)
         readiness = envelope["output"]
         self.assertFalse(readiness["ready"])
+        self.assertEqual(
+            ({"ready": False}, "not_ready"),
+            (readiness["workflow"]["data"], readiness["workflow"]["blocking"]["code"]),
+        )
         # Every blocking reason is named, with its location, as a cause of the error.
         error = envelope["error"]
         self.assertEqual(
