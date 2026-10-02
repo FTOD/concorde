@@ -24,7 +24,7 @@ from tests.concorde.issues.test_store import (
     racing_writer,
     refused_record_writes,
 )
-from tests.concorde.support.issue_reports import git_project, report
+from tests.concorde.support.issue_reports import git_project, report, source
 
 COMMAND = Path(__file__).resolve().parents[3] / "scripts/issues.py"
 REGISTRY = {
@@ -895,6 +895,102 @@ class IssueCommandTests(unittest.TestCase):
         self.assertEqual(
             [recorded["receipt"]["path"]], [item["path"] for item in value["left"]]
         )
+
+
+class OptionalIntegrationTests(unittest.TestCase):
+    """The command where the spec part is absent, and with a provenance its caller vouches for."""
+
+    setUp = IssueCommandTests.setUp
+    run_command = IssueCommandTests.run_command
+    records = IssueCommandTests.records
+    report_file = IssueCommandTests.report_file
+    assert_refused = IssueCommandTests.assert_refused
+
+    def provenance_file(self, **changes):
+        path = self.root / "provenance.json"
+        path.write_text(
+            json.dumps(
+                source(
+                    invocation_id="run-7",
+                    agent="operation",
+                    operation="code_review",
+                    target_id="module.new",
+                    change_id="task-7",
+                    **changes,
+                )
+            )
+        )
+        return str(path)
+
+    @verifies("scenario.issues.command-report-provenance")
+    def test_an_operation_records_a_report_with_the_provenance_it_vouches_for(self):
+        path = self.report_file(
+            owner_target_id="module.new",
+            evidence=[{"path": "src/removed.py", "description": "a removed file"}],
+        )
+        status, value = self.run_command(
+            "report", "--file", path, "--provenance", self.provenance_file()
+        )
+        self.assertEqual(0, status, value)
+        record, revision = read_issue(self.root, value["receipt"]["issue_id"])
+        self.assertEqual(revision, value["revision"])
+        self.assertEqual(
+            source(
+                invocation_id="run-7",
+                agent="operation",
+                operation="code_review",
+                target_id="module.new",
+                change_id="task-7",
+            ),
+            record["reports"][0]["source"],
+        )
+        for extra in (("--task", "t"), ("--check",)):
+            with self.subTest(extra=extra):
+                self.assert_refused(
+                    2,
+                    "usage",
+                    ["--provenance"],
+                    "report",
+                    "--file",
+                    path,
+                    "--provenance",
+                    self.provenance_file(),
+                    *extra,
+                )
+        self.assert_refused(
+            1,
+            "invalid_issue",
+            ["provenance file", "context_id"],
+            "report",
+            "--file",
+            path,
+            "--provenance",
+            self.provenance_file(context_id="not a digest"),
+        )
+
+    @verifies("scenario.issues.command-without-spec-part")
+    def test_without_the_spec_part_a_module_is_a_plain_label(self):
+        (self.root / ".concorde/specs.json").unlink()
+        status, value = self.run_command(
+            "report", "--file", self.report_file(owner_target_id="module.unlisted")
+        )
+        self.assertEqual(0, status, value)
+        record, _ = read_issue(self.root, value["receipt"]["issue_id"])
+        self.assertEqual("module.unlisted", record["reports"][0]["source"]["target_id"])
+        self.assertEqual(digest(b""), record["reports"][0]["source"]["context_id"])
+        self.assert_refused(
+            1,
+            "no_reporting_module",
+            ["the spec part is not installed"],
+            "report",
+            "--file",
+            self.report_file(owner_target_id=None),
+        )
+        status, value = self.run_command("check")
+        self.assertEqual(0, status, value)
+        self.assertEqual([], value["errors"])
+        [note] = value["notes"]
+        self.assertIn("the spec part is not installed", note)
 
 
 if __name__ == "__main__":

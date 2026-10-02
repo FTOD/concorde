@@ -120,10 +120,9 @@ Spec tooling nor the worker harness to run, and a project may register Operation
 <a id="realization.operations.catalog"></a>
 
 The **Catalog and worker steps** realization holds the catalog (`catalog.py`) and, until a later
-code task moves them into Method's package `src/concorde/method/`, three pieces of Method's: the step it puts first in every Operation that
+code task moves them into Method's package `src/concorde/method/`, two pieces of Method's: the step it puts first in every Operation that
 launches workers, checking them all against the [model map](../../glossary.json#concept.model-map)
-(`admission.py`), the prompt and brief helpers of worker-backed providers (`provider.py`), and the
-review providers' shared handling of their Issues (`review_issues.py`). Their behaviour is
+(`admission.py`), and the prompt and brief helpers of worker-backed providers (`provider.py`). Their behaviour is
 specified by [Method](../../method/module.md#the-standard-worker-sequence) and its children, not by
 this framework.
 

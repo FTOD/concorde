@@ -75,6 +75,27 @@ This illustrates [checked error chains](requirements.md#req.issues.report-error-
 - THEN the Issue is recorded with the report's `owner_target_id` still `null` and the root Module as its reporting Module, and so as the Issue's owner
 - AND the store check passes
 
+### scenario.issues.command-report-provenance — An Operation records a report with its own provenance
+
+- GIVEN a report file whose owner is a Module the primary worktree's registry does not list and whose evidence path does not exist, and a provenance file naming an [Operation](../glossary.json#concept.operation)'s run, `operation` as agent and that Module as reporting Module
+- WHEN the Operation's host runs `report --file` with that file and `--provenance` with the provenance file
+- THEN the Issue is recorded with exactly that provenance, and the command prints the receipt and revision
+- AND `report --provenance` with `--task` or `--check` is refused with `usage`, and a provenance file that breaks the provenance shape with `invalid_issue` naming its field
+
+### scenario.issues.command-without-spec-part — Without the spec part a Module is a plain label
+
+- GIVEN a project whose worktrees hold no registry `.concorde/specs.json`, the spec part not being installed
+- WHEN the main agent runs `report --file` with a report naming an owner no registry lists
+- THEN the Issue is recorded with that owner as its reporting Module and the digest of no bytes as its context
+- AND a report whose owner is `null` is refused with `no_reporting_module`, saying the spec part is not installed
+- AND `check` passes, judging no owner, with one note saying the spec part is not installed
+
+### scenario.issues.store-without-coordination — Without the coordination part no write waits for a merge
+
+- GIVEN a primary worktree with no `.concorde/tasks/`, the coordination part not being installed, or one whose only [task record](../glossary.json#concept.task-record) does not read as JSON
+- WHEN a session records a report
+- THEN the store commits it, no unfinished merge refusing it
+
 ### scenario.issues.command-append — Append a later observation from a file
 
 - GIVEN an open Issue and a report file naming it with its current revision and another classification

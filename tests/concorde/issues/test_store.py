@@ -24,7 +24,6 @@ from concorde.issues.store import (
     report_issue,
     resolve_report,
 )
-from concorde.spec.repository import SpecError
 from concorde.kernel.refusal import KernelError
 from concorde.spec.verification import verifies
 from tests.concorde.support.issue_reports import git, git_project, report, source
@@ -333,6 +332,52 @@ class IssueStoreTests(unittest.TestCase):
                 self.assertIn("interrupted", str(raised.exception))
         self.assertEqual({}, self.issue_files())
 
+    @verifies("scenario.issues.store-merge-incomplete")
+    def test_the_refusal_gives_tasks_account_of_the_merge(self):
+        task = self.root / ".concorde/tasks/interrupted"
+        task.mkdir(parents=True)
+        head = git(self.root, "rev-parse", "HEAD").strip()
+        (task / "task.json").write_text(
+            json.dumps(
+                {
+                    "id": "interrupted",
+                    "state": "merging",
+                    "merging": {
+                        "before": "b" * 40,
+                        "checked": "c" * 40,
+                        "branch": "main",
+                        "after": head,
+                        "pid": 41,
+                        "since": "2026-10-01T00:00:00Z",
+                    },
+                }
+            )
+        )
+        with self.assertRaises(IssueError) as raised:
+            report_issue(self.root, report(), source())
+        message = str(raised.exception)
+        for fragment in (
+            "process 41",
+            "c" * 40,
+            f"at {head}, the merge commit",
+            "concorde task merge interrupted --resume",
+            "concorde task merge interrupted --abort",
+        ):
+            self.assertIn(fragment, message)
+
+    @verifies("scenario.issues.store-without-coordination")
+    def test_without_the_coordination_part_no_write_waits_for_a_merge(self):
+        self.assertFalse((self.root / ".concorde/tasks").exists())
+        first = report_issue(self.root, report(), source())
+        unreadable = self.root / ".concorde/tasks/broken"
+        unreadable.mkdir(parents=True)
+        (unreadable / "task.json").write_text("{not json")
+        second = report_issue(self.root, report(report_key="other"), source())
+        self.assertEqual(
+            {first["issue_id"], second["issue_id"]},
+            {row["id"] for row in list_issues(self.root)},
+        )
+
     @verifies("scenario.issues.store-disposition")
     def test_a_closing_disposition_keeps_every_report(self):
         receipt = report_issue(self.root, report(), source())
@@ -424,7 +469,7 @@ class IssueStoreTests(unittest.TestCase):
         )
         _, first_current = read_issue(self.root, first["issue_id"])
         before = self.issue_files()
-        with self.assertRaisesRegex(SpecError, "duplicate target changed") as raised:
+        with self.assertRaisesRegex(IssueError, "duplicate target changed") as raised:
             self.close(
                 second["issue_id"],
                 second_revision,
@@ -549,7 +594,7 @@ class IssueStoreTests(unittest.TestCase):
     def test_a_refused_record_write_returns_no_receipt(self):
         receipt = report_issue(self.root, report(), source())
         before = self.issue_files()
-        with refused_record_writes(), self.assertRaises(SpecError) as raised:
+        with refused_record_writes(), self.assertRaises(IssueError) as raised:
             report_issue(self.root, report(report_key="new"), source())
         self.assertEqual("system_error", raised.exception.code)
         self.assertEqual(before, self.issue_files())
@@ -564,7 +609,7 @@ class IssueStoreTests(unittest.TestCase):
         directory = self.root / ".concorde/issues"
         directory.chmod(0o555)
         self.addCleanup(directory.chmod, 0o755)
-        with self.assertRaises(SpecError) as raised:
+        with self.assertRaises(IssueError) as raised:
             report_issue(self.root, report(report_key="new"), source())
         self.assertEqual("system_error", raised.exception.code)
         directory.chmod(0o755)
@@ -650,7 +695,7 @@ class IssueStoreTests(unittest.TestCase):
         path.write_text(malformed)
         git(self.root, "commit", "-qam", "an edited Issue record")
         with self.assertRaisesRegex(
-            SpecError, "status differs from its disposition"
+            IssueError, "status differs from its disposition"
         ) as raised:
             read_issue(self.root, receipt["issue_id"])
         self.assertEqual("invalid_issue", raised.exception.code)

@@ -17,11 +17,26 @@ from concorde.issues.store import list_issues, read_issue, report_issue
 from concorde.spec.repository import SpecRepository
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
+from concorde.method.review_issues import NOT_RECORDED
 from tests.concorde.support.operation_project import OperationProject
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 FIXED = "def add(a, b):\n    return a + b\n"
 FAKE_REVIEWER = Path(__file__).with_name("fake_reviewer.py")
+
+
+# A ``concorde`` whose command line knows no ``issues``: the issues part is not installed.
+NO_ISSUES = [
+    sys.executable,
+    "-c",
+    "import sys; sys.stderr.write(\"concorde: error: argument command: invalid choice: "
+    "'issues'\\n\"); sys.exit(2)",
+]
+
+
+def without_issues():
+    """Patch the reviews' ``concorde`` so that it offers no ``issues``."""
+    return patch("concorde.method.review_issues.concorde_command", return_value=NO_ISSUES)
 
 
 def finding(basis="scenario.a.answer", **values):
@@ -619,6 +634,20 @@ class CodeReviewTests(unittest.TestCase):
         [store] = cause["causes"]
         self.assertEqual("merge_incomplete", store["code"])
 
+
+    @verifies("scenario.code-review.without-issues")
+    def test_without_the_issues_part_the_findings_stay_in_the_report(self):
+        with without_issues():
+            status, envelope = self.change(finding())
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        entry = self.module_entry(envelope)
+        self.assertEqual("changes_required", entry["outcome"])
+        self.assertEqual([None], [item["issue"] for item in entry["findings"]])
+        self.assertIsNone(entry["earlier_issues"])
+        self.assertIn(NOT_RECORDED, envelope["summary"])
+        self.assertEqual({}, self.issues())
+        _, brief = self.worker(envelope)
+        self.assertIn("the issues part is not installed", brief)
 
 class ContractTests(unittest.TestCase):
     def test_the_output_schema_is_the_contract(self):
