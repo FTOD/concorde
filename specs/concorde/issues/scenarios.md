@@ -590,6 +590,70 @@ This illustrates [durable receipts](requirements.md#req.issues.durable-receipt).
 
 This illustrates [revision-checked writes](requirements.md#req.issues.revision-checked).
 
+## The closed folder
+
+### scenario.issues.store-folders — Closing moves the record into closed/ and reopening moves it back
+
+- GIVEN an open Issue and another change staged in the primary worktree
+- WHEN the store closes it, then reopens it, then appends a report to it
+- THEN the close commits the record at `.concorde/issues/closed/<id>.md` and its removal from `.concorde/issues/<id>.md` in one commit, the only paths it holds, with the trailer naming the Issue
+- AND reads, `list` and the located path find the closed record in `closed/`
+- AND the reopening moves it back in one commit of both paths, and the append leaves it there
+- BUT the other staged change stays staged and the Issue directory is clean
+
+This illustrates [records in the folder of their status](requirements.md#req.issues.status-folder)
+and [commits of the record alone](requirements.md#req.issues.commit-alone).
+
+### scenario.issues.store-folders-locked — A close under a held merge lock moves the record too
+
+- GIVEN an open Issue and a caller holding the merge lock, as a task merge closing the Issues its task resolves does
+- WHEN that caller closes the Issue through the command's `dispose` with `locked`
+- THEN the answer gives the status `closed` and the path in `closed/`
+- AND the record is moved in one commit of both paths, leaving the Issue directory clean
+
+This illustrates [records in the folder of their status](requirements.md#req.issues.status-folder).
+
+### scenario.issues.store-interrupted-move — What a killed move left is put back whole
+
+- GIVEN a close killed after publishing its record in `closed/` and removing it from `.concorde/issues/`, with or without staging, and a committed record whose file was deleted by hand
+- WHEN the store recovers, or the next write of another Issue starts, and the close is repeated
+- THEN the record is restored at `.concorde/issues/<id>.md`, the copy in `closed/` is removed, and reads show the open committed record throughout
+- AND the repeated close moves the record at the committed revision
+- BUT the record deleted by hand, with no copy in the other folder, is left, and a write of its Issue is refused with `uncommitted_change`
+
+This illustrates [recovering uncommitted records](requirements.md#req.issues.uncommitted-recovered)
+and [kept foreign changes](requirements.md#req.issues.foreign-change-kept).
+
+### scenario.issues.store-archive — Archive moves every misplaced record in one commit
+
+- GIVEN a closed record committed in `.concorde/issues/`, as an earlier Concorde kept it, an open record committed in `closed/`, records in their places, and another change staged
+- WHEN the store archives, then archives again
+- THEN the first archive moves both misplaced records into their places in one commit holding exactly their four paths, with one trailer per Issue, and names each move
+- AND each record's revision stays, since its bytes are unchanged
+- BUT the records in their places stay, the staged change stays staged, and the second archive moves nothing and commits nothing
+
+This illustrates [archiving misplaced records](requirements.md#req.issues.archive).
+
+### scenario.issues.store-archive-left — Archive leaves what it cannot move
+
+- GIVEN an Issue committed in both folders, a misplaced record edited by hand, and another misplaced record
+- WHEN a session reads the doubled Issue or lists the Issues, then the store archives
+- THEN the read and the list are refused with `invalid_issue`, naming both paths
+- AND the archive moves the other misplaced record and lists both paths of the doubled Issue and the edited record as left
+- BUT the edited record keeps its edit
+
+This illustrates [archiving misplaced records](requirements.md#req.issues.archive).
+
+### scenario.issues.command-archive — Archive from any worktree
+
+- GIVEN a closed record committed in `.concorde/issues/` of the primary worktree and a linked worktree of the repository
+- WHEN the main agent runs `archive` in the linked worktree, then again
+- THEN the first exits with status 0 and prints the move, and the primary worktree's record lies in `closed/`
+- BUT the linked worktree's copy is unchanged, and the second prints that nothing was moved or left
+
+This illustrates [archiving misplaced records](requirements.md#req.issues.archive) and
+[project-level Issues](requirements.md#req.issues.project-level).
+
 ## Uncommitted records
 
 ### scenario.issues.store-uncommitted-hidden — Reads show only committed records
@@ -676,6 +740,16 @@ This illustrates [Issue writes under the merge lock](requirements.md#req.issues.
 - WHEN the configured store check runs
 - THEN it reports an error naming the Issue and the unknown owner
 - AND exits with a nonzero status
+
+### scenario.issues.store-check-misplaced — The store check fails for a misplaced or doubled record
+
+- GIVEN a closed record in `.concorde/issues/`, an open record in `closed/`, and an Issue recorded in both folders
+- WHEN the configured store check runs
+- THEN it reports one error per misplaced record naming its status and its place and saying that `concorde issues archive` moves it
+- AND one error naming both paths of the doubled Issue and its repair
+- AND exits with a nonzero status
+
+This illustrates [records in the folder of their status](requirements.md#req.issues.status-folder).
 
 ### scenario.issues.store-check-closed-unknown-owner — A closed Issue of a removed Module does not fail
 

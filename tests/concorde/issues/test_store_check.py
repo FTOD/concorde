@@ -117,6 +117,60 @@ class StoreCheckTests(unittest.TestCase):
             value["notes"],
         )
 
+    @verifies("scenario.issues.store-check-misplaced")
+    def test_a_misplaced_record_and_an_issue_recorded_twice_fail(self):
+        issues = self.root / ".concorde/issues"
+
+        def recorded(key, status):
+            receipt = report_issue(
+                self.root,
+                report(report_key=key, owner_target_id="service.transfer", evidence=[]),
+                source(target_id="service.transfer"),
+            )
+            if status == "closed":
+                _, revision = read_issue(self.root, receipt["issue_id"])
+                dispose_issue(
+                    self.root,
+                    receipt["issue_id"],
+                    revision,
+                    reason="resolved",
+                    note="Fixed",
+                    evidence=["commit abc123"],
+                    actor="main-agent",
+                )
+            return receipt["issue_id"]
+
+        legacy, reopened = recorded("legacy", "closed"), recorded("reopened", "open")
+        twice = recorded("twice", "closed")
+        # A closed record where an earlier Concorde kept it, an open one in closed/ and a copy.
+        (issues / f"closed/{legacy}.md").rename(issues / f"{legacy}.md")
+        (issues / f"{reopened}.md").rename(issues / f"closed/{reopened}.md")
+        (issues / f"{twice}.md").write_bytes(
+            (issues / f"closed/{twice}.md").read_bytes()
+        )
+        status, value = self.run_check()
+        self.assertEqual(1, status)
+        self.assertEqual(
+            sorted(
+                [
+                    f".concorde/issues/{legacy}.md holds closed Issue {legacy}, whose record "
+                    f"belongs at .concorde/issues/closed/{legacy}.md; run `concorde issues "
+                    "archive` in the primary worktree, which moves it there",
+                    f".concorde/issues/closed/{reopened}.md holds open Issue {reopened}, whose "
+                    f"record belongs at .concorde/issues/{reopened}.md; run `concorde issues "
+                    "archive` in the primary worktree, which moves it there",
+                    f".concorde/issues/{twice}.md holds closed Issue {twice}, whose record "
+                    f"belongs at .concorde/issues/closed/{twice}.md; run `concorde issues "
+                    "archive` in the primary worktree, which moves it there",
+                    f"Issue {twice} is recorded twice, as .concorde/issues/{twice}.md and "
+                    f".concorde/issues/closed/{twice}.md, but an Issue lives in exactly one "
+                    "place: keep the record whose reports and dispositions begin with the "
+                    "other's, remove the other with `git rm` and commit that removal alone",
+                ]
+            ),
+            sorted(value["errors"]),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

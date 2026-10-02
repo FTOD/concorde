@@ -45,16 +45,17 @@ def refused_record_writes():
 
 
 @contextmanager
-def racing_writer():
-    """Another program creates or changes the record after the store read it and before it
-    publishes; yields the list of bytes that program left."""
+def racing_writer(path=None):
+    """Another program creates or changes the record, at ``path`` or where the store publishes
+    it, after the store read it and before it publishes; yields the list of bytes that program
+    left."""
     from concorde.issues import store
 
     publish = store.apply_files
     left = []
 
     def racing(root, changes, allowed, **kwargs):
-        target = Path(root) / changes[0]["path"]
+        target = Path(root) / (path or changes[0]["path"])
         target.parent.mkdir(parents=True, exist_ok=True)
         before = target.read_bytes() if target.exists() else b"# another program\n"
         target.write_bytes(before + b"\n")
@@ -75,7 +76,11 @@ class IssueStoreTests(unittest.TestCase):
         directory = self.root / ".concorde/issues"
         if not directory.is_dir():
             return {}
-        return {path.name: path.read_bytes() for path in directory.iterdir()}
+        return {
+            path.relative_to(directory).as_posix(): path.read_bytes()
+            for path in directory.rglob("*")
+            if not path.is_dir()
+        }
 
     def close(self, identifier, revision, **changes):
         arguments = {
@@ -245,11 +250,29 @@ class IssueStoreTests(unittest.TestCase):
         self.assertIn(f"Concorde-Issue: {identifier}", git(self.root, "log", "-1"))
         _, revision = read_issue(self.root, identifier)
         self.close(identifier, revision)
+        # The close moves the record into closed/ in the same commit, which holds both paths.
+        closed = f".concorde/issues/closed/{identifier}.md"
         self.assertEqual(
-            (self.root / receipt["path"]).read_bytes(),
-            git(self.root, "show", f"HEAD:{receipt['path']}").encode(),
+            sorted([receipt["path"], closed]),
+            sorted(
+                git(
+                    self.root,
+                    "show",
+                    "--no-renames",
+                    "--name-only",
+                    "--format=",
+                    "HEAD",
+                ).split()
+            ),
         )
-        self.assertEqual("", git(self.root, "status", "--porcelain", receipt["path"]))
+        self.assertEqual(
+            (self.root / closed).read_bytes(),
+            git(self.root, "show", f"HEAD:{closed}").encode(),
+        )
+        self.assertFalse((self.root / receipt["path"]).exists())
+        self.assertEqual(
+            "", git(self.root, "status", "--porcelain", ".concorde/issues")
+        )
         # What was staged before stays staged and uncommitted.
         self.assertEqual(
             "A  unrelated.txt\n",
@@ -324,7 +347,12 @@ class IssueStoreTests(unittest.TestCase):
             (record["dispositions"][0]["reason"], record["dispositions"][0]["actor"]),
         )
         self.assertEqual(original["reports"], record["reports"])
-        self.assertEqual(receipt, report_issue(self.root, report(), source()))
+        # The repeated report's receipt names the record where it now lies.
+        self.assertEqual(
+            {**receipt, "path": f".concorde/issues/closed/{identifier}.md"},
+            report_issue(self.root, report(), source()),
+        )
+        self.assertEqual(report(), resolve_report(self.root, receipt)["report"])
 
     @verifies("scenario.issues.store-disposition-duplicate")
     def test_a_duplicate_names_another_open_issue(self):
@@ -564,7 +592,7 @@ class IssueStoreTests(unittest.TestCase):
             _, revision = read_issue(self.root, identifier)
             with (
                 self.subTest(action=action),
-                racing_writer() as left,
+                racing_writer(receipt["path"]) as left,
                 self.assertRaises(IssueError) as raised,
             ):
                 if action == "append":
@@ -579,9 +607,19 @@ class IssueStoreTests(unittest.TestCase):
                     )
                 else:
                     self.close(identifier, revision)
-            self.assert_stale_publication(
-                raised, identifier, "was changed by another program"
-            )
+            if action == "append":
+                self.assert_stale_publication(
+                    raised, identifier, "was changed by another program"
+                )
+            else:
+                # A close publishes in closed/ and finds the open record changed.
+                self.assertEqual("stale_issue", raised.exception.code)
+                self.assertIn(
+                    f"Issue {identifier} was changed by another program",
+                    str(raised.exception),
+                )
+                self.assertEqual(receipt["path"], raised.exception.path)
+                self.assertNotIn(f"closed/{identifier}.md", self.issue_files())
             self.assertEqual(left[-1], path.read_bytes())
 
     @verifies("scenario.issues.store-publication-stale")
@@ -832,10 +870,16 @@ def killed_before_commit(stage=False, put_back=True):
     dying = set()
     really_put_back = store._put_back
 
-    def commit(root, identifier, message):
-        dying.add(store.issue_path(identifier))
+    def commit(root, paths, message, identifiers):
+        dying.update(paths)
         if stage:
-            git(root, "add", "-f", "--", store.issue_path(identifier))
+            git(
+                root,
+                "add",
+                "-f",
+                "--",
+                *(path for path in paths if (root / path).exists()),
+            )
         if put_back:
             raise SystemExit("killed")
         return "git commit exited 1 on main: a hook refused the commit"
@@ -869,7 +913,9 @@ class IssueRecoveryTests(unittest.TestCase):
         )
 
     def committed_paths(self, commit="HEAD"):
-        return git(self.root, "show", "--name-only", "--format=", commit).split()
+        return git(
+            self.root, "show", "--no-renames", "--name-only", "--format=", commit
+        ).split()
 
     def leave_killed_report(self, **changes):
         """A report whose write was killed after publishing it; the name of its record file."""
@@ -888,13 +934,14 @@ class IssueRecoveryTests(unittest.TestCase):
         seen = []
         commit = store._commit
 
-        def reading_then_committing(root, identifier, message):
+        def reading_then_committing(root, paths, message, identifiers):
             # Another session reads between publication and commit.
+            (identifier,) = identifiers
             seen.append(([row["id"] for row in list_issues(root)], identifier))
             with self.assertRaises(IssueError) as raised:
                 read_issue(root, identifier)
             self.assertEqual("unknown_issue", raised.exception.code)
-            return commit(root, identifier, message)
+            return commit(root, paths, message, identifiers)
 
         with patch(
             "concorde.issues.store._commit", side_effect=reading_then_committing
@@ -1040,7 +1087,12 @@ class IssueRecoveryTests(unittest.TestCase):
         name = self.leave_killed_report()
         self.close(receipt["issue_id"], revision)
         self.assertNotIn(name, self.issue_files())
-        self.assertEqual([receipt["path"]], self.committed_paths())
+        self.assertEqual(
+            sorted(
+                [receipt["path"], f".concorde/issues/closed/{receipt['issue_id']}.md"]
+            ),
+            sorted(self.committed_paths()),
+        )
 
     @verifies("scenario.issues.store-foreign-change")
     def test_a_record_change_no_write_made_is_left_alone(self):

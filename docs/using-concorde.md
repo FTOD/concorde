@@ -816,7 +816,9 @@ Spec.
 
 A problem the current task will not fix, such as a Spec gap in another Module, is recorded as an
 **Issue**, a record the primary worktree keeps under `.concorde/issues/` and commits on the primary
-branch, so that it survives the task and every session sees it at once. Every report carries a
+branch, so that it survives the task and every session sees it at once. Closing an Issue moves its
+record into `.concorde/issues/closed/` and reopening it moves it back, so the files you see directly
+in `.concorde/issues/` are the open Issues. Every report carries a
 tier: `suggestion`, `obvious-fix`, `preferred-fix` or `decision-needed`, which says whether AI may
 fix it alone or the level above decides; and a severity: `critical`, `high`, `medium` or `low`,
 which says how much the problem matters, from wrong results or lost data down to something
@@ -835,6 +837,10 @@ Sorted by severity, the list starts from the most severe open Issues, those of e
 Solving an Issue is ordinary work: a task for its Module that names it,
 `concorde task open <task> … --resolves <id>`, and the Operations that fix it; merging the task
 closes the Issue as resolved, with the merge commit as evidence.
+
+`concorde issues check` reports a record that lies in the wrong folder, such as a closed Issue
+recorded before closed Issues had a folder of their own; `concorde issues archive` moves every such
+record into its folder in one commit.
 
 ## Ask the Specs directly
 
@@ -910,7 +916,7 @@ Neither user documents nor custom docs may contain a registered Spec document.
 | `.concorde/locks/`                         | Every lock Concorde takes (ignored by Git).                                             |
 | `.concorde/tracing.json`                   | How long unbound runs, closed tasks and their transcripts are kept (optional).          |
 | `.concorde/decisions/`                     | The decision logs of ended tasks, committed when each task ends.                        |
-| `.concorde/issues/`                        | Issue records.                                                                          |
+| `.concorde/issues/`                        | Open Issue records; closed ones are in its `closed/` folder.                            |
 | `.claude/skills/concorde/SKILL.md`         | The main agent's guidance.                                                              |
 
 ## Learn more

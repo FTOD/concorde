@@ -1,5 +1,6 @@
 """The bookkeeping command's actions: list, show and check Issues, record reports and
-dispositions for a session, and recover what Issue writes left uncommitted; never launch a model.
+dispositions for a session, recover what Issue writes left uncommitted and archive misplaced
+records; never launch a model.
 
 ``scripts/issues.py`` (``concorde issues``) and the project MCP server's Issue tools call the same
 actions, so both give the same answer and the same refusal. Every action but ``check`` works on the
@@ -27,10 +28,14 @@ from ..spec.typed_data import TypedDataError, decode
 from ..tasks.store import MERGE_WAIT
 from .shapes import SEVERITIES, TIERS
 from .store import (
+    CLOSED,
     DIRECTORY,
     RECORD_NAME,
+    archive_issues,
     dispose_issue,
+    issue_path,
     list_issues,
+    locate_issue,
     project_root,
     read_issue,
     read_record_file,
@@ -169,8 +174,8 @@ def list_action(
 
 
 def show_action(root: Path, issue_id: str) -> dict:
-    record, revision = guarded(read_issue, issues_root(project(root)), issue_id)
-    return {"issue": record, "revision": revision}
+    record, revision, path = guarded(locate_issue, issues_root(project(root)), issue_id)
+    return {"issue": record, "revision": revision, "path": path}
 
 
 def registry(root: Path) -> tuple[str, bytes, list[dict]]:
@@ -188,8 +193,9 @@ def registry(root: Path) -> tuple[str, bytes, list[dict]]:
 
 
 def check(root: Path) -> tuple[dict, int]:
-    """Every record file of ``root`` reads; an open Issue must name an owner the registry of
-    ``root`` still lists. The answer and the exit status: 1 when there are errors.
+    """Every record file of ``root`` reads and lies in the folder its status names, once; an open
+    Issue must name an owner the registry of ``root`` still lists. The answer and the exit status:
+    1 when there are errors.
 
     One finding per problem names the record; hidden files are not records. A closed Issue of an
     unknown owner is a note that does not fail the check; an absent directory passes.
@@ -197,26 +203,51 @@ def check(root: Path) -> tuple[dict, int]:
     root = project(root)
     modules = {record["id"] for record in registry(root)[2]}
     problems, notes = [], []
-    directory = root / DIRECTORY
-    entries = sorted(directory.iterdir()) if directory.is_dir() else []
-    for path in entries:
-        if path.name.startswith("."):
-            continue  # Git bookkeeping such as .gitignore, never a record.
-        relative = f"{DIRECTORY}/{path.name}"
-        if not RECORD_NAME.fullmatch(path.name) or not path.is_file():
-            problems.append(f"{relative} is not a record named I-<32 hex digits>.md")
+    places = {}
+    for folder in (DIRECTORY, CLOSED):
+        directory = root / folder
+        if directory.is_symlink() or not directory.is_dir():
+            if folder == CLOSED and (directory.is_symlink() or directory.exists()):
+                problems.append(f"{folder} is not a directory of closed Issue records")
             continue
-        try:
-            record, _ = read_record_file(root, path.stem)
-        except (ValueError, OSError) as error:
-            problems.append(f"{relative} is invalid: {error}")
-            continue
-        latest = record["reports"][-1]
-        owner = latest["report"]["owner_target_id"] or latest["source"]["target_id"]
-        if owner in modules:
-            continue
-        message = f"{record['id']} names unknown owner {owner}"
-        (problems if record["status"] == "open" else notes).append(message)
+        for path in sorted(directory.iterdir()):
+            if path.name.startswith("."):
+                continue  # Git bookkeeping such as .gitignore, never a record.
+            relative = f"{folder}/{path.name}"
+            if relative == CLOSED:
+                continue  # The folder of closed records, checked in its turn.
+            if not RECORD_NAME.fullmatch(path.name) or not path.is_file():
+                problems.append(
+                    f"{relative} is not a record named I-<32 hex digits>.md"
+                )
+                continue
+            places.setdefault(path.stem, []).append(relative)
+            try:
+                record, _ = read_record_file(root, relative)
+            except (ValueError, OSError) as error:
+                problems.append(f"{relative} is invalid: {error}")
+                continue
+            expected = issue_path(record["id"], record["status"])
+            if relative != expected:
+                problems.append(
+                    f"{relative} holds {record['status']} Issue {record['id']}, whose record "
+                    f"belongs at {expected}; run `concorde issues archive` in the primary "
+                    "worktree, which moves it there"
+                )
+            latest = record["reports"][-1]
+            owner = latest["report"]["owner_target_id"] or latest["source"]["target_id"]
+            if owner in modules:
+                continue
+            message = f"{record['id']} names unknown owner {owner}"
+            (problems if record["status"] == "open" else notes).append(message)
+    for identifier, paths in sorted(places.items()):
+        if len(paths) > 1:
+            problems.append(
+                f"Issue {identifier} is recorded twice, as {' and '.join(paths)}, but an Issue "
+                "lives in exactly one place: keep the record whose reports and dispositions "
+                "begin with the other's, remove the other with `git rm` and commit that removal "
+                "alone"
+            )
     return {"errors": problems, "notes": notes}, 1 if problems else 0
 
 
@@ -224,6 +255,13 @@ def recover_action(root: Path, *, wait: float = MERGE_WAIT) -> dict:
     """Put back, under the merge lock, the records Issue writes published in the primary worktree
     but did not commit; name each record change left because no Issue write made it."""
     return guarded(recover_issues, issues_root(project(root)), wait=wait)
+
+
+def archive_action(root: Path, *, wait: float = MERGE_WAIT) -> dict:
+    """Move, under the merge lock and in one commit, every committed record of the primary
+    worktree whose folder does not match its status into the folder it names; name each move and
+    each misplaced record left."""
+    return guarded(archive_issues, issues_root(project(root)), wait=wait)
 
 
 # --- reports ----------------------------------------------------------------------------------
@@ -434,7 +472,12 @@ def dispose(
         locked=locked,
     )
     status = "open" if reason == "reopened" else "closed"
-    return {"issue_id": issue_id, "status": status, "revision": new_revision}
+    return {
+        "issue_id": issue_id,
+        "status": status,
+        "revision": new_revision,
+        "path": issue_path(issue_id, status),
+    }
 
 
 __all__ = [
@@ -446,6 +489,7 @@ __all__ = [
     "TIERS",
     "USAGE",
     "Refusal",
+    "archive_action",
     "check",
     "dispose",
     "list_action",

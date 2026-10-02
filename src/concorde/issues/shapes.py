@@ -95,4 +95,4 @@ RECORD = obj(
 )
 
 register("concorde-issue-report", 3, REPORT)
-register("concorde-issue-receipt", 1, RECEIPT)
+register("concorde-issue-receipt", 2, RECEIPT)

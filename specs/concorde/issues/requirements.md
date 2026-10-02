@@ -141,11 +141,33 @@ reopened.
 
 ### req.issues.closed-kept — Closed Issues stay recorded
 
-The Issue store SHALL NOT delete a committed Issue record file.
+The Issue store SHALL NOT delete a committed Issue record, other than removing it from one folder
+in the commit that adds it to the other.
 
 Recovery removes only a record file no commit holds, which no read ever showed.
 
 A closed Issue keeps its reports and dispositions, so it can be shown and reopened.
+
+### req.issues.status-folder — A record lies in the folder of its status
+
+The Issue store SHALL write an open Issue's record at `.concorde/issues/<id>.md` and a closed
+Issue's at `.concorde/issues/closed/<id>.md`, moving it there in the commit of the write that
+changes its status or finds it in the other folder.
+
+The records seen directly in `.concorde/issues/` are so the open Issues. Reads find a record in
+either folder, and refuse an Issue committed in both; the store check reports a record whose folder
+does not match its status and an Issue recorded in both folders, each with its repair
+([record file](interface.md#record-file)).
+
+### req.issues.archive — Misplaced records are moved into their folder
+
+The bookkeeping command's `archive` SHALL move every committed record of the primary worktree whose
+folder does not match its status into the folder its status names, unchanged, in one commit under
+the merge lock, and name each record it moved and each misplaced record it left.
+
+It leaves an Issue committed in both folders and a record holding a change no Issue write made,
+since moving either would decide what only its inspection can; with nothing to move it commits
+nothing.
 
 ### req.issues.list-filtered — A listing reads only the Issues asked for
 
@@ -188,7 +210,8 @@ and remove the temporary files of an interrupted
 
 A write that left such a record gave no receipt, so putting it back loses nothing acknowledged,
 and its writer may repeat it. A write that fails after publishing its record puts it back itself
-before it refuses.
+before it refuses. A move between the folders is put back whole: the record is restored where it
+was committed and removed from the folder it was published in.
 
 ### req.issues.foreign-change-kept — A record change no write made is kept
 
@@ -221,7 +244,8 @@ A write so never commits between a merge commit and the checks that decide wheth
 
 ### req.issues.commit-alone — An Issue commit commits its record alone
 
-The Issue store SHALL commit each write as a commit of that record alone on the primary branch.
+The Issue store SHALL commit each write as a commit of that record alone on the primary branch,
+with the path it left when the write moved it.
 
 Other changes of the primary worktree, staged or not, stay as they were. A write whose commit Git
 refuses puts its record back and refuses, as the [store operations](interface.md#store-operations)

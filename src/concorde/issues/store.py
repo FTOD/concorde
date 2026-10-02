@@ -1,15 +1,17 @@
 """Project-level Issue records; only this store writes them.
 
-The records live in the primary worktree's ``.concorde/issues/``, one Markdown file carrying one
-closed JSON record. The JSON fence is the sole content authority, not a second rendering of prose
-elsewhere. Reports are immutable observations; dispositions are separate history. Every write holds
-the primary worktree's merge lock, publishes the record and commits that one file on the primary
-branch before it acknowledges, so every worktree of the project reads the same Issues at once and a
-write never lands between a task's merge commit and its checks. Reads see only committed records:
-they read the primary worktree's last commit, never its files. A record a write published but did
-not commit, because the write failed and could not put it back or its process was killed, is put
-back by the next write before it acts. No store operation controls a worker or resolves a task
-blocker, and none runs Git for anything but reading, committing or putting back records.
+The records live in the primary worktree's ``.concorde/issues/``, an open Issue's there and a
+closed one's in its ``closed/`` folder, one Markdown file carrying one closed JSON record. The JSON
+fence is the sole content authority, not a second rendering of prose elsewhere. Reports are
+immutable observations; dispositions are separate history. Every write holds the primary worktree's
+merge lock, publishes the record in the folder its status names and commits that one record on the
+primary branch, moved there in the same commit when its status changed, before it acknowledges, so
+every worktree of the project reads the same Issues at once and a write never lands between a
+task's merge commit and its checks. Reads see only committed records: they read the primary
+worktree's last commit, never its files. A record a write published but did not commit, because the
+write failed and could not put it back or its process was killed, is put back by the next write
+before it acts. No store operation controls a worker or resolves a task blocker, and none runs Git
+for anything but reading, committing or putting back records.
 
 A failure of this store is never itself reported as an Issue: the Issue system that failed could not
 be trusted to record it. It travels as an error chain, in a task's decision log and escalation or a
@@ -60,7 +62,7 @@ class IssueError(SpecError):
             "correct the named field of the report or record",
         ),
         "unknown_issue": (
-            "the identity names no Issue record under .concorde/issues/",
+            "the identity names no Issue record under .concorde/issues/ or its closed/ folder",
             "run `concorde issues list` and use an existing identity",
         ),
         "closed_issue": (
@@ -124,6 +126,9 @@ class IssueError(SpecError):
 
 
 DIRECTORY = ".concorde/issues"
+# Where a closed Issue's record lives; an open Issue's lives in DIRECTORY itself.
+CLOSED = f"{DIRECTORY}/closed"
+FOLDERS = {"open": DIRECTORY, "closed": CLOSED}
 RECORD_NAME = re.compile(r"I-[0-9a-f]{32}\.md")
 # The temporary files a file transaction leaves beside a record when its process is killed.
 TEMPORARY = ".concorde-write-"
@@ -131,7 +136,9 @@ MAX_REPORT_BYTES = 64 * 1024
 MAX_RECORD_BYTES = 16 * 1024 * 1024
 
 
-def issue_path(identifier: str) -> str:
+def issue_path(identifier: str, status: str = "open") -> str:
+    """The record path of ``identifier`` for an Issue of ``status``: ``.concorde/issues/<id>.md``
+    while open, ``.concorde/issues/closed/<id>.md`` once closed."""
     if not isinstance(identifier, str) or not re.fullmatch(
         ISSUE_ID["pattern"], identifier
     ):
@@ -139,7 +146,12 @@ def issue_path(identifier: str) -> str:
             f"{identifier!r} is not an Issue identity (I- followed by 32 lowercase hex digits)",
             "invalid_issue",
         )
-    return f"{DIRECTORY}/{identifier}.md"
+    return f"{FOLDERS[status]}/{identifier}.md"
+
+
+def issue_paths(identifier: str) -> tuple[str, str]:
+    """Both places a record of ``identifier`` may lie: the open one and the closed one."""
+    return issue_path(identifier, "open"), issue_path(identifier, "closed")
 
 
 def _now() -> str:
@@ -273,13 +285,20 @@ def parse(text: str, identifier: str) -> dict:
     return record
 
 
-def read_record_file(root: Path, identifier: str) -> tuple[dict, str]:
-    """The record file of ``identifier`` in the worktree ``root`` as it is on disk, committed or
-    not, and its revision: what the store check reads."""
-    path = checked_path(root, issue_path(identifier))
+def read_record_file(root: Path, relative: str) -> tuple[dict, str]:
+    """The record file ``relative`` of the worktree ``root``, in either folder, as it is on disk,
+    committed or not, and its revision: what the store check reads."""
+    identifier = Path(relative).stem
+    if relative not in issue_paths(identifier):
+        raise IssueError(
+            f"{relative} is not the path of an Issue record: .concorde/issues/<id>.md or "
+            ".concorde/issues/closed/<id>.md",
+            "invalid_issue",
+        )
+    path = checked_path(root, relative)
     if not path.is_file():
         raise IssueError(
-            f"Issue {identifier} does not exist: no {issue_path(identifier)}",
+            f"Issue {identifier} does not exist: no {relative}",
             "unknown_issue",
         )
     if path.stat().st_size > MAX_RECORD_BYTES:
@@ -293,14 +312,34 @@ def read_record_file(root: Path, identifier: str) -> tuple[dict, str]:
 def read_issue(root: Path, identifier: str) -> tuple[dict, str]:
     """The committed record of ``identifier`` in the last commit of the worktree ``root`` and its
     revision; a record published but not committed is not read."""
-    path = issue_path(identifier)
-    raw = _committed(root, _head(root), [path]).get(path)
-    if raw is None:
+    record, revision, _ = locate_issue(root, identifier)
+    return record, revision
+
+
+def locate_issue(root: Path, identifier: str) -> tuple[dict, str, str]:
+    """The committed record of ``identifier``, its revision and the path it is committed at, in
+    whichever folder that is; ``invalid_issue`` when it is committed in both."""
+    found = _committed(root, _head(root), list(issue_paths(identifier)))
+    if not found:
         raise IssueError(
-            f"Issue {identifier} does not exist: no {path} is committed in {root}",
+            f"Issue {identifier} does not exist: neither {' nor '.join(issue_paths(identifier))} "
+            f"is committed in {root}",
             "unknown_issue",
         )
-    return _parsed(raw, identifier)
+    _refuse_twice(identifier, sorted(found))
+    [(path, raw)] = found.items()
+    record, revision = _parsed(raw, identifier)
+    return record, revision, path
+
+
+def _refuse_twice(identifier: str, paths: list[str]) -> None:
+    """``invalid_issue`` when ``identifier`` is committed at more than one path."""
+    if len(paths) > 1:
+        raise IssueError(
+            f"Issue {identifier} is committed twice, as {' and '.join(paths)}, but an Issue "
+            "lives in exactly one place; `concorde issues check` names the repair",
+            "invalid_issue",
+        )
 
 
 def _parsed(raw: bytes, identifier: str) -> tuple[dict, str]:
@@ -333,11 +372,15 @@ def list_issues(
     if sort not in {None, "severity"}:
         raise IssueError(f"unknown issue sort {sort!r}: only severity", "invalid_issue")
     commit = _head(root)
-    records = _committed(root, commit, [f"{DIRECTORY}/"])
+    records = _committed(root, commit, [f"{DIRECTORY}/", f"{CLOSED}/"])
+    places = {}
+    for path in records:
+        places.setdefault(Path(path).stem, []).append(path)
     result = []
     reported = {}
-    for path, raw in sorted(records.items()):
-        record, revision = _parsed(raw, Path(path).stem)
+    for identifier, paths in sorted(places.items()):
+        _refuse_twice(identifier, sorted(paths))
+        record, revision = _parsed(records[paths[0]], identifier)
         latest = record["reports"][-1]
         report, source = latest["report"], latest["source"]
         if status is not None and record["status"] != status:
@@ -446,9 +489,8 @@ def _committed(
     for entry in filter(None, listed.stdout.split("\0")):
         meta, path = entry.split("\t", 1)
         mode, _, oid = meta.split()
-        if path.rsplit("/", 1)[0] != DIRECTORY or not RECORD_NAME.fullmatch(
-            path.rsplit("/", 1)[-1]
-        ):
+        folder, _, name = path.rpartition("/")
+        if folder not in FOLDERS.values() or not RECORD_NAME.fullmatch(name):
             continue
         if mode not in {"100644", "100755"}:
             raise IssueError(
@@ -492,9 +534,9 @@ def _committed(
 
 
 def _changed_entries(root: Path) -> list[tuple[str, str]]:
-    """Every record file and file-transaction temporary of the Issue directory whose working
-    tree or index state differs from ``HEAD``, as ``(git status code, path)``: staged, unstaged,
-    untracked and ignored alike."""
+    """Every record file and file-transaction temporary of the Issue directory and its closed
+    folder whose working tree or index state differs from ``HEAD``, as ``(git status code,
+    path)``: staged, unstaged, untracked and ignored alike."""
     status = _git(
         root,
         "--no-optional-locks",
@@ -517,26 +559,30 @@ def _changed_entries(root: Path) -> list[tuple[str, str]]:
     for entry in filter(None, status.stdout.split("\0")):
         code, path = entry[:2], entry[3:]
         directory, _, name = path.rpartition("/")
-        if directory == DIRECTORY and (
+        if directory in (DIRECTORY, CLOSED) and (
             RECORD_NAME.fullmatch(name) or name.startswith(TEMPORARY)
         ):
             changed.append((code, path))
     return changed
 
 
-def _foreign(root: Path, path: str, committed: bytes | None) -> str | None:
+def _foreign(
+    root: Path, path: str, committed: bytes | None, here: bool = True
+) -> str | None:
     """Why the uncommitted state of the record ``path`` is no Issue write's, or ``None`` when it
     is what a write publishes before its commit: a valid record of its Issue that continues the
-    committed one, if any, with more reports or dispositions."""
+    committed one, if any, with more reports or dispositions. ``committed`` is the Issue's
+    committed record, at ``path`` itself when ``here`` and otherwise in its other folder, from
+    which a write moving the record publishes it at ``path``."""
     target = root / path
     if target.is_symlink() or not target.is_file():
         return (
             "the committed record was deleted"
-            if committed is not None and not target.exists()
+            if committed is not None and here and not target.exists()
             else "it is no regular file"
         )
     raw = target.read_bytes()
-    if raw == committed:
+    if raw == committed and here:
         return "its file equals the committed record but its index entry does not"
     identifier = target.stem
     try:
@@ -587,7 +633,10 @@ def _recover(root: Path) -> dict:
     recovered, left, failed = [], [], []
     changed = _changed_entries(root)
     records = [path for _, path in changed if not Path(path).name.startswith(TEMPORARY)]
-    committed = _committed(root, _head(root), records) if records else {}
+    # Both places of every Issue whose record changed: a write moving a record between the
+    # folders publishes it in one and removes it from the other.
+    places = [place for path in records for place in issue_paths(Path(path).stem)]
+    committed = _committed(root, _head(root), places) if records else {}
     for _, path in changed:
         if Path(path).name.startswith(TEMPORARY):
             try:
@@ -597,7 +646,21 @@ def _recover(root: Path) -> dict:
             else:
                 recovered.append({"path": path, "action": "removed"})
             continue
-        reason = _foreign(root, path, committed.get(path))
+        other = next(place for place in issue_paths(Path(path).stem) if place != path)
+        if path in committed:
+            reason = _foreign(root, path, committed[path])
+            # A committed record removed by a write that published it in its other folder.
+            if (
+                reason == "the committed record was deleted"
+                and other in records
+                and other not in committed
+                and _foreign(root, other, committed[path], here=False) is None
+            ):
+                reason = None
+        else:
+            reason = _foreign(
+                root, path, committed.get(other), here=other not in committed
+            )
         if reason is not None:
             left.append({"path": path, "reason": reason})
             continue
@@ -617,10 +680,11 @@ def _recover(root: Path) -> dict:
 
 
 def _untouched(recovery: dict, identifier: str) -> None:
-    """Refuse a write of ``identifier`` whose record holds a change no Issue write made."""
-    path = issue_path(identifier)
+    """Refuse a write of ``identifier`` whose record, in either folder, holds a change no Issue
+    write made."""
     for item in recovery["left"]:
-        if item["path"] == path:
+        if item["path"] in issue_paths(identifier):
+            path = item["path"]
             raise IssueError(
                 f"Issue {identifier} was not written: its record file {path} in the primary "
                 f"worktree differs from its committed version and no Issue write left that "
@@ -675,71 +739,140 @@ def _refuse_unfinished_merge(primary: Path, what: str) -> None:
         )
 
 
-def _publish(root: Path, record: dict, before: str | None, message: str) -> None:
-    """Publish the record and commit it alone; when anything fails after its publication, put it
-    back before refusing, so a refusal leaves only what was committed."""
+def _publish(
+    root: Path, record: dict, before: str | None, committed: str | None, message: str
+) -> str:
+    """Publish the record in the folder its status names and commit it alone, removing it from
+    ``committed``, the path it is committed at, when that is the other folder; when anything
+    fails after its publication, put it back before refusing, so a refusal leaves only what was
+    committed. The record's path."""
     identifier = record["id"]
-    path = issue_path(identifier)
-    _publish_text(root, identifier, render(record), before)
+    path = issue_path(identifier, record["status"])
+    moved = committed is not None and committed != path
+    _publish_texts(
+        root,
+        [(identifier, path, render(record), None if moved else before)],
+    )
+    _settle(root, [path], [committed] if moved else [], [identifier], before, message)
+    return path
+
+
+def _settle(
+    root: Path,
+    published: list[str],
+    removed: list[str],
+    identifiers: list[str],
+    before: str | None,
+    message: str,
+) -> None:
+    """Remove the committed records ``removed`` that ``published`` replaces in the other folder,
+    sync and commit every one of those paths alone; when anything fails, put each back first.
+    ``before`` is the revision a single removed record must still have."""
+    paths = [*published, *removed]
+    one = len(identifiers) == 1
+    what = f"Issue {identifiers[0]}" if one else f"{len(identifiers)} Issues"
+    record, it, them = ("record", "it", "it") if one else ("records", "they", "them")
+    stays = (
+        f"the uncommitted {record} {'stays' if one else 'stay'} in the primary worktree, no "
+        f"read shows {them}, and the next Issue write or `concorde issues recover` puts {them} "
+        "back"
+    )
+    for old in removed if before is not None else ():
+        # Another program changed the record after this write read it: keep its change.
+        target = checked_path(root, old)
+        if not target.is_file() or digest(target.read_bytes()) != before:
+            left = _put_back_all(root, published)
+            raise IssueError(
+                f"Issue {identifiers[0]} was changed by another program after this write read "
+                "it, so nothing was written"
+                + (
+                    ""
+                    if left is None
+                    else f"; putting back its record {', '.join(published)} failed: {left}; "
+                    + stays
+                ),
+                "stale_issue" if left is None else "recovery_failed",
+                path=old,
+            )
     try:
+        for old in removed:
+            checked_path(root, old).unlink()
         _sync_directory(root)
-        problem = _commit(root, identifier, message)
+        problem = _commit(root, paths, message, identifiers)
     except BaseException as error:
-        left = _put_back(root, path)
+        left = _put_back_all(root, paths)
         if left is None or not isinstance(error, Exception):
             raise
         raise IssueError(
-            f"Issue {identifier} was not written: {type(error).__name__}: {error} after its "
-            f"record {path} was published, and putting that record back failed: {left}; the "
-            "uncommitted record stays in the primary worktree, no read shows it, and the next "
-            "Issue write or `concorde issues recover` puts it back",
+            f"{what} was not written: {type(error).__name__}: {error} after "
+            f"{'its record' if one else 'their records'} {', '.join(published)} "
+            f"{'was' if one else 'were'} published, and putting {'that' if one else 'those'} "
+            f"{record} back failed: {left}; {stays}",
             "recovery_failed",
-            path=path,
+            path=published[0],
         ) from error
     if problem is None:
         return
-    left = _put_back(root, path)
+    left = _put_back_all(root, paths)
     if left is not None:
         raise IssueError(
-            f"Issue {identifier} was not written: committing {path} on the primary branch of "
-            f"{root} failed: {problem}; putting the record back failed too: {left}; the "
-            "uncommitted record stays in the primary worktree, no read shows it, and the next "
-            "Issue write or `concorde issues recover` puts it back",
+            f"{what} was not written: committing {', '.join(paths)} on the primary branch of "
+            f"{root} failed: {problem}; putting the {record} back failed too: {left}; {stays}",
             "recovery_failed",
-            path=path,
+            path=published[0],
         )
     raise IssueError(
-        f"Issue {identifier} was not written: committing {path} on the primary branch of "
-        f"{root} failed: {problem}; the record is back as it was",
+        f"{what} was not written: committing {', '.join(paths)} on the primary branch of "
+        f"{root} failed: {problem}; the {record} {'is' if one else 'are'} back as "
+        f"{it} {'was' if one else 'were'}",
         "commit_failed",
-        path=path,
+        path=published[0],
     )
 
 
+def _put_back_all(root: Path, paths: list[str]) -> str | None:
+    """Put every one of ``paths`` back, restoring the committed ones first; what went wrong, or
+    ``None``."""
+    problems = [_put_back(root, path) for path in reversed(paths)]
+    problems = [problem for problem in problems if problem is not None]
+    return "; ".join(problems) if problems else None
+
+
 def _sync_directory(root: Path) -> None:
-    """Persist the rename of a published record; apply_files fsyncs the staged contents."""
-    descriptor = os.open(checked_path(root, DIRECTORY), os.O_RDONLY | os.O_DIRECTORY)
-    try:
-        os.fsync(descriptor)
-    finally:
-        os.close(descriptor)
+    """Persist the renames and removals of published records in both folders; apply_files fsyncs
+    the staged contents."""
+    for folder in (DIRECTORY, CLOSED):
+        path = checked_path(root, folder)
+        if not path.is_dir():
+            continue
+        descriptor = os.open(path, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
 
 
-def _publish_text(root: Path, identifier: str, text: str, before: str | None) -> None:
-    path = issue_path(identifier)
-    if len(text.encode()) > MAX_RECORD_BYTES:
-        raise IssueError(
-            f"Issue {identifier}: the record would exceed the admitted size of 16 MiB",
-            "invalid_issue",
-        )
+def _publish_texts(root: Path, records: list[tuple[str, str, str, str | None]]) -> None:
+    """Publish each ``(identifier, path, text, before)`` in one file transaction."""
+    for identifier, _, text, _ in records:
+        if len(text.encode()) > MAX_RECORD_BYTES:
+            raise IssueError(
+                f"Issue {identifier}: the record would exceed the admitted size of 16 MiB",
+                "invalid_issue",
+            )
+    changes = [
+        {"path": path, "before_digest": before, "content": text}
+        for _, path, text, before in records
+    ]
     try:
-        apply_files(
-            root, [{"path": path, "before_digest": before, "content": text}], {path}
-        )
+        apply_files(root, changes, {change["path"] for change in changes})
     except SpecError as error:
         # Another program created or changed the record after this write read it.
         if error.code != "stale_proposal":
             raise
+        identifier, path, _, before = next(
+            (item for item in records if item[1] == error.path), records[0]
+        )
         happened = (
             "was created by another program while this write was creating it"
             if before is None
@@ -753,14 +886,17 @@ def _publish_text(root: Path, identifier: str, text: str, before: str | None) ->
         ) from error
 
 
-def _commit(root: Path, identifier: str, message: str) -> str | None:
-    """Commit the record of ``identifier`` alone on the primary branch with the repository's
-    author identity and hooks; what went wrong, or ``None``."""
-    path = issue_path(identifier)
+def _commit(
+    root: Path, paths: list[str], message: str, identifiers: list[str]
+) -> str | None:
+    """Commit ``paths`` alone, the records written and those they replace, on the primary branch
+    with the repository's author identity and hooks; what went wrong, or ``None``."""
     branch = _git(root, "symbolic-ref", "-q", "--short", "HEAD")
     if branch.returncode != 0:
         return "the primary worktree has a detached HEAD, so there is no branch to commit on"
-    added = _git(root, "add", "-f", "--", path)
+    present = [path for path in paths if (root / path).exists()]
+    added = _git(root, "add", "-f", "--", *present)
+    trailers = "".join(f"Concorde-Issue: {identifier}\n" for identifier in identifiers)
     done = (
         _git(
             root,
@@ -770,8 +906,8 @@ def _commit(root: Path, identifier: str, message: str) -> str | None:
             "-F",
             "-",
             "--",
-            path,
-            stdin=f"{message}\n\nConcorde-Issue: {identifier}\n",
+            *paths,
+            stdin=f"{message}\n\n{trailers}",
         )
         if added.returncode == 0
         else added
@@ -808,7 +944,8 @@ def report_issue(
     for its merge lock unless the caller holds it (``locked``).
     Source is the provenance the caller supplies, never part of the report. Reusing a key with changed
     contents is an error, not an overwrite. An append needs a current byte digest; retrying the
-    exact accepted append returns its immutable receipt even after later updates.
+    exact accepted append returns its receipt even after later updates, its path where the record
+    lies now.
     """
     validate_report(report)
     check_schema(source, PROVENANCE)
@@ -825,11 +962,11 @@ def report_issue(
         checked_path(root, receipt["path"])
         # The committed record alone: a report found there is committed, so its receipt holds.
         try:
-            record, revision = read_issue(root, identifier)
+            record, revision, committed = locate_issue(root, identifier)
         except IssueError as error:
             if error.code != "unknown_issue":
                 raise
-            record, revision = None, None
+            record, revision, committed = None, None, None
         if record is not None:
             for previous in record["reports"]:
                 if (
@@ -843,7 +980,7 @@ def report_issue(
                             f"in Issue {identifier}",
                             "issue_key_conflict",
                         )
-                    return receipt
+                    return {**receipt, "path": committed}
             if "issue_id" not in report:
                 raise IssueError(
                     f"allocated Issue identity {identifier} is already occupied",
@@ -881,10 +1018,11 @@ def report_issue(
                 "source": source,
             }
         )
-        _publish(
+        receipt["path"] = _publish(
             root,
             record,
             revision,
+            committed,
             f"concorde: {'record' if revision is None else 'report to'} Issue {identifier}",
         )
     return receipt
@@ -952,7 +1090,7 @@ def dispose_issue(
         root, f"a disposition of Issue {identifier}", wait, locked
     ) as recovery:
         _untouched(recovery, identifier)
-        record, revision = read_issue(root, identifier)
+        record, revision, committed = locate_issue(root, identifier)
         if revision != expected_revision:
             raise IssueError(
                 f"Issue {identifier} changed before disposition: expected revision "
@@ -996,6 +1134,7 @@ def dispose_issue(
             root,
             updated,
             revision,
+            committed,
             f"concorde: {'reopen' if reason == 'reopened' else 'close'} Issue {identifier}"
             + ("" if reason == "reopened" else f" ({reason})"),
         )
@@ -1014,12 +1153,82 @@ def recover_issues(
         return recovery
 
 
+def archive_issues(
+    root: Path, *, wait: float = tasks.MERGE_WAIT, locked: bool = False
+) -> dict:
+    """Under the merge lock, move every committed record whose folder does not match its status
+    into the folder its status names, unchanged, in one commit, and say what was moved and which
+    misplaced records were left: ``{"moved": [{issue_id, from, to}], "left": [{path, reason}]}``.
+
+    A record committed in both folders, or whose file holds a change no Issue write made, is left.
+    """
+    with _writing(
+        root, "an archive of misplaced Issue records", wait, locked
+    ) as recovery:
+        records = _committed(root, _head(root), [f"{DIRECTORY}/", f"{CLOSED}/"])
+        places = {}
+        for path in records:
+            places.setdefault(Path(path).stem, []).append(path)
+        changed = {item["path"]: item["reason"] for item in recovery["left"]}
+        moves, left = [], []
+        for identifier, paths in sorted(places.items()):
+            if len(paths) > 1:
+                left.extend(
+                    {
+                        "path": path,
+                        "reason": f"Issue {identifier} is committed in both folders",
+                    }
+                    for path in sorted(paths)
+                )
+                continue
+            [path] = paths
+            record, _ = _parsed(records[path], identifier)
+            target = issue_path(identifier, record["status"])
+            if target == path:
+                continue
+            foreign = [place for place in (path, target) if place in changed]
+            if foreign:
+                left.extend(
+                    {
+                        "path": place,
+                        "reason": f"it holds a change no Issue write made ({changed[place]})",
+                    }
+                    for place in foreign
+                )
+                continue
+            moves.append((identifier, path, target, records[path]))
+        if moves:
+            _publish_texts(
+                root,
+                [
+                    (identifier, target, raw.decode("utf-8"), None)
+                    for identifier, _, target, raw in moves
+                ],
+            )
+            _settle(
+                root,
+                [target for _, _, target, _ in moves],
+                [path for _, path, _, _ in moves],
+                [identifier for identifier, _, _, _ in moves],
+                None,
+                f"concorde: archive {len(moves)} Issue record"
+                + ("" if len(moves) == 1 else "s"),
+            )
+        return {
+            "moved": [
+                {"issue_id": identifier, "from": path, "to": target}
+                for identifier, path, target, _ in moves
+            ],
+            "left": left,
+        }
+
+
 def resolve_report(root: Path, receipt: dict) -> dict:
     """Resolve an immutable observation, not the issue's possibly changed latest classification."""
     check_schema(receipt, RECEIPT)
-    if receipt["path"] != issue_path(receipt["issue_id"]):
+    if receipt["path"] not in issue_paths(receipt["issue_id"]):
         raise IssueError(
-            f"receipt path differs from the path of Issue {receipt['issue_id']}: "
+            f"receipt path differs from both paths of Issue {receipt['issue_id']}: "
             f"{receipt['path']}",
             "invalid_issue",
         )
