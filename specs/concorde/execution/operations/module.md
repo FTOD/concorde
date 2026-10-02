@@ -205,8 +205,12 @@ task level or its workflow decides which runs next.
 
 <a id="realization.operations.catalog"></a>
 
-The **Catalog and worker steps** realization holds the catalog (`catalog.py`) and the prompt and
-brief helpers of worker-backed providers (`provider.py`); the standard worker sequence itself is
+The **Catalog and worker steps** realization holds the catalog (`catalog.py`), the prompt and
+brief helpers of worker-backed providers (`provider.py`) and the review providers' shared handling
+of their Issues (`review_issues.py`): reading a reviewed Module's earlier Issues by the Operations
+that reported them, settling which a review names, resolves or carries, and reporting each finding
+through the Issue store, so that every review treats its earlier Issues by the same rules; the
+standard worker sequence itself is
 the run context's worker launch, which the
 [Runner and run store](../module.md#realization.execution.runner) realization binds. The providers'
 own code lives with their Modules.
