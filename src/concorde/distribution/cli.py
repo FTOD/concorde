@@ -38,7 +38,7 @@ def part_missing(part: str, kind: str, name: str) -> dict:
     return formats.link(
         ACTOR,
         "part_missing",
-        f"{what} belongs to the {part} part, which this project has not installed",
+        f"{what} needs the {part} part, which this project has not installed",
         reason="input",
         explanation="Distribution offers only the commands and tools of the installed parts; "
         "installing a part is the developer's choice",

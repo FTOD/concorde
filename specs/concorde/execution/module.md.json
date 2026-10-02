@@ -66,7 +66,9 @@
         "src/concorde/execution/runner.py",
         "src/concorde/execution/runs.py",
         "tests/concorde/execution/",
-        "tests/concorde/support/runs.py"
+        "tests/concorde/support/runs.py",
+        "src/concorde/execution/idle.py",
+        "src/concorde/execution/registration.json"
       ]
     }
   ],

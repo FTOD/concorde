@@ -63,6 +63,13 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - THEN the build stops with an error naming the edited output
 - BUT the edited output is kept as it is
 
+### scenario.distribution.build-refuses-name-conflict — Refuse a name two parts register
+
+- GIVEN a checkout in which two parts' [registrations](../glossary.json#concept.part-registration) register the same command
+- WHEN the developer runs `build`
+- THEN the build stops with an error naming the command and both parts
+- AND nothing is resolved by the order of the parts
+
 ## Protocol manifest and copy
 
 ### scenario.distribution.protocol-manifest-bind — Accept a changed Protocol into this checkout
@@ -100,6 +107,20 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - WHEN the developer runs `concorde` with it
 - THEN exactly one `failed` result envelope is printed
 - AND the exit status is nonzero
+
+### scenario.distribution.composed-from-installed-parts — The command offers the installed parts
+
+- GIVEN a project whose receipt names the parts installed, and one whose receipt names none
+- WHEN the developer asks `concorde --help` for its commands, or the project MCP server lists its tools
+- THEN the first offers exactly the distribution commands and the commands of the parts its receipt names, and the tools they register whose required parts are installed
+- AND the second offers the commands of every part of the package
+
+### scenario.distribution.part-missing — A command or tool of a part not installed names the part
+
+- GIVEN a project installed without the issues and execution parts
+- WHEN the developer runs `concorde issues list` or `concorde run spec_review`, or a session calls the project MCP server's `issue_list`
+- THEN each is refused with `{"error": <link>}` whose code is `part_missing`, naming the part the command or tool belongs to and how to install it
+- AND the command exits with status 1
 
 ## Installation
 

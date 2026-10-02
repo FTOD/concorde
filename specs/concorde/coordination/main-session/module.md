@@ -931,8 +931,8 @@ mainsession: Main session {
     "prompts/main-session/"
   }
   guidance: Main-session guidance
-  server: Server program {
-    "src/concorde/distribution/project_mcp/"
+  server: Task tools {
+    "src/concorde/coordination/tasks/tools.py"
   }
   sources -> guidance: authors
 }
@@ -950,18 +950,15 @@ observes.
 
 <a id="realization.main-session.project-mcp"></a>
 
-The **server program** in `src/concorde/distribution/project_mcp/` holds today both Distribution's host and the
-tools of every part, which the code tasks that follow these Specs split along the parts:
-`server.py` runs the stdio session,
-finds the project, decides whether the session listens to it as a channel and sends channel events
-from the threads that watch; `calls.py` runs each call in a fresh process of the primary worktree's
-current Concorde and watches the wait and merge processes; `tools.py` is what that process runs,
-mapping each tool to Tasks, Tracing, Issues and Workflows' records and taking the merge's locks.
-Like the Spec MCP server it is a small hand-written JSON-RPC session with no MCP library, since its
-wire is the same few messages plus one notification; it keeps its own session code rather than
-reusing the Spec MCP server's, which is written for one read-only root with its tools fixed and
-sends only from one thread. Its tests, under `tests/concorde/project_mcp/`, talk to it over a real
-stdio connection and watch real locks, merges and channel events.
+The **task tools** in `src/concorde/coordination/tasks/tools.py` are the coordination part's tools
+of the project MCP server, which its [part registration](../../glossary.json#concept.part-registration)
+names: the task tools, `task_merge`, `locks`, `register_wait`, `trace_show` and, where the execution
+part is installed, `run_result`, each mapped to Tasks' and Tracing's records, with their
+definitions and the sentence they add to the server's instructions. Distribution's
+[host](../../distribution/module.md#realization.distribution.project-mcp) calls them with each call
+in a fresh process of the current Concorde; `task_merge` takes the merge's locks and leaves the
+host the command it becomes. Their tests, under `tests/concorde/project_mcp/`, talk to the server
+over a real stdio connection and watch real locks, merges and channel events.
 
 ## Who relies on it
 

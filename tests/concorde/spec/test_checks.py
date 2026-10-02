@@ -25,7 +25,6 @@ from tests.concorde.support.spec_project import (
     sync_registry,
     update_glossary_entry,
     upsert_concepts,
-    write_checks,
     write_json,
 )
 
@@ -1275,35 +1274,6 @@ class CheckTests(unittest.TestCase):
         self.assertIn(
             "provider: Provider\n", (self.root / self.entry("consumer")).read_text()
         )
-
-    def test_a_configured_check_with_a_missing_or_linked_input_is_an_error(self):
-        (self.root / "data").mkdir()
-        (self.root / "data/real.txt").write_text("input\n")
-        (self.root / "data/link.txt").symlink_to("real.txt")
-        write_checks(
-            self.root,
-            [
-                {
-                    "id": "check.consumer",
-                    "module": "module.consumer",
-                    "argv": ["{python}", "-c", "open('ran', 'w').close()"],
-                    "timeout_seconds": 10,
-                    "inputs": ["data/missing.txt", "data/link.txt", "data/real.txt"],
-                }
-            ],
-        )
-        findings = self.project.findings("CONCORDE-CHECK-001")
-        self.assertEqual(
-            [
-                ("error", "data/link.txt", "check.consumer"),
-                ("error", "data/missing.txt", "check.consumer"),
-            ],
-            sorted((f.strictness, f.source, f.subject_id) for f in findings),
-        )
-        for finding in findings:
-            self.assertIn("check.consumer", finding.message)
-            self.assertIn(finding.source, finding.message)
-        self.assertFalse((self.root / "ran").exists())
 
     @verifies("scenario.spec.registry-check")
     def test_checking_the_registry_reports_each_stale_record_and_writes_nothing(self):

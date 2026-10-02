@@ -522,9 +522,12 @@ owns the procedure registers them when its code loads, and their rendering), the
 convention (`output.py`), the workflow record with its workflow lock, answers, saved reports and
 step nodes (`store.py`), the `concorde workflow step` and `report` commands, which the workflow part
 registers with the `concorde` command, the step outcome, step request and workflow result schemas,
-and the code of the `workflow_step` and `workflow_report` tools (`tools.py`). Until Distribution
-composes the `concorde` command and the project MCP server from the part registrations, its own
-wiring presents these tools and loads the procedures' registering modules.
+the code of the `workflow_step` and `workflow_report` tools (`tools.py`), and the workflow part's
+[part registration](../glossary.json#concept.part-registration) (`registration.json`), which names
+the command, the tools, the build's `renders` entry that renders every registered workflow, and the
+permission rules the workflows' step agents need. Distribution loads every installed part's
+registering modules first, so the procedures the parts contribute are registered when a step, a
+report or the build reads the catalog.
 
 <a id="realization.workflows.scripts"></a>
 

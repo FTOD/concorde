@@ -90,7 +90,19 @@
         "src/concorde/distribution/cli.py",
         "scripts/concorde.py",
         "scripts/concorde.sh",
-        "scripts/concorde.ps1"
+        "scripts/concorde.ps1",
+        "src/concorde/distribution/formats.py",
+        "src/concorde/distribution/parts.py",
+        "src/concorde/distribution/registration.json"
+      ]
+    },
+    {
+      "id": "realization.distribution.project-mcp",
+      "type": "realization",
+      "title": "Project MCP server host",
+      "meaning": "#realization.distribution.project-mcp",
+      "entries": [
+        "src/concorde/distribution/project_mcp/"
       ]
     },
     {
@@ -177,12 +189,30 @@
       "type": "relates",
       "source": "realization.distribution.command",
       "verb": "runs",
-      "target": "concept.project-mcp-server"
+      "target": "realization.distribution.project-mcp"
     },
     {
       "type": "relates",
       "source": "realization.distribution.installer",
       "verb": "installs the parts named by",
+      "target": "concept.part-registration"
+    },
+    {
+      "type": "relates",
+      "source": "realization.distribution.project-mcp",
+      "verb": "is the host of",
+      "target": "concept.project-mcp-server"
+    },
+    {
+      "type": "relates",
+      "source": "realization.distribution.project-mcp",
+      "verb": "presents the tools named by",
+      "target": "concept.part-registration"
+    },
+    {
+      "type": "relates",
+      "source": "realization.distribution.command",
+      "verb": "routes each command through",
       "target": "concept.part-registration"
     }
   ],

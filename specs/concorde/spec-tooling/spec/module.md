@@ -309,7 +309,12 @@ Python sources are under `src/concorde/spec/` and tests under `tests/concorde/sp
   [boundary sets](../../glossary.json#concept.boundary-set), computes the context identity and
   refuses unbound shared writes.
 - <a id="realization.spec.initializer"></a>**Project initializer** proposes and applies the first
-  Spec of a project.
+  Spec of a project, and keeps an installed project's files bound through the spec part's install
+  services.
+- <a id="realization.spec.commands"></a>**Command entries** are the spec part's
+  [part registration](../../glossary.json#concept.part-registration) and the `concorde` commands
+  it names, `spec-validation`, `registry`, `docsite`, `grant`, `init` and `spec-mcp`, each
+  answering Spec core's shared envelope, or running the Spec MCP server, for Distribution to print.
 - <a id="realization.spec.transactions"></a>**Transaction writer** is Spec core's own copy of
   digest-bound file transactions.
 - <a id="realization.spec.typed-values"></a>**Typed values** are Spec core's own copy of the

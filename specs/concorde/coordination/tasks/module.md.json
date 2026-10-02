@@ -110,7 +110,10 @@
         "tests/concorde/tasks/test_wait.py",
         "tests/concorde/tasks/test_deliver.py",
         "tests/concorde/support/installed_parts.py",
-        "tests/concorde/support/handed_lock.py"
+        "tests/concorde/support/handed_lock.py",
+        "src/concorde/coordination/tasks/update.py",
+        "src/concorde/coordination/registration.json",
+        "tests/concorde/support/ignored.py"
       ]
     }
   ],

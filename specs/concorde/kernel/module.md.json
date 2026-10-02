@@ -35,7 +35,8 @@
         "src/concorde/kernel/files.py",
         "src/concorde/kernel/locking.py",
         "src/concorde/kernel/refusal.py",
-        "src/concorde/kernel/schema.py"
+        "src/concorde/kernel/schema.py",
+        "src/concorde/kernel/registration.json"
       ]
     },
     {

@@ -984,9 +984,11 @@ installed. The spec part is installed for a worktree exactly when its registry m
 `.concorde/specs.json` exists, which `open` reads for the Modules it admits. The execution, method
 and issues parts are installed exactly when the worktree's own `concorde`, its
 `.concorde/bin/concorde`, else the checkout's `scripts/concorde.py`, else the running package,
-offers their commands `run`, `delivery` and `issues`: it does unless, asked for one, it answers with
-an error link whose code is `part_missing` or `part_not_installed`, or says `invalid choice` for that
-command, whatever else it answers, a refusal of the arguments included. `deliver` and `wait --run`
+offers their commands `run`, `delivery` and `issues`: it does unless, asked for one, it refuses it
+as a command of a part the project has not installed, as
+[Distribution](../../distribution/module.md#the-command-line) does, printing `{"error": <link>}`
+whose code is `part_missing` and exiting with status 1; any other answer, a refusal of the
+arguments included, means it is offered. `deliver` and `wait --run`
 ask with `concorde <command> --help`, which changes nothing. `--resolves` and `resolve` read each
 Issue with `concorde issues show <issue> --root <primary worktree>`. A merge puts back what Issue
 writes left with `concorde issues recover --root <primary worktree>` and closes each resolved Issue

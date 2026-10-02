@@ -397,5 +397,6 @@ Issues. They reach Issues only through the issues part's
 [bookkeeping command](../issues/interface.md#bookkeeping-command), `concorde issues` of the worktree
 the run started in, JSON in and out (`list`, `show`, and `report --provenance` with the provenance
 the Operation vouches for), never through its code; the issues part counts as not installed when
-that `concorde` refuses `issues` as a command of a part the project has not installed, or offers no
-such command at all.
+that `concorde` refuses `issues` as a command of a part the project has not installed, printing
+`{"error": <link>}` with the code `part_missing` and exiting with status 1, as
+[Distribution](../distribution/module.md#the-command-line) does.

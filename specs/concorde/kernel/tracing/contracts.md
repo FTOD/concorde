@@ -486,9 +486,9 @@ its folders are **current** (still written) or **closed** (never changed again),
 field that dates its end, the retention periods that apply to it, the kind of lock, named after a
 top node's identity, whose holder says the node is still written, and the files that count as its
 **conversation records**. Tracing searches, lists and prunes the registered roots of the installed
-parts and no other folder. Until Distribution reads the parts' registrations, a part registers its
-roots with Tracing's library when its code loads, and whoever runs `concorde trace` loads the parts
-that register them first. Concorde's parts register these:
+parts and no other folder. A part registers its roots with Tracing's library when its code loads,
+from a module its part registration names among those Distribution loads before it routes any
+command of a part, `concorde trace` included. Concorde's parts register these:
 
 | Root | Folder | Registered by | Top nodes | State | Listed | Retention |
 | --- | --- | --- | --- | --- | --- | --- |

@@ -450,6 +450,135 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual(2, command("task", "frobnicate").returncode)
 
 
+def framework(test, parts: list[str] | None) -> Path:
+    """A project whose Framework copy is this package, with a receipt naming ``parts``, or no
+    parts at all when None; the project's root."""
+    directory = tempfile.TemporaryDirectory()
+    test.addCleanup(directory.cleanup)
+    project = Path(directory.name) / "project"
+    copy = project / ".concorde/framework"
+    shutil.copytree(
+        REPOSITORY_ROOT / "src",
+        copy / "src",
+        ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+    )
+    (copy / "generated").mkdir(parents=True)
+    shutil.copy2(
+        REPOSITORY_ROOT / "generated/parts.json", copy / "generated/parts.json"
+    )
+    shutil.copy2(REPOSITORY_ROOT / "concorde.json", copy / "concorde.json")
+    receipt = {"version": "9.0.0"}
+    if parts is not None:
+        receipt["parts"] = {name: "9.0.0" for name in parts}
+    (project / ".concorde/install.json").write_text(json.dumps(receipt))
+    subprocess.run(["git", "init", "-q", str(project)], check=True)
+    return project
+
+
+def framework_command(project: Path, *argv, stdin: str | None = None):
+    environment = {**os.environ, "PYTHONPATH": str(project / ".concorde/framework/src")}
+    return subprocess.run(
+        [sys.executable, "-m", "concorde", *argv],
+        cwd=project,
+        env=environment,
+        input=stdin,
+        capture_output=True,
+        text=True,
+    )
+
+
+class PartsTests(unittest.TestCase):
+    """The command and the project MCP server composed from the installed parts' registrations."""
+
+    EVERY_PART_BUT = ("issues", "execution")
+
+    def installed(self) -> list[str]:
+        index = json.loads((REPOSITORY_ROOT / "generated/parts.json").read_text())
+        return [name for name in index["parts"] if name not in self.EVERY_PART_BUT]
+
+    @verifies(
+        "scenario.distribution.part-missing",
+        "scenario.distribution.composed-from-installed-parts",
+    )
+    def test_a_command_or_tool_of_a_part_not_installed_names_the_part(self):
+        project = framework(self, self.installed())
+        usage = framework_command(project, "--help")
+        self.assertEqual(0, usage.returncode, usage.stderr)
+        offered = set(usage.stdout.split("\n", 3)[3].split())
+        self.assertIn("task", offered)
+        self.assertNotIn("issues", offered)
+        self.assertNotIn("run", offered)
+        for argv, part in (
+            (("issues", "list"), "issues"),
+            (("run", "spec_review"), "execution"),
+        ):
+            with self.subTest(argv=argv):
+                refused = framework_command(project, *argv)
+                self.assertEqual(1, refused.returncode, refused.stderr)
+                link = json.loads(refused.stdout)["error"]
+                validate(link, ERROR_SCHEMA)
+                self.assertEqual("part_missing", link["code"])
+                self.assertIn(f"the {part} part", link["detail"])
+                self.assertTrue(
+                    any(f"--parts {part}" in item for item in link["options"])
+                )
+        listed = framework_command(project, "project-mcp", "--tools")
+        self.assertEqual(0, listed.returncode, listed.stderr)
+        names = {tool["name"] for tool in json.loads(listed.stdout)["tools"]}
+        self.assertIn("task_list", names)
+        # Neither the issues part's tools nor run_result, which requires the execution part.
+        self.assertFalse({"issue_list", "issue_report", "run_result"} & names)
+        call = {"arguments": {}, "primary": str(project), "where": str(project)}
+        answered = framework_command(
+            project, "project-mcp", "--call", "issue_list", stdin=json.dumps(call)
+        )
+        link = json.loads(answered.stdout)["error"]
+        self.assertEqual("part_missing", link["code"])
+        self.assertIn("the issues part", link["detail"])
+        # run_result is the coordination part's, but needs the execution part.
+        answered = framework_command(
+            project, "project-mcp", "--call", "run_result", stdin=json.dumps(call)
+        )
+        link = json.loads(answered.stdout)["error"]
+        self.assertEqual("part_missing", link["code"])
+        self.assertIn("the execution part", link["detail"])
+
+    @verifies("scenario.distribution.composed-from-installed-parts")
+    def test_a_receipt_naming_no_parts_installs_every_part(self):
+        project = framework(self, None)
+        usage = framework_command(project, "--help")
+        offered = set(usage.stdout.split("\n", 3)[3].split())
+        index = json.loads((REPOSITORY_ROOT / "generated/parts.json").read_text())
+        self.assertEqual(
+            {name for entry in index["parts"].values() for name in entry["commands"]},
+            offered,
+        )
+
+    @verifies("scenario.distribution.build-refuses-name-conflict")
+    def test_two_parts_registering_one_name_fail_the_build(self):
+        package = package_copy(self)
+        path = package / "src/concorde/issues/registration.json"
+        registration = json.loads(path.read_text())
+        registration["commands"].append(
+            {"name": "task", "entry": "cli:main", "output": "own"}
+        )
+        path.write_text(json.dumps(registration))
+        with self.assertRaises(BuildError) as raised:
+            write_build(package)
+        self.assertIn(
+            "command task is registered by coordination and issues",
+            str(raised.exception),
+        )
+
+    def test_every_registration_satisfies_the_registration_contract(self):
+        schema = contract_schema("contract.distribution.part-registration")
+        for path in sorted(
+            (REPOSITORY_ROOT / "src/concorde").glob("*/registration.json")
+        ):
+            with self.subTest(path=path.parent.name):
+                validate(json.loads(path.read_text()), schema)
+
+
 class InstallTests(unittest.TestCase):
     @verifies(
         "scenario.distribution.install",

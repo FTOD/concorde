@@ -68,9 +68,8 @@ class ModuleImplementationTests(SharedFileProject, unittest.TestCase):
             (
                 ("specs/a/module.md", "specs/a/obligations.md", "specs/a/details.md"),
                 ("source/a.py", "source/shared.py"),
-                (),
             ),
-            (focused.documents, focused.files, focused.checks),
+            (focused.documents, focused.files),
         )
         self.assertEqual(
             repository.spec_context("module.a").value["sources"],
@@ -120,61 +119,6 @@ class ModuleImplementationTests(SharedFileProject, unittest.TestCase):
         self.assertEqual("protocol_mismatch", raised.exception.code)
         self.write(".concorde/config.json", json.dumps(config))
         self.assertEqual("module.a", self.repository().module("module.a").id)
-
-    def test_configured_checks_are_read_from_one_file_per_module(self):
-        def check(identity):
-            return {"id": identity, "argv": ["true"], "timeout_seconds": 5}
-
-        self.write(
-            ".concorde/checks/module.b.json",
-            json.dumps({"checks": [check("check.b.second"), check("check.b.first")]}),
-        )
-        self.write(
-            ".concorde/checks/module.a.json", json.dumps({"checks": [check("check.a")]})
-        )
-        repository = self.repository()
-        # Files by name, entries in file order; each check carries its file's Module.
-        self.assertEqual(
-            [
-                ("check.a", "module.a"),
-                ("check.b.second", "module.b"),
-                ("check.b.first", "module.b"),
-            ],
-            [(item["id"], item["module"]) for item in repository.checks.values()],
-        )
-        self.assertEqual(("check.a",), repository.module("module.a").checks)
-        valid = (self.root / ".concorde/checks/module.a.json").read_text()
-
-        def refused(content, name="module.a.json"):
-            (self.root / ".concorde/checks" / name).write_text(content)
-            try:
-                with self.assertRaises(SpecError) as raised:
-                    self.repository()
-            finally:
-                (self.root / ".concorde/checks" / name).unlink()
-                self.write(".concorde/checks/module.a.json", valid)
-            return raised.exception
-
-        error = refused(
-            json.dumps({"checks": [{**check("check.a"), "module": "module.b"}]})
-        )
-        self.assertEqual(
-            ("invalid_spec", ".concorde/checks/module.a.json"),
-            (error.code, error.path),
-        )
-        self.assertIn("module.a", error.reason)
-        error = refused(json.dumps({"checks": [check("check.b.first")]}))
-        self.assertIn(".concorde/checks/module.b.json", str(error))
-        self.assertEqual("invalid_spec", refused(json.dumps([check("x.y")])).code)
-        error = refused(json.dumps({"checks": []}), "module.unknown.json")
-        self.assertEqual(
-            ("unknown_module", ".concorde/checks/module.unknown.json"),
-            (error.code, error.path),
-        )
-        error = refused("{}", "notes.txt")
-        self.assertEqual(
-            ("invalid_spec", ".concorde/checks/notes.txt"), (error.code, error.path)
-        )
 
     @verifies("scenario.spec.config-fields-moved")
     def test_a_moved_configuration_field_names_where_its_setting_lives(self):

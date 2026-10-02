@@ -50,7 +50,7 @@ from .project_defaults import (
     project_default_files,
     protocol_files,
 )
-from .tools import TOOLS, ToolError, install_d2, install_pi_runtime, plan_pi_runtime
+from .tools import ToolError, install_d2, install_pi_runtime, plan_pi_runtime
 
 FRAMEWORK = ".concorde/framework"
 # Concorde's own Python environment, a venv inside the framework copy that uv creates: installed

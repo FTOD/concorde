@@ -157,11 +157,19 @@ def answer(name: str, envelope: dict) -> tuple[dict, dict | None]:
             )
         found = tools.get(name)
         if found is None:
+            from ..cli import part_missing
+
             owner = parts.owner_of("mcp_tools", name)
             if owner is not None and owner not in installed:
-                from ..cli import part_missing
-
                 raise Refusal(part_missing(owner, "mcp_tools", name))
+            # A tool of an installed part that requires a part the project has not installed.
+            for registration in installed.values():
+                for tool in registration.data["mcp_tools"]:
+                    absent = [
+                        item for item in tool["requires"] if item not in installed
+                    ]
+                    if tool["name"] == name and absent:
+                        raise Refusal(part_missing(absent[0], "mcp_tools", name))
             raise own(
                 str(name),
                 "invalid_input",
