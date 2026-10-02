@@ -102,7 +102,11 @@ swe-bench, langgraph and langgraph-docs references are Git submodules pinned in
 the LangGraph release `uv.lock` locks, and `langgraph-docs` the LangChain documentation
 repository, whose LangGraph pages match that release; when the lock moves to another LangGraph
 release, both move with it. `scripts/development/init-references.py` checks them out,
-without their media, at exactly the recorded commits.
+without their media, at exactly the recorded commits. A reference counts as checked out only when
+its clone is at the recorded commit: a clone left elsewhere, such as one whose fetch of that
+commit failed, is completed in place on the next run, which fetches the commit when the clone
+lacks it, checks it out and names the commit it found; with `--check` it is reported as not at
+the recorded commit.
 
 A submodule's registration, its `url` and `active` settings, lives in the repository's shared
 `.git/config`, which every worktree reads. Each task session prepares its own worktree, so several
@@ -136,6 +140,14 @@ out and others not.
 - WHEN `scripts/development/init-references.py` runs in that worktree
 - THEN it registers that submodule as active in the shared `.git/config`
 - AND it checks out every submodule
+
+### scenario.concorde.references-completed — A clone whose fetch failed is completed on the next run
+
+- GIVEN a worktree of this repository whose reference clone exists but sits on another commit than the one the worktree records, as a run whose fetch of that commit failed leaves it
+- WHEN `scripts/development/init-references.py --check` runs there
+- THEN it reports that reference as not at the recorded commit, naming the commit it is at, and exits 1
+- AND when `scripts/development/init-references.py` runs there, it checks out the recorded commit in that clone and says so, naming the commit it found
+- AND the worktree then shows no change of the reference
 
 ### Documentation refresh
 

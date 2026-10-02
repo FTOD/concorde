@@ -12,7 +12,9 @@ suffix, checked out at exactly the commit the superproject records.
     python3 scripts/development/init-references.py --check    # report without cloning
 
 Run it once in a fresh clone (after ``python3 scripts/concorde.py build``); with no submodule in
-``.gitmodules`` it does nothing.
+``.gitmodules`` it does nothing. A reference counts as checked out only when its clone is at the
+recorded commit: one that is not, as a clone whose fetch of that commit failed is left, is
+completed in place on the next run, which names the commit it found.
 
 The submodules' registration (``submodule.<name>.url`` and ``.active``) lives in the repository's
 shared ``.git/config``, which every worktree reads. A registered submodule is not registered again,
@@ -120,9 +122,29 @@ def register(entry: dict[str, str]) -> None:
         )
 
 
-def checked_out(path: str) -> bool:
+def cloned(path: str) -> bool:
+    """Whether the reference has a clone of its own, checked out or not."""
     directory = ROOT / path
     return directory.is_dir() and (directory / ".git").exists()
+
+
+def head(path: str) -> str | None:
+    """The commit the reference's clone has checked out, or None without one."""
+    if not cloned(path):
+        return None
+    found = git(
+        "rev-parse", "--verify", "--quiet", "HEAD", cwd=ROOT / path, check=False
+    )
+    return found.stdout.strip() or None if found.returncode == 0 else None
+
+
+def checked_out(path: str) -> bool:
+    """Whether the reference is checked out at exactly the commit the superproject records.
+
+    A clone whose fetch of that commit failed is left on the remote's default branch with
+    nothing checked out, and is no more checked out than a missing one."""
+    commit = recorded_commit(path)
+    return commit is not None and head(path) == commit
 
 
 def initialize(entry: dict[str, str]) -> None:
@@ -176,6 +198,39 @@ def initialize(entry: dict[str, str]) -> None:
     git("checkout", "--quiet", "--detach", commit, cwd=ROOT / path)
 
 
+def complete(entry: dict[str, str]) -> None:
+    """Check out the recorded commit in a clone that is not at it, fetching it when the clone
+    lacks it, as a run whose fetch failed leaves it."""
+    path = entry["path"]
+    commit = recorded_commit(path)
+    if commit is None:
+        raise SystemExit(f"{path} is not a submodule of this checkout")
+    present = git(
+        "cat-file", "-e", f"{commit}^{{commit}}", cwd=ROOT / path, check=False
+    )
+    if present.returncode:
+        fetch = git(
+            "fetch",
+            "--quiet",
+            "--depth",
+            "1",
+            "origin",
+            commit,
+            cwd=ROOT / path,
+            check=False,
+        )
+        if fetch.returncode:
+            raise SystemExit(
+                f"cannot fetch {commit} for {path}: {fetch.stderr.strip()}"
+            )
+    done = git("checkout", "--quiet", "--detach", commit, cwd=ROOT / path, check=False)
+    if done.returncode:
+        raise SystemExit(
+            f"cannot check out {commit} in {path}, whose clone is at {head(path) or 'no commit'}: "
+            f"{done.stderr.strip() or done.stdout.strip()}"
+        )
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -194,19 +249,31 @@ def main(argv: list[str] | None = None) -> int:
         # Register every missing submodule before cloning any, so that a busy configuration lock
         # stops the script before it leaves some references checked out and others not.
         for entry in entries:
-            if not checked_out(entry["path"]):
+            if not cloned(entry["path"]):
                 register(entry)
     missing = 0
     for entry in entries:
         path = entry["path"]
-        present = checked_out(path)
-        state = "checked out" if present else "missing"
-        if not present and not arguments.check:
-            initialize(entry)
-            state = "initialized"
-        if state == "missing":
+        commit = recorded_commit(path) or "?"
+        if checked_out(path):
+            print(f"{path}: checked out @ {commit}")
+            continue
+        found = head(path) if cloned(path) else None
+        if arguments.check:
             missing += 1
-        print(f"{path}: {state} @ {recorded_commit(path) or '?'}")
+            state = (
+                f"not at the recorded commit (at {found or 'no commit'})"
+                if cloned(path)
+                else "missing"
+            )
+            print(f"{path}: {state} @ {commit}")
+            continue
+        if cloned(path):
+            complete(entry)
+            print(f"{path}: completed @ {commit} (was at {found or 'no commit'})")
+        else:
+            initialize(entry)
+            print(f"{path}: initialized @ {commit}")
     return 1 if arguments.check and missing else 0
 
 

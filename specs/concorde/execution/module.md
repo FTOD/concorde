@@ -48,10 +48,13 @@ would bind the wrong workspace.
 
 A bound run holds the **[workspace lock](../glossary.json#concept.workspace-lock)** from before its
 admission until after its result is written, so a workspace runs one run at a time: a second run
-started while the first holds it is refused with `workspace_busy`, naming the run that holds it, or
+started while the first holds it is refused with `workspace_busy`, naming the lock's holder, or
 waits for it with `--wait` ([Waiting for a busy workspace](#waiting-for-a-busy-workspace)). The lock
 is a file under `locks/workspaces/` of the binding's `.concorde`, apart from every record and
-outside the workspace, so a run that only reads the workspace leaves it untouched.
+outside the workspace, so a run that only reads the workspace leaves it untouched. Runs are not its
+only takers: whoever prepares the workspace may take it too, as Concorde's task level does to merge
+or close a task, so Execution names a holder only by the holder line
+[Tracing](../tracing/contracts.md#locks) keeps in the lock file, never assuming that it is a run.
 
 ### Runs and their results
 
@@ -68,7 +71,10 @@ deliver, [`delivery`](commands/delivery/module.md) decides that readiness again 
 workspace, and [`scaffold`](commands/scaffold/module.md) creates the child Modules a survey proposed;
 the catalog of [Commands](commands/module.md) lists them. Both kinds are **runs**: the same runner
 parses their command line, resolves the workspace, takes the workspace lock, runs their steps and
-writes one run result, so a workflow, the task level or an observer treats them alike.
+writes one run result, so a workflow, the task level or an observer treats them alike. The
+Operation or execution command a run names is the run's **definition**: it supplies the steps the
+runner runs, the arguments they take, whether the run may be unbound and the contract its output
+must satisfy.
 
 <a id="concept.execution-runner"></a>
 
@@ -103,8 +109,13 @@ primary worktree: `understand`, `survey`, `spec_review`, `spec_panel` and `code_
 review with `--base`, a Module review without). It works with the Modules `--modules` names,
 records `workspace` null, admits only unbound inputs, takes no workspace lock, having no workspace
 to lock, though it takes its run lock like every run, and may launch only reading workers, so it
-changes no [Spec](../glossary.json#concept.spec) or code. Every other Operation and every execution
-command is refused unbound with `binding_required`.
+changes no [Spec](../glossary.json#concept.spec) or code. The one lasting change it may make
+besides its own record is publishing [Issues](../glossary.json#concept.issue), as a Spec or code
+review reports its findings: only through the [Issues](../issues/module.md) store, which commits
+each on the primary branch as a commit of its own under the
+[merge lock](../glossary.json#concept.merge-lock), never through the checkout it examines
+([req.execution.unbound-origin-untouched](requirements.md#req.execution.unbound-origin-untouched)).
+Every other Operation and every execution command is refused unbound with `binding_required`.
 
 <a id="concept.unbound-checkout"></a>
 
@@ -169,8 +180,11 @@ does not hold its workspace's lock yet lies in the lobby, `.concorde/lobby/<run-
 `.concorde` its binding names, and stays there when it is refused before it holds it, so that
 nothing is written into a workspace folder by a run that has not entered it. Git ignores all of
 them. Whoever prepared a workspace reads its runs in its workspace folder, and the runs waiting in
-the lobby for its lock, to know what happened in it, and `concorde trace` finds any run by its
-identity.
+the lobby for its lock, to know what happened in it. `concorde trace` finds a run by its identity
+wherever [Tracing looks](../tracing/contracts.md#reading-traces): among the tasks, the history, the
+unbound runs and the lobby of the `.concorde` directories it searches, which hold every run of a
+workspace Concorde's task level prepared. A run of a workspace whose folder another preparer placed
+elsewhere is found by the path of its node folder instead.
 
 ## Overview
 
@@ -241,9 +255,9 @@ Modules and inputs, runs the
 definition's steps in their declared order until one stops the run, removes an unbound run's
 checkout, composes the run result, checks it against its contract and, when it is `ok`, the
 definition's output contract, and writes it while it still holds the lock, so that a run that takes
-the lock after it finds that result written, and writes its trace node again with its end.
-Seeing the result alone does not tell that the workspace is free: the runner may still hold
-the lock.
+the lock after it finds that result written. The runner then writes its run's trace node again,
+with the run's end. Seeing the result alone does not tell that the workspace is free: the runner
+may still hold the lock.
 A refusal before the steps, a step that raises, a signal or an invalid result each still end in a
 written result with the runner's link on top. Its exact behaviour is in
 [How a run is executed](runner.md).
@@ -291,10 +305,13 @@ concorde delivery        [--adoption] [--detach] [--wait <s>]
 concorde scaffold        --input <survey run> [--detach] [--wait <s>]
 ```
 
-`--modules` names the Modules the run works on (default: the binding's, less any the workspace no
-longer registers); `--input` admits the output of an earlier `ok` run of the same workspace, such
-as a plan or a survey. `concorde workflow step|report …` also works on the bound workspace without
-naming it, but is not itself a run: it starts and awaits runs through
+These are the usual forms, not the whole syntax: every run takes the common options `--modules`,
+`--input`, `--detach`, `--wait` and `--trace-at`, which a workflow step uses to place its run's
+node, even where a line above leaves them out, as [Command lines](runner.md#command-lines) gives
+them in full. `--modules` names the Modules the run works on (default: the binding's, less any the
+workspace no longer registers); `--input` admits the output of an earlier `ok` run of the same
+workspace, such as a plan or a survey. `concorde workflow step|report …` also works on the bound
+workspace without naming it, but is not itself a run: it starts and awaits runs through
 [Workflows](workflows/module.md).
 
 A run of `implement` in a task worktree, for example, reads the binding (workspace `retry`,
@@ -308,11 +325,12 @@ saves it in the run's trace node, `<workspace folder>/runs/<run-id>/result.json`
 
 A [workflow step](../glossary.json#concept.workflow-step) waits for the workspace lock to be free
 before it starts its run. `--wait <seconds>` queues any run instead: the runner waits for the lock
-inside its own process, its run progress file naming the run it waits for, starts the moment that
-run ends, and is refused with `workspace_busy` only when the lock is still held after that many
-seconds. A caller that wants a `delivery` after an `implement` thus asks once, and never polls the
-lock. The run waits in the lobby, outside the workspace folder, and enters the workspace only once
-it holds the lock and finds the binding it started from unchanged: a task closed meanwhile has
+inside its own process, its run progress file naming the lock's holder, a run or, in Concorde, a
+task's merge or close, starts the moment that holder lets go, and is refused with `workspace_busy`
+only when the lock is still held after that many seconds. A caller that wants a `delivery` after
+an `implement` thus asks once, and never polls the lock. The run waits in the lobby, outside the
+workspace folder, and enters the workspace only once it holds the lock and finds the binding it
+started from unchanged: a task closed meanwhile has
 removed the binding and, holding the lock, its lock file, and the run is refused with
 `workspace_retired` in the lobby instead of writing into the folder the close moved to the
 history. The lock is a file lock held by the runner's process, so the kernel releases it however the
@@ -327,11 +345,14 @@ reads, and Workers audits, only its checkout, such a merge can neither change wh
 nor make a worker's audit fail. The run is still recorded in the worktree it started in, in
 `.concorde/unbound/<run-id>/`, a trace of its own, while its workers' backends and models come from
 the [worker configuration](../glossary.json#concept.worker-configuration) committed in the checkout,
-like every other input of the run. The environments the project configuration names as runtime
-paths and Git ignores, such as `.venv` and `node_modules`, are linked from that worktree into the
-checkout, so the checks a review runs there find them, and submodules it has checked out are checked
-out in the checkout too. However the run ends, the runner removes the checkout before it writes the
-result.
+like every other input of the run. The runtime paths that committed worker configuration names in
+its `runtime` field, `.concorde/workers.json` of the checkout, and that Git ignores, such as `.venv`
+and `node_modules`, are linked from that worktree into the checkout, so the checks a review runs
+there find them. Each submodule that worktree has checked out is checked out in the checkout too,
+when its repository holds the commit the checkout records and Git can check it out; one that cannot
+be stays empty, as in a fresh clone, with `submodule-absent` evidence naming why
+([Unbound checkout](runner.md#unbound-checkout)). However the run ends, the runner removes the
+checkout before it writes the result.
 
 ### Following a long run
 
@@ -433,13 +454,20 @@ execution: Execution {
 **Workflows** orders one workspace's runs for a known procedure, such as describing existing code,
 and handles their [decision points](../glossary.json#concept.decision-point). Each step is an
 ordinary run of this runner, started detached and awaited; the workflow keeps its own record in the
-run store and never reaches into a task.
+run store and never reaches into a task. It places each step's run inside its step's node with
+`--trace-at` and tells a step's run that ended from one that was lost by the run's result and its
+run lock, as [Following a long run](#following-a-long-run) explains; the runner knows nothing of
+workflows.
 
 <a id="contains-operations"></a>
 
 **Operations** holds the catalog of Operations and their providers. Each Operation combines host
-steps with workers launched through Workers and calls of Check execution; the runner runs its
-steps like any other definition's.
+steps with workers launched through Workers and calls of Check execution. It hands the runner each
+Operation's definition, which the runner looks up by name in the
+[Operation catalog](../glossary.json#concept.operation-catalog): its steps, its arguments, whether
+it may run unbound and its output contract. The runner relies on that definition alone: it parses
+the arguments with its own, refuses unbound a definition that does not allow it, runs the steps and
+checks an `ok` output against the contract, replacing a result that breaks it by a `failed` one.
 
 <a id="contains-commands"></a>
 
@@ -447,20 +475,33 @@ steps like any other definition's.
 `task-validation`, which decides whether the bound workspace is ready to deliver; Delivery's
 `delivery`, the only run that commits, which decides the readiness again and commits the
 workspace's changes on the bound branch; and Scaffold's `scaffold`, which
-creates the child Modules a survey proposed. The runner runs their steps like an Operation's.
+creates the child Modules a survey proposed. Its catalog hands the runner each command's
+definition as Operations' does, a definition that cannot be loaded being a command-line error that
+starts no run, and the runner runs its steps like an Operation's; a definition that diagnoses the
+workspace's Specs itself, as `task-validation`'s does, is admitted even when those Specs do not
+load.
 
 <a id="contains-workers"></a>
 
 **Workers** runs one headless worker under a frozen grant for the Operation that asked, audits it,
 runs its checks and records the worker run in the run store, and owns the tracked worker
-configuration.
+configuration. The runner relies on two of its promises when a run is cancelled
+([Where a run's files live](workers/module.md#where-a-runs-files-live)): it tells the launching
+run each worker run's identity as soon as the worker run exists, not when it returns, and it ends
+a worker run interrupted from outside as `failed` with `interrupted`, its
+[progress file](../glossary.json#concept.progress-file) finished, before the interruption travels
+on. So a run that receives `SIGINT` or `SIGTERM` ends every worker process it
+started and names each worker run in its `cancelled` link, however far the worker had come.
 
 <a id="contains-checks"></a>
 
 **Check execution** runs the project's
 [configured checks](../glossary.json#concept.configured-check) in a read-only boundary and returns
 each result with its log. Operations' steps, execution commands' steps and the Workers host code
-call it in-process; it starts no run and no worker.
+call it in-process; it starts no run and no worker. When checks cannot run, it gives its caller its
+own error link, made by `service_error` of [the check service](checks/service.md), which a step
+keeps unchanged as a cause under the run's link rather than translating it as it translates Spec
+tooling's errors ([Errors](runner.md#errors)).
 
 ## What Execution relies on
 
@@ -481,5 +522,13 @@ workspace lock under `locks/`, and reports its errors in the error contract. Exe
 [layout](../tracing/contracts.md#layout) and the [locks](../tracing/contracts.md#locks), and
 records nothing that Tracing's node contract refuses.
 
-Execution relies on no Module of the upper half. The task level of Coordination uses it: it writes
-the binding and reads the run store and the delivery commits, as its own Spec explains.
+The runner, its run store and the execution commands rely on no Module of the upper half, and
+nothing in Execution reads or writes the task store. The task level of Coordination uses Execution:
+it writes the binding and reads the run store and the delivery commits, as its own Spec explains.
+One child reaches upward all the same: Workflows' Claude Code workflows start each step through the
+[project MCP server](../glossary.json#concept.project-mcp-server)'s `workflow_step`, which
+[Main session](../coordination/main-session/module.md) provides, so that the step's run is started
+by a process outside the session's sandboxed Bash and outlives it
+([Workflows](workflows/module.md#uses-main-session)). A workflow therefore runs in Claude Code only
+where the project registers that server; the runner itself, and every run started from a command
+line, needs nothing of it.

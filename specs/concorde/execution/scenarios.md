@@ -49,10 +49,10 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 
 ### scenario.execution.unbound-checkout-removed — The checkout is removed when a step raises
 
-- GIVEN a primary worktree at commit `C`
+- GIVEN a primary worktree at commit `C` and a task worktree registered in its repository
 - WHEN a step of an unbound run started there raises an error
 - THEN the result is `failed` with `host_error`, names `C` as `commit` and has `checkout` evidence
-- AND the checkout is gone once the result is written, and the repository lists no worktree but its own
+- AND the checkout is gone once the result is written, and the repository lists exactly the worktrees it listed before the run, the task worktree among them
 
 ### scenario.execution.unbound-no-commit — A worktree without a commit refuses an unbound run
 
@@ -100,6 +100,14 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 - AND once the `implement` run releases the lock, the delivery runs its steps and ends with its own result
 - BUT a run whose `--wait` ends while the lock is still held is refused with `workspace_busy`, saying how long it waited
 - AND while it waits, its node, run progress file and, when detached, its runner's output lie in `lobby/<run-id>/` of the binding's `.concorde` and nothing of it lies in the workspace folder; once it holds the lock its node is in `runs/<run-id>/` of the workspace folder, and a run refused while waiting keeps its node and result in the lobby
+
+### scenario.execution.workspace-wait-merge — A run waiting behind a merge names the merge
+
+- GIVEN a bound workspace whose lock `task merge` of its task holds
+- WHEN a run is started there with `--wait 0.3`, and another with `--wait 600`
+- THEN the first is refused with `workspace_busy`, its `refused` evidence naming the merge, its process and its task as the lock's holder line describes them
+- AND while the second waits, its run progress file shows the step `workspace-lock` and names the merge in `waiting_for`, no run identity
+- AND once the merge releases the lock, the second run does its own work
 
 ### scenario.execution.workspace-retired — A workspace closed while a run waits for it
 
@@ -169,9 +177,40 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 
 ### scenario.execution.detached-namespace — A detached run dies with its PID namespace
 
-- GIVEN a bound workspace whose `task-validation` takes half a minute
-- WHEN a workflow step starts it detached from a command run in a PID namespace of its own, as Claude Code's Bash sandbox runs each call, and that command returns after two seconds
-- THEN the runner is killed with the namespace: the step asked for again is lost, `step_lost` over `host_ended`, with no result and nothing in the runner's output
+- GIVEN a bound workspace whose `task-validation` still runs a while after it started
+- WHEN a caller, such as a workflow step, starts it detached from a command run in a PID namespace of its own, as Claude Code's Bash sandbox runs each call, and that command returns once the run is announced
+- THEN the runner is killed with the namespace, without a word: the run has no result, nobody holds its run lock and its runner's output is empty
+- AND every observer that asks finds the run lost
+
+### scenario.execution.detach-failed — A detached runner that never announces leaves nothing
+
+- GIVEN a bound workspace
+- WHEN a run is started with `--detach` and its runner writes no run progress file before it ends or the announcement wait runs out
+- THEN the command ends the runner and exits with status 1, printing a `detach_failed` link that says no step ran
+- AND nothing of the run remains: no lobby folder, no node, no result and no run lock file
+
+### scenario.execution.run-unrecorded — A run whose first records cannot be created runs no step
+
+- GIVEN a bound workspace whose run store refuses the run's first `trace.json`, such as on a read-only file system
+- WHEN a run is started there
+- THEN no step runs, no result is written and nothing is printed on standard output
+- AND the command exits with status 1, its `run_unrecorded` link on standard error with the `Execution (run store)` link of the refusal as its cause
+- AND no run lock is left and the workspace lock is free
+
+### scenario.execution.result-unsaved — A result that cannot be saved is printed and the run is lost
+
+- GIVEN a bound workspace whose run store fails when the run publishes its `result.json`, such as on a full file system
+- WHEN a run is started there and its steps end `ok`
+- THEN the command still prints the run's result on standard output and exits with status 1, its `result_unsaved` link on standard error with the `Execution (run store)` link of the failed write as its cause
+- AND no `result.json` was written, the run's trace node still says `running`, both locks are free and every observer finds the run lost
+- AND when only the final `trace.json` fails, the result is published and the trace node, still `running` with nobody holding its run lock, reads as lost
+
+### scenario.execution.result-published-whole — An observer never reads part of a result
+
+- GIVEN a run finishing while an observer, such as a workflow step, reads its `result.json` without holding any lock
+- WHEN the runner publishes the result
+- THEN the observer finds no `result.json` before the publication and the complete result after it, never part of one
+- AND no other file of the publication is left in the run's folder
 
 ### scenario.execution.cancelled — The run is cancelled
 

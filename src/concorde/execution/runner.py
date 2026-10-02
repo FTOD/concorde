@@ -32,6 +32,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -40,8 +41,8 @@ from ..spec.schema import ContractError, validate
 from . import binding as binding_file
 from .checkout import Checkout, open_checkout
 from .context import Continue, Provider, RunContext, Stop, component, evidence
-from ..tracing import layout
-from ..tracing.node import Node, concorde_commit, protocol_version
+from ..tracing import layout, locks
+from ..tracing.node import Node, TraceError, concorde_commit, protocol_version
 from .runs import (
     RESULT_SCHEMA,
     RUN_ID,
@@ -154,6 +155,27 @@ INPUT_REFUSAL = (
 
 class Cancelled(Exception):
     pass
+
+
+class RunUnrecorded(Exception):
+    """The run's initial records could not be created: no step ran and no result is written.
+
+    ``link`` is the runner's error link, written to standard error."""
+
+    def __init__(self, link: dict):
+        super().__init__(link["detail"])
+        self.link = link
+
+
+class ResultUnsaved(Exception):
+    """A final write of a run failed once its result was composed: the run counts as lost.
+
+    ``status`` and ``envelope`` are the exit status and the result the runner composed, which it
+    still prints; ``link`` is the runner's error link, written to standard error."""
+
+    def __init__(self, status: int, envelope: dict, link: dict):
+        super().__init__(link["detail"])
+        self.status, self.envelope, self.link = status, envelope, link
 
 
 class UsageError(Exception):
@@ -507,7 +529,6 @@ def execute(
     # A bound run waits in the lobby: nothing of it lies in the workspace folder until it holds
     # the workspace lock, since a close holding that lock moves the folder.
     run_dir = store.lobby_folder(identity) if bound is not None else node_folder
-    run_dir.mkdir(parents=True, exist_ok=True)
     started = now()
     context = RunContext(
         name=chosen.name,
@@ -523,12 +544,26 @@ def execute(
     )
     stop: Stop | None = None
     checkout: Checkout | None = None
-    # Held from before the first progress file until after the result: whoever reads the run
-    # store tells a running run from a dead one by this lock, from any PID namespace. The lock
-    # file is removed as the block ends.
-    with run_lock(store, identity, f"{chosen.name} run {identity}"):
+    # The run lock is held from before the first progress file until after the result: whoever
+    # reads the run store tells a running run from a dead one by it, from any PID namespace. Its
+    # file is removed as the block ends. A run whose first records cannot be created runs no step.
+    records = contextlib.ExitStack()
+    try:
+        run_dir.mkdir(parents=True, exist_ok=True)
+        records.enter_context(
+            run_lock(store, identity, f"{chosen.name} run {identity}")
+        )
         node = _start_node(chosen, context, words)
-        _progress(context, phase="running", step=None)
+        # The first progress file is a record the run cannot do without: a detaching command
+        # announces the run by it, and a run without one runs no step.
+        _progress(context, required=True, phase="running", step=None)
+    except (OSError, TraceError) as error:
+        with contextlib.suppress(OSError):
+            records.close()
+        raise RunUnrecorded(
+            _unrecorded(kind, name, identity, run_dir, error)
+        ) from error
+    with records:
         previous = {
             sig: signal.signal(sig, _cancel) for sig in (signal.SIGINT, signal.SIGTERM)
         }
@@ -575,19 +610,108 @@ def execute(
             status = 0 if envelope["status"] == "ok" else 1
             # The result is written while the lock is still held, so a run admitted after this one
             # always finds it written. Seeing the result does not mean the lock is free: it is
-            # released only when this block ends.
-            (context.run_dir / layout.RESULT).write_text(
-                json.dumps(envelope, indent=2) + "\n"
-            )
-            _progress(
-                context,
-                phase="finished",
-                step=None,
-                status=envelope["status"],
-                summary=envelope["summary"],
-            )
-            _finish_node(chosen, context, node, words, envelope, status)
+            # released only when this block ends. It is published whole or not at all.
+            written = None
+            try:
+                _publish(
+                    context.run_dir / layout.RESULT,
+                    json.dumps(envelope, indent=2) + "\n",
+                )
+                written = context.run_dir / layout.RESULT
+                _progress(
+                    context,
+                    phase="finished",
+                    step=None,
+                    status=envelope["status"],
+                    summary=envelope["summary"],
+                )
+                _finish_node(chosen, context, node, words, envelope, status)
+            except (OSError, TraceError) as error:
+                # Leaving the blocks releases the locks; the run is lost to every observer.
+                unsaved = _unsaved(kind, name, context, envelope, written, error)
+                raise ResultUnsaved(1, envelope, unsaved) from error
     return status, envelope
+
+
+def _publish(path: Path, text: str) -> None:
+    """Replace ``path`` with ``text`` atomically: a reader finds the old file, none, or the whole
+    new one, never part of it."""
+    handle, temporary = tempfile.mkstemp(
+        dir=path.parent, prefix=f".{path.stem}-", suffix=".tmp"
+    )
+    try:
+        with os.fdopen(handle, "w", encoding="utf-8") as stream:
+            stream.write(text)
+        os.replace(temporary, path)
+    finally:
+        Path(temporary).unlink(missing_ok=True)
+
+
+def _unrecorded(kind: str, name: str, identity: str, folder: Path, error) -> dict:
+    """The runner's link for a run whose first records could not be created."""
+    label = prog(kind, name)
+    return errors.link(
+        "component",
+        f"Execution runner ({label})",
+        "run_unrecorded",
+        f"run {identity} of {name} could not create its first records in {folder} (its folder, "
+        f"run lock, trace.json or run progress file): {errors.exception_detail(error)}; no step "
+        "ran and no result is written",
+        reason="environment",
+        explanation="the runner never works on a run it cannot record, and cannot repair the "
+        "run store",
+        causes=[
+            errors.from_exception(
+                "Execution (run store)",
+                error,
+                code="run_store_unwritable",
+                reason="environment",
+                explanation="the operating system or the trace node contract refused the write",
+            )
+        ],
+        options=[
+            "repair what the cause names, such as a full or read-only file system, and run it "
+            "again"
+        ],
+    )
+
+
+def _unsaved(
+    kind: str, name: str, context: RunContext, envelope, written, error
+) -> dict:
+    """The runner's link for a run whose result or final trace.json could not be written."""
+    label = prog(kind, name)
+    kept = (
+        f"its result was saved as {written}, but its trace node still says it runs"
+        if written is not None
+        else "no result was saved"
+    )
+    return errors.link(
+        "component",
+        f"Execution runner ({label})",
+        "result_unsaved",
+        f"run {context.run_id} of {name} ended {envelope['status']} ({envelope['summary']}), "
+        f"but a final write in {context.run_dir} failed: {errors.exception_detail(error)}; "
+        f"{kept}, so the run counts as lost: the result above was printed only",
+        reason="environment",
+        explanation="the runner cannot repair the run store, and does not repeat the work it "
+        "could not record",
+        causes=[
+            errors.from_exception(
+                "Execution (run store)",
+                error,
+                code="run_store_unwritable",
+                reason="environment",
+                explanation="the operating system or the trace node contract refused the write",
+            ),
+            *([envelope["error"]] if envelope["error"] else []),
+        ],
+        options=[
+            "repair what the cause names, such as a full or read-only file system",
+            "check what the run changed before running it again, since it may have done its "
+            "work",
+        ],
+    )
 
 
 def _revalidate(root: Path, bound: dict) -> None:
@@ -699,8 +823,9 @@ def _cancelled(chosen: Provider, context: RunContext, cancelled: Cancelled) -> S
     )
 
 
-def _progress(context: RunContext, **fields) -> None:
-    """Rewrite the run's progress file ``status.json``; a failed write never changes the run."""
+def _progress(context: RunContext, *, required: bool = False, **fields) -> None:
+    """Rewrite the run's progress file ``status.json``; a failed write never changes the run,
+    except the first, ``required``, whose failure is raised."""
     path = context.run_dir / "status.json"
     try:
         state = json.loads(path.read_text()) if path.exists() else {}
@@ -727,7 +852,8 @@ def _progress(context: RunContext, **fields) -> None:
         temporary.write_text(json.dumps(state, indent=2, sort_keys=True) + "\n")
         temporary.replace(path)
     except OSError:
-        pass
+        if required:
+            raise
 
 
 def _cancel(signum, frame):
@@ -922,13 +1048,19 @@ def detach(
         except OSError:
             pass
         process.wait()
-    if not output.exists():
-        # The runner may have moved its node, and its output with it, before it ended.
-        output = node_folder / "host.out"
+    if written():
+        # Its progress file appeared before it was killed: the run exists, and its result or
+        # its lost state tells how it ended.
+        return 0, announced
     try:
         tail = output.read_bytes()[-4000:].decode("utf-8", "replace").strip()
     except OSError:
         tail = ""
+    # No progress file, so no step ran: nothing of the run is left.
+    shutil.rmtree(run_dir, ignore_errors=True)
+    lock = store.run_lock(identity)
+    if lock.exists() and not locks.held(lock):
+        lock.unlink(missing_ok=True)
     detail = (
         f"the detached runner of {chosen.name} (process {process.pid}) "
         + (
@@ -936,7 +1068,8 @@ def detach(
             if ended is not None
             else f"wrote no progress file within {wait:.0f} seconds"
         )
-        + f" before announcing run {identity}; its output ends with: {tail or '(nothing)'}"
+        + f" before announcing run {identity}, so no step ran and its folder {run_dir} was "
+        f"removed; its output ended with: {tail or '(nothing)'}"
     )
     return 1, {
         **announced,
@@ -948,7 +1081,6 @@ def detach(
             reason="environment",
             explanation="the runner only starts the detached process; it cannot repair one "
             "that ends or hangs before its first write",
-            evidence=[errors.evidence("host-output", output.as_posix(), "")],
             options=["run the same command without --detach to see it fail directly"],
         ),
     }
@@ -995,6 +1127,15 @@ def run_main(kind: str, name: str | None, words) -> int:
     except UsageError as error:
         sys.stderr.write(f"{label}: {error}\n{_usage(kind, name)}\n")
         return 2
+    except RunUnrecorded as unrecorded:
+        sys.stderr.write(f"{label} failed:\n" + errors.render(unrecorded.link) + "\n")
+        return 1
+    except ResultUnsaved as unsaved:
+        # The work is done but not recorded: the caller still gets the result, and the reason
+        # nobody else will.
+        sys.stdout.write(json.dumps(unsaved.envelope, indent=2) + "\n")
+        sys.stderr.write(f"{label} failed:\n" + errors.render(unsaved.link) + "\n")
+        return unsaved.status
     except Exception as error:  # noqa: BLE001 -- the runner itself failed; say exactly how
         link = errors.from_exception(
             f"Execution runner ({label})",

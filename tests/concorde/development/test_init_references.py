@@ -59,6 +59,8 @@ class InitReferencesTests(unittest.TestCase):
         git(self.primary, *identity, "commit", "--quiet", "-m", "vendor")
         self.worktree = root / "task"
         git(self.primary, "worktree", "add", "--quiet", self.worktree.as_posix())
+        self.upstream = upstream
+        self.identity = identity
         self.config = self.primary / ".git/config"
         self.lock = self.primary / ".git/config.lock"
         self.script = load_script()
@@ -119,6 +121,50 @@ class InitReferencesTests(unittest.TestCase):
         )
         for path in ("references/r", "references/s"):
             self.assertTrue((self.worktree / path / "README.md").is_file())
+
+    @verifies("scenario.concorde.references-completed")
+    def test_a_clone_whose_fetch_failed_is_completed_on_the_next_run(self):
+        recorded = git(self.worktree, "ls-files", "--stage", "references/r").split()[1]
+        # The upstream moved on, so a clone left unchecked out sits on another commit.
+        (self.upstream / "NEWS.md").write_text("later\n")
+        git(self.upstream, "add", "NEWS.md")
+        git(self.upstream, *self.identity, "commit", "--quiet", "-m", "later")
+        later = git(self.upstream, "rev-parse", "HEAD")
+        real = self.script.git
+
+        def failing_fetch(*arguments, **options):
+            if arguments[0] == "fetch":
+                return subprocess.CompletedProcess(
+                    arguments, 128, "", "connection reset"
+                )
+            return real(*arguments, **options)
+
+        with (
+            patch.object(self.script, "ROOT", self.worktree),
+            patch.object(self.script, "git", failing_fetch),
+            self.assertRaises(SystemExit) as failed,
+        ):
+            self.script.main([])
+        self.assertIn("cannot fetch", str(failed.exception.code))
+        reference = self.worktree / "references/r"
+        self.assertTrue((reference / ".git").exists())
+        self.assertFalse((reference / "README.md").exists())
+        output = io.StringIO()
+        with (
+            patch.object(self.script, "ROOT", self.worktree),
+            contextlib.redirect_stdout(output),
+        ):
+            self.assertEqual(1, self.script.main(["--check"]))
+        self.assertIn(
+            f"references/r: not at the recorded commit (at {later}) @ {recorded}",
+            output.getvalue(),
+        )
+        output = self.run_script()
+        self.assertIn(f"references/r: completed @ {recorded} (was at {later})", output)
+        self.assertEqual(recorded, git(reference, "rev-parse", "HEAD"))
+        self.assertEqual("reference\n", (reference / "README.md").read_text())
+        self.assertEqual("", git(self.worktree, "status", "--porcelain"))
+        self.assertIn(f"references/r: checked out @ {recorded}", self.run_script())
 
 
 if __name__ == "__main__":

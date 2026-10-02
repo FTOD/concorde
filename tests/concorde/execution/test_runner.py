@@ -3,10 +3,13 @@ standing in for real ones, the workspace binding it reads and the run store it w
 
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 import os
 import re
 import signal
+import subprocess
 import sys
 import threading
 import time
@@ -20,7 +23,15 @@ from concorde.execution import binding as binding_file
 from concorde.execution import runs
 from concorde.execution.checkout import PREFIX
 from concorde.execution.context import Continue, Provider, command, evidence
-from concorde.execution.runner import UsageError, detach, execute, run_main
+from concorde.execution import runner
+from concorde.execution.runner import (
+    ResultUnsaved,
+    RunUnrecorded,
+    UsageError,
+    detach,
+    execute,
+    run_main,
+)
 from concorde.execution.runs import RESULT_SCHEMA
 from concorde.harness import models, pi_backend
 from concorde.harness.checks import run_checks
@@ -30,6 +41,7 @@ from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
 from concorde.tasks import store
 from concorde.tracing import locks
+from concorde.tracing.node import TraceError
 from tests.concorde.harness.workers.test_pi import FAKE as FAKE_PI
 from tests.concorde.harness.workers.test_pi import fake_which
 from tests.concorde.harness.workers.test_workers import git
@@ -908,14 +920,14 @@ class RunnerTests(unittest.TestCase):
         # An admitted run writes its result while it still holds the lock, so the next run
         # admitted finds that result written.
         holders = []
-        write_text = Path.write_text
+        replace = os.replace
 
-        def observed(path, *args, **kwargs):
-            if path.name == "result.json":
+        def observed(source, target, *args, **kwargs):
+            if Path(target).name == "result.json":
                 holders.append(runs.lock_holder(self.store(), "t1"))
-            return write_text(path, *args, **kwargs)
+            return replace(source, target, *args, **kwargs)
 
-        with patch.object(Path, "write_text", observed):
+        with patch("concorde.execution.runner.os.replace", observed):
             status, envelope = self.project.run("task-validation", "--task", "t1")
         self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
         [holder] = holders
@@ -989,6 +1001,54 @@ class RunnerTests(unittest.TestCase):
         self.assertIsNone(json.loads(progress.read_text())["waiting_for"])
         with self.assertRaisesRegex(UsageError, "negative"):
             execute("command", "task-validation", ["--wait", "-1"], cwd=self.worktree)
+
+    @verifies("scenario.execution.workspace-wait-merge")
+    def test_a_run_waiting_behind_a_merge_names_the_merge(self):
+        taken, release = threading.Event(), threading.Event()
+        lock = self.records / "locks/workspaces/t1.lock"
+
+        def hold():
+            # A task merge holds the workspace lock with a holder line of its own, naming its task.
+            with locks.hold(lock, "task merge t1", task="t1"):
+                taken.set()
+                release.wait(60)
+
+        holder = threading.Thread(target=hold)
+        holder.start()
+        self.addCleanup(holder.join)
+        self.addCleanup(release.set)
+        self.assertTrue(taken.wait(10))
+        status, envelope = self.project.run(
+            "task-validation", "--task", "t1", "--wait", "0.3"
+        )
+        self.assertEqual(
+            (1, ["refused", "workspace_busy"]), (status, codes(envelope["error"]))
+        )
+        # The refusal names the merge as Tracing's holder line describes it, not as a run.
+        [refused] = [
+            item for item in envelope["host_evidence"] if item["kind"] == "refused"
+        ]
+        self.assertIn("task merge t1 (process", refused["detail"])
+        self.assertIn("task t1", refused["detail"])
+        status, announced = detach(
+            "command", "task-validation", ["--wait", "60"], cwd=self.worktree
+        )
+        self.assertEqual(0, status, announced)
+        progress = Path(announced["lobby"]) / "status.json"
+        deadline = time.monotonic() + 30
+        shown = {}
+        while time.monotonic() < deadline:
+            shown = json.loads(progress.read_text())
+            if shown.get("step") == "workspace-lock":
+                break
+            time.sleep(0.05)
+        self.assertEqual("workspace-lock", shown["step"])
+        self.assertTrue(shown["waiting_for"].startswith("task merge t1 (process"))
+        self.assertIn("task t1", shown["waiting_for"])
+        release.set()
+        # Once the merge let go, the run did its own work: a readiness, not a refusal.
+        envelope = self.wait_for(Path(announced["result"]))
+        self.assertIsNotNone(envelope["output"], envelope)
 
     @verifies("scenario.execution.workspace-retired")
     def test_a_run_waiting_for_a_retired_workspace_is_refused(self):
@@ -1196,6 +1256,192 @@ class RunnerTests(unittest.TestCase):
         )
         with self.assertRaises(UsageError):
             detach("operation", "frobnicate", ["--detach"], cwd=self.worktree)
+
+    @verifies("scenario.execution.detached-namespace")
+    def test_a_run_detached_inside_a_pid_namespace_dies_with_it(self):
+        from tests.concorde.workflows.test_workflows import _pid_sandbox
+
+        sandbox = _pid_sandbox()
+        if sandbox is None:
+            self.skipTest("bubblewrap cannot make a PID namespace here")
+        # The run queues behind a lock the test holds, so it is still running when the namespace
+        # it was detached in ends.
+        taken, release = threading.Event(), threading.Event()
+
+        def hold():
+            with runs.workspace_lock(self.store(), "t1", "implement run r-other"):
+                taken.set()
+                release.wait(60)
+
+        holder = threading.Thread(target=hold)
+        holder.start()
+        self.addCleanup(holder.join)
+        self.addCleanup(release.set)
+        self.assertTrue(taken.wait(10))
+        started = subprocess.run(
+            [
+                *sandbox,
+                sys.executable,
+                str(REPOSITORY_ROOT / "scripts/concorde.py"),
+                "task-validation",
+                "--detach",
+                "--wait",
+                "60",
+            ],
+            cwd=self.worktree,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(0, started.returncode, started.stdout + started.stderr)
+        announced = json.loads(started.stdout)
+        run_id = announced["run_id"]
+        # The call is over and its namespace with it: the runner was killed without a word.
+        deadline = time.monotonic() + 30
+        while runs.runner_alive(self.store(), run_id) and time.monotonic() < deadline:
+            time.sleep(0.05)
+        self.assertFalse(runs.runner_alive(self.store(), run_id))
+        self.assertIsNone(runs.load_result(self.store(), run_id))
+        self.assertEqual("lost", runs.run_state(self.store(), run_id))
+        output = Path(announced["lobby"]) / "host.out"
+        self.assertEqual("", output.read_text())
+
+    @verifies("scenario.execution.detach-failed")
+    def test_a_detached_runner_that_never_announces_leaves_no_run(self):
+        # No announcement wait: the runner is killed before it can write its progress file.
+        before = sorted((self.records / "lobby").glob("*"))
+        status, announced = detach(
+            "command", "task-validation", [], cwd=self.worktree, wait=0
+        )
+        self.assertEqual(1, status, announced)
+        error = announced["error"]
+        self.assertEqual(
+            ("component", "detach_failed"), (error["level"], error["code"])
+        )
+        self.assertIn("no step ran", error["detail"])
+        # Nothing of the run is left: no lobby folder, no node, no run lock.
+        self.assertFalse(Path(announced["lobby"]).exists())
+        self.assertFalse(Path(announced["trace"]).exists())
+        self.assertEqual(before, sorted((self.records / "lobby").glob("*")))
+        self.assertFalse(
+            (self.records / "locks/runs" / f"{announced['run_id']}.lock").exists()
+        )
+        self.assertIsNone(runs.load_result(self.store(), announced["run_id"]))
+
+    @verifies("scenario.execution.result-published-whole")
+    def test_a_result_is_published_whole_or_not_at_all(self):
+        seen = []
+        replace = os.replace
+
+        def observed(source, target, *args, **kwargs):
+            if Path(target).name == "result.json":
+                # Until the rename, an observer finds no result; the file renamed into place
+                # already holds the whole result.
+                seen.append(
+                    (Path(target).exists(), json.loads(Path(source).read_text()))
+                )
+            return replace(source, target, *args, **kwargs)
+
+        with patch("concorde.execution.runner.os.replace", observed):
+            status, envelope = self.project.run("task-validation", "--task", "t1")
+        self.assertEqual([(False, envelope)], seen)
+        self.assertEqual(envelope, self.saved(envelope))
+        self.assertEqual(
+            ["result.json"],
+            [path.name for path in self.run_folder(envelope).glob("*result*")],
+        )
+
+    @verifies("scenario.execution.result-unsaved")
+    def test_a_result_that_cannot_be_saved_is_printed_and_the_run_is_lost(self):
+        def full(path, text):
+            raise OSError(28, "No space left on device", str(path))
+
+        with patch.object(runner, "_publish", full):
+            with self.assertRaises(ResultUnsaved) as unsaved:
+                self.project.run("task-validation", "--task", "t1")
+        envelope, link = unsaved.exception.envelope, unsaved.exception.link
+        self.assertEqual((1, "ok"), (unsaved.exception.status, envelope["status"]))
+        self.assertEqual(["result_unsaved", "run_store_unwritable"], codes(link))
+        self.assertEqual("environment", link["unhandled"]["reason"])
+        validate(link, ERROR_SCHEMA)
+        # Nothing was saved, both locks are free again and every observer finds the run lost.
+        folder = self.run_folder(envelope)
+        self.assertFalse((folder / "result.json").exists())
+        self.assertEqual("running", self.node(envelope)["status"])
+        self.assertFalse(
+            (self.records / "locks/runs" / f"{envelope['run_id']}.lock").exists()
+        )
+        self.assertIsNone(runs.lock_holder(self.store(), "t1"))
+        self.assertEqual("lost", runs.run_state(self.store(), envelope["run_id"]))
+        # The command line still prints the result, and the chain on standard error.
+        old = Path.cwd()
+        os.chdir(self.worktree)
+        self.addCleanup(os.chdir, old)
+        out, err = io.StringIO(), io.StringIO()
+        with (
+            patch.object(runner, "_publish", full),
+            contextlib.redirect_stdout(out),
+            contextlib.redirect_stderr(err),
+        ):
+            self.assertEqual(1, run_main("command", "task-validation", []))
+        printed = json.loads(out.getvalue())
+        self.assertEqual(
+            ("task-validation", "ok"), (printed["name"], printed["status"])
+        )
+        self.assertIn("result_unsaved", err.getvalue())
+        self.assertIn("No space left on device", err.getvalue())
+
+    @verifies("scenario.execution.result-unsaved")
+    def test_a_final_trace_that_cannot_be_written_leaves_the_run_lost(self):
+        def refused(*args, **kwargs):
+            raise TraceError("node_invalid", "the final trace.json was refused")
+
+        with patch.object(runner, "_finish_node", refused):
+            with self.assertRaises(ResultUnsaved) as unsaved:
+                self.project.run("task-validation", "--task", "t1")
+        envelope = unsaved.exception.envelope
+        self.assertEqual(
+            ["result_unsaved", "node_invalid"], codes(unsaved.exception.link)
+        )
+        # The result was saved before the failing write; the trace node still says it runs,
+        # with nobody holding its run lock.
+        self.assertEqual(envelope, self.saved(envelope))
+        self.assertEqual("running", self.node(envelope)["status"])
+        self.assertFalse(runs.runner_alive(self.store(), envelope["run_id"]))
+        self.assertIsNone(runs.lock_holder(self.store(), "t1"))
+
+    @verifies("scenario.execution.run-unrecorded")
+    def test_a_run_whose_first_records_fail_runs_no_step(self):
+        ran = []
+
+        def unwritable(*args, **kwargs):
+            raise OSError(30, "Read-only file system")
+
+        with (
+            patch.object(runner, "_start_node", unwritable),
+            patch.object(runner, "_steps", lambda *a: ran.append(a)),
+        ):
+            with self.assertRaises(RunUnrecorded) as unrecorded:
+                self.project.run("task-validation", "--task", "t1")
+        link = unrecorded.exception.link
+        self.assertEqual(["run_unrecorded", "run_store_unwritable"], codes(link))
+        self.assertIn("no step ran", link["detail"])
+        validate(link, ERROR_SCHEMA)
+        self.assertEqual([], ran)
+        self.assertEqual([], list((self.records / "locks/runs").glob("*.lock")))
+        self.assertIsNone(runs.lock_holder(self.store(), "t1"))
+        old = Path.cwd()
+        os.chdir(self.worktree)
+        self.addCleanup(os.chdir, old)
+        out, err = io.StringIO(), io.StringIO()
+        with (
+            patch.object(runner, "_start_node", unwritable),
+            contextlib.redirect_stdout(out),
+            contextlib.redirect_stderr(err),
+        ):
+            self.assertEqual(1, run_main("command", "task-validation", []))
+        self.assertEqual("", out.getvalue())
+        self.assertIn("run_unrecorded", err.getvalue())
 
     @verifies("scenario.tracing.run-lock-lifetime")
     def test_a_run_lock_exists_only_while_its_runner_runs(self):
@@ -1541,6 +1787,10 @@ class UnboundCheckoutTests(unittest.TestCase):
 
     @verifies("scenario.execution.unbound-checkout-removed")
     def test_the_checkout_is_removed_however_the_run_ends(self):
+        # A task worktree registered before the run keeps its registration.
+        self.project.open_task("t1")
+        before = worktrees(self.root)
+        self.assertEqual(2, len(before))
         examined = head(self.root)
         status, envelope = self.probe("--fail")
         self.assertEqual((1, "failed"), (status, envelope["status"]))
@@ -1553,7 +1803,8 @@ class UnboundCheckoutTests(unittest.TestCase):
             item for item in envelope["host_evidence"] if item["kind"] == "checkout"
         ]
         self.assertEqual(examined, checkout["ref"])
-        self.assertEqual([self.root], worktrees(self.root))
+        self.assertEqual(before, worktrees(self.root))
+        self.assertFalse(Path(checkout["detail"].split()[4].rstrip(",")).exists())
         self.assertEqual(
             [],
             list(

@@ -143,10 +143,10 @@ empty for a given task, but never all five:
   which says what its answer must hold. It tells the model what it can do, never what the project
   promises.
 - <a id="concept.task-context"></a>The **[task context](glossary.json#concept.task-context)** is
-  what the Protocol calls task material: the brief with the task and its constraints, the admitted
-  artifacts of earlier steps, such as an accepted assessment or the diff to review, and the explicit
-  lists of paths the worker may change, read or only know by name. It is produced for the task and
-  adds no source; it never replaces a Spec document or a file.
+  what the Protocol calls task material: the [brief](glossary.json#concept.brief) with the task and
+  its constraints, the admitted artifacts of earlier steps, such as an accepted assessment or the
+  diff to review, and the explicit lists of paths the worker may change, read or only know by name.
+  It is produced for the task and adds no source; it never replaces a Spec document or a file.
 
 ### Evidence and errors
 
@@ -212,14 +212,20 @@ Work that only reads need not open a task. The main agent may start an
 [unbound run](glossary.json#concept.unbound-run), such as an `understand`, a `survey` or a Spec
 review, directly in the primary worktree: it has no workspace, and its steps and workers work in a
 throwaway detached checkout of that worktree's `HEAD`, so it examines what is committed there, never
-uncommitted changes, and changes nothing. [Execution](execution/module.md#unbound-runs) explains it.
+uncommitted changes. It changes no Spec or code, neither in that checkout nor in the worktree it
+started in; the one lasting change it may make besides its own record is publishing
+[Issues](glossary.json#concept.issue), as a review reports its findings: only through the
+[Issues](issues/module.md) store, which commits each on the primary branch as a commit of its own
+under the [merge lock](glossary.json#concept.merge-lock).
+[Execution](execution/module.md#unbound-runs) explains it.
 
 ### The life of a task
 
 Every change of a Spec or of code is a task, except a small change the developer approved, which
 the main agent makes itself in the primary worktree; every task takes the same path. The main agent
 opens it, which creates a branch and a worktree bound as the task's
-[workspace](glossary.json#concept.workspace), records its brief in the
+[workspace](glossary.json#concept.workspace), records its
+[task brief](glossary.json#concept.task-brief) in the
 [decision log](glossary.json#concept.decision-log) and starts a task session there. The task session
 changes Specs and code, itself or through runs of Execution, each of which returns a run result with
 evidence, and may commit each verified step on the task branch. Decisions that are not its own go up
@@ -237,7 +243,7 @@ main: "Main agent\nprimary worktree" {
   grid-columns: 1
   vertical-gap: 50
   open: "1. Open a task:\nbranch, worktree,\nworkspace binding"
-  brief: "2. Record the brief,\nstart a task session"
+  brief: "2. Record the task brief,\nstart a task session"
   answer: "Decide, or ask\nthe developer"
   gap: "" {style.opacity: 0}
   merge: "6. Merge the task\ninto the primary branch"
