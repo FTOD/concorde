@@ -334,8 +334,10 @@ TOOLS: dict[str, dict] = {
         "description": "Merge a delivered task, or finish an interrupted merge with `resume` or "
         "`abort`, without waiting: takes the task's workspace lock and the merge lock at once or "
         "is refused naming who holds the busy one; when granted, starts `concorde task merge` as "
-        "a process of its own that holds both locks until it ends, and returns at once. With a "
-        "channel the session is woken with the merge's output when it ends.",
+        "a process of its own that holds the locks until it ends, and returns at once. Its "
+        "output is kept in the merge attempt's node of the task's trace. With a channel the "
+        "session is woken with that output when it ends; without one, run the returned "
+        "`concorde task wait <task> --merge` in background Bash.",
         "inputSchema": schema(
             {
                 "task": TASK,
