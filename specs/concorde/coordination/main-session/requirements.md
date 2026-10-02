@@ -399,9 +399,21 @@ runs, with the task and the `checks`, `resume` or `abort` it was given.
 [contracts](contracts.md#starting-a-merge) define instead of the merge's result.
 
 The merge's own result and refusals are the command's, delivered later: in a `merge_ended` channel
-event, or in the output file once the returned `concorde task wait` command returns. Before the
-start, the call is refused only by its arguments, by a busy lock
+event, or in the output file once the returned `concorde task wait <task> --merge` returns. Before
+the start, the call is refused only by its arguments, by a busy lock
 ([The server never waits for a lock](#req.main-session.project-mcp-no-wait)) or by a failed start.
+
+### req.main-session.project-mcp-merge-output — A merge's output stays with its attempt
+
+`task_merge` SHALL direct the standard output and error of the merge it starts into the folder of
+the merge's attempt node in the task's trace, and without a channel return
+`concorde task wait <task> --merge` as the command to wait with.
+
+The merge may outlive the server, and the close that ends it removes the task's workspace lock
+before the merge has written its answer. The attempt's folder moves with the task to the history
+and is found from the task by `task_show` and `trace_show` whatever became of the server, and the
+merge-end wait returns only once that answer is complete
+([Tasks](../tasks/requirements.md#req.tasks.merge-attempt-lock)).
 
 ### req.main-session.project-mcp-workflow-step — `workflow_step` runs the worktree's own step command
 

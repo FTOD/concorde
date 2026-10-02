@@ -42,7 +42,8 @@ Everything about one task, its state and its traces alike, lives in one
 folder, `.concorde/tasks/<task>/`, while the task is current. When the task is closed, merged or not,
 its whole folder is moved to the **[history](../glossary.json#concept.history)**,
 `.concorde/history/<task>/`, where it stays as it was when the task ended: nothing in the history is
-ever changed, and retention only removes a history folder whole or, sooner, its conversation
+ever changed, apart from the merge that closed the task finishing the answer it writes into its
+attempt's node, and retention only removes a history folder whole or, sooner, its conversation
 records; it may be copied out. An unbound run, which belongs to no task, is
 kept in `.concorde/unbound/<run>/` of the worktree it started in. A run of a task's workspace that
 does not hold the workspace's lock yet lies in the lobby, `.concorde/lobby/<run>/`, outside the

@@ -249,7 +249,7 @@
       "id": "concept.history",
       "title": "History",
       "owner": "module.tracing",
-      "definition": "The folder `.concorde/history/` to which closing a task moves the task's whole folder, record, decision log and trace, where it is never changed and retention only removes its conversation records or the whole folder.",
+      "definition": "The folder `.concorde/history/` to which closing a task moves the task's whole folder, record, decision log and trace, where it is never changed, apart from the merge that closed the task finishing its answer, and retention only removes its conversation records or the whole folder.",
       "explanation": "specs/concorde/tracing/module.md#concept.history",
       "contrasts": [
         {

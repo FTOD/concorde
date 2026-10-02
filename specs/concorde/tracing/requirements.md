@@ -125,6 +125,11 @@ when that process ends.
 No Concorde command SHALL change a file inside a history folder; retention only removes a history
 folder whole or removes its conversation records.
 
+The one exception is the merge that closed the task: the close moves the task's folder while the
+merge still writes its answer, so the merge's process finishes the `output.json` and
+`messages.log` of its attempt's node there before it ends
+([Tasks](../coordination/tasks/requirements.md#req.tasks.merge-output-kept)).
+
 ### req.tracing.conversations-shorter — Conversation records have their own retention
 
 Retention SHALL remove the conversation records of a history folder whose task was closed longer ago

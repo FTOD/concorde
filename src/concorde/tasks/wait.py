@@ -7,8 +7,11 @@ go, and reads the task's state again: every change of a task to ``delivered``, `
 ``closed`` or ``failed`` is made while that lock is held, by a delivery run, a merge or a close,
 so those four are the states a task wait admits. A rebind wait learns of every write of the task's
 record from the kernel (``watch.Changes`` on the task's folder, which also reports the folder
-moving to the history) and reads the record again. The project MCP server runs the same waits in a
-thread for ``register_wait``; this command is their form for background Bash.
+moving to the history) and reads the record again. A merge wait blocks on the task's merge attempt
+lock, which ``concorde task merge`` holds until its output is complete and removes then, so it
+returns after the merge's last word even when the close removed the workspace lock long before.
+The project MCP server runs the same waits in a thread for ``register_wait``; this command is
+their form for background Bash.
 """
 
 from __future__ import annotations
@@ -18,6 +21,7 @@ import time
 from pathlib import Path
 
 from ..tracing import layout, locks, reader
+from ..tracing import node as trace
 from ..tracing.watch import Changes, WatchError
 from . import store
 from .store import TaskError
@@ -239,16 +243,62 @@ def wait_lock(
     }
 
 
+def merge_answer(primary: Path, task_id: str) -> dict:
+    """The task's latest merge attempt, wherever the task's folder is now: its node's folder,
+    status and outcome and the files of the merge's output, or None for each when it has none."""
+    _, folder = store.load_any(primary, task_id)
+    merges = folder / "merges"
+    numbers = sorted(
+        int(item.name)
+        for item in (merges.iterdir() if merges.is_dir() else [])
+        if item.is_dir() and item.name.isdigit()
+    )
+    if not numbers:
+        return {"task": task_id, "attempt": None}
+    node = merges / str(numbers[-1])
+    record = trace.read(node) or {}
+    output, messages = node / "output.json", node / "messages.log"
+    return {
+        "task": task_id,
+        "attempt": {
+            "number": numbers[-1],
+            "node": node.as_posix(),
+            "status": record.get("status"),
+            "outcome": record.get("outcome"),
+            "output": output.as_posix() if output.is_file() else None,
+            "messages": messages.as_posix() if messages.is_file() else None,
+        },
+    }
+
+
+def wait_merge(primary: Path, task_id: str, timeout: float | None = None) -> dict:
+    """Block until no ``concorde task merge`` of the task runs, and answer its latest attempt."""
+    deadline = _deadline(timeout)
+    started = time.monotonic()
+    store.load_any(primary, task_id)
+    path = store.attempt_lock_path(primary, task_id)
+    held = locks.entry(path)
+    if held is not None and not locks.wait_released(path, _remaining(deadline)):
+        raise _timeout(f"the end of the merge of task {task_id}", timeout)
+    return {
+        **merge_answer(primary, task_id),
+        "held_by": held,
+        "waited_seconds": round(time.monotonic() - started, 3),
+    }
+
+
 __all__ = [
     "AWAITABLE",
     "LOCKS",
     "check_until",
     "lock_answer",
     "lock_path",
+    "merge_answer",
     "reached",
     "rebound",
     "run_answer",
     "wait_lock",
+    "wait_merge",
     "wait_rebound",
     "wait_run",
     "wait_task",

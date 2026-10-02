@@ -635,6 +635,14 @@ This illustrates [a merge running the Concorde it started with](requirements.md#
 - WHEN a session runs `concorde task wait --lock merge` and the holder is killed
 - THEN the command returns at once after the kill, saying the lock was released and naming the holder line it waited for, with its session and task
 
+### scenario.tasks.wait-merge — A merge wait returns after the merge, not its workspace lock
+
+- GIVEN a delivered task `t1` whose merge attempt lock a process holds, and whose workspace lock file a close already removed
+- WHEN a session runs `concorde task wait t1 --merge` and the holder lets the lock go
+- THEN the command returns only then, naming the holder line it waited for, and the lock file is gone
+- AND after `concorde task merge t1` merged and closed the task, the same wait answers at once with the attempt's node in the history, `merges/1/`, its status `ok` and outcome `merged`, the node the merge's answer names as its `log`
+- BUT `concorde task wait --merge` without a task is refused with `invalid_input`
+
 ### scenario.tasks.wait-timeout — A wait that times out says so
 
 - GIVEN a run holding a task's workspace lock

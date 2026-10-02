@@ -601,15 +601,15 @@ busy: "A lock is held by another process" {
 granted: "Both locks are free" {
   session -> server: task_merge again
   server -> merge: "run the call"
-  merge -> merge: take both locks
-  merge -> server: "started, with the output files"
-  server -> session: "started, with the output files\nand how the session is woken"
-  merge -> merge: "become concorde task merge,\nkeeping both locks"
+  merge -> merge: "take the three locks,\nmake the attempt's folder"
+  merge -> server: "started, with the attempt's\noutput files"
+  server -> session: "started, with the attempt's\noutput files and how the\nsession is woken"
+  merge -> merge: "become concorde task merge,\nkeeping the locks, writing\ninto the attempt's folder"
   merge -> merge: "merge, run the checks,\nclose the task"
 }
 ended: "The merge ends" {
-  merge -> server: "exits, and the kernel\nreleases both locks"
-  server -> session: "a merge_ended event, or, without a\nchannel, the background concorde\ntask wait returns"
+  merge -> server: "exits once its answer is\nwritten, and the kernel\nreleases the locks"
+  server -> session: "a merge_ended event, or, without a\nchannel, the background concorde\ntask wait --merge returns"
 }
 ```
 
@@ -638,8 +638,12 @@ sessions, get the server without a channel ([Task sessions](../task-session/modu
 cannot learn from Claude Code whether it is a channel, so it reads it from the command line of the
 interactive `claude` above it, one whose standard input is a terminal; when it has none,
 `register_wait` says so and returns the equivalent blocking `concorde task wait` command, and
-`task_merge` returns the `concorde task wait … --lock workspace` that returns when the merge ends,
-to run in background Bash, which wakes the session when the command ends. An organization that
+`task_merge` returns the `concorde task wait <task> --merge` that returns when the merge has ended
+and written its whole answer, to run in background Bash, which wakes the session when the command
+ends. The merge's answer never lies in the server: it goes to `output.json` of the merge attempt's
+node in the task's trace, so a session that lost the server, the start's answer or the event finds
+it from the task with `task_show` and `trace_show`, also once the close moved the task to the
+history. An organization that
 disabled channels drops the events silently; the guidance tells the agent to use the background
 Bash form then.
 

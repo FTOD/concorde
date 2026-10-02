@@ -16,7 +16,14 @@ change, since a task changes nothing outside its own worktree.
 
 Every attempt, a merge, a ``--resume`` or an ``--abort``, is a trace node ``merges/<n>/`` of the
 task, ended with how the attempt ended; each check it runs is a node ``checks/<i>/`` below it with
-the check's output as ``output.log``.
+the check's output as ``output.log``. A merge the project MCP server started finds its attempt's
+folder already made, named in ``CONCORDE_MERGE_ATTEMPT``, with its standard output and error going
+to ``output.json`` and ``messages.log`` there; it records the attempt there even when it is refused
+before it began, so the merge's whole output stays with the task, also in the history.
+
+The command holds the task's merge attempt lock from before its other locks until it has printed
+its output, and removes it then, so ``concorde task wait <task> --merge`` returns only once that
+output is complete, although the close removes the task's workspace lock before.
 
 The process imports Concorde's own modules from a snapshot of their sources taken when the merge
 starts (``freeze_sources``), so a merge that changes Concorde itself never leaves it running a mix
@@ -33,10 +40,12 @@ import shlex
 import subprocess
 import sys
 import time
+from contextlib import ExitStack
 from pathlib import Path
 
 from .. import errors
 from ..spec.typed_data import register
+from ..tracing import locks
 from ..tracing import node as trace
 from ..tracing.node import Node
 from . import store
@@ -90,6 +99,11 @@ register(
         },
     },
 )
+# The environment variable naming the attempt folder the project MCP server made for the merge,
+# and the files of it the merge's standard output and error go to.
+RESERVED = "CONCORDE_MERGE_ATTEMPT"
+OUTPUT = "output.json"
+MESSAGES = "messages.log"
 # The outcome of an attempt that a refusal ended, by the refusal's code.
 REFUSED = {
     "merge_conflict": "conflict",
@@ -164,13 +178,54 @@ def freeze_sources(name: str = __name__.partition(".")[0]) -> None:
     sys.meta_path.insert(0, _Snapshot(name, Path(package.__file__).parent))
 
 
-class Attempt:
-    """One merge attempt's trace node, ``merges/<n>/`` of the task."""
+def next_attempt(primary: Path, task_id: str) -> Path:
+    """The folder the task's next merge attempt gets, ``merges/<n>/`` with ``n`` one more than
+    the attempts so far; read only while holding the task's workspace and merge locks."""
+    parent = store.task_folder(primary, task_id) / "merges"
+    earlier = (
+        [item for item in parent.iterdir() if item.is_dir()] if parent.is_dir() else []
+    )
+    return parent / str(1 + len(earlier))
 
-    def __init__(self, primary: Path, task_id: str, kind: str, merging: dict, waited):
+
+def reserved_attempt(primary: Path, task_id: str) -> Path | None:
+    """The attempt folder the project MCP server made for this merge, once, or None.
+
+    The variable is removed, so that no process the merge starts believes it was given one; a
+    folder that is not the task's next attempt, or already holds a node, is not taken."""
+    value = os.environ.pop(RESERVED, None)
+    if not value:
+        return None
+    folder = Path(value)
+    parent = store.task_folder(primary, task_id) / "merges"
+    if (
+        folder.name.isdigit()
+        and folder.parent.resolve() == parent.resolve()
+        and folder.is_dir()
+        and trace.read(folder) is None
+    ):
+        return folder
+    return None
+
+
+class Attempt:
+    """One merge attempt's trace node, ``merges/<n>/`` of the task, or the folder ``reserved``
+    that the project MCP server made for it, which holds the merge's output files."""
+
+    def __init__(
+        self,
+        primary: Path,
+        task_id: str,
+        kind: str,
+        merging: dict,
+        waited,
+        reserved: Path | None = None,
+    ):
         parent = store.task_folder(primary, task_id) / "merges"
         earlier = (
-            sorted(item for item in parent.iterdir() if item.is_dir())
+            sorted(
+                item for item in parent.iterdir() if item.is_dir() and item != reserved
+            )
             if parent.is_dir()
             else []
         )
@@ -182,7 +237,7 @@ class Attempt:
                     ended_at=trace.now(), status="failed", outcome="interrupted"
                 )
                 trace.write(folder, found)
-        number = 1 + len(earlier)
+        number = int(reserved.name) if reserved is not None else 1 + len(earlier)
         self.task_id = task_id
         self.folder = parent / str(number)
         self.checks = 0
@@ -202,7 +257,11 @@ class Attempt:
             content_type=MERGE_TRACE,
             metadata={"task": task_id, "branch": merging["branch"]},
             content=self.data,
-        ).start()
+        )
+        # The merge writes its output after the node ends, so its digest is never taken.
+        for identity, name in (("output", OUTPUT), ("messages", MESSAGES)):
+            self.node.keep(identity, name, measured=False)
+        self.node.start()
 
     def merged(self, after: str) -> None:
         self.data["after"] = after
@@ -652,9 +711,13 @@ def merge_task(
     *,
     resume: bool = False,
     abort: bool = False,
+    held: ExitStack | None = None,
 ) -> dict:
     """Merge a delivered task into the primary branch, check it, and close the task; or, with
     ``resume`` or ``abort``, finish a merge of it whose process ended before its checks decided.
+
+    The task's merge attempt lock is held until ``held`` closes, after the caller printed the
+    answer, or, without ``held``, until this returns.
     """
     freeze_sources()
     primary = store.require_primary(here)
@@ -671,33 +734,108 @@ def merge_task(
         raise TaskError("invalid_input", f"--wait {wait:g} is negative")
     store.load_task(primary, task_id)
     started = time.monotonic()
-    # The task's own runs are waited for first, without the merge lock, so that a delivery still
-    # finishing in the task never holds up the merges of other tasks.
-    with store.task_workspace_locked(primary, task_id, "merge", wait):
+    own = ExitStack()
+    with own:
+        _hold_attempt(held if held is not None else own, primary, task_id, wait)
         remaining = max(0.0, wait - (time.monotonic() - started))
-        with store.merge_lock(primary, "merge", task_id, remaining):
-            waited = round(time.monotonic() - started, 3)
-            unfinished = store.unfinished_merge(primary)
-            if unfinished is not None and not (
-                (resume or abort) and unfinished["id"] == task_id
-            ):
-                raise store.incomplete_merge(primary, unfinished)
-            record = store.load_task(primary, task_id)
-            if (resume or abort) and record["state"] != "merging":
-                raise TaskError(
-                    "not_merging",
-                    f"task {task_id} is {store.derived_state(primary, record)}, not merging; "
-                    "--resume and --abort finish only a merge whose process ended before its "
-                    "checks decided",
-                )
-            if abort:
-                return _abort(primary, record, waited)
-            if resume:
-                return _resume(primary, record, waited)
-            return _merge_new(primary, task_id, commands, waited)
+        # The task's own runs are waited for first, without the merge lock, so that a delivery
+        # still finishing in the task never holds up the merges of other tasks.
+        with store.task_workspace_locked(primary, task_id, "merge", remaining):
+            remaining = max(0.0, wait - (time.monotonic() - started))
+            with store.merge_lock(primary, "merge", task_id, remaining):
+                waited = round(time.monotonic() - started, 3)
+                reserved = reserved_attempt(primary, task_id)
+                kind = "abort" if abort else "resume" if resume else "merge"
+                try:
+                    return _locked(primary, task_id, commands, waited, kind, reserved)
+                except TaskError as refusal:
+                    _refused_early(
+                        primary, task_id, kind, commands, waited, reserved, refusal
+                    )
+                    raise
 
 
-def _merge_new(primary: Path, task_id: str, commands: list[list[str]], waited) -> dict:
+def _hold_attempt(stack: ExitStack, primary: Path, task_id: str, wait: float) -> None:
+    """Take the task's merge attempt lock into ``stack``, removed when ``stack`` closes."""
+    path = store.attempt_lock_path(primary, task_id)
+    try:
+        stack.enter_context(
+            locks.hold(
+                path,
+                f"`concorde task merge` of task {task_id}",
+                wait=wait,
+                remove=True,
+                task=task_id,
+            )
+        )
+    except locks.LockBusy as busy:
+        raise TaskError(
+            "merge_busy",
+            f"`concorde task merge` of task {task_id} waited {wait:g} s for the task's merge "
+            f"attempt lock {path}, which is still held by {busy.holder}; one merge of a task "
+            "runs at a time",
+        ) from None
+
+
+def _locked(
+    primary: Path,
+    task_id: str,
+    commands: list[list[str]],
+    waited,
+    kind: str,
+    reserved: Path | None,
+) -> dict:
+    unfinished = store.unfinished_merge(primary)
+    if unfinished is not None and not (kind != "merge" and unfinished["id"] == task_id):
+        raise store.incomplete_merge(primary, unfinished)
+    record = store.load_task(primary, task_id)
+    if kind != "merge" and record["state"] != "merging":
+        raise TaskError(
+            "not_merging",
+            f"task {task_id} is {store.derived_state(primary, record)}, not merging; "
+            "--resume and --abort finish only a merge whose process ended before its "
+            "checks decided",
+        )
+    if kind == "abort":
+        return _abort(primary, record, waited, reserved)
+    if kind == "resume":
+        return _resume(primary, record, waited, reserved)
+    return _merge_new(primary, task_id, commands, waited, reserved)
+
+
+def _refused_early(
+    primary: Path,
+    task_id: str,
+    kind: str,
+    commands: list[list[str]],
+    waited,
+    reserved: Path | None,
+    refusal: TaskError,
+) -> None:
+    """Record a refusal before the attempt began as the node of the folder the server made for
+    it, with the primary worktree's branch and commit as it found them, so that folder, which
+    holds the merge's output, is a node like every attempt's."""
+    if reserved is None or trace.read(reserved) is not None:
+        return
+    head = store._git(primary, "rev-parse", "--verify", "-q", "HEAD", check=False)
+    name = store._git(primary, "symbolic-ref", "-q", "--short", "HEAD", check=False)
+    if head.returncode != 0:
+        return
+    merging = {
+        "branch": name.stdout.strip() if name.returncode == 0 else "HEAD",
+        "before": head.stdout.strip(),
+        "checks": commands if kind == "merge" else [],
+    }
+    Attempt(primary, task_id, kind, merging, waited, reserved).refused(refusal)
+
+
+def _merge_new(
+    primary: Path,
+    task_id: str,
+    commands: list[list[str]],
+    waited,
+    reserved: Path | None = None,
+) -> dict:
     record, checked = store.mergeable(primary, task_id)
     branch = _primary_branch(primary, _recover_issues(primary))
     outside = _changed_outside(primary, task_id)
@@ -713,7 +851,7 @@ def _merge_new(primary: Path, task_id: str, commands: list[list[str]], waited) -
         "pid": os.getpid(),
     }
     store.begin_merge(primary, task_id, merging)
-    attempt = Attempt(primary, task_id, "merge", merging, waited)
+    attempt = Attempt(primary, task_id, "merge", merging, waited, reserved)
     try:
         after = _merge(primary, record, merging)
     except TaskError as refusal:
@@ -846,7 +984,7 @@ def _diverged(primary: Path, record: dict, where: str) -> TaskError:
     )
 
 
-def _resume(primary: Path, record: dict, waited) -> dict:
+def _resume(primary: Path, record: dict, waited, reserved: Path | None = None) -> dict:
     """Rerun the recorded checks on the merge commit, then close or undo."""
     merging = record["merging"]
     branch = _primary_branch(primary)
@@ -870,15 +1008,15 @@ def _resume(primary: Path, record: dict, waited) -> dict:
             "merge commit",
         )
     merging = dict(merging, after=after)
-    attempt = Attempt(primary, record["id"], "resume", merging, waited)
+    attempt = Attempt(primary, record["id"], "resume", merging, waited, reserved)
     return _check_and_close(primary, record, merging, attempt, waited)
 
 
-def _abort(primary: Path, record: dict, waited) -> dict:
+def _abort(primary: Path, record: dict, waited, reserved: Path | None = None) -> dict:
     """Reset the primary branch to the commit before the merge and return the task to
     delivered."""
     merging = record["merging"]
-    attempt = Attempt(primary, record["id"], "abort", merging, waited)
+    attempt = Attempt(primary, record["id"], "abort", merging, waited, reserved)
     try:
         return _aborted(primary, record, attempt, waited)
     except TaskError as refusal:
@@ -932,4 +1070,14 @@ def _aborted(primary: Path, record: dict, attempt: Attempt, waited) -> dict:
     }
 
 
-__all__ = ["CHECK_TIMEOUT", "default_checks", "merge_task", "parse_checks"]
+__all__ = [
+    "CHECK_TIMEOUT",
+    "MESSAGES",
+    "OUTPUT",
+    "RESERVED",
+    "default_checks",
+    "merge_task",
+    "next_attempt",
+    "parse_checks",
+    "reserved_attempt",
+]

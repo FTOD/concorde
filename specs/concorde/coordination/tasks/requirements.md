@@ -289,16 +289,40 @@ start time, and the Claude Code session the holder works for when its environmen
 
 ### req.tasks.merge-handed-locks — A merge may be handed its locks
 
-A merge started with the task's workspace lock and the merge lock already held on descriptors it
-inherited, and named in its environment, SHALL hold them from its start without waiting until it
-ends.
+A merge started with the task's merge attempt lock, workspace lock and the merge lock already held
+on descriptors it inherited, and named in its environment, SHALL hold them from its start without
+waiting until it ends.
+
+### req.tasks.merge-attempt-lock — A merge's end is its attempt lock's release
+
+`concorde task merge` SHALL hold the task's merge attempt lock from before it waits for its other
+locks until it has written its whole answer, and remove it then.
+
+The close that ends a merge removes the task's workspace lock before the merge closes the task's
+Issues and writes its answer, so the workspace lock's release never says that the merge ended. A
+merge that dies leaves a file nobody holds, which is free. A merge of a task whose attempt lock
+another merge holds waits for it as for its other locks, within the same `--wait`, and then refuses
+with `merge_busy`.
+
+### req.tasks.merge-output-kept — A merge keeps the server's output with its attempt
+
+A merge whose environment names, in `CONCORDE_MERGE_ATTEMPT`, the task's next attempt folder made
+for it SHALL record its attempt's node in that folder, also when it is refused before it began.
+
+The [project MCP server](../../glossary.json#concept.project-mcp-server) makes that folder and
+directs the merge's standard output and error to its `output.json` and `messages.log`, so the
+merge's whole answer and its messages stay with its attempt's node and move with the task to the
+[history](../../glossary.json#concept.history), where the merge finishes writing them
+([Tracing](../../tracing/module.md)). An attempt refused before it began records the primary
+worktree's branch and commit as it found them.
 
 ### req.tasks.wait-without-polling — A wait is woken, never polls
 
 `concorde task wait` SHALL return when the task reaches one of the named states, its record names a
 main agent's session other than the one named, the run's runner holds no
-[run lock](../../glossary.json#concept.run-lock), or nobody holds the lock, learning of each change
-from the kernel and blocking on the lock itself rather than reading the records repeatedly.
+[run lock](../../glossary.json#concept.run-lock), nobody holds the lock, or no merge of the task
+holds its merge attempt lock, learning of each change from the kernel and blocking on the lock
+itself rather than reading the records repeatedly.
 
 It answers at once when that is already so.
 

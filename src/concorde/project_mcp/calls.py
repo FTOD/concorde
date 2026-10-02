@@ -89,7 +89,8 @@ class Calls:
         self._runtime: Path | None = None
 
     def runtime(self) -> Path:
-        """A private temporary directory for the output of the merges this server started."""
+        """A private temporary directory for what the calls that start merges print themselves
+        before they become the merge, whose own output goes to its attempt's trace node."""
         if self._runtime is None:
             self._runtime = Path(tempfile.mkdtemp(prefix="concorde-project-mcp-"))
         return self._runtime
@@ -211,14 +212,10 @@ class Calls:
         task = arguments.get("task") if isinstance(arguments, dict) else None
         runtime = self.runtime()
         with self.lock:
-            number = len(list(runtime.glob("*.json"))) + 1
-            output = runtime / f"{number}-merge-{task}.json"
-            output.touch()
-        messages = runtime / f"{number}-merge-{task}.log"
-        envelope = {
-            **envelope,
-            "merge": {"output": output.as_posix(), "messages": messages.as_posix()},
-        }
+            number = len(list(runtime.glob("*.log"))) + 1
+            messages = runtime / f"{number}-merge-{task}.log"
+            messages.touch()
+        envelope = {**envelope, "merge": {"call": messages.as_posix()}}
         argv, environment = self.command("project-mcp", "--call", name)
         try:
             with messages.open("wb") as err:
@@ -258,7 +255,10 @@ class Calls:
                     f"{said or '(no output)'}",
                 )
             return reply
-        self.reap(process, str(task), output, messages)
+        started = reply["value"]["started"]
+        self.reap(
+            process, str(task), Path(started["output"]), Path(started["messages"])
+        )
         return reply
 
     def reap(self, process, task: str, output: Path, messages: Path) -> None:
@@ -266,8 +266,13 @@ class Calls:
             code = process.wait()
             if not self.channel or self.closing:
                 return
+            found = output, messages
+            if not output.is_file():
+                # The close moved the task, with the attempt's folder, to the history.
+                found = self.attempt_files(task) or found
+            output_now, messages_now = found
             try:
-                text = output.read_text(encoding="utf-8", errors="replace").strip()
+                text = output_now.read_text(encoding="utf-8", errors="replace").strip()
             except OSError:
                 text = ""
             try:
@@ -282,11 +287,11 @@ class Calls:
             body = (
                 text
                 if len(text) <= CUT
-                else f"{text[:CUT]}\n…(cut; the whole output is in {output})"
+                else f"{text[:CUT]}\n…(cut; the whole output is in {output_now})"
             )
             self.notify(
                 f"Concorde: `concorde task merge {task}` ended with exit status {code} "
-                f"({status}). Its output ({output}, errors in {messages}):\n{body}",
+                f"({status}). Its output ({output_now}, errors in {messages_now}):\n{body}",
                 {
                     "event": "merge_ended",
                     "task": task,
@@ -296,6 +301,28 @@ class Calls:
             )
 
         threading.Thread(target=reaped, name=f"merge {task}", daemon=True).start()
+
+    def attempt_files(self, task: str) -> tuple[Path, Path] | None:
+        """The output files of the task's latest merge attempt where they are now, as
+        ``concorde task wait <task> --merge`` of the current code finds them; None when it
+        cannot tell."""
+        argv, environment = self.command(
+            "task", "wait", task, "--merge", "--timeout", "30"
+        )
+        try:
+            done = subprocess.run(
+                argv,
+                cwd=self.primary,
+                env=environment,
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                timeout=60,
+                check=False,
+            )
+            attempt = json.loads(done.stdout)["attempt"]
+            return Path(attempt["output"]), Path(attempt["messages"])
+        except (OSError, subprocess.SubprocessError, ValueError, KeyError, TypeError):
+            return None
 
     # --- waits ------------------------------------------------------------------------------
 

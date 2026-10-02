@@ -122,36 +122,53 @@ A holder line is the object a lock file holds while it is held,
 ### Starting a merge
 
 The server starts the call's process for `task_merge` in a process session of its own, with its
-standard error going to a file of a private temporary directory of the server. That process takes
-the task's [workspace lock](../../glossary.json#concept.workspace-lock) and then the
+standard error going to a file of a private temporary directory of the server until it becomes the
+merge. That process takes the task's merge attempt lock
+([Tasks](../tasks/contracts.md#commands)), the task's
+[workspace lock](../../glossary.json#concept.workspace-lock) and then the
 [merge lock](../../glossary.json#concept.merge-lock) with an exclusive `flock` that does not wait,
 and writes into each a holder line naming `` `concorde task merge` of task <task>, started by the
 project MCP server ``, its own process, the session and the task. A lock that is held refuses the
-call at once with `workspace_busy` or `merge_busy`, after releasing a lock it had already taken.
-With both, it prints the start below and replaces itself with
+call at once with `merge_busy` for the attempt lock, which a merge of the task still running holds,
+`workspace_busy` or `merge_busy`, after releasing the locks it had already taken. With all three,
+it makes the task's next merge attempt folder `merges/<n>/` of the task's folder, `n` one more than
+the task's attempts so far, prints the start below and replaces itself with
 `concorde task merge <task> --wait 0` of the primary worktree, with each `--check`, or with
-`--resume` or `--abort`, whose standard output goes to another file of that directory. The merge
-keeps both locked descriptors, named in its environment variable `CONCORDE_INHERITED_LOCKS` as
-[Tracing](../../tracing/contracts.md#handing-a-lock-on) states, and the server never holds either,
-so the locks are released exactly when the merge ends. When the operating system refuses to run
-`concorde task merge`, the call's process prints a `start_failed` refusal after the start and
-exits, which releases both locks, and the call is refused with it.
+`--resume` or `--abort`, whose standard output goes to `output.json` and standard error to
+`messages.log` of that folder, which it names in `CONCORDE_MERGE_ATTEMPT`, so that the merge
+records its attempt's node there, refused or not. The merge keeps the three locked descriptors,
+named in its environment variable `CONCORDE_INHERITED_LOCKS` as
+[Tracing](../../tracing/contracts.md#handing-a-lock-on) states, and the server never holds any, so
+the locks are released exactly when the merge ends. When the operating system refuses to run
+`concorde task merge`, the call's process removes the folder again, prints a `start_failed`
+refusal after the start and exits, which releases the locks, and the call is refused with it.
 
 The result is returned at once:
 
 ```json
 {
   "started": {"command": "concorde task merge <task> --wait 0 …", "pid": 4242,
-              "output": "<file of its JSON output>", "messages": "<file of its standard error>"},
-  "locks": {"workspace": "<lock file>", "merge": "<lock file>"},
+              "attempt": "<the attempt's folder>",
+              "output": "<attempt>/output.json", "messages": "<attempt>/messages.log"},
+  "locks": {"attempt": "<lock file>", "workspace": "<lock file>", "merge": "<lock file>"},
   "wake": {"channel": true}
 }
 ```
 
-With a channel, the server sends a `merge_ended` event when the process ends. Without one, `wake`
-is `{"channel": false, "command": "concorde task wait <task> --lock workspace", "explanation": …}`:
-the command to run in background Bash, which returns when the merge released the task's workspace
-lock, after which the output file holds the merge's JSON.
+With a channel, the server sends a `merge_ended` event when the process ends, carrying the output
+from the attempt's folder, wherever the close moved it. Without one, `wake` is
+`{"channel": false, "command": "concorde task wait <task> --merge", "explanation": …}`: the command
+to run in background Bash, which returns once the merge has ended and written its whole answer,
+although the close removes the task's workspace lock before, and names the attempt's node and its
+`output.json` and `messages.log`, in the task's folder or, once the merge closed the task, in the
+[history](../../glossary.json#concept.history).
+
+A session that lost the start's answer or the event, such as after a restart, finds the merge
+again from the task: `task_show` gives the task's state and folder, current or in the history,
+`trace_show` of the task its merge attempts as the nodes `merges/<n>/`, each with its outcome and
+error, and the attempt's `output.json` holds the merge's whole answer, with its warnings and
+refusal; `concorde task wait <task> --merge` waits for a merge that still runs and names those
+files.
 
 ### Starting a workflow step
 
@@ -225,7 +242,7 @@ receives, and `meta`, whose keys become attributes of the `<channel source="conc
       }
     }
   },
-  "semantics": "One event of the project MCP server to the Claude Code session that runs it. wait_done: a registered wait is over; kind (task for a state, rebound for a rebind, run or lock) and wait name it, and content carries the answer concorde task wait would print. wait_failed: the wait ended without it, such as a task that ended in another state (code wait_unreachable); content carries the rendered error chain. merge_ended: the merge task_merge started ended; exit_code and status say how, and content carries its JSON output, cut after 6000 characters with the path of the whole.",
+  "semantics": "One event of the project MCP server to the Claude Code session that runs it. wait_done: a registered wait is over; kind (task for a state, rebound for a rebind, run or lock) and wait name it, and content carries the answer concorde task wait would print. wait_failed: the wait ended without it, such as a task that ended in another state (code wait_unreachable); content carries the rendered error chain. merge_ended: the merge task_merge started ended; exit_code and status say how, and content carries its JSON output from its attempt's output.json, cut after 6000 characters with the path of the whole.",
   "example": {
     "content": "Concorde: task retry becoming delivered happened (wait 1): {\"task\": \"retry\", \"state\": \"delivered\", \"waited_seconds\": 412.3}",
     "meta": {"event": "wait_done", "kind": "task", "task": "retry", "wait": "1"}

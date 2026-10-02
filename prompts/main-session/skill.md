@@ -615,9 +615,13 @@ claude --dangerously-load-development-channels server:concorde
 Claude Code asks once to confirm the flag. Channels also need Anthropic authentication (claude.ai
 or a Console key) and an organization that has not disabled them. Without a channel,
 `register_wait` says so and returns the `concorde task wait …` command, and `task_merge` returns
-`concorde task wait <task> --lock workspace`, which returns when its merge has ended: run that
-command in background Bash, which wakes you when it returns, then read the merge's output file the
-answer names. If a channel event you expected never comes although the server said it has a
+`concorde task wait <task> --merge`, which returns once its merge has ended and written its whole
+answer: run that command in background Bash, which wakes you when it returns, then read the
+merge's `output.json` it names. That file lies in the merge attempt's node `merges/<n>/` of the
+task's trace, not in the server, so when you lost the start's answer or the event, as after a
+restart, find the merge from the task: `task_show` gives its state and folder, `trace_show` of the
+task its merge attempts with their outcomes, and `concorde task wait <task> --merge` names the
+latest attempt's files. If a channel event you expected never comes although the server said it has a
 channel, the organization may block channels: use the background Bash form. Using the server is
 recommended, not required: the kernel lock is the same whichever path takes it, and everything the
 server does not present, such as `concorde task session`, stays a command. Task sessions receive

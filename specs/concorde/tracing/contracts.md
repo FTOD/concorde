@@ -489,7 +489,8 @@ ignores `tasks/`, `history/`, `unbound/`, `lobby/` and `locks/`.
 │  ├─ decisions.md               the decision log
 │  ├─ runtime/                   the task session's boundary configuration, removed at close
 │  ├─ sessions/<session>/        session nodes
-│  ├─ merges/<n>/                merge attempts, their checks under checks/<n>/
+│  ├─ merges/<n>/                merge attempts, their checks under checks/<n>/, and the
+│  │                             output.json and messages.log of a merge the server started
 │  └─ workspace/                 the workspace folder the task's binding names
 │     ├─ workflow/               the workflow node, answers/, reports/, steps/<seq>-<key>/run/
 │     └─ runs/<run>/             runs started directly
@@ -511,7 +512,10 @@ output `host.out`, what its steps keep (such as `readiness.json` of `task-valida
 or a traceback), `checks/<check>/` and `workers/<worker run>/`. A worker run's folder holds
 `trace.json`, `status.json`, `grant.json`, `brief.md`, `transcript.jsonl` once a session exists and
 `rounds/<n>/` with each round's `trace.json`, `stderr.log` and `checks/<check>/`. A check's folder
-holds `trace.json` and `output.log`.
+holds `trace.json` and `output.log`. A merge attempt's folder holds `trace.json`, `checks/<n>/`
+and, for a merge the project MCP server started, the merge's standard output `output.json` and
+standard error `messages.log`, which the merge that closed the task finishes after the close moved
+the folder to the history.
 
 The history key of a closed task is its name, or `<task>.<n>` with the smallest `n` from 2 that is
 free when that name is taken: when the history already holds a task of that name or a
@@ -540,6 +544,7 @@ runs name the workspace in `holder` only, and a task is named only by Tasks and 
 | [workspace lock](../glossary.json#concept.workspace-lock) | `workspaces/<workspace>.lock` | every bound run, and `task merge` and `task close` of its task | removed by the close, while it holds the lock; a run that waited for it takes the removed file and is refused, never the file a later taker creates |
 | workflow lock | `workflows/<workspace>.lock` | a [workflow step](../glossary.json#concept.workflow-step) or report while it reads and writes the workflow node, and `task close` of its task and the close that ends its `task merge`, each after the workspace and merge locks | removed by the close, while it holds the lock; a step or report that waited for it takes the removed file and is refused, never the file a later taker creates |
 | [run lock](../glossary.json#concept.run-lock) | `runs/<run>.lock` | the run's runner only, from before its first progress file until after its result | the runner removes it as it exits; a file left by a runner killed with `SIGKILL` is not held |
+| merge attempt lock | `attempts/<task>.lock` | `task merge` of the task only, from before it waits for its other locks until it has written its answer, and the [project MCP server](../glossary.json#concept.project-mcp-server)'s call that hands it to that merge | the merge removes it as it ends; a file left by a merge killed with `SIGKILL` is not held |
 
 <a id="handing-a-lock-on"></a>
 
