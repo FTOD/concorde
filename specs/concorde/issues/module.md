@@ -456,7 +456,8 @@ common directory itself, needing no part.
 A merge that holds the merge lock and closes the Issues its task resolves through the bookkeeping
 command hands the lock on to the command's process, as the Kernel's
 [merge lock](../glossary.json#concept.merge-lock) allows: the command's write then adopts the lock
-instead of waiting for it, as `locked` does for a caller of the library entry.
+instead of waiting for it. That is the only way a write runs under a lock its caller holds; no
+entry of the store skips taking the lock.
 
 ### Inside
 

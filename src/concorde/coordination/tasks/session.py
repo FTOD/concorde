@@ -50,7 +50,6 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
-from ...issues.store import DIRECTORY as ISSUES
 from ...kernel.schema import type_version
 from ...kernel.tracing import node as trace
 from . import session_hook, store

@@ -3,7 +3,6 @@ recovery puts back a move a killed write left, and archive moves misplaced recor
 
 from __future__ import annotations
 
-import fcntl
 import json
 import os
 import shutil
@@ -13,7 +12,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from concorde.issues import command, store
+from concorde.issues import store
 from concorde.issues.store import (
     IssueError,
     archive_issues,
@@ -22,8 +21,10 @@ from concorde.issues.store import (
     read_issue,
     report_issue,
 )
+from concorde.kernel.tracing import locks
 from concorde.spec.verification import verifies
 from tests.concorde.issues import test_store as base
+from tests.concorde.support.environment import child_environment
 from tests.concorde.support.issue_reports import git, git_project, report, source
 
 OPEN = ".concorde/issues/{}.md"
@@ -143,18 +144,26 @@ class ClosedFolderTests(unittest.TestCase):
         self.configure()
         identifier = self.recorded()
         lock = self.root / ".concorde/locks/merge.lock"
-        lock.parent.mkdir(parents=True, exist_ok=True)
-        with lock.open("a+b") as held:
-            fcntl.flock(held.fileno(), fcntl.LOCK_EX)
-            # A task merge closes the Issues its task resolves through the command's dispose.
-            answer = command.dispose(
-                self.root,
-                identifier,
-                "resolved",
-                "Merged",
-                ["merge commit abc123"],
-                locked=True,
-            )
+        # A task merge closes the Issues its task resolves with `concorde issues close`, to
+        # which it hands the merge lock it holds.
+        with locks.hold(lock, "a task merge", wait=0):
+            with locks.handed_on(lock) as (variables, descriptors):
+                closed = subprocess.run(
+                    [sys.executable, str(SCRIPT), "close", identifier]
+                    + ["--reason", "resolved", "--note", "Merged"]
+                    + ["--evidence", "merge commit abc123", "--root", str(self.root)],
+                    cwd=self.root,
+                    env=child_environment(**variables),
+                    pass_fds=descriptors,
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                    check=False,
+                )
+            # The merge still holds the lock, and its holder line is its own again.
+            self.assertEqual("a task merge", locks.entry(lock)["holder"])
+        self.assertEqual(0, closed.returncode, closed.stdout + closed.stderr)
+        answer = json.loads(closed.stdout)
         self.assertEqual(
             {"status": "closed", "path": CLOSED.format(identifier)},
             {key: answer[key] for key in ("status", "path")},

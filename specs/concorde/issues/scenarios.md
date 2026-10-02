@@ -628,7 +628,7 @@ and [commits of the record alone](requirements.md#req.issues.commit-alone).
 ### scenario.issues.store-folders-locked — A close under a held merge lock moves the record too
 
 - GIVEN an open Issue and a caller holding the merge lock, as a task merge closing the Issues its task resolves does
-- WHEN that caller closes the Issue through the command's `dispose` with `locked`
+- WHEN that caller closes the Issue with `concorde issues close`, handing the merge lock on to that command's process
 - THEN the answer gives the status `closed` and the path in `closed/`
 - AND the record is moved in one commit of both paths, leaving the Issue directory clean
 

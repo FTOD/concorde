@@ -19,12 +19,12 @@ from unittest.mock import patch
 
 from concorde.kernel.errors import ERROR_SCHEMA
 from concorde.distribution.install import TRACES
-from concorde.execution.runs import workspace_lock
+from concorde.kernel.locking import workspace_lock
 from concorde.spec.schema import validate
 from concorde.kernel.refusal import KernelError
 from concorde.kernel.schema import validate_typed
 from concorde.spec.verification import verifies
-from concorde.coordination.tasks import cli, merge, store
+from concorde.coordination.tasks import cli, merge, parts, store
 from concorde.kernel.tracing import node as trace
 from tests.concorde.support.operation_project import OperationProject, commit
 from tests.concorde.support.paths import REPOSITORY_ROOT
@@ -332,8 +332,7 @@ class MergeTests(unittest.TestCase):
         self.assertEqual("", git(self.root, "status", "--porcelain"))
 
     @verifies("scenario.tasks.merge-issues-unavailable")
-    def test_a_merge_that_cannot_load_the_issues_still_closes_and_answers(self):
-        import concorde.issues
+    def test_a_merge_whose_issues_command_fails_still_closes_and_answers(self):
         from concorde.issues.store import read_issue
 
         fixed = self.issue("fixed")
@@ -341,13 +340,10 @@ class MergeTests(unittest.TestCase):
         status, value = self.command("resolve", "t1", fixed)
         self.assertEqual(0, status, value)
         self.deliver()
-        # Without the attribute and with None in sys.modules, importing the Issues command
-        # fails, as an import between two versions of Concorde did.
-        loaded = concorde.issues.command
-        del concorde.issues.command
-        self.addCleanup(setattr, concorde.issues, "command", loaded)
+        # The project's own `concorde` fails before it answers, as a broken installation does.
+        broken = [sys.executable, "-c", "import sys; sys.exit('concorde is broken')"]
         with (
-            patch.dict(sys.modules, {"concorde.issues.command": None}),
+            patch.object(parts, "concorde_command", return_value=broken),
             patch.object(store, "end_sessions", wraps=store.end_sessions) as ending,
         ):
             status, value = self.command("merge", "t1", "--check", python(""))
@@ -358,7 +354,7 @@ class MergeTests(unittest.TestCase):
         warned = [text for text in value["warnings"] if fixed in text]
         self.assertEqual(1, len(warned), value["warnings"])
         self.assertIn("issues_unavailable", warned[0])
-        self.assertIn("concorde.issues.command", warned[0])
+        self.assertIn("concorde is broken", warned[0])
         ending.assert_called_once()
         record, _ = read_issue(self.root, fixed)
         self.assertEqual("open", record["status"])
@@ -441,7 +437,7 @@ class MergeTests(unittest.TestCase):
         self.assertEqual("delivered", record["state"])
         attempt = store.task_folder(self.root, "t1") / "merges/1"
         self.assertEqual(
-            [shlex.split(passing), merge.default_checks()[0]],
+            [shlex.split(passing), merge.SPEC_VALIDATION],
             trace.read(attempt)["content"]["data"]["checks"],
         )
         # Without the mark, the named checks alone run again.
@@ -797,7 +793,7 @@ class MergeTests(unittest.TestCase):
 
         def hold():
             with workspace_lock(
-                store.workspace_store(self.root, "t1"), "t1", "run r-1 (delivery)"
+                store.concorde(self.root), "t1", "run r-1 (delivery)"
             ):
                 taken.set()
                 release.wait(10)
@@ -823,7 +819,7 @@ class MergeTests(unittest.TestCase):
         self.deliver()
         before, record = self.head(), store.load_task(self.root, "t1")
         with workspace_lock(
-            store.workspace_store(self.root, "t1"), "t1", "run r-1 (delivery)"
+            store.concorde(self.root), "t1", "run r-1 (delivery)"
         ):
             merged = self.refusal(
                 "merge", "t1", "--wait", "0.3", "--check", python("pass")

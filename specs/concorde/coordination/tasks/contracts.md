@@ -825,9 +825,123 @@ sessions are [Task sessions](../task-session/contracts.md#session-trace)'.
 }
 ```
 
+Each `concorde task deliver` attempt is a node `deliveries/<n>/` of the task, of kind `delivery`, with each of its checks a node `checks/<i>/` below it, of kind `delivery-check`:
+
+```concorde-contract
+{
+  "id": "contract.tasks.delivery-trace",
+  "version": 1,
+  "schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "branch",
+      "before",
+      "commit",
+      "recovered",
+      "checks",
+      "waited_seconds"
+    ],
+    "properties": {
+      "branch": {
+        "type": "string",
+        "minLength": 1
+      },
+      "before": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
+      },
+      "commit": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string",
+            "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
+          }
+        ]
+      },
+      "recovered": {
+        "type": "boolean"
+      },
+      "checks": {
+        "type": "array",
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "waited_seconds": {
+        "type": "number",
+        "minimum": 0
+      }
+    }
+  },
+  "semantics": "The data of the typed value concorde-delivery-trace, the content of one concorde task deliver attempt's trace node deliveries/<n>/ of a task, n counting the task's attempts from 1, numbered while the attempt holds the task's workspace lock. branch is the task branch, before the head of the task worktree when the attempt began, commit the delivery commit it made or found at that head (null until then, and for an attempt refused before it), recovered true when it found the head already a delivery commit of the workspace that verifies, with a clean worktree, and committed nothing, checks the argument vectors of the --check commands it was given and waited_seconds how long it waited for the workspace lock. The node's status is ok when the attempt made or found a delivery commit, with its outcome delivered or recovered, the commit as metadata commit and among its references as commit or found_commit, and failed otherwise, with its outcome check_failed, git_failed or, for any other refusal, refused and the refusal's link as error; its metadata are the task, the branch and, once known, the commit. Each check it ran is a delivery-check node checks/<i>/ below it. A behaviour or field change increments the version.",
+  "example": {
+    "branch": "concorde/severity",
+    "before": "d460b95e0c1a2b3c4d5e6f708192a3b4c5d6e7f8",
+    "commit": "4be1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9",
+    "recovered": false,
+    "checks": [
+      [
+        "npm",
+        "test"
+      ]
+    ],
+    "waited_seconds": 0.0
+  }
+}
+```
+
+```concorde-contract
+{
+  "id": "contract.tasks.delivery-check-trace",
+  "version": 1,
+  "schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "argv",
+      "exit_code"
+    ],
+    "properties": {
+      "argv": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "exit_code": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "integer"
+          }
+        ]
+      }
+    }
+  },
+  "semantics": "The data of the typed value concorde-delivery-check-trace, the content of one check a concorde task deliver attempt ran in the task worktree, checks/<i>/ of the attempt's node, i counting from 1 in the order run. argv is the command as run and exit_code its exit status, null when it could not run or was stopped after 1800 seconds. The node's status is ok for exit status 0 and failed otherwise, its usage the check's duration, and output.log, the check's standard output and error, its artifact. A behaviour or field change increments the version.",
+  "example": {
+    "argv": [
+      "npm",
+      "test"
+    ],
+    "exit_code": 0
+  }
+}
+```
+
 ## Commands
 
-`open`, `close`, `merge`, `session`, `rebind` and `answer` run only in the primary worktree.
+`open`, `close`, `merge`, `session`, `rebind` and `answer` run only in the primary worktree, and
+`deliver` only in the worktree of the task it names.
 `list`, `show`, `escalate`, `report`, `resolve` and `wait` run in any worktree of the repository, so a task
 session escalates and reports from its task worktree; they find the primary worktree, and with it
 the task folders, through Git's common directory.
@@ -841,7 +955,7 @@ task, [Module](../../glossary.json#concept.module), path, run or Git command con
 message (for an unknown task, the known tasks; for a dirty worktree, the uncommitted paths; for a
 busy [merge lock](../../glossary.json#concept.merge-lock), its holder), and whose reason is
 `environment` for `git_failed`, `worktree_failed`, `record_conflict`, `record_unreadable`,
-`record_unwritable`, `decision_log_failed`, `decision_log_uncommitted`, `binding_failed`, `merge_busy`, `workspace_busy`, `rollback_failed`, `wait_timeout`, `wait_failed` and the
+`record_unwritable`, `decision_log_failed`, `decision_log_uncommitted`, `binding_failed`, `merge_busy`, `workspace_busy`, `rollback_failed`, `wait_timeout`, `wait_failed`, `part_unknown`, `issues_unavailable` and the
 session codes `session_failed` and `missing_worktree`, `decision` for `dirty_worktree`,
 `not_merged`, `delivery_unverified`, `primary_dirty`, `changed_outside`, `merge_conflict`, `check_failed`,
 `merge_incomplete`, `not_resumable` and `merge_diverged`, and `input` otherwise. A
@@ -860,6 +974,31 @@ anything: `open`, `merge` and `close` once they hold the merge lock, `session`, 
 for it. `list`, `show`, `rebind`, `report`, `answer` and `wait` are never refused for a merge:
 they change at most a task's record, never Git, and a report or a rebind is how a
 refusal such as `merge_incomplete` reaches the main agent that must finish the merge.
+
+<a id="parts-not-depended-on"></a>
+
+**The parts Tasks does not depend on.** Tasks reaches every part but the Kernel only through that
+part's `concorde` command, JSON in and out, or a file format its [Spec](../../glossary.json#concept.spec) defines, never its code
+([Coordination](../module.md#optional-integrations)), and learns from them whether the part is
+installed. The spec part is installed for a worktree exactly when its registry mirror
+`.concorde/specs.json` exists, which `open` reads for the Modules it admits. The execution, method
+and issues parts are installed exactly when the worktree's own `concorde`, its
+`.concorde/bin/concorde`, else the checkout's `scripts/concorde.py`, else the running package,
+offers their commands `run`, `delivery` and `issues`: it does unless, asked for one, it answers with
+an error link whose code is `part_missing` or `part_not_installed`, or says `invalid choice` for that
+command, whatever else it answers, a refusal of the arguments included. `deliver` and `wait --run`
+ask with `concorde <command> --help`, which changes nothing. `--resolves` and `resolve` read each
+Issue with `concorde issues show <issue> --root <primary worktree>`. A merge puts back what Issue
+writes left with `concorde issues recover --root <primary worktree>` and closes each resolved Issue
+with `concorde issues close <issue> --reason resolved --note <note> --evidence <item>… --root
+<primary worktree>`, handing the merge lock it holds on to each as
+[Tracing](../../kernel/tracing/contracts.md#handing-a-lock-on) describes, and reads its answer or
+its `{"error": <link>}`. Execution's runs are read through its
+[run result](../../execution/contracts.md#contract.execution.run-result), its
+[run progress file](../../glossary.json#concept.run-progress-file), the
+[run store](../../glossary.json#concept.run-store)'s folders and the
+[run lock](../../glossary.json#concept.run-lock), and Distribution's update mark through its file
+`.concorde/update.json`.
 
 | Command | Effect | Output |
 | --- | --- | --- |
@@ -999,7 +1138,7 @@ workspace and workflow locks while it holds all three.
 | --- | --- |
 | `not_primary` | `open`, `close`, `merge`, `session`, `rebind` or `answer` runs outside the primary worktree. |
 | `worktree_not_ignored` | Git does not ignore the worktree path in the primary worktree; the message names the path and how to ignore it. |
-| `invalid_input` | A goal or Module list is missing or repeats a Module, or `close` names not exactly one of `--merged`, `--completed` and `--failed`, `--completed` lacks `--note`, `--failed` lacks `--reason`, `--failed` names both or neither of an error source (`--run`, `--error-file`) and `--no-error`, an option belongs to another outcome, or `--force` accompanies `--merged`, or a `--check` is empty or cannot be split into words, or `--check` accompanies `--resume` or `--abort`, or `--wait` is negative, or `session` starts a task session without `--main`, or `rebind` names an empty `--main`, `report` an empty `--text` or `answer` an empty `--text`, or `wait` names no target or more than one, `--rebound` without a task or with an empty session, `--until` without a task or with a state other than `delivered`, `merging`, `closed` and `failed`, `--run` with a task, `--lock workspace` or `--merge` without one or `--lock merge` with one, or a negative `--timeout`. |
+| `invalid_input` | A goal or Module list is missing or repeats a Module, or names one that is no Module identity (`module.<name>`), checked whether or not the spec part is installed, or `close` names not exactly one of `--merged`, `--completed` and `--failed`, `--completed` lacks `--note`, `--failed` lacks `--reason`, `--failed` names both or neither of an error source (`--run`, `--error-file`) and `--no-error`, an option belongs to another outcome, or `--force` accompanies `--merged`, or a `--check` is empty or cannot be split into words, or `--check` accompanies `--resume` or `--abort`, or `--wait` is negative, or `session` starts a task session without `--main`, or `rebind` names an empty `--main`, `report` an empty `--text` or `answer` an empty `--text`, or `wait` names no target or more than one, `--rebound` without a task or with an empty session, `--until` without a task or with a state other than `delivered`, `merging`, `closed` and `failed`, `--run` with a task, `--lock workspace` or `--merge` without one or `--lock merge` with one, or a negative `--timeout`. |
 | `worktree_failed` | Git refused to add or remove the worktree; the message carries Git's error. |
 | `binding_failed` | `open` added the worktree but could not write its [workspace binding](../../glossary.json#concept.workspace-binding); the message names the file, the worktree and branch left behind and how to remove them. |
 | `invalid_task_id` | The identity does not match the record's `id` pattern. |
@@ -1008,7 +1147,7 @@ workspace and workflow locks while it holds all three.
 | `path_exists` | The worktree path already exists. |
 | `unknown_module` | Where the spec part is installed, a named Module is not in the registry. |
 | `invalid_issue` | `open --resolves` or `resolve` names an Issue that is not an open Issue of the project, a malformed identity or an Issue twice; the message names each. |
-| `specs_unloadable` | The Specs needed to check Module identities cannot be loaded. |
+| `specs_unloadable` | Where the spec part is installed, the registry mirror `.concorde/specs.json` of the primary worktree, which names the Modules a task may name, cannot be read. |
 | `unknown_task` | No current task has that identity, nor, for `list` and `show`, the history. |
 | `invalid_transition` | `close` or `merge` names a task that is already `closed` or `failed`, apart from the same close of a task whose decision log lacks its closing (above), or a merge would store `merging` for a task whose stored state is not `open`. |
 | `not_merged` | `close --merged` or `merge` finds that the task branch holds no delivery commit of the task's workspace since the base commit or that its latest delivery commit is not the head of the branch, or `close --merged` finds that head not contained in the primary branch. |
@@ -1043,6 +1182,8 @@ workspace and workflow locks while it holds all three.
 | `wait_unreachable` | `wait --until` finds the task ended `closed` or `failed` in a state it does not name, or `wait --rebound` finds the task ended; the message names that state. |
 | `wait_failed` | The operating system refused to watch the directory of the task's workspace lock; the message carries its error. Reason `environment`. |
 | `part_missing` | The command, or an option of it, needs a part that is not installed: `--resolves` and `resolve` the issues part, `wait --run` the execution part; the message names the part and that it is not installed. |
+| `part_unknown` | `deliver` or `wait --run` could not ask the worktree's own `concorde` whether the part it needs is installed, since that command could not run to its end; the message names the command and how it failed. |
+| `issues_unavailable` | `--resolves` or `resolve` could not read the Issues it names, since `concorde issues show` could not run to its end or answered no Issue record; nothing was recorded. |
 | `delivery_by_method` | `deliver` runs where the method part is installed; the message names `concorde delivery`, which delivers a task there. |
 | `not_task_worktree` | `deliver` runs outside the worktree of the task it names. |
 | `wrong_branch` | `deliver` finds the task worktree's head detached or on another branch than the task's; the message names both. |

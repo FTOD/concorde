@@ -99,11 +99,18 @@
         "src/concorde/coordination/tasks/store.py",
         "src/concorde/coordination/tasks/merge.py",
         "src/concorde/coordination/tasks/wait.py",
+        "src/concorde/coordination/tasks/deliver.py",
+        "src/concorde/coordination/tasks/checks.py",
+        "src/concorde/coordination/tasks/parts.py",
+        "src/concorde/coordination/tasks/runs.py",
         "tests/concorde/tasks/__init__.py",
         "tests/concorde/tasks/deliveries.py",
         "tests/concorde/tasks/test_store.py",
         "tests/concorde/tasks/test_merge.py",
-        "tests/concorde/tasks/test_wait.py"
+        "tests/concorde/tasks/test_wait.py",
+        "tests/concorde/tasks/test_deliver.py",
+        "tests/concorde/support/installed_parts.py",
+        "tests/concorde/support/handed_lock.py"
       ]
     }
   ],

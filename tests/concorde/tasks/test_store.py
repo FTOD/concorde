@@ -18,7 +18,7 @@ from unittest.mock import patch
 from concorde.kernel import errors
 from concorde.kernel.errors import ERROR_SCHEMA, codes
 from concorde.kernel import binding
-from concorde.execution.runs import workspace_lock
+from concorde.kernel.locking import workspace_lock
 from concorde.worker_harness import models
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
@@ -1044,7 +1044,7 @@ class TaskStoreTests(unittest.TestCase):
     def test_a_second_concurrent_run_is_refused(self):
         self.project.open_task("t1")
         with workspace_lock(
-            store.workspace_store(self.root, "t1"), "t1", "implement run r-held"
+            store.concorde(self.root), "t1", "implement run r-held"
         ):
             self.assertIn(
                 "implement run r-held", store.show_task(self.root, "t1")["busy"]
