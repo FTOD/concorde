@@ -23,9 +23,9 @@ Concrete situations that show the [requirements](requirements.md) of
 
 ### scenario.headless-sessions.unsettled — Which runs a round left behind
 
-- GIVEN runs of Operations and [execution commands](../../glossary.json#concept.execution-command) started before and since the session began: one running, one whose runner is gone, one cancelled at the round's end, one cancelled long before the round's end, one failed otherwise, runs already reported in an earlier wake message, and a worker's [progress file](../../glossary.json#concept.progress-file)
+- GIVEN runs of Operations and [execution commands](../../glossary.json#concept.execution-command) started before and since the session began: one running, one queued in the lobby behind its busy workspace, one whose runner is gone, one cancelled at the round's end, one cancelled long before the round's end, one failed otherwise, runs already reported in an earlier wake message, and a worker's [progress file](../../glossary.json#concept.progress-file)
 - WHEN a round ends
-- THEN the running run and the run cancelled at the round's end are unsettled
+- THEN the running run, the queued run and the run cancelled at the round's end are unsettled
 - BUT a run started before the session, a run whose runner is gone, a run that failed otherwise, a run cancelled long before the round ended, a worker's progress file and a run already reported are not
 
 ### scenario.headless-sessions.wake — A run left running wakes the session

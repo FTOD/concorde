@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+from dataclasses import replace
 
 # name -> "module:attribute" of the provider object; imported only when the Operation runs.
 CATALOG: dict[str, str] = {
@@ -20,9 +21,16 @@ CATALOG: dict[str, str] = {
 
 
 def provider(name: str):
-    """The provider object of a catalog Operation; KeyError for an unknown name."""
+    """The provider object of a catalog Operation, the steps of one that launches workers
+    preceded by the check of all its workers against the model map; KeyError for an unknown
+    name."""
+    from .admission import check_worker_models
+
     module, attribute = CATALOG[name].split(":")
-    return getattr(importlib.import_module(module), attribute)
+    chosen = getattr(importlib.import_module(module), attribute)
+    if chosen.task_type is None:
+        return chosen
+    return replace(chosen, steps=(check_worker_models, *chosen.steps))
 
 
 __all__ = ["CATALOG", "provider"]

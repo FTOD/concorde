@@ -218,7 +218,8 @@ def records_of(project: Path) -> Path:
 
 def run_folders(project: Path) -> list[Path]:
     """The folder of every run of the project's current tasks, started directly or by a
-    workflow step, and of its unbound runs (Tracing's layout)."""
+    workflow step, of its unbound runs, and of the runs in the lobby, where a bound run waits
+    for its workspace lock (Tracing's layout)."""
     base = records_of(project)
     found: list[Path] = []
     for task in sorted((base / "tasks").glob("*")):
@@ -232,6 +233,7 @@ def run_folders(project: Path) -> list[Path]:
             if item.is_dir()
         )
     found += sorted(item for item in (base / "unbound").glob("r-*") if item.is_dir())
+    found += sorted(item for item in (base / "lobby").glob("r-*") if item.is_dir())
     return found
 
 

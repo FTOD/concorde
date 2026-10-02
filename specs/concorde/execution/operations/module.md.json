@@ -80,6 +80,15 @@
       "entries": [
         "src/concorde/operations/"
       ]
+    },
+    {
+      "id": "realization.operations.tests",
+      "type": "realization",
+      "title": "Operations tests",
+      "meaning": "#realization.operations.tests",
+      "entries": [
+        "tests/concorde/operations/"
+      ]
     }
   ],
   "relations": [],

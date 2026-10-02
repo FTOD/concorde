@@ -35,6 +35,12 @@ A run in which the grant could not be computed, a worker could not be launched o
 [configured check](../../glossary.json#concept.configured-check) still failed after the last
 [resume round](../../glossary.json#concept.resume-round) SHALL end with status `failed`.
 
+### req.operations.models-placed-first — Every worker is placed before the first launches
+
+Every Operation's run SHALL check every worker its Operation may launch against the
+[model map](../../glossary.json#concept.model-map) before it launches its first worker, launching
+none when the map cannot place one of them.
+
 ### req.operations.model-work-only — Every Operation has model work
 
 Every Operation in the catalog SHALL ask Workers to launch at least one AI worker on a run whose

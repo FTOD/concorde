@@ -43,6 +43,17 @@ worker's program is not installed, the configuration file cannot be read or the 
 unreadable or gives the model no id for the backend, the step stops `failed` with
 `worker_model_unavailable` before any worker starts.
 
+So that a run never stops at a later worker after earlier ones ran, every Operation's run begins,
+once it is admitted and before any other step of its provider, with the step `check_worker_models`,
+which the catalog puts first: it reads the worker configuration of the worktree the run works in and
+asks the configuration reader to check every worker the Operation may launch against the model map
+at once ([Workers](../workers/module.md)). When the configuration cannot be read or is not valid, or
+the map is missing, unreadable or lacks the id of a model one of those workers would run on, the run
+stops `failed` with `worker_model_unavailable` before its first worker launches, its cause the
+configuration reader's refusal: for the map, one `model_unmapped` naming every model and backend the
+map lacks with the workers that would take each. A worker whose entries set no model, and a backend
+that is not installed, are left to that worker's own launch.
+
 ## Standard worker sequence
 
 The worker-backed provider step itself computes and freezes the grant and settles the worker's

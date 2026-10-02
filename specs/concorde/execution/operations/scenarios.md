@@ -37,7 +37,7 @@ an [Operation](../../glossary.json#concept.operation) runs its workers is in
 ### scenario.operations.worker-model-unavailable — A run whose worker configuration cannot be read fails before launch
 
 - GIVEN a task whose worktree's worker configuration is not valid JSON
-- WHEN the task level runs `concorde run implement --goal "<goal>"` in the task worktree and the run reaches the worker step
+- WHEN the task level runs `concorde run implement --goal "<goal>"` in the task worktree
 - THEN no worker starts and the result is `failed` with `worker_model_unavailable`
 - AND its cause is the `component` link of Workers' model configuration with `config_invalid`, naming the file
 
@@ -51,9 +51,17 @@ an [Operation](../../glossary.json#concept.operation) runs its workers is in
 ### scenario.operations.worker-model-unmapped — A run whose worker model the model map cannot place fails before launch
 
 - GIVEN a task whose worktree's valid worker configuration gives `implement`'s worker a model and chooses no backend for it, on a machine with pi installed whose [model map](../../glossary.json#concept.model-map) gives that model no pi id
-- WHEN the task level runs `concorde run implement --goal "<goal>"` in the task worktree and the run reaches the worker step
+- WHEN the task level runs `concorde run implement --goal "<goal>"` in the task worktree
 - THEN no worker starts and the result is `failed` with `worker_model_unavailable`
 - AND its cause is the `component` link of Workers' model configuration with `model_unmapped`, naming the map, and the options say to add the id to the map
+
+### scenario.operations.worker-models-checked-at-admission — All of an Operation's workers are placed before the first launches
+
+- GIVEN a task whose worktree's valid worker configuration puts two of `spec_panel`'s workers, `reviewer1` and `chair`, on a backend for which the machine's [model map](../../glossary.json#concept.model-map) gives their model no id, while its other workers are placed
+- WHEN the task level runs `concorde run spec_panel` in the task worktree
+- THEN the run stops at its first step, `check_worker_models`, before any step of the panel runs and before any worker starts, and the result is `failed` with `worker_model_unavailable`
+- AND its one cause is the `component` link of Workers' model configuration with `model_unmapped`, naming the missing entry once with both workers that would take it, and the options say to add the id to the map
+- BUT once the map can place every worker of `spec_panel`, the run goes on to the panel's own steps
 
 ### scenario.operations.worker-blocked — A blocked worker escalates
 
