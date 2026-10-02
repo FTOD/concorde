@@ -246,17 +246,31 @@ The guidance SHALL tell the main agent, when merging a task fails with `merge_co
 the task's session merge the primary branch into its task branch.
 
 The session then delivers again
-([A task session merges the primary branch when asked](#req.main-session.task-session-conflict-merge)),
+([A task session merges the primary branch when asked](#req.main-session.task-session-primary-merge)),
 and the main agent merges the task once more. Merging the task into the primary branch stays the
 main agent's.
 
-### req.main-session.task-session-conflict-merge — A task session merges the primary branch when asked
+### req.main-session.update-merge — An update reaches the open tasks through their sessions
+
+The guidance SHALL tell the main agent, when a `concorde update` asks to merge the primary branch
+into each open task, to have the session of each task it lists merge the primary branch into its
+task branch.
+
+An update that installs a new Protocol copy lists the open tasks, whose worktrees still carry the
+previous copy ([Distribution](../../distribution/module.md)). The main agent answers each listed
+task's session, starting one again if it has ended, and the session then validates again and, when
+it had delivered, delivers again
+([A task session merges the primary branch when asked](#req.main-session.task-session-primary-merge)).
+Merging the task into the primary branch and rebasing stay forbidden to the session.
+
+### req.main-session.task-session-primary-merge — A task session merges the primary branch when asked
 
 The task-session guidance SHALL tell a task session to merge the primary branch into its task
-branch when the main agent asks for it after a `merge_conflict`.
+branch when the main agent asks for it after a `merge_conflict` or after a `concorde update`.
 
 The session then resolves the conflicts within the task's goal, verifies and commits the merge and
-runs `task-validation` and `delivery` again. It is the only merge a task session makes.
+runs `task-validation` and `delivery` again; a task not delivered yet goes on with its work after
+`task-validation` and delivers when it is done. It is the only merge a task session makes.
 
 ### req.main-session.no-polling — Waiting never polls
 
@@ -855,8 +869,8 @@ The task-session guidance SHALL tell a task session never to merge its task into
 branch or close its task.
 
 Merging the primary branch into its task branch when the main agent asks for it after a
-`merge_conflict` is the one merge it makes
-([The task session resolves a merge conflict](#req.main-session.merge-conflict)).
+`merge_conflict` or a `concorde update` is the one merge it makes
+([A task session merges the primary branch when asked](#req.main-session.task-session-primary-merge)).
 
 ### req.main-session.task-session-keeps-branch — A task session keeps its task branch
 

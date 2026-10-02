@@ -38,7 +38,7 @@ session's level 1, is always played by a task session, never by the main agent i
 | Write boundary | none: Concorde does not restrict the main agent | for its own file tools and shell: its task worktree and decision log, plus what its commits, runs and escalations write and package caches |
 | Asks | the developer, every open decision at once | the main agent, every decision its task needs together |
 | Lifecycle | the developer's session | started, answered and stopped by the main agent |
-| Merges | a delivered task into the primary branch | only the primary branch into its task branch, after a merge conflict |
+| Merges | a delivered task into the primary branch | only the primary branch into its task branch, when asked after a merge conflict or a `concorde update` |
 
 For now the main agent is a Claude Code session and every task session a background Claude Code
 session, while the workers that the runs of a task launch may run on pi.
@@ -52,8 +52,9 @@ workspace, goal, Modules, branch and base it works on.
 ### How a task goes
 
 The developer works with the main agent in the primary worktree. For each piece of work the main
-agent opens a task, records the task's brief in its decision log and starts a task session for it,
-even when it is the only task, and never works inside the task worktree itself. The task session
+agent opens a task, records the [task brief](../glossary.json#concept.task-brief) in its decision log
+and starts a task session for it, even when it is the only task, and never works inside the task
+worktree itself. The task session
 changes Specs and code there, directly or through [runs](../glossary.json#concept.run) of
 Execution, validates and delivers it. The main agent then merges the delivered task from the
 primary worktree and reports to the developer. Only a small change the developer approved is made
@@ -74,7 +75,7 @@ developer: Developer {
 main: "Main agent\nprimary worktree" {
   grid-columns: 1
   vertical-gap: 50
-  open: "Open a task,\nrecord its brief,\nstart a task session"
+  open: "Open a task,\nrecord its task brief,\nstart a task session"
   answer: "Decide ordinary questions,\nanswer every escalation\nat once"
   g1: "" {style.opacity: 0}
   merge: "Merge the delivered task,\nor close it as\ncompleted or failed"
@@ -117,7 +118,9 @@ of its own. A task never asks the developer in place: its session gathers every 
 and escalates them together to the main agent, which decides ordinary questions itself under the
 escalation policy, asks the developer at once about all those with major impact and answers the
 session once. A merge refused for a conflict goes back to the task session, which merges the
-primary branch into its task branch, resolves the conflict and delivers again; a merge whose
+primary branch into its task branch, resolves the conflict and delivers again, as it merges the
+primary branch when a `concorde update` brings a new
+[Protocol copy](../glossary.json#concept.protocol-copy); a merge whose
 checks fail is undone and the failure handled as new work; and a task that reached its goal without
 a merge, or will not reach it, is closed as completed or failed instead. The [Main
 session](main-session/module.md) and [Tasks](tasks/module.md) give the details.

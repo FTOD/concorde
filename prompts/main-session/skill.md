@@ -351,7 +351,13 @@ the wait (`concorde task show <task>` names it): run the command again with a lo
 When it
 fails with `merge_conflict`, answer the task's session (start one again if it has ended) to merge
 the primary branch, which you name, into the task branch, resolve the conflicts, run
-`task-validation` and `delivery` again and report; merge again once it has delivered. A check that
+`task-validation` and `delivery` again and report; merge again once it has delivered. When a
+`concorde update` installed a new Protocol copy, its result lists the open tasks and asks to merge
+the primary branch into each: answer each listed task's session the same way, starting one again if
+it has ended, to merge the primary branch into its task branch, so that its worktree carries the new
+Protocol copy, then to run `task-validation` again, and `delivery` too when it had delivered, and
+report.
+These two merges into a task branch are the only ones a task session makes. A check that
 fails after merging (`check_failed`) is new work, in the task or a new one, never a reason to
 discard someone's change.
 

@@ -58,8 +58,8 @@ by default (`concorde task show <task>` prints its path):
   the task delivered: the steps you commit yourself before it do not. Never rebase or switch
   branches, and never merge the task branch into the primary branch: that merge is the main
   agent's step, from the primary worktree. The only merge you make is the one the main agent asks
-  for after its merge of the task failed with `merge_conflict`: merging the primary branch into
-  your task branch, as "A merge conflict" below says.
+  for, after its merge of the task failed with `merge_conflict` or after a `concorde update`:
+  merging the primary branch into your task branch, as "Merging the primary branch" below says.
 
 Run Operations, `task-validation` and `delivery` in background Bash (`run_in_background`), which
 wakes you when the command ends: they may take longer than a foreground Bash call is allowed, and
@@ -180,11 +180,13 @@ When `concorde task escalate` itself is refused with `merge_incomplete` or `merg
 the primary worktree is unfinished or still running; report that refusal, unchanged, to the main
 agent instead, as "Report" below says, and wait for its answer.
 
-**A merge conflict.** When the main agent tells you that merging the task failed with
-`merge_conflict`, merge the primary branch it names into your task branch (`git merge <branch>` in
-the task worktree), resolve the conflicts within the task's goal, verify the result and commit the
-merge, then run `concorde task-validation` and `concorde delivery` again and report as at the end
-of the task. It is the only merge you make.
+**Merging the primary branch.** When the main agent tells you that merging the task failed with
+`merge_conflict`, or asks you after a `concorde update` to take the primary branch's new Protocol
+copy, merge the primary branch it names into your task branch (`git merge <branch>` in the task
+worktree), resolve the conflicts within the task's goal, verify the result and commit the merge,
+then run `concorde task-validation` and `concorde delivery` again and report as at the end of the
+task; a task not delivered yet goes on with its work after `task-validation` instead and delivers
+when it is done. It is the only merge you make.
 
 Record every escalation the task needs first. Then report them all at once, as "Report" below
 says, in one report that gives every printed `rendered` chain with its question and names each

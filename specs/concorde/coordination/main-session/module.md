@@ -262,8 +262,10 @@ The installed guidance gives the main agent this working method:
   several main sessions never interleave, runs `concorde spec-validation` on the primary branch, or
   exactly the `--check` commands given, undoes a merge whose checks fail and closes the task.
   Retry a `merge_busy`, and a `workspace_busy` once the task's run ended; have the task's session
-  resolve a conflict by merging the primary branch into its task branch and delivering again, the
-  only merge a task session makes; handle a failed check as new work, never by discarding
+  resolve a conflict by merging the primary branch into its task branch and delivering again, and
+  after a `concorde update` that installed a new Protocol copy have the session of each open task
+  merge the primary branch the same way and validate again, the only merges a task session makes;
+  handle a failed check as new work, never by discarding
   someone's change. Finish a merge that a `merge_incomplete` refusal names before anything else,
   with `concorde task merge <task> --resume`, or `--abort` when the merge commit is no longer the
   primary branch's head, and leave a `merge_diverged` primary branch to the developer. Act on every

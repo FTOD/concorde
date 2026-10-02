@@ -183,6 +183,14 @@ This illustrates [an optional plan review](requirements.md#req.main-session.task
 - THEN the main agent is told to answer the task's session, starting one again if it has ended, to merge the primary branch into its task branch, resolve the conflicts, run `task-validation` and `delivery` again and report
 - AND the task session is told to make that merge in its task worktree and that it is the only merge it makes
 
+### scenario.main-session.update-merge — An update reaches the open tasks through their sessions
+
+- GIVEN the rendered main-session and task-session guidance
+- WHEN a `concorde update` that installed a new [Protocol copy](../../glossary.json#concept.protocol-copy) asks to merge the primary branch into each open task it lists
+- THEN the main agent is told to answer each listed task's session, starting one again if it has ended, to merge the primary branch into its task branch, run `task-validation` again, and `delivery` too when it had delivered, and report
+- AND the task session is told that a merge of the primary branch into its task branch, asked after a `concorde update`, is besides the one after a `merge_conflict` the only merge it makes
+- BUT the task session is still told never to merge its task into the primary branch nor to rebase
+
 ### scenario.main-session.merge-interrupted — The guidance finishes an interrupted merge first
 
 - GIVEN the rendered main-session guidance

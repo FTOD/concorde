@@ -400,6 +400,39 @@ class GuidanceTests(unittest.TestCase):
         self.assertIn("It is the only merge you make.", session)
         self.assertIn("merge the primary branch into its task branch", self.block)
 
+    @verifies("scenario.main-session.update-merge")
+    def test_an_update_reaches_the_open_tasks_through_their_sessions(self):
+        self.assertIn(
+            "When a `concorde update` installed a new Protocol copy, its result lists the open "
+            "tasks and asks to merge the primary branch into each: answer each listed task's "
+            "session the same way, starting one again if it has ended, to merge the primary "
+            "branch into its task branch",
+            self.skill,
+        )
+        self.assertIn(
+            "then to run `task-validation` again, and `delivery` too when it had delivered, "
+            "and report.",
+            self.skill,
+        )
+        session = self.session
+        self.assertIn(
+            "The only merge you make is the one the main agent asks for, after its merge of "
+            "the task failed with `merge_conflict` or after a `concorde update`",
+            session,
+        )
+        self.assertIn(
+            "or asks you after a `concorde update` to take the primary branch's new Protocol "
+            "copy, merge the primary branch it names into your task branch",
+            session,
+        )
+        self.assertIn("Never rebase or switch branches", session)
+        self.assertIn(
+            "never merge the task branch into the primary branch", session
+        )
+        self.assertIn(
+            "after a `concorde update` that asks for it", self.block
+        )
+
     @verifies("scenario.main-session.small-change")
     def test_a_small_change_needs_the_developers_approval(self):
         self.assertIn(
