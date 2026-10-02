@@ -46,6 +46,55 @@ and a caller that reads the envelope reach the same conclusion. `update` prints 
 result or [error link](#req.distribution.installer-error-links) instead, and the other commands
 excepted print what their owners define.
 
+## Parts
+
+### req.distribution.parts-installable — Any set of parts installs with its dependencies
+
+The installer SHALL install exactly the [parts](../glossary.json#concept.part) it is asked for together with every part they depend on, transitively, and no other part, refusing before any write a part name the package does not build.
+
+Distribution itself is installed with any part. Left without a choice, the installer installs every
+part.
+
+### req.distribution.parts-recorded — The receipt names the installed parts
+
+The installer's receipt SHALL name every installed part, each with the version it carries.
+
+### req.distribution.update-installed-parts — An update keeps the installed parts
+
+`concorde update` SHALL install exactly the parts the receipt names, together with every part the new Concorde makes one of them depend on and every part the update is asked to add.
+
+### req.distribution.one-version — Every part carries the package's version
+
+The build SHALL give every part the version `concorde.json` names, so that every installed part of a project carries the same version.
+
+### req.distribution.registration-only — Distribution reaches a part only through its registration
+
+Distribution SHALL route commands to, present MCP tools of, place files for, compose guidance from and ask the idle state of an installed part only through that part's [part registration](../glossary.json#concept.part-registration).
+
+It loads no registration of a part that is not installed.
+
+No part imports Distribution's code, and Distribution imports a part's code only through the entries
+its registration names.
+
+### req.distribution.composed-from-registrations — The command and the server offer only installed parts
+
+The installed `concorde` command SHALL offer exactly the distribution commands and the commands the installed parts register, and the [project MCP server](../glossary.json#concept.project-mcp-server) exactly the MCP tools they register.
+
+### req.distribution.absent-part-named — A command of an absent part names the part
+
+The `concorde` command SHALL refuse a command that a part of the package registers but the project has not installed, naming that part and how to install it.
+
+### req.distribution.unique-names — No two parts register one name
+
+The build SHALL fail when two parts register the same command or the same MCP tool name.
+
+### req.distribution.composed-guidance — The guidance is composed of the installed parts
+
+The installed [main-session guidance](../glossary.json#concept.main-session-guidance) SHALL be Coordination's working method followed by the rendered guidance section of every other installed part, in the order of the parts, and hold no section of a part that is not installed.
+
+Without the coordination part there is no main-session guidance to compose, and the installer
+places the sections of the installed parts as the project skill alone.
+
 ## Installation
 
 ### req.distribution.glossary-import — The CLAUDE.md block imports the glossary
@@ -96,19 +145,20 @@ The refusal is `mcp_config_invalid`.
 
 The installed `concorde` command SHALL run Concorde only with the interpreter of its own environment under `.concorde/framework/python/`, ignoring the caller's Python path settings and user site-packages.
 
-### req.distribution.idle-install — An install is refused while a run holds its run lock
+### req.distribution.idle-install — An install is refused while an installed part reports work running
 
-The installer SHALL refuse, before writing anything, to install into a project in which the runner
-of an [Operation](../glossary.json#concept.operation) or
-[execution command](../glossary.json#concept.execution-command) run holds its
-[run lock](../glossary.json#concept.run-lock) when the installer checks.
+The installer SHALL refuse, before writing anything, to install into a project in which the idle check an installed part registers reports work of that part running when the installer checks.
 
-The update runs the installer, so the same holds for `concorde update`. The check is made once,
-before the first write; the installer does not keep a run from starting after it.
+In Concorde the execution part's check is the one that reports anything: the runner of an
+[Operation](../glossary.json#concept.operation) or
+[execution command](../glossary.json#concept.execution-command) run that holds its
+[run lock](../glossary.json#concept.run-lock). The update runs the installer, so the same holds for
+`concorde update`. The check is made once, before the first write; the installer does not keep work
+from starting after it.
 
 ### req.distribution.busy-named — A busy refusal names what runs
 
-The installer's `concorde_busy` refusal SHALL name each run it found running.
+The installer's `concorde_busy` refusal SHALL name each piece of work the idle checks reported, in Concorde each run found running.
 
 ### req.distribution.installer-error-links — Installer refusals are error links
 
@@ -143,9 +193,11 @@ core's error under `binding_error`.
 
 ### req.distribution.update-unvalidated — An update marks the project Concorde unvalidated
 
-`concorde update` SHALL mark the project Concorde unvalidated.
+`concorde update` of a project in which the spec part is installed SHALL mark the project Concorde unvalidated.
 
 The mark is the file `.concorde/update.json`, which the project ignores; only an update writes it.
+It is cleared by `concorde spec-validation`, so a project without the spec part, which has no such
+validation, is never marked.
 
 ### req.distribution.update-mark-kept — An earlier mark is kept until replaced
 
@@ -228,3 +280,26 @@ not scaffold a site.
 ### req.distribution.installer-docsite-template-first — An unsafe docsite template installs nothing
 
 When Views' template inventory rejects the package's docsite template as missing or unsafe, the installer SHALL refuse with `invalid_docsite_template` before it writes anything into the project.
+
+## The project MCP server
+
+### req.distribution.mcp-current-code — Every call answers with the current Concorde
+
+The project MCP server SHALL answer every call of a registered tool with a process of the Concorde that the primary worktree's `concorde` command runs when the call arrives, never with Concorde code the server loaded before that call.
+
+So a merge or a `concorde update` while a session runs changes the code that answers the session's
+next call: its rules, its record formats and its refusals
+([The project MCP server](module.md#the-project-mcp-server)). The same holds for the waiting and
+long-running processes a tool starts, such as Coordination's `concorde task wait` and
+`concorde task merge`; `workflow_step` alone runs the `concorde` of the session's own worktree,
+as Workflows requires.
+
+### req.distribution.mcp-tools-changed — The session hears that its tools changed
+
+When the tools of the Concorde that answered a call differ from those the server last listed to its session, the server SHALL tell the session that its tools changed and list the current code's tools when asked again.
+
+A part installed or removed by an update thereby adds or removes its tools in a running session.
+
+### req.distribution.mcp-call-failed — A call without an answer is refused
+
+When the process of a call ends, or exceeds its time, without an answer, the project MCP server SHALL refuse the call with its own `call_failed` link naming the command and the end of what it printed.

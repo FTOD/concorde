@@ -268,10 +268,12 @@ result schemas in `src/concorde/understanding/` (`operation.py` declares the `UN
 
 <a id="uses-operations"></a>
 
-**Operations** lists `understand` in its catalog as an Operation that may run unbound and writes
-nothing, and `plan_review` as one that needs a workspace and writes nothing, and names this Module
-as the provider of both; Understanding never calls another Operation, and neither of its Operations
-calls the other.
+**Operations**, Execution's Operation framework, is what both Operations plug into: Method registers
+their definitions with it, `understand` as an Operation that may run unbound and writes nothing,
+`plan_review` as one that needs a workspace and writes nothing, both naming this Module as their
+provider ([Method](../module.md#the-operations-and-commands-it-provides)), and Execution's
+[Operation catalog](../../glossary.json#concept.operation-catalog) lists them from there.
+Understanding never calls another Operation, and neither of its Operations calls the other.
 
 <a id="uses-execution"></a>
 
@@ -285,14 +287,16 @@ unbound run, of no workspace.
 
 <a id="uses-workers"></a>
 
-**Workers** turns the frozen grant into settings, launches the worker with this Module's brief,
-collects its worker result, audits the worktree and writes the run record. Any audit violation is a
-failed run. The brief Workers appends tells the understand worker never to infer a promise the Spec
-does not state but to report it as a Spec gap and end `ok`; this Module's instructions say the same,
+**Workers**, in the worker harness, receives the frozen grant as data through Method's
+[standard worker sequence](../../glossary.json#concept.standard-worker-sequence), turns it into
+settings, launches the worker with this Module's instructions, collects its worker result, audits
+the worktree and writes the run record. Any audit violation is a failed run. The task instructions
+Method composes for every worker tell the understand worker never to infer a promise the Spec does
+not state but to report it as a Spec gap and end `ok`; this Module's instructions say the same,
 since for this worker a missing promise is the finding itself: it reports the promise in an `ok`,
 insufficient assessment, which infers nothing, and returns `blocked` only when it cannot assess the
-goal at all. For the `plan_review` reviewer, whose task type is `review-code`, the appended brief
-says to report such behaviour as a `spec-gap` finding, which this Module's instructions repeat.
+goal at all. For the `plan_review` reviewer, whose task type is `review-code`, those instructions
+say to report such behaviour as a `spec-gap` finding, which this Module's instructions repeat.
 
 <a id="uses-spec"></a>
 

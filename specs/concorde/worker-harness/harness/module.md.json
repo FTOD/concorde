@@ -13,15 +13,7 @@
       "specs/concorde/worker-harness/harness/pi.md"
     ],
     "contains": [],
-    "uses": [
-      {
-        "target": "module.spec",
-        "meaning": "#uses-spec",
-        "relies_on": [
-          "concept.grant"
-        ]
-      }
-    ],
+    "uses": [],
     "includes": [
       {
         "kind": "external",
@@ -48,8 +40,7 @@
       "meaning": "#realization.harness.claude",
       "entries": [
         "src/concorde/harness/settings.py",
-        "src/concorde/harness/write_hook.py",
-        "src/concorde/tasks/session_hook.py"
+        "src/concorde/harness/write_hook.py"
       ]
     },
     {
@@ -75,12 +66,6 @@
       "source": "realization.harness.pi",
       "verb": "provides",
       "target": "concept.permission-extension"
-    },
-    {
-      "type": "relates",
-      "source": "realization.harness.claude",
-      "verb": "provides the write hook of",
-      "target": "concept.session-boundary"
     }
   ],
   "extensions": {}

@@ -372,17 +372,7 @@
       "title": "Operation",
       "owner": "module.operations",
       "definition": "A named job whose steps launch one or more AI workers, together with host steps and service calls, started with `concorde run` in a workspace, and that returns exactly one run result; the part that provides it registers its definition.",
-      "explanation": "specs/concorde/execution/operations/module.md#concept.operation",
-      "relates": [
-        {
-          "verb": "launches workers through",
-          "target": "module.workers"
-        },
-        {
-          "verb": "runs checks through",
-          "target": "module.checks"
-        }
-      ]
+      "explanation": "specs/concorde/execution/operations/module.md#concept.operation"
     },
     {
       "id": "concept.operation-catalog",
@@ -573,7 +563,7 @@
       "id": "concept.run-record",
       "title": "Run record",
       "owner": "module.workers",
-      "definition": "The host's durable record of one worker run, the `trace.json` of its [run directory](#concept.run-directory): its grant and context identity, settings, transcript, audits, checks, rounds and result.",
+      "definition": "The host's durable record of one worker run, the `trace.json` of its [run directory](#concept.run-directory): its grant and context identity, settings, transcript, audits, round validations, rounds and result.",
       "explanation": "specs/concorde/worker-harness/workers/module.md#concept.run-record",
       "relates": [
         {

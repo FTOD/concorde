@@ -111,6 +111,14 @@ A code_to_spec run SHALL report as a deviation every answered [open question](..
 A decision answer chooses among options the code leaves open, so it has no observed behaviour to
 deviate from.
 
+### req.adoption.step-output — Decision points are declared in the step output
+
+Every `ok` survey and code_to_spec run SHALL list, under the [step output convention](../../workflows/contracts.md#contract.workflows.step-output) of its output, as [decision points](../../glossary.json#concept.decision-point) every open question and, for a survey, every decision its worker took itself; as decisions every other decision it reports; as deviations every deviation; and, for a survey, every proposed check as a note.
+
+A decision that follows an answer is no decision point, since it is already settled. The lists repeat
+what the Spec description or [decomposition proposal](../../glossary.json#concept.decomposition-proposal) holds, in the shape any workflow reads, so that a
+workflow stops for exactly these points without knowing Adoption's contracts.
+
 ## Survey
 
 ### req.adoption.proposal-checked — A proposal fits the worktree

@@ -16,8 +16,8 @@
     "contains": [],
     "uses": [
       {
-        "target": "module.spec",
-        "meaning": "#uses-spec",
+        "target": "module.kernel",
+        "meaning": "#uses-kernel",
         "relies_on": [
           "concept.typed-value"
         ]

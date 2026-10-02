@@ -1,7 +1,7 @@
 # Workers contracts
 
-The exact answer every worker ends with, the worker configuration file, and what a worker run and
-each of its rounds retain in their trace nodes.
+The exact answer every worker ends with, the grant a caller hands over, the worker configuration
+file, and what a worker run and each of its rounds retain in their trace nodes.
 
 ## Worker result
 
@@ -148,7 +148,7 @@ Framework's [error chain](../../kernel/tracing/contracts.md#contract.tracing.err
       }
     }
   },
-  "semantics": "The structured result a worker returns at the end of every round, through --json-schema on Claude Code and as the argument of the concorde_result tool on pi; the host validates it against this schema on both. status ok means the worker finished its task; blocked means it cannot continue without a decision above it, such as a Spec gap or a missing grant, and failed means it tried and could not finish. summary says what was done. error is null exactly when status is ok; for blocked and failed it is the worker's own link of the error chain, the contract.tracing.error link without level, actor and causes: code names the error, detail describes it completely with the exact messages, evidence items point at a file, command, output or Spec (kind) by a path or identity (ref) with a short explanation (detail), attempts lists what was tried, unhandled gives the reason and the specific explanation why the worker could not handle it, and options and recommendation are what it offers. The error is the worker's claim, never host evidence; Workers adds the level worker, the actor and no causes when it puts it in the chain. proposed_deletions lists the paths in the worktree the worker wants deleted, each relative to the worktree as the brief asks of every path in the result; the host also accepts an absolute path, which it normalizes and reads as the same path in the worktree, refusing one outside it, and it deletes only those in the grant's rw list after a clean audit (launch.md#proposed-deletions). output is the Operation-specific part of the answer, such as an assessment, a code change summary or review findings; the Operation supplies its schema, which the host embeds at this key in the schema it validates against and passes to --json-schema on Claude Code, and it is an empty object for Operations without one. A result whose error does not match its status is invalid. The host keeps the result verbatim in the run record.",
+  "semantics": "The structured result a worker returns at the end of every round, through --json-schema on Claude Code and as the argument of the concorde_result tool on pi; the host validates it against this schema on both. status ok means the worker finished its task; blocked means it cannot continue without a decision above it, such as a Spec gap or a missing grant, and failed means it tried and could not finish. summary says what was done. error is null exactly when status is ok; for blocked and failed it is the worker's own link of the error chain, the contract.tracing.error link without level, actor and causes: code names the error, detail describes it completely with the exact messages, evidence items point at a file, command, output or Spec (kind) by a path or identity (ref) with a short explanation (detail), attempts lists what was tried, unhandled gives the reason and the specific explanation why the worker could not handle it, and options and recommendation are what it offers. The error is the worker's claim, never host evidence; Workers adds the level worker, the actor and no causes when it puts it in the chain. proposed_deletions lists the paths in the worktree the worker wants deleted, each relative to the worktree as the brief asks of every path in the result; the host also accepts an absolute path, which it normalizes and reads as the same path in the worktree, refusing one outside it, and it deletes only those in the grant's rw list after a clean audit (launch.md#proposed-deletions). output is the job-specific part of the answer, such as an assessment, a code change summary or review findings; the caller supplies its schema, which the host embeds at this key in the schema it validates against and passes to --json-schema on Claude Code, and it is an empty object for a caller without one. A result whose error does not match its status is invalid. The host keeps the result verbatim in the run record.",
   "example": {
     "status": "blocked",
     "summary": "Added discount rules to the cart; the rounding rule is not specified.",
@@ -178,6 +178,91 @@ Framework's [error chain](../../kernel/tracing/contracts.md#contract.tracing.err
     },
     "proposed_deletions": [],
     "output": {}
+  }
+}
+```
+
+## Grant input {#grant-input}
+
+The [grant](../../glossary.json#concept.grant) a caller hands the worker harness for one run, as
+data. The worker harness owns this format and computes nothing in it: it never derives a grant from
+Specs, widens one or reads where it came from. In Concorde, a step of Method fills it from the grant
+Spec core computes, whose `entries` and `context_identity` have exactly this shape; a contract test
+on each side keeps the two formats equal, so neither part imports the other.
+
+```concorde-contract
+{
+  "id": "contract.workers.grant-input",
+  "version": 1,
+  "schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "task_type",
+      "entries",
+      "context_identity"
+    ],
+    "properties": {
+      "task_type": {
+        "enum": [
+          "understand",
+          "specify",
+          "implement",
+          "test",
+          "review-spec",
+          "review-code",
+          "code-to-spec",
+          "review-architecture"
+        ]
+      },
+      "entries": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "level"
+          ],
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "level": {
+              "enum": [
+                "rw",
+                "ro",
+                "names"
+              ]
+            }
+          }
+        }
+      },
+      "context_identity": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "semantics": "The grant of one worker run, handed over by its caller as data and frozen for the whole run. task_type is the Protocol task type of the worker's job, which selects its tool set. entries lists every path the worker may reach with its level: rw writable, ro readable, names known by name only; a path is relative to the worktree the worker works in, never absolute and never leaving it through .., a directory ending in /, and a path no entry names is hidden. context_identity identifies what selected the entries, as the caller computed it; the worker harness records it and the digest of the grant, and never interprets either. A grant whose entries break this shape is refused before anything is generated, with grant_malformed naming the first such entry; one without a task type, entries or context identity with grant_unavailable. A behaviour or field change increments the version.",
+  "example": {
+    "task_type": "implement",
+    "entries": [
+      {
+        "path": "src/checkout/cart.py",
+        "level": "rw"
+      },
+      {
+        "path": "specs/shop/checkout/module.md",
+        "level": "ro"
+      },
+      {
+        "path": "src/billing/invoice.py",
+        "level": "ro"
+      }
+    ],
+    "context_identity": "sha256:9f2c1e4b7a6d5c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a3f2e1d0c9b"
   }
 }
 ```
@@ -378,7 +463,7 @@ The file the [worker configuration](../../glossary.json#concept.worker-configura
       }
     }
   },
-  "semantics": "The worker configuration .concorde/workers.json of a worktree, tracked by Git and edited directly. schema_version is 2. enabled_models is required and not empty: it names every model an entry may choose by its project model name, letters, digits, '.', '_' and '-' starting with a letter or digit, which depends on no installation, each with an optional reasoning level of its own. default, operations.<operation>.default and operations.<operation>.workers.<worker id> each may set backend (pi or claude), model (a name of enabled_models) and reasoning; operation and worker names are those of the Operation catalog, and reasoning must be a level of the effective backend. For each field the most specific entry that sets it wins, a backend no more than a model or a level. A backend no entry sets is pi. The level is that of the entry that chose the model or of a more specific one, otherwise the model's own, otherwise one a less specific entry sets, otherwise none, which leaves the program's own default level. A worker whose entries set no model is refused with model_unresolved, and an entry naming a model outside enabled_models with model_not_enabled; the model map of the machine gives the model's local id on the worker's backend (contract.workers.model-map). limits sets timeout_seconds per round (default 1800), max_turns (default 200), max_budget_usd (default none) and rounds of resume (default 3) for every worker launch; runtime lists the paths Bash may read besides the grant, relative to the workspace or absolute (default .venv and node_modules, each only when it exists). A worktree without the file runs no worker (config_missing). Duplicate keys, unknown fields, unknown Operations or workers, a model name that is not a project model name, levels the backend does not know and any other schema_version are refused with config_invalid when a worker launches, schema_version 1, whose models were one program's local ids, with how to rewrite it; so is a worktree without this file that still has the retired untracked .concorde/worker-models.json.",
+  "semantics": "The worker configuration .concorde/workers.json of a worktree, tracked by Git and edited directly. schema_version is 2. enabled_models is required and not empty: it names every model an entry may choose by its project model name, letters, digits, '.', '_' and '-' starting with a letter or digit, which depends on no installation, each with an optional reasoning level of its own. default, operations.<operation>.default and operations.<operation>.workers.<worker id> each may set backend (pi or claude), model (a name of enabled_models) and reasoning; operation and worker names are labels: the caller that asks for a worker declares the Operations and worker ids it may launch, against which the whole file's names are checked, and reasoning must be a level of the effective backend. For each field the most specific entry that sets it wins, a backend no more than a model or a level. A backend no entry sets is pi. The level is that of the entry that chose the model or of a more specific one, otherwise the model's own, otherwise one a less specific entry sets, otherwise none, which leaves the program's own default level. A worker whose entries set no model is refused with model_unresolved, and an entry naming a model outside enabled_models with model_not_enabled; the model map of the machine gives the model's local id on the worker's backend (contract.workers.model-map). limits sets timeout_seconds per round (default 1800), max_turns (default 200), max_budget_usd (default none) and rounds of resume (default 3) for every worker launch; runtime lists the paths Bash may read besides the grant, relative to the workspace or absolute (default .venv and node_modules, each only when it exists). A worktree without the file runs no worker (config_missing). Duplicate keys, unknown fields, Operations or workers the caller does not declare, a model name that is not a project model name, levels the backend does not know and any other schema_version are refused with config_invalid when a worker launches, schema_version 1, whose models were one program's local ids, with how to rewrite it; so is a worktree without this file that still has the retired untracked .concorde/worker-models.json.",
   "example": {
     "schema_version": 2,
     "enabled_models": {
@@ -648,7 +733,7 @@ defines them; their contents are these values.
 ```concorde-contract
 {
   "id": "contract.workers.worker-round-trace",
-  "version": 3,
+  "version": 4,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -658,7 +743,7 @@ defines them; their contents are these values.
       "session",
       "exit",
       "audit",
-      "checks",
+      "evidence",
       "validation",
       "agent"
     ],
@@ -670,8 +755,7 @@ defines them; their contents are these values.
       "prompt": {
         "enum": [
           "initial",
-          "check_failures",
-          "validation_failures"
+          "repair"
         ]
       },
       "session": {
@@ -733,7 +817,7 @@ defines them; their contents are these values.
           }
         ]
       },
-      "checks": {
+      "evidence": {
         "type": "array",
         "items": {
           "type": "object"
@@ -754,7 +838,7 @@ defines them; their contents are these values.
       }
     }
   },
-  "semantics": "The data of the typed value concorde-worker-round-trace, the content of one worker round's trace node. round is its number from 1; prompt says what the worker was given: the brief (initial), the failing checks (check_failures) or the caller's validation (validation_failures). session is the agent session the round ran in, exit the agent process's exit status (null when it could not be started), audit the host's audit after the round, or null when the round ended before it: verdict is clean or violation, changed lists every worktree-relative path created, changed or deleted since the snapshot, and violations each violation as a string, HEAD or index for a changed Git state, the path of a file created or changed outside rw, the path followed by a space and (deleted) for a deleted file, and <glossary>#<concept> (owner before: <Module or none>, after: <Module or none>) for a glossary entry another Module owns (launch.md#audit); checks the check results of the round in Check execution's shape with their logs as paths relative to this node's folder, and validation the outcome of the caller's validation (clean, the text to repair, or why it did not run), null when none ran. agent is what the agent program reported about the round, as its backend reads it: under claude, the result envelope's subtype, is_error, num_turns, total_cost_usd, permission_denials (the tool calls Claude Code refused, each with its tool name, tool use id and input), modelUsage (each model's tokens and cost) and duration_api_ms, each as the envelope gave it and null when it gave none; or under pi, its last stop reason, turn count and cost. The round's tokens, cost, turns and duration are its usage; its standard error is the artifact stderr.log and its checks are check nodes below it. A behaviour or field change increments the version.",
+  "semantics": "The data of the typed value concorde-worker-round-trace, the content of one worker round's trace node. round is its number from 1; prompt says what the worker was given: the brief (initial) or what the caller's round validation reported to repair (repair). session is the agent session the round ran in, exit the agent process's exit status (null when it could not be started), audit the host's audit after the round, or null when the round ended before it: verdict is clean or violation, changed lists every worktree-relative path created, changed or deleted since the snapshot, and violations each violation as a string, HEAD or index for a changed Git state, the path of a file created or changed outside rw and the path followed by a space and (deleted) for a deleted file (launch.md#audit); evidence the values the caller's round validation returned to keep with the round, in the caller's own shape, such as Concorde's check results with their logs as paths relative to this node's folder, empty when none ran, and validation the outcome of the round validation (clean, the text to repair, or why it could not validate), null when none ran. agent is what the agent program reported about the round, as its backend reads it: under claude, the result envelope's subtype, is_error, num_turns, total_cost_usd, permission_denials (the tool calls Claude Code refused, each with its tool name, tool use id and input), modelUsage (each model's tokens and cost) and duration_api_ms, each as the envelope gave it and null when it gave none; or under pi, its last stop reason, turn count and cost. The round's tokens, cost, turns and duration are its usage; its standard error is the artifact stderr.log, and the nodes the round validation placed in its folder, such as check nodes, lie below it. A behaviour or field change increments the version.",
   "example": {
     "round": 1,
     "prompt": "initial",
@@ -767,7 +851,7 @@ defines them; their contents are these values.
       ],
       "violations": []
     },
-    "checks": [
+    "evidence": [
       {
         "check_id": "check.http.tests",
         "module": "module.http",
@@ -812,15 +896,17 @@ defines them; their contents are these values.
 
 ## Returned run record
 
-What the host returns to the [Operation](../../glossary.json#concept.operation) that asked for the worker: the
-[run record](../../glossary.json#concept.run-record) as the Operation reads it, which carries every
-round's content so that the Operation reads the audits and checks without reading a file. It is
+What the host returns to the caller that asked for the worker, in Concorde an
+[Operation](../../glossary.json#concept.operation)'s step: the
+[run record](../../glossary.json#concept.run-record) as the caller reads it, which carries every
+round's content so that the caller reads the audits and the round validation's evidence without
+reading a file. It is
 not stored; the run's trace node and its rounds' nodes are the record that is kept.
 
 ```concorde-contract
 {
   "id": "contract.workers.worker-run-record",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -1115,8 +1201,7 @@ not stored; the run's trace node and its rounds' nodes are the record that is ke
             "prompt": {
               "enum": [
                 "initial",
-                "check_failures",
-                "validation_failures"
+                "repair"
               ]
             },
             "session": {
@@ -1191,7 +1276,7 @@ not stored; the run's trace node and its rounds' nodes are the record that is ke
                 }
               }
             },
-            "checks": {
+            "evidence": {
               "type": "array",
               "items": {
                 "type": "object"
@@ -1205,7 +1290,7 @@ not stored; the run's trace node and its rounds' nodes are the record that is ke
       }
     }
   },
-  "semantics": "The value the host returns to the Operation's step when a worker run ends, however it ends, so that the Operation reads the audits and checks without reading a file; it is never written itself, and the record kept is the run's trace node and its rounds' nodes (contract.workers.worker-run-trace, contract.workers.worker-round-trace), from which runs.read_record rebuilds it but for worktree, stderr_tail and runtime_directory. It holds the run node's content and, as that node keeps them, its identity run_id, status (ok, blocked or failed), error (Workers' link, null for ok), started_at and ended_at, and its metadata operation, worker, backend, model, reasoning and context_identity with the grant, settings and brief digests, each null until made; it differs from the node's content in that tools is the tool set as the backend's comma-separated list, as passed to --tools, transcript the absolute path of the transcript in the run directory, and rounds not their number but the ordered list of every round that began. Each round carries what its node's content and usage hold: round, prompt, session, exit, duration (seconds) and usage (the tokens, cost and turns the agent program reported and duration_seconds); what the agent program reported under the key of its backend, claude or pi, as the round content's agent holds it; audit, the audit object of contract.workers.worker-round-trace, once the round was audited; checks, Check execution's results with each log's absolute path, only when the round's checks ran; and validation, only when the caller's validation ran. A key absent from a round means that step did not happen in it. worktree is the worker's worktree, run_directory the worker run's node folder, runtime_directory its runtime directory, removed by the time the record is returned, and stderr_tail the end of the last round's standard error. A behaviour or field change increments the version.",
+  "semantics": "The value the host returns to its caller, in Concorde an Operation's step, when a worker run ends, however it ends, so that the caller reads the audits and the round validation's evidence without reading a file; it is never written itself, and the record kept is the run's trace node and its rounds' nodes (contract.workers.worker-run-trace, contract.workers.worker-round-trace), from which runs.read_record rebuilds it but for worktree, stderr_tail and runtime_directory. It holds the run node's content and, as that node keeps them, its identity run_id, status (ok, blocked or failed), error (Workers' link, null for ok), started_at and ended_at, and its metadata operation, worker, backend, model, reasoning and context_identity with the grant, settings and brief digests, each null until made; it differs from the node's content in that tools is the tool set as the backend's comma-separated list, as passed to --tools, transcript the absolute path of the transcript in the run directory, and rounds not their number but the ordered list of every round that began. Each round carries what its node's content and usage hold: round, prompt, session, exit, duration (seconds) and usage (the tokens, cost and turns the agent program reported and duration_seconds); what the agent program reported under the key of its backend, claude or pi, as the round content's agent holds it; audit, the audit object of contract.workers.worker-round-trace, once the round was audited; evidence, the round validation's evidence as the caller returned it, with each artifact path absolute, only when the round validation ran; and validation, its outcome, only when it ran. A key absent from a round means that step did not happen in it. worktree is the worker's worktree, run_directory the worker run's node folder, runtime_directory its runtime directory, removed by the time the record is returned, and stderr_tail the end of the last round's standard error. A behaviour or field change increments the version.",
   "example": {
     "run_id": "w-20261002T101500-a1b2c3",
     "status": "failed",

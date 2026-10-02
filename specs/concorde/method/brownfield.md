@@ -5,6 +5,23 @@ its procedure, a run through one project, and each step's run and stopping rule.
 machinery it runs on — steps, keys, modes, the record and the report — is
 [Workflows](../workflows/module.md)'.
 
+## The script
+
+Method contributes the workflow's [workflow script](../glossary.json#concept.workflow-script),
+`brownfield.js`, which the build renders with Workflows' Claude Code step adapter into the installed
+`/concorde-brownfield` workflow. Everything particular to this procedure lives in the script, never
+in Workflows: its `meta` names `delivery` as the procedure's last step, so the
+[workflow result](../glossary.json#concept.workflow-result) is `ok` only when that step ended `ok`;
+it reads the Modules a scaffold created, with the `uses` among them, from that run's output itself,
+to order the `describe` steps; and it decides from a step's status, a task validation's readiness
+and its mode whether to go on. Which items stop an interactive run is not the script's to say
+either: the survey and the code_to_spec runs declare their
+[decision points](../glossary.json#concept.decision-point) under the
+[step output convention](../workflows/contracts.md#contract.workflows.step-output), as
+[Adoption](adoption/module.md#decisions-and-open-questions) says, and the Spec review reports its
+verdict there as a note, so the workflow result lists the decisions, the open questions, the
+proposed checks and the review's verdict without Workflows knowing any of these Operations.
+
 ## The procedure
 
 The brownfield workflow's procedure as a flow, each dashed arrow a stop that goes straight to the

@@ -10,8 +10,8 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - GIVEN a worker on the Claude Code backend, a worktree and an `implement` grant with a `rw` source file, a `rw` directory, `ro` Specs and a source file of another [Module](../../glossary.json#concept.module), `ro` since an `implement` worker reads the project's whole code
 - WHEN the host runs a worker that edits the source file, creates a new file inside the directory, changes nothing else and ends with a valid `ok` result
 - THEN both changes reach the worktree
-- AND the audit is clean, the [configured checks](../../glossary.json#concept.configured-check) run on the worktree, and when they pass the run ends `ok`
-- AND the [run record](../../glossary.json#concept.run-record) holds the grant's [context identity](../../glossary.json#concept.context-identity), the settings and brief digests, the tool set, the transcript path and the [worker result](../../glossary.json#concept.worker-result) verbatim, and the round's node below it its audit, [check results](../../glossary.json#concept.check-result), standard error and the tokens, cost and turns the agent program reported
+- AND the audit is clean, the caller's round validation runs the [configured checks](../../glossary.json#concept.configured-check) on the worktree, as Concorde's does, and when they pass the run ends `ok`
+- AND the [run record](../../glossary.json#concept.run-record) holds the grant's [context identity](../../glossary.json#concept.context-identity), the settings and brief digests, the tool set, the transcript path and the [worker result](../../glossary.json#concept.worker-result) verbatim, and the round's node below it its audit, the round validation's evidence with the [check results](../../glossary.json#concept.check-result), standard error and the tokens, cost and turns the agent program reported
 
 ### scenario.workers.no-precreation — The host creates no file before launch
 
@@ -174,7 +174,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - GIVEN a worker round that ends within its timeout and limits with a valid [worker result](../../glossary.json#concept.worker-result), after which a file outside the grant's `rw` list has changed in the worktree
 - WHEN the host audits the worktree
 - THEN the run ends `failed` with `audit_violation` and every violating path as host evidence
-- AND no configured check runs and no [resume round](../../glossary.json#concept.resume-round) follows
+- AND no round validation runs and no [resume round](../../glossary.json#concept.resume-round) follows
 - AND when the worker result is a valid `ok`, whose `error` is null, the error has no cause from the worker
 - BUT the host neither reverts nor commits the change
 
@@ -201,15 +201,16 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ### scenario.workers.glossary-entries — A worker may change its own Modules' glossary entries
 
-- GIVEN a `specify` worker bound to Module A, whose grant makes the project glossary writable
+- GIVEN a `specify` worker bound to Module A, whose grant makes the project glossary writable, and a round validation that audits the glossary by entry, as Concorde's does
 - WHEN the worker changes the glossary entry of a concept A owns, and nothing else, and ends with a valid `ok` result
-- THEN the audit accepts the change and the run ends `ok`
+- THEN the audit and the round validation accept the change and the run ends `ok`
 
 ### scenario.workers.glossary-foreign-entry — Another Module's glossary entry is a violation
 
-- GIVEN a `specify` worker bound to Module A, whose grant makes the project glossary writable
+- GIVEN a `specify` worker bound to Module A, whose grant makes the project glossary writable, and a round validation that audits the glossary by entry, as Concorde's does
 - WHEN the worker changes the glossary entry of a concept Module B owns
-- THEN the run ends `failed` with `audit_violation`, naming the glossary, the entry and its owner before and after as the violation
+- THEN the round validation answers a violation and the run ends `failed` with `audit_violation`, naming the glossary, the entry and its owner before and after as the violation
+- BUT no resume round follows
 
 ### scenario.workers.proposed-deletion — The host performs proposed deletions
 
@@ -238,15 +239,15 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ### scenario.workers.check-failure-resume — A failing check resumes the same worker
 
-- GIVEN a worker on the Claude Code backend that ended `ok` with a clean audit and a configured check that fails
+- GIVEN a worker on the Claude Code backend that ended `ok` with a clean audit, and a round validation that runs a configured check, as Concorde's does, which fails
 - WHEN the host starts a resume round
-- THEN it resumes the session with the failing check's identity, exit code and log tail
+- THEN it resumes the session with the repair the round validation reported: the failing check's identity, exit code and log tail
 - AND the next round continues from the new session identifier the resume returned
 - AND when the checks then pass the run ends `ok` with two rounds recorded
 
 ### scenario.workers.rounds-exhausted — Checks that keep failing end the run
 
-- GIVEN a configured check that fails after every round
+- GIVEN a round validation that runs a configured check, as Concorde's does, which fails after every round, and that asks a run whose checks still fail to end with `checks_failed`
 - WHEN the configured number of resume rounds has been used
 - THEN the run ends `failed` with `checks_failed` and the last check results
 - AND its error gives `exhausted` as the reason, lists each round's failing checks as attempts and has one cause per failing check with its exit code and the end of its log
@@ -257,7 +258,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - GIVEN a worker that changes nothing outside its `rw` list and ends `blocked` because its Module's Spec does not state a promise it needs
 - WHEN the host finishes the round
 - THEN the audit still runs and is clean
-- BUT no configured check runs, no resume round follows, and the run ends `blocked` with the worker result verbatim
+- BUT no round validation runs, so no configured check runs, no resume round follows, and the run ends `blocked` with the worker result verbatim
 - AND the run's error is Workers' `worker_blocked` link, of level `workers`, whose one cause is the worker's own error, unchanged, with the level `worker`
 
 ## Host failures
@@ -272,7 +273,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 ### scenario.workers.interrupted-run — An interrupted run still ends
 
 - GIVEN a worker run whose launcher is told the run identity as soon as the run exists
-- WHEN the run is interrupted from outside before it returns in a way its host can handle, such as by a termination signal or the cancellation of the launching Operation
+- WHEN the run is interrupted from outside before it returns in a way its host can handle, such as by a termination signal or the cancellation of the run that launched it
 - THEN its run record ends `failed` with the error `interrupted`, of reason `environment`, naming the interruption
 - AND its [progress file](../../glossary.json#concept.progress-file) is `finished` with status `failed`
 - AND the interruption travels on to the launcher
@@ -424,7 +425,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ### scenario.workers.model-refused — Validation refuses invalid entries
 
-- GIVEN a configuration with invalid structure, an unknown Operation or worker name, a malformed `enabled_models` entry, an enabled model named by one program's id such as `local-openai/gpt-6` rather than a project model name, or a reasoning level outside the effective backend's vocabulary
+- GIVEN a configuration with invalid structure, an Operation or worker name its caller does not declare, a malformed `enabled_models` entry, an enabled model named by one program's id such as `local-openai/gpt-6` rather than a project model name, or a reasoning level outside the effective backend's vocabulary
 - WHEN the shared validator checks it
 - THEN it is refused with `config_invalid`
 
@@ -564,7 +565,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 - GIVEN an Operation run whose worker needs two rounds, the first failing a configured check, on a backend whose configuration holds a credential copy
 - WHEN the run ends
-- THEN the run's node holds `workers/<run-id>/` with `trace.json`, `status.json`, `grant.json`, `brief.md`, `transcript.jsonl` and `rounds/1/` and `rounds/2/`, each round with its own `trace.json`, `stderr.log` and check nodes
+- THEN the run's node holds `workers/<run-id>/` with `trace.json`, `status.json`, `grant.json`, `brief.md`, `transcript.jsonl` and `rounds/1/` and `rounds/2/`, each round with its own `trace.json`, `stderr.log` and the check nodes its round validation placed
 - AND each round's usage holds the tokens, cost and turns the agent program reported for it
 - AND on the Claude Code backend each round's content keeps the result envelope's `permission_denials`, `modelUsage` and `duration_api_ms` as Claude Code gave them, null for one it did not give
 - AND the runtime directory, with the credential copy, no longer exists

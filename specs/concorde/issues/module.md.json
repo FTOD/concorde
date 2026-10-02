@@ -16,23 +16,12 @@
     "contains": [],
     "uses": [
       {
-        "target": "module.spec",
-        "meaning": "#uses-spec",
+        "target": "module.kernel",
+        "meaning": "#uses-kernel",
         "relies_on": [
           "concept.typed-value",
           "concept.file-transaction",
-          "concept.registry",
-          "contract.spec.error"
-        ]
-      },
-      {
-        "target": "module.tasks",
-        "meaning": "#uses-tasks",
-        "relies_on": [
-          "concept.merge-lock",
-          "concept.task",
-          "req.tasks.merging-recorded",
-          "req.tasks.merge-incomplete-refused"
+          "concept.merge-lock"
         ]
       },
       {
@@ -41,15 +30,24 @@
         "relies_on": [
           "contract.tracing.error"
         ]
-      }
-    ],
-    "includes": [
+      },
       {
-        "kind": "document",
-        "target": "document.spec.contracts",
-        "reason": "Spec core's library contracts that Issues calls directly: canonical JSON, typed-value checks and file transactions"
+        "target": "module.spec",
+        "meaning": "#uses-spec",
+        "relies_on": [
+          "concept.registry"
+        ]
+      },
+      {
+        "target": "module.tasks",
+        "meaning": "#uses-tasks",
+        "relies_on": [
+          "req.tasks.merging-recorded",
+          "req.tasks.merge-incomplete-refused"
+        ]
       }
     ],
+    "includes": [],
     "participates": []
   },
   "defines": [
@@ -105,13 +103,13 @@
       "type": "relates",
       "source": "realization.issues.store",
       "verb": "writes records through",
-      "target": "module.spec"
+      "target": "module.kernel"
     },
     {
       "type": "relates",
       "source": "realization.issues.store",
       "verb": "commits records under the merge lock of",
-      "target": "module.tasks"
+      "target": "module.kernel"
     },
     {
       "type": "relates",

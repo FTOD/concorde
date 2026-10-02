@@ -512,7 +512,8 @@ the owners case checks.
 <a id="uses-distribution"></a>
 
 **Distribution** provides the installer and the `concorde` command that set a test project up the
-way a user's project is set up, routing each command to the Module that carries it out; a test
+way a user's project is set up, with every [part](../glossary.json#concept.part) installed, routing
+each command to the part that registered it; a test
 project always runs the Concorde of this checkout. When the installer, `concorde init` or
 `concorde task open` fails, `prepare` stops with `command_failed`
 naming that command, its exit status and its output, and leaves the partial project directory as it
@@ -543,13 +544,15 @@ a refusal on with its code and the map's path, preparing nothing.
 
 <a id="uses-operations"></a>
 
-**Operations** lists in its [Operation catalog](../glossary.json#concept.operation-catalog) every
-Operation with the ids of the workers it may launch, the workers whose models Workers' check
+**Operations** lists in its [Operation catalog](../glossary.json#concept.operation-catalog), assembled
+from what the installed parts register, in Concorde Method's Operations, every Operation with the
+ids of the workers it may launch, the workers whose models Workers' check
 resolves for `prepare`, so that a test project's first workflow finds a model for each of them.
 
 <a id="uses-workflows"></a>
 
-**Workflows** provides the workflows a test project runs, their rendered scripts and the stand-in
+**Workflows** runs the workflows a test project runs, such as Method's
+[brownfield workflow](../glossary.json#concept.brownfield-workflow), renders their scripts and the stand-in
 runtime of its tests that a driver run reuses, the workflow result a run ends with, and the
 workflow record of each workspace, where `run` finds the latest saved result and `watch` the steps.
 End-to-end testing relies on the record listing the saved results in order and each step with its
@@ -566,6 +569,13 @@ step and status, relying on them to name those fields. A run without a run progr
 its runner has not written it yet or died before writing it, is left out of the list rather than
 failing `watch`, which the developer may run at any moment; a run left out for the second reason
 stays out.
+
+<a id="uses-kernel"></a>
+
+**Kernel** defines the [workspace binding](../glossary.json#concept.workspace-binding) that names
+each test project's task workspace, which End-to-end testing reads and never writes, and the
+[workspace lock](../glossary.json#concept.workspace-lock), which the owners case holds to keep a run
+from starting its work before the case has looked, relying on a run waiting for it.
 
 <a id="uses-main-session"></a>
 

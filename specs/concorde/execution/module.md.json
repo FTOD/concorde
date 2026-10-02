@@ -30,8 +30,14 @@
     ],
     "uses": [
       {
-        "target": "module.spec",
-        "meaning": "#uses-spec"
+        "target": "module.kernel",
+        "meaning": "#uses-kernel",
+        "relies_on": [
+          "concept.workspace",
+          "concept.workspace-binding",
+          "concept.workspace-lock",
+          "contract.kernel.workspace-binding"
+        ]
       },
       {
         "target": "module.tracing",

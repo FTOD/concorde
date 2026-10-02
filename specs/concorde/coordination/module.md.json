@@ -26,18 +26,21 @@
     ],
     "uses": [
       {
-        "target": "module.execution",
-        "meaning": "#uses-execution",
+        "target": "module.kernel",
+        "meaning": "#uses-kernel",
         "relies_on": [
           "concept.workspace-binding",
-          "concept.run-store"
+          "contract.kernel.workspace-binding",
+          "concept.workspace-lock",
+          "concept.merge-lock",
+          "concept.delivery-commit"
         ]
       },
       {
-        "target": "module.harness",
-        "meaning": "#uses-harness",
+        "target": "module.execution",
+        "meaning": "#uses-execution",
         "relies_on": [
-          "concept.agent-harness"
+          "concept.run-store"
         ]
       }
     ],

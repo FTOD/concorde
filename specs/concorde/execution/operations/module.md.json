@@ -15,28 +15,11 @@
     "contains": [],
     "uses": [
       {
-        "target": "module.spec",
-        "meaning": "#uses-spec"
-      },
-      {
-        "target": "module.workers",
-        "meaning": "#uses-workers"
-      },
-      {
-        "target": "module.checks",
-        "meaning": "#uses-checks"
-      },
-      {
-        "target": "module.spec-review",
-        "meaning": "#uses-spec-review"
-      },
-      {
         "target": "module.execution",
         "meaning": "#uses-execution",
         "relies_on": [
           "concept.execution-runner",
-          "concept.run-result",
-          "concept.workspace"
+          "concept.run-result"
         ]
       }
     ],

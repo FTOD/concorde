@@ -1,11 +1,9 @@
 # Claude Code harness mechanics
 
-The exact files the Harness generates to apply a harness to a Claude Code agent: the
+The exact files the Harness generates to apply a harness to a Claude Code worker: the
 [worker settings](../../glossary.json#concept.worker-settings) with their
 [deny rules](../../glossary.json#concept.deny-rules), [write hook](../../glossary.json#concept.write-hook)
-and Bash sandbox, the tool sets per [task type](../../glossary.json#concept.task-type), and the
-[task-session](../../glossary.json#concept.task-session) write hook, with the shape of the settings
-that Task sessions assembles around it. The [entry](module.md) explains why a harness is applied
+and Bash sandbox, and the tool sets per [task type](../../glossary.json#concept.task-type). The [entry](module.md) explains why a harness is applied
 this way; the [pi mechanics](pi.md) state what the pi backend generates instead, and
 [the run mechanics](../workers/launch.md) of Workers where these files are placed in a
 run.
@@ -109,23 +107,3 @@ gets the tools of `review-spec` on both backends. A grant with no writable path,
 whatever its task type. WebFetch, WebSearch, the agent tool and notebook editing are never listed. A
 `test` worker runs no command itself: its [Operation](../../glossary.json#concept.operation) runs the
 [configured checks](../../glossary.json#concept.configured-check) and gives it their results.
-
-## Task-session settings
-
-A task session's settings, `.concorde/tasks/<task>/runtime/settings.json`, hold the task-session
-write hook of its [session boundary](../../glossary.json#concept.session-boundary) and nothing that
-restricts the session besides:
-
-- a PreToolUse hook on Edit, Write, MultiEdit and NotebookEdit, `session_hook.py` copied beside the
-  settings with the task worktree and [decision log](../../glossary.json#concept.decision-log)
-  embedded, which allows a path inside the task worktree, or the decision log while its folder
-  exists, and denies any other with a reason naming the task worktree, or naming the closed task
-  for the decision log of a task whose folder has moved to the history; any failure denies;
-- no `sandbox`: the session's Bash runs as the developer's own shell does, with every path,
-  process, socket and host open to it;
-- no deny rules: reads stay open.
-
-What the settings carry besides is no part of the boundary: the
-[approvals](../../coordination/task-session/module.md#project-mcp-approvals) that keep Claude Code
-from asking a background session about a
-[project MCP server](../../glossary.json#concept.project-mcp-server).

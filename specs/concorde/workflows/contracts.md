@@ -1,9 +1,11 @@
 # Workflows contracts
 
 The exact shapes of [Workflows](module.md): what one step prints, the step request a
-[step agent](../glossary.json#concept.step-agent) passes with `--json`, the
-[workflow result](../glossary.json#concept.workflow-result), and the error codes of the
-workflow's own links, and the content of the workflow's and each step's trace node. Error links
+[step agent](../glossary.json#concept.step-agent) passes with `--json`, the step output
+convention through which a run's output declares what a workflow must know, the
+[workflow result](../glossary.json#concept.workflow-result), the MCP tools the workflow part
+registers, the error codes of the workflow's own links, and the content of the workflow's and each
+step's trace node. Error links
 follow the Framework's
 [error contract](../kernel/tracing/contracts.md#contract.tracing.error), copied here as `$defs`.
 
@@ -417,6 +419,303 @@ What `concorde workflow step --json` takes, as the
     ],
     "retry": false,
     "restart": null
+  }
+}
+```
+
+## Step output convention
+
+What a run's output declares for a workflow. Any [Operation](../glossary.json#concept.operation) or
+[execution command](../glossary.json#concept.execution-command) may fill it; Workflows reads nothing
+else of a run's output, and the step command and the report read it from the saved
+[run result](../glossary.json#concept.run-result)'s `output`. The producing Operation's or
+command's own [Spec](../glossary.json#concept.spec) says which of its items it declares here.
+
+```concorde-contract
+{
+  "id": "contract.workflows.step-output",
+  "version": 1,
+  "schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "decision_points",
+      "decisions",
+      "deviations",
+      "notes",
+      "blocking",
+      "data"
+    ],
+    "properties": {
+      "decision_points": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "kind",
+            "question",
+            "options",
+            "recommendation"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*\\.[a-z0-9-]+$"
+            },
+            "kind": {
+              "enum": [
+                "decision",
+                "question"
+              ]
+            },
+            "question": {
+              "type": "string",
+              "minLength": 1
+            },
+            "options": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "recommendation": {
+              "type": "string",
+              "minLength": 1
+            },
+            "module": {
+              "type": "string",
+              "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
+            }
+          }
+        }
+      },
+      "decisions": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "question",
+            "decision",
+            "reason",
+            "decided_by"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*\\.[a-z0-9-]+$"
+            },
+            "question": {
+              "type": "string",
+              "minLength": 1
+            },
+            "options": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "decision": {
+              "type": "string",
+              "minLength": 1
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            },
+            "decided_by": {
+              "enum": [
+                "worker",
+                "main-agent",
+                "developer"
+              ]
+            },
+            "module": {
+              "type": "string",
+              "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
+            }
+          }
+        }
+      },
+      "deviations": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "subject",
+            "intended",
+            "observed"
+          ],
+          "properties": {
+            "subject": {
+              "type": "string",
+              "minLength": 1
+            },
+            "intended": {
+              "type": "string",
+              "minLength": 1
+            },
+            "observed": {
+              "type": "string",
+              "minLength": 1
+            },
+            "point": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*\\.[a-z0-9-]+$"
+            },
+            "module": {
+              "type": "string",
+              "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
+            }
+          }
+        }
+      },
+      "notes": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "text",
+            "data"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$"
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1
+            },
+            "data": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "blocking": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "detail"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "detail": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        ]
+      },
+      "data": {
+        "type": "object"
+      }
+    },
+    "$defs": {
+      "answer": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "question",
+          "answer",
+          "answered_by"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*\\.[a-z0-9-]+$"
+          },
+          "question": {
+            "type": "string",
+            "minLength": 1
+          },
+          "answer": {
+            "type": "string",
+            "minLength": 1
+          },
+          "answered_by": {
+            "enum": [
+              "main-agent",
+              "developer"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "semantics": "The workflow object, the top-level field workflow of a run's output, through which any Operation or execution command tells a workflow what it must know about the run without Workflows knowing that Operation or command; an output without it declares nothing and hands the script nothing. decision_points are the items the run leaves to be settled above the task before an interactive workflow goes on, each with an identity unique within the run, kind decision for a choice the run took or proposes and question for an open question it could not settle, the question, the options, the run's recommendation and optionally the Module it concerns; which of its items are decision points is the producing Operation's or command's decision, which its own Spec states. decisions are every decision the run took or followed, each with decided_by worker when the run took it itself and main-agent or developer when it follows an answer that one gave; a decision a workflow must stop for is listed both here and, with the same identity, among the decision points. deviations are the places where the run found its subject departing from what was intended, each optionally naming the decision point it concerns. notes are items for whoever reads the workflow result, which the report lists unchanged with their step and run, such as a review's verdict and findings or proposed checks, each with a kind the producing Operation or command names and a data object of its own. blocking, when not null, says that the procedure cannot go on from this run although it ended ok, such as a readiness that is not ready; the report counts the step blocked. data is handed unchanged to the workflow script in the step outcome, for the script to read the fields its procedure needs, such as the Modules a scaffold created. Answers a workflow passes to a run with --answers are a JSON list of $defs.answer, each naming by id the decision point it settles; a run that declares decision points takes them and lists the decisions that follow them with decided_by the answer's answered_by. A behaviour or field change increments the version.",
+  "example": {
+    "decision_points": [
+      {
+        "id": "d.db-helper",
+        "kind": "decision",
+        "question": "Does the shared database helper get a Module of its own?",
+        "options": [
+          "a Module of its own",
+          "stay with the root"
+        ],
+        "recommendation": "stay with the root",
+        "module": "module.shop"
+      }
+    ],
+    "decisions": [
+      {
+        "id": "d.db-helper",
+        "question": "Does the shared database helper get a Module of its own?",
+        "options": [
+          "a Module of its own",
+          "stay with the root"
+        ],
+        "decision": "stay with the root",
+        "reason": "it is 40 lines of connection setup with no behaviour of its own",
+        "decided_by": "worker",
+        "module": "module.shop"
+      }
+    ],
+    "deviations": [],
+    "notes": [
+      {
+        "kind": "proposed-check",
+        "text": "pyproject.toml configures pytest for module.checkout",
+        "data": {
+          "id": "check.checkout.tests",
+          "module": "module.checkout",
+          "argv": [
+            "{python}",
+            "-m",
+            "pytest",
+            "tests/checkout"
+          ],
+          "timeout_seconds": 300,
+          "inputs": [
+            "src/checkout",
+            "tests/checkout"
+          ]
+        }
+      }
+    ],
+    "blocking": null,
+    "data": {}
   }
 }
 ```
@@ -1378,6 +1677,52 @@ Printed by `concorde workflow report` and saved in the workflow's trace node, at
 }
 ```
 
+## MCP tools
+
+The workflow part registers two tools with the
+[project MCP server](../glossary.json#concept.project-mcp-server) through its
+[part registration](../glossary.json#concept.part-registration); where the workflow part is not
+installed, neither exists. The server runs each call as it runs every registered tool, with a
+process of its own of the current Concorde, and returns its answer or refusal unchanged.
+
+| Tool | Arguments | Result |
+| --- | --- | --- |
+| `workflow_step` | `request`, a [step request](#contract.workflows.step-request) as an object; optional `wait`, whole seconds from 0 to 100 (default 100) | the [step outcome](#contract.workflows.step), as [Starting a workflow step](#starting-a-workflow-step) says |
+| `workflow_report` | optional `folder`, the absolute workspace folder a [workspace binding](../glossary.json#concept.workspace-binding) names as its `traces` (default: the folder the binding of the session's worktree names); optional `number` ≥ 1 | `{"folder", "number", "path", "report": <workflow result>}`, the saved [workflow result](#contract.workflows.result) of that number, the latest when no number is given |
+
+`workflow_report` reads a saved report and builds none; it knows no task, so whoever knows a task's
+workspace folder, such as the task level, which [Tasks](../coordination/tasks/module.md) shows it,
+passes that folder, wherever the folder lies now.
+
+### Starting a workflow step
+
+`workflow_step` works on the session's worktree. When that worktree has no workspace binding, or
+one that cannot be read, it is refused with `unbound_worktree` and runs nothing. Otherwise it runs
+that worktree's own `concorde`, its `.concorde/bin/concorde` or, in Concorde's source checkout,
+its `scripts/concorde.py` with the server's Python, as
+`concorde workflow step --json <request> --wait <wait>` from the worktree's root, as a child of the
+call's process with the server's environment and no standard input, and waits for it at most
+`wait` plus 60 seconds. The command is a process of the server's, so the
+[detached run](../glossary.json#concept.detached-run) it starts for a new step is a process of
+its own and lives until its run ends, whatever becomes of the calls that asked for it or of the
+session and its server. The server answers these calls each on a thread of its own, so a waiting
+step never holds up the session's other calls, and allows a call's process `wait` plus 120 seconds
+before it stops it.
+
+The answer is the JSON object the command printed, unchanged, whatever its exit status: a
+[step outcome](#contract.workflows.step), finished, running, lost or refused. An object without a
+step outcome's `key` whose `error` is a link is the step command's refusal and is returned as the
+tool's refusal, that link unchanged; output that is no JSON object is refused with `step_failed`.
+
+### Refusals of the tools
+
+| Code | Reason | When |
+| --- | --- | --- |
+| `unbound_worktree` | `environment` | `workflow_step`, or `workflow_report` without `folder`, in a session whose worktree has no usable [workspace binding](../glossary.json#concept.workspace-binding), such as the primary worktree; the detail names the worktree and, for a binding that cannot be read, its code |
+| `step_failed` | `environment` | `concorde workflow step` printed no JSON object, or gave no answer within its wait and 60 seconds more; the detail carries the command, its exit status and the end of its output |
+| `no_report` | `input` | `workflow_report` finds no saved workflow result in the folder, or not the one named |
+| any Workflows code | as here | `concorde workflow step` refused the request or the workspace with `{"error": <link>}` and no step outcome, such as `invalid_request`; that link unchanged |
+
 ## Workflow trace
 
 The workflow of a workspace is a [trace node](../glossary.json#concept.trace-node) of kind `workflow`, `workflow/` of the
@@ -1618,7 +1963,7 @@ causes.
 | Code | Where | Reason | Raised when |
 | --- | --- | --- | --- |
 | `awaiting_decision` | result | `decision` | an interactive run ended at [decision points](../glossary.json#concept.decision-point); the evidence names each pending point |
-| `step_blocked` | result | `decision` | the procedure stopped at a step that ended `blocked`, or at a validation that was not ready; the step's error is the cause |
+| `step_blocked` | result | `decision` | the procedure stopped at a step that ended `blocked`, its error the cause, or at a step whose output declared it [blocking](#contract.workflows.step-output), with that declaration's code and detail as evidence |
 | `step_failed` | result | `decision` | the procedure stopped at a step that ended `failed`; the step's error is the cause |
 | `step_lost` | step outcome, result | `environment` | a step's run has no result and no living runner, its link carrying the end of the runner's output `host.out` as evidence and as its one cause, a `component` link of the actor `Execution runner of <run-id>` with the code `host_ended` and reason `environment`, whose detail says the runner ended without a result and gives the end of that output, `(nothing)` when it wrote none; or the script reported the key with nothing recorded |
 | `step_refused` | step outcome, result | `input` | the runner rejected the step's command line (its message is the cause) or the detached runner did not start (the `detach_failed` link is the cause) |

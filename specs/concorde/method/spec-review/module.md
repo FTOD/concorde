@@ -4,7 +4,8 @@
 
 Spec review judges whether the Specs of one or more Modules are good enough for their reader, which
 no deterministic check can establish, and records every problem it finds as an
-[Issue](../../glossary.json#concept.issue) of the project. It provides two Operations. In a Spec
+[Issue](../../glossary.json#concept.issue) of the project where the issues part is installed, and in
+its run result alone where it is not. It provides two Operations. In a Spec
 review, one run of the `spec_review` Operation, a headless `review-spec` worker per named
 [Module](../../glossary.json#concept.module) reads its
 [Spec context](../../glossary.json#concept.spec-context), judges it by the Protocol's criteria of
@@ -12,8 +13,8 @@ Module quality and returns every blocking finding in one pass. In a Spec panel, 
 `spec_panel`, several reviewers review each Module independently, two architects judge it from
 every Module's Specs by the criteria of architecture quality, and a chair audits and merges all
 their findings into one report, so that one worker's blind spots and false alarms do not decide what
-reaches the project. Both Operations report every finding that stands as an Issue and derive a
-verdict from the Issues that stand. Neither edits a [Spec](../../glossary.json#concept.spec),
+reaches the project. Both Operations report every finding that stands as an Issue, where Issues
+exist, and derive a verdict from the blocking findings and Issues that stand. Neither edits a [Spec](../../glossary.json#concept.spec),
 repairs a finding, closes an Issue or calls another Operation, and neither repeats structural
 validation (Spec core) or judges code (Code review).
 
@@ -46,6 +47,13 @@ earlier Issue it neither names nor resolves still stands, **carried**. The Opera
 worker, writes the Issues: it appends a finding that names an earlier Issue to that Issue and
 records any other finding as a new Issue. It closes none: the resolved Issues are listed in the
 result for the task to close.
+
+Earlier Issues exist only where the issues part is installed. Without it a review reads none,
+reports nothing outside the run, keeps every finding in its result with its tier and severity, lists
+no Issue as carried or resolved, and says in its result that its findings were not recorded as
+Issues ([req.spec-review.reports-issues](requirements.md#req.spec-review.reports-issues)); its
+verdict follows from the findings it reports, exactly as it would from the Issues they would have
+become.
 
 <a id="concept.review-verdict"></a>
 
@@ -343,30 +351,24 @@ splitting by dimension and server queries are future work.
 
 ## Around it
 
-Spec review stays inside Spec tooling but reaches outside it for everything a Spec cannot judge on
-its own: it asks Spec core whether a Module can be reviewed at all, it reaches an agent only
-through Workers, it records its findings through Issues, and it is run, like every Operation, by
-the Execution runner.
+Spec review is part of Method, the part that composes the others: it asks Spec core whether a
+Module can be reviewed at all, it reaches an agent only through Workers in the worker harness, it
+records its findings through Issues where the issues part is installed, and it is run, like every
+Operation, by the Execution runner, to which Method registers its two Operations.
 
 ```d2
-tooling: Spec tooling {
-  review: Spec review
-  core: Spec core
-  review -> core
-}
-execution: Execution {
-  workers: Workers
-  operations: Operations
-}
+review: Spec review
+spec: Spec core
+workers: Workers
+operations: Operations
+execution: Execution
 issues: Issues
-tooling.review -> execution.workers
-tooling.review -> execution.operations
-tooling.review -> execution
-tooling.review -> issues
+review -> spec
+review -> workers
+review -> operations
+review -> execution
+review -> issues
 ```
-
-Operations also uses Spec review in turn, since `spec_review` is one of its own Operations —
-declared and explained there, not here.
 
 <a id="uses-spec"></a>
 
@@ -380,7 +382,9 @@ makes that Module's review `incomplete`.
 
 <a id="uses-workers"></a>
 
-**Workers**, in Execution, turn a frozen grant into a running worker: launch each reviewer, checker,
+**Workers**, in the worker harness, turn a frozen grant, handed over as data through Method's
+[standard worker sequence](../../glossary.json#concept.standard-worker-sequence), into a running
+worker: launch each reviewer, checker,
 architect and chair with only its [brief](../../glossary.json#concept.brief), return its
 [worker result](../../glossary.json#concept.worker-result) extended with findings, checks or a
 panel report, audit for changes, and keep a
@@ -390,8 +394,10 @@ result's [error chain](../../glossary.json#concept.error-chain) unchanged.
 
 <a id="uses-issues"></a>
 
-**Issues** keeps the project's [Issues](../../glossary.json#concept.issue) in the primary worktree,
-whichever worktree the run works in. Spec review relies on its store to list the open Issues of a
+**Issues** is an [optional integration](../../glossary.json#concept.optional-integration): where
+the issues part is installed, it keeps the project's [Issues](../../glossary.json#concept.issue) in
+the primary worktree, whichever worktree the run works in, and where it is not, the review keeps its
+findings in its result alone, as [its core concepts](#core-concepts) say. Spec review relies on its store to list the open Issues of a
 Module with their latest [report](../../glossary.json#concept.issue-report) and
 [revision](../../glossary.json#concept.issue-revision), to record a new Issue or append a report at
 the revision read, committing it before it answers, and to refuse a stale append rather than
@@ -403,11 +409,12 @@ Operation never retries it and never records it as an Issue.
 
 <a id="uses-operations"></a>
 
-**Operations** defines the [Operation](../../glossary.json#concept.operation) concept and lists
-`spec_review` and `spec_panel` in its catalog as Operations that may run unbound and change nothing
-in the workspace, with their [worker ids](../../glossary.json#concept.worker-id). Spec review
-relies on that entry to be dispatched to with its arguments, and on Operations' review Issue
-helpers to read, settle and report its [earlier Issues](operation.md#earlier-issues) by the rules
+**Operations**, Execution's Operation framework, defines the
+[Operation](../../glossary.json#concept.operation) concept; Method registers `spec_review` and
+`spec_panel` with it as Operations that may run unbound and change nothing in the workspace, with
+their [worker ids](../../glossary.json#concept.worker-id)
+([Method](../module.md#the-operations-and-commands-it-provides)). Spec review relies on that
+definition to be dispatched to with its arguments, and on Method's review Issue helpers to read, settle and report its [earlier Issues](operation.md#earlier-issues) by the rules
 every review shares, supplying only its two Operations, the disputed findings it reports nowhere
 and the Issue report of a finding.
 

@@ -6,6 +6,13 @@ The exact shape of what [Code review](module.md) returns. The report is the `out
 [Operation](../../glossary.json#concept.operation) adds the inputs it examined, the
 [Issues](../../glossary.json#concept.issue) it reported to, the outcomes and the verdict.
 
+Where the issues part is not installed, the report has the same shape: every finding's `issue` is
+null, every [Module](../../glossary.json#concept.module)'s `earlier_issues` is null, since none were read, and the report's summary says
+that its findings were not recorded as Issues. Either way the run's output also carries, under the
+[step output convention](../../workflows/contracts.md#contract.workflows.step-output), one `notes`
+item of kind `review` holding the verdict and each Module's outcome with its count of findings by
+tier, so that a workflow reports the review without knowing this contract.
+
 ## Reviewer result
 
 A reviewer ends with the ordinary [worker result](../../glossary.json#concept.worker-result)

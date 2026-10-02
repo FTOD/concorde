@@ -61,6 +61,8 @@ The code review Operation SHALL give each reviewer, before it judges, the open
 `code_review` run made, each with its identity, severity, tier, title, description and evidence as
 its latest report states them.
 
+Where the issues part is not installed there are no earlier Issues, and the reviewer receives none.
+
 ## Findings
 
 ### req.code-review.evidence — Every finding names its basis and locations
@@ -86,7 +88,7 @@ beyond that file's end.
 
 ## Issues and verdict
 
-### req.code-review.findings-as-issues — Every finding is reported as an Issue
+### req.code-review.findings-as-issues — Every finding is reported as an Issue where Issues exist
 
 The code review Operation SHALL report every finding of a Module whose evidence resolved through the
 Issue store as one [Issue report](../../glossary.json#concept.issue-report) with the finding's
@@ -94,7 +96,14 @@ Issue store as one [Issue report](../../glossary.json#concept.issue-report) with
 [severity](../../glossary.json#concept.issue-severity), owned by the finding's Module, appending a
 finding that names an offered earlier Issue to that Issue at the
 [revision](../../glossary.json#concept.issue-revision) read just before, and creating an Issue
-for every other finding.
+for every other finding, wherever the issues part is installed.
+
+Where the issues part is not installed, the review keeps every finding in its report with its tier
+and severity, records nothing outside the run and says in its report that the findings were not
+recorded as Issues.
+
+Issues is an [optional integration](../../glossary.json#concept.optional-integration) of the method
+part: the review's judgement, its evidence checks and its verdict are the same either way.
 
 ### req.code-review.no-closing — The review closes no Issue
 
@@ -111,7 +120,8 @@ findings, and record no Issue about the refusal.
 
 The code review Operation SHALL derive each reviewed Module's outcome as `incomplete` when it could
 not be reviewed or its Issues could not be read or all written, `changes_required` when an Issue of a
-blocking tier stands for it, reported by the run or an earlier Issue it carried, and `accepted`
+blocking tier stands for it, reported by the run or an earlier Issue it carried — or, where the
+issues part is not installed, when the run reports a finding of a blocking tier — and `accepted`
 otherwise, and the verdict as `incomplete` when any Module is, else `changes_required` when any
 Module is, else `accepted`.
 

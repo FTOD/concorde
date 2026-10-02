@@ -21,7 +21,7 @@ and may run on pi.
 The boundary Task sessions writes for a task session SHALL let the session's file-writing tools change only the task worktree and its [decision log](../../glossary.json#concept.decision-log).
 
 The file-writing tools are Edit and Write, checked by the
-[write hook](../../glossary.json#concept.write-hook), which leaves reads open. An
+[session boundary](../../glossary.json#concept.session-boundary)'s hook, which leaves reads open. An
 [Issue](../../glossary.json#concept.issue) record is outside the task worktree, so these tools
 never write one; the session writes Issues through the Issue tools or the Issue command, as the
 runs it starts do.

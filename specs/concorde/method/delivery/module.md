@@ -21,15 +21,16 @@ is a delivery commit it created in the same run and then rejected.
 
 Delivery rests on one idea, the delivery commit: the one mark of a delivery, made only on top of
 what the same run validated. It builds on Validation's
-[readiness](../../glossary.json#concept.readiness).
+[readiness](../../glossary.json#concept.readiness) and on the Kernel's convention for the
+[delivery commit](../../glossary.json#concept.delivery-commit), which says how any part recognizes
+and verifies one ([Kernel](../../kernel/contracts.md#delivery-commit)); Delivery is the one producer
+of delivery commits that validates the whole workspace first.
 
-### The delivery commit
+### The delivery commits it makes
 
-<a id="concept.delivery-commit"></a>
-
-A **[delivery commit](../../glossary.json#concept.delivery-commit)** has subject
-`concorde: deliver <workspace>`, which marks it as a delivery, and the goal as body. Its parent is
-the branch head Delivery validated; it contains the cleared markers and every uncommitted change
+A delivery commit Delivery makes has subject `concorde: deliver <workspace>`, which marks it as a
+delivery, and the goal as body, as the Kernel's convention requires. Its parent is the branch head
+Delivery validated; it contains the cleared markers and every uncommitted change
 except what Git ignores and the untracked paths Validation's input measurement leaves out, such as
 a sandbox's `/dev/null` mounts and placeholder files — only any cleared markers, and so possibly nothing, when every step was already committed.
 A workspace may be delivered several times — another `implement` after a code review, say — each a
@@ -191,8 +192,8 @@ level does exactly that: it counts a task as delivered when its branch head is a
 its workspace and its worktree is clean, and merges only such a head. Since the subject alone marks
 a delivery, Delivery keeps a rejected commit from becoming such a record: it takes a commit it
 rejected off the branch in the same run, and validates a delivery commit it finds at the head again
-before it reports it. The commit as the record also keeps Delivery ignorant of tasks, as all of Execution
-is: the commit names the workspace, which the binding names, and nothing else.
+before it reports it. The commit as the record also keeps Delivery ignorant of tasks, as every part below the task
+level is: the commit names the workspace, which the binding names, and nothing else.
 
 ### The steps
 
@@ -267,8 +268,15 @@ delivery commits, and their tests.
   binding, which gives the steps the workspace's name, goal, Modules, bound branch and base commit,
   holds the workspace lock for the whole run, so no other run changes the workspace between the
   readiness and the commit, and records the run.
-- <a id="uses-commands"></a>**Commands** lists `delivery` in its catalog, which is how the runner
-  finds this [Module](../../glossary.json#concept.module)'s definition by the command's name.
+- <a id="uses-commands"></a>**Commands**, Execution's execution-command framework, is what
+  `delivery` plugs into: Method registers its definition there, which is how the runner finds this
+  [Module](../../glossary.json#concept.module)'s definition by the command's name.
+- <a id="uses-kernel"></a>The **Kernel** gives Delivery the format of the
+  [workspace binding](../../glossary.json#concept.workspace-binding) it reads through the run
+  context ([contract](../../kernel/contracts.md#contract.kernel.workspace-binding)), the
+  [workspace lock](../../glossary.json#concept.workspace-lock) the runner holds for it, and the
+  [delivery commit](../../glossary.json#concept.delivery-commit) convention it makes its commits
+  by, so that Coordination, which depends on the Kernel and not on Method, recognizes them.
 - <a id="uses-validation"></a>**Validation** provides the readiness steps. Delivery runs those
   steps as its own, so its readiness is decided exactly as a `task-validation` run's, and relies on
   their final remeasurement to prove that the measured inputs at the end are those the readiness

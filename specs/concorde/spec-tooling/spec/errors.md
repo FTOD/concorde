@@ -163,10 +163,12 @@ turns the fatal findings into causes, each with its check's statement as its rea
 
 ## Codes
 
-A subclass that belongs to another [Module](../../glossary.json#concept.module) registers its own
-codes the same way; for example Check execution's `CheckError` and the
-[Issue](../../glossary.json#concept.issue) store's `IssueError`. The reason and remediation below
-are the defaults; a call site gives more specific ones when it knows more.
+The error type belongs to the spec part alone: no [Module](../../glossary.json#concept.module) of another part subclasses it or registers
+codes with it, since a part that depends on nothing cannot be extended by parts that depend on
+others. A Module of another part that receives a Spec tooling error, such as a Method step whose
+grant computation refused, translates it into an [error chain](../../glossary.json#concept.error-chain)
+link. The reason and remediation below are the defaults; a call site gives more specific ones when
+it knows more.
 
 | Code | Reason | Remediation |
 | --- | --- | --- |

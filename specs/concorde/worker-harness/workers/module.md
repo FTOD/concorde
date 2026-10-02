@@ -4,36 +4,43 @@
 
 Workers runs the agent half of level 5, the bottom of Concorde's [levels of
 work](../../module.md#the-levels-of-work): one headless worker for one job under one frozen
-[grant](../../glossary.json#concept.grant), on Claude Code or on pi, turning what happened into a
-[run record](../../glossary.json#concept.run-record) the
-[Operation](../../glossary.json#concept.operation) that launched it can trust. Each run is its own
-session, its own process and its own permissions, on the model the worktree's [worker
+[grant](../../glossary.json#concept.grant) its caller hands over as data, on Claude Code or on pi,
+turning what happened into a [run record](../../glossary.json#concept.run-record) its caller can
+trust. In Concorde that caller is a step of one of Method's
+[Operations](../../glossary.json#concept.operation); any program that hands over a grant, its
+instructions and a trace node folder may call it. Each run is its own session, its own process and
+its own permissions, on the model the worktree's [worker
 configuration](../../glossary.json#concept.worker-configuration) chooses, and its [run
 directory](../../glossary.json#concept.run-directory) is a [trace
-node](../../glossary.json#concept.trace-node) inside the node of the Operation run that launched it. Workers
-also owns that configuration, which the project tracks and edits directly. Of each run it owns the whole lifecycle: the run directory, the
-brief, the launch and [resume rounds](../../glossary.json#concept.resume-round), the [write
-audit](../../glossary.json#concept.write-audit), the checks after each round and the record. The
-worker's permissions and environment are its [agent
+node](../../glossary.json#concept.trace-node) inside the folder its caller gives. Workers also owns
+that configuration, which the project tracks and edits directly, and reads the user's [model
+map](../../glossary.json#concept.model-map). Of each run it owns the whole lifecycle: the run
+directory, the brief, the launch and [resume rounds](../../glossary.json#concept.resume-round), the
+[write audit](../../glossary.json#concept.write-audit), the call of its caller's round validation
+after each round, and the record. The worker's permissions and environment are its [agent
 harness](../../glossary.json#concept.agent-harness), which the [Harness](../harness/module.md)
-generates from the grant for the chosen program. Workers does not compute the grant, choose the
-[task type](../../glossary.json#concept.task-type) or write the task-specific brief, and never
-commits or judges whether the worker's work is correct. Its boundary guards against scope drift and
-mistakes, not a malicious worker.
+generates from the grant for the chosen program.
+
+Workers does not compute the grant, choose the [task type](../../glossary.json#concept.task-type),
+write the task-specific instructions or judge whether the worker's work is correct: it reads no
+[Spec](../../glossary.json#concept.spec), no glossary and no Operation catalog, and runs no check of
+its own. What needs repair after a round is its caller's round validation's to say. It never
+commits. Its boundary guards against scope drift and mistakes, not a malicious worker.
 
 ## Core concepts
 
 A worker run pairs deterministic code with one AI process: the host prepares what the worker gets,
 launches it, checks what it did and keeps the record. It builds on the
-[grant](../../glossary.json#concept.grant) and [context
-identity](../../glossary.json#concept.context-identity) of Spec core and on the
-[agent harness](../../glossary.json#concept.agent-harness) of the Harness.
+[grant](../../glossary.json#concept.grant) and its [context
+identity](../../glossary.json#concept.context-identity), which arrive as data in its own [grant
+input](contracts.md#grant-input), and on the
+[agent harness](../../glossary.json#concept.agent-harness) the Harness generates.
 
 ### The host and its worker
 
 Workers is the deterministic management code, the **host** of a worker run; the worker it launches
 is the AI process. The worker is untrusted in that its claims are proposals: only the host reads
-Git, audits, runs checks and records, after the worker ends — that is why the run record keeps the
+Git, audits, calls its caller's round validation and records, after the worker ends — that is why the run record keeps the
 worker result separate from host evidence.
 
 ### Where a run lives
@@ -41,7 +48,8 @@ worker result separate from host evidence.
 <a id="concept.run-directory"></a><a id="concept.runtime-directory"></a>
 
 The host creates the **[run directory](../../glossary.json#concept.run-directory)**
-`workers/<run-id>/` inside the trace node of the Operation run that launched it, and keeps there
+`workers/<run-id>/` inside the trace node folder its caller gives, in Concorde the node of the
+Operation run that launched it, and keeps there
 what analysis needs of the run. What the worker needs only while it runs is in its **[runtime
 directory](../../glossary.json#concept.runtime-directory)**, a short private directory under `/tmp`
 that the host removes when the run ends.
@@ -56,7 +64,7 @@ record, not the progress file, is the run's evidence.
 ### What the worker gets
 
 A worker runs only in a worktree that lies directly in `.claude/worktrees/` of its repository's
-primary worktree, a task worktree or an
+primary worktree, in Concorde a task worktree or an
 [unbound checkout](../../glossary.json#concept.unbound-checkout): that one placement tells Workers
 where all of the repository's Git metadata is, wherever the repository lies, inside or outside the
 user's home. Workers refuses a worker in any other placement before it generates anything, and
@@ -74,9 +82,8 @@ and never changes them during the run.
 
 <a id="concept.brief"></a>
 
-The **[brief](../../glossary.json#concept.brief)** is the worker's only instruction: the
-Operation's task instructions followed by the boundary Workers appends, as [the
-brief](#the-brief) details.
+The **[brief](../../glossary.json#concept.brief)** is the worker's only instruction: its caller's
+task instructions followed by the boundary Workers appends, as [the brief](#the-brief) details.
 
 <a id="concept.worker-result"></a>
 
@@ -97,14 +104,17 @@ or a deletion, is a violation, which ends the run `failed`.
 <a id="concept.resume-round"></a>
 
 A **[resume round](../../glossary.json#concept.resume-round)** continues the worker's own session
-with what still needs repair, a failing configured check or what the caller's own validation
-reports, so that the worker repairs it within the same run.
+with what its caller's **round validation** reports to repair, so that the worker repairs it within
+the same run. The round validation is a callback the caller passes with the request; the host calls
+it after every round whose worker ended `ok` with a clean audit, and it answers with the evidence to
+keep, such as Concorde's [check results](../../glossary.json#concept.check-result), and what to
+repair ([Round validation](launch.md#round-validation)).
 
 <a id="concept.run-record"></a>
 
 The **[run record](../../glossary.json#concept.run-record)** is the worker run's `trace.json`: what
-the run was given, the worker result verbatim, and each round's audit, checks and usage, which the
-host observed itself.
+the run was given, the worker result verbatim, and each round's audit, round validation and usage,
+which the host observed itself.
 
 ### Two backends from one grant
 
@@ -114,7 +124,7 @@ The **[worker backend](../../glossary.json#concept.worker-backend)** is the agen
 runs on, Claude Code or pi: pi unless the [worker
 configuration](../../glossary.json#concept.worker-configuration) chooses Claude Code for the worker.
 Everything but the agent process is shared: the grant, the brief, the run directory, the progress
-file, the audit, the checks, the rounds and the run record, so workers of one Operation on different
+file, the audit, the round validation, the rounds and the run record, so workers of one Operation on different
 backends exchange nothing but the structured results the host validates. On Claude Code the
 worker's harness is applied by its [worker settings](../../glossary.json#concept.worker-settings),
 on pi by the [permission extension](../../glossary.json#concept.permission-extension); the
@@ -127,9 +137,11 @@ on pi by the [permission extension](../../glossary.json#concept.permission-exten
 The **[worker configuration](../../glossary.json#concept.worker-configuration)** of a worktree is
 its tracked `.concorde/workers.json`, the only source of a worker's model and reasoning level. It
 names every model by a **project model name**, such as `gpt-6-astra` or `claude-opus-5-5`, that
-depends on no installation, and keys its entries by **[worker
-id](../../glossary.json#concept.worker-id)**, the stable name the [Operation
-catalog](../../glossary.json#concept.operation-catalog) gives each worker an Operation may launch.
+depends on no installation, and keys its entries by Operation and by **[worker
+id](../../glossary.json#concept.worker-id)**, the stable name a caller gives each worker it may
+launch; to Workers both are labels, which the caller declares when it asks for a worker. In Concorde
+they are the names of the Operations in the
+[Operation catalog](../../glossary.json#concept.operation-catalog) and the ids each lists.
 
 <a id="concept.model-map"></a>
 
@@ -139,74 +151,65 @@ model name its local model id on pi, on Claude Code or on both.
 
 ## Overview
 
-Three pictures show Workers: where it sits between the Operation that calls it and the providers it
-relies on, how one run progresses, and what a run leaves behind.
+Three pictures show Workers: where it sits between its caller and the providers it relies on, how
+one run progresses, and what a run leaves behind.
 
 ### Its place in the levels of work
 
 Workers carries the agent half of level 5, the bottom of Concorde's
-[levels of work](../../module.md#the-levels-of-work). Its own code is not an agent: it runs in the
-Execution runner's process, on behalf of the Operation run at level 4 that called it, and launches
-the one process that is, the headless worker. Only a worker-backed step of an Operation calls it in
-Concorde's own flows —
-the [standard worker sequence](../../glossary.json#concept.standard-worker-sequence) of
-[Operations](../../execution/operations/module.md) and the providers that run workers, such as Understanding,
-Specification, Implementation, Code review, Adoption and Spec review. No
+[levels of work](../../module.md#the-levels-of-work). Its own code is not an agent: it runs in its
+caller's process, in Concorde the Execution runner's on behalf of the Operation run at level 4, and
+launches the one process that is, the headless worker. In Concorde's own flows only a worker-backed
+step of one of Method's Operations calls it, following the
+[standard worker sequence](../../glossary.json#concept.standard-worker-sequence). No
 [execution command](../../glossary.json#concept.execution-command) launches a worker, and nothing
 above level 4 does: a workflow reaches workers through its Operations, and neither the main agent
 nor a [task session](../../glossary.json#concept.task-session) ever starts one. Below it, the worker
 calls nothing of Concorde's: it never touches Git, runs an Operation or starts an agent. Between
-rounds the Workers host code, not the worker, calls Check execution, so that a failing check can
-drive another round inside the same Operation.
+rounds the Workers host code, not the worker, calls its caller's round validation, so that what a
+program found, such as a failing check, can drive another round inside the same run.
 
-The host can also be called directly, without an Operation run, as Workers' own tests call it with
-a request they build: such a run has no Operation run to name, so its progress file's
-`operation_run_id` is null, and when the request names no trace node folder its run directory lies
-in the unbound runs of the worktree's `.concorde`. No Concorde command launches a worker that way.
+The host can also be called by a program that runs no Operation, as Workers' own tests call it with
+a request they build: such a run names no launching run, so its progress file's `operation_run_id`
+is null, and it lies in whatever trace node folder the request names. No Concorde command launches a
+worker that way.
 
 Results travel up in one direction. The worker ends with its worker result; Workers keeps it
-verbatim in the run record beside its own evidence and returns the record to the Operation's step,
-which turns it into the Operation's [run result](../../glossary.json#concept.run-result). When the
-worker could not finish, its `error` is the first link of the
-[error chain](../../glossary.json#concept.error-chain), and Workers adds its own link above it
-saying why it cannot handle the failure — a [Spec gap](../../glossary.json#concept.spec-gap) or
-grant violation is not its to retry — before the Operation adds the next.
+verbatim in the run record beside its own evidence and returns the record to its caller, in Concorde
+the Operation's step, which turns it into the Operation's
+[run result](../../glossary.json#concept.run-result). When the worker could not finish, its `error`
+is the first link of the [error chain](../../glossary.json#concept.error-chain), and Workers adds its
+own link above it saying why it cannot handle the failure — a
+[Spec gap](../../glossary.json#concept.spec-gap) or grant violation is not its to retry — before
+the caller adds the next.
 
-A run's collaborators: the Operations that call it and the providers it relies on, among them
-Operations itself for its catalog.
+A run's collaborators: Method, whose steps call it in Concorde, and the two Modules it relies on.
 
 ```d2
-operations: Operations
+method: Method
 workers: Workers
-spec: Spec core
 harness: Harness
-checks: Check execution
-execution: Execution
 tracing: Tracing
-operations -> workers
-workers -> spec
+method -> workers
 workers -> harness
-workers -> checks
-workers -> execution
 workers -> tracing
-workers -> operations
 ```
 
-The Operation providers and Spec review use this Module; the worker runtime knows none of
-them. They rely on the run record and on the rule that a worker's result is kept apart from host
-evidence. The configuration validator looks at the Operation catalog when a worker launches.
+Workers knows none of its callers. They rely on the run record, on the rule that a worker's result
+is kept apart from host evidence, and on their round validation being called after every clean
+round.
 
 ### A normal run
 
-The caller is a worker-backed step of an Operation run, in the Execution runner's process, that has
-chosen the worktree, task type and Modules and asked Spec core for the grant. For work that changes
-files this is a bound workspace; an [unbound run](../../glossary.json#concept.unbound-run) can
-launch only a reading worker over the worktree it runs in, its
-[unbound checkout](../../glossary.json#concept.unbound-checkout), which Workers audits like any
-worktree. The step calls Workers with the worktree,
-the trace node folder of its run, the frozen grant and context identity, task instructions for the
-brief, checks to run after the worker, and run limits — getting back a run record (status
-`ok`/`blocked`/`failed`) with the worker result kept verbatim beside the host's own evidence.
+In Concorde the caller is a worker-backed step of an Operation run, in the Execution runner's
+process, that has chosen the worktree, task type and Modules and computed the grant through Spec
+core. For work that changes files this is a bound workspace; an
+[unbound run](../../glossary.json#concept.unbound-run) hands over a grant with no writable path over
+the worktree it runs in, its [unbound checkout](../../glossary.json#concept.unbound-checkout), which
+Workers audits like any worktree. The step calls Workers with the worktree, the trace node folder of
+its run, the frozen grant as data, task instructions for the brief, its round validation and the run
+limits — getting back a run record (status `ok`/`blocked`/`failed`) with the worker result kept
+verbatim beside the host's own evidence.
 
 Take an `implement` run whose grant makes `src/shop/cart.py` and `src/shop/discounts.py`, which the
 task level created and bound for the run to fill, writable (`rw`), and the
@@ -221,12 +224,12 @@ generate: Generate settings, hook, tools and brief
 launch: Launch or resume the worker
 audit: Write audit
 record: Write the run record
-checks: Run configured checks
+validation: "Caller's round validation\n(in Concorde: configured checks,\nthe step's own validation)"
 grant -> generate -> launch -> audit
 audit -> record: "violation, timeout, limit, process failure,\ninvalid result, blocked or failed"
-audit -> checks: "valid ok result, clean audit"
-checks -> launch: "a check fails or validation\nreports a repair, rounds left"
-checks -> record: "checks pass and nothing to repair,\nor rounds used up"
+audit -> validation: "valid ok result, clean audit"
+validation -> launch: "a repair, rounds left"
+validation -> record: "nothing to repair,\nor rounds used up"
 ```
 
 The host generates the worker's harness and brief, launches the worker's program headless in
@@ -234,9 +237,9 @@ The host generates the worker's harness and brief, launches the worker's program
 ([the proxy](launch.md#proxy)) — on pi, the default, `pi -p` with the permission extension as
 its only extension ([the pi run mechanics](pi.md#launch)); on Claude Code `claude -p` with
 `bypassPermissions`, the result schema and no MCP servers ([the run mechanics](launch.md#launch)) —
-audits every change against `rw`, runs checks through Check execution, resumes the same session when
-a check fails, up to three resume rounds by default, then performs proposed deletions and writes the
-run record.
+audits every change against `rw`, calls the round validation, which in an `implement` run runs the
+[configured checks](../../glossary.json#concept.configured-check), resumes the same session with what it reports to repair, up to three resume rounds
+by default, then performs proposed deletions and writes the run record.
 
 ### What one run leaves behind
 
@@ -261,10 +264,10 @@ record -> result: keeps
 
 ### Where a run's files live
 
-The run directory lies inside the trace node of the Operation run that launched it, wherever that
-run's node lies, so a task's worker runs are found below its runs in the task's
-[trace](../../glossary.json#concept.trace), and an unbound run's below it in the `.concorde` of the
-worktree it started in, never in its throwaway checkout. It keeps what analysis needs: the run
+The run directory lies inside the trace node folder its caller gives, wherever that lies: in
+Concorde the node of the Operation run that launched it, so a task's worker runs are found below its
+runs in the task's [trace](../../glossary.json#concept.trace), and an unbound run's below it in the
+`.concorde` of the worktree it started in, never in its throwaway checkout. It keeps what analysis needs: the run
 record, the frozen grant, the brief, each round's node with its standard error and checks, and the
 transcript. The runtime directory holds the host-only `control/` (settings, hook, result schema),
 the worker's `config/` (`CLAUDE_CONFIG_DIR` or pi's configuration, with the credential copies and
@@ -272,40 +275,43 @@ the session), `home/` (`HOME`), `tmp/` (`TMPDIR`) and `work/` (its working direc
 transcript is moved from `config/` into the run directory before the runtime directory is removed,
 so no credential copy is ever retained.
 
-The progress file also names the process identifier of the Execution runner the run runs in and the
-identity of the Operation run that launched it, by which an observer pairs it with that run's own
+The progress file also names the process identifier of the process the run runs in and the identity
+of the run that launched it, which the caller gives, by which an observer pairs it with that run's
+own progress, in Concorde Execution's
 [run progress file](../../glossary.json#concept.run-progress-file); process identifiers are not
 unique across PID namespaces, so they never pair the two. Every run ends both its progress file and
 its run record, however it ends while its host can act: a run interrupted from outside, such as by
-a termination signal or the cancellation of the Operation that launched it, is recorded as `failed`
+a termination signal or the cancellation of the run that launched it, is recorded as `failed`
 with `interrupted` and its progress file as finished before the interruption travels on, so no
-reader sees a worker that runs forever. The launching Operation learns the run's identity as soon
-as the run exists, so it can name the run even when it is interrupted before the run returns. A
+reader sees a worker that runs forever. The caller learns the run's identity as soon as the run
+exists, so it can name the run even when it is interrupted before the run returns. A
 host killed outside its control, by `SIGKILL`, finishes nothing: its worker run's record stays
-`running`, which [Tracing](../../kernel/tracing/module.md) shows as `lost` once no process holds the
-[run lock](../../glossary.json#concept.run-lock) of the run that launched it, and its runtime
+`running`, which [Tracing](../../kernel/tracing/module.md) shows as `lost` once the run that launched
+it is known to have ended, in Concorde once no process holds that run's
+[run lock](../../glossary.json#concept.run-lock), and its runtime
 directory, with the credential copies, is left to the system's temporary-file cleaning.
 
 ### The brief
 
 `CLAUDE.md`, auto memory and user settings are disabled, so the brief is all the worker is told. To
-the Operation's task instructions Workers appends the boundary: `rw`/`ro`/`names` as absolute paths
+its caller's task instructions Workers appends the boundary: `rw`/`ro`/`names` as absolute paths
 (its working directory isn't the worktree), with the rule that its tools take absolute paths while
-every path it writes in its result is relative to the worktree, the form every Operation's output
-uses; the definitions of the terms its grant carries, and,
-when the glossary is writable, that only the bound Modules' entries may change; that it can't
-delete, only propose deletions; that a Bash-created file outside `rw` is silently lost; that a read
-denial means the path is outside its grant; and that a promise the
-[Spec](../../glossary.json#concept.spec) does not state is never inferred from code. What the worker
-does instead depends on its task type: a `review-code` worker reports such behaviour as a
-`spec-gap` finding, an `understand` worker reports the missing promise as a [Spec
-gap](../../glossary.json#concept.spec-gap) and ends `ok`, a `code-to-spec` worker is told that
-describing the code it reads is its task and that doubtful intent is reported, never promised, and
-a `review-spec` or `review-architecture` worker reports a missing promise or a document it lacks as
-a finding and goes on, ending `blocked` only when it cannot review at all, since the review's own
-instructions say how it reports such a gap; every other worker returns `blocked`. When the caller
-gives the project's own interpreter, the brief also names it as the `python` first on the worker's
-`PATH`, to run the project's code and tests with.
+every path it writes in its result is relative to the worktree, the form every caller's output uses;
+that it can't delete, only propose deletions; that a Bash-created file outside `rw` is silently
+lost; and that a read denial means the path is outside its grant. When the caller gives the
+project's own interpreter, the brief also names it as the `python` first on the worker's `PATH`, to
+run the project's code and tests with.
+
+Everything about the job itself is the caller's instructions. In Concorde, Method's
+[standard worker sequence](../../glossary.json#concept.standard-worker-sequence) puts there the
+definitions of the glossary terms the grant carries and, when the glossary is writable, that only
+the bound Modules' entries may change; that a promise the [Spec](../../glossary.json#concept.spec)
+does not state is never inferred from code; and what the worker does instead for its task type: a
+`review-code` worker reports such behaviour as a `spec-gap` finding, an `understand` worker reports
+the missing promise as a [Spec gap](../../glossary.json#concept.spec-gap) and ends `ok`, a
+`code-to-spec` worker is told that describing the code it reads is its task and that doubtful intent
+is reported, never promised, a `review-spec` or `review-architecture` worker reports a missing
+promise or a document it lacks as a finding and goes on, and every other worker returns `blocked`.
 
 A worker returns its worker result through `--json-schema` on Claude Code and as the argument of its
 `concorde_result` tool on pi. Its `error` carries the link's code, detail, evidence, attempt, the
@@ -316,29 +322,28 @@ agent](../../glossary.json#concept.main-agent) can act without asking again.
 
 A violation of the write audit ends the run `failed` with every violating path as evidence, no
 resume follows, and the worktree is left for the main agent — never reverted or committed by the
-host. The project glossary is audited by entry, because every Module's concepts share that one
-file: the snapshot keeps its bytes, and each entry a round added, changed or removed although a
-Module outside the grant owns it, before or after, is a violation named `<glossary>#<concept>` with
-both owners.
+host. The audit judges whole files against `rw`; a finer judgement of what a writable file may hold,
+such as which entries of the shared glossary a Spec-writing worker may change, is its caller's round
+validation's, which in Concorde reports every glossary entry a Module outside the grant owns as
+something to repair.
 
-A resume round happens only when the worker ended `ok`, the audit was clean, and a check failed or,
-once the checks pass, the caller's own validation after the round reported something to repair: the
-host sends each failure's identity, exit code and log tail, or the validation's text, to the
-worker's latest session — on Claude Code with `claude -p --resume <session>`, tracking the new
-session id returned, on pi with the run's fixed session id. A Spec-writing Operation uses the
-validation to have its worker repair the structural errors it introduced. A `blocked`/`failed`
-result or an audit violation is never resumed — those go to the main agent; when the rounds are used
-up and a check still fails, the run ends `failed` with the last check results, while a validation
-still reporting problems leaves the round's result for its caller to judge. Each round records its
-validation outcome.
+A resume round happens only when the worker ended `ok`, the audit was clean, and the caller's round
+validation reported something to repair: the host sends the validation's repair text, in Concorde
+each failing check's identity, exit code and log tail or the structural errors a Spec-writing worker
+introduced, to the worker's latest session — on Claude Code with `claude -p --resume <session>`,
+tracking the new session id returned, on pi with the run's fixed session id. A `blocked`/`failed`
+result or an audit violation is never resumed — those go to the main agent. When the rounds are used
+up and the round validation still reports a repair, the run ends `failed` if the validation asks for
+it, with the code and causes it names — in Concorde `checks_failed` with the last check results —
+and otherwise leaves the round's result for its caller to judge. Each round records the round
+validation's evidence and outcome.
 
 The run record is written when the run directory is created, after every round and at the end, for
 every run including a refused launch. Its metadata hold the grant's context identity, the grant,
 settings and brief digests, the task type, worker id, backend, model and reasoning level; its
 content the tool list, transcript path, the worker result verbatim and the deletions performed; and
 the host's final status with its error link. Each round is a node of its own below it, with its
-session, prompt kind, audit and [check results](../../glossary.json#concept.check-result), its
-standard error, and the tokens, cost and turns the agent program reported for it — evidence that
+session, prompt kind, audit, the round validation's evidence and outcome, its standard error, and the tokens, cost and turns the agent program reported for it — evidence that
 never restates a worker's claim as fact.
 
 ### Resolving the backend
@@ -349,9 +354,9 @@ agent so runs pi workers unless the configuration chooses Claude Code for some o
 backend must be installed: when its command (`claude` or `pi`, or the path in `CONCORDE_CLAUDE` or
 `CONCORDE_PI`) is missing, the worker is refused with `backend_missing`, naming the worker, the
 program and what chose it, and how to choose the other program for it; it never falls back to the
-other program. This refusal comes from resolving the worker's backend, which the Operation's step
-does before it calls Workers, so no worker run and no run record exists; the step reports it in its
-own error, with `backend_missing` as the cause. The pi command line and environment are in [the pi
+other program. This refusal comes from resolving the worker's backend, which the caller
+does before it calls the host, so no worker run and no run record exists; the caller reports it in
+its own error, with `backend_missing` as the cause. The pi command line and environment are in [the pi
 run mechanics](pi.md).
 
 ### Choosing worker models
@@ -361,10 +366,11 @@ model or level, or which models may be used, from the developer's own pi or Clau
 so every developer's workers of a commit run alike. A project model name depends on no installation,
 since the ids a program takes, such as pi's `local-openai/gpt-6-astra`, are defined by one machine's
 own pi or Claude Code configuration. Every worker needs the file: a worktree without one runs no
-worker. Every Operation declares the ids of the workers it may launch in the Operation catalog, such
-as `spec_panel`'s `reviewer1` to `reviewer5`, `architect1`, `architect2` and `chair`,
-`spec_review`'s `reviewer` and `checker`, or `worker` for an Operation with one worker, and the
-same id names the worker in its run record and in the Operation's evidence.
+worker. A caller declares the Operations and the ids of the workers it may launch when it asks for a
+worker; in Concorde every Operation lists them in the Operation catalog, such as `spec_panel`'s
+`reviewer1` to `reviewer5`, `architect1`, `architect2` and `chair`, `spec_review`'s `reviewer` and
+`checker`, or `worker` for an Operation with one worker, and the same id names the worker in its run
+record and in the Operation's evidence.
 
 One model map serves the primary worktree, every task worktree, every unbound checkout and every
 [test project](../../glossary.json#concept.test-project) of its user, as pi's and Claude Code's own
@@ -391,7 +397,7 @@ program's built-in default level. A worker whose entries set no model is refused
 its program's default model. A backend no entry sets is pi. The same file holds the `limits` of
 every worker launch and the `runtime` paths, which [the worker configuration
 contract](contracts.md#contract.workers.worker-configuration) defines with their defaults and the
-Operation's step reads for each launch:
+caller reads for each launch:
 
 ```json
 {
@@ -443,16 +449,16 @@ the user's XDG configuration directory: `$XDG_CONFIG_HOME` when it is an absolut
 may name models no project enables, and a model may have an id on one program only, as `gpt-6-astra`
 and `opus` have here: a worker that runs it on the other program is refused.
 
-An Operation's step asks for the choice of one worker of its Operation by its id, in the worktree the
-run works on. Workers resolves the backend, the project model name and the level from the worker
+A caller asks for the choice of one worker of an Operation by its id, in the worktree the run works
+on. Workers resolves the backend, the project model name and the level from the worker
 configuration, checks that the backend is installed, then reads the model map and takes the model's
 id for that backend, and passes the id with `--model` and the level with `--effort` to Claude Code
-or `--thinking` to pi. The run record and the Operation's evidence name the project model name, the
-local id and the map it came from.
+or `--thinking` to pi. The run record and, in Concorde, the Operation's evidence name the project model name, the local id
+and the map it came from.
 
 The JSON files are the source of truth, and a human or an AI edits them directly; there is no
 editor. The validator checks the whole worker configuration whenever a worker launches: structure,
-duplicate keys, Operation and worker names against the catalog, that `enabled_models` is present and
+duplicate keys, Operation and worker names against those the caller declares, that `enabled_models` is present and
 not empty and names project model names, that every model an entry names is enabled, the limits and
 the effective backend's reasoning vocabulary, including a model's own level wherever it applies.
 That vocabulary is fixed: `low`, `medium`, `high`, `xhigh` and `max` on Claude Code, and `off`,
@@ -478,8 +484,8 @@ worker launches, and none falls back: the project model name is never taken as t
 nothing else of the user's environment chooses a model.
 
 So that a run does not stop after its first workers have run, the configuration reader also checks
-every worker one Operation may launch against the map at once, which the Operation's run asks for
-when it is admitted, before its first worker launches: it resolves each worker's backend and model
+every worker one Operation may launch against the map at once, which the caller asks for before its
+first worker launches, in Concorde when the Operation's run is admitted: it resolves each worker's backend and model
 and refuses with one `model_unmapped` naming every model and backend the map lacks, with the
 workers that would take each. A worker whose entries set no model is left to its own resolution,
 which refuses it with `model_unresolved`. Every refusal before a run, with its code and reason, is
@@ -506,11 +512,11 @@ and for `enabled_models`, which alone admits a model.
 ### Failures and repeat runs
 
 Every non-`ok` run carries an error link: what failed, in which round, why Workers cannot handle it,
-and its causes — the worker's own error, a Claude Code error such as a used-up turn limit, or every
-still-failing check with its log's end. Host failures use the same shape with status `failed`: a
-missing/unreadable grant, a runtime directory a deny rule would cover, a launch error, a timeout (the
-process group is killed), a Claude Code error, a missing/invalid worker result, an audit violation,
-or checks that can't run. Every call starts a fresh run; a failed one is never resumed later. Exact
+and its causes — the worker's own error, a Claude Code error such as a used-up turn limit, or the
+links the round validation names, in Concorde every still-failing check with its log's end. Host
+failures use the same shape with status `failed`: a missing/unreadable grant, a runtime directory a
+deny rule would cover, a launch error, a timeout (the process group is killed), a Claude Code error,
+a missing/invalid worker result, an audit violation, or a round validation that could not validate. Every call starts a fresh run; a failed one is never resumed later. Exact
 codes/layout: [the run mechanics](launch.md); testable behaviour: [the scenarios](scenarios.md).
 
 ### Inside
@@ -539,11 +545,11 @@ workers: Workers {
 ```
 
 The runtime drives every run and hands the agent process to one of two backends; the worker
-configuration stands apart, because the Operation's step, not the runtime, asks it for a worker's
-backend, model and limits before calling Workers.
+configuration stands apart, because the caller, not the runtime, asks it for a worker's backend,
+model and limits before it calls the host.
 
 - <a id="realization.workers.runtime"></a>The **worker runtime** checks a worker's placement and
-  finds the Git administrative paths, writes the brief, decides rounds,
+  finds the Git administrative paths, writes the brief, decides rounds, calls the round validation,
   runs the write audit, keeps the progress file, manages run directories/records, and supplies the
   worker prompt snippets every Operation includes, e.g. reporting an error. Its tests, under
   `tests/concorde/harness/workers/`, also exercise the Harness's
@@ -560,8 +566,8 @@ backend, model and limits before calling Workers.
   the path decisions under Node, and, with `CONCORDE_LIVE_PI=1`, run a real pi worker.
 
 - <a id="realization.workers.models"></a>The **configuration reader** validates and reads
-  `.concorde/workers.json`, resolves the backend, project model name and level of an Operation's
-  worker by its id and the limits and runtime paths of every launch, refuses a missing file, a model
+  `.concorde/workers.json` against the Operations and worker ids its caller declares, resolves the
+  backend, project model name and level of an Operation's worker by its id and the limits and runtime paths of every launch, refuses a missing file, a model
   outside `enabled_models` and a worker without a model, checks that the worker's program is
   installed at launch and resolves the model's local id through the model map, refusing a missing or
   malformed map and a model it does not map for the backend; it never writes either file and never
@@ -583,9 +589,12 @@ file before the run. The host creates no file for the worker. A worker cannot de
 only proposes deletions, performed by the host inside `rw` after a clean audit.
 
 Resume rounds reuse the worker's context — the spike confirmed this fixes a failing check — and
-on Claude Code each resume returns a session id the host continues from. Rounds are only for
-failing checks and what the caller's validation reports; a Spec gap or grant violation is a
-decision for the main agent or developer, not to retry.
+on Claude Code each resume returns a session id the host continues from. Rounds are only for what
+the caller's round validation reports, such as failing checks; a Spec gap or grant violation is a
+decision for the main agent or developer, not to retry. The judgement stays with the caller because
+it is the job's, not the worker's: which checks prove an `implement` change, whether a Spec still
+validates, which glossary entries a Spec-writing worker may change. Keeping the loop here and the
+judgement there lets Workers resume any job without knowing checks, Specs or the glossary.
 
 On Claude Code the deny rules withhold only the worktree paths that exist when the host generates
 them: a file created later has no rule of its own, and unless a directory rule hides it the file
@@ -609,14 +618,14 @@ the built runtime; per-task tool lists are v1 defaults in
 
 ## What Workers relies on
 
-<a id="uses-spec"></a>
-
-**Spec core** computes the [grant](../../glossary.json#concept.grant) of a task
-type for the bound Modules, and its [context
-identity](../../glossary.json#concept.context-identity). Workers relies on the
-grant listing every path's level (`rw`/`ro`/`names`, ungranted omitted) and the identity naming
-exactly what selected it; it never computes or widens a grant, only receives it frozen. A missing or
-unreadable grant is a host failure before launch.
+Workers relies on two Modules, the Harness beside it in the worker harness part and Tracing in the
+kernel part; everything else it needs arrives in the request. In particular the
+[grant](../../glossary.json#concept.grant) arrives frozen as data in its
+[grant input](contracts.md#grant-input), with the [context
+identity](../../glossary.json#concept.context-identity) its caller computed: Workers relies on the
+caller listing every path's level (`rw`/`ro`/`names`, ungranted omitted) and never computes or
+widens a grant. A missing or malformed grant is a host failure before launch. In Concorde, Method
+fills it from Spec core's grant, whose shape a contract test keeps equal.
 
 <a id="uses-harness"></a>
 
@@ -646,52 +655,14 @@ backend -> extension: pi applies
 dir -> settings: holds
 ```
 
-<a id="uses-checks"></a>
-
-**Check execution** is a service the Workers host code calls. It runs the
-[configured checks](../../glossary.json#concept.configured-check)
-on the worktree in its read-only boundary, returning a [check
-result](../../glossary.json#concept.check-result) per check with its log, in the shape its
-[service](../../execution/checks/service.md#check-result) defines, which each round keeps as its `checks`;
-a failure of the service reaches Workers as Check execution's own link
-([req.checks.service-link](../../execution/checks/service.md#req.checks.service-link)), and a check that did not
-pass as the link [req.checks.failure-link](../../execution/checks/service.md#req.checks.failure-link) promises. Workers relies on
-Check execution keeping checks from writing the worktree's files directly and refusing a result
-whose inputs changed while it ran; it runs them only after a clean audit, feeds failures into the
-next round, and records every result. Checks that cannot run, or whose result Check execution
-refuses as `stale_evidence`, end the run `failed` with `checks_unavailable`, Check execution's error
-as its cause, and no further round.
-
-<a id="uses-execution"></a>
-
-**Execution** gives every worker run its place: the Operation's step passes the trace node folder
-of its run in the [run store](../../glossary.json#concept.run-store), and Workers creates the run
-directory inside it, and records the
-Operation run's identity, which the step passes, and the runner's process identifier in the
-progress file, beside the runner's own [run progress
-file](../../glossary.json#concept.run-progress-file). Workers relies on the runner refusing an
-unbound run's writing worker before it reaches Workers, and never reads a [workspace binding](../../glossary.json#concept.workspace-binding) itself.
-For an unbound run the step passes the run's checkout as the worktree and reads the backend,
-model and limits from the worker configuration committed in that checkout, as every other input of
-the run, so Workers never learns that the worktree it audits is a checkout. Workers relies on the
-runner placing that checkout in `.claude/worktrees/` of the primary worktree, where a worker may
-run; a task worktree opened anywhere else runs no worker.
-
 <a id="uses-tracing"></a>
 
 **Tracing** gives the worker run and each round the shape and place of a
 [trace node](../../glossary.json#concept.trace-node): Workers writes both through Tracing's library,
 at their start, after each round and at their end, records in their usage only what the agent
 program reported for each round, and reports its failures in the error contract. It relies on the
-[node contract](../../kernel/tracing/contracts.md#contract.tracing.node) and on nothing of the Operation's
-node but the folder it is given.
-
-<a id="uses-operations"></a>
-
-**Operations** declares, in its [catalog](../../glossary.json#concept.operation-catalog), which
-Operations launch workers and the ids of their workers. The shared validator checks all configured
-Operation and worker names against it. It relies on the catalog naming every worker an Operation may
-launch.
+[node contract](../../kernel/tracing/contracts.md#contract.tracing.node) and on nothing of its
+caller's node but the folder it is given.
 
 The [Main session](../../coordination/main-session/module.md) reads Workers' definitions without
 launching a run: it changes the worker configuration by editing it directly. A task

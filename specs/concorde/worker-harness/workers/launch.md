@@ -18,26 +18,25 @@ A run is requested with:
 | Input | Meaning |
 | --- | --- |
 | backend | `claude` or `pi`: the [worker backend](../../glossary.json#concept.worker-backend) the worker configuration chooses for the worker, pi when nothing chooses one |
-| worktree | Absolute path of the Git worktree the worker works in: the bound workspace, or for an [unbound run](../../glossary.json#concept.unbound-run) its [unbound checkout](../../glossary.json#concept.unbound-checkout), lying directly in `.claude/worktrees/` of its repository's primary worktree ([Placement](#placement)) |
-| parent | The [trace node](../../glossary.json#concept.trace-node) folder of the run that asks for the worker, below which the worker run's node is created |
+| worktree | Absolute path of the Git worktree the worker works in, lying directly in `.claude/worktrees/` of its repository's primary worktree ([Placement](#placement)): in Concorde a bound workspace's worktree, or for an [unbound run](../../glossary.json#concept.unbound-run) its [unbound checkout](../../glossary.json#concept.unbound-checkout), which the caller passes like any worktree |
+| parent | The [trace node](../../glossary.json#concept.trace-node) folder the caller gives, in Concorde the node of the run that asks for the worker, below which the worker run's node is created |
 | [task type](../../glossary.json#concept.task-type) | One of the eight Protocol task types; it selects the tool set, the read-only one for a task type that writes nothing, such as `review-architecture` |
-| grant | The frozen grant: every path with its level `rw`, `ro` or `names`, relative to the worktree, and its [context identity](../../glossary.json#concept.context-identity) |
-| instructions | The [Operation](../../glossary.json#concept.operation)'s task-specific part of the brief |
-| checks | The [configured checks](../../glossary.json#concept.configured-check) to run after each round, possibly none |
-| validation | Optionally the caller's own validation, run after a round whose checks pass: nothing to repair, or the text naming what to repair |
+| grant | The frozen grant as data, in the worker harness's [grant input](contracts.md#grant-input): every path with its level `rw`, `ro` or `names`, relative to the worktree, and its [context identity](../../glossary.json#concept.context-identity); a grant with no `rw` path makes a worker that changes nothing, which is how a caller runs a reading worker |
+| instructions | The caller's task-specific part of the brief: in Concorde, an [Operation](../../glossary.json#concept.operation)'s prompt with the definitions of the glossary terms its grant carries and the rules for a [Spec gap](../../glossary.json#concept.spec-gap), which Method composes |
+| round validation | Optionally the caller's callback, called after every round whose worker ended `ok` with a clean audit ([Round validation](#round-validation)) |
 | runtime paths | Extra absolute paths, outside the grant, that every tool of the worker may read and none may write, exactly as the caller lists them: the worker configuration's runtime paths that exist, such as `.venv` or `node_modules`, the directories the project interpreter needs, and the host material the caller admits for this run alone, such as the folder of the check logs its own run recorded ([Reading beside the grant](#reading-beside-the-grant)) |
 | project interpreter | Optionally the absolute path of the project's own Python interpreter, which the caller resolved from the project's configuration as its checks run it; its directory comes first on the worker's `PATH` and the brief names it |
 | limits | Timeout per round, the turn limit, the budget limit when the configuration sets one, and the number of [resume rounds](../../glossary.json#concept.resume-round) (default 3) |
 | model | The project model name the run worktree's [worker configuration](../../glossary.json#concept.worker-configuration) chooses for the worker's id, which every Operation gives, recorded only |
 | local model, model map | The model's local id on the backend, which the [model map](../../glossary.json#concept.model-map) gives it and which is passed with `--model`, and the path of that map, recorded only |
-| operation, worker | The Operation and the [worker id](../../glossary.json#concept.worker-id) the model was chosen for, recorded only |
+| operation, worker | The Operation and the [worker id](../../glossary.json#concept.worker-id) the model was chosen for, labels the caller gives, recorded only |
 | reasoning | Optionally the reasoning level from the same configuration, passed with `--effort` on the Claude Code backend and `--thinking` on the pi backend |
 
 ## Placement
 
 Every worktree a worker runs in lies directly in `.claude/worktrees/` of its repository's primary
-worktree, the first worktree `git worktree list` names: a task worktree
-`.claude/worktrees/<task>`, an [unbound checkout](../../glossary.json#concept.unbound-checkout)
+worktree, the first worktree `git worktree list` names: in Concorde a task worktree
+`.claude/worktrees/<task>` or an [unbound checkout](../../glossary.json#concept.unbound-checkout)
 `.claude/worktrees/unbound-<run-id>`. Before it generates anything the host checks this with
 read-only Git and refuses any other placement, the primary worktree itself included, with
 `worktree_misplaced`. Once the placement holds it collects the repository's **Git administrative
@@ -78,11 +77,40 @@ so that `python` is the project's interpreter; the host's own environment is nev
 never resolves the interpreter itself, and running it needs its environment and the installation it
 links to readable, which the caller therefore lists among the runtime paths.
 
+## Round validation
+
+Whether a round left something to repair is the caller's judgement, not the worker harness's: the
+worker harness runs no check, reads no [Spec](../../glossary.json#concept.spec) and knows no glossary. A caller that has such a judgement
+passes a **round validation**, a callback the host calls once after every round whose worker ended
+`ok` with a clean audit, with the worktree and the folder of the round's trace node. It answers with:
+
+| Field | Meaning |
+| --- | --- |
+| evidence | The values to keep with the round as its evidence, in the caller's own shape, possibly none; nodes of its own, such as check nodes, it places below the round's folder |
+| repair | Nothing, or the text naming what the worker must repair, which becomes the next resume round's prompt |
+| failure | With a repair, whether the run must end `failed` when no rounds are left for it, and then the code and the causes of Workers' link; without, a repair left over at the last round leaves the round's result for the caller to judge |
+| violation | Instead of a repair, when the round did something its caller does not allow at all: the code and the causes of Workers' link, which ends the run `failed` at once, with no further round, as an audit violation does |
+| unavailable | Instead of the fields above, when it could not validate at all: the code and the causes of Workers' link, which ends the run `failed` with no further round |
+
+In Concorde, Method's round validation runs the
+[configured checks](../../glossary.json#concept.configured-check) of the bound Modules and of every
+Module that uses one of them through Check execution, keeps their
+[check results](../../glossary.json#concept.check-result) as evidence, names a failing check's
+identity, status, exit code and the last 20,000 bytes of its log as the repair, asks a run whose
+checks still fail to end with `checks_failed` and one link per failing check, and answers
+`checks_unavailable` with Check execution's link when the checks cannot run; once the checks pass, a
+step's own validation, such as the structural validation of a Spec-writing step, adds what it finds
+to the repair. Where the grant makes the project glossary writable, it also audits the glossary by
+entry, since every [Module](../../glossary.json#concept.module)'s concepts share that one file, and answers a violation `audit_violation`
+naming `<glossary>#<concept> (owner before: <Module>, after: <Module>)` for every entry the round
+added, changed or removed although a Module outside the grant owns it, before or after
+([How an Operation runs its workers](../../method/workers.md)).
+
 ## Run directory and runtime directory
 
 A worker run keeps what analysis needs and what it only needs while it runs apart. Its **run
 directory** is its [trace node](../../glossary.json#concept.trace-node) `workers/<run-id>/` inside the
-node of the run that launched it, so a worker run lies inside that run. `<run-id>` is
+trace node folder its caller gave, so a worker run lies inside the run that launched it. `<run-id>` is
 `w-<YYYYMMDD>T<HHMMSS>-<6 hex digits>`, unique and chosen by the host.
 
 | Path | Content | Worker access |
@@ -92,7 +120,7 @@ node of the run that launched it, so a worker run lies inside that run. `<run-id
 | `grant.json` | The frozen grant and its context identity | none |
 | `brief.md` | The brief as sent | none |
 | `transcript.jsonl` | The latest session's transcript, moved here from `config/` when the worker ended | none |
-| `rounds/<n>/` | Each round's node: `trace.json` ([worker round trace](contracts.md#contract.workers.worker-round-trace)), the round's standard error `stderr.log` and its check nodes `checks/<check-id>/` | none |
+| `rounds/<n>/` | Each round's node: `trace.json` ([worker round trace](contracts.md#contract.workers.worker-round-trace)), the round's standard error `stderr.log` and the nodes its round validation placed, such as Concorde's check nodes `checks/<check-id>/` | none |
 
 Its **[runtime directory](../../glossary.json#concept.runtime-directory)** is a private directory
 `/tmp/concorde-<suffix>-<random>/` created for the run, or under the system temporary directory where
@@ -113,29 +141,30 @@ explains. It holds:
 | `work/` | The working directory | Bash read and write |
 
 Claude Code's Bash sandbox creates Unix sockets below `TMPDIR`, and a socket path must stay under the
-kernel's 108-byte limit, which a short directory directly under `/tmp` keeps.
+operating system's 108-byte limit, which a short directory directly under `/tmp` keeps.
 
 The host refuses to launch when any deny rule it generated covers `work/`, `home/` or `tmp/`.
 
 ## Progress file
 
-`status.json` tells an observer, such as the Execution runner that launched the run, what the run
-is doing while it runs. The host
+`status.json` tells an observer, such as the run that launched it, what the run is doing while it
+runs. The host
 rewrites it atomically at every phase change and at most once a second for worker activity:
 
 | Field | Content |
 | --- | --- |
 | `run_id`, `task_type`, `backend`, `worktree` | the run's identity, task type, backend and worktree |
-| `operation_run_id` | the identity of the Operation run that launched it, by which an observer pairs the two; null for a worker launched outside a run |
-| `phase` | `preparing`, `worker`, `audit`, `checks` or `finished` |
+| `operation_run_id` | the identity of the run that launched it, which its caller gives, by which an observer pairs the two; null when the caller gives none |
+| `phase` | `preparing`, `worker`, `audit`, `validation` or `finished` |
 | `round` | the current round, from 1 |
 | `last_action` | the worker's latest tool call as `tool` and `target` (a path, pattern or the first line of a command, at most 200 characters) with its time, or null |
 | `status` | null while running; the final status once `phase` is `finished` |
-| `host_pid` | the process identifier, in its own PID namespace, of the process running the run: the Execution runner of the Operation run that launched it |
+| `host_pid` | the process identifier, in its own PID namespace, of the process running the run: its caller's process, in Concorde the Execution runner of the run that launched it |
 | `started_at`, `updated_at` | UTC times |
 
 The phases follow the [rounds](#rounds): every round runs the worker and then audits it, and only a
-round whose worker ended `ok` with a clean audit goes on to the checks or to a resume round. What
+round whose worker ended `ok` with a clean audit goes on to the round validation or to a resume
+round. What
 ends the run from outside, and the host can handle, moves any phase to `finished` with
 `interrupted`.
 
@@ -143,19 +172,18 @@ ends the run from outside, and the host can handle, moves any phase to `finished
 preparing
 worker
 audit
-checks
+validation
 finished
 preparing -> worker: round 1
 preparing -> finished: a refusal before launch
 worker -> finished: the command could not be started
 worker -> audit: the round ended
 audit -> finished: timeout, limit, process failure, violation, invalid result, blocked or failed
-audit -> checks: ok, clean, checks given
-audit -> worker: no checks given, validation reports a repair, rounds left
-audit -> finished: "no checks given, and nothing to repair or no rounds left for the repair: status ok"
-checks -> worker: a check fails or validation reports a repair, rounds left
-checks -> finished: "every check passes, and nothing to repair or no rounds left for the validation's repair: status ok"
-checks -> finished: "a check still fails with no rounds left, or checks unavailable: status failed"
+audit -> validation: ok, clean, a round validation given
+audit -> finished: "ok, clean, no round validation: status ok"
+validation -> worker: a repair, rounds left
+validation -> finished: "nothing to repair, or a repair left for the caller to judge: status ok"
+validation -> finished: "a violation, a repair that fails the run with no rounds left, or validation unavailable: status failed"
 ```
 
 It is an observation aid only: the run record, not the progress file, is the run's evidence.
@@ -175,8 +203,8 @@ claude -p --settings <runtime>/control/settings.json --tools <tool set>
 `--max-budget-usd` is passed only when the worker configuration sets `max_budget_usd`; without it
 the run has no budget limit.
 
-A resume round runs the same command with `--resume <latest session id>` and the check failures, or
-the text of the caller's validation, as the prompt.
+A resume round runs the same command with `--resume <latest session id>` and the round validation's
+repair text as the prompt.
 
 The environment is cleared and then set to exactly:
 
@@ -249,7 +277,7 @@ Each round records its audit as an object with:
 | --- | --- |
 | `verdict` | `clean` when nothing is a violation, otherwise `violation` |
 | `changed` | every path, relative to the worktree and in path order, whose file was created, changed or deleted since the snapshot |
-| `violations` | each violation as one string, in path order after any Git state: `HEAD` or `index` for a changed `HEAD` or index; the path of a file created or changed outside `rw`; the path followed by ` (deleted)` for a deleted file; `<glossary>#<concept> (owner before: <Module>, after: <Module>)` for a glossary entry another [Module](../../glossary.json#concept.module) owns, `none` standing for a missing owner; and `<glossary>#(unreadable: <error>)` when the glossary cannot be compared by entry |
+| `violations` | each violation as one string, in path order after any Git state: `HEAD` or `index` for a changed `HEAD` or index; the path of a file created or changed outside `rw`; and the path followed by ` (deleted)` for a deleted file |
 
 A round whose audit did not run, such as one whose command could not be started, has `audit` null
 in its node. The [returned run record](contracts.md#contract.workers.worker-run-record)'s example shows an
@@ -273,28 +301,26 @@ in order:
 
 When a deletion failed, the run ends `failed` with `deletion_failed` whatever status it would
 otherwise have had, its error listing what was deleted and what was not; the deletions that
-succeeded stay done. This happens after the last round's checks, so the recorded
-[check results](../../glossary.json#concept.check-result) describe the worktree before these
-deletions.
+succeeded stay done. This happens after the last round's validation, so the evidence it recorded
+describes the worktree before these deletions.
 
 ## Rounds
 
-| Worker result and audit | Checks | Next |
+| Worker result and audit | Round validation | Next |
 | --- | --- | --- |
-| the round timed out, or the agent process failed or reached a limit | not run | end `failed` with `worker_timeout`, `worker_limit_reached` or the backend's process failure code, naming any audit violation in its detail |
-| audit violation, whatever the result | not run | end `failed` with `audit_violation` |
-| invalid result, audit clean | not run | end `failed` with `worker_result_invalid` |
-| `blocked` or `failed`, audit clean | not run | end with the worker's status and `worker_blocked` or `worker_failed` |
-| `ok`, audit clean, no checks given | — | as when all checks pass |
-| `ok`, audit clean, all checks pass, no validation, nothing to repair, or the validation could not run | run | end `ok` |
-| `ok`, audit clean, all checks pass, validation reports something to repair, rounds left | run | resume round |
-| `ok`, audit clean, all checks pass, validation reports something to repair, no rounds left | run | end `ok`; the caller judges the result |
-| `ok`, audit clean, a check fails, rounds left | run | resume round |
-| `ok`, audit clean, a check fails, no rounds left | run | end `failed` with `checks_failed` |
+| the round timed out, or the agent process failed or reached a limit | not called | end `failed` with `worker_timeout`, `worker_limit_reached` or the backend's process failure code, naming any audit violation in its detail |
+| audit violation, whatever the result | not called | end `failed` with `audit_violation` |
+| invalid result, audit clean | not called | end `failed` with `worker_result_invalid` |
+| `blocked` or `failed`, audit clean | not called | end with the worker's status and `worker_blocked` or `worker_failed` |
+| `ok`, audit clean, no round validation given | — | end `ok` |
+| `ok`, audit clean | answers unavailable | end `failed` with the code and causes it names, reason `environment` |
+| `ok`, audit clean | answers a violation | end `failed` with the code and causes it names, reason `permission` |
+| `ok`, audit clean | nothing to repair | end `ok` |
+| `ok`, audit clean | a repair, rounds left | resume round |
+| `ok`, audit clean | a repair that fails the run, no rounds left | end `failed` with the code and causes it names, reason `exhausted` |
+| `ok`, audit clean | a repair that does not fail the run, no rounds left | end `ok`; the caller judges the result |
 
-The rows are tried in this order. The resume prompt after failing checks lists each failing check's
-identity, status, exit code and the last 20,000 bytes of its log; after the caller's validation it
-is the validation's text.
+The rows are tried in this order. The resume prompt is the round validation's repair text.
 
 ## Run record
 
@@ -309,7 +335,7 @@ model's local id and the model map it came from, is the
 [worker run trace](contracts.md#contract.workers.worker-run-trace).
 
 Each round's node is written when the round's worker is launched and again when the round has been
-audited, checked and validated. Its usage holds the tokens, cache reads and writes, cost and turns
+audited and validated. Its usage holds the tokens, cache reads and writes, cost and turns
 the agent program reported for the round and the round's duration; its content is the
 [worker round trace](contracts.md#contract.workers.worker-round-trace), whose `agent` keeps what
 the agent program reported beyond those fields. On the Claude Code backend that is, besides the
@@ -317,14 +343,13 @@ result envelope's subtype, error flag, turn count and cost, its `permission_deni
 calls Claude Code refused under the worker settings, which are evidence for telling a refused
 worker's [boundary case](../../glossary.json#concept.boundary-case), its `modelUsage`, the tokens
 and cost of each model the round used, and its `duration_api_ms`, the time spent waiting for the
-model, each as the envelope gave it and null when it gave none. The checks of a round are
-nodes of Check execution below it. A worker run's own usage records nothing, since its rounds hold
+model, each as the envelope gave it and null when it gave none. The nodes a round's validation placed, such as Concorde's check nodes, lie below it. A worker run's own usage records nothing, since its rounds hold
 what it consumed.
 
-Besides the files, the host returns the run record to the Operation that asked as the
+Besides the files, the host returns the run record to its caller as the
 [returned run record](contracts.md#contract.workers.worker-run-record): the run node's content with, in place of
-the number of rounds, the ordered list of every round's content, so that the Operation reads the
-audits and checks without reading the files. That value is never stored; the trace nodes are the
+the number of rounds, the ordered list of every round's content, so that the caller reads the
+audits and the round validation's evidence without reading the files. That value is never stored; the trace nodes are the
 record that is kept.
 
 ## Errors
@@ -351,10 +376,11 @@ by every code whose round had one, even when the round also timed out or failed 
 | `worker_result_invalid` | the schema violation, or the worker's final text when it gave no structured result | `capability` | none |
 | `audit_violation` | every violating path and the worker's own reported status, or that its result was invalid | `permission` | the worker's link, when its result was valid and carries an `error`; none for a valid `ok` result, whose `error` is null, or an invalid one |
 | `worker_blocked`, `worker_failed` | the worker's code and detail | `capability` | the worker's link |
-| `checks_unavailable` | the Modules and Check execution's error | `environment` | Check execution's link |
-| `checks_failed` | every check still failing and the rounds used; `attempts` lists each round's failures | `exhausted` | one link per failing check, from Check execution |
+| the code the round validation names for a violation, in Concorde `audit_violation` for a glossary entry another Module owns | every violating entry the round validation names | `permission` | the links the round validation names, none in Concorde |
+| the code the round validation names when it cannot validate, in Concorde `checks_unavailable` | the round and what the round validation reported | `environment` | the links the round validation names, in Concorde Check execution's |
+| the code the round validation names for a repair that fails the run, in Concorde `checks_failed` | what still needs repair and the rounds used; `attempts` lists each round's repair | `exhausted` | the links the round validation names, in Concorde one per failing check, from Check execution |
 | `deletion_failed` | every proposed deletion the host performed, every one that failed with the operating system's error, and those it refused or found already absent | `environment` | the worker's link, when its result carries an `error` |
-| `interrupted` | what ended the run from outside before it finished, such as a signal or the cancellation of the launching Operation | `environment` | none |
+| `interrupted` | what ended the run from outside before it finished, such as a signal or the cancellation of the run that launched it | `environment` | none |
 
 The **Claude Code process's link** has the level `component` and states the envelope's subtype,
 error flag, turn count, cost, exit status, final text, reported errors and the tail of standard
@@ -366,7 +392,9 @@ unchanged.
 ## Refusals before a run
 
 The configuration reader settles a worker's backend, model and level, and checks its program and
-the model map, when the Operation's step asks, before the step calls the host. Its refusals
+the model map, when the caller asks, before it calls the host; the caller also declares the
+Operations and worker ids it may launch, against which the reader checks every name of the
+configuration. Its refusals
 therefore come before any worker run exists: no run directory, progress file or run record is
 made for them, and Workers writes no error link of its own. Each refusal carries one of these codes
 and a message that names the file concerned, the worker configuration or the model map, says what
@@ -383,15 +411,28 @@ is wrong and how to repair it:
 | `model_map_invalid` | the map's path, or the relative path `CONCORDE_MODEL_MAP` gives, and what is wrong | `environment` |
 | `model_unmapped` | the map, each worker with its backend and model and where each came from, and the exact entry to add | `environment` |
 
-The step that asked turns a refusal into a `component` link with the actor
+The caller that asked turns a refusal into a `component` link with the actor
 `Workers (worker configuration)`, the code, the message as its detail, the reason above and no
-causes, and makes it the cause of its own link, which Operations names `worker_model_unavailable`.
+causes, and makes it the cause of its own link, which in Concorde Method's steps name
+`worker_model_unavailable`.
 
 ## Requirements
 
 ### req.workers.frozen-grant — One grant for the whole run
 
 The host SHALL generate a run's settings, write hook, tool set and brief from one frozen grant.
+
+### req.workers.grant-as-data — The grant comes from the request alone
+
+The host SHALL take a worker's grant only from its request, in the shape of the [grant input](contracts.md#grant-input), never computing, widening or completing a grant from any other source.
+
+### req.workers.validation-after-clean-round — The round validation follows every clean ok round
+
+When a request gives a round validation, the host SHALL call it once after every round whose worker ended `ok` with a clean audit, and after no other round.
+
+### req.workers.validation-recorded — The round validation's answer is recorded
+
+The host SHALL keep the evidence and outcome the round validation returned in the node of the round it validated.
 
 ### req.workers.every-task-type — A worker of every Protocol task type launches
 
@@ -422,7 +463,7 @@ On the Claude Code backend the write hook SHALL deny every Edit or Write whose t
 On the Claude Code backend the [deny rules](../../glossary.json#concept.deny-rules) SHALL forbid Read, Glob and Grep on every worktree path that exists when the host generates them, whose level is neither `ro` nor `rw` and that lies below none of the run's runtime paths.
 
 A runtime path inside the worktree, such as `.venv` or `node_modules`, is one the tracked worker
-configuration lists, since a caller admits nothing else of the worktree beside the grant: the
+configuration lists, since Concorde's callers admit nothing else of the worktree beside the grant: the
 Harness leaves it readable because Claude Code applies a Read denial to Bash too, and Bash must run
 the toolchain below it ([Claude Code mechanics](../harness/claude-code.md#deny-rules)). What a
 worker may read beside its grant is therefore decided by the worker configuration's `runtime` list,
@@ -531,19 +572,15 @@ On both backends the host SHALL have every Git administrative path that [Placeme
 
 ### req.workers.audit-every-round — Every round is audited
 
-The host SHALL audit the worktree against the grant after every round and before any configured check of that round runs.
-
-### req.workers.glossary-by-entry — The glossary is audited by entry
-
-When the grant names a writable glossary, the audit SHALL report as a violation every glossary entry a round added, changed or removed whose owner, before or after the round, is not one of the grant's Modules.
+The host SHALL audit the worktree against the grant after every round and before its round validation runs.
 
 ### req.workers.violation-ends-run — A violation is never retried
 
 A run whose audit finds a violation SHALL end `failed` without another round.
 
-### req.workers.rounds-for-checks-only — Rounds only repair failing checks and validation
+### req.workers.rounds-for-checks-only — Rounds only repair what the round validation reports
 
-The host SHALL resume a worker only when it ended `ok`, its audit was clean, and either a configured check failed or, with every check passing, the caller's validation reported something to repair.
+The host SHALL resume a worker only when it ended `ok`, its audit was clean, and the caller's round validation reported something to repair.
 
 ### req.workers.rounds-limited — A run has at most its configured resume rounds
 
@@ -559,7 +596,7 @@ The run record SHALL keep the worker result verbatim and separate from the evide
 
 ### req.workers.error-chain — A failed run explains itself
 
-Every run that does not end `ok` SHALL carry Workers' error link with the worker's own error, the agent process's link (Claude Code's or pi's) or each failing check as its causes, as listed in [Errors](#errors).
+Every run that does not end `ok` SHALL carry Workers' error link with the worker's own error, the agent process's link (Claude Code's or pi's) or the links the round validation names as its causes, as listed in [Errors](#errors).
 
 ### req.workers.host-deletes — Only the host deletes
 

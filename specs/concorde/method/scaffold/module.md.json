@@ -20,7 +20,6 @@
         "meaning": "#uses-execution",
         "relies_on": [
           "concept.execution-runner",
-          "concept.workspace",
           "concept.run-result",
           "req.execution.inputs-same-workspace",
           "contract.execution.run-result"

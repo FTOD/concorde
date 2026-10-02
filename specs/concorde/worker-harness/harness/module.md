@@ -2,41 +2,33 @@
 
 ## Purpose
 
-The Harness is how Concorde derives an agent's harness and applies it to the agent: what the agent
-is given to know, what it may touch and the environment it runs in, turned into the agent program's
-own configuration: on Claude Code for every agent, and on pi for a worker, since the main agent and
-task sessions run on Claude Code only for now while a worker may run on pi. It is independent of
-which agent it serves. The Harness generates the configuration that applies a harness; it does not
-launch or resume agents, compute grants, audit what an agent changed or run checks, which the agent
-Modules and [Check execution](../../execution/checks/module.md) do. What it enforces guards against
-scope drift and mistakes, not a malicious agent.
+The Harness is how the worker harness part applies a [worker](../../glossary.json#concept.worker)'s
+[agent harness](../../glossary.json#concept.agent-harness): what the worker may read, write and run
+and the environment it runs in, turned into the agent program's own configuration, on Claude Code or
+on pi. It turns one [grant](../../glossary.json#concept.grant), received as data, into that
+configuration; it does not compute grants, launch or resume workers, audit what a worker changed or
+run checks, which its caller and [Workers](../workers/module.md) do. It serves only workers: a
+[task session](../../glossary.json#concept.task-session)'s
+[session boundary](../../glossary.json#concept.session-boundary) is Coordination's own, and the
+[main agent](../../glossary.json#concept.main-agent)'s harness is its installed guidance alone. What
+it enforces guards against scope drift and mistakes, not a malicious agent.
 
 ## Core concepts
 
-### The agent harness
-
-<a id="concept.agent-harness"></a>
-
-An **[agent harness](../../glossary.json#concept.agent-harness)** has three parts, and the three agent
-levels need very different amounts of each:
-
-| | Main session | Task session | Worker |
-| --- | --- | --- | --- |
-| Context | the installed [guidance](../../glossary.json#concept.main-session-guidance) and whatever the developer's own configuration adds | the developer's configuration, the task-session guidance and the task's goal, Modules and decision log | only its brief: the [Operation](../../glossary.json#concept.operation)'s instructions and the grant's `rw`, `ro` and `names` lists, from which it reads its [Spec context](../../glossary.json#concept.spec-context), [external context](../../glossary.json#concept.external-context), [implementation context](../../glossary.json#concept.implementation-context) and [task context](../../glossary.json#concept.task-context); its tool set is its [capability context](../../glossary.json#concept.capability-context) |
-| Permission | none | the file tools write only the task worktree and its decision log; the shell and everything else are open, and the merge audits that nothing outside the task worktree changed | the grant: `rw` writable, `ro` readable, `names` named only, everything else hidden; no network, no Git |
-| Environment | the developer's | the developer's Claude Code configuration | its own configuration directory, a cleared environment, its own working directory and limits |
-| Applied by | Distribution, which installs the guidance | the [session boundary](../../glossary.json#concept.session-boundary), for Task sessions | [worker settings](../../glossary.json#concept.worker-settings) or the [permission extension](../../glossary.json#concept.permission-extension), for Workers |
-
-The context of a worker, its five kinds and how each is computed are defined in the
-[shared vocabulary](../../glossary.json#concept.context); the Harness decides how that context reaches
-the agent, which for a worker is the brief and the files the grant lets it read. The permission and
-environment are what the Harness generates.
+A worker's agent harness has the three parts the root
+[explains](../../module.md#the-people-and-agents) for every agent level: context, permission and
+environment. For a worker, the context is only its [brief](../../glossary.json#concept.brief) and
+the files the grant lets it read, and its tool set is its
+[capability context](../../glossary.json#concept.capability-context); the permission is the grant,
+`rw` writable, `ro` readable, `names` named only and everything else hidden, with no network and no
+Git; the environment is its own configuration directory, a cleared environment, its own working
+directory and limits. The permission and environment are what the Harness generates.
 
 ### A worker's harness
 
 <a id="concept.worker-settings"></a><a id="concept.deny-rules"></a><a id="concept.write-hook"></a>
 
-**A worker on Claude Code.** The **worker settings** are the worker's only configuration (a fresh
+**A worker on Claude Code.** The **[worker settings](../../glossary.json#concept.worker-settings)** are the worker's only configuration (a fresh
 `CLAUDE_CONFIG_DIR`) and hold three layers from the same grant.
 **[Deny rules](../../glossary.json#concept.deny-rules)** cover the file tools. They deny Read and Edit
 for every grant-omitted task-worktree path and every `names` path, Edit for every `ro` path, and
@@ -63,7 +55,7 @@ Exact shapes: [Claude Code mechanics](claude-code.md).
 
 <a id="concept.permission-extension"></a>
 
-**A worker on pi.** The **permission extension** replaces the worker settings, generated from the
+**A worker on pi.** The **[permission extension](../../glossary.json#concept.permission-extension)** replaces the worker settings, generated from the
 same grant by the same code:
 
 | Surface | Claude Code | pi |
@@ -79,97 +71,46 @@ same grant by the same code:
 
 Exact tables: [pi mechanics](pi.md).
 
-### The session boundary
-
-<a id="concept.session-boundary"></a>
-
-The **session boundary** restricts one thing about a task session: that it change nothing outside
-its task. A task session runs on Claude Code, so its boundary is a settings file with a write hook
-of its own, which lets Edit and Write change only the task worktree and its
-[decision log](../../glossary.json#concept.decision-log) instead of a grant's `rw` list and refuses
-every other path, an [Issue](../../glossary.json#concept.issue) record among them, so the session's
-own Edit and Write never write one. Once the task is closed its folder has moved to the
-[history](../../glossary.json#concept.history), and the write hook refuses every write to the decision
-log, whose folder no longer exists, rather than recreate it.
-
-Nothing else of the session is restricted, and the settings carry no sandbox: its shell reaches
-every path, process, socket, home-state file and network host, so it prepares its own worktree,
-probes the machine it runs on and runs anything the work needs. The developer decided this after a
-sandbox had cost fourteen problems in one week, of which only four were answered by changing a rule
-and the rest by a workaround: a PID namespace per Bash call that killed every
-[detached run](../../glossary.json#concept.detached-run), a network
-namespace reached only through a proxy, blocked Unix sockets that broke a nested sandbox inside a pi
-worker, protected paths no setting could open, placeholder files visible to the host, and only
-paths existing at the start made writable. What keeps the shell inside the task is now the
-task-session guidance and Claude Code's `auto` mode, and `concorde task merge` audits at the end
-what lies outside the task worktree
-([Tasks](../../coordination/tasks/module.md#nothing-changed-outside-the-task)). The session's MCP servers were never inside the
-boundary either: the [project MCP server](../../glossary.json#concept.project-mcp-server) that every
-task session receives can change any [task record](../../glossary.json#concept.task-record) and take
-locks for any task, and the developer chose
-not to confine it, since it is a management tool. The boundary guards against a session's mistakes
-in its file tools, where a wrong path is likeliest and cheapest to catch.
-Exact shapes: [Claude Code mechanics](claude-code.md#task-session-settings).
-
 ## Overview
 
 ### Where the Harness sits
 
-The Harness serves every agent level of Concorde's [levels of work](../../module.md#the-levels-of-work)
-without being a level itself: it sits in no call chain from the main session down to a worker, and
-no result or [error chain](../../glossary.json#concept.error-chain) passes through it. Each
-[agent](../../coordination/module.md) level asks for the harness it needs: Workers for a worker, from
-the frozen [grant](../../glossary.json#concept.grant) of its task; Task sessions for a
-[task session](../../glossary.json#concept.task-session), from its task's worktree and
-[decision log](../../glossary.json#concept.decision-log); the main session's harness is its installed
-guidance alone, which Distribution installs directly, since Concorde places no permission limits on
-the [main agent](../../glossary.json#concept.main-agent).
+The Harness sits in no call chain: no result or [error chain](../../glossary.json#concept.error-chain)
+passes through it. It is used as a library by [Workers](../workers/module.md), which assembles the
+inputs of one worker run — the frozen grant its caller handed over, the
+[runtime directory](../../glossary.json#concept.runtime-directory) and the runtime paths — asks the
+Harness for the configuration and launches the worker with it.
 
 ```d2 illustrative
 direction: down
-modules: Agent Modules {
-  workers: Workers
-  sessions: Task sessions
-  distribution: Distribution
-}
+caller: "Caller\n(in Concorde, a Method step)"
+workers: Workers
 harness: Harness {
   worker: "worker settings or\npermission extension,\ntool set"
-  session: "task-session\nwrite hook"
 }
-programs: Agent programs {
-  worker: "worker\nClaude Code or pi"
-  session: "task session\nClaude Code"
-  main: "main agent\nClaude Code"
-}
-modules.workers -> harness.worker: "from a frozen grant,\nruntime directory,\nruntime paths"
-modules.sessions -> harness.session: "from a task worktree\nand decision log"
-harness.worker -> programs.worker: "Workers launches\nwith it and the brief"
-harness.session -> programs.session: "Task sessions starts it\nwith settings around the hook"
-modules.distribution -> programs.main: "installs the guidance;\nno permission limits"
+program: "worker\nClaude Code or pi"
+caller -> workers: "grant as data,\ninstructions"
+workers -> harness.worker: "the frozen grant,\nruntime directory,\nruntime paths"
+harness.worker -> program: "Workers launches\nwith it and the brief"
 ```
-
-It is used as a library: an agent Module assembles the inputs of its level — a frozen grant and
-[runtime directory](../../glossary.json#concept.runtime-directory), or a task's paths — and asks the
-Harness for the configuration, which it then hands to the program it launches. Each level differs
-only in what it asks for; the Harness holds the one place that turns those inputs into a program's
-own configuration.
 
 ### A worker's harness at work
 
 **A worked example.** Take a project whose Module Checkout owns the Spec
 `specs/shop/checkout/module.md` and binds `src/checkout/cart.py`, beside a Module Billing with the
 Spec `specs/shop/billing/module.md` and the code `src/billing/invoice.py`, which Checkout does not
-use. A task bound to Checkout runs the `implement` Operation, whose step freezes this grant, among
+use. A task bound to Checkout runs the `implement` [Operation](../../glossary.json#concept.operation), whose step freezes this grant, among
 others of the same kinds:
 
 | Path | Level | Why |
 | --- | --- | --- |
 | `src/checkout/cart.py` | `rw` | Checkout's implementation scope |
-| `specs/shop/checkout/module.md` | `ro` | Checkout's Spec context |
+| `specs/shop/checkout/module.md` | `ro` | Checkout's [Spec context](../../glossary.json#concept.spec-context) |
 | `src/billing/invoice.py` | `ro` | the project's code, which an `implement` task reads whole |
 | `specs/shop/billing/module.md` | none | outside every [boundary set](../../glossary.json#concept.boundary-set) of Checkout |
 
-Workers hands the Harness that grant, the runtime directory and the runtime paths. For a Claude Code
+The step computes that grant through the Spec tooling and hands it to Workers as data, and Workers
+hands the Harness that grant, the runtime directory and the runtime paths. For a Claude Code
 worker the Harness returns the worker settings: deny rules `Edit` on the Checkout Spec and on
 `invoice.py`, `Read` and `Edit` on `specs/shop/billing/**`, since no granted path lies below it,
 and the rules that hide the rest of the home directory and the run's own configuration; the write
@@ -229,12 +170,10 @@ settings: Worker settings
 deny: Deny rules
 hook: Write hook
 ext: Permission extension
-session: Session boundary
 claude -> settings: generates
 settings -> deny: carries
 settings -> hook: carries
 pi -> ext: provides
-claude -> session: provides the write hook of
 ```
 
 The [realizations](#the-realizations) below say which files carry each part.
@@ -243,13 +182,12 @@ The [realizations](#the-realizations) below say which files carry each part.
 
 ### Around it
 
-The agent Modules use the Harness; it knows none of them and receives everything it needs as
-inputs, including a worker's runtime directory and runtime paths from Workers.
+Workers uses the Harness; the Harness knows no caller and receives everything it needs as inputs.
 
-<a id="uses-spec"></a>
-
-**Spec core** computes the [grant](../../glossary.json#concept.grant) a worker's
-harness is generated from. From Workers the Harness also receives, besides the grant, the run's
+**The grant** arrives as data in the worker harness's
+[grant input](../workers/contracts.md#grant-input), which its caller fills: in Concorde, a step of
+Method from the grant Spec core computes. The Harness depends on no Spec and on no Module that
+computes grants. From Workers it also receives, besides the grant, the run's
 runtime directory and runtime paths, the primary worktree of the task worktree's repository and
 the repository's **Git administrative paths**: its common Git directory, the worktree's own Git
 directory, every `.git` entry inside the worktree and the Git directories those point to, which
@@ -274,11 +212,11 @@ path argument exactly as pi resolves it.
 
 ### Why the Harness is separate
 
-The Harness is separate from the agents because what it produces does not depend on who runs the
-agent or why: the same write-hook table serves a worker and a task session, and a worker's harness
-on either program comes from the same grant by the same code. The agent Modules keep what does: when
-an agent starts, how its rounds go, what is audited and recorded. So a new kind of agent, or a new
-level, needs a new set of inputs for the Harness, not a new enforcement mechanism.
+The Harness is separate from Workers because what it produces does not depend on who launches the
+worker or why: a worker's harness on either program comes from the same grant by the same code.
+Workers keeps what does: when a worker starts, how its rounds go, what is audited and recorded. So a
+new backend needs a new compilation of the same grant here, not a new launch loop, and a new kind of
+job needs only another grant from its caller.
 
 ### One grant, compiled for each program
 
@@ -298,9 +236,7 @@ A worker gets three layers on Claude Code since each alone failed in a spike aga
 files and Claude Code's credential file, and Edit change a read-only
 [Spec](../../glossary.json#concept.spec); deny rules alone confine reads but can't stop a Write
 creating an undeclared file, since a deny rule always beats an allow rule, so "only these files are
-writable" cannot be expressed. The write hook closes exactly that gap, staying small. A task
-session needs only the write side, because its reads and network are open by design, so it gets
-the hook and the sandbox without deny rules.
+writable" cannot be expressed. The write hook closes exactly that gap, staying small.
 
 ### What a worker's harness enforces in v1
 
@@ -339,8 +275,6 @@ flags and environment listed here; the Harness generates everything the settings
   the audit — the brief warns of this.
 - Writes to Git-ignored paths are not audited; Workers' audit is the last line of defense for a
   worker's write outside `rw`.
-- A task session's boundary does not cover tools that plugins or MCP servers add, such as a
-  formatter that writes files.
 - On Claude Code a file created in the task worktree after the deny rules were generated has no
   rule of its own: the write hook still refuses to change it unless it is `rw`, and a directory rule
   hides it when its directory has no `ro` or `rw` path below it, but otherwise the file tools can
@@ -356,15 +290,15 @@ credentials.
 
 The **Harness package** is `concorde.harness`'s Python package marker. The package also holds the
 code of Workers and Check execution, which bind their own files; a
-[Module](../../glossary.json#concept.module) need not match a package.
+[Module](../../glossary.json#concept.module) need not match a package, and the code tasks that
+follow give the worker harness part its own package.
 
 <a id="realization.harness.claude"></a>
 
 The **Claude Code harness** is the worker settings generator (`settings.py`: the run's paths, the
 deny rules, the Bash sandbox lists, the tool set of a task type and the complete settings file),
-the worker write hook (`write_hook.py`) and the task-session write hook (`session_hook.py`). Workers
-writes the settings and the hook, with the grant's lists embedded, into the runtime directory's `control/`, and
-Task sessions assembles the rest of a task session's settings around its hook.
+and the worker write hook (`write_hook.py`). Workers writes the settings and the hook, with the
+grant's lists embedded, into the runtime directory's `control/`.
 
 <a id="realization.harness.pi"></a>
 
@@ -375,36 +309,27 @@ Workers embeds the policy into these sources and copies them into place.
 ### Where its promises are required
 
 The Harness holds no requirements or scenarios of its own. What it generates is only observable
-once an agent Module applies it to an agent, so each decidable promise is a requirement of the
-Module that applies it, and the tests that verify those requirements exercise the Harness's files:
+once Workers applies it to a worker, so each decidable promise is a requirement of Workers, and the
+tests that verify those requirements exercise the Harness's files: one frozen grant for the whole run and every round
+([req.workers.frozen-grant](../workers/launch.md#req.workers.frozen-grant),
+[req.workers.unchanged-across-rounds](../workers/launch.md#req.workers.unchanged-across-rounds)),
+no launch from a malformed grant
+([req.workers.malformed-grant](../workers/launch.md#req.workers.malformed-grant)),
+`rw` as the exact write allowlist
+([req.workers.write-allowlist](../workers/launch.md#req.workers.write-allowlist)),
+the deny rules
+([req.workers.read-denials](../workers/launch.md#req.workers.read-denials)), the Bash
+sandbox ([req.workers.bash-sandbox](../workers/launch.md#req.workers.bash-sandbox)),
+no Git ([req.workers.no-git](../workers/launch.md#req.workers.no-git)) through every
+Git administrative path
+([req.workers.git-paths-denied](../workers/launch.md#req.workers.git-paths-denied)),
+only in a worktree of `.claude/worktrees/`
+([req.workers.placement](../workers/launch.md#req.workers.placement)), the same grant
+on pi ([req.workers.pi-same-grant](../workers/pi.md#req.workers.pi-same-grant)), the
+permission extension's file tools, sandbox, configuration and limits
+([req.workers.pi-file-tools](../workers/pi.md#req.workers.pi-file-tools),
+[req.workers.pi-sandbox](../workers/pi.md#req.workers.pi-sandbox),
+[req.workers.pi-only-extension](../workers/pi.md#req.workers.pi-only-extension),
+[req.workers.pi-limits](../workers/pi.md#req.workers.pi-limits)).
 
-- A worker's harness, in Workers: one frozen grant for the whole run and every round
-  ([req.workers.frozen-grant](../workers/launch.md#req.workers.frozen-grant),
-  [req.workers.unchanged-across-rounds](../workers/launch.md#req.workers.unchanged-across-rounds)),
-  no launch from a malformed grant
-  ([req.workers.malformed-grant](../workers/launch.md#req.workers.malformed-grant)),
-  `rw` as the exact write allowlist
-  ([req.workers.write-allowlist](../workers/launch.md#req.workers.write-allowlist)),
-  the deny rules
-  ([req.workers.read-denials](../workers/launch.md#req.workers.read-denials)), the Bash
-  sandbox ([req.workers.bash-sandbox](../workers/launch.md#req.workers.bash-sandbox)),
-  no Git ([req.workers.no-git](../workers/launch.md#req.workers.no-git)) through every
-  Git administrative path
-  ([req.workers.git-paths-denied](../workers/launch.md#req.workers.git-paths-denied)),
-  only in a worktree of `.claude/worktrees/`
-  ([req.workers.placement](../workers/launch.md#req.workers.placement)), the same grant
-  on pi ([req.workers.pi-same-grant](../workers/pi.md#req.workers.pi-same-grant)), the
-  permission extension's file tools, sandbox, configuration and limits
-  ([req.workers.pi-file-tools](../workers/pi.md#req.workers.pi-file-tools),
-  [req.workers.pi-sandbox](../workers/pi.md#req.workers.pi-sandbox),
-  [req.workers.pi-only-extension](../workers/pi.md#req.workers.pi-only-extension),
-  [req.workers.pi-limits](../workers/pi.md#req.workers.pi-limits)).
-- A task session's harness, in Task sessions: the session boundary's file tools
-  ([req.task-session.boundary](../../coordination/task-session/requirements.md#req.task-session.boundary)),
-  the shell left unrestricted
-  ([req.task-session.no-sandbox](../../coordination/task-session/requirements.md#req.task-session.no-sandbox))
-  and the boundary written before the session starts
-  ([req.task-session.boundary-first](../../coordination/task-session/requirements.md#req.task-session.boundary-first)).
-
-The Workers tests run fake and, on request, live workers and the pi path decisions under Node; the
-Task session tests run the task-session hook and settings.
+The Workers tests run fake and, on request, live workers and the pi path decisions under Node.

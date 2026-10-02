@@ -1,9 +1,10 @@
 # Operations scenarios
 
-Concrete situations that show the [requirements](requirements.md) of [Operations](module.md). What
-every run does, whatever its definition, is shown by the [Execution scenarios](../scenarios.md); how
-an [Operation](../../glossary.json#concept.operation) runs its workers is in
-[How an Operation runs its workers](../../method/workers.md).
+Concrete situations that show the [requirements](requirements.md) of [Operations](module.md) at
+work in worker-backed runs of Method's Operations, such as `implement` and `spec_panel`, which
+follow Method's [standard worker sequence](../../glossary.json#concept.standard-worker-sequence)
+([How an Operation runs its workers](../../method/workers.md)). What every run does, whatever its
+definition, is shown by the [Execution scenarios](../scenarios.md).
 
 ## Worker-backed runs
 
@@ -13,7 +14,7 @@ an [Operation](../../glossary.json#concept.operation) runs its workers is in
 - AND a worker that ends `ok` after changing only files its grant makes writable
 - AND a change on which every [configured check](../../glossary.json#concept.configured-check) of the bound Modules passes
 - WHEN the task level runs `concorde run implement --goal "<goal>"` in it
-- THEN the run computes the implement grant from the workspace's Specs and launches one worker through Workers
+- THEN the run computes the implement grant from the workspace's Specs and launches one worker through the worker harness
 - AND the audit is clean and every configured check passes
 - AND the result has status `ok`, the worker's result in `worker` and the grant, audit and checks in `host_evidence`
 - AND the result is printed and saved in the run's [trace node](../../glossary.json#concept.trace-node) in the [run store](../../glossary.json#concept.run-store) of the binding's workspace folder, with the worker run's node below it
@@ -29,7 +30,7 @@ an [Operation](../../glossary.json#concept.operation) runs its workers is in
 
 ### scenario.operations.worker-backend-configured — Workers run on pi, whatever the main session
 
-- GIVEN a Claude Code main session, pi installed, and a task worktree whose worker configuration gives `implement`'s worker a pi model and puts another Operation's worker on Claude Code
+- GIVEN a Claude Code main session, pi installed, and a task worktree whose worker configuration gives `implement`'s worker a pi model and puts another [Operation](../../glossary.json#concept.operation)'s worker on Claude Code
 - WHEN the task level runs `implement` and then that Operation in the task worktree
 - THEN the run launches `implement`'s worker with `pi -p` and the local id the model map gives that model on pi, under the same grant a Claude Code worker would get, and the run record and `worker-model` evidence name `pi` as Concorde's default [worker backend](../../glossary.json#concept.worker-backend)
 - AND it launches the other Operation's worker with `claude -p`, naming the entry of its worker id that chose it

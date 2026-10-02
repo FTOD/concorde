@@ -400,7 +400,7 @@ This illustrates [an Issue commit alone](requirements.md#req.issues.commit-alone
 
 - GIVEN a report without a `tier`, or with a tier that is none of the four
 - WHEN the store is asked to save it
-- THEN Spec core's typed-value check refuses it, naming the field `tier`
+- THEN the Kernel's typed-value check refuses it, naming the field `tier`
 - BUT no Issue is written
 
 This illustrates [required tiers](requirements.md#req.issues.tier-required).
@@ -434,7 +434,7 @@ This illustrates [required tiers](requirements.md#req.issues.tier-required).
 
 - GIVEN a report without a `severity`, or with a severity that is none of the four
 - WHEN the store is asked to save it
-- THEN Spec core's typed-value check refuses it, naming the field `severity`
+- THEN the Kernel's typed-value check refuses it, naming the field `severity`
 - BUT no Issue is written
 
 This illustrates [required severities](requirements.md#req.issues.severity-required).
@@ -523,7 +523,7 @@ This illustrates [status derived from history](requirements.md#req.issues.status
 
 - GIVEN an open Issue and its current revision
 - WHEN a disposition at that revision has an empty evidence list
-- THEN Spec core's [typed-value](../glossary.json#concept.typed-value) check refuses it with `invalid_field`, naming the disposition's `evidence` field
+- THEN the Kernel's [typed-value](../glossary.json#concept.typed-value) check refuses it with `invalid_field`, naming the disposition's `evidence` field
 - BUT the record is unchanged
 
 ### scenario.issues.store-self-duplicate — An Issue cannot be its own duplicate
@@ -539,7 +539,7 @@ This illustrates [status derived from history](requirements.md#req.issues.status
 
 - GIVEN a report with an unknown type, a blank title or a field the report contract does not define
 - WHEN the store is asked to save it
-- THEN Spec core's typed-value check refuses it with `invalid_field`, naming the field
+- THEN the Kernel's typed-value check refuses it with `invalid_field`, naming the field
 - BUT no Issue is written
 
 ### scenario.issues.store-report-inconsistent — A report that breaks an Issue rule is refused
@@ -553,14 +553,14 @@ This illustrates [status derived from history](requirements.md#req.issues.status
 
 - GIVEN a report whose evidence path is not a canonical project-relative POSIX path, such as `../outside`
 - WHEN the store is asked to save it
-- THEN Spec core's typed-value check refuses it with `invalid_field`, naming the evidence path's field
+- THEN the Kernel's typed-value check refuses it with `invalid_field`, naming the evidence path's field
 - BUT no Issue is written
 
 ### scenario.issues.store-symlinked-directory — An Issue directory that is a symbolic link is refused
 
 - GIVEN a project whose `.concorde/issues` is a symbolic link to another directory
 - WHEN the store is asked to save a valid report
-- THEN Spec core's path check refuses it with `invalid_field`, because symbolic links are forbidden
+- THEN the Kernel's path check refuses it with `invalid_field`, because symbolic links are forbidden
 - BUT nothing is written into the linked directory
 
 ### scenario.issues.store-corrupted-record — A record whose report no longer matches its digest is refused

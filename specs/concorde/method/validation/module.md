@@ -186,7 +186,9 @@ registry does not register is a structural blocking finding. At step 6, Check ex
 `inputs_changed`; any other error it raises for a Module's checks, such as a missing check input or
 an invalid check, is a blocking `check` finding naming the Modules whose checks could not run, and
 the other Modules' checks still run. Each of these keeps Check execution's own error link as its
-cause. Unlike an Operation, the command diagnoses the Specs itself, so
+cause. Since structural validation does not read checks files, which belong to Check execution,
+step 6 is also where a checks file whose input is missing or whose check is malformed is found:
+Check execution validates the checks files of the Modules it is asked to run before it runs them. Unlike an Operation, the command diagnoses the Specs itself, so
 the runner does not load them before the steps and these diagnoses always reach the caller as
 findings rather than as a refusal. Step 7 catches changes of the workspace during a check, which can
 take minutes.
@@ -215,8 +217,15 @@ bound-workspace fixture Delivery's tests share.
   Validation relies on the runner refusing a run without a sound binding before any step and on it
   leaving the Specs to the command's own diagnosis; it never reads a
   [task record](../../glossary.json#concept.task-record).
-- <a id="uses-commands"></a>**Commands** lists `task-validation` in its catalog, which is how
-  the runner finds this Module's definition by the command's name.
+- <a id="uses-commands"></a>**Commands**, Execution's execution-command framework, is what
+  `task-validation` plugs into: Method registers its definition there, which is how the runner finds
+  this Module's definition by the command's name.
+- <a id="uses-kernel"></a>The **Kernel** defines the
+  [workspace binding](../../glossary.json#concept.workspace-binding) whose branch, base commit and
+  Modules the steps read through the run context
+  ([contract](../../kernel/contracts.md#contract.kernel.workspace-binding)), and the
+  [workspace lock](../../glossary.json#concept.workspace-lock) the runner holds for the run; a
+  binding that breaks the contract is refused before any step.
 - <a id="uses-spec"></a>**Spec core** validates the Specs, answers through its impact indexes which
   Modules bind a path or own a document.
   Validation relies on the validator being deterministic and on loading refusing, not partially

@@ -104,6 +104,14 @@ The answers refer to that run's questions.
 
 `concorde workflow step` SHALL refuse a key already recorded for another [Operation](../glossary.json#concept.operation) or command, starting and recording nothing.
 
+### req.workflows.no-operation-knowledge — Workflows reads only the step output convention
+
+The step and report commands SHALL read of a run's output only its `workflow` object under the [step output convention](contracts.md#contract.workflows.step-output), passing its `data` to the script unchanged and uninterpreted.
+
+So no Operation or command is known to Workflows by name: a run declares its decision points,
+decisions, deviations, notes, whether it blocks the procedure, and the values its script reads, and a
+run whose output carries no `workflow` object declares none of them.
+
 ### req.workflows.no-task — Workflows knows no task
 
 No part of Workflows SHALL open, merge, close or escalate a task, or read or write a [task record](../glossary.json#concept.task-record) or a [decision log](../glossary.json#concept.decision-log).
@@ -128,11 +136,14 @@ In Concorde the [main agent](../glossary.json#concept.main-agent) settles the po
 
 A workflow in no-ask mode SHALL NOT end at a decision point.
 
-### req.workflows.no-ask-describe-continues — A failed description does not end a no-ask brownfield run
+### req.workflows.no-ask-describe-continues — A step the procedure goes past does not end a no-ask run
 
-A [brownfield workflow](../glossary.json#concept.brownfield-workflow) in no-ask mode SHALL NOT end at a `code_to_spec` step that did not end `ok`.
+A workflow in no-ask mode SHALL NOT end at a step that did not end `ok` when its procedure goes past such a step.
 
-Task validation then decides whether the workspace can still be delivered.
+Which steps a procedure goes past is the procedure's: the
+[brownfield workflow](../glossary.json#concept.brownfield-workflow), for instance, goes past a
+`code_to_spec` step of one [Module](../glossary.json#concept.module) that did not end `ok`, and lets task validation decide whether the
+workspace can still be delivered. The step is still reported as a problem with its error chain.
 
 ## Results
 
@@ -142,7 +153,14 @@ Task validation then decides whether the workspace can still be delivered.
 
 ### req.workflows.complete-report — Nothing is left out of the report
 
-The workflow result SHALL list every recorded step, every decision, [open question](../glossary.json#concept.open-question) and deviation of every finished current step as its run reported it, every Spec review's verdict and findings, every check the survey proposed, and every current step that did not end `ok` as a problem with its [error chain](../glossary.json#concept.error-chain) unchanged.
+The workflow result SHALL list every recorded step, every decision, decision point, deviation and note every finished current step declared under the step output convention, as its run declared it, and every current step that did not end `ok` as a problem with its [error chain](../glossary.json#concept.error-chain) unchanged.
+
+### req.workflows.last-step — Only the last step makes a workflow ok
+
+A workflow result SHALL have status `ok` only when the last step its workflow names ended `ok`.
+
+The part that owns a procedure names its last step when it registers the workflow, and the script's
+`meta` carries the same name; Workflows knows no step by name otherwise.
 
 ### req.workflows.chain-on-top — The workflow adds its own link
 
@@ -178,12 +196,33 @@ assembled from the recorded runs.
 
 ### req.workflows.steps-through-server — Claude Code steps start from the project MCP server
 
-The Claude Code step function SHALL start and await every step through the
-[project MCP server](../glossary.json#concept.project-mcp-server)'s `workflow_step` tool, never
-through a Bash command.
+The Claude Code step function SHALL start and await every step through the `workflow_step` tool the workflow part registers with the [project MCP server](../glossary.json#concept.project-mcp-server), never through a Bash command.
 
 A step may outlast many relays, and a run anchored in a relaying agent's Bash call dies with it
 ([Steps in Claude Code](module.md#steps-in-claude-code)).
+
+### req.workflows.own-tools — The workflow part registers its own tools
+
+The workflow part SHALL register its tools `workflow_step` and `workflow_report` with the project MCP server through its [part registration](../glossary.json#concept.part-registration), as the only part that provides them.
+
+Where the workflow part is not installed, neither tool exists.
+
+### req.workflows.tool-step-command — `workflow_step` runs the worktree's own step command
+
+`workflow_step` SHALL run `concorde workflow step --json <request> --wait <wait>` with the `concorde` of the session's worktree, from that worktree's root, as a process the project MCP server started, and answer with the step outcome it printed.
+
+The command is a process of the server's, so the
+[detached run](../glossary.json#concept.detached-run) it starts depends on neither the relaying
+agent's turn nor one of the session's background commands, and lives until its run ends
+([contracts](contracts.md#starting-a-workflow-step)).
+
+### req.workflows.tool-bound-only — `workflow_step` works only in a bound workspace
+
+`workflow_step` SHALL refuse with `unbound_worktree`, running nothing, when the session's worktree has no usable [workspace binding](../glossary.json#concept.workspace-binding).
+
+### req.workflows.tool-threads — A waiting step holds up no other call
+
+`workflow_step` SHALL be answered on a thread of its own, so that the project MCP server answers the session's other calls while a step call waits.
 
 ### req.workflows.script-repeats — The script, not a model, waits for a run
 
@@ -203,7 +242,7 @@ The Claude Code step function SHALL report a step lost after three outcomes in a
 
 ### req.workflows.step-agent-relays — Step agents only relay
 
-A step agent SHALL call nothing but the project MCP server's `workflow_step` tool, or run nothing but `concorde workflow report`.
+A step agent SHALL call nothing but the `workflow_step` tool, or run nothing but `concorde workflow report`.
 
 It does not perform the worker's job or bypass the run's grant, audit and result handling.
 

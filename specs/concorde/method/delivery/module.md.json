@@ -20,12 +20,9 @@
         "meaning": "#uses-execution",
         "relies_on": [
           "concept.run-result",
-          "concept.workspace-binding",
-          "concept.workspace-lock",
           "req.execution.workspace-lock",
           "req.execution.workspace-busy",
-          "contract.execution.run-result",
-          "contract.kernel.workspace-binding"
+          "contract.execution.run-result"
         ]
       },
       {
@@ -42,6 +39,16 @@
       {
         "target": "module.spec",
         "meaning": "#uses-spec"
+      },
+      {
+        "target": "module.kernel",
+        "meaning": "#uses-kernel",
+        "relies_on": [
+          "concept.workspace-binding",
+          "concept.workspace-lock",
+          "contract.kernel.workspace-binding",
+          "concept.delivery-commit"
+        ]
       }
     ],
     "includes": [

@@ -227,7 +227,10 @@ meaning the file must still be absent), returning `invalid` and asking for initi
 project's Spec configuration isn't readable.
 
 Distribution calls the scaffold and packages it — `distribution -> views` above is its own `uses`,
-declared there. Its CLI dispatches `concorde docsite` to the scaffold, which reads templates from
+declared there as an [optional integration](../../glossary.json#concept.optional-integration) with
+the spec part. The spec part registers `concorde
+docsite` and the docsite template as its install contribution, and Distribution's command
+dispatches `docsite` to the scaffold, which reads templates from
 the installed package, returning `invalid` (asking for a reinstall) if `concorde.json`, the
 descriptor of the package, omits `docsite` as a package root
 or the template is missing or unsafe; its installer ships the template files by calling the

@@ -2,21 +2,30 @@
 
 ## Purpose
 
-Workflows is level 3 of Concorde's [levels of work](../module.md#the-levels-of-work), the top of
-[Execution](../execution/module.md): a workflow orders the runs of one bound workspace for a known procedure,
-such as describing existing code in Specs, and handles their results and
-[decision points](../glossary.json#concept.decision-point). Each workflow's procedure is written
-once and the build renders it into a Claude Code workflow. Whoever works
-a workspace, in Concorde the task level inside a task worktree, starts the workflow there; it runs
-Operations and execution commands one at a time, records its steps in its own
-[workflow record](../glossary.json#concept.workflow-record), the
+Workflows is the workflow [part](../glossary.json#concept.part) and level 3 of Concorde's
+[levels of work](../module.md#the-levels-of-work), directly above the runs of
+[Execution](../execution/module.md): a workflow orders the runs of one bound workspace for a known
+procedure, such as describing existing code in Specs, and handles their results and the
+[decision points](../glossary.json#concept.decision-point) their outputs declare. Each workflow's
+procedure is written once, by the part that owns it, and the build renders it into a Claude Code
+workflow. Whoever works a workspace, in Concorde the task level inside a task worktree, starts the
+workflow there; it runs Operations and execution commands one at a time, records its steps in its
+own [workflow record](../glossary.json#concept.workflow-record), the
 [trace node](../glossary.json#concept.trace-node) of the workflow in the workspace folder, with
 the runs of its steps nested inside it, and returns one
-[workflow result](../glossary.json#concept.workflow-result) with every step, decision,
-[open question](../glossary.json#concept.open-question) and problem, preserving each problem's
-error chain. In interactive mode it stops where a decision is needed, so that whoever started it
-can have it settled; in no-ask mode it follows
-the procedure's continuation rules and reports the decisions at the end.
+[workflow result](../glossary.json#concept.workflow-result) with every step, decision, decision
+point, deviation, note and problem, preserving each problem's error chain. In interactive mode it
+stops where a decision is needed, so that whoever started it can have it settled; in no-ask mode it
+follows the procedure's continuation rules and reports the decisions at the end.
+
+A step is only ever a Concorde run, so the workflow part depends on the execution part and the
+kernel alone. It knows no particular Operation or command: what a run wants a workflow to know, its
+decision points, decisions, deviations, notes and the values its script reads, the run declares in
+its output under Workflows' [step output convention](contracts.md#contract.workflows.step-output),
+and which steps a procedure runs, in which order and which step is its last, is the procedure's.
+In Concorde the procedures and the Operations that fill the convention are
+[Method](../method/module.md)'s, such as its
+[brownfield workflow](../glossary.json#concept.brownfield-workflow).
 
 Workflows adds orchestration, not authority. It knows no task: it never opens, merges or closes one,
 never reads or writes a [task record](../glossary.json#concept.task-record) or a
@@ -47,12 +56,17 @@ the runs in that workspace proceed.
 <a id="concept.workflow-mode"></a><a id="concept.decision-point"></a>
 
 The **[workflow mode](../glossary.json#concept.workflow-mode)** decides what happens at a
-**decision point**, an item in a run's output that is not the worker's to settle but is settled
-above the task: every [open question](../glossary.json#concept.open-question), because the
-worker could not tell what behaviour is intended, and every decision of a survey that
-the worker took itself rather than following an answer, because how a project splits into Modules
-shapes all later work. A code_to_spec decision, such as a concept's name, is ordinary: the workflow
-never stops for it and reports it. Workflows does not say who settles a point: in Concorde the
+**decision point**, an item a run's output declares, under the
+[step output convention](contracts.md#contract.workflows.step-output), as not the run's to settle
+but to be settled above the task: a decision of kind `decision`, a choice the run took or proposes,
+or of kind `question`, an [open question](../glossary.json#concept.open-question) it could not
+settle. Which of its items are decision points is the producing Operation's own rule, which its
+[Spec](../glossary.json#concept.spec) states: Method's survey, for instance, declares every
+decision it took itself, because how a project splits into Modules shapes all later
+work, and every open question, while a `code_to_spec` decision such as a concept's name is ordinary,
+only reported among the run's decisions, and the workflow never stops for it. Workflows interprets
+no point; it only counts those an answer has not settled. Workflows does not say who settles a
+point: in Concorde the
 [main agent](../glossary.json#concept.main-agent) settles those its authority covers and puts to
 the developer those with a major impact, as its guidance's decision policy says, and Workflows
 counts an answer the same whoever gave it.
@@ -67,11 +81,11 @@ counts an answer the same whoever gave it.
   starts the same workflow again. Steps that finished return
   their recorded runs immediately, an answered or retried step runs again, and the workflow
   continues.
-- **No-ask.** The workflow never stops for a decision point. It keeps each worker's decision, leaves
-  each open question unanswered and unwritten as a promise, goes on past a
-  [Module](../glossary.json#concept.module) whose description did not end `ok`, and reports
-  everything once the procedure has ended. It stops early only where the procedure cannot go on at
-  all, such as a failed survey.
+- **No-ask.** The workflow never stops for a decision point. It keeps each run's decision, leaves
+  each question unanswered and unwritten as a promise, goes on past every step its procedure lets it
+  go past when it did not end `ok`, such as one description among several, and reports everything
+  once the procedure has ended. It stops early only where its procedure cannot go on at all, which
+  the procedure says, such as a failed survey in the brownfield workflow.
 
 ### Steps and their keys
 
@@ -80,8 +94,8 @@ counts an answer the same whoever gave it.
 A **[workflow step](../glossary.json#concept.workflow-step)** is one
 [run](../glossary.json#concept.run), of an [Operation](../glossary.json#concept.operation) or
 of an [execution command](../glossary.json#concept.execution-command). The script asks for it by
-a base **[step key](../glossary.json#concept.step-key)**, such as `survey` or
-`describe:module.checkout`, and `concorde workflow step` starts its run or, for a key it has seen
+a base **[step key](../glossary.json#concept.step-key)**, such as the brownfield workflow's
+`survey` or `describe:module.checkout`, and `concorde workflow step` starts its run or, for a key it has seen
 before, returns the recorded run. The step's key is the base key, followed by `#` and the generation
 label when a restart names one, and with answers by `@` and a digest of those answers, so a
 restarted or answered rerun is a new step while the same label and answers find the same step
@@ -119,18 +133,19 @@ from what a step agent relayed. Its status is, in this order of precedence:
 
 - `running` when a current step's run is still running, for a report taken before the end;
 - `failed` when the procedure stopped at a step that ended `failed`, was refused or was lost;
-- `blocked` when it stopped at a step that ended `blocked`, or at a task validation that was not
-  ready;
+- `blocked` when it stopped at a step that ended `blocked`, or at a step whose output declared it
+  blocking, such as a task validation that found the workspace not ready;
 - `awaiting_decision` when an interactive run ended at decision points;
-- `ok` when the procedure's last step, `delivery` in the brownfield workflow, ended `ok`, even if
-  earlier steps reported problems the procedure could go past;
+- `ok` when the procedure's last step, which the workflow names, such as `delivery` in the
+  brownfield workflow, ended `ok`, even if earlier steps reported problems the procedure could go
+  past;
 - `failed`, with the code `incomplete`, when the recorded steps end before the procedure's last
   step without any of the stops above, such as a report taken after a script ended early.
 
-Every result lists, from the current steps, every decision and open question as the run reported
-it, with its step and run; every deviation; every Spec review's verdict and findings; the checks
-the survey proposed, for the developer to configure the ones they accept; and each step that did
-not end `ok` as a problem with its error chain unchanged. Superseded steps are listed apart, with
+Every result lists, from the current steps, every decision, decision point, deviation and note the
+runs declared, as they declared them, with its step and run, such as a review's verdict or the
+checks a survey proposed for the developer to configure; and each step that did not end `ok` as a
+problem with its error chain unchanged. Superseded steps are listed apart, with
 their runs, and contribute nothing else. When the status is not `ok`, `error` is the workflow's own
 [error chain](../glossary.json#concept.error-chain) link, level `workflow`, whose causes
 are the errors of the steps that stopped it, unchanged; for `awaiting_decision` its evidence names
@@ -149,9 +164,13 @@ Anyone can run the report command in the workspace again at any time.
 
 A **[workflow script](../glossary.json#concept.workflow-script)** holds a workflow's procedure
 once, in plain JavaScript without asynchronous helper functions, kept apart from the step adapter.
-The build wraps it with a `meta` block and the Claude Code step adapter, whose step function's
-**[step agent](../glossary.json#concept.step-agent)** is a subagent that calls the
-[project MCP server](../glossary.json#concept.project-mcp-server)'s tool `workflow_step` once
+The part that owns a procedure contributes its script, registering the workflow's name, description
+and last step with Workflows' catalog; the script reads from each step outcome the `data` its runs
+handed it, such as the Modules a scaffold created, and Workflows never reads those values. The build
+wraps it with a `meta` block naming its last step and the Claude Code step adapter, Workflows' own,
+whose step function's **[step agent](../glossary.json#concept.step-agent)** is a subagent that calls
+the tool `workflow_step`, which the workflow part registers with the
+[project MCP server](../glossary.json#concept.project-mcp-server), once
 with the step request, waiting at most 100 seconds, and returns the step outcome it answered, while
 the step function itself asks again as long as the run is still running and treats an outcome that
 names another step or no real run as no answer. The server runs the step command as a process of its
@@ -176,7 +195,6 @@ record: Workflow record
 agent: Step agent
 script: Workflow script
 result: Workflow result
-brownfield: Brownfield workflow
 workflow -> step: runs
 workflow -> mode: runs in
 step -> key: is named by
@@ -185,13 +203,13 @@ agent -> step: relays
 script -> workflow: defines
 workflow -> result: ends with
 mode -> point: decides what happens at
-brownfield -> workflow: is a
 ```
 
 ## Overview
 
-Three pictures show Workflows: its place between the task level and the runs, how one step is
-carried from the script to a run and back, and the brownfield procedure.
+Two pictures show Workflows: its place between the task level and the runs, and how one step is
+carried from the script to a run and back. [Method](../method/brownfield.md) shows the procedure of
+its brownfield workflow.
 
 ### Its place in the levels of work
 
@@ -225,14 +243,14 @@ execution: Execution
 workflows.commands -> execution: starts runs through
 ```
 
-The script never runs a command itself; its step agents relay each step, through the project MCP
-server, to the workflow commands, which alone start runs, keep the workflow record and read the run
+The script never runs a command itself; its step agents relay each step, through the `workflow_step`
+tool the workflow part registers with the project MCP server, to the workflow commands, which alone start runs, keep the workflow record and read the run
 results.
 
 ### One step, from the script to a run and back
 
 A step passes through four participants below the task level. The script asks for a key; a step
-agent relays it once, through the project MCP server's `workflow_step`, which runs the step command
+agent relays it once, through the `workflow_step` tool of the project MCP server, which runs the step command
 as a process of the server, waiting at most 100 seconds; the workflow commands start the
 run only when the key is not yet recorded and otherwise wait for the recorded one; the Execution
 runner runs it and saves its result. While the run is still running the script asks again with the
@@ -266,7 +284,7 @@ agent: "Step agent" {
   grid-columns: 1
   vertical-gap: 40
   g0: "" {style.opacity: 0}
-  relay: "Call workflow_step of the\nproject MCP server once,\nwaiting at most 100 s,\nrelay what it answered"
+  relay: "Call the workflow_step\ntool once,\nwaiting at most 100 s,\nrelay what it answered"
   g1: "" {style.opacity: 0}
   g2: "" {style.opacity: 0}
   g3: "" {style.opacity: 0}
@@ -342,9 +360,10 @@ step the workflow recorded from 1 and the key written with every character other
 letter, digit, `.` or `-` as `_`, and starts the run detached with the workspace's own `concorde`,
 placing the run's node inside the step's with `--trace-at <step node>/run`:
 `concorde run <operation> … --detach` for an Operation and `concorde <command> … --detach` for an
-execution command such as `task-validation`, `delivery` or `scaffold`. For an answered step it adds
+execution command such as `task-validation`, `delivery` or `scaffold`, telling the two apart by
+Execution's catalogs of the installed parts' definitions. For an answered step it adds
 `--answers` with the answers written next to the workflow record and `--input` naming the latest
-`ok` run of the same base key, whose questions the answers settle; then it records the key and run
+`ok` run of the same base key, whose decision points the answers settle; then it records the key and run
 in the workflow's node and writes the step's node.
 It waits for the result at most `--wait` seconds (default 540). Asked again, it finds the recorded
 run and only waits for it. `--retry` starts a new run for a key whose recorded run did not end `ok`.
@@ -431,11 +450,11 @@ relaying agent's call lives only as long as that call: an end-to-end run on 2026
 survey step this way, `step_lost` over `host_ended` with nothing in the runner's output, while the
 worker was still reading, because a sandboxed Bash call's PID namespace ends with the call and
 takes every process it started with it ([Execution](../execution/module.md#detached-namespace)). So a step
-agent does not run the step command with Bash: it calls the
-[project MCP server](../glossary.json#concept.project-mcp-server)'s tool `workflow_step` with the
+agent does not run the step command with Bash: it calls the tool `workflow_step`, which the workflow
+part registers with the [project MCP server](../glossary.json#concept.project-mcp-server), with the
 step request as an object, and the server, a process of the session beside its tools, runs the step
 command of the session's worktree, through the fresh process with which it answers each call
-([Current code](../coordination/main-session/module.md#current-code)). The run it starts lives
+([Distribution](../distribution/module.md)). The run it starts lives
 until it ends, whatever becomes of the calls that asked for it, of the session or of the server;
 later calls for the same key only wait for it. The request travels as an object, with nothing quoted for a
 shell. The report is still relayed with Bash: `concorde workflow report` starts no run and returns
@@ -462,9 +481,9 @@ between.
 
 ### Why Workflows keeps its own record
 
-Workflows keeps its own record rather than writing into the task record, because the execution
-core knows no task: a workflow runs in any bound workspace, and the facts it records, which steps
-ran with which runs, are Execution's to keep, around the runs they name. A step nests its run
+Workflows keeps its own record rather than writing into the task record, because nothing below the
+task level knows a task: a workflow runs in any bound workspace, and the facts it records, which
+steps ran with which runs, are the workflow's to keep, around the runs they name. A step nests its run
 because it gives the run its place before the run starts, as [Tracing](../kernel/tracing/module.md)
 requires of every parent, so a workflow's trace holds its runs without any run knowing it is a
 step. The task level reads the
@@ -495,14 +514,21 @@ workflows: Workflows {
 <a id="realization.workflows.commands"></a>
 
 The **[Workflow](../glossary.json#concept.workflow) commands** realization holds the workflow
-catalog (`catalog.py`: each workflow's name, description and script), the workflow record with its
-workflow lock, answers, saved reports and step nodes (`store.py`), the `concorde workflow step` and `report`
-commands and the step outcome, step request and workflow result schemas.
+catalog (`catalog.py`: each workflow's name, description, script and last step, as the part that
+owns the procedure registers them), the workflow record with its workflow lock, answers, saved
+reports and step nodes (`store.py`), the `concorde workflow step` and `report` commands, which the
+workflow part registers with the `concorde` command, and the step outcome, step request, step output
+and workflow result schemas. The code of the `workflow_step` and `workflow_report` tools lies today
+with the project MCP server's own code, which [Main session](../coordination/main-session/module.md)
+binds, until the code task that follows this Spec moves it into the workflow part's package and
+registers it from there.
 
 <a id="realization.workflows.scripts"></a>
 
-The **Workflow scripts** realization holds each workflow's procedure (`brownfield.js`) and the Claude
-Code step adapter (`claude.js`) the build wraps it with.
+The **Workflow scripts** realization holds the Claude Code step adapter (`claude.js`) the build
+wraps every procedure with. It also binds, for now, the one procedure Concorde has,
+`brownfield.js`, which is Method's [brownfield workflow](../glossary.json#concept.brownfield-workflow)
+script and moves into Method's package with the code task that follows this Spec.
 
 <a id="realization.workflows.tests"></a>
 
@@ -548,62 +574,38 @@ message or `detach_failed` link as the cause; a run with no result and no living
 lost, with the end of the runner's output; a run that the runner refused, such as one for a
 workspace that was busy after all, is an ordinary finished run whose result carries that refusal.
 
-<a id="uses-main-session"></a>
+<a id="uses-kernel"></a>
 
-**Main session** provides the [project MCP server](../glossary.json#concept.project-mcp-server),
-whose `workflow_step` tool the Claude Code step agents call. Workflows relies on it running the
-step command of the session's worktree as a process of the server, so that the run outlives the
-relay, and answering with the step outcome that command printed, or with its refusal unchanged; it
-relies on nothing else of the server.
-
-<a id="uses-operations"></a>
-
-**Operations** names the jobs that involve a model. A workflow's steps name Operations from the
-[Operation catalog](../glossary.json#concept.operation-catalog), such as `survey`,
-`code_to_spec` and `spec_review`, with their arguments; Workflows relies on each Operation
-returning its output under its catalog entry's contract, which the runner checks before it saves
-the result, and never starting another Operation. It never looks inside an Operation. From a
-`spec_review` result it copies the output's `verdict` and its `modules`, each reviewed Module's
-outcome with its findings, unchanged into the workflow result; it neither judges nor repairs them.
+The **Kernel** gives every step the workspace it runs in: the step and report commands read the
+[workspace binding](../glossary.json#concept.workspace-binding) of the worktree they start in, as
+the [binding contract](../kernel/contracts.md#contract.kernel.workspace-binding) defines it, and
+find there the workspace folder of the workflow's node and the `.concorde` of its locks. Workflows
+relies on the binding being refused rather than trusted when it breaks its contract or names
+another root, and on whoever holds the [workspace lock](../glossary.json#concept.workspace-lock)
+doing one thing at a time in the workspace, which is why a step waits for that lock before it
+starts its run.
 
 <a id="uses-commands"></a>
 
-**Commands** names the deterministic runs. A step names an
-[execution command](../glossary.json#concept.execution-command) of its catalog, such
-as `task-validation` or `scaffold`, by the command's own name, and the step command starts it as
-`concorde <command>` instead of `concorde run`; Workflows relies on the catalog to tell the two
-kinds apart and treats their results alike.
+**Operations** and **Commands** name what a step may run. A step names an
+[Operation](../glossary.json#concept.operation) of the
+[Operation catalog](../glossary.json#concept.operation-catalog), started as `concorde run`, or an
+[execution command](../glossary.json#concept.execution-command) of the command catalog, started as
+`concorde <command>`; both catalogs list the definitions the installed parts register, and
+Workflows relies on them only to tell the two kinds apart, treating their results alike. It never
+looks inside an Operation or command: what it reads of a finished run's output is the `workflow`
+object of the [step output convention](contracts.md#contract.workflows.step-output), and a run
+whose output declares nothing there simply has no decision point, decision, deviation or note.
+Answers reach a run through `--answers`, which a run that declares decision points takes; what an
+answer means is the run's.
 
-<a id="uses-validation"></a>
+<a id="uses-distribution"></a>
 
-**Validation** provides the execution command `task-validation`. A workflow runs it before delivery;
-the step outcome's `ready` is the
-[readiness](../method/validation/contracts.md#contract.validation.readiness)'s `ready`, and the
-procedure delivers only when it is true. Workflows relies on the readiness saying whether the
-workspace is ready and never decides readiness itself.
-
-<a id="uses-delivery"></a>
-
-**Delivery** provides the execution command `delivery`, a workflow's last step, which decides the
-readiness again and commits the workspace. The brownfield workflow passes `--adoption`, because an
-adoption describes code that already exists and adds no test, so a scenario it writes need not
-have a new verifying test to be delivered. Workflows relies on delivery refusing a workspace that is
-not ready rather than committing it, and leaves the merge to the task level.
-
-<a id="uses-adoption"></a>
-
-**Adoption** provides the survey and code_to_spec steps and defines the decisions, open
-questions, answers and deviations that the brownfield workflow counts and reports. Workflows reads
-them from the run results by their [contracts](../method/adoption/contracts.md) and passes
-answers back through `--answers`; it never interprets what a decision means. It relies on those
-contracts to tell a survey decision from a code_to_spec decision and an open question from a
-settled one, since that is what makes a decision point; an output that does not follow them is the
-run's failure and ends the step as its result says.
-
-<a id="uses-scaffold"></a>
-
-**Scaffold** provides the scaffold step between them. Its
-[scaffold record](../method/scaffold/contracts.md#contract.scaffold.record) names the Modules it
-created, and the step outcome lists them with the `uses` the survey proposed among them; Workflows
-relies on the record listing every Module the scaffold created, which the brownfield workflow then
-describes one by one.
+**Distribution** composes the [project MCP server](../glossary.json#concept.project-mcp-server)
+from the [part registrations](../glossary.json#concept.part-registration) of the installed parts,
+and the workflow part registers its tools `workflow_step` and `workflow_report` there, and its
+`workflow` commands with the `concorde` command. Workflows relies on the server running each call of
+its tools as a process of its own of the current Concorde, outside the calling session's Bash, so
+that the run a step starts outlives the relay, and returning the tool's answer or refusal
+unchanged; it relies on nothing else of the server. The tools' exact shapes are in the
+[contracts](contracts.md#mcp-tools).

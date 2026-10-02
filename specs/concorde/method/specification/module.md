@@ -29,8 +29,8 @@ The result's facts come from the Operation's own diff; the worker's account stay
 
 The Operation is worker-backed, run with [task type](../../glossary.json#concept.task-type)
 `specify`: the bound Modules' own documents (reading files and metadata) and the project glossary
-are writable — the write audit reports any glossary entry changed whose owner is not a bound
-Module — other Modules' selected documents stay read-only, and implementation files show by name
+are writable — the glossary ownership audit of Method's round validation reports any glossary entry
+changed whose owner is not a bound Module — other Modules' selected documents stay read-only, and implementation files show by name
 only. A worker may bind to a realization only a file that exists: a new file is created and bound by
 the task level before the run that fills it, never declared ahead of it.
 
@@ -40,7 +40,9 @@ Validation is structural: the same [checks](../../glossary.json#concept.structur
 `concorde spec-validation` runs. The Operation validates the workspace's Specs before the worker
 starts, as a baseline, and compares every later validation with it. Comparing with the baseline lets
 `specify` repair an already-broken worktree — pre-existing errors do not stop the run, only ones the
-change introduced. After each round that the worker ended `ok` with a clean audit, the Operation
+change introduced. This comparison is the step's own validation in the round validation the
+Operation hands the worker harness ([standard worker sequence](../../glossary.json#concept.standard-worker-sequence)):
+after each round that the worker ended `ok` with a clean audit, the worker harness calls it and
 resumes the worker, at most twice per worker launch, with every error its change introduced, so the
 worker repairs the Specs it broke itself. Only errors left after the last round stop the run for a
 decision at the task level.
@@ -207,8 +209,9 @@ schema in `src/concorde/specification/` (`operation.py` declares `SPECIFY`), pro
 
 <a id="uses-operations"></a>
 
-**Operations** lists `specify` in its catalog as an Operation that needs a bound workspace and
-writes the bound Modules' Specs, and names this Module as its provider; Specification never calls
+**Operations**, Execution's Operation framework, is what `specify` plugs into: Method registers its
+definition as an Operation that needs a bound workspace and writes the bound Modules' Specs, naming
+this Module as its provider ([Method](../module.md#the-operations-and-commands-it-provides)); Specification never calls
 another Operation or command, not even `task-validation` — its own validation is one of its steps.
 
 <a id="uses-execution"></a>
@@ -223,9 +226,11 @@ compare it with the baseline.
 
 <a id="uses-workers"></a>
 
-**Workers** turns the frozen grant into settings, launches the worker with this Module's brief,
-collects its worker result, audits the worktree and writes the run record; any change beyond the
-bound Modules' documents fails the run.
+**Workers**, in the worker harness, receives the frozen grant as data and this Module's round
+validation through Method's standard worker sequence, turns the grant into settings, launches the
+worker with this Module's instructions, collects its worker result, audits the worktree, calls the
+round validation after each clean round and writes the run record; any change beyond the bound
+Modules' documents fails the run.
 
 <a id="uses-spec"></a>
 

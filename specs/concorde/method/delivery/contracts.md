@@ -21,13 +21,9 @@ task; when every step was committed before, it changes nothing and is still made
 the delivery.
 
 The [delivery commits](../../glossary.json#concept.delivery-commit) are the only record of a
-delivery. A commit is a delivery commit of a workspace when it lies on the first-parent history of
-the branch since the base commit and its subject is exactly `concorde: deliver <workspace>`.
-Delivery reads its earlier deliveries this way, and so may anyone who needs to know whether and how
-often a workspace was delivered.
-
-A delivery commit **verifies** when it has exactly one parent, as every commit Delivery creates has.
-Delivery reports a delivery commit it finds at the branch head only when it verifies and the
+delivery. Which commit is a delivery commit of a workspace, and when one verifies, is the Kernel's
+convention ([Kernel contracts](../../kernel/contracts.md#delivery-commit)): Delivery reads its
+earlier deliveries by that rule, and every commit it creates has exactly one parent. Delivery reports a delivery commit it finds at the branch head only when it verifies and the
 workspace it holds is ready again, as a readiness the same run decided shows. A delivery commit
 Delivery creates verifies further when its only parent is the head it validated and its tree is the
 tree `git write-tree` recorded from the index after staging, so that no commit hook changed what was

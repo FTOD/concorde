@@ -2,15 +2,18 @@
 
 ## Purpose
 
-Check execution is a deterministic service: it runs a project's
+Check execution is the deterministic service of the execution part that runs a project's
 [configured checks](../../glossary.json#concept.configured-check), such as a test suite or linter,
-and returns their status and logs without model reasoning. It is called by the Workers host code
-between rounds, directly by Operations such as testing and code review, and by the
+and returns their status and logs without model reasoning. In Concorde it is called by Method: by
+the round validations its Operations give the worker harness between a worker's rounds, directly by
+Operations such as testing and code review, and by the
 [execution commands](../../glossary.json#concept.execution-command) `task-validation` and
 `delivery`. Checks read the worktree but cannot directly change its files; the boundary restricts
 filesystem writes only, not reads, network or credentials. The service records which inputs were
 checked and refuses a result if they differ after the run from before it. It never decides whether
-a passing check means correct code or whether a workspace is ready to deliver.
+a passing check means correct code or whether a workspace is ready to deliver, and it reads no
+[Spec](../../glossary.json#concept.spec): which Modules' checks run, which files a Module's result
+depends on and which tests a selective check runs are its caller's to say.
 
 ## Core concepts
 
@@ -39,12 +42,16 @@ A **configured check** is declared in its Module's own checks file,
 
 One file per Module keeps parallel changes to different Modules' checks apart, and the files stay
 under `.concorde/` with the project configuration rather than beside the Module: a check command is
-trusted host input, which the work it verifies must not be able to rewrite.
+trusted host input, which the work it verifies must not be able to rewrite. The checks files are
+Check execution's own format ([checks files](service.md#checks-files)), which it validates itself;
+the Module identity a file is named after is a label, so a project checks code without the spec part
+installed.
 
-The check service is called with a worktree, the Modules to run — or changed paths mapped to Modules
-via [boundary sets](../../glossary.json#concept.boundary-set) — and a log directory: for each
-[Module](../../glossary.json#concept.module) it digests the relevant input, runs each check in the
-boundary, saves logs, and returns one **check result** per check. A digest mismatch after the run
+The check service is called with a worktree, the Modules to run, the files each Module's result
+depends on and a log directory; in Concorde, Method's steps select the Modules and name their
+implementation files through the Spec tooling. For each [Module](../../glossary.json#concept.module)
+it digests the relevant input, runs each check in the boundary, saves logs, and returns one
+**check result** per check. A digest mismatch after the run
 fails with `stale_evidence`, because the result would vouch for input that changed; a stored result
 stays valid only while a fresh measurement matches it. Exact declaration and records:
 [the check service](service.md).
@@ -78,52 +85,45 @@ does.
 ### Its place in the levels of work
 
 Check execution is no level of the [levels of work](../../module.md#the-levels-of-work): it is a
-service the runs call in-process, like Spec core, and it cannot itself be a run, since the runs that
-call it hold their workspace's lock while it works. Only programs call it, never a model: runs at
-level 4, in steps of their own — the [Operation](../../glossary.json#concept.operation) providers'
-steps and the steps of the execution commands `task-validation` and `delivery`, which are
-Validation's — and the Workers host code, which manages a worker run on behalf of the Operation that
-launched it, between the worker's rounds. It calls nothing above it and starts no worker, run or
-agent.
+service the runs call in-process, and it cannot itself be a run, since the runs that call it hold
+their workspace's lock while it works. Only programs call it, never a model: the steps of runs at
+level 4, and the round validation a run's step hands the worker harness, which the harness calls
+between a worker's rounds. It calls nothing above it and starts no worker, run or agent.
 
-```d2
-workers: Workers
-operations: Operations {
-  implementation: Implementation
-  codereview: Code review
-  adoption: Adoption
+```d2 illustrative
+method: Method {
+  validation: "Round validations of\nworker-backed steps"
+  ops: "Steps of test, code_review,\nsurvey and code_to_spec"
+  readiness: "Validation's steps, in\ntask-validation and delivery"
 }
-validation: Validation
+harness: Worker harness
 checks: Check execution
-workers -> checks
-operations.implementation -> checks
-operations.codereview -> checks
-operations.adoption -> checks
-validation -> checks
+harness -> method.validation: "calls after\neach clean round"
+method.validation -> checks
+method.ops -> checks
+method.readiness -> checks
 ```
 
-Workers, Validation and the Operation providers Implementation (for its `test` Operation), Code
-review and Adoption (which maps changed paths to Modules with it) use this Module; it knows none of
-them. They rely on the [check result](../../glossary.json#concept.check-result), the
-stale-measurement rule, and the boundary refusing to run rather than running a check unconfined.
-Every call returns to the caller's step: the check results go up as that caller's evidence, and a
-failure, such as `stale_evidence` or a boundary that cannot be established, goes up as this
-Module's own error link, made by `service_error` of [the check service](service.md), which the
-caller keeps as a cause under its link. The check result is
-owned here, next to the runner that produces it, so Workers, Validation and Delivery consume one
-record and never run checks another way. Every check it runs is a [trace node](../../glossary.json#concept.trace-node) with its log,
-placed only in the directory the caller names, the `checks/` of the calling run's or worker round's
-node in the [run store](../../glossary.json#concept.run-store). This Module hands a check's output to
-no worker itself: Workers puts the bounded tail of a failed check's log into a
-[resume round](../../glossary.json#concept.resume-round), and the `test` and `code_review`
-Operations, consumers of their own, make the full logs of the checks they ran readable to their
-workers as task material.
+Check execution knows none of its callers. They rely on the
+[check result](../../glossary.json#concept.check-result), the stale-measurement rule, and the
+boundary refusing to run rather than running a check unconfined. Every call returns to the caller's
+step: the check results go up as that caller's evidence, and a failure, such as `stale_evidence` or
+a boundary that cannot be established, goes up as this Module's own error link, made by
+`service_error` of [the check service](service.md), which the caller keeps as a cause under its
+link. The check result is owned here, next to the runner that produces it, so every caller consumes
+one record and never runs checks another way. Every check it runs is a
+[trace node](../../glossary.json#concept.trace-node) with its log, placed only in the directory the
+caller names, the `checks/` of the calling run's or worker round's node in the
+[run store](../../glossary.json#concept.run-store). This Module hands a check's output to no worker
+itself: a round validation puts the bounded tail of a failed check's log into what it asks the
+worker to repair, and the `test` and `code_review` Operations, consumers of their own, make the full
+logs of the checks they ran readable to their workers as task material.
 
 The calling code, not an AI worker, decides when to run checks:
 
-| Caller | Use of the result |
+| Caller, in Concorde | Use of the result |
 | --- | --- |
-| Workers host code | After a clean audit, record the checks and pass failures to a worker's next round when allowed |
+| The round validation of a worker-backed step | After a clean audit, record the checks and pass failures to the worker's next [resume round](../../glossary.json#concept.resume-round) when allowed |
 | `test` and `code_review` Operations | Supply recorded check results to a worker for interpretation or review |
 | `task-validation` and `delivery` execution commands | Use the results in the readiness decision; Delivery reuses Validation's steps |
 
@@ -139,7 +139,7 @@ establish starts no command, and a measurement that changed fails the call with 
 
 ```d2 illustrative
 direction: down
-select: "For each Module: select its checks\n(changed paths mapped to Modules)"
+select: "For each Module the caller names:\nselect its checks"
 before: "Digest the Module's inputs"
 boundary: "Set up the read-only boundary\nwith a fresh scratch"
 run: "Run the check's command\nwithin its time limit"
@@ -166,7 +166,7 @@ plainly what it leaves out:
 
 | Concern | Enforced |
 | --- | --- |
-| Writing any host file outside the scratch, through any path name, hard link, inherited descriptor or nested namespace | Yes, by the kernel |
+| Writing any host file outside the scratch, through any path name, hard link, inherited descriptor or nested namespace | Yes, by the operating system |
 | Descendant processes outliving the run | Yes: the host ends the whole process tree |
 | Reading files the developer's user can read | Not enforced |
 | Network access | Not enforced: the network namespace is shared with the host |
@@ -227,13 +227,7 @@ which the check service writes through Tracing's library before the command star
 ended, in the folder its caller names, and the error contract its failures follow. It relies on the
 [node contract](../../kernel/tracing/contracts.md#contract.tracing.node).
 
-<a id="uses-spec"></a>
-
-**Spec core** loads the configuration, the checks files and the
-[registry](../../glossary.json#concept.registry), from which the check service
-takes each Module's checks and resolves its `ImplementationScope` — a [boundary
-set](../../glossary.json#concept.boundary-set) whose digest is part of what a
-check measures; changed paths map the same way. It also supplies safe relative-path rules for
-inputs. Check execution relies on a Module's boundary set resolving the same way from the same
-Specs before and after a run, so that a digest mismatch means the input changed; an invalid or
-unreadable path fails the run before any command starts.
+Check execution relies on no other Module and on no part but the kernel: the Modules it checks,
+the files their results depend on and the tests a selective check runs come from its caller, and
+its paths follow the canonical project-relative form of the Kernel's
+[typed values](../../kernel/contracts.md#typed-values).

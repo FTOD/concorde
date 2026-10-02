@@ -52,8 +52,9 @@ back:
 - **the round validation**: a callback the worker harness calls after each round that ended with a
   valid `ok` [worker result](../glossary.json#concept.worker-result) and a clean audit. It returns
   the evidence to keep with the round, such as [check results](../glossary.json#concept.check-result),
-  and what to repair; while there is something to repair and rounds remain, the worker harness resumes
-  the same worker session with it.
+  and what to repair, or a violation that ends the run at once; while there is something to repair
+  and rounds remain, the worker harness resumes the same worker session with it
+  ([Round validation](workers/launch.md#round-validation)).
 
 So everything that depends on the Specs or on the job — which paths, which instructions, which
 checks and what counts as done — stays with the caller, and everything that depends on the agent

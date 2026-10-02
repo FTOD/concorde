@@ -28,7 +28,10 @@ from the clean primary worktree of a
 **[Concorde repository](../glossary.json#concept.concorde-repository)**: the independent Git
 repository of Concorde that the developer also changes, and in which the Concorde defects the
 project reports are fixed. Its receipt records the mode `develop`, and the main agent's guidance
-carries Dogfooding's section; otherwise it is an ordinary install.
+carries Dogfooding's section; otherwise it is an ordinary install of the
+[parts](../glossary.json#concept.part) the developer chooses. Since its main agent reports defects as
+Issues, Dogfooding's guidance is useful only where the coordination and issues parts are installed,
+and the section is composed into the guidance only there.
 
 ### Concorde defects and boundary cases
 

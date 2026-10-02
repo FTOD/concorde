@@ -11,7 +11,7 @@ specified yet, narrows the parent's realizations to what no child took, adds the
 parent's `contains` and to the [registry](../../glossary.json#concept.registry), and returns a
 record of exactly what it wrote. It is the step between Adoption's two Operations, `survey` and
 `code_to_spec`, for a project whose code came before its Specs; the task level or the
-[brownfield workflow](../../workflows/module.md) runs it. Scaffold launches no worker, never decides
+[brownfield workflow](../brownfield.md) runs it. Scaffold launches no worker, never decides
 which Modules to create — the proposal does — and never describes a Module beyond the survey's
 purpose, configures a check or changes code.
 
@@ -176,8 +176,9 @@ is a survey.
 
 <a id="uses-commands"></a>
 
-**Commands** lists `scaffold` in its catalog, which is how the runner finds this Module's
-definition by the command's name.
+**Commands**, Execution's execution-command framework, is what `scaffold` plugs into: Method
+registers its definition there, which is how the runner finds this Module's definition by the
+command's name.
 
 <a id="uses-adoption"></a>
 
@@ -195,7 +196,7 @@ worktree as it is then, rather than taking the survey's `remaining_entries`.
 <a id="uses-spec"></a>
 
 **Spec core** runs the [structural checks](../../glossary.json#concept.structural-check),
-regenerates the [registry](../../glossary.json#concept.registry) mirror and applies the
+regenerates the [registry](../../glossary.json#concept.registry) mirror and applies its own copy of a
 [file transaction](../../glossary.json#concept.file-transaction), always on the workspace.
 Scaffold relies on its checks as the definition of a valid
 [Spec](../../glossary.json#concept.spec) and adds none of its own; a Spec that cannot be loaded

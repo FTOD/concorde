@@ -51,8 +51,8 @@ observed itself.
 ### The checked Modules
 
 The set of checked Modules is the same for both Operations: the bound Modules together with every
-Module that uses one of them, directly or through further uses, as Check execution's
-`checked_modules` computes it. A selective check runs only when some test verifies a scenario of
+Module that uses one of them, directly or through further uses, which Method computes from the
+workspace's Specs through Spec core before it asks Check execution to run their checks. A selective check runs only when some test verifies a scenario of
 those Modules, and a readiness check never runs here; a check that does not run is not listed.
 
 ### New files
@@ -139,8 +139,8 @@ other run still lists the check results. Running `test` again is safe.
 | 2 | Generate settings, tools and the [brief](../../glossary.json#concept.brief) | Workers | — |
 | 3 | Launch the worker and wait for its [worker result](../../glossary.json#concept.worker-result) | Workers, worker | launch error/timeout (`failed`) |
 | 4 | [Audit](../../glossary.json#concept.write-audit) against the grant | Workers | write outside the grant (`failed`); worker `blocked`/`failed` (passed on) |
-| 5 | After a clean audit of a worker that ended `ok`, run the configured checks of the bound Modules and of every Module that uses one of them | Workers, Check execution | — |
-| 6 | While a check fails with rounds left, resume the session, repeat 4–5 | Workers, worker | rounds used, still failing (`failed`) |
+| 5 | After a clean audit of a worker that ended `ok`, call the round validation, which runs the configured checks of the bound Modules and of every Module that uses one of them | Workers, Operation, Check execution | — |
+| 6 | While the round validation reports a failing check with rounds left, resume the session with the failures, repeat 4–5 | Workers, worker | rounds used, still failing (`failed`) |
 | 7 | Perform proposed deletions after a clean audit; write the run record | Workers | — |
 | 8 | Compose the code change from the run record and return it | Operation, Execution runner | — |
 
@@ -223,10 +223,12 @@ instructions, result schemas and tests.
 
 <a id="uses-operations"></a>
 
-**Operations** lists `implement` and `test` in its catalog as Operations that need a bound
-workspace, `implement` writing the bound Modules' code, and names this Module as their provider;
-Implementation never calls another Operation. Implementation relies on Operations'
-standard worker sequence and its mapping of worker and audit outcomes to run statuses for steps 1–8
+**Operations**, Execution's Operation framework, is what both Operations plug into: Method registers
+their definitions as Operations that need a bound workspace, `implement` writing the bound Modules'
+code, naming this Module as their provider
+([Method](../module.md#the-operations-and-commands-it-provides)); Implementation never calls another
+Operation. Implementation relies on Method's
+[standard worker sequence](../../glossary.json#concept.standard-worker-sequence) and its mapping of worker and audit outcomes to run statuses for steps 1–8
 of `implement` and the worker launch of `test`; its own steps extend that sequence.
 
 <a id="uses-execution"></a>
@@ -240,13 +242,16 @@ workspace while its audit compares the workspace with the state before the worke
 
 <a id="uses-workers"></a>
 
-**Workers** turns the frozen grant into settings, launches and resumes the worker with this
-Module's brief, collects its worker result, audits the worktree and writes the run record — the last
-defence against a write outside the grant.
+**Workers**, in the worker harness, receives the frozen grant as data and `implement`'s round
+validation, which runs the checks, through the standard worker sequence; it turns the grant into
+settings, launches and resumes the worker with this Module's instructions and what the round
+validation reports, collects its worker result, audits the worktree and writes the run record — the
+last defence against a write outside the grant.
 
 <a id="uses-checks"></a>
 
-**Check execution** runs the bound Modules' configured checks read-only, returning a
+**Check execution** runs the checked Modules' configured checks read-only, for `implement`'s round
+validation and `test`'s own step, returning a
 [check result](../../glossary.json#concept.check-result) per check — command, exit status and log
 — the only evidence of whether checks passed.
 

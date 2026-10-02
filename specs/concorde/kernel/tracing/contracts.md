@@ -1,9 +1,9 @@
 # Tracing contracts
 
 The canonical values and layout of [Tracing](module.md): the
-[trace node](../../glossary.json#concept.trace-node) record `trace.json`, where every node, task and
-lock lies, the Tracing configuration, what `concorde trace` prints, and the error link every level
-reports with. The [requirements](requirements.md) state the obligations; the
+[trace node](../../glossary.json#concept.trace-node) record `trace.json`, the trace roots and where
+every node and lock lies, the Tracing configuration, what `concorde trace` prints, and the error link
+every level reports with. The [requirements](requirements.md) state the obligations; the
 [scenarios](scenarios.md) show them at work.
 
 ## Trace node
@@ -416,8 +416,10 @@ reports with. The [requirements](requirements.md) state the obligations; the
 ### Node kinds
 
 Each kind has one producer, which writes its nodes' records and chooses their content, and one place
-below its parent. The folders are relative to the parent node's folder, or to the `.concorde`
-directory for the three roots.
+below its parent. The part a producer belongs to registers its kinds, with their content types, when
+its code loads; the table lists the kinds of Concorde's parts, and a kind whose part is not installed
+simply never occurs. The folders are relative to the parent node's folder, or to the `.concorde`
+directory for the top nodes of a [trace root](#trace-roots).
 
 | Kind | Producer | Folder | Identity | Metadata it provides | Content type |
 | --- | --- | --- | --- | --- | --- |
@@ -425,6 +427,8 @@ directory for the three roots.
 | `session` | [Task sessions](../../coordination/task-session/module.md) | `sessions/<session>/` | the session identity | `task`, `model` | `concorde-session-trace` |
 | `merge` | Tasks | `merges/<n>/` | the attempt number | `task`, `branch`, `commit` | `concorde-merge-trace` |
 | `merge-check` | Tasks | `checks/<n>/` of a merge | the check's number | none | `concorde-merge-check-trace` |
+| `delivery` | Tasks | `deliveries/<n>/` of a task, for `task deliver` | the attempt number | `task`, `branch`, `commit` | `concorde-delivery-trace` |
+| `delivery-check` | Tasks | `checks/<n>/` of a delivery | the check's number | none | `concorde-delivery-check-trace` |
 | `workflow` | [Workflows](../../workflows/module.md) | `workflow/` of a workspace folder | the workflow name | `workspace`, `workflow`, `mode` | `concorde-workflow-trace` |
 | `step` | Workflows | `steps/<seq>-<key>/` of the workflow | the [step key](../../glossary.json#concept.step-key) | `workspace`, `workflow`, `operation` or `command` | `concorde-step-trace` |
 | `run` | [Execution](../../execution/module.md) | `runs/<run>/` of a workspace folder, `run/` of a step, `unbound/<run>/`, or `lobby/<run>/` until a bound run enters its workspace | the run identity | `workspace`, `modules`, `operation` or `command`, `commit`, `base_commit`, `concorde_commit`, `protocol_version` | `concorde-run-trace` |
@@ -470,13 +474,32 @@ its content type.
   run, and a [run result](../../glossary.json#concept.run-result) `result.json`, stay
   separate files of the node's folder, listed among its artifacts.
 
+## Trace roots
+
+A part that keeps the top nodes of traces registers each **trace root** with Tracing in its
+[part registration](../../glossary.json#concept.part-registration): its name, its folder relative to a `.concorde` directory, whether that directory is the
+primary worktree's or the one of the worktree a node started in, the kind of its top nodes, whether
+its folders are **current** (still written) or **closed** (never changed again), the node's field
+that dates its end, the retention periods that apply to it and the files that count as its
+**conversation records**. Tracing searches, lists and prunes the registered roots of the installed
+parts and no other folder. Concorde's parts register these:
+
+| Root | Folder | Registered by | Top nodes | State | Retention |
+| --- | --- | --- | --- | --- | --- |
+| current tasks | `tasks/<task>/` of the primary worktree | Coordination ([Tasks](../../coordination/tasks/module.md)) | `task` | current | none: a current task is never pruned |
+| history | `history/<key>/` of the primary worktree | Coordination | `task` | closed | `conversation_days` for its conversation records, then `history_days` for the folder |
+| unbound runs | `unbound/<run>/` of the worktree the run started in | [Execution](../../execution/module.md) | `run` | current until it ended | `unbound_days` after the run ended |
+| lobby | `lobby/<run>/` of the `.concorde` the run's binding names | Execution | `run` | current until it ended or entered its workspace | `unbound_days` after the run ended |
+
 ## Layout
 
-Everything is under the `.concorde` directory of the project's primary worktree, except the unbound
-runs and their [run locks](../../glossary.json#concept.run-lock), which are under the `.concorde` of
-the worktree they started in. Every write of an [Issue](../../glossary.json#concept.issue) takes the
+Everything below is the union of the registered roots and Tracing's own `locks/` and
+`tracing.json`, under the `.concorde` directory of the project's primary worktree, except the
+unbound runs and their [run locks](../../glossary.json#concept.run-lock), which are under the
+`.concorde` of the worktree they started in. Every write of an [Issue](../../glossary.json#concept.issue) takes the
 primary worktree's [merge lock](../../glossary.json#concept.merge-lock), as [Locks](#locks) says. Git
-ignores `tasks/`, `history/`, `unbound/`, `lobby/` and `locks/`.
+ignores `locks/` and every root's folder: `tasks/`, `history/`, `unbound/` and `lobby/`. What lies
+inside a task's folder is Coordination's to decide; the tree shows it as Concorde's parts lay it out.
 
 ```text
 .concorde/
@@ -517,16 +540,17 @@ and, for a merge the project MCP server started, the merge's standard output `ou
 standard error `messages.log`, which the merge that closed the task finishes after the close moved
 the folder to the history.
 
-The history key of a closed task is its name, or `<task>.<n>` with the smallest `n` from 2 that is
+The history key of a closed task, which Tasks chooses, is its name, or `<task>.<n>` with the smallest `n` from 2 that is
 free when that name is taken: when the history already holds a task of that name or a
 [decision log](../../glossary.json#concept.decision-log) `decisions/<name>.md` exists, so no closed task ever replaces another, in the history or in Git.
 
-The **conversation records** of a task are the transcripts of its task sessions and worker runs:
-every file `transcript.jsonl` and every folder `transcript/` in its folder, at any depth.
+The **conversation records** of a task, as Coordination registers them for its history, are the
+transcripts of its task sessions and worker runs: every file `transcript.jsonl` and every folder
+`transcript/` in its folder, at any depth.
 
 ## Locks
 
-Every lock is a file under `locks/` locked with `flock`, which the kernel releases however its
+Every lock is a file under `locks/` locked with `flock`, which the operating system releases however its
 holder ends. While a process holds it, the file holds one line of JSON naming the holder,
 `{"holder": "<what holds it>", "pid": <process>, "since": "<UTC time>"}`, with
 `"session": "<Claude Code session>"` when the holder's environment names one in
@@ -556,19 +580,19 @@ named there, it adopts the descriptor without waiting, provided the descriptor r
 file there now and holds its lock, marks it not inherited by the processes it starts, and writes
 its own holder line; otherwise it closes it and takes the lock as usual. Once the process that
 handed the lock on closes its own descriptor, or replaced itself, the lock is released exactly when
-the process it started, or became, ends. The kernel's lock table keeps naming the process that
+the process it started, or became, ends. The operating system's lock table keeps naming the process that
 first took the lock, so the holder line, not `/proc/locks`, says who holds a handed lock.
 
 **Waiting for a release.** A process that waits for a lock to be released opens its file and asks
-for a shared `flock`, blocking, in a thread of its own, and lets go of it at once; the kernel grants
+for a shared `flock`, blocking, in a thread of its own, and lets go of it at once; the operating system grants
 it when the holder releases the lock or dies. A lock whose file is missing is free, and a lock file
 removed while its holder held it, such as a run lock, is released when that holder lets go. To learn
-when a lock is next taken, a process watches the lock's directory through the kernel's file change
+when a lock is next taken, a process watches the lock's directory through the operating system's file change
 notification: taking a lock writes its holder line, releasing it empties the file and a close
 removes it.
 
 A run is running exactly when its run lock file exists and a process holds it. An observer tries it
-shared and without waiting, or reads the kernel's lock table `/proc/locks` for the file's device
+shared and without waiting, or reads the operating system's lock table `/proc/locks` for the file's device
 and inode, since an inode number is unique only within its filesystem, from any PID namespace; it
 never decides by a recorded process identifier. The run lock of a bound run lies under `locks/` of
 the `.concorde` its binding names, that of an unbound run under the `.concorde` of the worktree it
@@ -636,7 +660,7 @@ started in.
       }
     }
   },
-  "semantics": "The optional, Git-tracked file .concorde/tracing.json of the primary worktree. retention.unbound_days is how many days after it ended an unbound run, or a run that never left the lobby, is kept; retention.history_days how many days after its close a task stays in the history; retention.conversation_days, which may be left out, how many days after its close a task in the history keeps its conversation records (the layout names them), everything else of it staying as long as history_days allows; null keeps them without removal. Without the file, or for a period it leaves out, unbound runs and the runs of the lobby are kept 7 days, the history without removal and its conversation records 30 days. A malformed file refuses the command that reads it with config_invalid, naming the field. A behaviour or field change increments the version.",
+  "semantics": "The optional, Git-tracked file .concorde/tracing.json of the primary worktree. retention.unbound_days is how many days after it ended an unbound run, or a run that never left the lobby, is kept; retention.history_days how many days after its close a task stays in the history; retention.conversation_days, which may be left out, how many days after its close a task in the history keeps its conversation records (the layout names them), everything else of it staying as long as history_days allows; null keeps them without removal. Without the file, or for a period it leaves out, unbound runs and the runs of the lobby are kept 7 days, the history without removal and its conversation records 30 days. Each period applies to the trace roots registered with it: unbound_days to Execution's unbound runs and lobby, history_days and conversation_days to Coordination's history; a period of a root no installed part registers is ignored. A malformed file refuses the command that reads it with config_invalid, naming the field. A behaviour or field change increments the version.",
   "example": {
     "schema_version": 1,
     "retention": {
@@ -648,10 +672,13 @@ started in.
 }
 ```
 
-Retention removes only what has ended: an unbound run or a run of the lobby whose run lock is not
-held and whose node has an end, after `unbound_days`, a history folder whose task node has one, and
-the conversation records of such a history folder. It runs when `concorde trace prune` is run and at the start of every `task open` and
-`task close`, and never removes anything of a current task.
+Retention removes only what has ended, root by root as each was registered: an unbound run or a run
+of the lobby whose run lock is not held and whose node has an end, after `unbound_days`, a history
+folder whose task node has one, and the conversation records of such a history folder. Each period
+applies to the roots that name it; a period of a root no installed part registers is read and
+ignored. Retention runs when `concorde trace prune` is run and whenever a part that registers a root
+asks for it, as Tasks does at the start of every `task open` and `task close`, and never removes
+anything of a current folder.
 
 ## Reading traces
 
@@ -665,12 +692,15 @@ concorde trace prune [--dry-run]
   node's folder, absolute or relative to a `.concorde` directory. Without it, `show` shows the task
   whose [workspace binding](../../glossary.json#concept.workspace-binding) the current worktree holds. The command looks in the `.concorde` of the
   worktree it runs in, the `.concorde` its workspace binding names and the `.concorde` of the
-  primary worktree, in that order, and in each among the current tasks, the history, the unbound
-  runs and the lobby. A node it cannot find is refused with `unknown_node`, naming what it searched.
+  primary worktree, in that order, and in each among the registered roots: in Concorde the current
+  tasks, the history, the unbound runs and the lobby. A node it cannot find is refused with
+  `unknown_node`, naming what it searched.
 - `--depth` limits how many levels below the node are shown (default: all); the roll-up always
   covers the whole subtree.
-- `list` lists the current tasks, with `--history` also the history and with `--unbound` also the
-  unbound runs, each as a node without its children.
+- `list` lists the top nodes of the registered roots that are current, with `--history` also the
+  closed ones and with `--unbound` also the unbound runs, each as a node without its children; in
+  Concorde these are the current tasks, the history and the unbound runs. An option whose roots no
+  installed part registers lists nothing.
 - `prune` removes what the retention allows and prints the paths it removed, folders and
   conversation records alike; `--dry-run` prints them without removing anything.
 - Output is one JSON value as the view contract defines; `--format tree` prints the same as an

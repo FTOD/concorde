@@ -25,7 +25,6 @@
         "relies_on": [
           "concept.execution-runner",
           "concept.run-result",
-          "concept.workspace",
           "concept.unbound-run"
         ]
       },

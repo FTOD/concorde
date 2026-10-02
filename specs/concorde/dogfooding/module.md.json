@@ -22,8 +22,7 @@
         "target": "module.main-session",
         "meaning": "#uses-main-session",
         "relies_on": [
-          "concept.main-session-guidance",
-          "concept.project-mcp-server"
+          "concept.main-session-guidance"
         ]
       },
       {

@@ -18,7 +18,6 @@
           "meaning": "#uses-execution",
           "relies_on": [
             "concept.execution-runner",
-            "concept.workspace",
             "concept.run-result",
             "concept.unbound-run",
             "req.execution.inputs-same-workspace",
@@ -64,14 +63,6 @@
       "contains": [],
       "uses": [
         {
-          "target": "module.spec",
-          "meaning": "#uses-spec",
-          "relies_on": [
-            "concept.registry",
-            "concept.boundary-set"
-          ]
-        },
-        {
           "target": "module.tracing",
           "meaning": "#uses-tracing",
           "relies_on": [
@@ -107,7 +98,6 @@
           "relies_on": [
             "concept.execution-runner",
             "concept.run-result",
-            "concept.workspace",
             "concept.unbound-run"
           ]
         },
@@ -158,8 +148,7 @@
           "meaning": "#uses-execution",
           "relies_on": [
             "concept.execution-runner",
-            "concept.run-result",
-            "concept.workspace"
+            "concept.run-result"
           ]
         }
       ],
@@ -268,18 +257,21 @@
       ],
       "uses": [
         {
-          "target": "module.execution",
-          "meaning": "#uses-execution",
+          "target": "module.kernel",
+          "meaning": "#uses-kernel",
           "relies_on": [
             "concept.workspace-binding",
-            "concept.run-store"
+            "contract.kernel.workspace-binding",
+            "concept.workspace-lock",
+            "concept.merge-lock",
+            "concept.delivery-commit"
           ]
         },
         {
-          "target": "module.harness",
-          "meaning": "#uses-harness",
+          "target": "module.execution",
+          "meaning": "#uses-execution",
           "relies_on": [
-            "concept.agent-harness"
+            "concept.run-store"
           ]
         }
       ],
@@ -303,12 +295,9 @@
           "meaning": "#uses-execution",
           "relies_on": [
             "concept.run-result",
-            "concept.workspace-binding",
-            "concept.workspace-lock",
             "req.execution.workspace-lock",
             "req.execution.workspace-busy",
-            "contract.execution.run-result",
-            "contract.kernel.workspace-binding"
+            "contract.execution.run-result"
           ]
         },
         {
@@ -325,6 +314,16 @@
         {
           "target": "module.spec",
           "meaning": "#uses-spec"
+        },
+        {
+          "target": "module.kernel",
+          "meaning": "#uses-kernel",
+          "relies_on": [
+            "concept.workspace-binding",
+            "concept.workspace-lock",
+            "contract.kernel.workspace-binding",
+            "concept.delivery-commit"
+          ]
         }
       ],
       "includes": [
@@ -357,7 +356,6 @@
             "concept.protocol-binding",
             "req.spec.init-explicit-envelope",
             "req.spec.installation-follows-record",
-            "concept.file-transaction",
             "contract.spec.error"
           ]
         },
@@ -370,14 +368,6 @@
           ]
         },
         {
-          "target": "module.main-session",
-          "meaning": "#uses-main-session",
-          "relies_on": [
-            "concept.main-session-guidance",
-            "concept.project-mcp-server"
-          ]
-        },
-        {
           "target": "module.dogfooding",
           "meaning": "#uses-dogfooding",
           "relies_on": [
@@ -385,68 +375,10 @@
           ]
         },
         {
-          "target": "module.execution",
-          "meaning": "#uses-execution",
-          "relies_on": [
-            "concept.run",
-            "concept.run-lock",
-            "concept.run-progress-file"
-          ]
-        },
-        {
-          "target": "module.workflows",
-          "meaning": "#uses-workflows"
-        },
-        {
-          "target": "module.commands",
-          "meaning": "#uses-commands",
-          "relies_on": [
-            "concept.execution-command"
-          ]
-        },
-        {
           "target": "module.tracing",
           "meaning": "#uses-tracing",
           "relies_on": [
-            "contract.tracing.node",
-            "contract.tracing.error",
-            "concept.trace"
-          ]
-        },
-        {
-          "target": "module.tasks",
-          "meaning": "#uses-tasks",
-          "relies_on": [
-            "concept.task",
-            "concept.task-record",
-            "contract.tasks.record"
-          ]
-        },
-        {
-          "target": "module.issues",
-          "meaning": "#uses-issues",
-          "relies_on": [
-            "concept.issue",
-            "contract.issues.receipt"
-          ]
-        },
-        {
-          "target": "module.spec-mcp",
-          "meaning": "#uses-spec-mcp",
-          "relies_on": [
-            "req.spec-mcp.one-root",
-            "req.spec-mcp.stdio-only"
-          ]
-        },
-        {
-          "target": "module.workers",
-          "meaning": "#uses-workers",
-          "relies_on": [
-            "concept.worker-backend",
-            "concept.worker-configuration",
-            "concept.model-map",
-            "concept.progress-file",
-            "req.workers.pi-sandbox"
+            "contract.tracing.error"
           ]
         }
       ],
@@ -520,8 +452,7 @@
           "target": "module.main-session",
           "meaning": "#uses-main-session",
           "relies_on": [
-            "concept.main-session-guidance",
-            "concept.project-mcp-server"
+            "concept.main-session-guidance"
           ]
         },
         {
@@ -620,9 +551,15 @@
           "target": "module.execution",
           "meaning": "#uses-execution",
           "relies_on": [
-            "concept.workspace-binding",
             "concept.run-store",
-            "concept.run-progress-file",
+            "concept.run-progress-file"
+          ]
+        },
+        {
+          "target": "module.kernel",
+          "meaning": "#uses-kernel",
+          "relies_on": [
+            "concept.workspace-binding",
             "concept.workspace-lock"
           ]
         },
@@ -679,8 +616,14 @@
       ],
       "uses": [
         {
-          "target": "module.spec",
-          "meaning": "#uses-spec"
+          "target": "module.kernel",
+          "meaning": "#uses-kernel",
+          "relies_on": [
+            "concept.workspace",
+            "concept.workspace-binding",
+            "concept.workspace-lock",
+            "contract.kernel.workspace-binding"
+          ]
         },
         {
           "target": "module.tracing",
@@ -706,15 +649,7 @@
         "specs/concorde/worker-harness/harness/pi.md"
       ],
       "contains": [],
-      "uses": [
-        {
-          "target": "module.spec",
-          "meaning": "#uses-spec",
-          "relies_on": [
-            "concept.grant"
-          ]
-        }
-      ],
+      "uses": [],
       "includes": [
         {
           "kind": "external",
@@ -742,7 +677,13 @@
             "concept.run",
             "concept.run-progress-file",
             "concept.run-result",
-            "concept.run-store",
+            "concept.run-store"
+          ]
+        },
+        {
+          "target": "module.kernel",
+          "meaning": "#uses-kernel",
+          "relies_on": [
             "concept.workspace-binding"
           ]
         }
@@ -771,8 +712,7 @@
           "meaning": "#uses-execution",
           "relies_on": [
             "concept.execution-runner",
-            "concept.run-result",
-            "concept.workspace"
+            "concept.run-result"
           ]
         },
         {
@@ -810,23 +750,12 @@
       "contains": [],
       "uses": [
         {
-          "target": "module.spec",
-          "meaning": "#uses-spec",
+          "target": "module.kernel",
+          "meaning": "#uses-kernel",
           "relies_on": [
             "concept.typed-value",
             "concept.file-transaction",
-            "concept.registry",
-            "contract.spec.error"
-          ]
-        },
-        {
-          "target": "module.tasks",
-          "meaning": "#uses-tasks",
-          "relies_on": [
-            "concept.merge-lock",
-            "concept.task",
-            "req.tasks.merging-recorded",
-            "req.tasks.merge-incomplete-refused"
+            "concept.merge-lock"
           ]
         },
         {
@@ -835,15 +764,24 @@
           "relies_on": [
             "contract.tracing.error"
           ]
-        }
-      ],
-      "includes": [
+        },
         {
-          "kind": "document",
-          "target": "document.spec.contracts",
-          "reason": "Spec core's library contracts that Issues calls directly: canonical JSON, typed-value checks and file transactions"
+          "target": "module.spec",
+          "meaning": "#uses-spec",
+          "relies_on": [
+            "concept.registry"
+          ]
+        },
+        {
+          "target": "module.tasks",
+          "meaning": "#uses-tasks",
+          "relies_on": [
+            "req.tasks.merging-recorded",
+            "req.tasks.merge-incomplete-refused"
+          ]
         }
       ],
+      "includes": [],
       "participates": []
     },
     {
@@ -877,14 +815,20 @@
       "contains": [],
       "uses": [
         {
+          "target": "module.kernel",
+          "meaning": "#uses-kernel",
+          "relies_on": [
+            "concept.merge-lock",
+            "concept.workspace-binding"
+          ]
+        },
+        {
           "target": "module.execution",
           "meaning": "#uses-execution",
           "relies_on": [
-            "concept.workspace-binding",
             "concept.run-result",
             "concept.unbound-run",
             "concept.run-lock",
-            "concept.workspace-lock",
             "contract.execution.run-result",
             "concept.run-progress-file"
           ]
@@ -948,7 +892,6 @@
           "relies_on": [
             "concept.task",
             "concept.decision-log",
-            "concept.merge-lock",
             "contract.tasks.record"
           ]
         },
@@ -1002,6 +945,14 @@
             "contract.tracing.error",
             "contract.tracing.view"
           ]
+        },
+        {
+          "target": "module.distribution",
+          "meaning": "#uses-distribution",
+          "relies_on": [
+            "concept.project-mcp-server",
+            "concept.part-registration"
+          ]
         }
       ],
       "includes": [],
@@ -1021,6 +972,7 @@
       "entry": "specs/concorde/method/module.md",
       "owns": [
         "specs/concorde/method/module.md",
+        "specs/concorde/method/requirements.md",
         "specs/concorde/method/workers.md",
         "specs/concorde/method/brownfield.md"
       ],
@@ -1115,28 +1067,11 @@
       "contains": [],
       "uses": [
         {
-          "target": "module.spec",
-          "meaning": "#uses-spec"
-        },
-        {
-          "target": "module.workers",
-          "meaning": "#uses-workers"
-        },
-        {
-          "target": "module.checks",
-          "meaning": "#uses-checks"
-        },
-        {
-          "target": "module.spec-review",
-          "meaning": "#uses-spec-review"
-        },
-        {
           "target": "module.execution",
           "meaning": "#uses-execution",
           "relies_on": [
             "concept.execution-runner",
-            "concept.run-result",
-            "concept.workspace"
+            "concept.run-result"
           ]
         }
       ],
@@ -1166,7 +1101,6 @@
           "meaning": "#uses-execution",
           "relies_on": [
             "concept.execution-runner",
-            "concept.workspace",
             "concept.run-result",
             "req.execution.inputs-same-workspace",
             "contract.execution.run-result"
@@ -1310,7 +1244,6 @@
           "relies_on": [
             "concept.execution-runner",
             "concept.run-result",
-            "concept.workspace",
             "concept.unbound-run"
           ]
         }
@@ -1380,8 +1313,7 @@
           "meaning": "#uses-execution",
           "relies_on": [
             "concept.execution-runner",
-            "concept.run-result",
-            "concept.workspace"
+            "concept.run-result"
           ]
         },
         {
@@ -1459,15 +1391,15 @@
           "relies_on": [
             "concept.task",
             "concept.task-record",
-            "concept.decision-log",
-            "concept.merge-lock"
+            "concept.decision-log"
           ]
         },
         {
-          "target": "module.harness",
-          "meaning": "#uses-harness",
+          "target": "module.kernel",
+          "meaning": "#uses-kernel",
           "relies_on": [
-            "concept.session-boundary"
+            "concept.merge-lock",
+            "concept.workspace-binding"
           ]
         },
         {
@@ -1489,8 +1421,7 @@
           "target": "module.main-session",
           "meaning": "#uses-main-session",
           "relies_on": [
-            "concept.main-session-guidance",
-            "concept.project-mcp-server"
+            "concept.main-session-guidance"
           ]
         },
         {
@@ -1505,7 +1436,6 @@
           "target": "module.execution",
           "meaning": "#uses-execution",
           "relies_on": [
-            "concept.workspace-binding",
             "concept.run-result"
           ]
         },
@@ -1514,6 +1444,13 @@
           "meaning": "#uses-operations",
           "relies_on": [
             "concept.operation"
+          ]
+        },
+        {
+          "target": "module.distribution",
+          "meaning": "#uses-main-session",
+          "relies_on": [
+            "concept.project-mcp-server"
           ]
         }
       ],
@@ -1539,34 +1476,17 @@
       "contains": [],
       "uses": [
         {
-          "target": "module.execution",
-          "meaning": "#uses-execution",
+          "target": "module.kernel",
+          "meaning": "#uses-kernel",
           "relies_on": [
             "concept.workspace",
             "concept.workspace-binding",
             "contract.kernel.workspace-binding",
-            "concept.run",
-            "concept.run-result",
-            "concept.run-progress-file",
-            "concept.run-store",
-            "concept.workspace-lock"
-          ]
-        },
-        {
-          "target": "module.delivery",
-          "meaning": "#uses-delivery",
-          "relies_on": [
+            "concept.workspace-lock",
+            "concept.merge-lock",
             "concept.delivery-commit",
-            "req.delivery.recovered-verified"
+            "concept.file-transaction"
           ]
-        },
-        {
-          "target": "module.spec",
-          "meaning": "#uses-spec"
-        },
-        {
-          "target": "module.task-session",
-          "meaning": "#uses-task-session"
         },
         {
           "target": "module.tracing",
@@ -1575,8 +1495,37 @@
             "contract.tracing.node",
             "contract.tracing.error",
             "concept.trace-node",
-            "concept.history",
             "concept.error-chain"
+          ]
+        },
+        {
+          "target": "module.task-session",
+          "meaning": "#uses-task-session"
+        },
+        {
+          "target": "module.distribution",
+          "meaning": "#uses-distribution",
+          "relies_on": [
+            "req.distribution.update-unvalidated",
+            "req.distribution.unvalidated-cleared"
+          ]
+        },
+        {
+          "target": "module.execution",
+          "meaning": "#uses-execution",
+          "relies_on": [
+            "concept.run",
+            "concept.run-result",
+            "concept.run-progress-file",
+            "concept.run-store",
+            "concept.run-lock"
+          ]
+        },
+        {
+          "target": "module.delivery",
+          "meaning": "#uses-delivery",
+          "relies_on": [
+            "req.delivery.recovered-verified"
           ]
         },
         {
@@ -1588,11 +1537,10 @@
           ]
         },
         {
-          "target": "module.distribution",
-          "meaning": "#uses-distribution",
+          "target": "module.spec",
+          "meaning": "#uses-spec",
           "relies_on": [
-            "req.distribution.update-unvalidated",
-            "req.distribution.unvalidated-cleared"
+            "concept.registry"
           ]
         }
       ],
@@ -1612,8 +1560,8 @@
       "contains": [],
       "uses": [
         {
-          "target": "module.spec",
-          "meaning": "#uses-spec",
+          "target": "module.kernel",
+          "meaning": "#uses-kernel",
           "relies_on": [
             "concept.typed-value"
           ]
@@ -1644,7 +1592,6 @@
           "relies_on": [
             "concept.execution-runner",
             "concept.run-result",
-            "concept.workspace",
             "concept.unbound-run"
           ]
         },
@@ -1683,13 +1630,10 @@
           "meaning": "#uses-execution",
           "relies_on": [
             "concept.run-result",
-            "concept.workspace-binding",
-            "concept.workspace-lock",
             "req.execution.binding-trusted",
             "req.execution.workspace-lock",
             "req.execution.workspace-busy",
-            "contract.execution.run-result",
-            "contract.kernel.workspace-binding"
+            "contract.execution.run-result"
           ]
         },
         {
@@ -1708,6 +1652,15 @@
           "meaning": "#uses-commands",
           "relies_on": [
             "concept.execution-command"
+          ]
+        },
+        {
+          "target": "module.kernel",
+          "meaning": "#uses-kernel",
+          "relies_on": [
+            "concept.workspace-binding",
+            "concept.workspace-lock",
+            "contract.kernel.workspace-binding"
           ]
         }
       ],
@@ -1738,8 +1691,7 @@
           "meaning": "#uses-spec",
           "relies_on": [
             "concept.registry",
-            "concept.impact-index",
-            "concept.file-transaction"
+            "concept.impact-index"
           ]
         }
       ],
@@ -1789,50 +1741,13 @@
       "contains": [],
       "uses": [
         {
-          "target": "module.spec",
-          "meaning": "#uses-spec",
-          "relies_on": [
-            "concept.grant",
-            "concept.context-identity"
-          ]
-        },
-        {
           "target": "module.harness",
           "meaning": "#uses-harness",
           "relies_on": [
-            "concept.agent-harness",
             "concept.worker-settings",
             "concept.deny-rules",
             "concept.write-hook",
             "concept.permission-extension"
-          ]
-        },
-        {
-          "target": "module.checks",
-          "meaning": "#uses-checks",
-          "relies_on": [
-            "concept.configured-check",
-            "concept.check-result",
-            "req.checks.service-link",
-            "req.checks.failure-link"
-          ]
-        },
-        {
-          "target": "module.execution",
-          "meaning": "#uses-execution",
-          "relies_on": [
-            "concept.run-store",
-            "concept.run-progress-file",
-            "concept.unbound-run",
-            "req.execution.no-writing-worker",
-            "concept.unbound-checkout"
-          ]
-        },
-        {
-          "target": "module.operations",
-          "meaning": "#uses-operations",
-          "relies_on": [
-            "concept.operation-catalog"
           ]
         },
         {
@@ -1899,8 +1814,6 @@
             "concept.execution-runner",
             "concept.run",
             "concept.run-result",
-            "concept.workspace-binding",
-            "concept.workspace-lock",
             "concept.detached-run",
             "concept.run-store",
             "req.execution.workspace-lock",
@@ -1910,36 +1823,20 @@
           ]
         },
         {
-          "target": "module.main-session",
-          "meaning": "#uses-main-session",
+          "target": "module.kernel",
+          "meaning": "#uses-kernel",
           "relies_on": [
-            "concept.project-mcp-server"
+            "concept.workspace-binding",
+            "concept.workspace-lock",
+            "contract.kernel.workspace-binding"
           ]
         },
         {
           "target": "module.operations",
-          "meaning": "#uses-operations"
-        },
-        {
-          "target": "module.validation",
-          "meaning": "#uses-validation",
+          "meaning": "#uses-commands",
           "relies_on": [
-            "contract.validation.readiness"
-          ]
-        },
-        {
-          "target": "module.delivery",
-          "meaning": "#uses-delivery"
-        },
-        {
-          "target": "module.adoption",
-          "meaning": "#uses-adoption"
-        },
-        {
-          "target": "module.scaffold",
-          "meaning": "#uses-scaffold",
-          "relies_on": [
-            "contract.scaffold.record"
+            "concept.operation",
+            "concept.operation-catalog"
           ]
         },
         {
@@ -1957,6 +1854,14 @@
             "contract.tracing.error",
             "concept.trace-node",
             "concept.error-chain"
+          ]
+        },
+        {
+          "target": "module.distribution",
+          "meaning": "#uses-distribution",
+          "relies_on": [
+            "concept.project-mcp-server",
+            "concept.part-registration"
           ]
         }
       ],

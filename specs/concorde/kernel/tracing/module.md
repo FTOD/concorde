@@ -2,21 +2,24 @@
 
 ## Purpose
 
-Tracing decides which information about Concorde's work is combined and retained, and in what
-structure, so that the work can be analysed later: what ran, where, on which model, for how long, at
-what cost and with what outcome, from a whole task down to one round of one worker. It owns that
-structure, the uniform record every level of work leaves, the metadata by which records are compared,
-where records are kept while a task is current and after it ended, how long they are kept, the locks
-that are kept apart from them, the command that reads them, and the
-[error chain](../../glossary.json#concept.error-chain) through which a failure travels up the levels.
+Tracing is the [Kernel](../module.md)'s child that decides which information about Concorde's work
+is combined and retained, and in what structure, so that the work can be analysed later: what ran,
+where, on which model, for how long, at what cost and with what outcome, from a whole task down to
+one round of one worker. It owns that structure, the uniform record every level of work leaves, the
+metadata by which records are compared, the trace roots under which the parts keep their trees and
+how long each is kept, the locks that are kept apart from the records, the command that reads them,
+and the [error chain](../../glossary.json#concept.error-chain) through which a failure travels up
+the levels. Like the rest of the kernel part, it depends on no other part: every part that records
+its work depends on it.
 
-Tracing does not produce the information. Each [Module](../../glossary.json#concept.module) that does work, Tasks, [Task sessions](../../glossary.json#concept.task-session),
+Tracing does not produce the information. Each [Module](../../glossary.json#concept.module) that does work, in Concorde Tasks, [Task sessions](../../glossary.json#concept.task-session),
 Workflows, Execution, Workers and Check execution, still decides and writes the content of its own
-records; Tracing gives each of them the place and the shape. It keeps no state a command acts on:
-a [task record](../../glossary.json#concept.task-record) or a lock is not a trace, and the
-[decision log](../../glossary.json#concept.decision-log) Tasks commits to Git when a task ends is the
-task's own record, which stays with the code whatever retention removes.
-Spec tooling reports with its own error record and never uses the error chain.
+records; Tracing gives each of them the place and the shape. It knows none of them: a part tells it
+which trace roots it keeps and which node kinds it produces, and Tracing applies the same rules to
+all. It keeps no state a command acts on: a [task record](../../glossary.json#concept.task-record)
+or a lock is not a trace, and the [decision log](../../glossary.json#concept.decision-log) Tasks
+commits to Git when a task ends is the task's own record, which stays with the code whatever
+retention removes. Spec tooling reports with its own error record and never uses the error chain.
 
 ## Core concepts
 
@@ -34,22 +37,24 @@ and each of its steps, each run of an [Operation](../../glossary.json#concept.op
 and each of its rounds. The tree of nodes below one task, or below one
 [unbound run](../../glossary.json#concept.unbound-run), is a **[trace](../../glossary.json#concept.trace)**.
 
-### The history
+### Trace roots
 
-<a id="concept.history"></a>
+A tree of nodes starts at a **trace root**: a folder under a `.concorde` directory in which a part
+keeps the top nodes of its traces. The part that keeps them registers the root with Tracing, saying
+where it lies, which node kind its top nodes have, whether its folders are still current or closed
+for good, and how long its nodes are kept after they ended. Tracing finds nodes, lists them and
+applies retention through those registrations alone, so it never learns what a task or a run is.
 
-Everything about one task, its state and its traces alike, lives in one
-folder, `.concorde/tasks/<task>/`, while the task is current. When the task is closed, merged or not,
-its whole folder is moved to the **[history](../../glossary.json#concept.history)**,
-`.concorde/history/<task>/`, where it stays as it was when the task ended: nothing in the history is
-ever changed, apart from the merge that closed the task finishing the answer it writes into its
-attempt's node, and retention only removes a history folder whole or, sooner, its conversation
-records; it may be copied out. An unbound run, which belongs to no task, is
-kept in `.concorde/unbound/<run>/` of the worktree it started in. A run of a task's workspace that
-does not hold the workspace's lock yet lies in the lobby, `.concorde/lobby/<run>/`, outside the
-task's folder, so that a close moving that folder while it holds the lock never races it; it moves
-into the workspace folder once it holds the lock, and stays in the lobby when it is refused before.
-The [layout](contracts.md#layout) gives every path.
+In Concorde two parts register roots. Coordination keeps each current task in
+`.concorde/tasks/<task>/`, its record, decision log and trace in one folder, and moves that folder
+whole to its [history](../../glossary.json#concept.history), `.concorde/history/<task>/`, when the
+task is closed; a history folder is closed for good, and nothing in it is ever changed apart from
+the merge that closed the task finishing the answer it writes into its attempt's node. Execution
+keeps an unbound run, which belongs to no workspace, in `.concorde/unbound/<run>/` of the worktree
+it started in, and a bound run that does not hold its workspace's lock yet in the lobby,
+`.concorde/lobby/<run>/`, outside the workspace folder, so that a close moving that folder while it
+holds the lock never races it; the run moves into the workspace folder once it holds the lock, and
+stays in the lobby when it is refused before. The [layout](contracts.md#layout) gives every path.
 
 ### The error chain
 
@@ -91,41 +96,48 @@ lie in the workspace beside the workflow.
 
 A trace crosses Concorde's two halves in one direction only. The task's node holds its workspace's
 folder, so an analysis walks from a task down to everything that ran for it; nothing below the
-workspace records the task, since Execution knows no task, and nothing walks back up. The
-[workspace binding](../../glossary.json#concept.workspace-binding) is what gives Execution the folder
-it writes into.
+workspace records the task, since the parts that work in a workspace know no task, and nothing walks
+back up. The [workspace binding](../../glossary.json#concept.workspace-binding) is what gives them
+the folder they write into, which whoever prepared the workspace chose.
 
-### Where records live over a task's life
+### Where records live
 
-A task's folder is current while the task is and moves whole to the history when the task is
-closed; there only retention removes anything, first its conversation records and then, when the
-project configures it, the whole folder. An unbound run is kept beside the tasks and removed sooner.
-The decision log leaves with the task into Git, so it outlives every retention period, and the locks
-lie apart from all these folders ([Locks are not records](#locks-are-not-records)).
+Each registered root keeps its trees for as long as its part says. In Concorde, a task's folder is
+current while the task is and moves whole to the history when the task is closed; there only
+retention removes anything, first its conversation records and then, when the project configures
+it, the whole folder. An unbound run, and a run that never left the lobby, is kept beside the tasks
+and removed sooner. The decision log leaves with the task into Git, so it outlives every retention
+period, and the locks lie apart from all these folders
+([Locks are not records](#locks-are-not-records)).
 
 ```d2 illustrative
 direction: right
-open: "task open" {shape: oval}
-current: "Current task\n.concorde/tasks/<task>/\nrecord, decision log, trace"
-history: "History\n.concorde/history/<task>/\nnever changed"
-slim: "History folder without\nits conversation records"
+coordination: "Roots Coordination registers" {
+  open: "task open" {shape: oval}
+  current: "Current task\n.concorde/tasks/<task>/\nrecord, decision log, trace"
+  history: "History\n.concorde/history/<task>/\nnever changed"
+  slim: "History folder without\nits conversation records"
+  git: "Git, with the code\n.concorde/decisions/"
+  open -> current
+  current -> history: "task close,\nmerged or not"
+  current -> git: "task close: Tasks commits\nthe decision log" {style.stroke-dash: 3}
+  history -> slim: "closed more than\n30 days ago (default)"
+}
+execution: "Roots Execution registers" {
+  unbound: "Unbound run\n.concorde/unbound/<run>/"
+  lobby: "Run refused before it held\nits workspace's lock\n.concorde/lobby/<run>/"
+}
 removed: "Removed" {shape: oval}
-git: "Git, with the code\n.concorde/decisions/"
-unbound: "Unbound run\n.concorde/unbound/<run>/"
-lobby: "Run refused before it held\nits workspace's lock\n.concorde/lobby/<run>/"
-open -> current
-current -> history: "task close,\nmerged or not"
-current -> git: "task close: Tasks commits\nthe decision log" {style.stroke-dash: 3}
-history -> slim: "closed more than\n30 days ago (default)"
-slim -> removed: "closed longer ago than\nthe project configures,\nif it does"
-unbound -> removed: "ended more than\n7 days ago (default)"
-lobby -> removed: "ended more than\n7 days ago (default)"
+coordination.slim -> removed: "closed longer ago than\nthe project configures,\nif it does"
+execution.unbound -> removed: "ended more than\n7 days ago (default)"
+execution.lobby -> removed: "ended more than\n7 days ago (default)"
 ```
 
 ### Tracing and its producers
 
 Every producer writes its nodes and takes its locks through the tracing library and reports its
-failures with the error chain code; the trace command reads and prunes through the same library.
+failures with the error chain code; the parts that keep roots register them; the trace command reads
+and prunes through the same library.
 
 ```d2 illustrative
 tracing: Tracing {
@@ -135,7 +147,7 @@ tracing: Tracing {
   command -> library: reads and prunes through
 }
 producers: "Tasks, Task sessions, Workflows,\nExecution, Workers, Check execution" {shape: page}
-producers -> tracing.library: write their nodes and take their locks through
+producers -> tracing.library: "write their nodes, take their locks\nand register their roots through"
 producers -> tracing.errors: report with
 ```
 
@@ -191,10 +203,12 @@ concorde trace prune [--dry-run]
 `show` takes a task name, a run identity, a worker run identity or a node's folder, and prints the
 node with its subtree: each node's status, times and own usage, and the usage rolled up over its
 subtree, so the cost of a whole task, of one of its workflows or of one run is read in one place. It
-finds a node among the current tasks, the [history](../../glossary.json#concept.history), the
-unbound runs and the lobby of the worktree it runs in and of the primary worktree. A node that says it is still
-running although the process that writes it has ended is shown `lost`. `list` lists the current
-tasks, and with its options the history and the unbound runs, with their status and rolled-up usage.
+finds a node among the registered roots of the worktree it runs in and of the primary worktree: in
+Concorde the current tasks, the [history](../../glossary.json#concept.history), the unbound runs and
+the lobby. A node that says it is still running although the process that writes it has ended is
+shown `lost`. `list` lists the current tasks, and with its options the history and the unbound runs,
+with their status and rolled-up usage; a root whose part is not installed is simply not searched or
+listed. Tracing registers `concorde trace` as a command of the kernel part.
 A result's error chain names the node that reported it, as evidence of kind `trace` whose reference
 is the run or worker run identity, so a reader goes from an error to its trace with `show`.
 
@@ -206,7 +220,10 @@ task, with the cost of each run beside it.
 ### Locks are not records
 
 Every lock Concorde takes lies under `.concorde/locks/`, never inside a
-trace or a task folder, and its file holds only who holds it now:
+trace or a task folder, and its file holds only who holds it now. Tracing gives every lock its place
+and its holder line; which locks exist, and who takes each, is decided by the parts that take them,
+the Kernel's own [merge lock](../../glossary.json#concept.merge-lock) and
+[workspace lock](../../glossary.json#concept.workspace-lock) among them:
 
 | Lock | Taken by | Kept |
 | --- | --- | --- |
@@ -224,20 +241,23 @@ process a [project MCP server](../../glossary.json#concept.project-mcp-server) r
 `task_merge` call, having taken both locks and answered, gives them to the `concorde task merge`
 it replaces itself with, so that the locks belong to the work: the long-lived server takes no lock
 at all. A wait for a lock's
-release blocks on the lock itself, so the kernel wakes it when the holder ends or dies
+release blocks on the lock itself, so the operating system wakes it when the holder ends or dies
 ([contracts](contracts.md#locks)).
 
 ### Retention
 
-Traces are removed only at defined points, never by a process running in the
-background: `concorde trace prune`, and the start of every `task open` and `task close`, remove
-each unbound run and each run of the lobby that ended more than 7 days ago; from each history folder of a task closed more
-than 30 days ago, its **conversation records**, the transcripts of its task sessions and worker
-runs, which make up most of the history's size and are read mostly while
-the task is fresh; and, when the project configures it, each history folder of a task closed longer
-ago than that, whole. By default the rest of the history is kept. A project changes the three
-periods in its tracked [Tracing configuration](contracts.md#contract.tracing.configuration),
-`.concorde/tracing.json`. A node still running is never removed, and nothing of a current task is.
+Traces are removed only at defined points, never by a process running in the background:
+`concorde trace prune`, and whenever a part that registers a root asks for retention, as
+Coordination does at the start of every `task open` and `task close`. Each root is pruned by the
+periods its part registered. In Concorde that removes each unbound run and each run of the lobby
+that ended more than 7 days ago; from each history folder of a task closed more than 30 days ago,
+its **conversation records**, the transcripts of its task sessions and worker runs, which make up
+most of the history's size and are read mostly while the task is fresh; and, when the project
+configures it, each history folder of a task closed longer ago than that, whole. By default the rest
+of the history is kept. A project changes the three periods in its tracked
+[Tracing configuration](contracts.md#contract.tracing.configuration), `.concorde/tracing.json`; a
+period of a root no installed part registers is ignored. A node still running is never removed, and
+nothing of a current folder is.
 What a task decided outlives this retention: Tasks commits each ended task's
 [decision log](../../glossary.json#concept.decision-log) to Git, where it travels with the code.
 
@@ -247,10 +267,12 @@ What a task decided outlives this retention: Tasks commits each ended task's
 
 Two needs meet in Tracing. Every level already had to leave some record, because the level above
 decides from it; and a developer who wants to know why a task was expensive, slow or failed needs
-all those records together, in one shape, below the task. Before this Module each level kept its own
-record in its own shape, flat and side by side: runs and worker runs as siblings in one store, the
-[workflow record](../../glossary.json#concept.workflow-record) elsewhere, a task's history inside its record, and nothing added up. Tracing is the
-capability of combining those records; the levels still own what they record.
+all those records together, in one shape, below the task. Records each level kept in its own shape,
+side by side — runs and worker runs as siblings in one store, the
+[workflow record](../../glossary.json#concept.workflow-record) elsewhere, a task's history inside its
+record — would add nothing up. Tracing is the capability of combining those records; the levels
+still own what they record. It belongs to the kernel part because every part that records its work
+needs the same shape and the same place, and none of them may depend on another to get it.
 
 ### Nested by the parent, referenced among peers
 
@@ -261,10 +283,11 @@ contains the other; a run that admitted another run's output refers to it by ide
 
 The link between the halves goes downward only because
 [Execution knows no task](../../execution/requirements.md#req.execution.no-task-knowledge). The task
-places its workspace's folder inside its own, and the binding tells Execution to write there; so a
-task's trace reaches every run of its workspace without Execution ever learning that a task exists,
-and the same Execution serves a workspace someone else prepared, with a folder that preparer chose.
-The link is at the workspace, not at each task session, since a workspace is what Execution knows.
+places its workspace's folder inside its own, and the binding tells the parts that work in the
+workspace to write there; so a task's trace reaches every run of its workspace without any of them
+ever learning that a task exists, and the same parts serve a workspace someone else prepared, with
+a folder that preparer chose. The link is at the workspace, not at each task session, since a
+workspace is what they know.
 
 ### One record, structured for analysis
 
@@ -293,11 +316,11 @@ error link it carries are what their receiver acts on at once, so their evidence
 paths the receiver can open. The node keeps them unchanged, the result as a file of its folder named
 relatively, and never follows those paths to find its own files or its children.
 
-### One folder per task, by its lifecycle
+### One folder per top node, by its lifecycle
 
-The organising axis is the task's lifecycle, not a split between state and traces: while the task
-is current everything about it is in one folder, and closing it moves that one folder to the
-history. A reader never has to join a task's record, its [decision log](../../glossary.json#concept.decision-log), its sessions and its runs
+The organising axis is the lifecycle of a root's top node, not a split between state and traces.
+For a task, which Coordination registers: while the task is current everything about it is in one
+folder, and closing it moves that one folder to the history. A reader never has to join a task's record, its [decision log](../../glossary.json#concept.decision-log), its sessions and its runs
 from four stores, and removing or exporting a task is one folder. State that commands act on, the
 [task record](../../glossary.json#concept.task-record), still lives in that folder beside the task's
 trace node, but it is not a trace: it holds only what the commands need, and the history of the task
@@ -336,13 +359,14 @@ and the Issues command report with it, so every level's link has the same shape 
 Spec tooling keeps its own error types and does not use it; a Module that receives a Spec tooling
 error translates it into a link.
 
-### The parts
+### Its realizations
 
 <a id="realization.tracing.library"></a>
 
 The **tracing library** gives every producer the same means: the layout's paths, writing a node at
 its start and its end atomically with its artifacts' digests, checking a node against the node
-contract and its content against the type its producer registered, the locks under
+contract and its content against the type its producer registered, the trace roots the parts
+register, the locks under
 `.concorde/locks/` with handing a held lock on to a process and waiting for a lock's release or its
 next holder without polling, walking a tree and rolling usage up, finding a node by identity, telling a run
 lost by its run lock, and removing what retention allows. It never decides what a producer records.
@@ -350,7 +374,8 @@ lost by its run lock, and removing what retention allows. It never decides what 
 <a id="realization.tracing.command"></a>
 
 The **trace command** is `concorde trace`: `show`, `list` and `prune` over the library. It is the
-one command of this Module and, like every command, is named after its owner.
+one command of this Module, which the kernel part registers with Distribution's `concorde` command,
+and like every command it is named after its owner.
 
 <a id="realization.tracing.tests"></a>
 
@@ -359,9 +384,9 @@ chain code.
 
 ### What Tracing relies on
 
-<a id="uses-spec"></a>
+<a id="uses-kernel"></a>
 
-**Spec core** registers and checks [typed values](../../glossary.json#concept.typed-value): a node's
-content is a typed value whose type its producer registered there, and the library refuses to write
+**The Kernel**, its parent, defines [typed values](../../glossary.json#concept.typed-value): a
+node's content is a typed value whose type its producer registered, and the library refuses to write
 content that fails its type rather than record it in a shape nobody declared. Tracing relies on no
-Module that produces traces; they rely on it.
+Module that produces traces, and on no part outside the kernel; they rely on it.

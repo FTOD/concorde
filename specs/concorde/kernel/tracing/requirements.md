@@ -86,15 +86,22 @@ node it belongs to, at the location that node chose before the child started.
 A bound run lies in the lobby, `lobby/<run>/`, until it holds its workspace's lock, and stays there
 when it never does; once it holds the lock it lies at the location its parent chose.
 
-### req.tracing.downward-only — Execution's nodes never name a task
+### req.tracing.downward-only — The nodes of a workspace never name a task
 
-No trace node written by a Module of Execution SHALL record a task, a [task session](../../glossary.json#concept.task-session), a [decision log](../../glossary.json#concept.decision-log) or
+No trace node written by a Module that works in a [workspace](../../glossary.json#concept.workspace), such as those of Execution, Workflows, Method and the worker harness, SHALL record a task, a [task session](../../glossary.json#concept.task-session), a [decision log](../../glossary.json#concept.decision-log) or
 any other node of Coordination.
 
 A task's node reaches its workspace's nodes because its folder contains them; nothing below the
 workspace names what is above it.
 
 ## Keeping and removing
+
+### req.tracing.roots-registered — Only registered roots are searched and pruned
+
+`concorde trace` SHALL search, list and prune only the trace roots the installed parts registered, each by the rules its part registered for it.
+
+A root whose part is not installed is neither searched nor listed, and its retention periods are
+ignored.
 
 ### req.tracing.locks-apart — Locks lie apart from records
 
@@ -120,26 +127,22 @@ lock without waiting and hold it until it ends.
 It passes neither the lock nor the variable on to the processes it starts, so the lock is released
 when that process ends.
 
-### req.tracing.history-unchanged — The history is not changed
+### req.tracing.history-unchanged — A closed root is not changed
 
-No Concorde command SHALL change a file inside a history folder; retention only removes a history
-folder whole or removes its conversation records.
+No Concorde command SHALL change a file inside a folder of a trace root its part registered as closed, such as Coordination's [history](../../glossary.json#concept.history); retention only removes such a folder whole or removes its conversation records.
 
-The one exception is the merge that closed the task: the close moves the task's folder while the
-merge still writes its answer, so the merge's process finishes the `output.json` and
-`messages.log` of its attempt's node there before it ends
-([Tasks](../../coordination/tasks/requirements.md#req.tasks.merge-output-kept)).
+The one exception is the one the registering part names: for the history, the merge that closed the
+task, since the close moves the task's folder while the merge still writes its answer, so the
+merge's process finishes the `output.json` and `messages.log` of its attempt's node there before it
+ends ([Tasks](../../coordination/tasks/requirements.md#req.tasks.merge-output-kept)).
 
 ### req.tracing.conversations-shorter — Conversation records have their own retention
 
-Retention SHALL remove the conversation records of a history folder whose task was closed longer ago
-than the configuration's `conversation_days`, 30 by default, and leave every other file of that
-folder in place until the folder itself expires.
+Retention SHALL remove the conversation records of a folder of a closed trace root whose top node ended longer ago than the period its part registered for them, for Coordination's history the configuration's `conversation_days`, 30 by default, and leave every other file of that folder in place until the folder itself expires.
 
 ### req.tracing.retention-explicit — Traces are removed only at defined points
 
-Traces SHALL be removed only by `concorde trace prune` and by the retention step at the start of
-`task open` and `task close`, and only nodes that have ended.
+Traces SHALL be removed only by `concorde trace prune` and by the retention step a part that registers a trace root runs, such as Coordination's at the start of `task open` and `task close`, and only nodes that have ended.
 
 No background process removes traces, and a node whose run lock is held, or that has no end, is
 never removed.

@@ -58,6 +58,17 @@ level's or the workflow's choice: go on with the worker's decisions, or seek ans
 existing escalation path, which settles each in the main agent when its authority covers it and
 otherwise with the developer.
 
+Which of them a workflow stops for is this Module's to say, not the workflow's: each run's output
+lists them again under the
+[step output convention](../../workflows/contracts.md#contract.workflows.step-output) that
+[Workflows](../../workflows/module.md) reads. A survey declares every decision its worker took itself
+and every open question as a [decision point](../../glossary.json#concept.decision-point), since how
+a project splits into Modules shapes all later work, and its proposed checks as `notes` for the
+developer; a code_to_spec run declares its open questions as decision points of kind `question` and
+its decisions, which are ordinary, as `decisions` the workflow only reports; both list their
+deviations as `deviations`
+([req.adoption.step-output](requirements.md#req.adoption.step-output)).
+
 ### Answers and deviations
 
 The answers reach a later run as an **answers** file
@@ -118,8 +129,8 @@ Adoption starts where initialization leaves a project: a root Module whose reali
 existing file and whose entry says nothing is specified yet. The
 [main agent](../../glossary.json#concept.main-agent) opens a task bound to that Module and hands
 it to the task's [task session](../../glossary.json#concept.task-session), which runs the three
-steps in order in its task worktree, directly or through the
-[brownfield workflow](../../workflows/module.md); the main agent settles the
+steps in order in its task worktree, directly or through Method's
+[brownfield workflow](../../glossary.json#concept.brownfield-workflow) ([how it runs](../brownfield.md)); the main agent settles the
 [decision points](../../glossary.json#concept.decision-point) within its authority and puts the
 rest to the developer:
 
@@ -312,16 +323,20 @@ that workspace's earlier proposal or description.
 
 <a id="uses-operations"></a>
 
-**Operations** lists `survey` and `code_to_spec` in its catalog and dispatches to this Module;
-`survey` is the one Adoption Operation its catalog lets run unbound. Adoption never starts another
+**Operations**, Execution's Operation framework, is what both plug into: Method registers `survey`
+and `code_to_spec` with it, naming this Module as their provider
+([Method](../module.md#the-operations-and-commands-it-provides)), and `survey` is the one Adoption
+Operation whose definition lets it run unbound. Adoption never starts another
 run: the order of the survey, the scaffold and code_to_spec, and whether to seek the developer's
 answers between them through the existing escalation path, is decided by the task level or a
 workflow.
 
 <a id="uses-workers"></a>
 
-**Workers** turns each frozen grant into settings, launches the survey and code_to_spec workers with
-this Module's briefs, collects their [worker results](../../glossary.json#concept.worker-result),
+**Workers**, in the worker harness, receives each frozen grant as data, with code_to_spec's round
+validation, through Method's
+[standard worker sequence](../../glossary.json#concept.standard-worker-sequence), turns it into
+settings, launches the survey and code_to_spec workers with this Module's instructions, collects their [worker results](../../glossary.json#concept.worker-result),
 audits the worktree and writes the run records; any change beyond the grant fails the run.
 
 <a id="uses-checks"></a>

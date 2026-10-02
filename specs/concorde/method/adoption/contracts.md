@@ -11,6 +11,12 @@ option's text, or the answer, with who decided it. And a worker gives its tools 
 path it writes that begins with the worktree's own absolute path is written relative to the
 worktree before anything checks it.
 
+Both outputs also carry, beside the fields below, the `workflow` object of the
+[step output convention](../../workflows/contracts.md#contract.workflows.step-output), which repeats
+their [decision points](../../glossary.json#concept.decision-point), decisions, deviations and, for a survey, its proposed checks in the shape
+every workflow reads, as [req.adoption.step-output](requirements.md#req.adoption.step-output) says;
+the convention, not these contracts, defines its fields.
+
 ## Decomposition proposal
 
 The `output` of a `survey`. `remaining_entries` is computed by the host, never by the worker.

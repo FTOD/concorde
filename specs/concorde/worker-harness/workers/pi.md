@@ -46,7 +46,7 @@ pi -p --mode json --no-extensions -e <runtime>/control/permission.ts
 ```
 
 A [resume round](../../glossary.json#concept.resume-round) runs the same command, with the same
-session identifier, and the check failures, or the text of the caller's validation, on standard
+session identifier, and the round validation's repair text on standard
 input; pi continues the session with its context. The command is `pi`, or the value of `CONCORDE_PI`.
 
 The environment is cleared and then set to exactly:
@@ -78,8 +78,8 @@ Before generating anything the host looks for the `pi` command, `rg`, `fd` (also
 `fdfind`), and the sandbox-runtime package: the directory named by `CONCORDE_SANDBOX_RUNTIME`, or
 `.concorde/tools/pi-runtime/node_modules/@anthropic-ai/sandbox-runtime` in the primary worktree.
 On Linux it also needs `bwrap` and `socat`. When any is missing the run ends `failed` with
-`pi_runtime_missing` before launch, naming every missing program and how to provide it. An
-Operation's step resolves the worker's backend before it calls Workers, and that resolution already
+`pi_runtime_missing` before launch, naming every missing program and how to provide it. The
+caller resolves the worker's backend before it calls the host, and that resolution already
 refuses a missing `pi` command with `backend_missing`, so the caller normally receives that code;
 the host's own check of the `pi` command covers a run requested without that resolution.
 

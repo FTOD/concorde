@@ -102,6 +102,21 @@ reporting: the Module is `incomplete` with `issues_unreported`, whose cause is t
 and the Operation reports no further finding of that Module, never records the refusal as an Issue
 and goes on with the next Module. The Operation never closes or reopens an Issue.
 
+### Without the issues part
+
+Where the issues part is not installed, steps 3 and 8 do nothing with Issues: no earlier Issues are
+read or offered, so every Module's `earlier_issues` is null; every finding the checker did not
+dispute stays in the result with `issue` null; and the result's summary says that the findings were
+not recorded as Issues. Step 9 then derives the Module's outcome from those findings exactly as from
+the Issues they would have become: `changes_required` when one of a blocking tier stands.
+
+### Step output
+
+Whether or not Issues are installed, the run's output also carries, under the
+[step output convention](../../workflows/contracts.md#contract.workflows.step-output), one `notes`
+item of kind `review` holding the verdict and each Module's outcome with its count of blocking
+findings, so that a workflow reports the review without knowing this payload.
+
 ## Result status
 
 | Verdict | Status | Error |

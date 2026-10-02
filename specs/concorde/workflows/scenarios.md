@@ -19,7 +19,7 @@ shapes are in the [contracts](contracts.md).
 - GIVEN the task worktree of the workspace `adopt`, running the brownfield workflow
 - WHEN `concorde workflow step --workflow brownfield --mode no-ask --key validate -- task-validation` is run there
 - THEN it starts the [execution command](../glossary.json#concept.execution-command) as `concorde task-validation --detach` with the workspace's own `concorde`, not through `concorde run`
-- AND once the run has finished its step outcome names `task-validation` and carries the readiness's `ready`
+- AND once the run has finished its step outcome names `task-validation` and carries, unchanged in its `data`, what the run handed the script, such as the readiness's `ready`
 
 ### scenario.workflows.unbound-refused — No workflow runs in an unbound worktree
 
@@ -39,7 +39,7 @@ shapes are in the [contracts](contracts.md).
 
 - GIVEN a Claude Code workflow run in a [task session](../glossary.json#concept.task-session), whose step agents each relay one short turn
 - WHEN the step function asks for a step whose run takes longer than one call
-- THEN its step agent calls the [project MCP server](../glossary.json#concept.project-mcp-server)'s `workflow_step` with the step request as an object, and runs no Bash command
+- THEN its step agent calls the `workflow_step` tool the workflow part registers with the [project MCP server](../glossary.json#concept.project-mcp-server), with the step request as an object, and runs no Bash command
 - AND the server starts the step's run as a process of its own, so the run lives on after that call and after every later one, until it ends and saves its result, even when the session has ended meanwhile
 
 ### scenario.workflows.step-waits-lock — A step waits for the workspace lock before it starts
@@ -84,7 +84,7 @@ shapes are in the [contracts](contracts.md).
 ### scenario.workflows.interactive-pause — An interactive run ends at a survey decision
 
 - GIVEN the [brownfield workflow](../glossary.json#concept.brownfield-workflow) started in interactive mode in the workspace `adopt`
-- WHEN the survey ends `ok` with the decision `d.db-helper`
+- WHEN the survey ends `ok`, its output declaring the decision `d.db-helper` as a decision point under the step output convention
 - THEN no scaffold runs
 - AND the [workflow result](../glossary.json#concept.workflow-result) has status `awaiting_decision`, lists `d.db-helper` as pending with its options, and its `workflow` link gives `decision` as the reason
 
@@ -161,12 +161,12 @@ shapes are in the [contracts](contracts.md).
 - THEN the step is recorded without a run and with a `step_refused` link carrying the runner's message, the step outcome has state `refused`, and the command exits with status 1
 - AND the workflow result lists it as a problem and has status `failed`
 
-### scenario.workflows.reviews-reported — Spec review findings reach the result
+### scenario.workflows.reviews-reported — The notes of the runs reach the result
 
-- GIVEN a no-ask brownfield workflow whose `spec_review` step ends `ok` with verdict `changes_required` and two blocking findings
+- GIVEN a no-ask brownfield workflow whose `spec_review` step ends `ok` and declares in its output a note with the verdict `changes_required` and two blocking findings, and whose survey declared a note for each check it proposes
 - WHEN the workflow reports
-- THEN the workflow result lists that review's verdict and both findings with their step and run
-- AND the checks the survey proposed are listed for the developer to configure
+- THEN the workflow result lists the review's note, with that verdict and both findings, with its step and run
+- AND lists the survey's notes with the proposed checks, for the developer to configure
 
 ### scenario.workflows.report-ignores-relay — The report reads the recorded results
 

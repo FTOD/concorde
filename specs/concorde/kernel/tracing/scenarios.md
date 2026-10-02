@@ -86,7 +86,7 @@ and the command are defined in the [contracts](contracts.md).
 
 ### scenario.tracing.lock-table-holders — The lock table names the holders of the same file only
 
-- GIVEN a lock file and a kernel lock table with `flock` entries on its inode number, one on its device and others on another major or minor device number, and a `flock` entry on another inode of its device
+- GIVEN a lock file and an operating system lock table with `flock` entries on its inode number, one on its device and others on another major or minor device number, and a `flock` entry on another inode of its device
 - WHEN an observer reads the holders of that lock file from the table
 - THEN it names only the process of the entry whose device and inode both match the file
 - AND it names no process of a waiting entry or of a POSIX lock on the file

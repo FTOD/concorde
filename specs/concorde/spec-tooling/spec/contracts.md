@@ -18,54 +18,22 @@ document does not repeat it and adds only what Concorde fixes on top of it.
 ```
 
 - `profile_version` is the Framework's configuration profile; the loader supports exactly `19` and
-  refuses others with `unsupported_profile`. It is a compatibility number of this file, of the
-  checks files and of the registry, not a Protocol version.
+  refuses others with `unsupported_profile`. It is a compatibility number of this file and of the
+  registry, not a Protocol version.
 - `protocol` is the [Protocol binding](../../glossary.json#concept.protocol-binding): the `version`
   from the installed copy's manifest and the SHA-256 digest of that manifest's exact bytes.
-- `python` is optional. It names the project's own interpreter, which Check execution substitutes
-  for `{python}` in a check's `argv`; Spec core accepts it without interpreting it, and
+- `python` is optional. It names the project's own interpreter, which Method reads and passes to
+  Check execution to substitute for `{python}` in a check's `argv`; Spec core accepts it without interpreting it, and
   [initialization](#initialization) records it.
 
 No other field is allowed. The settings earlier profiles kept here live elsewhere, and a field
 left from them is refused with an error naming where its setting lives now: the registry is
-always `.concorde/specs.json` ([registry file](#registry-file)), the configured checks are the
-[checks files](#checks-files), and the worker limits and runtime paths are part of the
+always `.concorde/specs.json` ([registry file](#registry-file)), the
+[configured checks](../../glossary.json#concept.configured-check) are Check execution's
+[checks files](../../execution/checks/service.md), and the worker limits and runtime paths are part of the
 [worker configuration](../../glossary.json#concept.worker-configuration)
 `.concorde/workers.json`, which Workers owns. Spec core only verifies the binding; changing it is an explicit step of Distribution, such as
 rebinding a Concorde checkout to its freshly built Protocol.
-
-### Checks files {#checks-files}
-
-The [configured checks](../../glossary.json#concept.configured-check) are not part of
-`.concorde/config.json`: each Module's checks are a file of their own,
-`.concorde/checks/<module id>.json`, so that changes to different Modules' checks never meet in one
-file. A project without the `.concorde/checks/` directory configures no checks.
-
-```json
-{
-  "checks": [
-    {"id": "check.spec.model",
-     "argv": ["{python}", "-m", "pytest", "tests/concorde/spec"],
-     "timeout_seconds": 120, "inputs": ["src", "tests/concorde/spec"]}
-  ]
-}
-```
-
-- The directory holds only regular files named after a registered Module's identity with the
-  suffix `.json`; any other entry, and a file named after an unregistered Module
-  (`unknown_module`), refuses the project.
-- A file is an object with exactly the field `checks`, an array of entries. Each entry has an `id`,
-  unique across all the files, and optional unique `inputs`, each a canonical project-relative
-  path. An entry has no `module`: the file's name is its Module, and a `module` field is refused.
-  The entry's other fields belong to Check execution, which validates them when it runs the check
-  ([the check service](../../execution/checks/service.md#declaring-a-configured-check)).
-- The configuration order of the checks is the byte order of the file names, then the order of the
-  entries in each file. A loaded check carries its Module as `module`, placed after its `id`.
-
-Spec core only reads the entries, reports unsafe or missing inputs, and lists each Module's check
-identities in its descriptor. The checks files stay under `.concorde/` beside the configuration,
-never beside a Module's documents or code: a check command is trusted host input and must never
-fall within the writable scope of the Module it verifies.
 
 ## Registry file {#registry-file}
 
@@ -123,9 +91,8 @@ written.
 
 `modules` maps every registered Module to its `Module` record, in registry order; `module` returns
 one: its `id`, `title`, entry path, owned document paths (`documents`), parent, used Module
-identities (`uses`), realization entries (`files`), inclusions (`references`) and the identities of
-the [configured checks](../../glossary.json#concept.configured-check) whose `module` is this Module
-(`checks`). A `scenario` must be a scenario the Module owns and never changes the result. An unknown
+identities (`uses`), realization entries (`files`) and inclusions (`references`). A `scenario`
+must be a scenario the Module owns and never changes the result. An unknown
 Module, or a scenario of another Module, fails with a `SpecError`. `root_module` is the first
 recorded Module that no other Module contains, and `contained` returns the Modules a Module
 `contains`.
@@ -158,10 +125,6 @@ the check it fails:
   `checks` or `workers`), or a registry with malformed or duplicate records;
 - a Protocol binding that does not match the installed copy (`protocol_mismatch`) or an
   unsupported profile (`unsupported_profile`);
-- a [checks file](#checks-files) that is not named after a registered Module, an entry of
-  `.concorde/checks/` that is not such a file, or a configured check entry without an `id`, with
-  a `module`, with an `id` another entry uses, or with an input that is not a canonical
-  project-relative path;
 - an entry whose metadata owner differs from its registry record;
 - a failure of `CHK.document.entry`, `CHK.document.pair` or `CHK.document.path`;
 - a metadata envelope with the wrong schema version, missing fields or an invalid role;
@@ -418,12 +381,11 @@ identities:
 | `CONCORDE-LINK-001` | error | a link fragment shaped like a requirement, scenario, realization or contract identity names no definition in the linked document |
 | `CONCORDE-COVERAGE-001` | warning | no test declares a scenario of a Module that binds files |
 | `CONCORDE-COVERAGE-003` | error | a bound test cannot be parsed, or a declaration in it is malformed; reported per file |
-| `CONCORDE-CHECK-001` | error | a configured check's declared input is missing or unsafe |
 | `CONCORDE-SOURCE-008` | error | the configuration, registry or Protocol binding cannot be read, so nothing else was checked; the message is the load error's, the remediation carries its remediation and reason, and `result.load_error` holds its [error record](errors.md) |
 
 `result` holds `summary` (the counts of errors and warnings), `source_digest` (a digest over the
 paths and digests of the configuration, the registry, every assessed document member, the project
-glossary, the Protocol binding and the state of every configured-check input), `claims` (the kinds
+glossary and the Protocol binding), `claims` (the kinds
 of structure the run checked) and `semantic_completeness: "not_proven"`. No other Module's records
 enter the digest, nor do the files Modules bind, the list of version-controlled files or the tests
 scanned for verification declarations, so a finding about bindings, unbound files or scenario
@@ -485,8 +447,12 @@ declaration yields `{scenario_id, path, line, name}`.
 
 ## Typed values {#typed-values}
 
-A typed value is a closed JSON object `{"type_id": ..., "schema_version": ..., "data": ...}`. Types
-are registered by their owners; Spec core registers only its own.
+Spec core's own copy of the [typed value](../../glossary.json#concept.typed-value) format the
+[Kernel's contracts](../../kernel/contracts.md#typed-values) define, kept in Spec core's code so that
+the spec part depends on no other part, and raising Spec tooling's own errors. A typed value is a
+closed JSON object `{"type_id": ..., "schema_version": ..., "data": ...}`. Types are registered by
+their owners within the spec part, Spec core, the Spec MCP server and Views; Spec core registers only
+its own.
 
 ```python
 register(type_id: str, version: int, schema: dict) -> None
@@ -579,6 +545,10 @@ and JSON-style inline collections. Tags, anchors, aliases, merge keys, block sca
 keys are refused with a `FrontMatterError` naming the file and line.
 
 ## File transactions {#file-transactions}
+
+Spec core's own copy of the [file transaction](../../glossary.json#concept.file-transaction) the
+[Kernel's contracts](../../kernel/contracts.md#file-transactions) define, with Spec tooling's own
+errors:
 
 ```python
 file_change(root: Path, path: str, content: str) -> dict

@@ -44,13 +44,17 @@ it can establish in one run rather than stopping at the first.
 
 Every worker of a Spec review or a Spec panel SHALL receive the reviewed Module's earlier Issues before it judges.
 
-The [definition](operation.md#earlier-issues) says which Issues those are.
+The [definition](operation.md#earlier-issues) says which Issues those are. Where the issues part is
+not installed there are none, and the workers receive none.
 
-### req.spec-review.reports-issues — Every finding that stands becomes an Issue
+### req.spec-review.reports-issues — Every finding that stands becomes an Issue where Issues exist
 
-The Operation SHALL report every finding its checker did not dispute, or its chair merged into the panel report, as an [Issue report](../../glossary.json#concept.issue-report) through the Issue store.
+The Operation SHALL report every finding its checker did not dispute, or its chair merged into the panel report, as an [Issue report](../../glossary.json#concept.issue-report) through the Issue store wherever the issues part is installed, and otherwise keep every such finding in its result with its tier and severity, recording nothing outside the run and saying in its result that the findings were not recorded as Issues.
 
-A worker never writes an Issue; the Operation reports in bound and unbound runs alike.
+A worker never writes an Issue; the Operation reports in bound and unbound runs alike. Issues is an
+[optional integration](../../glossary.json#concept.optional-integration) of the method part: the
+review's judgement and its verdict are the same either way, the verdict following from the blocking
+findings that stand where it would otherwise follow from the Issues they became.
 
 ### req.spec-review.never-disposes — Review closes no Issue
 

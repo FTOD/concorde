@@ -249,9 +249,15 @@ sessions are tested with the owners case, in `tests/concorde/e2e/test_owners.py`
 result](../../glossary.json#concept.run-result) of every run a session starts, and the run store
 that holds them. The driver relies on the run progress file naming the run's kind, name, workspace,
 phase and start time, on the [run lock](../../glossary.json#concept.run-lock) telling whether its
-runner still lives, on the result carrying the status, summary and error code, and on a workspace
-binding naming the `.concorde` of its runs, to decide which runs are unsettled and to write the wake
+runner still lives, on the result carrying the status, summary and error code, and on the workspace binding, which the Kernel
+defines, naming the `.concorde` of its runs, to decide which runs are unsettled and to write the wake
 message; it never changes any of them.
+
+<a id="uses-kernel"></a>
+
+**Kernel** defines the [workspace binding](../../glossary.json#concept.workspace-binding), whose
+`.concorde` the driver relies on naming where the runs of a session's workspace keep their locks and
+[run progress files](../../glossary.json#concept.run-progress-file).
 
 Claude Code is external: the driver relies on `claude -p` with `--resume`,
 `--append-system-prompt`, `--allowedTools` and `stream-json` output, whose events carry the

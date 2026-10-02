@@ -42,6 +42,14 @@ time. A panel changes no file of the workspace: its only writes are its [Issue r
 primary worktree keeps. A Module whose panel stopped reports no Issue and keeps the reviews it had
 and its **stop**: the status, summary and error link that stopped it.
 
+Where the issues part is not installed, steps 2 and 4 read and report no Issues, exactly as
+[Spec review does without them](operation.md#without-the-issues-part): every merged finding keeps
+`issue` null, `earlier_issues` is null, step 5 derives each outcome from the blocking findings of the
+chair's report, and the result says that the findings were not recorded as Issues. The run's output
+carries the same `review` note under the
+[step output convention](../../workflows/contracts.md#contract.workflows.step-output) as a Spec
+review's.
+
 ## The panel graph
 
 ```d2 illustrative

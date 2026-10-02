@@ -21,7 +21,13 @@
           "concept.run",
           "concept.run-progress-file",
           "concept.run-result",
-          "concept.run-store",
+          "concept.run-store"
+        ]
+      },
+      {
+        "target": "module.kernel",
+        "meaning": "#uses-kernel",
+        "relies_on": [
           "concept.workspace-binding"
         ]
       }

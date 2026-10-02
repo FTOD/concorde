@@ -9,7 +9,7 @@ Commands, the session's [trace node](../../glossary.json#concept.trace-node) and
 
 - GIVEN an open task `severity` and a Claude Code [main agent](../../glossary.json#concept.main-agent) whose session is named `concorde-7d`
 - WHEN the main agent runs `concorde task session severity --main concorde-7d`
-- THEN `.concorde/tasks/severity/runtime/` holds a settings file and a [write hook](../../glossary.json#concept.write-hook)
+- THEN `.concorde/tasks/severity/runtime/` holds a settings file and the hook of its [session boundary](../../glossary.json#concept.session-boundary)
 - AND `claude --bg` is started in the task worktree with those settings and a first prompt naming the task, its goal and `concorde-7d`
 - AND the task's [trace](../../glossary.json#concept.trace) holds the started session as the node `sessions/<id>/` with its identity and name
 - AND the [task record](../../glossary.json#concept.task-record) names `concorde-7d` as its `main`, which the first prompt presents as the main agent's session when the task session started
@@ -35,9 +35,9 @@ Commands, the session's [trace node](../../glossary.json#concept.trace-node) and
 ### scenario.task-session.boundary — The session's boundary confines its writes
 
 - GIVEN the settings written for a [task session](../../glossary.json#concept.task-session)
-- WHEN its write hook judges an Edit of a file in the task worktree, of the [decision log](../../glossary.json#concept.decision-log) and of a file of the primary worktree
+- WHEN its hook judges an Edit of a file in the task worktree, of the [decision log](../../glossary.json#concept.decision-log) and of a file of the primary worktree
 - THEN the first two are allowed and the third is denied with a reason naming the task worktree
-- AND the write hook denies an Edit of an [Issue](../../glossary.json#concept.issue) record, which lies outside the task worktree
+- AND the hook denies an Edit of an [Issue](../../glossary.json#concept.issue) record, which lies outside the task worktree
 - BUT the settings restrict nothing else: they carry no sandbox, so the session's commands reach every path, process, socket and network host
 
 ## Ending with the task

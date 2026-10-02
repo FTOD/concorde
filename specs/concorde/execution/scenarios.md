@@ -1,8 +1,10 @@
 # Execution scenarios
 
 Concrete situations that show the [requirements](requirements.md) of [Execution](module.md). The
-[run result](../glossary.json#concept.run-result) and the binding are defined in the
-[contracts](contracts.md) and the runner in [How a run is executed](runner.md).
+[run result](../glossary.json#concept.run-result) is defined in the [contracts](contracts.md), the
+binding in the [Kernel's](../kernel/contracts.md#contract.kernel.workspace-binding) and the runner in
+[How a run is executed](runner.md). The runs they start are of Method's Operations and commands,
+which every Concorde installation of the method part registers.
 
 ## Bound and unbound runs
 
@@ -10,7 +12,7 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 
 - GIVEN a task worktree whose binding names the workspace `severity`, the [Module](../glossary.json#concept.module) `module.issues`, its branch and base commit, the workspace folder `.concorde/tasks/severity/workspace/` of the primary worktree and that worktree's `.concorde`
 - WHEN the task level runs `concorde run implement --goal "…"` in that worktree
-- THEN the run works on `module.issues` with the grant computed from that worktree's Specs
+- THEN the run works on `module.issues`, its steps computing the grant from that worktree's Specs
 - AND its result names the workspace `severity` and is saved in its [trace node](../glossary.json#concept.trace-node) `runs/<run-id>/` of that workspace folder, whose `trace.json` names the workspace, the Module and the Operation
 - AND its run lock and the [workspace lock](../glossary.json#concept.workspace-lock) are files under the primary worktree's `.concorde/locks/`
 - AND neither the binding nor any [task record](../glossary.json#concept.task-record) changes
@@ -33,7 +35,7 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 
 - GIVEN a primary worktree with `module.a`
 - WHEN the [main agent](../glossary.json#concept.main-agent) runs `concorde run spec_review --modules module.a` there
-- THEN the reviewer runs in an [unbound checkout](../glossary.json#concept.unbound-checkout) of the primary worktree's `HEAD`, with the grant computed from its Specs
+- THEN the reviewer runs in an [unbound checkout](../glossary.json#concept.unbound-checkout) of the primary worktree's `HEAD`, with the grant its steps compute from that checkout's Specs
 - AND the result has `workspace` null, names that `HEAD` as `commit` and is saved in the trace node `.concorde/unbound/<run-id>/` of the primary worktree
 - AND a later [unbound run](../glossary.json#concept.unbound-run) may admit it with `--input`
 - BUT an `--input` naming a run of a workspace is refused with `input_not_admissible`
@@ -120,7 +122,7 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 ### scenario.execution.removed-module — A Module the workspace removed is left out
 
 - GIVEN a binding that names `module.a` and a Module the workspace has since removed or renamed
-- WHEN a run is started without `--modules`
+- WHEN a run of a definition that reads the Specs, as Method's do, is started without `--modules`
 - THEN the run works on `module.a` only, and the result lists `module.a` as its Modules
 - AND the result has `removed-module` evidence naming the removed Module
 - AND the binding still names both Modules
@@ -128,7 +130,7 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 ### scenario.execution.modules-removed — A binding whose Modules were all removed
 
 - GIVEN a binding whose Modules the workspace has all removed or renamed
-- WHEN a run is started without `--modules`
+- WHEN a run of a definition that reads the Specs is started without `--modules`
 - THEN it is refused with `modules_removed`, naming them and `--modules`
 - AND the same run naming the current Modules with `--modules` proceeds
 
@@ -216,7 +218,7 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 
 - GIVEN a run whose worker is still working
 - WHEN the runner receives `SIGTERM`
-- THEN every worker process it started is ended
+- THEN its running step ends every worker process it started through the worker harness
 - AND the result has status `failed` with `cancelled` evidence and is written and printed
 - AND the result's `worker_runs` and its `cancelled` link name the worker run, whose record ends `interrupted` and whose progress file is `finished`
 

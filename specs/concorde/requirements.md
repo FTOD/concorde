@@ -25,14 +25,14 @@ coordination part opens, delivers, merges and closes tasks with the kernel alone
 
 ### req.concorde.absent-part-stated — An absent part is stated, not failed
 
-An optional integration whose part is not installed SHALL be skipped with a statement that names the missing part, and SHALL NOT make the rest of the work it belongs to fail.
+An optional integration whose part is not installed SHALL be skipped with a statement that names the missing part, never making the rest of the work it belongs to fail.
 
 A command or MCP tool of a part that is not installed is absent rather than present and broken; a
 command that needs it is refused naming the part.
 
 ### req.concorde.one-version — All parts carry one version
 
-Every part SHALL carry the version number of the Concorde repository it was built from, the same for every part.
+Every part SHALL carry the version number of the [Concorde repository](glossary.json#concept.concorde-repository) it was built from, the same for every part.
 
 ## Runtime
 

@@ -22,8 +22,6 @@
           "concept.execution-runner",
           "concept.run",
           "concept.run-result",
-          "concept.workspace-binding",
-          "concept.workspace-lock",
           "concept.detached-run",
           "concept.run-store",
           "req.execution.workspace-lock",
@@ -33,36 +31,20 @@
         ]
       },
       {
-        "target": "module.main-session",
-        "meaning": "#uses-main-session",
+        "target": "module.kernel",
+        "meaning": "#uses-kernel",
         "relies_on": [
-          "concept.project-mcp-server"
+          "concept.workspace-binding",
+          "concept.workspace-lock",
+          "contract.kernel.workspace-binding"
         ]
       },
       {
         "target": "module.operations",
-        "meaning": "#uses-operations"
-      },
-      {
-        "target": "module.validation",
-        "meaning": "#uses-validation",
+        "meaning": "#uses-commands",
         "relies_on": [
-          "contract.validation.readiness"
-        ]
-      },
-      {
-        "target": "module.delivery",
-        "meaning": "#uses-delivery"
-      },
-      {
-        "target": "module.adoption",
-        "meaning": "#uses-adoption"
-      },
-      {
-        "target": "module.scaffold",
-        "meaning": "#uses-scaffold",
-        "relies_on": [
-          "contract.scaffold.record"
+          "concept.operation",
+          "concept.operation-catalog"
         ]
       },
       {
@@ -80,6 +62,14 @@
           "contract.tracing.error",
           "concept.trace-node",
           "concept.error-chain"
+        ]
+      },
+      {
+        "target": "module.distribution",
+        "meaning": "#uses-distribution",
+        "relies_on": [
+          "concept.project-mcp-server",
+          "concept.part-registration"
         ]
       }
     ],

@@ -4,7 +4,8 @@
 
 Code review gives callers an independent judgement of code against the
 [Specs](../../glossary.json#concept.spec) and records every problem it finds as an
-[Issue](../../glossary.json#concept.issue) of the project. It provides the `code_review`
+[Issue](../../glossary.json#concept.issue) of the project where the issues part is installed, and
+in its run result alone where it is not. It provides the `code_review`
 [Operation](../../glossary.json#concept.operation), which judges in one of two scopes: a
 **change review** judges a workspace's code changes since a base commit, and a **Module review**
 judges each named [Module](../../glossary.json#concept.module)'s whole code against all of its
@@ -12,7 +13,7 @@ Specs. A reviewer worker reads the Specs, code and tests, changes nothing, and r
 it can establish in one pass, each tied to the promise it judges the code against and to the code
 that shows it; when code and Spec disagree it says which side is wrong, and may challenge a Spec
 requirement it judges unreasonable or unrealizable. The Operation checks every finding's evidence,
-reports each finding as an Issue and derives the verdict from the Issues that stand; acting on them
+reports each finding as an Issue where it can and derives the verdict from the tiers of what stands; acting on them
 is later work of the task. The reviewer never edits a file or runs a command; the Operation's host
 steps compute the diff and run the configured checks through Check execution, and leave the
 workspace unchanged. A review without findings is evidence about the reviewed inputs only, not proof
@@ -73,11 +74,17 @@ Issues: it appends a finding that names an earlier Issue to that Issue and recor
 finding as a new Issue. It closes none: the resolved Issues are listed in the report for the task
 to close.
 
+Earlier Issues exist only where the issues part is installed. Without it the review reads none,
+reports nothing outside the run, keeps every finding in its report with its tier and severity, lists
+no Issue as carried or resolved, and says in its report that its findings were not recorded as
+Issues ([req.code-review.findings-as-issues](requirements.md#req.code-review.findings-as-issues)).
+
 ### The verdict
 
 Each reviewed Module's **outcome** is `changes_required` when an Issue of a blocking tier stands for
-it, reported by this review or carried from an earlier one, `accepted` when none does, and
-`incomplete` when it could not be reviewed or its Issues could not be written. The report's verdict
+it, reported by this review or carried from an earlier one — or, without the issues part, when this
+review reports a finding of a blocking tier — `accepted` when none does, and `incomplete` when it
+could not be reviewed or its Issues could not be written. The report's verdict
 is `incomplete` when any Module is, else `changes_required` when any Module is, else `accepted`. The
 Operation derives it itself from the tiers; it verifies what it can decide, that every basis and
 location exists and which verdict follows, and otherwise keeps findings as the reviewer's claims.
@@ -219,9 +226,11 @@ Issues, outcomes and verdict.
 
 ## What it relies on
 
-- <a id="uses-operations"></a>**Operations** lists `code_review` in its catalog as an Operation
-  that writes nothing and may run unbound, and names this Module as its provider. Code review calls
-  no other Operation. It relies on Operations' review Issue helpers to read, settle and report its
+- <a id="uses-operations"></a>**Operations**, Execution's Operation framework, is what `code_review`
+  plugs into: Method registers its definition as an Operation that writes nothing and may run
+  unbound, naming this Module as its provider
+  ([Method](../module.md#the-operations-and-commands-it-provides)). Code review calls no other
+  Operation. It relies on Method's review Issue helpers to read, settle and report its
   [earlier Issues](#earlier-issues) by the rules every review shares, supplying only its own
   Operation, the reason it gives a finding that names no Issue offered for its Module and the Issue
   report of a finding.
@@ -231,8 +240,9 @@ Issues, outcomes and verdict.
   [run result](../../glossary.json#concept.run-result). Code review relies on it for the
   binding's base commit, the default of `--base`, for the worktree the run started in, whose
   primary worktree keeps the Issues, and for recording the run.
-- <a id="uses-workers"></a>**Workers** turns each frozen grant into worker settings, launches each
-  reviewer with this Module's brief, collects its worker result, audits the worktree and writes the
+- <a id="uses-workers"></a>**Workers**, in the worker harness, receives each frozen grant as data
+  through Method's [standard worker sequence](../../glossary.json#concept.standard-worker-sequence),
+  turns it into worker settings, launches each reviewer with this Module's instructions, collects its worker result, audits the worktree and writes the
   run record.
 - <a id="uses-checks"></a>**Check execution** runs the configured checks the scope selects and
   returns a check result for each, passed to the reviewer with its log path; the report carries each
@@ -241,8 +251,11 @@ Issues, outcomes and verdict.
 - <a id="uses-spec"></a>**Spec core** computes the `review-code` grants, decides which changed paths
   the diff may show in full, lists a Module's documents and code files and resolves findings' basis
   identities. Code review never computes a boundary itself.
-- <a id="uses-issues"></a>**Issues** keeps the project's Issues in the primary worktree, whichever
-  worktree the run works in. Code review relies on its store to list a Module's open Issues with
+- <a id="uses-issues"></a>**Issues** is an
+  [optional integration](../../glossary.json#concept.optional-integration): where the issues part is
+  installed, it keeps the project's Issues in the primary worktree, whichever worktree the run works
+  in; where it is not, the review reports its findings in its run result alone, as
+  [Earlier Issues](#earlier-issues) says. Code review relies on its store to list a Module's open Issues with
   their latest [report](../../glossary.json#concept.issue-report) and
   [revision](../../glossary.json#concept.issue-revision), to record a new Issue or append a
   report at the revision read, committing it before it answers, and to refuse a stale append rather
