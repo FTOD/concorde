@@ -18,12 +18,13 @@ from pathlib import Path
 from unittest.mock import patch
 
 from concorde.kernel.errors import ERROR_SCHEMA
+from concorde.distribution.install import TRACES
 from concorde.execution.runs import workspace_lock
 from concorde.spec.schema import validate
-from concorde.spec.typed_data import TypedDataError, validate_typed
+from concorde.kernel.refusal import KernelError
+from concorde.kernel.schema import validate_typed
 from concorde.spec.verification import verifies
 from concorde.coordination.tasks import cli, merge, store
-from concorde.kernel.tracing import layout
 from concorde.kernel.tracing import node as trace
 from tests.concorde.support.operation_project import OperationProject, commit
 from tests.concorde.support.paths import REPOSITORY_ROOT
@@ -62,7 +63,7 @@ class MergeTests(unittest.TestCase):
         # unbound runs and the locks), and merges need an identity.
         gitignore = self.root / ".gitignore"
         gitignore.write_text(
-            gitignore.read_text() + "".join(f"{path}\n" for path in layout.IGNORED)
+            gitignore.read_text() + "".join(f"{path}\n" for path in TRACES)
         )
         git(self.root, "config", "user.name", "t")
         git(self.root, "config", "user.email", "t@t")
@@ -201,7 +202,7 @@ class MergeTests(unittest.TestCase):
         # The merge trace types waited_seconds as a non-negative number.
         self.assertEqual(node["content"], validate_typed(node["content"]))
         for wrong in (-0.5, "0.4", True, None):
-            with self.subTest(waited_seconds=wrong), self.assertRaises(TypedDataError):
+            with self.subTest(waited_seconds=wrong), self.assertRaises(KernelError):
                 validate_typed(
                     {**node["content"], "data": {**data, "waited_seconds": wrong}}
                 )

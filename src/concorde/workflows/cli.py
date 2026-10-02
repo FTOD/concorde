@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 from ..kernel import errors
-from ..spec.schema import ContractError
+from ..kernel.refusal import KernelError
 from .report import report
 from .step import WAIT, StepError, check_request, run_step
 from .store import WorkflowError, WorkspaceRetired, workspace
@@ -155,7 +155,7 @@ def main(argv, cwd: Path | None = None) -> int:
         return 0 if result["status"] == "ok" else 1
     try:
         request = check_request(step_request(arguments))
-    except (UsageError, ValueError, OSError, ContractError) as error:
+    except (UsageError, ValueError, OSError, KernelError) as error:
         return usage(f"the step request is not usable: {error}")
     try:
         status, value = run_step(space, request, arguments.wait)

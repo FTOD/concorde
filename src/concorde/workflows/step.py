@@ -32,7 +32,7 @@ from ..execution.runs import (
     result_path,
     run_state,
 )
-from ..spec.schema import validate
+from ..kernel.schema import validate
 from . import store
 from .store import WorkflowError, Workspace, WorkspaceRetired
 
@@ -609,7 +609,7 @@ REQUEST_DEFAULTS = {"answers": None, "retry": False, "restart": None}
 
 
 def check_request(request) -> dict:
-    """The request with its defaults if it satisfies its contract; ``ContractError`` otherwise."""
+    """The request with its defaults if it satisfies its contract; ``KernelError`` otherwise."""
     validate(request, REQUEST_SCHEMA)
     return {**REQUEST_DEFAULTS, **request}
 

@@ -418,8 +418,7 @@ submodule checked out from its own repository at the commit the checkout records
 
 <a id="realization.execution.runner"></a>
 
-The **Runner and run store** realization binds the binding reader, the run store, the unbound
-checkout, the run context and definitions that steps work with and the runner itself, with their
+The **Runner and run store** realization binds the run store, the unbound checkout, the run context and definitions that steps work with and the runner itself, with their
 tests; the runner finds an execution command by name in the catalog of
 [Commands](commands/module.md). Its run context today also holds the [standard worker sequence](../glossary.json#concept.standard-worker-sequence)'s
 launch of a worker and the computation of the grant, which are Method's
@@ -431,7 +430,6 @@ which hands `run`, the execution commands and `workflow` to the parts that regis
 execution: Execution {
   runner: Runner and run store {
     "src/concorde/execution/__init__.py"
-    "src/concorde/execution/binding.py"
     "src/concorde/execution/checkout.py"
     "src/concorde/execution/context.py"
     "src/concorde/execution/runner.py"

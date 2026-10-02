@@ -45,7 +45,7 @@ from pathlib import Path
 
 from ...kernel import errors
 from ...distribution.install import UPDATE_STATE
-from ...spec.typed_data import register
+from ...kernel.schema import register
 from ...kernel.tracing import locks
 from ...kernel.tracing import node as trace
 from ...kernel.tracing.node import Node
@@ -439,7 +439,7 @@ def _settled(primary: Path, record: dict) -> bool:
         delivered
         and head
         and delivered[-1]["commit"] == head
-        and not store.delivery_mismatches(primary, delivered[-1])
+        and not delivered[-1]["mismatches"]
     )
 
 

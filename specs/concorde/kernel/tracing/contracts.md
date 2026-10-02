@@ -11,7 +11,7 @@ every level reports with. The [requirements](requirements.md) state the obligati
 ```concorde-contract
 {
   "id": "contract.tracing.node",
-  "version": 3,
+  "version": 4,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -44,6 +44,8 @@ every level reports with. The [requirements](requirements.md) state the obligati
           "session",
           "merge",
           "merge-check",
+          "delivery",
+          "delivery-check",
           "workflow",
           "step",
           "run",
@@ -479,17 +481,21 @@ its content type.
 A part that keeps the top nodes of traces registers each **trace root** with Tracing in its
 [part registration](../../glossary.json#concept.part-registration): its name, its folder relative to a `.concorde` directory, whether that directory is the
 primary worktree's or the one of the worktree a node started in, the kind of its top nodes, whether
-its folders are **current** (still written) or **closed** (never changed again), the node's field
-that dates its end, the retention periods that apply to it and the files that count as its
+its folders are **current** (still written) or **closed** (never changed again), which option of
+`concorde trace list` lists its top nodes (always, `--history`, `--unbound` or none), the node's
+field that dates its end, the retention periods that apply to it, the kind of lock, named after a
+top node's identity, whose holder says the node is still written, and the files that count as its
 **conversation records**. Tracing searches, lists and prunes the registered roots of the installed
-parts and no other folder. Concorde's parts register these:
+parts and no other folder. Until Distribution reads the parts' registrations, a part registers its
+roots with Tracing's library when its code loads, and whoever runs `concorde trace` loads the parts
+that register them first. Concorde's parts register these:
 
-| Root | Folder | Registered by | Top nodes | State | Retention |
-| --- | --- | --- | --- | --- | --- |
-| current tasks | `tasks/<task>/` of the primary worktree | Coordination ([Tasks](../../coordination/tasks/module.md)) | `task` | current | none: a current task is never pruned |
-| history | `history/<key>/` of the primary worktree | Coordination | `task` | closed | `conversation_days` for its conversation records, then `history_days` for the folder |
-| unbound runs | `unbound/<run>/` of the worktree the run started in | [Execution](../../execution/module.md) | `run` | current until it ended | `unbound_days` after the run ended |
-| lobby | `lobby/<run>/` of the `.concorde` the run's binding names | Execution | `run` | current until it ended or entered its workspace | `unbound_days` after the run ended |
+| Root | Folder | Registered by | Top nodes | State | Listed | Retention |
+| --- | --- | --- | --- | --- | --- | --- |
+| current tasks | `tasks/<task>/` of the primary worktree | Coordination ([Tasks](../../coordination/tasks/module.md)) | `task` | current | always | none: a current task is never pruned |
+| history | `history/<key>/` of the primary worktree | Coordination | `task` | closed | with `--history` | `conversation_days` for its conversation records, then `history_days` for the folder |
+| unbound runs | `unbound/<run>/` of the worktree the run started in | [Execution](../../execution/module.md) | `run` | current until it ended | with `--unbound` | `unbound_days` after the run ended and while its run lock is not held |
+| lobby | `lobby/<run>/` of the `.concorde` the run's binding names | Execution | `run` | current until it ended or entered its workspace | never; found by its identity | `unbound_days` after the run ended and while its run lock is not held |
 
 ## Layout
 
@@ -697,10 +703,11 @@ concorde trace prune [--dry-run]
   `unknown_node`, naming what it searched.
 - `--depth` limits how many levels below the node are shown (default: all); the roll-up always
   covers the whole subtree.
-- `list` lists the top nodes of the registered roots that are current, with `--history` also the
-  closed ones and with `--unbound` also the unbound runs, each as a node without its children; in
-  Concorde these are the current tasks, the history and the unbound runs. An option whose roots no
-  installed part registers lists nothing.
+- `list` lists the top nodes of the registered roots each root's registration lists always, with
+  `--history` also those it lists with that option and with `--unbound` also those it lists with
+  that one, in that order, each as a node without its children; in Concorde these are the current
+  tasks, the history and the unbound runs. An option whose roots no installed part registers lists
+  nothing.
 - `prune` removes what the retention allows and prints the paths it removed, folders and
   conversation records alike; `--dry-run` prints them without removing anything.
 - Output is one JSON value as the view contract defines; `--format tree` prints the same as an

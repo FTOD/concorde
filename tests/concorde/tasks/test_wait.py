@@ -13,6 +13,7 @@ import time
 import unittest
 
 from concorde.kernel.errors import ERROR_SCHEMA
+from concorde.distribution.install import TRACES
 from concorde.execution.runs import workspace_lock
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
@@ -30,7 +31,7 @@ class WaitTests(unittest.TestCase):
         self.root = self.project.root
         gitignore = self.root / ".gitignore"
         gitignore.write_text(
-            gitignore.read_text() + "".join(f"{path}\n" for path in layout.IGNORED)
+            gitignore.read_text() + "".join(f"{path}\n" for path in TRACES)
         )
         git(self.root, "config", "user.name", "t")
         git(self.root, "config", "user.email", "t@t")

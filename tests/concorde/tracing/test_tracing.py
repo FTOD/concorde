@@ -10,14 +10,20 @@ import subprocess
 import tempfile
 import unittest
 from contextlib import redirect_stdout
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
-from concorde.kernel.tracing import command, layout, locks, reader, retention
+from concorde.kernel.tracing import command, layout, locks, reader, retention, roots
 from concorde.kernel.tracing import node as trace
 from concorde.kernel.tracing.node import NODE_SCHEMA, Node, TraceError
+
+# Concorde's trace roots, which Tasks and Execution register when their code loads: the current
+# tasks and the history, the unbound runs and the lobby.
+from concorde.coordination.tasks.store import TRACE_ROOTS as TASK_ROOTS
+from concorde.execution.runs import TRACE_ROOTS as RUN_ROOTS
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 
@@ -60,7 +66,7 @@ class TaskTrace:
 
     def __init__(self, concorde: Path, task: str = "retry"):
         self.concorde = concorde
-        self.folder = layout.task_folder(concorde, task)
+        self.folder = Path(concorde) / "tasks" / task
         ended(
             self.folder,
             task,
@@ -69,7 +75,7 @@ class TaskTrace:
             ended_at=None,
             metadata={"task": task},
         )
-        workspace = layout.workspace_folder(self.folder)
+        workspace = Path(self.folder) / "workspace"
         self.run = layout.run_folder(workspace, "r-20260927T100100-implement-00000001")
         ended(
             self.run,
@@ -117,6 +123,38 @@ class TracingTests(unittest.TestCase):
 
     def tearDown(self):
         self.temporary.cleanup()
+
+    def test_the_parts_register_the_roots_the_contract_names(self):
+        registered = {root.name: root for root in roots.registered()}
+        self.assertEqual(
+            {
+                "current tasks": ("tasks", "task", "current", "always", None),
+                "history": ("history", "task", "closed", "history", "history_days"),
+                "unbound runs": (
+                    "unbound",
+                    "run",
+                    "current",
+                    "unbound",
+                    "unbound_days",
+                ),
+                "lobby": ("lobby", "run", "current", "never", "unbound_days"),
+            },
+            {
+                root.name: (
+                    root.folder,
+                    root.kind,
+                    root.state,
+                    root.listed,
+                    root.period,
+                )
+                for root in (*TASK_ROOTS, *RUN_ROOTS)
+            },
+        )
+        for root in (*TASK_ROOTS, *RUN_ROOTS):
+            self.assertIs(root, registered[root.name])
+        with self.assertRaises(roots.RootError) as refused:
+            roots.register(replace(TASK_ROOTS[1], state="current"))
+        self.assertEqual("duplicate_root", refused.exception.code)
 
     def test_the_node_schema_is_the_contract(self):
         self.assertEqual(spec_contract("contract.tracing.node")["schema"], NODE_SCHEMA)
@@ -194,7 +232,7 @@ class TracingTests(unittest.TestCase):
     def test_a_tasks_trace_rolls_its_usage_up(self):
         TaskTrace(self.concorde)
         before = sorted(str(path) for path in self.concorde.rglob("*"))
-        value = reader.view(layout.task_folder(self.concorde, "retry"), self.concorde)
+        value = reader.view(Path(self.concorde) / "tasks" / "retry", self.concorde)
         validate(value, spec_contract("contract.tracing.view")["schema"])
         self.assertEqual("task", value["kind"])
         workspace = value["children"][0]
@@ -222,17 +260,17 @@ class TracingTests(unittest.TestCase):
     def test_a_run_is_found_by_its_identity_wherever_it_lies(self):
         task = TaskTrace(self.concorde)
         step = layout.step_folder(
-            layout.workflow_folder(layout.workspace_folder(task.folder)), 1, "survey"
+            layout.workflow_folder(Path(task.folder) / "workspace"), 1, "survey"
         )
         ended(step, "survey", "step")
         ended(step / "run", "r-20260927T100200-survey-00000003", "run")
-        unbound = layout.unbound_run_folder(
-            self.concorde, "r-20260927T100300-understand-00000004"
+        unbound = (
+            Path(self.concorde) / "unbound" / "r-20260927T100300-understand-00000004"
         )
+
         ended(unbound, unbound.name, "run")
-        lobby = layout.lobby_run_folder(
-            self.concorde, "r-20260927T100500-implement-00000005"
-        )
+        lobby = Path(self.concorde) / "lobby" / "r-20260927T100500-implement-00000005"
+
         ended(lobby, lobby.name, "run", status="failed")
         roots = [self.concorde]
         found, _ = reader.locate("r-20260927T100200-survey-00000003", roots)
@@ -269,10 +307,11 @@ class TracingTests(unittest.TestCase):
         TaskTrace(self.concorde, "one")
         TaskTrace(self.concorde, "two")
         closed = TaskTrace(self.concorde, "old")
-        shutil.move(closed.folder, layout.history_folder(self.concorde) / "old")
-        unbound = layout.unbound_run_folder(
-            self.concorde, "r-20260927T100300-understand-00000004"
+        shutil.move(closed.folder, Path(self.concorde) / "history" / "old")
+        unbound = (
+            Path(self.concorde) / "unbound" / "r-20260927T100300-understand-00000004"
         )
+
         ended(unbound, unbound.name, "run")
         listed = reader.listing(self.concorde, history=True, unbound=True)
         self.assertEqual(
@@ -286,7 +325,7 @@ class TracingTests(unittest.TestCase):
     def test_a_task_moved_to_the_history_reads_the_same(self):
         task = TaskTrace(self.concorde)
         before = reader.view(task.folder, self.concorde)
-        target = layout.history_folder(self.concorde) / "retry"
+        target = Path(self.concorde) / "history" / "retry"
         target.parent.mkdir(parents=True)
         task.folder.rename(target)
         after = reader.view(target, self.concorde)
@@ -309,23 +348,23 @@ class TracingTests(unittest.TestCase):
         def at(delta: timedelta) -> str:
             return (now - delta).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
-        old = layout.unbound_run_folder(
-            self.concorde, "r-20260920T000000-understand-00000001"
-        )
+        old = Path(self.concorde) / "unbound" / "r-20260920T000000-understand-00000001"
+
         ended(old, old.name, "run", ended_at=at(timedelta(days=8)))
-        fresh = layout.unbound_run_folder(
-            self.concorde, "r-20260928T000000-understand-00000002"
+        fresh = (
+            Path(self.concorde) / "unbound" / "r-20260928T000000-understand-00000002"
         )
+
         ended(fresh, fresh.name, "run", ended_at=at(timedelta(days=1)))
-        running = layout.unbound_run_folder(
-            self.concorde, "r-20260920T000000-understand-00000003"
+        running = (
+            Path(self.concorde) / "unbound" / "r-20260920T000000-understand-00000003"
         )
+
         ended(running, running.name, "run", status="running", ended_at=None)
-        refused = layout.lobby_run_folder(
-            self.concorde, "r-20260920T000000-implement-00000004"
-        )
+        refused = Path(self.concorde) / "lobby" / "r-20260920T000000-implement-00000004"
+
         ended(refused, refused.name, "run", ended_at=at(timedelta(days=8)))
-        history = layout.history_folder(self.concorde) / "done"
+        history = Path(self.concorde) / "history" / "done"
         ended(history, "done", "task", ended_at=at(timedelta(days=365)))
         conversations = [
             history / "sessions" / "s1" / "transcript.jsonl",
@@ -342,7 +381,7 @@ class TracingTests(unittest.TestCase):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("{}\n")
         (history / "decisions.md").write_text("# Decision log: done\n")
-        recent = layout.history_folder(self.concorde) / "recent"
+        recent = Path(self.concorde) / "history" / "recent"
         ended(recent, "recent", "task", ended_at=at(timedelta(days=2)))
         (recent / "sessions" / "s3").mkdir(parents=True)
         (recent / "sessions" / "s3" / "transcript.jsonl").write_text("{}\n")

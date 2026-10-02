@@ -1,9 +1,10 @@
 """``concorde trace show|list|prune``: read traces, and remove what retention allows.
 
-``show`` and ``list`` write nothing. Each prints one JSON value (``contract.tracing.view``), or
-with ``--format tree`` the same as an indented text tree; ``prune`` prints the paths it removed.
-Exit status 0 on success, 1 for a refusal printed as ``{"error": <link>}``, 2 for a malformed
-command line.
+``show`` and ``list`` write nothing, and all three work only over the registered trace roots: the
+process that runs the command loads the parts that register them first. Each prints one JSON value
+(``contract.tracing.view``), or with ``--format tree`` the same as an indented text tree; ``prune``
+prints the paths it removed. Exit status 0 on success, 1 for a refusal printed as
+``{"error": <link>}``, 2 for a malformed command line.
 """
 
 from __future__ import annotations
@@ -68,7 +69,7 @@ def _bound_workspace(here: Path) -> list[Path]:
 
 
 def show(arguments, here: Path) -> int:
-    searched = reader.roots(here)
+    searched = reader.concorde_directories(here)
     workspaces = _bound_workspace(here)
     if arguments.node is None:
         if not workspaces:
@@ -118,7 +119,7 @@ def _print(value, text: str) -> None:
 
 
 def listing(arguments, here: Path) -> int:
-    searched = reader.roots(here)
+    searched = reader.concorde_directories(here)
     nodes = []
     seen = set()
     for root in searched:

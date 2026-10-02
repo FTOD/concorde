@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from concorde.kernel.errors import ERROR_SCHEMA
+from concorde.distribution.install import TRACES
 from concorde.execution.runs import load_result, run_state, workspace_lock
 from concorde.distribution.project_mcp.server import channel_from, detect_channel
 from concorde.spec.schema import validate
@@ -196,7 +197,7 @@ class ProjectMcpTests(unittest.TestCase):
         self.root = self.project.root
         gitignore = self.root / ".gitignore"
         gitignore.write_text(
-            gitignore.read_text() + "".join(f"{path}\n" for path in layout.IGNORED)
+            gitignore.read_text() + "".join(f"{path}\n" for path in TRACES)
         )
         git(self.root, "config", "user.name", "t")
         git(self.root, "config", "user.email", "t@t")

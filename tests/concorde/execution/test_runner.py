@@ -19,7 +19,7 @@ from unittest.mock import patch
 
 from concorde.execution.commands import catalog as commands
 from concorde.kernel.errors import ERROR_SCHEMA, LINK_SCHEMA, codes
-from concorde.execution import binding as binding_file
+from concorde.kernel import binding as binding_file
 from concorde.execution import runs
 from concorde.execution.checkout import PREFIX
 from concorde.execution.context import Continue, Provider, command, evidence
@@ -1940,13 +1940,12 @@ class BindingTests(unittest.TestCase):
         # The workspace folder exists once the task is open.
         self.assertTrue(Path(value["traces"]).is_dir())
         self.assertIsNone(binding_file.load(self.root))
-        self.assertEqual(Path(value["traces"]), binding_file.traces_of(worktree, value))
         self.assertEqual(
-            Path(value["concorde"]), binding_file.concorde_of(worktree, value)
+            runs.Store(Path(value["concorde"]), Path(value["traces"])),
+            runs.store_of(worktree, value),
         )
-        self.assertIsNone(binding_file.traces_of(self.root, None))
         self.assertEqual(
-            self.root / ".concorde", binding_file.concorde_of(self.root, None)
+            runs.Store(self.root / ".concorde"), runs.store_of(self.root, None)
         )
         # The binding is ignored by Git: opening a task changes nothing a commit would carry.
         self.assertTrue(
@@ -1954,15 +1953,16 @@ class BindingTests(unittest.TestCase):
         )
 
     def test_a_binding_that_breaks_its_contract_is_never_written(self):
-        from concorde.spec.schema import ContractError
+        from concorde.kernel.refusal import KernelError
 
         self.project.open_task("t1")
         worktree = self.project.worktree("t1")
         before = (worktree / binding_file.BINDING).read_text()
-        with self.assertRaises(ContractError):
+        with self.assertRaises(KernelError) as caught:
             binding_file.write(
                 worktree, {**binding_file.load(worktree), "workspace": "Not A Name"}
             )
+        self.assertEqual("binding_invalid", caught.exception.code)
         self.assertEqual(before, (worktree / binding_file.BINDING).read_text())
 
 

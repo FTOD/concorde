@@ -32,11 +32,12 @@ from pathlib import Path
 from ..kernel.errors import WORKER_ERROR_SCHEMA, evidence, link
 from ..spec.grants import TASK_TYPES
 from ..spec.repository_base import SpecError
-from ..spec.schema import ContractError, validate
+from ..kernel.refusal import KernelError
+from ..kernel.schema import validate
 from .audit import audit, rw_allows, snapshot
 from .claude_backend import BackendRefusal, ClaudeBackend
 from .pi_backend import PiBackend
-from ..spec.typed_data import register
+from ..kernel.schema import register
 from ..kernel.tracing import layout
 from ..kernel.tracing.node import Node
 from .placement import PlacementError, place
@@ -508,9 +509,9 @@ def run_worker(request: WorkerRequest) -> dict:
     from ..execution.checks.checks import check_error
 
     worktree = Path(os.path.realpath(request.worktree))
-    parent = Path(
-        request.trace_parent or layout.unbound_folder(layout.concorde_of(worktree))
-    )
+    # Without a parent node, as when a worker is run on its own, the run keeps its node beside
+    # the unbound runs of the worktree.
+    parent = Path(request.trace_parent or layout.concorde_of(worktree) / "unbound")
     run_id, paths = create_run(parent)
     if request.started is not None:
         request.started(run_id)
@@ -853,14 +854,15 @@ def run_worker(request: WorkerRequest) -> dict:
             try:
                 if result is None:
                     text = concluded.final_text
-                    raise ContractError(
+                    raise KernelError(
+                        "invalid_field",
                         "the worker ended without a structured result"
-                        + (f"; its final text: {text[-2000:]}" if text else "")
+                        + (f"; its final text: {text[-2000:]}" if text else ""),
                     )
                 validate(result, schema)
                 invalid = _consistency(result)
-            except ContractError as error:
-                invalid = str(error)
+            except KernelError as error:
+                invalid = f"{error.field or '/'}: {error}"
             if invalid is None:
                 record["worker_result"] = result
             if not verdict.clean:

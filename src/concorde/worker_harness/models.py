@@ -22,7 +22,8 @@ import re
 import shutil
 from pathlib import Path
 
-from ..spec.schema import ContractError, validate
+from ..kernel.refusal import KernelError
+from ..kernel.schema import validate
 
 CONFIG = ".concorde/workers.json"
 # The untracked file that held worker models before; refused, never read.
@@ -160,8 +161,10 @@ def validate_config(value: dict) -> None:
         )
     try:
         validate(value, SCHEMA)
-    except ContractError as error:
-        raise ModelConfigError("config_invalid", str(error)) from error
+    except KernelError as error:
+        raise ModelConfigError(
+            "config_invalid", f"{error.field or '/'}: {error}"
+        ) from error
     enabled = value["enabled_models"]
     if not enabled:
         raise ModelConfigError(
@@ -464,10 +467,10 @@ def load_model_map(environ=None) -> tuple[Path, dict]:
         ) from error
     try:
         validate(value, MODEL_MAP_SCHEMA)
-    except ContractError as error:
+    except KernelError as error:
         raise ModelConfigError(
             "model_map_invalid",
-            f"the model map {path}: {error}; it holds schema_version {MODEL_MAP_VERSION} and "
+            f"the model map {path}: {error.field or '/'}: {error}; it holds schema_version {MODEL_MAP_VERSION} and "
             "`models`, each project model name's id for `pi`, `claude` or both, such as "
             f"{example}",
         ) from error

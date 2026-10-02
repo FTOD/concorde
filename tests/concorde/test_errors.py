@@ -8,7 +8,8 @@ import unittest
 from pathlib import Path
 
 from concorde.kernel import errors
-from concorde.spec.schema import ContractError, admit, validate
+from concorde.kernel.refusal import KernelError
+from concorde.kernel.schema import admit, validate
 
 
 def check_link(detail: str = "check.a failed with exit code 1") -> dict:
@@ -73,8 +74,8 @@ class ErrorChainTests(unittest.TestCase):
         self.assertIn("**command** Command delivery r-1", errors.render(chain))
 
     def test_the_schemas_are_admitted_by_the_contract_subset(self):
-        admit(errors.ERROR_SCHEMA)
-        admit(errors.WORKER_ERROR_SCHEMA)
+        admit(errors.ERROR_SCHEMA, contract=True)
+        admit(errors.WORKER_ERROR_SCHEMA, contract=True)
 
     def test_a_link_without_a_detail_or_reason_is_refused(self):
         with self.assertRaises(ValueError):
@@ -87,11 +88,11 @@ class ErrorChainTests(unittest.TestCase):
             )
         bad = check_link()
         bad["detail"] = ""
-        with self.assertRaises(ContractError):
+        with self.assertRaises(KernelError):
             validate(bad, errors.ERROR_SCHEMA)
         bad = check_link()
         del bad["unhandled"]
-        with self.assertRaises(ContractError):
+        with self.assertRaises(KernelError):
             validate(bad, errors.ERROR_SCHEMA)
 
     def test_an_exception_becomes_a_link_with_its_output_and_traceback(self):

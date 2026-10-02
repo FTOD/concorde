@@ -61,7 +61,6 @@
       "meaning": "#realization.execution.runner",
       "entries": [
         "src/concorde/execution/__init__.py",
-        "src/concorde/execution/binding.py",
         "src/concorde/execution/checkout.py",
         "src/concorde/execution/context.py",
         "src/concorde/execution/runner.py",

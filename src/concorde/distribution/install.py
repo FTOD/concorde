@@ -43,8 +43,7 @@ from ..dogfooding.develop import DevelopError, develop_source, guidance
 from ..kernel.errors import link
 from ..spec.errors import SpecError
 from ..spec.initialize import bind_installation
-from ..kernel.tracing import layout, locks, reader
-from ..kernel.tracing.layout import IGNORED as TRACES
+from ..kernel.tracing import layout, locks
 from ..spec.views.docsite_template import (
     DocsiteTemplateError,
     template_files,
@@ -83,6 +82,13 @@ NOT_INSTALLED = ("e2e",)
 # Written by `concorde update` and removed by the first validation that passes after it: the
 # project is "Concorde unvalidated" until then. It is this checkout's state, never committed.
 UPDATE_STATE = ".concorde/update.json"
+# The folders of the trace roots Concorde's parts register (Tasks' current tasks and history,
+# Execution's unbound runs and lobby) and Tracing's locks, which Git ignores; the parts' install
+# contributions will name them once Distribution reads their registrations.
+TRACES = tuple(
+    f"{layout.CONCORDE}/{name}/"
+    for name in ("tasks", "history", "unbound", "lobby", layout.LOCKS)
+)
 IGNORED = (
     UPDATE_STATE,
     *TRACES,
@@ -169,33 +175,27 @@ def _source_commit(package: Path) -> str | None:
     return (found.stdout.strip() or None) if found.returncode == 0 else None
 
 
-def _run_progress(concorde: Path) -> dict[str, tuple[Path, dict]]:
-    """The progress file of every run of the current tasks' workspace folders, of the unbound
-    runs and of the bound runs in the lobby, with what it holds, by run identity."""
-    folders: list[Path] = []
-    try:
-        tasks = sorted(
-            item for item in layout.tasks_folder(concorde).iterdir() if item.is_dir()
-        )
-    except OSError:
-        tasks = []
-    for task in tasks:
-        folders.extend(reader.workspace_runs(layout.workspace_folder(task)))
-    # A bound run keeps its node in the lobby until it holds its workspace's lock.
-    for store in (layout.unbound_folder(concorde), layout.lobby_folder(concorde)):
-        try:
-            folders.extend(sorted(item for item in store.iterdir() if item.is_dir()))
-        except OSError:
-            pass
+def _run_progress(concorde: Path, run_ids: set[str]) -> dict[str, tuple[Path, dict]]:
+    """The progress file of each run of ``run_ids`` found below ``concorde``, wherever the part
+    that keeps it placed its node, with what it holds, by run identity. The run's node folder is
+    named after it or, for a run a workflow step started, is the step's ``run/``."""
     found: dict[str, tuple[Path, dict]] = {}
-    for folder in folders:
+    for current, names, files in os.walk(concorde):
+        names[:] = sorted(name for name in names if name != layout.LOCKS)
+        folder = Path(current)
+        if layout.PROGRESS not in files:
+            continue
+        if folder.name not in run_ids and folder.name != "run":
+            continue
         progress = folder / layout.PROGRESS
         try:
             state = json.loads(progress.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
         if isinstance(state, dict) and state.get("kind") in ("operation", "command"):
-            found[str(state.get("run_id") or folder.name)] = (progress, state)
+            identity = str(state.get("run_id") or folder.name)
+            if identity in run_ids:
+                found[identity] = (progress, state)
     return found
 
 
@@ -213,7 +213,7 @@ def active_runs(project: Path) -> list[str]:
         holder = locks.holder(path)
         if holder is not None:
             held.append((path, holder))
-    progress = _run_progress(concorde) if held else {}
+    progress = _run_progress(concorde, {path.stem for path, _ in held}) if held else {}
     for path, holder in held:
         lock = path.relative_to(project).as_posix()
         known = progress.get(path.stem)

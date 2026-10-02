@@ -1,7 +1,8 @@
 """Reading traces: find a node, walk its subtree, roll its usage up, tell a lost run.
 
-Nothing here writes. A node's children are the trace nodes in the folders below its own, the
-nearest ones on each path; a task's ``workspace/`` folder, which Execution fills and which has no
+Nothing here writes. Nodes are found and listed only among the registered trace roots
+(``roots``), or the roots a caller passes. A node's children are the trace nodes in the folders
+below its own, the nearest ones on each path; a task's ``workspace/`` folder, which Execution fills and which has no
 record of its own, is shown as a ``workspace`` node. A node that says it runs is ``lost`` when it is
 a run whose run lock nobody holds, or lies below such a run.
 """
@@ -12,9 +13,11 @@ import json
 import os
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Iterable
 
 from . import layout, locks
 from .node import USAGE_FIELDS, parse_time, read, seconds_between
+from .roots import LISTINGS, TraceRoot, registered
 
 TOTALS = (
     "tokens_in",
@@ -190,7 +193,7 @@ def _strip(value: dict, depth: int | None) -> dict:
     }
 
 
-def roots(here: Path) -> list[Path]:
+def concorde_directories(here: Path) -> list[Path]:
     """The ``.concorde`` directories a reader looks in from ``here``: the worktree's own, the one
     its workspace binding names, and the primary worktree's, without repetition."""
     found: list[Path] = []
@@ -239,15 +242,8 @@ def _binding(worktree: Path) -> dict | None:
     return value if isinstance(value, dict) else None
 
 
-def _task_like(concorde: Path) -> list[Path]:
-    """Every current task folder and history folder under ``concorde``."""
-    found = []
-    for parent in (layout.tasks_folder(concorde), layout.history_folder(concorde)):
-        try:
-            found.extend(sorted(item for item in parent.iterdir() if item.is_dir()))
-        except OSError:
-            continue
-    return found
+def _roots(roots: Iterable[TraceRoot] | None) -> tuple[TraceRoot, ...]:
+    return registered() if roots is None else tuple(roots)
 
 
 def workspace_runs(workspace: Path) -> list[Path]:
@@ -268,23 +264,6 @@ def workspace_runs(workspace: Path) -> list[Path]:
     return found
 
 
-def _run_folders(concorde: Path) -> list[Path]:
-    found: list[Path] = []
-    for task in _task_like(concorde):
-        found.extend(workspace_runs(layout.workspace_folder(task)))
-    try:
-        found.extend(
-            sorted(
-                item
-                for item in layout.unbound_folder(concorde).iterdir()
-                if item.is_dir()
-            )
-        )
-    except OSError:
-        pass
-    return found
-
-
 def find_run(workspace: Path, run_id: str) -> Path | None:
     """The folder of run ``run_id`` in a workspace folder, directly or in a workflow step."""
     direct = layout.run_folder(workspace, run_id)
@@ -296,14 +275,48 @@ def find_run(workspace: Path, run_id: str) -> Path | None:
     return None
 
 
+def _node_folder(folder: Path) -> bool:
+    """Whether ``folder`` is a node's: it holds its ``trace.json``, or, before its producer wrote
+    that, its progress file or result."""
+    return not folder.is_symlink() and any(
+        (folder / record).is_file()
+        for record in (layout.TRACE, layout.PROGRESS, layout.RESULT)
+    )
+
+
+def find_below(folder: Path, identity: str) -> Path | None:
+    """The folder of the node ``identity`` at any depth below ``folder``: a folder named after
+    it, or a step's ``run/`` folder whose node has that identity."""
+    for current, names, _ in os.walk(folder):
+        names[:] = sorted(
+            name for name in names if name not in NOT_NODES and not name.startswith(".")
+        )
+        for name in names:
+            candidate = Path(current) / name
+            if not _node_folder(candidate):
+                continue
+            if name == identity or (
+                name == "run" and (read(candidate) or {}).get("id") == identity
+            ):
+                return candidate
+    return None
+
+
 def locate(
-    address: str, searched: list[Path], extra: list[Path] | None = None
+    address: str,
+    searched: list[Path],
+    extra: list[Path] | None = None,
+    roots: Iterable[TraceRoot] | None = None,
 ) -> tuple[Path, Path]:
     """The folder of the node ``address`` names and the ``.concorde`` it was found under.
 
-    ``address`` is a task name, a history key, a run or worker run identity, or a folder. ``extra``
-    are workspace folders to search for runs before the roots, such as the current binding's.
+    ``address`` is a node's folder, absolute or relative to a ``.concorde`` directory, the name of
+    a root's top node (in Concorde a task name, a history key or an unbound or lobby run), or the
+    identity of a node below one, such as a run or worker run. ``searched`` are the ``.concorde``
+    directories to look in, ``extra`` workspace folders to search first for a node below a top
+    node, such as the current binding's, and ``roots`` the trace roots (default: the registered).
     """
+    roots = _roots(roots)
     candidate = Path(address)
     if candidate.is_absolute() and candidate.is_dir():
         owner = next(
@@ -311,52 +324,37 @@ def locate(
             searched[0] if searched else candidate,
         )
         return candidate, owner
-    for root in searched:
-        joined = root / address
-        if (
-            address
-            and not address.startswith("r-")
-            and not address.startswith("w-")
-            and joined.is_dir()
-            and ((joined / layout.TRACE).is_file() or _is_workspace(joined))
-        ):
-            return joined, root
-    if address.startswith("r-"):
-        for workspace in extra or []:
-            found = find_run(workspace, address)
-            if found is not None:
-                return found, _owner(found, searched)
-        for root in searched:
-            for folder in (
-                layout.unbound_run_folder(root, address),
-                layout.lobby_run_folder(root, address),
-            ):
-                if folder.is_dir():
-                    return folder, root
-            for task in _task_like(root):
-                found = find_run(layout.workspace_folder(task), address)
+    if address and address not in (".", ".."):
+        if "/" in address:
+            for concorde in searched:
+                joined = concorde / address
+                if joined.is_dir() and (
+                    (joined / layout.TRACE).is_file() or _is_workspace(joined)
+                ):
+                    return joined, concorde
+        else:
+            for concorde in searched:
+                for root in roots:
+                    folder = root.path(concorde) / address
+                    if _node_folder(folder):
+                        return folder, concorde
+            for workspace in extra or []:
+                found = find_below(workspace, address)
                 if found is not None:
-                    return found, root
-    elif address.startswith("w-"):
-        for root in searched:
-            runs = [
-                *(r for w in (extra or []) for r in workspace_runs(w)),
-                *_run_folders(root),
-            ]
-            for run in runs:
-                worker = layout.worker_folder(run, address)
-                if worker.is_dir():
-                    return worker, root
-    else:
-        for root in searched:
-            for parent in (layout.tasks_folder(root), layout.history_folder(root)):
-                folder = parent / address
-                if (folder / layout.TRACE).is_file():
-                    return folder, root
+                    return found, _owner(found, searched)
+            for concorde in searched:
+                for root in roots:
+                    found = find_below(root.path(concorde), address)
+                    if found is not None:
+                        return found, concorde
     raise ReadError(
         "unknown_node",
-        f"no trace node {address!r} was found; searched the current tasks, the history, the "
-        "unbound runs and the lobby of "
+        f"no trace node {address!r} was found; searched the trace roots "
+        + (
+            ", ".join(f"{root.name} ({root.folder}/)" for root in roots)
+            or "(none registered)"
+        )
+        + " of "
         + ", ".join(root.as_posix() for root in searched)
         + (
             " and the workspace folders " + ", ".join(w.as_posix() for w in extra)
@@ -379,24 +377,26 @@ def _owner(folder: Path, searched: list[Path]) -> Path:
 
 
 def listing(
-    concorde: Path, *, history: bool = False, unbound: bool = False
+    concorde: Path,
+    *,
+    history: bool = False,
+    unbound: bool = False,
+    roots: Iterable[TraceRoot] | None = None,
 ) -> list[dict]:
-    """The current tasks, and when asked the history and the unbound runs, without children."""
-    folders: list[Path] = []
-    parents = [layout.tasks_folder(concorde)]
-    if history:
-        parents.append(layout.history_folder(concorde))
+    """The top nodes of the roots listed always, and with ``history`` or ``unbound`` also of the
+    roots listed with that option, without children: the roots listed always first, then those
+    of ``--history``, then those of ``--unbound``."""
+    wanted = {"always"} | ({"history"} if history else set())
     if unbound:
-        parents.append(layout.unbound_folder(concorde))
-    for parent in parents:
-        try:
+        wanted.add("unbound")
+    folders: list[Path] = []
+    for root in sorted(_roots(roots), key=lambda item: LISTINGS.index(item.listed)):
+        if root.listed in wanted:
             folders.extend(
-                sorted(
-                    item for item in parent.iterdir() if (item / layout.TRACE).is_file()
-                )
+                item
+                for item in root.top_folders(concorde)
+                if (item / layout.TRACE).is_file()
             )
-        except OSError:
-            continue
     return [_strip(view(folder, concorde), 0) for folder in folders]
 
 
@@ -441,11 +441,12 @@ def render(value: dict, indent: int = 0) -> str:
 __all__ = [
     "TOTALS",
     "ReadError",
+    "concorde_directories",
+    "find_below",
     "find_run",
     "listing",
     "locate",
     "render",
-    "roots",
     "run_alive",
     "view",
     "workspace_runs",

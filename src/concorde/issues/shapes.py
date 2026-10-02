@@ -6,7 +6,7 @@ loaded; the store and the bookkeeping command use the same declarations.
 
 from __future__ import annotations
 
-from ..spec.typed_data import DIGEST, PATH, STRING, array, obj, register
+from ..kernel.schema import DIGEST, PATH, STRING, array, obj, register
 
 ISSUE_ID = {**STRING, "pattern": r"^I-[0-9a-f]{32}$"}
 NULLABLE_STRING = {"anyOf": [STRING, {"type": "null"}]}

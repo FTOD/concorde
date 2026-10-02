@@ -20,8 +20,8 @@ from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
 
-from ...spec.schema import ContractError, validate
-from ...spec.typed_data import TypedDataError, typed, validate_typed
+from ..refusal import KernelError
+from ..schema import typed, validate, validate_typed
 from . import layout
 
 KINDS = (
@@ -29,6 +29,8 @@ KINDS = (
     "session",
     "merge",
     "merge-check",
+    "delivery",
+    "delivery-check",
     "workflow",
     "step",
     "run",
@@ -76,7 +78,7 @@ _TEXT = {"$ref": "#/$defs/text"}
 _COUNT = {"anyOf": [{"type": "null"}, {"type": "integer", "minimum": 0}]}
 _AMOUNT = {"anyOf": [{"type": "null"}, {"type": "number", "minimum": 0}]}
 
-# contract.tracing.node, version 3
+# contract.tracing.node, version 4
 NODE_SCHEMA: dict = {
     "type": "object",
     "additionalProperties": False,
@@ -249,16 +251,16 @@ def check(record: dict) -> dict:
     """``record`` if it satisfies the node contract and its content its type; else TraceError."""
     try:
         validate(record, NODE_SCHEMA)
-    except (ContractError, TypedDataError) as error:
+    except KernelError as error:
         raise TraceError(
             "node_invalid",
             f"the trace node {record.get('kind')} {record.get('id')} breaks the node contract at "
-            f"{getattr(error, 'field', '') or 'the top'}: {error}",
+            f"{error.field or 'the top'}: {error}",
         ) from error
     if record["content"] is not None:
         try:
             validate_typed(record["content"], field="content")
-        except TypedDataError as error:
+        except KernelError as error:
             raise TraceError(
                 "content_invalid",
                 f"the content of trace node {record['kind']} {record['id']} breaks its type "
@@ -348,7 +350,7 @@ class Node:
             )
         try:
             self.record["content"] = typed(self.content_type, copy.deepcopy(data))
-        except TypedDataError as error:
+        except KernelError as error:
             raise TraceError(
                 "content_invalid",
                 f"the content of trace node {self.record['kind']} {self.record['id']} breaks "

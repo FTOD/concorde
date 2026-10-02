@@ -11,7 +11,7 @@ import unittest
 from pathlib import Path
 from types import SimpleNamespace
 
-from concorde.method.delivery.commits import OUTPUT_SCHEMA
+from concorde.method.delivery.command import OUTPUT_SCHEMA
 from concorde.method.delivery.command import DELIVERY, IndexRecord, State, undo
 from concorde.kernel.errors import codes
 from concorde.spec.repository import SpecRepository
@@ -229,7 +229,9 @@ class DeliveryTests(unittest.TestCase):
         # and the task level reads the delivery back from Git.
         self.assertEqual(self.project.record()["state"], "open")
         self.assertEqual(self.project.state(), "delivered")
-        self.assertEqual(self.project.deliveries(), [{"commit": commit}])
+        self.assertEqual(
+            self.project.deliveries(), [{"commit": commit, "mismatches": []}]
+        )
         self.assertEqual(status_lines(self.worktree), "")
         self.assertEqual(
             ("command", "delivery", "t1"),
@@ -556,7 +558,9 @@ class DeliveryTests(unittest.TestCase):
         # validating it again shows that it holds no deliverable workspace.
         (self.worktree / "stray.txt").write_text("unbound\n")
         head = self.commit_step("concorde: deliver t1")
-        self.assertEqual(self.project.deliveries(), [{"commit": head}])
+        self.assertEqual(
+            self.project.deliveries(), [{"commit": head, "mismatches": []}]
+        )
         status, envelope = self.project.deliver()
         self.assertEqual(status, 1)
         self.assert_inert(envelope, "not_ready", deliveries=1)

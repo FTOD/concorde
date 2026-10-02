@@ -47,12 +47,23 @@ from ..validation.measurement import (
     head_commit,
     special_paths,
 )
-from .commits import (
-    OUTPUT_SCHEMA,
-    commit_message,
-    delivery_commits,
-    delivery_mismatches,
-)
+from ...kernel import delivery as delivery_commit
+from ...kernel.refusal import KernelError
+
+COMMIT = {"type": "string", "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"}
+
+# The output of a delivery run: the delivery commit it created or found on the branch.
+OUTPUT_SCHEMA: dict = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["commit", "branch", "sequence", "recovered"],
+    "properties": {
+        "commit": COMMIT,
+        "branch": {"type": "string", "minLength": 1},
+        "sequence": {"type": "integer", "minimum": 1},
+        "recovered": {"type": "boolean"},
+    },
+}
 
 
 @dataclass
@@ -284,12 +295,17 @@ def restore_index(worktree: Path, record: IndexRecord) -> list[tuple[str, dict]]
 
 
 def _previous(ctx: RunContext) -> list[dict]:
-    """The workspace's delivery commits on its branch since the base, oldest first."""
+    """The workspace's delivery commits on its branch since the base, oldest first, each with
+    its ``mismatches``, as the Kernel's convention recognizes them; ``MeasurementError`` when Git
+    cannot list them."""
     state = _state(ctx)
     if state.previous is None:
-        state.previous = delivery_commits(
-            ctx.worktree, ctx.base_commit, state.head, ctx.workspace_name
-        )
+        try:
+            state.previous = delivery_commit.deliveries(
+                ctx.worktree, state.head, ctx.base_commit, ctx.workspace_name
+            )
+        except KernelError as error:
+            raise MeasurementError(error.code, str(error)) from error
     return state.previous
 
 
@@ -312,13 +328,13 @@ def delivered(ctx: RunContext):
     state = _state(ctx)
     try:
         changed = has_uncommitted(ctx.worktree)
+        previous = _previous(ctx)
     except MeasurementError as error:
         return measurement_failed(ctx, error)
-    previous = _previous(ctx)
     if changed or not previous or previous[-1]["commit"] != state.head:
         return Continue()
     last = previous[-1]
-    problems = delivery_mismatches(ctx.worktree, last)
+    problems = last["mismatches"]
     if problems:
         return _unverified(
             ctx,
@@ -655,7 +671,7 @@ def commit(ctx: RunContext):
             causes=[_git_link("write-tree", tree), *undone.causes],
         )
     state.staged_tree = tree.stdout.strip()
-    message = commit_message(ctx.workspace)
+    message = delivery_commit.message(ctx.workspace_name, ctx.workspace["goal"])
     result = subprocess.run(
         ["git", "commit", "-q", "--allow-empty", "--cleanup=verbatim", "-F", "-"],
         cwd=ctx.worktree,

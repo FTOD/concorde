@@ -10,7 +10,8 @@
     "owns": [
       "specs/concorde/kernel/module.md",
       "specs/concorde/kernel/contracts.md",
-      "specs/concorde/kernel/requirements.md"
+      "specs/concorde/kernel/requirements.md",
+      "specs/concorde/kernel/scenarios.md"
     ],
     "contains": [
       {
@@ -22,7 +23,50 @@
     "includes": [],
     "participates": []
   },
-  "defines": [],
-  "relations": [],
+  "defines": [
+    {
+      "id": "realization.kernel.library",
+      "type": "realization",
+      "title": "Kernel library",
+      "meaning": "#realization.kernel.library",
+      "entries": [
+        "src/concorde/kernel/binding.py",
+        "src/concorde/kernel/delivery.py",
+        "src/concorde/kernel/files.py",
+        "src/concorde/kernel/locking.py",
+        "src/concorde/kernel/refusal.py",
+        "src/concorde/kernel/schema.py"
+      ]
+    },
+    {
+      "id": "realization.kernel.tests",
+      "type": "realization",
+      "title": "Kernel tests",
+      "meaning": "#realization.kernel.tests",
+      "entries": [
+        "tests/concorde/kernel/"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "realization.kernel.library",
+      "verb": "reads and writes",
+      "target": "concept.workspace-binding"
+    },
+    {
+      "type": "relates",
+      "source": "realization.kernel.library",
+      "verb": "checks",
+      "target": "concept.typed-value"
+    },
+    {
+      "type": "relates",
+      "source": "realization.kernel.library",
+      "verb": "applies",
+      "target": "concept.file-transaction"
+    }
+  ],
   "extensions": {}
 }

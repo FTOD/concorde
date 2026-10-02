@@ -816,7 +816,8 @@
       "owns": [
         "specs/concorde/kernel/module.md",
         "specs/concorde/kernel/contracts.md",
-        "specs/concorde/kernel/requirements.md"
+        "specs/concorde/kernel/requirements.md",
+        "specs/concorde/kernel/scenarios.md"
       ],
       "contains": [
         {

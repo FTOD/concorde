@@ -1,11 +1,13 @@
-"""Retention: which ended traces may be removed, by the Tracing configuration.
+"""Retention: which ended traces may be removed, root by root, by the Tracing configuration.
 
-Only three things are ever removed: an unbound run, or a run of the lobby, that ended longer ago
-than ``unbound_days`` and whose run lock nobody holds, whole; a history folder of a task closed longer ago than
-``history_days``, whole; and, from a history folder of a task closed longer ago than
-``conversation_days``, its conversation records, the transcripts of its task sessions and
-worker runs. Nothing runs in the background; ``prune`` runs when called,
-by ``concorde trace prune`` and at the start of ``task open`` and ``task close``.
+Only the registered trace roots are pruned, each by the periods registered with it: a top folder
+whose node ended longer ago than the root's ``period`` and that nobody still writes is removed
+whole; from one that ended longer ago than its ``conversation_period`` only its conversation
+records go. In Concorde that removes the unbound runs and the runs of the lobby after
+``unbound_days``, the history folders after ``history_days`` and their transcripts after
+``conversation_days``. Nothing runs in the background; ``prune`` runs when called, by
+``concorde trace prune`` and by a part that registers a root, as Tasks does at the start of
+``task open`` and ``task close``. A current root without periods is never pruned.
 """
 
 from __future__ import annotations
@@ -14,17 +16,15 @@ import json
 import shutil
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Iterable
 
-from ...spec.schema import ContractError, validate
-from . import layout
+from ..refusal import KernelError
+from ..schema import validate
+from . import layout, locks
 from .node import parse_time, read
-from .reader import run_alive
+from .roots import TraceRoot, registered
 
 DEFAULTS = {"unbound_days": 7, "history_days": None, "conversation_days": 30}
-# The conversation records of a history folder, by name at any depth: a transcript and the folder
-# Claude Code keeps beside a session's transcript.
-CONVERSATION_FILES = ("transcript.jsonl",)
-CONVERSATION_FOLDERS = ("transcript",)
 _DAYS = {"anyOf": [{"type": "null"}, {"type": "integer", "minimum": 0}]}
 
 # contract.tracing.configuration, version 3
@@ -71,7 +71,7 @@ def configuration(concorde: Path) -> dict:
         ) from error
     try:
         validate(value, CONFIGURATION_SCHEMA)
-    except ContractError as error:
+    except KernelError as error:
         raise ConfigError(
             f"the Tracing configuration {path} breaks its contract at "
             f"{error.field or 'the top'}: {error}",
@@ -87,58 +87,64 @@ def _expired(ended: str | None, days: int | None, moment: datetime) -> bool:
     return when is not None and moment - when > timedelta(days=days)
 
 
-def conversation_records(folder: Path) -> list[Path]:
-    """The conversation records below a history folder, a folder counting once with its
+def conversation_records(folder: Path, root: TraceRoot) -> list[Path]:
+    """The conversation records below a top folder of ``root``, a folder counting once with its
     content."""
     found: list[Path] = []
     for path in sorted(Path(folder).rglob("*")):
         if any(path.is_relative_to(item) for item in found):
             continue
         if path.is_dir() and not path.is_symlink():
-            if path.name in CONVERSATION_FOLDERS:
+            if path.name in root.conversation_folders:
                 found.append(path)
-        elif path.name in CONVERSATION_FILES:
+        elif path.name in root.conversation_files:
             found.append(path)
     return found
 
 
-def removable(concorde: Path, moment: datetime | None = None) -> list[Path]:
-    """What retention may remove now, oldest kinds first: unbound runs and runs of the lobby, then
-    history folders, then the conversation records of the history folders it keeps."""
+def removable(
+    concorde: Path,
+    moment: datetime | None = None,
+    roots: Iterable[TraceRoot] | None = None,
+) -> list[Path]:
+    """What retention may remove now under ``concorde``: whole top folders, root by root, then the
+    conversation records of the top folders it keeps. ``roots`` default to the registered ones."""
     moment = moment or datetime.now(UTC)
     periods = configuration(concorde)
     found: list[Path] = []
-    for parent in (layout.unbound_folder(concorde), layout.lobby_folder(concorde)):
-        for folder in sorted(parent.iterdir()) if parent.is_dir() else []:
+    kept: list[tuple[TraceRoot, Path]] = []
+    for root in registered() if roots is None else roots:
+        for folder in root.top_folders(concorde):
             record = read(folder)
-            if (
-                record
-                and record.get("ended_at")
-                and not run_alive(concorde, record["id"])
-                and _expired(record["ended_at"], periods["unbound_days"], moment)
+            if not record:
+                continue
+            ended = record.get(root.ended)
+            if root.alive_lock and (
+                not isinstance(record.get("id"), str)
+                or locks.held(layout.lock_file(concorde, root.alive_lock, record["id"]))
             ):
+                continue
+            if root.period and _expired(ended, periods[root.period], moment):
                 found.append(folder)
-    history = layout.history_folder(concorde)
-    kept = []
-    for folder in sorted(history.iterdir()) if history.is_dir() else []:
-        record = read(folder)
-        if not record:
-            continue
-        if _expired(record.get("ended_at"), periods["history_days"], moment):
-            found.append(folder)
-        elif _expired(record.get("ended_at"), periods["conversation_days"], moment):
-            kept.append(folder)
-    for folder in kept:
-        found.extend(conversation_records(folder))
+            elif root.conversation_period and _expired(
+                ended, periods[root.conversation_period], moment
+            ):
+                kept.append((root, folder))
+    for root, folder in kept:
+        found.extend(conversation_records(folder, root))
     return found
 
 
 def prune(
-    concorde: Path, *, dry_run: bool = False, moment: datetime | None = None
+    concorde: Path,
+    *,
+    dry_run: bool = False,
+    moment: datetime | None = None,
+    roots: Iterable[TraceRoot] | None = None,
 ) -> list[str]:
     """Remove what ``removable`` names, unless ``dry_run``; the removed paths."""
     removed = []
-    for path in removable(concorde, moment):
+    for path in removable(concorde, moment, roots):
         if not dry_run:
             if path.is_dir() and not path.is_symlink():
                 shutil.rmtree(path, ignore_errors=True)

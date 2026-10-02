@@ -29,7 +29,8 @@ from pathlib import Path
 from ...kernel import errors
 from ...execution.runs import load_result, result_path
 from ...kernel.tracing import reader
-from ...spec.schema import ContractError, validate
+from ...kernel.refusal import KernelError
+from ...kernel.schema import validate
 from . import merge, session, store, wait
 
 # Why Tasks cannot handle each refusal itself; every other code is an input the caller corrects.
@@ -348,9 +349,10 @@ def parser() -> argparse.ArgumentParser:
 def _checked(value, source: str) -> dict:
     try:
         validate(value, errors.ERROR_SCHEMA)
-    except ContractError as error:
+    except KernelError as error:
         raise store.TaskError(
-            "invalid_error", f"{source} is not an error link: {error}"
+            "invalid_error",
+            f"{source} is not an error link: {error.field or '/'}: {error}",
         ) from error
     return value
 

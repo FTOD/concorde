@@ -30,9 +30,10 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-from ..kernel import errors
-from ..spec.typed_data import register
-from ..kernel.tracing import layout, locks, reader
+from ..kernel import errors, locking
+from ..kernel.refusal import KernelError
+from ..kernel.schema import register
+from ..kernel.tracing import layout, locks, reader, roots
 
 KINDS = ("operation", "command")
 RUN_ID_PATTERN = "^r-[0-9]{8}T[0-9]{6}-[a-z_]+-[0-9a-f]{8}$"
@@ -79,6 +80,36 @@ RUN_TRACE_SCHEMA: dict = {
     },
 }
 register(RUN_TRACE, 1, RUN_TRACE_SCHEMA)
+
+# The trace roots of the runs no workspace folder holds, relative to a ``.concorde``: the unbound
+# runs of the worktree they started in, and the lobby of the ``.concorde`` a bound run's binding
+# names, where it lies until it holds its workspace's lock and stays when it never does.
+UNBOUND = "unbound"
+LOBBY = "lobby"
+TRACE_ROOTS = (
+    roots.TraceRoot(
+        name="unbound runs",
+        folder=UNBOUND,
+        place="worktree",
+        kind="run",
+        state="current",
+        listed="unbound",
+        period="unbound_days",
+        alive_lock="run",
+    ),
+    roots.TraceRoot(
+        name="lobby",
+        folder=LOBBY,
+        place="primary",
+        kind="run",
+        state="current",
+        listed="never",
+        period="unbound_days",
+        alive_lock="run",
+    ),
+)
+for _root in TRACE_ROOTS:
+    roots.register(_root)
 
 # contract.execution.run-result, version 3
 RESULT_SCHEMA: dict = {
@@ -149,12 +180,12 @@ class Store:
     def run_folder(self, run_id: str) -> Path:
         """Where a run started directly is kept."""
         if self.workspace is None:
-            return layout.unbound_run_folder(self.concorde, run_id)
+            return Path(self.concorde) / UNBOUND / run_id
         return layout.run_folder(self.workspace, run_id)
 
     def lobby_folder(self, run_id: str) -> Path:
         """Where a bound run's node lies until it holds its workspace's lock."""
-        return layout.lobby_run_folder(self.concorde, run_id)
+        return Path(self.concorde) / LOBBY / run_id
 
     def find(self, run_id: str) -> Path | None:
         """The folder of ``run_id``, started directly or by a workflow step, or still or for good
@@ -162,7 +193,7 @@ class Store:
         if not run_id or not RUN_ID.match(run_id):
             return None
         if self.workspace is None:
-            folder = layout.unbound_run_folder(self.concorde, run_id)
+            folder = self.run_folder(run_id)
             return folder if folder.is_dir() else None
         found = reader.find_run(self.workspace, run_id)
         if found is not None:
@@ -177,7 +208,7 @@ class Store:
         """Every run folder of the store."""
         if self.workspace is not None:
             return reader.workspace_runs(self.workspace)
-        unbound = layout.unbound_folder(self.concorde)
+        unbound = Path(self.concorde) / UNBOUND
         return (
             sorted(item for item in unbound.iterdir() if item.is_dir())
             if unbound.is_dir()
@@ -188,7 +219,7 @@ class Store:
         return layout.lock_file(self.concorde, "run", run_id)
 
     def workspace_lock(self, workspace: str) -> Path:
-        return layout.lock_file(self.concorde, "workspace", workspace)
+        return locking.workspace_lock_path(self.concorde, workspace)
 
 
 def store_of(root: Path, bound: dict | None) -> Store:
@@ -293,7 +324,7 @@ def waiting_runs(store: Store, workspace: str | None) -> list[Path]:
     one of its runs; it is found by its identity."""
     if store.workspace is None or workspace is None:
         return []
-    lobby = layout.lobby_folder(store.concorde)
+    lobby = Path(store.concorde) / LOBBY
     try:
         folders = sorted(item for item in lobby.iterdir() if item.is_dir())
     except OSError:
@@ -395,43 +426,33 @@ def workspace_lock(
     holder: str,
     wait: float = 0.0,
     waiting: Callable[[str], None] | None = None,
-    task: str | None = None,
     retake: bool = True,
 ):
-    """Hold the lock of ``workspace`` or raise ``workspace_busy`` naming its holder.
+    """Hold the Kernel's lock of ``workspace`` or raise ``workspace_busy`` naming its holder.
 
     A busy lock is waited for up to ``wait`` seconds inside this process, so a caller that
     wants to queue behind the running run asks once instead of polling; ``waiting`` is told
-    the holder when the wait begins. ``task`` is the caller's word for its holder line, which
-    Execution passes on without reading; its own runs never give one. With ``retake`` False, a
-    lock file its holder removed while this process waited, as the close that retires the
-    workspace does, raises ``workspace_retired`` instead of being taken again.
+    the holder when the wait begins. With ``retake`` False, a lock file its holder removed while
+    this process waited, as the close that retires the workspace does, raises
+    ``workspace_retired`` instead of being taken again. Execution's holder lines never name a task.
     """
-    path = lock_path(store, workspace)
     try:
-        with locks.hold(
-            path, holder, wait=wait, waiting=waiting, task=task, retake=retake
+        with locking.workspace_lock(
+            store.concorde,
+            workspace,
+            holder,
+            wait=wait,
+            waiting=waiting,
+            retake=retake,
         ):
             yield
-    except locks.LockGone as gone:
-        raise RunError(
-            "workspace_retired",
-            f"the workspace {workspace} was retired while this run waited {gone.waited:.0f} s "
-            f"for its lock: its holder removed the lock file {path}, as the close that retires a "
-            "workspace does, so the lock this run took is no longer the workspace's",
-        ) from None
-    except locks.LockBusy as busy:
-        after = f" after waiting {busy.waited:.0f} s" if wait > 0 else ""
-        raise RunError(
-            "workspace_busy",
-            f"the workspace {workspace} is busy{after}: {busy.holder} holds its lock {path}; "
-            "one workspace runs one Operation or command at a time",
-        ) from None
+    except KernelError as error:
+        raise RunError(error.code, str(error)) from None
 
 
 def lock_holder(store: Store, workspace: str) -> str | None:
     """Who holds the lock of ``workspace`` now, or None when nobody does."""
-    return locks.holder(lock_path(store, workspace))
+    return locking.workspace_lock_holder(store.concorde, workspace)
 
 
 __all__ = [
