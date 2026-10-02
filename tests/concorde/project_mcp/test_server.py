@@ -20,7 +20,8 @@ from typing import ClassVar
 
 from concorde.kernel.errors import ERROR_SCHEMA
 from concorde.distribution.install import TRACES
-from concorde.execution.runs import load_result, run_state, workspace_lock
+from concorde.execution.runs import load_result, run_state
+from concorde.kernel.locking import workspace_lock
 from concorde.distribution.project_mcp.server import channel_from, detect_channel
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
@@ -630,7 +631,7 @@ class ProjectMcpTests(unittest.TestCase):
         registered, error = client.call("register_wait", task="t1", until=["delivered"])
         self.assertTrue(registered["registered"], registered)
         # A delivery is made under the task's workspace lock, as by the delivery run.
-        store_ = store.workspace_store(self.root, "t1")
+        store_ = store.concorde(self.root)
         with workspace_lock(store_, "t1", "a delivery run"):
             deliver(self.project.worktree("t1"))
         event = client.event()

@@ -291,3 +291,10 @@ happens without the part:
 | spec | runs `concorde spec-validation` as a merge's default check, checks a task's Modules against the registry ([Tasks](tasks/module.md)) | a merge runs only the `--check` commands it is given; Modules are plain labels |
 | method | a task is validated with `task-validation` and delivered with `delivery` ([Task sessions](task-session/module.md)) | the task session delivers with `concorde task deliver`, which runs the checks it is given and makes the delivery commit ([Tasks](tasks/module.md)) |
 | workflow | a task session may run a workflow in its worktree; the workflow part contributes that guidance | no workflow runs; the guidance has no workflow section |
+
+Coordination imports the code of none of these parts. It reaches each through its `concorde`
+command, JSON in and out, or through a file format its Spec defines, and learns the same way whether
+the part is installed: the spec part by its registry mirror `.concorde/specs.json`, the others by
+whether the worktree's own `concorde` offers their commands, and the runs by Execution's run store
+existing at all. A process holding the merge lock that runs a command needing it hands the lock on
+to that command. [Tasks](tasks/contracts.md#parts-not-depended-on) gives the exact rules.

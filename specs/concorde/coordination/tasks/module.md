@@ -234,7 +234,8 @@ concorde task open severity --goal "let Issue reports carry a severity" --module
 Tasks checks the identity is new and, where the spec part is installed, that every named
 [Module](../../glossary.json#concept.module) exists in the
 [registry](../../glossary.json#concept.registry); without it the Modules are plain labels, written
-into the record and the binding unchecked. It then creates branch `concorde/severity` from the
+into the record and the binding with only their form checked, that of a Module identity, which the
+binding requires. It then creates branch `concorde/severity` from the
 primary worktree's commit (or `--base <ref>`), adds a worktree at `.claude/worktrees/severity`
 inside the primary worktree, the only place a task worktree may be, creates the task's folder
 `.concorde/tasks/severity/` in the primary worktree, binds the worktree as a workspace, writes the
@@ -834,8 +835,11 @@ already released its workspace lock. See the [requirements](requirements.md) and
 The **[Task](../../glossary.json#concept.task) store** realization holds the `concorde task`
 commands (`cli.py`), the records, the derived state, the binding written at open and the record
 updates task sessions call, the reports and the main agent's session (`store.py`), the merge under
-the merge lock (`merge.py`), and their tests, run on real Git repositories with delivery commits
-and run store entries written the way Execution writes them, and `task deliver`. It is the only writer of task records,
+the merge lock (`merge.py`), `task deliver` (`deliver.py`), the checks both run (`checks.py`), the
+waits (`wait.py`), the reach into the parts Tasks does not depend on, through their commands and
+formats (`parts.py`, and `runs.py` for Execution's runs), and their tests, run on real Git
+repositories with delivery commits and run store entries written the way Execution writes them, and
+with projects whose own `concorde` lacks some parts. It is the only writer of task records,
 writing each decision log once, at open, appending only escalations, reports, answers and closings,
 and committing a copy of it when the task ends. The
 command dispatches `concorde task session` to the code of Task sessions.
@@ -912,24 +916,29 @@ through a run, a close stops none, and `task wait --run` is refused with `part_m
 the delivery commits of a task's workspace after validating it whole, and Tasks relies on it
 verifying a delivered head before it reports one as Tasks itself does
 ([req.delivery.recovered-verified](../../method/delivery/requirements.md#req.delivery.recovered-verified)),
-and on its presence to refuse `task deliver`. Where it is not, Tasks delivers with `task deliver`.
+and on its presence to refuse `task deliver`, which it learns from whether the task worktree's own
+`concorde` offers `delivery` ([how](contracts.md#parts-not-depended-on)). Where it is not, Tasks
+delivers with `task deliver`.
 
 <a id="uses-issues"></a>
 
 **Issues** is an optional integration. Where the issues part is installed, it keeps the project's
-[Issues](../../glossary.json#concept.issue) in the primary worktree, and Tasks relies on its store to
-read whether each Issue a task names as resolving exists and is open, and to put back, before a
-merge judges the primary worktree clean, what Issue writes left uncommitted there, for a caller
-that already holds the merge lock; and on its bookkeeping command to close them after the merge,
-for such a caller too, answering or refusing with its own error link, which Tasks passes on in a
-warning. Where it is not installed, a task names no Issue (`part_missing`), a merge closes none and
-has no Issue records to put back.
+[Issues](../../glossary.json#concept.issue) in the primary worktree, and Tasks relies on its
+bookkeeping command, `concorde issues`, to show whether each Issue a task names as resolving exists
+and is open, to put back, before a merge judges the primary worktree clean, what Issue writes left
+uncommitted there, and to close them after the merge, the last two for a caller that holds the merge
+lock and hands it on to the command, each answering or refusing with its own error link, which
+Tasks passes on in a warning. Where it is not installed, which the command's refusal of `issues`
+tells ([how](contracts.md#parts-not-depended-on)), a task names no Issue (`part_missing`), a merge
+closes none and has no Issue records to put back.
 
 <a id="uses-spec"></a>
 
-**Spec core** is an optional integration. Where the spec part is installed, Tasks reads the primary
-worktree's registry to open a task, since its worktree does not exist yet, so a record never names a
-Module that does not exist at open; if the Specs cannot be loaded, the open is refused and nothing
-is written. A merge also runs its `concorde spec-validation` as the default check and after an
-unvalidated update. Where it is not installed, a task's Modules are plain labels and a merge runs
-only the checks it is given.
+**Spec core** is an optional integration. Where the spec part is installed, which the existence of
+its registry mirror `.concorde/specs.json` tells, Tasks reads the primary worktree's registry
+through that mirror's format to open a task, since its worktree does not exist yet, so a record
+never names a Module that does not exist at open; if the mirror cannot be read, the open is refused
+(`specs_unloadable`) and nothing is written. A merge also runs its `concorde spec-validation` as the
+default check and after an unvalidated update. Where it is not installed, a task's Modules are plain
+labels, still in the form of a Module identity, which the workspace binding requires, and a merge
+runs only the checks it is given.

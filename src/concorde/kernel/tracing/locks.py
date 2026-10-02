@@ -115,6 +115,9 @@ def write_entry(descriptor: int, data: bytes) -> None:
 
 
 _inherited: dict[str, int] | None = None
+# The locks this process holds through ``hold`` now: the lock file's real path -> its descriptor
+# and the holder line this process wrote, so that it can hand one on (``handed_on``).
+_holding: dict[str, tuple[int, bytes]] = {}
 
 
 def _inherited_locks() -> dict[str, int]:
@@ -224,16 +227,49 @@ def hold(
         descriptor = None
         if not retake:
             raise LockGone(path, round(time.monotonic() - started, 3))
+    key = os.path.realpath(path)
     try:
-        write_entry(descriptor, line(holder, os.getpid(), task))
+        written = line(holder, os.getpid(), task)
+        write_entry(descriptor, written)
+        _holding[key] = (descriptor, written)
         yield round(time.monotonic() - started, 3)
     finally:
+        _holding.pop(key, None)
         try:
             os.ftruncate(descriptor, 0)
             if remove and _same_file(descriptor, path):
                 path.unlink(missing_ok=True)
         finally:
             os.close(descriptor)
+
+
+@contextmanager
+def handed_on(*paths: Path):
+    """Hand the locks this process holds through ``hold`` at ``paths`` to the processes it starts
+    in the block; yields ``(environment, descriptors)``: the variables to add to their environment
+    and the descriptors they must inherit (``pass_fds``).
+
+    Each descriptor is a duplicate sharing the held lock's open file description, so a process
+    given it adopts the lock without waiting, as Tracing's "Handing a lock on" says, while this
+    process keeps holding it. A receiver writes its own holder line and empties the file as it
+    ends, so this process writes its own line again when the block ends. A path this process does
+    not hold raises ``ValueError``.
+    """
+    taken: dict[str, int] = {}
+    try:
+        for path in paths:
+            held = _holding.get(os.path.realpath(path))
+            if held is None:
+                raise ValueError(f"this process does not hold the lock {path}")
+            taken[Path(path).as_posix()] = os.dup(held[0])
+        yield {INHERITED: json.dumps(taken)}, tuple(taken.values())
+    finally:
+        for descriptor in taken.values():
+            os.close(descriptor)
+        for path in paths:
+            held = _holding.get(os.path.realpath(path))
+            if held is not None:
+                write_entry(*held)
 
 
 def holder(path: Path) -> str | None:
@@ -380,6 +416,7 @@ __all__ = [
     "acquire",
     "describe",
     "entry",
+    "handed_on",
     "held",
     "hold",
     "holder",

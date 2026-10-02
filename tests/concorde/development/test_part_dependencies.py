@@ -53,20 +53,9 @@ CODE_TASKS = (
 )
 # Code task -> (importing file under src/concorde/, imported module under concorde.) it removes.
 KNOWN_EXCEPTIONS = {
-    "coordination": [
-        ("coordination/tasks/cli.py", "execution.runs"),
-        ("coordination/tasks/merge.py", "issues.store"),
-        ("coordination/tasks/session.py", "issues.store"),
-        ("coordination/tasks/store.py", "execution.runs"),
-        ("coordination/tasks/store.py", "issues.command"),
-        ("coordination/tasks/store.py", "issues.store"),
-        ("coordination/tasks/store.py", "spec.repository"),
-        ("coordination/tasks/store.py", "spec.repository_base"),
-    ],
     # Distribution depends on no part and no part imports it: it reaches the parts only through
     # their registrations.
     "distribution": [
-        ("coordination/tasks/merge.py", "distribution.install"),
         ("distribution/build.py", "spec.typed_data"),
         ("distribution/build.py", "workflows.catalog"),
         ("distribution/cli.py", "coordination.tasks.cli"),

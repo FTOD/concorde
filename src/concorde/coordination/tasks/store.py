@@ -33,7 +33,6 @@ from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 
-from ...execution.runs import Store, waiting_runs, workspace_runs
 from ...kernel import binding as workspace_binding
 from ...kernel import delivery, locking
 from ...kernel.refusal import KernelError
@@ -41,8 +40,10 @@ from ...kernel.schema import register
 from ...kernel.tracing import layout, locks, retention, roots
 from ...kernel.tracing import node as trace
 from ...kernel.tracing.node import Node, concorde_commit, protocol_version
+from . import parts, runs as run_store
 
 TASK_ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,47}$")
+MODULE_ID = re.compile(workspace_binding.MODULE_ID["pattern"])
 HISTORY_KEY = re.compile(r"^[a-z0-9][a-z0-9-]{0,47}(\.[0-9]+)?$")
 RECORD = "task.json"
 DECISIONS = "decisions.md"
@@ -319,11 +320,16 @@ def history_key(primary: Path, task_id: str) -> str:
     return f"{task_id}.{number}"
 
 
-def workspace_store(primary: Path, task_id: str, folder: Path | None = None) -> Store:
-    """The run store of a task's workspace: its folder's ``workspace/``, locks under the primary
-    worktree's ``.concorde``."""
+def workspace_runs(
+    primary: Path, task_id: str, folder: Path | None = None
+) -> list[dict]:
+    """The runs of a task's workspace, read through Execution's formats from its folder's
+    ``workspace/`` and the lobby, with their locks under the primary worktree's ``.concorde``;
+    none where the execution part is not installed."""
     folder = folder or task_folder(primary, task_id)
-    return Store(concorde(primary), workspace_folder(folder))
+    return run_store.workspace_runs(
+        concorde(primary), workspace_folder(folder), task_id
+    )
 
 
 def task_lock_path(primary: Path, task_id: str) -> Path:
@@ -1112,21 +1118,19 @@ def answer(primary: Path, task_id: str, numbers: list[int], text: str) -> dict:
     }
 
 
-def _registry(root: Path) -> set[str]:
-    from ...spec.repository import SpecRepository
-    from ...spec.repository_base import SpecError
-
-    try:
-        return set(SpecRepository(root).modules)
-    except (SpecError, OSError, ValueError) as error:
-        detail = error.describe() if isinstance(error, SpecError) else str(error)
-        raise TaskError(
-            "specs_unloadable", f"the Specs of {root} cannot be loaded: {detail}"
-        ) from error
-
-
 def registered(root: Path, modules: list[str]) -> None:
-    known = _registry(root)
+    """Refuse, where the spec part is installed, a Module the registry mirror of ``root`` does not
+    list; where it is not, the Modules are plain labels and nothing is checked."""
+    try:
+        known = parts.registry_modules(root)
+    except ValueError as error:
+        raise TaskError(
+            "specs_unloadable",
+            f"the Modules of the task cannot be checked: {error}; repair the registry, such as "
+            "with `concorde registry --write`, and open the task again",
+        ) from error
+    if known is None:
+        return
     unknown = sorted(item for item in modules if item not in known)
     if unknown:
         raise TaskError(
@@ -1167,23 +1171,52 @@ def open_task(
         )
 
 
+def _issues_missing(task_id: str, absent: parts.Absent) -> TaskError:
+    return TaskError(
+        "part_missing",
+        f"task {task_id} cannot name Issues it resolves: {absent}, so the project keeps no "
+        "Issues and a task resolves none; open the task without --resolves",
+    )
+
+
+def _issues_failed(task_id: str, failure: parts.Failed) -> TaskError:
+    return TaskError(
+        "issues_unavailable",
+        f"task {task_id} names Issues it resolves, which are read through the issues command, "
+        f"but {failure}; nothing was recorded, so name them again once it answers",
+    )
+
+
 def open_issues(primary: Path, issues: list[str], task_id: str) -> None:
     """Refuse, with ``invalid_issue``, a list of Issues that are not distinct open Issues of the
-    project."""
-    from ...issues.store import IssueError, read_issue
-
+    project, read through ``concorde issues show``; with ``part_missing`` any Issue where the
+    issues part is not installed."""
     problems = []
-    repeated = sorted({item for item in issues if issues.count(item) > 1})
-    if repeated:
-        problems.append(f"named twice: {', '.join(repeated)}")
     for issue in dict.fromkeys(issues):
         try:
-            record, _ = read_issue(primary, issue)
-        except (IssueError, OSError) as error:
-            problems.append(str(error))
+            answer = parts.call(
+                primary, ["issues", "show", issue, "--root", primary.as_posix()]
+            )
+        except parts.Absent as absent:
+            raise _issues_missing(task_id, absent) from None
+        except parts.Failed as failure:
+            raise _issues_failed(task_id, failure) from None
+        if answer.error is not None:
+            problems.append(answer.error.get("detail") or answer.error.get("code"))
             continue
-        if record["status"] != "open":
+        record = answer.value.get("issue") if isinstance(answer.value, dict) else None
+        if not isinstance(record, dict):
+            raise _issues_failed(
+                task_id,
+                parts.Failed(
+                    f"`concorde issues show {issue}` answered no Issue record"
+                ),
+            )
+        if record.get("status") != "open":
             problems.append(f"Issue {issue} is closed; reopen it first")
+    repeated = sorted({item for item in issues if issues.count(item) > 1})
+    if repeated:
+        problems.insert(0, f"named twice: {', '.join(repeated)}")
     if problems:
         raise TaskError(
             "invalid_issue",
@@ -1215,57 +1248,62 @@ def close_resolved(
     primary: Path, record: dict, commit: str
 ) -> tuple[list[dict], list[str]]:
     """Close each Issue the merged task resolves and that is still open as ``resolved``, with its
-    merge commit as evidence; the caller holds the merge lock. The answers of the closures made
-    and a warning, carrying the Issues error link, for each that could not be made: the merge
-    stays whatever happens to an Issue."""
+    merge commit as evidence, through ``concorde issues close``, to which the merge lock the
+    caller holds is handed on. The answers of the closures made and a warning, carrying the issues
+    command's error link, for each that could not be made: the merge stays whatever happens to an
+    Issue. Where the issues part is not installed, one warning says that none was closed."""
     from ...kernel import errors
 
-    if not record.get("resolves"):
-        return [], []
-    try:
-        from ...issues import command as issues
-    except Exception as error:  # noqa: BLE001 -- the merge stands whatever an Issue does
-        return [], [unclosed(record, error)]
     closed, warnings = [], []
-    for issue in record["resolves"]:
+    for issue in record.get("resolves") or []:
         try:
-            closed.append(
-                issues.dispose(
-                    primary,
-                    issue,
-                    "resolved",
+            answer = parts.call(
+                primary,
+                [
+                    *("issues", "close", issue, "--reason", "resolved"),
+                    "--note",
                     f"Fixed by task {record['id']}, merged into the primary branch at {commit}.",
-                    [f"merge commit {commit}", f"task {record['id']}"],
-                    locked=True,
-                )
+                    *("--evidence", f"merge commit {commit}", f"task {record['id']}"),
+                    *("--root", primary.as_posix()),
+                ],
+                handing=(merge_lock_path(primary),),
             )
-        except issues.Refusal as refusal:
+        except parts.Absent as absent:
+            return closed, [
+                f"task {record['id']} resolves Issue(s) {', '.join(record['resolves'])}, but "
+                f"{absent}, so its merge closed none of them"
+            ]
+        except parts.Failed as failure:
+            warnings.append(unclosed(record, failure, [issue]))
+            continue
+        if answer.error is not None:
             warnings.append(
                 f"task {record['id']} resolves Issue {issue}, but its merge could not close it: "
-                f"{errors.render(refusal.link)}"
+                f"{errors.render(answer.error)}"
             )
-        except Exception as error:  # noqa: BLE001 -- the merge stands whatever an Issue does
-            warnings.append(
-                f"task {record['id']} resolves Issue {issue}, but its merge could not close it: "
-                f"{errors.render(issues.unexpected(error))}"
-            )
+            continue
+        closed.append(answer.value)
     return closed, warnings
 
 
-def unclosed(record: dict, error: BaseException) -> str:
-    """The warning of a merge that could not close the Issues its task resolves at all."""
+def unclosed(
+    record: dict, error: BaseException, issues: list[str] | None = None
+) -> str:
+    """The warning of a merge that could not reach the issues command to close ``issues``, by
+    default every Issue its task resolves."""
     from ...kernel import errors
 
+    issues = record.get("resolves", []) if issues is None else issues
     link = errors.from_exception(
         "Tasks (closing resolved Issues)",
         error,
         code="issues_unavailable",
-        explanation="the merge could not reach the Issues component, so it closed none of the "
-        "task's Issues; the merge stands and the main agent closes them",
+        explanation="the merge could not reach the issues command, so it closed none of these "
+        "Issues; the merge stands and the main agent closes them",
     )
     return (
-        f"task {record['id']} resolves Issue(s) {', '.join(record.get('resolves', []))}, but its "
-        f"merge could not close them: {errors.render(link)}"
+        f"task {record['id']} resolves Issue(s) {', '.join(issues)}, but its merge could not "
+        f"close them: {errors.render(link)}"
     )
 
 
@@ -1288,6 +1326,14 @@ def _open_task(
     duplicates = sorted({item for item in modules if modules.count(item) > 1})
     if duplicates:
         problems.append(f"Modules are named twice: {', '.join(duplicates)}")
+    # Checked here even where no registry names the Modules, since the workspace binding admits
+    # only Module identities and is written after the branch and worktree exist.
+    malformed = [item for item in modules if not MODULE_ID.match(item)]
+    if malformed:
+        problems.append(
+            f"{', '.join(malformed)} {'is' if len(malformed) == 1 else 'are'} no Module "
+            "identity (module.<name>, lowercase, dot-separated)"
+        )
     if problems:
         raise TaskError(
             "invalid_input",
@@ -1467,7 +1513,7 @@ def derived_state(primary: Path, record: dict, runs: list[dict] | None = None) -
     ):
         return "delivered"
     if runs is None:
-        runs = workspace_runs(workspace_store(primary, record["id"]), record["id"])
+        runs = workspace_runs(primary, record["id"])
     if runs or (head and head != record["base_commit"]) or _dirty(worktree):
         return "active"
     return "open"
@@ -1499,8 +1545,7 @@ def show_task(primary: Path, task_id: str) -> dict:
     how it fails to verify, the sessions and the escalations from the task's trace, who holds the workspace lock, and the paths of the decision log and of the
     task's folder, current or in the history."""
     record, folder = load_any(primary, task_id)
-    store = workspace_store(primary, record["id"], folder)
-    runs = workspace_runs(store, record["id"])
+    runs = workspace_runs(primary, record["id"], folder)
     record["state"] = derived_state(primary, record, runs)
     current = folder == task_folder(primary, record["id"])
     return {
@@ -1509,7 +1554,7 @@ def show_task(primary: Path, task_id: str) -> dict:
         "deliveries": deliveries(primary, record),
         "sessions": sessions(primary, record["id"], folder),
         "escalations": escalations(primary, record["id"], folder),
-        "busy": locking.workspace_lock_holder(store.concorde, record["id"])
+        "busy": locking.workspace_lock_holder(concorde(primary), record["id"])
         if current
         else None,
         "decision_log": (folder / DECISIONS).as_posix(),
@@ -1720,11 +1765,10 @@ def stop_task(primary: Path, task_id: str) -> list[str]:
     from . import session
 
     stopped = session.stop_sessions(primary, task_id)
-    store = workspace_store(primary, task_id)
-    for folder in [*store.folders(), *waiting_runs(store, task_id)]:
-        progress = load_progress_of(folder)
-        run_id = (progress or {}).get("run_id") or folder.name
-        lock = store.run_lock(run_id)
+    workspace = workspace_folder(task_folder(primary, task_id))
+    for folder in run_store.folders(concorde(primary), workspace, task_id):
+        run_id = (run_store.progress(folder) or {}).get("run_id") or folder.name
+        lock = run_store.run_lock(concorde(primary), run_id)
         for pid in locks.holder_pids(lock):
             try:
                 os.kill(pid, signal.SIGTERM)
@@ -1732,14 +1776,6 @@ def stop_task(primary: Path, task_id: str) -> list[str]:
             except OSError:
                 continue
     return stopped
-
-
-def load_progress_of(folder: Path) -> dict | None:
-    try:
-        value = json.loads((folder / layout.PROGRESS).read_text())
-    except (OSError, ValueError):
-        return None
-    return value if isinstance(value, dict) else None
 
 
 def close_locked(primary: Path, task_id: str, outcome: str, **options) -> dict:

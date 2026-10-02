@@ -66,6 +66,39 @@ class LockLineTests(unittest.TestCase):
         child.wait(10)
         self.assertFalse(locks.held(path))
 
+    def test_a_holder_hands_on_a_lock_it_keeps_holding(self):
+        path = Path(tempfile.mkdtemp()) / "merge.lock"
+        code = (
+            "import os\n"
+            "from concorde.kernel.tracing import locks\n"
+            f"with locks.hold({str(path)!r}, 'the Issue write', wait=0):\n"
+            f"    print(locks.entry({str(path)!r})['pid'], flush=True)\n"
+        )
+        with locks.hold(path, "the merge", wait=0):
+            with locks.handed_on(path) as (variables, descriptors):
+                child = subprocess.run(
+                    [sys.executable, "-c", code],
+                    pass_fds=descriptors,
+                    env=child_environment(
+                        PYTHONPATH=str(REPOSITORY_ROOT / "src"), **variables
+                    ),
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                    check=False,
+                )
+            # The child adopted the lock without waiting and wrote its own holder line; once it
+            # ended, the holder still holds the lock and its line is its own again.
+            self.assertEqual(0, child.returncode, child.stderr)
+            self.assertNotEqual(str(os.getpid()), child.stdout.strip())
+            self.assertEqual(
+                ("the merge", os.getpid()), tuple(locks.entry(path).values())[:2]
+            )
+        self.assertFalse(locks.held(path))
+        with self.assertRaises(ValueError):
+            with locks.handed_on(path):
+                pass
+
     @verifies("scenario.tracing.lock-table-holders")
     def test_the_lock_table_names_holders_of_the_same_device_and_inode(self):
         path = Path(tempfile.mkdtemp()) / "run.lock"

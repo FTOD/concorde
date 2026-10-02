@@ -36,7 +36,6 @@ import importlib
 import importlib.abc
 import importlib.util
 import os
-import shlex
 import subprocess
 import sys
 import time
@@ -44,12 +43,11 @@ from contextlib import ExitStack
 from pathlib import Path
 
 from ...kernel import errors
-from ...distribution.install import UPDATE_STATE
 from ...kernel.schema import register
 from ...kernel.tracing import locks
 from ...kernel.tracing import node as trace
 from ...kernel.tracing.node import Node
-from . import store
+from . import checks, parts, store
 from .store import TaskError
 
 _TEXT = {"type": "string", "minLength": 1}
@@ -295,41 +293,45 @@ class Attempt:
 
 # A check that runs longer than this is stopped and counts as failed, so the lock is not held
 # for ever by a check that hangs.
-CHECK_TIMEOUT = 1800
-# How much of a failed check's output a refusal quotes; the log holds all of it.
-OUTPUT_TAIL = 2000
+CHECK_TIMEOUT = checks.TIMEOUT
+OUTPUT_TAIL = checks.OUTPUT_TAIL
 LISTED = 20
 
 
-def default_checks() -> list[list[str]]:
-    """``concorde spec-validation`` of the primary worktree, by this Python and this package."""
-    return [[sys.executable, "-m", "concorde", "spec-validation"]]
+# The default check: ``concorde spec-validation`` of the primary worktree, by this Python and this
+# package, where the spec part is installed.
+SPEC_VALIDATION = [sys.executable, "-m", "concorde", "spec-validation"]
+NO_CHECK = (
+    "the merge ran no check: none was given with --check, and the spec part is not installed "
+    "(no registry {registry}), so there is no `concorde spec-validation` to run by default"
+)
+
+
+def default_checks(primary: Path) -> list[list[str]]:
+    """The checks of a merge given none: ``concorde spec-validation`` where the spec part is
+    installed in the primary worktree, else none."""
+    return [list(SPEC_VALIDATION)] if parts.spec_installed(primary) else []
 
 
 def with_update_check(primary: Path, commands: list[list[str]]) -> list[list[str]]:
-    """The checks a merge runs: while ``concorde update``'s mark says the project is Concorde
-    unvalidated, the default ``spec-validation`` runs after the given checks too, so that no
-    checks given to a merge let it pass the update's barrier, and a merge that validates clears
-    the mark as any validation does."""
-    default = default_checks()[0]
-    if (primary / UPDATE_STATE).is_file() and default not in commands:
-        return [*commands, default]
+    """The checks a merge runs: ``commands``, or the default checks when none is given, and while
+    Distribution's update mark says the project is Concorde unvalidated, where the spec part is
+    installed, the default ``spec-validation`` after the given checks too, so that no checks given
+    to a merge let it pass the update's barrier, and a merge that validates clears the mark as any
+    validation does."""
+    if not commands:
+        return default_checks(primary)
+    if (
+        parts.update_unvalidated(primary)
+        and parts.spec_installed(primary)
+        and SPEC_VALIDATION not in commands
+    ):
+        return [*commands, list(SPEC_VALIDATION)]
     return commands
 
 
 def parse_checks(texts: list[str]) -> list[list[str]]:
-    checks = []
-    for text in texts:
-        try:
-            words = shlex.split(text)
-        except ValueError as error:
-            raise TaskError(
-                "invalid_input", f"--check {text!r} cannot be split into words: {error}"
-            ) from error
-        if not words:
-            raise TaskError("invalid_input", f"--check {text!r} names no command")
-        checks.append(words)
-    return checks or default_checks()
+    return checks.parse(texts, lambda message: TaskError("invalid_input", message))
 
 
 def _environment() -> dict:
@@ -355,21 +357,33 @@ def _status(primary: Path) -> list[str]:
 
 def _recover_issues(primary: Path) -> str:
     """Put back, as every Issue write does first, what Issue writes left uncommitted in the
-    primary worktree, so that such a leftover never refuses a merge; the caller holds the merge
-    lock. What the recovery could not put back or left as no write's, for ``primary_dirty``."""
+    primary worktree, so that such a leftover never refuses a merge, with ``concorde issues
+    recover``, to which the merge lock the caller holds is handed on. What the recovery could not
+    put back or left as no write's, for ``primary_dirty``; nothing where the issues part is not
+    installed, whose records do not exist."""
     try:
-        from ...issues import store as issues
-
-        recovery = issues.recover_issues(primary, locked=True)
-    except Exception as error:  # noqa: BLE001 -- a failed recovery only leaves the paths dirty
-        code = getattr(error, "code", type(error).__name__)
-        return (
-            f"; recovering the Issue records Issue writes left there failed ({code}: {error}), "
-            "so run `concorde issues recover` once its cause is fixed"
+        answer = parts.call(
+            primary,
+            ["issues", "recover", "--root", primary.as_posix()],
+            handing=(store.merge_lock_path(primary),),
         )
-    if not recovery["left"]:
+    except parts.Absent:
         return ""
-    left = "; ".join(f"{item['path']} ({item['reason']})" for item in recovery["left"])
+    except parts.Failed as failure:
+        return (
+            f"; recovering the Issue records Issue writes left there failed ({failure}), so "
+            "run `concorde issues recover` once its cause is fixed"
+        )
+    if answer.error is not None:
+        return (
+            f"; recovering the Issue records Issue writes left there failed "
+            f"({answer.error.get('code')}: {answer.error.get('detail')}), so run "
+            "`concorde issues recover` once its cause is fixed"
+        )
+    left_over = answer.value.get("left") if isinstance(answer.value, dict) else None
+    if not left_over:
+        return ""
+    left = "; ".join(f"{item['path']} ({item['reason']})" for item in left_over)
     return (
         f"; Issue recovery left these Issue records, whose changes no Issue write made: {left}, "
         "so inspect and revert each"
@@ -664,55 +678,15 @@ def _check(
 ) -> tuple[dict, str | None]:
     """Run one check in the primary worktree as a node of the attempt; its result and, when it
     failed, why."""
-    folder = attempt.check_folder()
-    node = Node(
-        folder,
-        f"check-{attempt.checks}",
-        "merge-check",
+    return checks.run(
+        primary,
+        argv,
+        attempt.check_folder(),
+        identity=f"check-{attempt.checks}",
+        kind="merge-check",
         content_type=MERGE_CHECK_TRACE,
-        content={"argv": list(argv), "exit_code": None},
+        environment=_environment(),
     )
-    node.keep("output", "output.log")
-    node.start()
-    log = folder / "output.log"
-    started = time.monotonic()
-    try:
-        ran = subprocess.run(
-            argv,
-            cwd=primary,
-            env=_environment(),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            timeout=CHECK_TIMEOUT,
-            check=False,
-        )
-        code, output = ran.returncode, ran.stdout or ""
-        problem = None if code == 0 else f"exited {code}"
-    except subprocess.TimeoutExpired as error:
-        code, output = -1, error.stdout if isinstance(error.stdout, str) else ""
-        problem = f"was stopped after {CHECK_TIMEOUT} s"
-    except OSError as error:
-        code, output = -1, ""
-        problem = f"could not run: {error}"
-    seconds = round(time.monotonic() - started, 3)
-    with log.open("a", encoding="utf-8") as stream:
-        stream.write(
-            f"$ {shlex.join(argv)}\n{output}"
-            f"{'' if output.endswith(chr(10)) or not output else chr(10)}"
-            f"[exit {code} after {seconds} s]\n"
-        )
-    node.finish(
-        "ok" if problem is None else "failed",
-        outcome="passed" if problem is None else "failed",
-        content={"argv": list(argv), "exit_code": code if code >= 0 else None},
-        used={"duration_seconds": seconds},
-    )
-    result = {"argv": list(argv), "exit_code": code, "seconds": seconds}
-    if problem is None:
-        return result, None
-    tail = output.strip()[-OUTPUT_TAIL:] or "(no output)"
-    return result, f"the check `{shlex.join(argv)}` {problem}; its output ends: {tail}"
 
 
 def merge_task(
@@ -933,6 +907,8 @@ def _checked_close(
         if text is not None
     ]
     warnings.extend(outside or [])
+    if not merging["checks"]:
+        warnings.append(NO_CHECK.format(registry=parts.REGISTRY))
     try:
         folder = attempt.folder
         closed = store.close_locked(
@@ -1087,6 +1063,8 @@ __all__ = [
     "MESSAGES",
     "OUTPUT",
     "RESERVED",
+    "NO_CHECK",
+    "SPEC_VALIDATION",
     "default_checks",
     "merge_task",
     "next_attempt",

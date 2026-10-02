@@ -343,7 +343,8 @@ def reporting_module(label: str, report: dict, found) -> str:
                 "no_reporting_module",
                 f"{label} names no owner and "
                 + NO_SPEC_PART.format(
-                    path=REGISTRY, consequence="no registry names a root Module to report it"
+                    path=REGISTRY,
+                    consequence="no registry names a root Module to report it",
                 )
                 + "; name the owner in owner_target_id",
             )
@@ -512,7 +513,6 @@ def dispose(
     duplicate_of: str | None = None,
     actor: str = "main-agent",
     wait: float = MERGE_WAIT,
-    locked: bool = False,
 ) -> dict:
     """Close (``reason`` resolved, duplicate or not-actionable) or reopen (``reopened``) the
     Issue at its current revision; ``root`` is any worktree of the project."""
@@ -544,7 +544,6 @@ def dispose(
         actor=actor,
         duplicate_of=duplicate_of,
         wait=wait,
-        locked=locked,
     )
     status = "open" if reason == "reopened" else "closed"
     return {

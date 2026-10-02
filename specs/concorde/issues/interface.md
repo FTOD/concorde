@@ -232,24 +232,23 @@ The bookkeeping command reports a Kernel error as `invalid_issue`, and a `system
 
 | Operation | Behaviour |
 | --- | --- |
-| `report_issue(root, report, source, wait, locked)` | Validates, then under the merge lock, after recovery: returns the existing receipt when the committed record already holds identical content for the same `(invocation_id, report_key)`, so that receipt names a committed report; fails with `issue_key_conflict` for different content; otherwise creates the record or, for an append, checks that the Issue exists (`unknown_issue`), `expected_revision` (`stale_issue`) and open status (`closed_issue`) and appends. |
+| `report_issue(root, report, source, wait)` | Validates, then under the merge lock, after recovery: returns the existing receipt when the committed record already holds identical content for the same `(invocation_id, report_key)`, so that receipt names a committed report; fails with `issue_key_conflict` for different content; otherwise creates the record or, for an append, checks that the Issue exists (`unknown_issue`), `expected_revision` (`stale_issue`) and open status (`closed_issue`) and appends. |
 | `read_issue(root, id)` | Returns the committed record, at either of its paths, and its revision; `invalid_issue` for a malformed identity, `unknown_issue` when `HEAD` holds it at neither path, even when an uncommitted file does, `invalid_issue` when it is committed at both, malformed, oversized or committed as anything but a regular file. |
 | `locate_issue(root, id)` | Returns what `read_issue` returns and the path the record is committed at, refusing as `read_issue` does. |
 | `read_record_file(root, path)` | Returns the record file at `path` of `root`, either path of an Issue, as it is on disk, committed or not, and the digest of its bytes, refusing as `read_issue` does and with `invalid_issue` for a path that is neither; the store check alone reads this way. |
 | `list_issues(root, target_id, status, tiers, severities, sort)` | Returns one summary row per Issue, sorted by identity unless `sort` says otherwise: `{id, severity, tier, type, subtype, title, status, target_id, owner_target_id, revision}`, where `severity` and `tier` (each `null` without one), `type`, `subtype`, `title` and `owner_target_id` are the latest report's, `target_id` is that report's reporting Module and `revision` the record's. A `target_id` keeps only the Issues whose latest report has that reporting Module or owner, whether or not it is a registered Module; a `status` keeps only the Issues with that status, `invalid_issue` for one that is neither `open` nor `closed`; `tiers` keeps only the Issues whose latest report has one of those tiers, so never one without a tier, `invalid_issue` when it names one that is not a tier; `severities` likewise keeps only the Issues whose latest report has one of those severities, never one without a severity, `invalid_issue` when it names one that is not a severity; `null` for any of them filters nothing, and the filters given combine, an Issue passing each. `sort` `severity` orders the rows most severe first, those of equal severity by tier from `decision-needed` down to `suggestion`, then by the `created_at` of the Issue's first report and by identity, every row without a severity after those with one and every row without a tier after those of its severity with one; `null` keeps the order by identity, and any other value is `invalid_issue`. It lists the committed records alone, all of one commit, from both folders, refusing with `invalid_issue` when an Issue is committed in both; a commit without the directory yields an empty list, and nothing is created. |
 | `resolve_report(root, receipt)` | Returns the exact report the receipt names, never the latest one; `stale_issue` when it is absent. |
 | `disposition_record(record, ...)` | Prepares and validates a disposed record without writing. |
-| `dispose_issue(root, id, expected_revision, reason, note, evidence, actor, duplicate_of, duplicate_revision, created_at, wait, locked)` | Refuses a `duplicate` without `duplicate_of`, naming the Issue itself, or another reason with `duplicate_of` (`invalid_issue`). Under the lock, checks the revision (`stale_issue`), refuses closing a closed Issue (`closed_issue`) and reopening an open one (`open_issue`), and for `duplicate` that the other Issue exists (`unknown_issue`), is open (`invalid_issue`) and, when the caller gives `duplicate_revision`, the revision it read of that other Issue, still has it (`stale_issue`); appends the disposition, moves the record into the place of its new status and returns the new revision. `duplicate_of` and `duplicate_revision` default to `null`; `created_at` defaults to the time of acceptance; the bookkeeping command never gives `duplicate_revision`. |
-| `archive_issues(root, wait, locked)` | Under the merge lock, as a write holds it, after recovery: moves every misplaced committed record into its place, its bytes unchanged so its revision stays, publishing all of them through one file transaction and committing them in one commit as a write commits, and returns `{"moved": [{issue_id, from, to}], "left": [{path, reason}]}`, sorted by identity. It leaves, with the reason, both paths of an Issue committed at both and a misplaced record whose path or place holds a change recovery left. Nothing to move commits nothing. Refuses as a write does. |
-| `recover_issues(root, wait, locked)` | Under the merge lock, as a write holds it, runs the recovery below without writing an Issue and returns `{"recovered": [{path, action}], "left": [{path, reason}]}`: each record put back (`action` `restored` to its committed version, or `removed` when no commit holds it) or temporary file removed (`removed`), and each record change left because no write made it, with the reason. Refuses as a write does, with `not_primary`, `merge_busy`, `merge_incomplete` or `recovery_failed`. |
+| `dispose_issue(root, id, expected_revision, reason, note, evidence, actor, duplicate_of, duplicate_revision, created_at, wait)` | Refuses a `duplicate` without `duplicate_of`, naming the Issue itself, or another reason with `duplicate_of` (`invalid_issue`). Under the lock, checks the revision (`stale_issue`), refuses closing a closed Issue (`closed_issue`) and reopening an open one (`open_issue`), and for `duplicate` that the other Issue exists (`unknown_issue`), is open (`invalid_issue`) and, when the caller gives `duplicate_revision`, the revision it read of that other Issue, still has it (`stale_issue`); appends the disposition, moves the record into the place of its new status and returns the new revision. `duplicate_of` and `duplicate_revision` default to `null`; `created_at` defaults to the time of acceptance; the bookkeeping command never gives `duplicate_revision`. |
+| `archive_issues(root, wait)` | Under the merge lock, as a write holds it, after recovery: moves every misplaced committed record into its place, its bytes unchanged so its revision stays, publishing all of them through one file transaction and committing them in one commit as a write commits, and returns `{"moved": [{issue_id, from, to}], "left": [{path, reason}]}`, sorted by identity. It leaves, with the reason, both paths of an Issue committed at both and a misplaced record whose path or place holds a change recovery left. Nothing to move commits nothing. Refuses as a write does. |
+| `recover_issues(root, wait)` | Under the merge lock, as a write holds it, runs the recovery below without writing an Issue and returns `{"recovered": [{path, action}], "left": [{path, reason}]}`: each record put back (`action` `restored` to its committed version, or `removed` when no commit holds it) or temporary file removed (`removed`), and each record change left because no write made it, with the reason. Refuses as a write does, with `not_primary`, `merge_busy`, `merge_incomplete` or `recovery_failed`. |
 
 Every write refuses a `root` that is not the primary worktree (`not_primary`), then holds the
 primary worktree's merge lock, `.concorde/locks/merge.lock`, the one Tasks' merges, opens and closes
 hold, waiting for it up to `wait` seconds (default 300) and refusing with `merge_busy`, naming the
-holder, after that; `locked` says the caller holds it already, as a task merge closing the Issues its
-task resolves does once it has closed the task, and then the write neither takes nor waits for it;
-a process that was handed the lock adopts it without waiting. Holding it, whether it took it or its
-caller holds it, a write refuses with `merge_incomplete` while a task is stored `merging`, which it
+holder, after that; a process that was handed the lock, as a task merge that has closed its task
+hands it to the `concorde issues close` it starts for each Issue the task resolves, adopts it
+without waiting. Holding it, whether it took it or was handed it, a write refuses with `merge_incomplete` while a task is stored `merging`, which it
 reads in the current tasks' [task records](../coordination/tasks/contracts.md#contract.tasks.record)
 `.concorde/tasks/*/task.json` of the primary worktree, where the coordination part is installed,
 passing over a record that does not read as JSON; it then recovers as below, refuses with
@@ -352,26 +351,23 @@ refused by the store with `invalid_issue`.
 
 <a id="disposing-under-a-held-lock"></a>
 
-Code of other Modules disposes an Issue through the same action, the library entry of
-`concorde.issues.command` that `close` and `reopen` run:
+Code of the issues part, and Distribution's project MCP server, which composes the parts' tools,
+dispose an Issue through the same action, the library entry of `concorde.issues.command` that
+`close` and `reopen` run; every other part runs `concorde issues close` or `reopen` instead:
 
 ```python
 dispose(root, issue_id, reason, note, evidence, *, duplicate_of=None, actor="main-agent",
-        wait=300, locked=False) -> dict
+        wait=300) -> dict
 ```
 
 `reason` is a closing reason, or `reopened` to reopen, `root` any worktree of the project, and the
 argument rules
 above are checked first, a violation refused with `usage`. It reads the Issue's current revision in
 the primary worktree, disposes it there at that revision as `dispose_issue` does, recording `actor`,
-and returns what `close` and `reopen` print, `{"issue_id", "status", "revision", "path"}`. With `locked`
-its caller holds the merge lock itself, as a task merge closing the Issues its task resolves does
-once it has closed the task: the write neither takes nor waits for the lock, and is still refused
-with `merge_incomplete` while a task is stored `merging`. Every refusal is raised as the command's
+and returns what `close` and `reopen` print, `{"issue_id", "status", "revision", "path"}`. Every refusal is raised as the command's
 `Refusal`, whose `code` is the refusal code and whose `link` is the error link below, the one the
-command would print; its caller decides what the refusal means for its own work, as
-[Tasks](../coordination/tasks/module.md) does with a closure its merge could not make, and supplies
-the note and evidence its own [Spec](../glossary.json#concept.spec) names.
+command would print; its caller decides what the refusal means for its own work and supplies the
+note and evidence its own [Spec](../glossary.json#concept.spec) names.
 
 Every refusal prints `{"error": <link>}`, commits nothing and leaves no record a read shows. It
 writes nothing either, with one exception: a write refused with `recovery_failed`, or a process
