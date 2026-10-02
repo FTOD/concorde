@@ -26,7 +26,7 @@ The rules that hold before the skills are loaded:
   --group dev`, `npm --prefix docsite ci` and `python3 scripts/concorde.py build`. It never asks the developer in
   place: it gathers every decision it needs and escalates them together to the main agent. It
   never merges into the primary branch; its only merge is the primary branch into its task branch
-  when the main agent asks for it after a merge conflict.
+  when the main agent asks for it after a merge conflict or a `concorde update`.
 - **Everyone** uses each project term exactly as the glossary below defines it, appends every
   decision taken without the developer and every non-`ok` result to the task's decision log, reads
   error chains in full, runs long commands in background Bash and never waits by polling with

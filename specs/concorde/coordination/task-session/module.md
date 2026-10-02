@@ -30,8 +30,8 @@ agent out of task worktrees keeps it free to talk with the developer and to answ
 while tasks run, and puts every task under a write boundary, which the main agent itself does not
 have. A task session escalates to the main agent while the main agent escalates to the developer, it
 has a start and ends with its task, and it never merges its task into the primary branch; the one
-merge it makes is the primary branch into its task branch when the main agent answers a merge
-conflict, a change inside its own worktree and branch. It runs on the main agent's own program and
+merge it makes is the primary branch into its task branch when the main agent asks for it after a
+merge conflict or a `concorde update`, a change inside its own worktree and branch. It runs on the main agent's own program and
 configuration, because it does the main agent's own task-level work at a smaller scale: an isolated
 configuration, such as a worker gets, would give it other tools and instructions than the main
 agent's.
@@ -46,9 +46,10 @@ restriction: everything else of the session, its shell included, is as open as t
 
 The task level of the work is always delegated: the main agent never works inside a task worktree
 but, from the primary worktree, starts a [task session](../../glossary.json#concept.task-session)
-for every task, even a single one, after recording the task's brief in its
-[decision log](../../glossary.json#concept.decision-log). How a task session travels over time, from
-the main agent's start to the end of its task:
+for every task, even a single one, after recording the
+[task brief](../../glossary.json#concept.task-brief) in its
+[decision log](../../glossary.json#concept.decision-log). How a task session travels over time,
+from the main agent's start to the end of its task:
 
 ```d2 illustrative
 grid-columns: 4
@@ -379,7 +380,7 @@ itself starts no workflow or run and owes them nothing.
 
 **Workflows** is level 3, which a task session may start for its task when the work follows a known
 procedure. The session starts a [workflow](../../glossary.json#concept.workflow) for its own task
-only, in the [mode](../../glossary.json#concept.workflow-mode) its brief names, interactive when it
+only, in the [mode](../../glossary.json#concept.workflow-mode) its task brief names, interactive when it
 names none. An interactive workflow ends at its first
 [decision point](../../glossary.json#concept.decision-point) not yet settled, and since nobody
 answers the session in place, it escalates every pending point of that step at once, with the

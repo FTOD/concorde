@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from contextlib import ExitStack
 from pathlib import Path
 
 from .. import errors
@@ -339,6 +340,7 @@ def parser() -> argparse.ArgumentParser:
     target.add_argument("--run")
     target.add_argument("--lock", choices=list(wait.LOCKS))
     target.add_argument("--rebound")
+    target.add_argument("--merge", action="store_true")
     waiting.add_argument("--timeout", type=float)
     return root
 
@@ -508,6 +510,12 @@ def wait_for(here: Path, arguments) -> dict:
             )
         return wait.wait_run(here, arguments.run, arguments.timeout)
     primary = store.primary_of(here)
+    if arguments.merge:
+        if arguments.task_id is None:
+            raise store.TaskError(
+                "invalid_input", "--merge waits for the end of a task's merge"
+            )
+        return wait.wait_merge(primary, arguments.task_id, arguments.timeout)
     if arguments.rebound is not None:
         if arguments.task_id is None:
             raise store.TaskError(
@@ -547,6 +555,16 @@ def main(argv, cwd: Path | None = None) -> int:
         return 2
     except SystemExit as exit_:
         return 0 if exit_.code in (0, None) else 2
+    # A merge holds its task's merge attempt lock until its answer is written, whatever it is.
+    with ExitStack() as held:
+        code, value = _answer(here, command, arguments, held)
+        sys.stdout.write(json.dumps(value, indent=2) + "\n")
+        sys.stdout.flush()
+        return code
+
+
+def _answer(here: Path, command: str, arguments, held: ExitStack) -> tuple[int, dict]:
+    """The exit status and the JSON answer of one task command."""
     try:
         if arguments.command == "open":
             record = store.open_task(
@@ -614,21 +632,17 @@ def main(argv, cwd: Path | None = None) -> int:
                 arguments.wait,
                 resume=arguments.resume,
                 abort=arguments.abort,
+                held=held,
             )
         else:
             value = close(here, arguments)
     except store.TaskError as error:
-        sys.stdout.write(
-            json.dumps({"error": refusal(command, error)}, indent=2) + "\n"
-        )
-        return 1
+        return 1, {"error": refusal(command, error)}
     except Exception as error:  # noqa: BLE001 -- every failure leaves a detailed error
         link = errors.from_exception(
             f"Tasks (concorde task {command})",
             error,
             explanation="Tasks has no recovery for an unexpected error; nothing after it ran",
         )
-        sys.stdout.write(json.dumps({"error": link}, indent=2) + "\n")
-        return 1
-    sys.stdout.write(json.dumps(value, indent=2) + "\n")
-    return 0
+        return 1, {"error": link}
+    return 0, value

@@ -110,8 +110,9 @@ use is your choice, made before the first Operation runs, as
 To update Concorde, pull the checkout and build it again, then run `concorde update` in your
 project (`--from <checkout>` if the checkout moved). It installs the new version the way the first
 install did, binds the new Protocol copy in `.concorde/config.json` (read what changed in
-`.concorde/protocol/`), and lists your open tasks: merge your primary branch into each, since
-their worktrees keep the previous Protocol copy. Your project is then **Concorde unvalidated**:
+`.concorde/protocol/`), and lists your open tasks: the main agent has the task session of each
+merge your primary branch into its task branch, since their worktrees keep the previous Protocol
+copy. Your project is then **Concorde unvalidated**:
 `concorde spec-validation` reports it as an error, and nothing merges, until you have repaired what the
 new version finds and a validation passes. That mark comes only from an update; your own changes
 never set it. An update also waits for Concorde to be idle: while an Operation or an execution command is still
@@ -570,7 +571,7 @@ as it was; the output of each check is kept with the merge attempt, in
 `.concorde/tasks/retry/merges/<n>/checks/`. A merge conflict is
 not resolved in your primary checkout either: the merge is aborted, and the main agent has the
 task session merge your primary branch into the task branch, resolve the conflict and deliver
-again, the only merge a task session makes.
+again. That merge, and the one after an update, are the only merges a task session makes.
 
 Several main sessions can work in the same project. Only one of them merges at a time:
 `concorde task merge` holds a lock on the primary checkout for as long as it runs, and a second

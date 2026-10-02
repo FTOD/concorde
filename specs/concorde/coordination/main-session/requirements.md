@@ -210,7 +210,8 @@ than `git merge`.
 
 [Tasks](../tasks/module.md) holds the [merge lock](../../glossary.json#concept.merge-lock) during
 the merge, runs `concorde spec-validation` of the merged checkout, or exactly the `--check`
-commands given, and undoes a merge whose checks fail.
+commands given, followed by `concorde spec-validation` while a `concorde update` is not validated
+yet, and undoes a merge whose checks fail.
 
 ### req.main-session.merge-interrupted — An interrupted merge is finished first
 
@@ -246,17 +247,31 @@ The guidance SHALL tell the main agent, when merging a task fails with `merge_co
 the task's session merge the primary branch into its task branch.
 
 The session then delivers again
-([A task session merges the primary branch when asked](#req.main-session.task-session-conflict-merge)),
+([A task session merges the primary branch when asked](#req.main-session.task-session-primary-merge)),
 and the main agent merges the task once more. Merging the task into the primary branch stays the
 main agent's.
 
-### req.main-session.task-session-conflict-merge — A task session merges the primary branch when asked
+### req.main-session.update-merge — An update reaches the open tasks through their sessions
+
+The guidance SHALL tell the main agent, when a `concorde update` asks to merge the primary branch
+into each open task, to have the session of each task it lists merge the primary branch into its
+task branch.
+
+An update that installs a new Protocol copy lists the open tasks, whose worktrees still carry the
+previous copy ([Distribution](../../distribution/module.md)). The main agent answers each listed
+task's session, starting one again if it has ended, and the session then validates again and, when
+it had delivered, delivers again
+([A task session merges the primary branch when asked](#req.main-session.task-session-primary-merge)).
+Merging the task into the primary branch and rebasing stay forbidden to the session.
+
+### req.main-session.task-session-primary-merge — A task session merges the primary branch when asked
 
 The task-session guidance SHALL tell a task session to merge the primary branch into its task
-branch when the main agent asks for it after a `merge_conflict`.
+branch when the main agent asks for it after a `merge_conflict` or after a `concorde update`.
 
 The session then resolves the conflicts within the task's goal, verifies and commits the merge and
-runs `task-validation` and `delivery` again. It is the only merge a task session makes.
+runs `task-validation` and `delivery` again; a task not delivered yet goes on with its work after
+`task-validation` and delivers when it is done. It is the only merge a task session makes.
 
 ### req.main-session.no-polling — Waiting never polls
 
@@ -385,9 +400,21 @@ runs, with the task and the `checks`, `resume` or `abort` it was given.
 [contracts](contracts.md#starting-a-merge) define instead of the merge's result.
 
 The merge's own result and refusals are the command's, delivered later: in a `merge_ended` channel
-event, or in the output file once the returned `concorde task wait` command returns. Before the
-start, the call is refused only by its arguments, by a busy lock
+event, or in the output file once the returned `concorde task wait <task> --merge` returns. Before
+the start, the call is refused only by its arguments, by a busy lock
 ([The server never waits for a lock](#req.main-session.project-mcp-no-wait)) or by a failed start.
+
+### req.main-session.project-mcp-merge-output — A merge's output stays with its attempt
+
+`task_merge` SHALL direct the standard output and error of the merge it starts into the folder of
+the merge's attempt node in the task's trace, and without a channel return
+`concorde task wait <task> --merge` as the command to wait with.
+
+The merge may outlive the server, and the close that ends it removes the task's workspace lock
+before the merge has written its answer. The attempt's folder moves with the task to the history
+and is found from the task by `task_show` and `trace_show` whatever became of the server, and the
+merge-end wait returns only once that answer is complete
+([Tasks](../tasks/requirements.md#req.tasks.merge-attempt-lock)).
 
 ### req.main-session.project-mcp-workflow-step — `workflow_step` runs the worktree's own step command
 
@@ -855,8 +882,8 @@ The task-session guidance SHALL tell a task session never to merge its task into
 branch or close its task.
 
 Merging the primary branch into its task branch when the main agent asks for it after a
-`merge_conflict` is the one merge it makes
-([The task session resolves a merge conflict](#req.main-session.merge-conflict)).
+`merge_conflict` or a `concorde update` is the one merge it makes
+([A task session merges the primary branch when asked](#req.main-session.task-session-primary-merge)).
 
 ### req.main-session.task-session-keeps-branch — A task session keeps its task branch
 

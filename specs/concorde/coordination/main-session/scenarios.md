@@ -183,6 +183,14 @@ This illustrates [an optional plan review](requirements.md#req.main-session.task
 - THEN the main agent is told to answer the task's session, starting one again if it has ended, to merge the primary branch into its task branch, resolve the conflicts, run `task-validation` and `delivery` again and report
 - AND the task session is told to make that merge in its task worktree and that it is the only merge it makes
 
+### scenario.main-session.update-merge — An update reaches the open tasks through their sessions
+
+- GIVEN the rendered main-session and task-session guidance
+- WHEN a `concorde update` that installed a new [Protocol copy](../../glossary.json#concept.protocol-copy) asks to merge the primary branch into each open task it lists
+- THEN the main agent is told to answer each listed task's session, starting one again if it has ended, to merge the primary branch into its task branch, run `task-validation` again, and `delivery` too when it had delivered, and report
+- AND the task session is told that a merge of the primary branch into its task branch, asked after a `concorde update`, is besides the one after a `merge_conflict` the only merge it makes
+- BUT the task session is still told never to merge its task into the primary branch nor to rebase
+
 ### scenario.main-session.merge-interrupted — The guidance finishes an interrupted merge first
 
 - GIVEN the rendered main-session guidance
@@ -445,14 +453,23 @@ This illustrates [queries and short writes answering as their commands](requirem
 
 - GIVEN a delivered task `t1` and a merge check that waits for a signal
 - WHEN the session calls `task_merge` for `t1` and the check has started
-- THEN the holder lines of the [merge lock](../../glossary.json#concept.merge-lock) and the task's [workspace lock](../../glossary.json#concept.workspace-lock) name the merge process, the session and the task, the merge process has both lock files open and the server has neither
-- AND when the server is killed the locks stay held, and once the check ends the merge closes the task and releases both
+- THEN the holder lines of the [merge lock](../../glossary.json#concept.merge-lock), the task's [workspace lock](../../glossary.json#concept.workspace-lock) and its merge attempt lock name the merge process, the session and the task, the merge process has the lock files open and the server has none
+- AND when the server is killed the locks stay held, and once the check ends the merge closes the task and releases them
+- AND the merge's answer is then in `output.json` of the attempt's node in the history, where the merge-end wait finds it
 
 ### scenario.main-session.project-mcp-merge-wakes — The end of a merge wakes the session
 
 - GIVEN a server whose session listens to it as a channel, and a delivered task
 - WHEN the session calls `task_merge` and the merge succeeds
 - THEN the answer says the session will be woken, and a `merge_ended` event with exit code 0 arrives whose content carries the merge's output
+
+### scenario.main-session.project-mcp-merge-fallback — Without a channel the merge's end is awaited and kept
+
+- GIVEN a server whose session does not listen to it as a channel, and an open task `t1` not yet delivered
+- WHEN the session calls `task_merge` for `t1`
+- THEN the answer names the attempt's folder `merges/1/` of the task and returns `concorde task wait t1 --merge` to run in background Bash
+- AND that wait answers with the attempt `failed`, whose `output.json` holds the merge's refusal, the error of the attempt's node
+- AND once `t1` is delivered, a second `task_merge` answers with the attempt `merges/2/`, and its wait returns with that attempt `ok`, its `output.json` in the history holding the merge's answer that closed the task as merged
 
 ### scenario.main-session.workflow-step-tool — A workflow step through the server
 

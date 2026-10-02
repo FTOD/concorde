@@ -340,7 +340,7 @@ server's `task_merge`, which returns at once (see "The project MCP server" below
 `concorde task merge <task>` in background Bash. Never merge a task with `git merge` yourself:
 other main sessions may be merging into the same primary worktree, and `concorde task merge` takes
 the merge lock that lets only one merge run at a time. It merges the branch, runs
-`concorde spec-validation` there (or exactly the `--check` commands you name, for a project that must build first), undoes the
+`concorde spec-validation` there (or exactly the `--check` commands you name, for a project that must build first, followed by `concorde spec-validation` while a `concorde update` is not validated yet), undoes the
 merge if a check fails, and closes the task as merged. It waits up to `--wait` seconds (300 by
 default) for the locks it needs: first for a run of the task that is still going, such as a
 `delivery` finishing, then for another session's merge. Run it in background Bash
@@ -351,7 +351,13 @@ the wait (`concorde task show <task>` names it): run the command again with a lo
 When it
 fails with `merge_conflict`, answer the task's session (start one again if it has ended) to merge
 the primary branch, which you name, into the task branch, resolve the conflicts, run
-`task-validation` and `delivery` again and report; merge again once it has delivered. A check that
+`task-validation` and `delivery` again and report; merge again once it has delivered. When a
+`concorde update` installed a new Protocol copy, its result lists the open tasks and asks to merge
+the primary branch into each: answer each listed task's session the same way, starting one again if
+it has ended, to merge the primary branch into its task branch, so that its worktree carries the new
+Protocol copy, then to run `task-validation` again, and `delivery` too when it had delivered, and
+report.
+These two merges into a task branch are the only ones a task session makes. A check that
 fails after merging (`check_failed`) is new work, in the task or a new one, never a reason to
 discard someone's change.
 
@@ -609,9 +615,13 @@ claude --dangerously-load-development-channels server:concorde
 Claude Code asks once to confirm the flag. Channels also need Anthropic authentication (claude.ai
 or a Console key) and an organization that has not disabled them. Without a channel,
 `register_wait` says so and returns the `concorde task wait …` command, and `task_merge` returns
-`concorde task wait <task> --lock workspace`, which returns when its merge has ended: run that
-command in background Bash, which wakes you when it returns, then read the merge's output file the
-answer names. If a channel event you expected never comes although the server said it has a
+`concorde task wait <task> --merge`, which returns once its merge has ended and written its whole
+answer: run that command in background Bash, which wakes you when it returns, then read the
+merge's `output.json` it names. That file lies in the merge attempt's node `merges/<n>/` of the
+task's trace, not in the server, so when you lost the start's answer or the event, as after a
+restart, find the merge from the task: `task_show` gives its state and folder, `trace_show` of the
+task its merge attempts with their outcomes, and `concorde task wait <task> --merge` names the
+latest attempt's files. If a channel event you expected never comes although the server said it has a
 channel, the organization may block channels: use the background Bash form. Using the server is
 recommended, not required: the kernel lock is the same whichever path takes it, and everything the
 server does not present, such as `concorde task session`, stays a command. Task sessions receive

@@ -63,6 +63,14 @@
           "concept.issue",
           "req.issues.uncommitted-recovered"
         ]
+      },
+      {
+        "target": "module.distribution",
+        "meaning": "#uses-distribution",
+        "relies_on": [
+          "req.distribution.update-unvalidated",
+          "req.distribution.unvalidated-cleared"
+        ]
       }
     ],
     "includes": [],

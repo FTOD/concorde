@@ -84,9 +84,20 @@ so no session has to release it or announce that it is done: the kernel releases
 process ends, even when it is killed, and a waiting command wakes as soon as it is free. A command
 that gives up waiting fails with `merge_busy`, naming the holder's command, task, process, start
 time and Claude Code session, which the holder writes into the lock file while it holds it. The
-command may also have been handed both locks by the process that started it, as the
+command may also have been handed its locks by the process that started it, as the
 [project MCP server](../../glossary.json#concept.project-mcp-server) hands them to the merge it
 starts: it then holds them from its start without waiting, exactly as long as it runs.
+
+A merge also holds the task's **merge attempt lock**, `locks/attempts/<task>.lock`, from before it
+waits for its other locks until it has printed its whole answer, and removes it then. The close
+that ends a merge removes the task's workspace lock while the merge still closes the task's Issues
+and writes its answer, so only the attempt lock tells that a merge of the task has really ended:
+`concorde task wait <task> --merge` waits for it. A merge the server started finds the folder of
+its attempt's node, `merges/<n>/`, already made, named in its environment, with its standard output
+and error going to `output.json` and `messages.log` there; it records its attempt in that folder
+even when it is refused before it began, so the whole answer of every merge the server started is
+kept with the task, and moves with it to the [history](../../glossary.json#concept.history), where
+the merge finishes writing it.
 `concorde task open` and `concorde task close` take the same lock, so a task is never based on, or
 closed against, a merge that may still be undone; `close` takes the task's workspace lock before
 it, as `merge` does, waiting up to its own `--wait` and then refusing with `workspace_busy` while a
@@ -442,8 +453,10 @@ conflict is resolved in the task worktree by merging the primary branch into the
 validating and delivering again, never in the primary worktree. After the merge, Tasks records the
 merge commit and runs the checks in the primary worktree: `concorde spec-validation` of the merged
 checkout by default, or exactly the `--check` commands given, such as a project that must build
-first. A failed check, or checks that leave uncommitted paths, returns the primary branch with
-`git reset --keep` to the commit it had and refuses with `check_failed`, naming the check, its exit
+first, followed by `concorde spec-validation` while a `concorde update` is not validated yet, so
+that no checks let a merge pass that update's barrier. A failed check, or checks that leave
+uncommitted paths, returns the primary branch with `git reset --keep` to the commit it had and
+refuses with `check_failed`, naming the check, its exit
 status, its log in the merge attempt's node, and any paths the checks created, which the reset
 leaves in the primary worktree. Every merge attempt, whether it merged, conflicted, failed a check
 or was undone, is a node `merges/<n>/` of the task's trace, each check a node below it with its
@@ -587,12 +600,14 @@ concorde task wait severity --rebound concorde-7d
 concorde task wait --run r-20260929T101500-delivery-5f3a
 concorde task wait --lock merge
 concorde task wait severity --lock workspace
+concorde task wait severity --merge
 ```
 
 `--until` returns once the task's derived state is one of the named states, `--rebound` once the
 task's record names a main agent's session other than the one given, `--run` once the run's
 runner holds no [run lock](../../glossary.json#concept.run-lock), with how the run ended, and
-`--lock` once nobody holds the merge lock or the task's workspace lock, with who held it. Each
+`--lock` once nobody holds the merge lock or the task's workspace lock, with who held it, and
+`--merge` once no merge of the task runs, with its latest attempt's node and output files. Each
 answers at once when that is already so and prints one JSON value, and `--timeout` bounds the wait.
 A task reaches `delivered`, `merging`, `closed` and `failed` only while its workspace lock is held,
 by a delivery run, a merge or a close, so a task wait learns from the kernel of every new holder of
@@ -600,8 +615,8 @@ that lock, blocks on the lock until that holder lets it go, and reads the state 
 are the states it admits, and a task that ends in another state ends the wait with
 `wait_unreachable`. A rebind wait learns from the kernel of every write of the task's record, and
 of its folder moving to the history, and reads the record again; a task that ended ends it with
-`wait_unreachable`. A lock or run wait blocks on the lock itself, so a holder that dies wakes it
-as surely as one that ends. The project MCP server's `register_wait` runs the same waits for a
+`wait_unreachable`. A lock, run or merge wait blocks on the lock itself, so a holder that dies
+wakes it as surely as one that ends. The project MCP server's `register_wait` runs the same waits for a
 session it can wake through a channel; this command is their form for background Bash.
 
 ## Who runs the commands, and refusals
@@ -818,6 +833,13 @@ and to put back, before a merge judges the primary worktree clean, what Issue wr
 uncommitted there, for a caller that already holds the merge lock; and on its bookkeeping command
 to close them after the merge, for such a caller too, answering or refusing with its own error
 link, which Tasks passes on in a warning.
+
+<a id="uses-distribution"></a>
+
+**Distribution** installs and updates Concorde in the project and marks it Concorde unvalidated
+after an update until a validation passes. Tasks relies on that mark, `.concorde/update.json` of
+the primary worktree, to tell that a merge must also run `concorde spec-validation`, whatever
+checks it was given, so that nothing merges before an update is validated.
 
 <a id="uses-spec"></a>
 

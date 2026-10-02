@@ -334,8 +334,10 @@ TOOLS: dict[str, dict] = {
         "description": "Merge a delivered task, or finish an interrupted merge with `resume` or "
         "`abort`, without waiting: takes the task's workspace lock and the merge lock at once or "
         "is refused naming who holds the busy one; when granted, starts `concorde task merge` as "
-        "a process of its own that holds both locks until it ends, and returns at once. With a "
-        "channel the session is woken with the merge's output when it ends.",
+        "a process of its own that holds the locks until it ends, and returns at once. Its "
+        "output is kept in the merge attempt's node of the task's trace. With a channel the "
+        "session is woken with that output when it ends; without one, run the returned "
+        "`concorde task wait <task> --merge` in background Bash.",
         "inputSchema": schema(
             {
                 "task": TASK,
@@ -439,7 +441,7 @@ class Project:
         self.where = where or primary
         self.session = session
         self.channel = channel
-        # The files of the server that a merge's standard output and error go to.
+        # Set when the server started this call for a merge, which the call's process becomes.
         self.merge = merge
         self.watch: dict | None = None
         self.handover: dict | None = None
@@ -690,9 +692,18 @@ class Project:
 
     # --- long work --------------------------------------------------------------------------
 
-    def _busy(self, tool: str, code: str, task: str, busy: locks.LockBusy) -> Refusal:
+    def _busy(
+        self,
+        tool: str,
+        code: str,
+        task: str,
+        busy: locks.LockBusy,
+        what: str | None = None,
+    ) -> Refusal:
         holder = busy.entry or {"holder": busy.holder}
-        what = "its workspace lock" if code == "workspace_busy" else "the merge lock"
+        what = what or (
+            "its workspace lock" if code == "workspace_busy" else "the merge lock"
+        )
         return Refusal(
             errors.link(
                 "component",
@@ -732,6 +743,7 @@ class Project:
             )
         merge.parse_checks(list(checks))
         store.load_task(self.primary, task)
+        attempt = store.attempt_lock_path(self.primary, task)
         workspace = wait.lock_path(self.primary, "workspace", task)
         merging = store.merge_lock_path(self.primary)
         holder = (
@@ -741,8 +753,8 @@ class Project:
             raise own(
                 tool,
                 "invalid_input",
-                "a merge starts only through the project MCP server, which names the files its "
-                "output goes to",
+                "a merge starts only through the project MCP server, whose process the merge "
+                "becomes",
                 reason="environment",
             )
         command, environment = concorde_of(self.primary)
@@ -750,17 +762,32 @@ class Project:
         argv += [word for check in checks for word in ("--check", check)]
         argv += ["--resume"] if resume else ["--abort"] if abort else []
         taken = []
+        # The task's merge attempt lock first, as the command takes it, so that a merge of the
+        # task still running is refused before any other lock is touched.
+        wanted = (
+            (
+                attempt,
+                "merge_busy",
+                "its merge attempt lock, held by a merge of the task",
+            ),
+            (workspace, "workspace_busy", None),
+            (merging, "merge_busy", None),
+        )
         try:
-            for path, code in ((workspace, "workspace_busy"), (merging, "merge_busy")):
+            for path, code, what in wanted:
                 try:
                     descriptor = locks.acquire(path)
                 except locks.LockBusy as busy:
-                    raise self._busy(tool, code, task, busy) from None
+                    raise self._busy(tool, code, task, busy, what) from None
                 taken.append((path, descriptor))
                 # This process becomes the merge (``hand_over``), so its pid is the merge's.
                 locks.write_entry(
                     descriptor, locks.line(holder, os.getpid(), task, self.session)
                 )
+            # Holding the task's locks, no other attempt can take the next attempt's folder,
+            # where the merge's output is kept with the task, also once it moved to the history.
+            folder = merge.next_attempt(self.primary, task)
+            folder.mkdir(parents=True)
         except BaseException:
             for _, descriptor in taken:
                 os.close(descriptor)
@@ -768,25 +795,32 @@ class Project:
         environment[locks.INHERITED] = json.dumps(
             {path.as_posix(): descriptor for path, descriptor in taken}
         )
+        environment[merge.RESERVED] = folder.as_posix()
         if self.session:
             environment[locks.SESSION] = self.session
+        output, messages = folder / merge.OUTPUT, folder / merge.MESSAGES
         self.handover = {
             "task": task,
             "argv": argv,
             "environment": environment,
             "descriptors": [descriptor for _, descriptor in taken],
+            "folder": folder,
+            "output": output,
+            "messages": messages,
         }
-        fallback = f"concorde task wait {task} --lock workspace"
+        fallback = f"concorde task wait {task} --merge"
         return {
             "started": {
                 "command": "concorde " + shlex.join(argv[len(command) :]),
                 "pid": os.getpid(),
-                "output": self.merge["output"],
-                "messages": self.merge["messages"],
+                "attempt": folder.as_posix(),
+                "output": output.as_posix(),
+                "messages": messages.as_posix(),
             },
             "locks": {
-                "workspace": taken[0][0].as_posix(),
-                "merge": taken[1][0].as_posix(),
+                "attempt": taken[0][0].as_posix(),
+                "workspace": taken[1][0].as_posix(),
+                "merge": taken[2][0].as_posix(),
             },
             "wake": (
                 {"channel": True}
@@ -795,8 +829,8 @@ class Project:
                     "channel": False,
                     "command": fallback,
                     "explanation": "this session has no channel from the server, so it is not "
-                    "woken; run the command in background Bash, which returns when the merge "
-                    "released the task's workspace lock, then read the output file",
+                    "woken; run the command in background Bash, which returns once the merge "
+                    "ended and its output is complete, naming the output file to read",
                 }
             ),
         }
@@ -1093,18 +1127,18 @@ def _write(descriptor: int, text: str) -> None:
 def hand_over(project: Project, line: str, writer) -> int:
     """Become the merge ``task_merge`` started: answer through a copy of standard output that the
     exec closes, which ends the answer, then replace this process with ``concorde task merge``,
-    its standard output going to the server's file and both locked descriptors inherited.
+    its standard output and error going to the files of the attempt's folder and the locked
+    descriptors inherited.
 
-    When the exec fails, a second answer line refuses the call with ``start_failed``, and this
-    process ends, which releases both locks."""
+    When the exec fails, a second answer line refuses the call with ``start_failed``, the folder
+    is removed again, and this process ends, which releases the locks."""
     plan = project.handover
     writer.flush()
     reply = os.dup(writer.fileno())  # not inheritable: the exec closes it
-    output = os.open(
-        project.merge["output"], os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600
-    )
-    os.dup2(output, 1)
-    os.close(output)
+    for path, target in ((plan["output"], 1), (plan["messages"], 2)):
+        opened = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        os.dup2(opened, target)
+        os.close(opened)
     null = os.open(os.devnull, os.O_RDONLY)
     os.dup2(null, 0)
     os.close(null)
@@ -1114,10 +1148,16 @@ def hand_over(project: Project, line: str, writer) -> int:
     try:
         os.execve(plan["argv"][0], plan["argv"], plan["environment"])
     except OSError as error:
+        for path in (plan["output"], plan["messages"]):
+            Path(path).unlink(missing_ok=True)
+        try:
+            Path(plan["folder"]).rmdir()
+        except OSError:
+            pass
         link = own(
             "task_merge",
             "start_failed",
-            f"`{shlex.join(plan['argv'])}` could not be started: {error}; both locks were "
+            f"`{shlex.join(plan['argv'])}` could not be started: {error}; its locks were "
             "released",
             reason="environment",
             explanation="the operating system refused to start the process",

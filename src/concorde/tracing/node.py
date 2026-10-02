@@ -360,15 +360,16 @@ class Node:
         if reference not in self.record["references"]:
             self.record["references"].append(reference)
 
-    def keep(self, identity: str, relative: str) -> None:
-        """Name a file of the folder as an artifact; its digest is taken at every write."""
+    def keep(self, identity: str, relative: str, *, measured: bool = True) -> None:
+        """Name a file of the folder as an artifact; its digest is taken when the node ends,
+        unless ``measured`` is False for a file its writer completes only after that."""
         if all(item[0] != identity for item in self._artifacts):
-            self._artifacts.append((identity, relative))
+            self._artifacts.append((identity, relative, measured))
 
     def _write(self, *, measured: bool) -> None:
         self.record["artifacts"] = [
-            artifact(self.folder, identity, relative, measured=measured)
-            for identity, relative in self._artifacts
+            artifact(self.folder, identity, relative, measured=measured and own)
+            for identity, relative, own in self._artifacts
             if (self.folder / relative).exists()
         ]
         try:

@@ -413,11 +413,12 @@ directly whenever no workflow fits, and the execution commands use no worker at 
 upward. A worker never touches Git, runs an Operation or starts an agent; a run never starts another
 run; a workflow never opens, merges or closes a task; nothing in Execution reads or writes a [task
 record](glossary.json#concept.task-record); and only the main agent merges a task into the primary
-branch, a task session merging only the primary branch into its own task branch after a conflict. A
-run's steps, and the [Workers](execution/workers/module.md) code between a worker's rounds, call
-deterministic services such as [Check execution](execution/checks/module.md) in-process; such a call
-is not a level of its own, starts no run and returns to the step that made it, so that failing
-checks can drive a repair loop inside one Operation.
+branch, a task session merging only the primary branch into its own task branch when asked after a
+conflict or a `concorde update`. A run's steps, and the [Workers](execution/workers/module.md)
+code between a worker's rounds, call deterministic services such as
+[Check execution](execution/checks/module.md) in-process; such a call is not a level of its own,
+starts no run and returns to the step that made it, so that failing checks can drive a repair loop
+inside one Operation.
 
 ### Modules that serve both halves
 

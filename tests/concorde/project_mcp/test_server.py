@@ -23,8 +23,9 @@ from concorde.execution.runs import load_result, run_state, workspace_lock
 from concorde.project_mcp.server import channel_from, detect_channel
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
-from concorde.tasks import store
+from concorde.tasks import store, wait
 from concorde.tracing import layout, locks
+from concorde.tracing import node as trace
 from concorde.workflows import store as workflow_store
 from tests.concorde.support.brownfield_project import BrownfieldProject
 from tests.concorde.support.brownfield_project import commit as commit_all
@@ -525,7 +526,8 @@ class ProjectMcpTests(unittest.TestCase):
         while not started.exists():
             time.sleep(0.05)
         merge_lock = store.merge_lock_path(self.root)
-        for path in (merge_lock, self.workspace_lock()):
+        attempt_lock = store.attempt_lock_path(self.root, "t1")
+        for path in (merge_lock, self.workspace_lock(), attempt_lock):
             entry = locks.entry(path)
             self.assertEqual(
                 {"pid": pid, "session": "session-main", "task": "t1"},
@@ -544,7 +546,53 @@ class ProjectMcpTests(unittest.TestCase):
         marker.write_text("go")
         self.assertTrue(locks.wait_released(merge_lock, 60))
         self.assertEqual("closed", store.show_task(self.root, "t1")["record"]["state"])
-        output = json.loads(Path(value["started"]["output"]).read_text())
+        # The output stays with the attempt's node, which the close moved to the history.
+        ended = wait.wait_merge(self.root, "t1", 60)
+        self.assertFalse(attempt_lock.exists())
+        attempt = ended["attempt"]
+        self.assertEqual(
+            Path(value["started"]["attempt"]).relative_to(
+                store.task_folder(self.root, "t1")
+            ),
+            Path(attempt["node"]).relative_to(store.history_folder(self.root, "t1")),
+        )
+        output = json.loads(Path(attempt["output"]).read_text())
+        self.assertEqual("merged", output["record"]["closed"]["outcome"])
+        self.assertEqual(output["merge"]["log"], attempt["node"])
+        self.assertEqual(("ok", "merged"), (attempt["status"], attempt["outcome"]))
+        self.assertTrue(Path(attempt["messages"]).is_file())
+
+    @verifies("scenario.main-session.project-mcp-merge-fallback")
+    def test_without_a_channel_the_merge_end_is_awaited_and_kept(self):
+        self.project.open_task("t1")
+        client = self.client(channel=False)
+        # Not delivered: the merge is refused, and that refusal is its kept output too.
+        value, error = client.call("task_merge", task="t1", checks=[PASSING])
+        self.assertFalse(error, value)
+        self.assertEqual(
+            "concorde task wait t1 --merge", value["wake"]["command"], value["wake"]
+        )
+        self.assertEqual(
+            store.task_folder(self.root, "t1") / "merges" / "1",
+            Path(value["started"]["attempt"]),
+        )
+        ended = wait.wait_merge(self.root, "t1", 60)
+        attempt = ended["attempt"]
+        self.assertEqual((1, "failed"), (attempt["number"], attempt["status"]))
+        refused = json.loads(Path(attempt["output"]).read_text())
+        self.assertIn("error", refused)
+        node = trace.read(Path(attempt["node"]))
+        self.assertEqual(refused["error"]["code"], node["error"]["code"])
+        deliver(self.project.worktree("t1"))
+        value, error = client.call("task_merge", task="t1", checks=[PASSING])
+        self.assertFalse(error, value)
+        ended = wait.wait_merge(self.root, "t1", 60)
+        attempt = ended["attempt"]
+        self.assertEqual((2, "ok"), (attempt["number"], attempt["status"]))
+        self.assertIn(
+            store.history_folder(self.root, "t1"), Path(attempt["output"]).parents
+        )
+        output = json.loads(Path(attempt["output"]).read_text())
         self.assertEqual("merged", output["record"]["closed"]["outcome"])
 
     @verifies("scenario.main-session.project-mcp-merge-wakes")

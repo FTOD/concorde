@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import shlex
 import subprocess
 import sys
 import threading
@@ -153,6 +154,56 @@ class WaitTests(unittest.TestCase):
         self.assertEqual(
             ("s-1", "t9"), (value["held_by"]["session"], value["held_by"]["task"])
         )
+
+    @verifies("scenario.tasks.wait-merge")
+    def test_a_merge_wait_returns_after_the_merge_not_its_workspace_lock(self):
+        deliver(self.project.worktree("t1"))
+        attempt_lock = store.attempt_lock_path(self.root, "t1")
+        code = (
+            "import sys\n"
+            "from concorde.tracing import locks\n"
+            f"with locks.hold({str(attempt_lock)!r}, 'a merge of t1', task='t1',"
+            " remove=True):\n"
+            "    print('held', flush=True)\n"
+            "    sys.stdin.read()\n"
+        )
+        holder = subprocess.Popen(
+            [sys.executable, "-c", code],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            text=True,
+            env=child_environment(PYTHONPATH=str(REPOSITORY_ROOT / "src")),
+        )
+        self.addCleanup(holder.wait)
+        self.assertEqual("held", holder.stdout.readline().strip())
+        # The close of a merge removes the workspace lock long before the merge ends.
+        layout.lock_file(store.concorde(self.root), "workspace", "t1").unlink(
+            missing_ok=True
+        )
+        self.later(0.3, holder.stdin.close)
+        started = time.monotonic()
+        status, value = self.command("wait", "t1", "--merge", "--timeout", "30")
+        self.assertEqual(0, status, value)
+        self.assertGreaterEqual(time.monotonic() - started, 0.25)
+        self.assertEqual("a merge of t1", value["held_by"]["holder"])
+        self.assertIsNone(value["attempt"])
+        self.assertFalse(attempt_lock.exists())
+        # A merge that ran keeps its output with its attempt, found also in the history.
+        passing = shlex.join([sys.executable, "-c", "pass"])
+        status, merged = self.command("merge", "t1", "--check", passing)
+        self.assertEqual(0, status, merged)
+        status, value = self.command("wait", "t1", "--merge")
+        self.assertEqual(0, status, value)
+        self.assertIsNone(value["held_by"])
+        attempt = value["attempt"]
+        self.assertEqual(
+            (1, "ok", "merged"),
+            tuple(attempt[key] for key in ("number", "status", "outcome")),
+        )
+        self.assertEqual(merged["merge"]["log"], attempt["node"])
+        self.assertIsNone(attempt["output"])
+        status, value = self.command("wait", "--merge")
+        self.assertEqual("invalid_input", value["error"]["code"])
 
     @verifies("scenario.tasks.wait-timeout")
     def test_a_wait_that_times_out_says_so(self):

@@ -260,10 +260,13 @@ The installed guidance gives the main agent this working method:
   that `delivery` committed, from the primary worktree with `concorde task merge`, never with
   `git merge`: it holds the [merge lock](../../glossary.json#concept.merge-lock) so merges of
   several main sessions never interleave, runs `concorde spec-validation` on the primary branch, or
-  exactly the `--check` commands given, undoes a merge whose checks fail and closes the task.
+  exactly the `--check` commands given, with `concorde spec-validation` after them while a
+  `concorde update` is not validated yet, undoes a merge whose checks fail and closes the task.
   Retry a `merge_busy`, and a `workspace_busy` once the task's run ended; have the task's session
-  resolve a conflict by merging the primary branch into its task branch and delivering again, the
-  only merge a task session makes; handle a failed check as new work, never by discarding
+  resolve a conflict by merging the primary branch into its task branch and delivering again, and
+  after a `concorde update` that installed a new Protocol copy have the session of each open task
+  merge the primary branch the same way and validate again, the only merges a task session makes;
+  handle a failed check as new work, never by discarding
   someone's change. Finish a merge that a `merge_incomplete` refusal names before anything else,
   with `concorde task merge <task> --resume`, or `--abort` when the merge commit is no longer the
   primary branch's head, and leave a `merge_diverged` primary branch to the developer. Act on every
@@ -599,15 +602,15 @@ busy: "A lock is held by another process" {
 granted: "Both locks are free" {
   session -> server: task_merge again
   server -> merge: "run the call"
-  merge -> merge: take both locks
-  merge -> server: "started, with the output files"
-  server -> session: "started, with the output files\nand how the session is woken"
-  merge -> merge: "become concorde task merge,\nkeeping both locks"
+  merge -> merge: "take the three locks,\nmake the attempt's folder"
+  merge -> server: "started, with the attempt's\noutput files"
+  server -> session: "started, with the attempt's\noutput files and how the\nsession is woken"
+  merge -> merge: "become concorde task merge,\nkeeping the locks, writing\ninto the attempt's folder"
   merge -> merge: "merge, run the checks,\nclose the task"
 }
 ended: "The merge ends" {
-  merge -> server: "exits, and the kernel\nreleases both locks"
-  server -> session: "a merge_ended event, or, without a\nchannel, the background concorde\ntask wait returns"
+  merge -> server: "exits once its answer is\nwritten, and the kernel\nreleases the locks"
+  server -> session: "a merge_ended event, or, without a\nchannel, the background concorde\ntask wait --merge returns"
 }
 ```
 
@@ -636,8 +639,12 @@ sessions, get the server without a channel ([Task sessions](../task-session/modu
 cannot learn from Claude Code whether it is a channel, so it reads it from the command line of the
 interactive `claude` above it, one whose standard input is a terminal; when it has none,
 `register_wait` says so and returns the equivalent blocking `concorde task wait` command, and
-`task_merge` returns the `concorde task wait … --lock workspace` that returns when the merge ends,
-to run in background Bash, which wakes the session when the command ends. An organization that
+`task_merge` returns the `concorde task wait <task> --merge` that returns when the merge has ended
+and written its whole answer, to run in background Bash, which wakes the session when the command
+ends. The merge's answer never lies in the server: it goes to `output.json` of the merge attempt's
+node in the task's trace, so a session that lost the server, the start's answer or the event finds
+it from the task with `task_show` and `trace_show`, also once the close moved the task to the
+history. An organization that
 disabled channels drops the events silently; the guidance tells the agent to use the background
 Bash form then.
 

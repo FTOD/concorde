@@ -434,6 +434,11 @@ def merge_lock_path(primary: Path) -> Path:
     return layout.lock_file(concorde(primary), "merge")
 
 
+def attempt_lock_path(primary: Path, task_id: str) -> Path:
+    """The task's merge attempt lock, held by its ``task merge`` until its output is complete."""
+    return layout.lock_file(concorde(primary), "attempt", task_id)
+
+
 def _holder(path: Path) -> str:
     """The holder a live lock names, as text for a refusal."""
     try:

@@ -30,7 +30,8 @@ again each latest recorded answer (the skill's "When your session name changed")
 adding your own link to the chain with `concorde task escalate` instead of summarizing it, and show
 the developer the whole rendered chain of an unbound run that is not `ok`; merge delivered task
 branches without asking, always with `concorde task merge <task>`, never `git merge`, have the
-task's session merge the primary branch into its task branch on `merge_conflict`, and finish a
+task's session merge the primary branch into its task branch on `merge_conflict` and, for each
+open task, after a `concorde update` that asks for it, and finish a
 merge that a `merge_incomplete` refusal names with `concorde task merge <task> --resume` (or
 `--abort`) before anything else; run workers only on the models the tracked
 `.concorde/workers.json` enables and chooses, never on anyone's own Claude Code or pi settings,

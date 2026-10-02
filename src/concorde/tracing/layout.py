@@ -35,6 +35,7 @@ LOCK_KINDS = {
     "workspace": "workspaces",
     "workflow": "workflows",
     "run": "runs",
+    "attempt": "attempts",
 }
 _UNSAFE = re.compile(r"[^a-z0-9.-]")
 # The name a lock file carries: the identity itself, never a path.
