@@ -27,17 +27,18 @@ Delivery reads its earlier deliveries this way, and so may anyone who needs to k
 often a workspace was delivered.
 
 A delivery commit **verifies** when it has exactly one parent, as every commit Delivery creates has.
-Delivery reports a delivery commit it finds at the branch head only when it verifies. A delivery
-commit Delivery creates verifies further when its only parent is the head it validated and its tree
-is the tree `git write-tree` recorded from the index after staging, so that no commit hook changed
-what was committed.
+Delivery reports a delivery commit it finds at the branch head only when it verifies and the
+workspace it holds is ready again, as a readiness the same run decided shows. A delivery commit
+Delivery creates verifies further when its only parent is the head it validated and its tree is the
+tree `git write-tree` recorded from the index after staging, so that no commit hook changed what was
+committed; one that does not, Delivery takes off the branch again in the same run.
 
 ## Output
 
 ```concorde-contract
 {
   "id": "contract.delivery.output",
-  "version": 5,
+  "version": 6,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -65,7 +66,7 @@ what was committed.
       }
     }
   },
-  "semantics": "The output of a delivery run whose status is ok. commit is the delivery commit, now the head of branch, the workspace's bound branch; sequence is its number among the workspace's delivery commits on the branch, counting from 1. recovered is true when the run found that the branch head already is a delivery commit of the workspace that verifies, as the delivery commit section defines, and nothing waits to be delivered, such as after a delivery whose run ended after its commit, and reports that commit instead of committing. A head that is a delivery commit but does not verify ends the run failed with commit_unverified. A run whose status is not ok has no output. A behaviour or field change increments the version.",
+  "semantics": "The output of a delivery run whose status is ok. commit is the delivery commit, now the head of branch, the workspace's bound branch; sequence is its number among the workspace's delivery commits on the branch, counting from 1. recovered is true when the run found that the branch head already is a delivery commit of the workspace that verifies, as the delivery commit section defines, and nothing waits to be delivered, such as after a delivery whose run ended after its commit, validated the workspace again and found it ready, and reports that commit instead of committing. A head that is a delivery commit but does not verify ends the run failed with commit_unverified; one whose workspace is not ready ends it blocked, as a new delivery would. A run whose status is not ok has no output. A behaviour or field change increments the version.",
   "example": {
     "commit": "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
     "branch": "concorde/severity",

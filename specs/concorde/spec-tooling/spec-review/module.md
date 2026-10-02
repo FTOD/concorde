@@ -406,7 +406,10 @@ Operation never retries it and never records it as an Issue.
 **Operations** defines the [Operation](../../glossary.json#concept.operation) concept and lists
 `spec_review` and `spec_panel` in its catalog as Operations that may run unbound and change nothing
 in the workspace, with their [worker ids](../../glossary.json#concept.worker-id). Spec review
-relies on that entry to be dispatched to with its arguments.
+relies on that entry to be dispatched to with its arguments, and on Operations' review Issue
+helpers to read, settle and report its [earlier Issues](operation.md#earlier-issues) by the rules
+every review shares, supplying only its two Operations, the disputed findings it reports nowhere
+and the Issue report of a finding.
 
 <a id="uses-execution"></a>
 

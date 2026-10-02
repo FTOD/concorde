@@ -4,19 +4,19 @@ An execution command of the bound workspace; it launches no worker. The delivery
 bound branch are its only record: their subject names the workspace.
 
 1. Require that the workspace's head is its bound branch.
-2. Stop ``ok`` when the head already is a delivery commit of the workspace and nothing waits,
-   after verifying that it has exactly one parent (``failed``, ``commit_unverified``, when it
-   has not).
+2. Note the head when it already is a delivery commit of the workspace and nothing waits, after
+   verifying that it has exactly one parent (``failed``, ``commit_unverified``, when it has not).
 3. Require new work: a commit since the base, or an uncommitted change.
 4. Decide the readiness of the whole workspace with Validation's steps, as task-validation does.
 5. Require that readiness to be ready, and every scenario changed with code to be verified.
-6. Record the index with Git (its tree, intent-to-add paths and skip-worktree and
+6. Stop ``ok``, ``recovered``, when step 2 noted a delivery commit: it validated again.
+7. Record the index with Git (its tree, intent-to-add paths and skip-worktree and
    assume-unchanged flags).
-7. Stage everything, record the staged tree and create the delivery commit; when staging or the
+8. Stage everything, record the staged tree and create the delivery commit; when staging or the
    commit fails, give the recorded index back.
-8. Verify the new head, its tree (the staged one, which a commit hook may have changed), its
-   parent and a clean worktree.
-9. Return the delivery commit as the output.
+9. Verify the new head, its tree (the staged one, which a commit hook may have changed), its
+   parent and a clean worktree; take a commit that does not verify off the branch again.
+10. Return the delivery commit as the output.
 """
 
 from __future__ import annotations
@@ -111,6 +111,8 @@ class State:
     staged_tree: str = ""
     # The workspace's earlier delivery commits, read once from Git.
     previous: list[dict] | None = None
+    # The delivery commit found at the head with nothing waiting, reported once it validates.
+    found: str = ""
 
 
 def _state(ctx: RunContext) -> State:
@@ -300,10 +302,12 @@ def check_branch(ctx: RunContext):
 
 
 def delivered(ctx: RunContext):
-    """Stop ``ok`` when the head already is a delivery commit and nothing waits to be delivered.
+    """Note the head when it already is a delivery commit and nothing waits to be delivered.
 
     A delivery commit is its own record, so delivering again what was delivered reports that
-    commit instead of refusing, and a delivery interrupted after its commit needs no repair.
+    commit instead of refusing, and a delivery interrupted after its commit needs no repair. Its
+    subject proves nothing about what it holds, so the readiness steps validate it first, as they
+    would new work, and ``report_found`` reports it only once they let it through.
     """
     state = _state(ctx)
     try:
@@ -326,25 +330,32 @@ def delivered(ctx: RunContext):
             problems,
             state.head,
         )
-    ctx.output = {
-        "commit": state.head,
-        "branch": ctx.branch,
-        "sequence": len(previous),
-        "recovered": True,
-    }
-    # An earlier run created the commit; this run's node leads to it as found.
-    ctx.references.append(("found_commit", state.head))
-    return Stop(
-        "ok",
-        f"{ctx.workspace_name} is already delivered as {state.head[:12]} on {ctx.branch}.",
-        [
+    state.found = state.head
+    return Continue(
+        evidence=[
             evidence(
                 "commit",
                 state.head,
-                "the head is a delivery commit with one parent; nothing waits",
+                "the head is a delivery commit with one parent and nothing waits; it is "
+                "validated again before it is reported",
             )
-        ],
+        ]
     )
+
+
+def _not_reported(ctx: RunContext, stop: Stop) -> Stop:
+    """Say in a blocked stop that the delivery commit found at the head is not reported."""
+    found = _state(ctx).found
+    if found and stop.status == "blocked":
+        note = (
+            f"the delivery commit {found} at the head of {ctx.branch} is not reported as "
+            "delivered, since the workspace it holds does not validate"
+        )
+        stop.summary += (
+            f" The delivery commit {found[:12]} at the head is not reported."
+        )
+        stop.error["detail"] += f"; {note}"
+    return stop
 
 
 def require_new_work(ctx: RunContext):
@@ -396,7 +407,7 @@ def decide(ctx: RunContext):
         causes=[not_deliverable(ctx)],
     )
     stop.evidence[:0] = found
-    return stop
+    return _not_reported(ctx, stop)
 
 
 SCENARIO_HEADING = re.compile(r"^### (scenario\.[a-z0-9][a-z0-9.-]*)\b", re.MULTILINE)
@@ -488,7 +499,7 @@ def require_verified_scenarios(ctx: RunContext):
             ]
         )
     listing = "; ".join(f"{identity} ({touched[identity]})" for identity in unverified)
-    return _blocked(
+    stop = _blocked(
         ctx,
         "unverified_scenarios",
         f"{len(unverified)} scenario(s) the workspace added or changed have no test "
@@ -505,6 +516,33 @@ def require_verified_scenarios(ctx: RunContext):
         explanation="delivery accepts a code change only when every promise the workspace added or "
         "changed is checked by a test, so that no scenario ships unverified",
         kind="scenario-tests",
+    )
+    return _not_reported(ctx, stop)
+
+
+def report_found(ctx: RunContext):
+    """Stop ``ok``, ``recovered``, when the head was a delivery commit that validated again."""
+    state = _state(ctx)
+    if not state.found:
+        return Continue()
+    ctx.output = {
+        "commit": state.found,
+        "branch": ctx.branch,
+        "sequence": len(_previous(ctx)),
+        "recovered": True,
+    }
+    # An earlier run created the commit; this run's node leads to it as found.
+    ctx.references.append(("found_commit", state.found))
+    return Stop(
+        "ok",
+        f"{ctx.workspace_name} is already delivered as {state.found[:12]} on {ctx.branch}.",
+        [
+            evidence(
+                "commit",
+                state.found,
+                "the delivery commit at the head validated again; nothing was committed",
+            )
+        ],
     )
 
 
@@ -682,36 +720,89 @@ def verify(ctx: RunContext):
         problems.append("the new commit is not the branch head")
     if has_uncommitted(ctx.worktree):
         problems.append("the worktree is not clean after the commit")
-    if problems:
+    if not problems:
+        return Continue()
+    detail = (
+        f"the delivery commit {state.commit} on {ctx.branch} does not verify: "
+        + "; ".join(problems)
+    )
+    if parents[1:] != [state.head]:
+        # Not the commit this run made on the validated head, such as one a hook made on top.
         return _unverified(
             ctx,
-            f"The delivery commit {state.commit} does not verify (commit_unverified).",
-            f"the delivery commit {state.commit} on {ctx.branch} does not verify: "
-            + "; ".join(problems),
+            f"The delivery commit {state.commit} does not verify (commit_unverified); it stays "
+            f"on {ctx.branch}.",
+            detail
+            + f"; the commit stays, since Delivery takes off {ctx.branch} only a commit whose "
+            f"only parent is the validated head {state.head}",
             problems,
             state.commit,
         )
-    return Continue()
+    # A rejected commit must not stay where its subject would mark it as a delivery.
+    removed = _git(
+        ctx.worktree,
+        "update-ref",
+        "-m",
+        f"concorde: take the rejected delivery commit of {ctx.workspace_name} off the branch",
+        f"refs/heads/{ctx.branch}",
+        state.head,
+        state.commit,
+    )
+    if removed.returncode == 0:
+        return _unverified(
+            ctx,
+            f"The delivery commit {state.commit} does not verify (commit_unverified); it was "
+            f"taken off {ctx.branch}, whose head is again {state.head}.",
+            detail
+            + f"; Delivery took the commit off {ctx.branch}, whose head is again the validated "
+            f"head {state.head}, and left the index and the worktree as the commit left them",
+            problems,
+            state.commit,
+            options=[
+                "inspect the staged changes, which hold what the commit held, and the commit "
+                "hook that changed them",
+                "repair the hook or the changes, then run delivery again",
+            ],
+        )
+    return _unverified(
+        ctx,
+        f"The delivery commit {state.commit} does not verify (commit_unverified); it stays on "
+        f"{ctx.branch}, which no longer points at it.",
+        detail
+        + f"; the commit stays, since {ctx.branch} no longer points at it and Delivery moves "
+        "the branch back only from its own commit",
+        problems,
+        state.commit,
+        causes=[_git_link("update-ref", removed)],
+    )
 
 
 def _unverified(
-    ctx: RunContext, summary: str, detail: str, problems: list[str], commit: str
+    ctx: RunContext,
+    summary: str,
+    detail: str,
+    problems: list[str],
+    commit: str,
+    options=(
+        "inspect the bound branch and the commit's content",
+        "revert or remove the commit that does not verify, then run delivery again",
+    ),
+    causes=(),
 ) -> Stop:
-    """Fail ``commit_unverified``: the commit stays, and the branch is the task level's."""
+    """Fail ``commit_unverified``; what to do with a commit that does not hold what it claims
+    is the task level's decision."""
     return _failed(
         ctx,
         "commit_unverified",
         summary,
         [evidence("git", commit, "; ".join(problems))],
         detail,
-        [
-            "inspect the bound branch and the commit's content",
-            "revert or remove the commit that does not verify, then run delivery again",
-        ],
+        options,
         reason="decision",
         explanation="delivery reports only a delivery commit it can show holds what was "
-        "validated and never rewrites a commit; repairing the branch is the task level's "
-        "decision",
+        "validated, and takes off the branch only a commit it created in the same run; what "
+        "to do with the branch or the changes is the task level's decision",
+        causes=causes,
     )
 
 
@@ -747,6 +838,7 @@ DELIVERY = command(
         *READINESS_STEPS,
         decide,
         require_verified_scenarios,
+        report_found,
         keep_index,
         commit,
         verify,

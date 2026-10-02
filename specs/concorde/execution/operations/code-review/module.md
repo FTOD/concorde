@@ -221,7 +221,10 @@ Issues, outcomes and verdict.
 
 - <a id="uses-operations"></a>**Operations** lists `code_review` in its catalog as an Operation
   that writes nothing and may run unbound, and names this Module as its provider. Code review calls
-  no other Operation.
+  no other Operation. It relies on Operations' review Issue helpers to read, settle and report its
+  [earlier Issues](#earlier-issues) by the rules every review shares, supplying only its own
+  Operation, the reason it gives a finding that names no Issue offered for its Module and the Issue
+  report of a finding.
 - <a id="uses-execution"></a>**Execution**'s runner runs the Operation's steps: it reads the
   [workspace binding](../../../glossary.json#concept.workspace-binding), settles the Modules,
   records the run and wraps the report in the

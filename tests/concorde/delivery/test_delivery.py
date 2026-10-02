@@ -49,6 +49,9 @@ class DeliveryTests(unittest.TestCase):
     def committed(self, path: str, commit: str = "HEAD") -> str:
         return git(self.worktree, "show", f"{commit}:{path}")
 
+    def committed_tree(self, commit: str) -> str:
+        return git(self.worktree, "rev-parse", f"{commit}^{{tree}}")
+
     def commit_step(self, message: str = "A verified step") -> str:
         git(self.worktree, "add", "-A")
         git(self.worktree, "commit", "-q", "-m", message)
@@ -357,6 +360,12 @@ class DeliveryTests(unittest.TestCase):
         self.assertEqual((status, envelope["status"]), (0, "ok"), envelope)
         self.assertEqual(envelope["output"], {**first["output"], "recovered": True})
         self.assertIn("already delivered", envelope["summary"])
+        # The found commit is validated again, as new work would be, before it is reported.
+        readiness = self.saved_readiness(envelope)
+        self.assertTrue(readiness["ready"])
+        self.assertEqual(
+            [item["path"] for item in readiness["inputs"]["changed"]], ["src/a/calc.py"]
+        )
         self.assertEqual(self.head(), first["output"]["commit"])
         self.assertEqual(len(self.project.deliveries()), 1)
         self.assert_found(envelope, first["output"]["commit"])
@@ -392,20 +401,55 @@ class DeliveryTests(unittest.TestCase):
         self.assertEqual(error["unhandled"]["reason"], "decision")
         self.assertIn("is not the staged tree", error["detail"])
         self.assertIn("M src/a/calc.py", error["detail"])
-        # The commit stays: Delivery never rewrites history.
-        commit = self.head()
+        # The rejected commit is taken off the branch, so its subject marks no delivery; the
+        # run's node still leads to the commit it created.
+        [(relation, commit)] = self.commit_references(envelope)
+        self.assertEqual(relation, "commit")
+        self.assertIn(commit, error["detail"])
+        self.assertIn("took the commit off concorde/t1", error["detail"])
+        self.assertIn("taken off", envelope["summary"])
+        self.assertEqual(self.head(), self.base)
         self.assertEqual(
-            git(self.worktree, "log", "-1", "--format=%s"), "concorde: deliver t1"
+            git(self.worktree, "log", "-1", "--format=%s", commit),
+            "concorde: deliver t1",
         )
         self.assertEqual(
-            git(self.worktree, "rev-list", "--parents", "-n1", commit).split()[1:],
-            [self.base],
+            self.committed("src/a/calc.py", commit), "def add(a, b):\n    return 0"
         )
+        # The index and the worktree hold what the commit held, the hook's change staged.
+        self.assertEqual(git(self.worktree, "write-tree"), self.committed_tree(commit))
+        self.assertEqual(status_lines(self.worktree), "M  src/a/calc.py\n")
         self.assertEqual(
-            self.committed("src/a/calc.py"), "def add(a, b):\n    return 0"
+            (self.worktree / "src/a/calc.py").read_text(),
+            "def add(a, b):\n    return 0\n",
         )
-        self.assertEqual(status_lines(self.worktree), "")
+        self.assertEqual(self.project.deliveries(), [])
+        self.assertNotEqual(self.project.state(), "delivered")
         self.assertIsNone(envelope["output"])
+
+    def test_a_rejected_commit_a_hook_committed_on_stays(self):
+        # A post-commit hook commits again, so the head is not the commit Delivery made on the
+        # validated head; Delivery takes off the branch only its own commit, so nothing moves.
+        hook = self.project.root / ".git/hooks/post-commit"
+        hook.write_text(
+            '#!/bin/sh\n[ -n "$AGAIN" ] && exit 0\n'
+            "AGAIN=1 git commit -q --allow-empty -m 'A hook step'\n"
+        )
+        hook.chmod(0o755)
+        (self.worktree / "src/a/calc.py").write_text(FIXED)
+        status, envelope = self.project.deliver()
+        self.assertEqual((status, envelope["status"]), (1, "failed"), envelope)
+        error = envelope["error"]
+        self.assertEqual(["commit_unverified"], codes(error))
+        self.assertIn("the commit stays", error["detail"])
+        self.assertIn("stays on concorde/t1", envelope["summary"])
+        # Neither the hook's commit nor the delivery commit below it was taken off.
+        self.assertEqual(git(self.worktree, "log", "-1", "--format=%s"), "A hook step")
+        self.assertEqual(
+            git(self.worktree, "log", "-1", "--format=%s", "HEAD~1"),
+            "concorde: deliver t1",
+        )
+        self.assertEqual(git(self.worktree, "rev-parse", "HEAD~2"), self.base)
 
     @verifies("scenario.delivery.stage-refused")
     def test_git_refuses_to_stage_a_change(self):
@@ -502,8 +546,31 @@ class DeliveryTests(unittest.TestCase):
         self.assertEqual(
             [d["commit"] for d in self.project.deliveries()], [delivered["commit"]]
         )
+        self.assertTrue(self.saved_readiness(envelope)["ready"])
         self.assertEqual(status_lines(self.worktree), "")
         self.assert_found(envelope, delivered["commit"])
+
+    @verifies("scenario.delivery.recover-not-ready")
+    def test_a_delivered_head_whose_workspace_is_not_ready_is_not_reported(self):
+        # A commit with the subject and one parent, holding a file no Module binds: only
+        # validating it again shows that it holds no deliverable workspace.
+        (self.worktree / "stray.txt").write_text("unbound\n")
+        head = self.commit_step("concorde: deliver t1")
+        self.assertEqual(self.project.deliveries(), [{"commit": head}])
+        status, envelope = self.project.deliver()
+        self.assertEqual(status, 1)
+        self.assert_inert(envelope, "not_ready", deliveries=1)
+        self.assertEqual(
+            ["not_ready", "not_deliverable", "unbound_finding"],
+            codes(envelope["error"]),
+        )
+        self.assertIn("stray.txt", envelope["error"]["detail"])
+        self.assertIn(
+            f"the delivery commit {head} at the head of concorde/t1 is not reported",
+            envelope["error"]["detail"],
+        )
+        self.assertEqual((self.head(), status_lines(self.worktree)), (head, ""))
+        self.assertEqual(self.commit_references(envelope), [])
 
     @verifies("scenario.delivery.recover-unverified")
     def test_a_head_that_only_looks_delivered_is_not_reported(self):

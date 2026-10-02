@@ -84,7 +84,8 @@ commit and output are defined in the [contracts](contracts.md).
 
 - GIVEN a clean workspace whose head is its latest delivery commit
 - WHEN delivery runs
-- THEN the result has status `ok` and reports that commit with `recovered` true
+- THEN Delivery validates the whole workspace again
+- AND the result has status `ok` and reports that commit with `recovered` true
 - AND nothing is committed
 - AND the run's [trace node](../../../glossary.json#concept.trace-node) references that commit with `found_commit`, not with `commit`
 
@@ -112,7 +113,9 @@ commit and output are defined in the [contracts](contracts.md).
 - WHEN the workspace is delivered
 - THEN Git creates the delivery commit and the worktree is clean
 - BUT the commit's tree is not the tree recorded after staging, so the result has status `failed` with `commit_unverified`, reason `decision`, naming `src/a/calc.py` as changed
-- AND the commit stays on the branch, since Delivery never rewrites history
+- AND Delivery takes the commit off the branch: the head is again the validated head, and its error says so and names the commit
+- AND the index and the worktree hold what the commit held, the hook's version of `src/a/calc.py` staged
+- AND the branch holds no delivery commit, so a following `delivery` validates the workspace as it now is
 
 ### scenario.delivery.stage-refused — Git refuses to stage a change
 
@@ -134,7 +137,8 @@ commit and output are defined in the [contracts](contracts.md).
 
 - GIVEN a delivery run that created its delivery commit and ended without saving its result
 - WHEN delivery runs again
-- THEN no new commit is created
+- THEN Delivery validates the whole workspace again
+- AND no new commit is created
 - AND the output is the existing commit with `recovered` true, and the worktree is clean
 - AND the branch still holds exactly that one delivery commit, which alone records the delivery
 - AND the new run's trace node references that commit with `found_commit`
@@ -145,5 +149,14 @@ commit and output are defined in the [contracts](contracts.md).
 - AND the head is a merge commit, with two parents
 - WHEN delivery runs
 - THEN the result has status `failed` with `commit_unverified`, reason `decision`, naming the mismatch
+- AND no commit is created and the head is unchanged
+- AND the run's trace node references no commit, created or found
+
+### scenario.delivery.recover-not-ready — A delivered head whose workspace is not ready is not reported
+
+- GIVEN a clean workspace whose head has the subject of a delivery commit of the workspace and one parent
+- AND that commit holds a file no Module binds
+- WHEN delivery runs
+- THEN the result has status `blocked` with `not_ready`, and Validation's `not_deliverable` link names the file as a cause
 - AND no commit is created and the head is unchanged
 - AND the run's trace node references no commit, created or found
