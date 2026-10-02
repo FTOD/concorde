@@ -36,6 +36,8 @@ POLL = 0.2
 INHERITED = "CONCORDE_INHERITED_LOCKS"
 # The environment variable naming the Claude Code session a process works for.
 SESSION = "CLAUDE_CODE_SESSION_ID"
+# The kernel's table of the locks held now.
+LOCK_TABLE = Path("/proc/locks")
 
 
 class LockBusy(Exception):
@@ -338,23 +340,26 @@ def holder_pids(path: Path) -> list[int]:
     file ``path``, as seen from this PID namespace; empty where the table is unavailable or the
     holder is not visible from here."""
     try:
-        inode = os.stat(path).st_ino
-        table = Path("/proc/locks").read_text()
+        status = os.stat(path)
+        table = LOCK_TABLE.read_text()
     except OSError:
         return []
+    # An inode number is unique only within its filesystem, so the device must match as well.
+    wanted = (os.major(status.st_dev), os.minor(status.st_dev), status.st_ino)
     found = []
     for line in table.splitlines():
         fields = line.split()
-        # "1: FLOCK ADVISORY WRITE <pid> <major>:<minor>:<inode> <start> <end>"; a waiter's line
-        # carries "->" before its type.
+        # "1: FLOCK ADVISORY WRITE <pid> <major>:<minor>:<inode> <start> <end>", major and minor
+        # in hexadecimal; a waiter's line carries "->" before its type.
         if "->" in fields or len(fields) < 6 or fields[1] != "FLOCK":
             continue
         try:
             pid = int(fields[4])
-            number = int(fields[5].rsplit(":", 1)[1])
-        except (ValueError, IndexError):
+            major, minor, number = fields[5].split(":")
+            file = (int(major, 16), int(minor, 16), int(number))
+        except ValueError:
             continue
-        if number == inode and pid > 0:
+        if file == wanted and pid > 0:
             found.append(pid)
     return found
 

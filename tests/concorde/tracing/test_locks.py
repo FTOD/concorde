@@ -66,6 +66,29 @@ class LockLineTests(unittest.TestCase):
         child.wait(10)
         self.assertFalse(locks.held(path))
 
+    @verifies("scenario.tracing.lock-table-holders")
+    def test_the_lock_table_names_holders_of_the_same_device_and_inode(self):
+        path = Path(tempfile.mkdtemp()) / "run.lock"
+        path.touch()
+        status = os.stat(path)
+        major, minor = os.major(status.st_dev), os.minor(status.st_dev)
+        table = Path(tempfile.mkdtemp()) / "locks"
+        table.write_text(
+            f"1: FLOCK  ADVISORY  WRITE 101 {major:02x}:{minor:02x}:{status.st_ino} 0 EOF\n"
+            f"2: FLOCK  ADVISORY  WRITE 102 {major + 1:02x}:{minor:02x}:{status.st_ino} 0 EOF\n"
+            f"3: FLOCK  ADVISORY  WRITE 103 {major:02x}:{minor + 1:02x}:{status.st_ino} 0 EOF\n"
+            f"4: FLOCK  ADVISORY  WRITE 104 {major:02x}:{minor:02x}:{status.st_ino + 1} 0 EOF\n"
+            f"5: POSIX  ADVISORY  WRITE 105 {major:02x}:{minor:02x}:{status.st_ino} 0 EOF\n"
+            f"1: -> FLOCK  ADVISORY  WRITE 106 {major:02x}:{minor:02x}:{status.st_ino} 0 EOF\n"
+        )
+        with patch.object(locks, "LOCK_TABLE", table):
+            self.assertEqual([101], locks.holder_pids(path))
+
+    def test_the_lock_table_names_this_process_as_holder(self):
+        path = Path(tempfile.mkdtemp()) / "run.lock"
+        with locks.hold(path, "the test"):
+            self.assertEqual([os.getpid()], locks.holder_pids(path))
+
 
 if __name__ == "__main__":
     unittest.main()

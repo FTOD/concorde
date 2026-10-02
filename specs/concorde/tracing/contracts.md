@@ -569,10 +569,11 @@ notification: taking a lock writes its holder line, releasing it empties the fil
 removes it.
 
 A run is running exactly when its run lock file exists and a process holds it. An observer tries it
-shared and without waiting, or reads the kernel's lock table `/proc/locks` for the file's inode,
-from any PID namespace; it never decides by a recorded process identifier. The run lock of a bound
-run lies under `locks/` of the `.concorde` its binding names, that of an unbound run under the
-`.concorde` of the worktree it started in.
+shared and without waiting, or reads the kernel's lock table `/proc/locks` for the file's device
+and inode, since an inode number is unique only within its filesystem, from any PID namespace; it
+never decides by a recorded process identifier. The run lock of a bound run lies under `locks/` of
+the `.concorde` its binding names, that of an unbound run under the `.concorde` of the worktree it
+started in.
 
 ## Tracing configuration
 
