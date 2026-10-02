@@ -8,13 +8,13 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.errors import codes
-from concorde.harness import checks as check_service
-from concorde.harness.check_executor import CheckSandboxError
+from concorde.kernel.errors import codes
+from concorde.execution.checks import checks as check_service
+from concorde.execution.checks.check_executor import CheckSandboxError
 from concorde.spec.repository import SpecRepository
 from concorde.spec.verification import verifies
-from concorde.validation.command import READINESS_SCHEMA, TASK_VALIDATION
-from concorde.validation.measurement import measure
+from concorde.method.validation.command import READINESS_SCHEMA, TASK_VALIDATION
+from concorde.method.validation.measurement import measure
 from tests.concorde.support.paths import REPOSITORY_ROOT
 from tests.concorde.support.spec_project import read_checks, write_checks
 from tests.concorde.validation.project import (
@@ -204,7 +204,10 @@ class ValidateTests(unittest.TestCase):
         "scenario.validation.submodule-content", "scenario.validation.submodule-commit"
     )
     def test_only_a_submodules_commit_is_measured(self):
-        from concorde.validation.measurement import changed_paths, has_uncommitted
+        from concorde.method.validation.measurement import (
+            changed_paths,
+            has_uncommitted,
+        )
 
         library = self.project.root.parent / "library"
         library.mkdir()
@@ -244,7 +247,7 @@ class ValidateTests(unittest.TestCase):
 
     @verifies("scenario.validation.sandbox-placeholder")
     def test_a_sandbox_placeholder_is_not_measured(self):
-        from concorde.validation.measurement import (
+        from concorde.method.validation.measurement import (
             changed_paths,
             has_uncommitted,
             special_paths,
@@ -356,7 +359,7 @@ class ValidateTests(unittest.TestCase):
             (self.worktree / "src/a/calc.py").write_text("changed = True\n")
             return original(*arguments, **options)
 
-        with patch("concorde.validation.command.run_checks", changing):
+        with patch("concorde.method.validation.command.run_checks", changing):
             status, envelope = self.project.validate()
         self.assertEqual((status, envelope["status"]), (1, "failed"))
         self.assertIsNone(envelope["output"])

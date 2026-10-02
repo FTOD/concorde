@@ -12,12 +12,12 @@ import threading
 import time
 import unittest
 
-from concorde.errors import ERROR_SCHEMA
+from concorde.kernel.errors import ERROR_SCHEMA
 from concorde.execution.runs import workspace_lock
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
-from concorde.tasks import cli, store
-from concorde.tracing import layout
+from concorde.coordination.tasks import cli, store
+from concorde.kernel.tracing import layout
 from tests.concorde.support.environment import child_environment
 from tests.concorde.support.operation_project import OperationProject, commit
 from tests.concorde.support.paths import REPOSITORY_ROOT
@@ -131,7 +131,7 @@ class WaitTests(unittest.TestCase):
         path = store.merge_lock_path(self.root)
         code = (
             "import sys\n"
-            "from concorde.tracing import locks\n"
+            "from concorde.kernel.tracing import locks\n"
             f"with locks.hold({str(path)!r}, 'a test holder', task='t9'):\n"
             "    print('held', flush=True)\n"
             "    sys.stdin.read()\n"
@@ -161,7 +161,7 @@ class WaitTests(unittest.TestCase):
         attempt_lock = store.attempt_lock_path(self.root, "t1")
         code = (
             "import sys\n"
-            "from concorde.tracing import locks\n"
+            "from concorde.kernel.tracing import locks\n"
             f"with locks.hold({str(attempt_lock)!r}, 'a merge of t1', task='t1',"
             " remove=True):\n"
             "    print('held', flush=True)\n"

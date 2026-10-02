@@ -19,7 +19,7 @@ from unittest.mock import patch
 from concorde.distribution.project_defaults import install_project_defaults
 from tests.concorde.support import runs
 from concorde.spec.initialize import apply_project_proposal, project_proposal
-from concorde.tasks import store
+from concorde.coordination.tasks import store
 from tests.concorde.support.operation_project import claude_workers
 from tests.concorde.support.paths import REPOSITORY_ROOT
 

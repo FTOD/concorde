@@ -30,7 +30,7 @@
       "title": "Harness package",
       "meaning": "#realization.harness.package",
       "entries": [
-        "src/concorde/harness/__init__.py"
+        "src/concorde/worker_harness/__init__.py"
       ]
     },
     {
@@ -39,8 +39,8 @@
       "title": "Claude Code harness",
       "meaning": "#realization.harness.claude",
       "entries": [
-        "src/concorde/harness/settings.py",
-        "src/concorde/harness/write_hook.py"
+        "src/concorde/worker_harness/settings.py",
+        "src/concorde/worker_harness/write_hook.py"
       ]
     },
     {
@@ -49,8 +49,8 @@
       "title": "pi harness",
       "meaning": "#realization.harness.pi",
       "entries": [
-        "src/concorde/harness/pi_permission.ts",
-        "src/concorde/harness/pi_policy.ts"
+        "src/concorde/worker_harness/pi_permission.ts",
+        "src/concorde/worker_harness/pi_policy.ts"
       ]
     }
   ],

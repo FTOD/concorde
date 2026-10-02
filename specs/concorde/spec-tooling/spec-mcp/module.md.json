@@ -46,7 +46,7 @@
       "title": "Server program",
       "meaning": "#realization.spec-mcp.server",
       "entries": [
-        "src/concorde/spec_mcp/",
+        "src/concorde/spec/mcp/",
         "tests/concorde/spec_mcp/"
       ]
     }

@@ -11,7 +11,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from concorde.tasks import store
+from concorde.coordination.tasks import store
 from tests.concorde.support.operation_project import OperationProject, commit
 from tests.concorde.support.spec_project import (
     read_checks,

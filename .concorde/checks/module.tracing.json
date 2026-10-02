@@ -18,8 +18,8 @@
         "conftest.py",
         "pyproject.toml",
         "specs/concorde/kernel/tracing",
-        "src/concorde/tracing",
-        "src/concorde/errors.py",
+        "src/concorde/kernel/tracing",
+        "src/concorde/kernel/errors.py",
         "src/concorde/spec",
         "tests/concorde/tracing",
         "tests/concorde/test_errors.py"

@@ -9,9 +9,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from concorde.commands.catalog import COMMANDS
+from concorde.execution.commands.catalog import COMMANDS
 from concorde.execution.runner import execute
-from concorde.tasks import store
+from concorde.coordination.tasks import store
 
 
 def split(argv, primary: Path, cwd: Path | None) -> tuple[str, str, list[str], Path]:

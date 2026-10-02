@@ -197,5 +197,7 @@ its library.
 The Kernel binds no code of its own yet: today its formats are implemented where they were first
 needed, the workspace binding in Execution's runner, the delivery commit in Delivery and Tasks, the
 merge lock in Tasks, typed values and file transactions in Spec core, and each of those Modules'
-realizations binds that code. The code tasks that follow this Spec move them into the kernel's own
-package, which Tracing's code joins, and bind it here.
+realizations binds that code. Tracing's code is already in the kernel's package
+`src/concorde/kernel/`, as `tracing/` and the error chain code's `errors.py`, bound by Tracing's
+realizations; the code tasks that follow this Spec move the other formats into that package and bind
+them here.

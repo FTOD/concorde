@@ -24,8 +24,8 @@ from pathlib import Path
 from ..execution import binding as workspace_binding
 from ..execution.runs import Store
 from ..spec.typed_data import register
-from ..tracing import layout, locks
-from ..tracing import node as trace
+from ..kernel.tracing import layout, locks
+from ..kernel.tracing import node as trace
 
 _TEXT = {"type": "string", "minLength": 1}
 _RELATIVE = {"type": "string", "minLength": 1, "format": "project-path"}
@@ -481,7 +481,7 @@ def _write_step(
 
 
 def _commands() -> set[str]:
-    from ..commands.catalog import COMMANDS
+    from ..execution.commands.catalog import COMMANDS
 
     return set(COMMANDS)
 

@@ -12,7 +12,7 @@ import json
 import subprocess
 from pathlib import Path
 
-from concorde.delivery.commits import commit_message
+from concorde.method.delivery.commits import commit_message
 from concorde.execution import binding
 
 FIXED = "def add(a, b):\n    return a + b\n"
@@ -86,7 +86,7 @@ def write_run(
     (``status`` None) in the run store of ``primary``: the workspace folder of the task named
     ``workspace``, or ``.concorde/unbound/`` for an unbound run, or the workspace folder
     ``traces`` when given. A running run is running only while a test holds its run lock
-    (``concorde.tracing.locks.hold`` of its lock file)."""
+    (``concorde.kernel.tracing.locks.hold`` of its lock file)."""
     concorde = primary / ".concorde"
     if traces is not None:
         directory = Path(traces) / "runs" / run_id

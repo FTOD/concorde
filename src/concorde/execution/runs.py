@@ -30,9 +30,9 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-from .. import errors
+from ..kernel import errors
 from ..spec.typed_data import register
-from ..tracing import layout, locks, reader
+from ..kernel.tracing import layout, locks, reader
 
 KINDS = ("operation", "command")
 RUN_ID_PATTERN = "^r-[0-9]{8}T[0-9]{6}-[a-z_]+-[0-9a-f]{8}$"

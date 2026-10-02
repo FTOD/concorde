@@ -21,8 +21,8 @@ from concorde.spec.initialize import (  # noqa: E402
     project_proposal,
 )
 from concorde.spec.verification import verifies  # noqa: E402
-from concorde.views.docsite_scaffold import apply_docsite, propose_docsite  # noqa: E402
-from concorde.views.docsite_template import (
+from concorde.spec.views.docsite_scaffold import apply_docsite, propose_docsite  # noqa: E402
+from concorde.spec.views.docsite_template import (
     TEMPLATE_ROOT,
     adapter_files,
     workflow_template,
@@ -159,7 +159,9 @@ class DocsiteScaffoldTests(unittest.TestCase):
                     for p in self.root.rglob("*")
                     if p.is_file()
                 }
-                with mock.patch("concorde.views.docsite_scaffold.apply_files") as apply:
+                with mock.patch(
+                    "concorde.spec.views.docsite_scaffold.apply_files"
+                ) as apply:
                     result = apply_docsite(self.root, ".concorde/docsite-proposal.json")
                 self.assertEqual(result.status, "invalid", result.findings)
                 apply.assert_not_called()
@@ -439,7 +441,7 @@ class DocsiteScaffoldTests(unittest.TestCase):
             {"name": "npm", "status": "outdated", "detail": "npm 8 was found"},
         ]
         with mock.patch(
-            "concorde.views.docsite_scaffold._detect_prerequisites",
+            "concorde.spec.views.docsite_scaffold._detect_prerequisites",
             return_value=missing,
         ):
             patched = propose_docsite(self.root)

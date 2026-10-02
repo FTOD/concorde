@@ -52,7 +52,7 @@
       "title": "Specify Operation",
       "meaning": "#realization.specification.operation",
       "entries": [
-        "src/concorde/specification/",
+        "src/concorde/method/specification/",
         "prompts/workers/specify.md",
         "tests/concorde/specification/"
       ]

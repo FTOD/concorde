@@ -16,7 +16,7 @@ from pathlib import Path
 
 from concorde.distribution.install import install
 from concorde.spec.verification import verifies
-from concorde.tasks import store as task_store
+from concorde.coordination.tasks import store as task_store
 from tests.concorde.distribution.test_distribution import fake_d2, package_copy
 from tests.concorde.support.operation_project import claude_workers
 from tests.concorde.support.operation_project import OperationProject
@@ -93,7 +93,7 @@ class BrownfieldFlowTests(unittest.TestCase):
     def test_describe_an_existing_codebase_in_no_ask_mode(self):
         import shutil
 
-        from concorde.scaffold.command import child_reading
+        from concorde.method.scaffold.command import child_reading
         from concorde.workflows.catalog import render
         from tests.concorde.support.brownfield_project import FILES
 

@@ -208,7 +208,7 @@ task level or its workflow decides which runs next.
 
 The providers' and commands' code lives with their Modules. The standard worker sequence is today
 the run context's worker launch in Execution's runner package, the admission step and the review
-providers' shared handling of their Issues are in `src/concorde/operations/`, and the brownfield
+providers' shared handling of their Issues are in `src/concorde/execution/operations/`, and the brownfield
 script in `src/concorde/workflows/scripts/`; those Modules' realizations bind them until the code
 tasks that follow this Spec move them into Method's package.
 

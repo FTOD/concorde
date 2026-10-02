@@ -30,12 +30,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import NAMESPACE_URL, uuid5
 
-from ..errors import ERROR_SCHEMA
+from ..kernel.errors import ERROR_SCHEMA
 from ..spec.changes import apply_files
 from ..spec.schema import ContractError, validate
 from ..spec.typed_data import checked_path
-from ..tasks import store as tasks
-from ..tracing import locks
+from ..coordination.tasks import store as tasks
+from ..kernel.tracing import locks
 from .shapes import (
     ISSUE_ID,
     PROVENANCE,

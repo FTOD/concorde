@@ -10,9 +10,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.code_review.operation import REVIEW_SCHEMA
-from concorde.harness import claude_backend
-from concorde.harness.runs import read_record
+from concorde.method.code_review.operation import REVIEW_SCHEMA
+from concorde.worker_harness import claude_backend
+from concorde.worker_harness.runs import read_record
 from concorde.issues.store import list_issues, read_issue, report_issue
 from concorde.spec.repository import SpecRepository
 from concorde.spec.schema import validate

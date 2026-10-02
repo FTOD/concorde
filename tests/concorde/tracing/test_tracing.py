@@ -15,9 +15,9 @@ from pathlib import Path
 
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
-from concorde.tracing import command, layout, locks, reader, retention
-from concorde.tracing import node as trace
-from concorde.tracing.node import NODE_SCHEMA, Node, TraceError
+from concorde.kernel.tracing import command, layout, locks, reader, retention
+from concorde.kernel.tracing import node as trace
+from concorde.kernel.tracing.node import NODE_SCHEMA, Node, TraceError
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 

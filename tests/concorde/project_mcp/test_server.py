@@ -18,14 +18,14 @@ import unittest
 from pathlib import Path
 from typing import ClassVar
 
-from concorde.errors import ERROR_SCHEMA
+from concorde.kernel.errors import ERROR_SCHEMA
 from concorde.execution.runs import load_result, run_state, workspace_lock
-from concorde.project_mcp.server import channel_from, detect_channel
+from concorde.distribution.project_mcp.server import channel_from, detect_channel
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
-from concorde.tasks import store, wait
-from concorde.tracing import layout, locks
-from concorde.tracing import node as trace
+from concorde.coordination.tasks import store, wait
+from concorde.kernel.tracing import layout, locks
+from concorde.kernel.tracing import node as trace
 from concorde.workflows import store as workflow_store
 from tests.concorde.support.brownfield_project import BrownfieldProject
 from tests.concorde.support.brownfield_project import commit as commit_all
@@ -144,7 +144,7 @@ def holding(path: Path, session: str, task: str | None = None):
     """A process holding the lock ``path`` for session ``session`` until its stdin closes."""
     code = (
         "import sys\n"
-        "from concorde.tracing import locks\n"
+        "from concorde.kernel.tracing import locks\n"
         f"with locks.hold({str(path)!r}, 'a test holder', task={task!r}):\n"
         "    print('held', flush=True)\n"
         "    sys.stdin.read()\n"
@@ -287,7 +287,7 @@ class ProjectMcpTests(unittest.TestCase):
         self.assertEqual(["t1"], [record["id"] for record in listed])
         # Concorde changes while the session runs, as a merge or `concorde update` changes it: a
         # tool answers otherwise and another tool is added.
-        tools = source / "concorde/project_mcp/tools.py"
+        tools = source / "concorde/distribution/project_mcp/tools.py"
         tools.write_text(
             tools.read_text()
             + textwrap.dedent(

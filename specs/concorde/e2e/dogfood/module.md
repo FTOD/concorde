@@ -40,7 +40,7 @@ type `bug` whose basis names the case "Concorde implements the boundary wrongly"
   "project": {"repository": "psf/requests", "rev": "v2.32.3"},
   "fault": {
     "summary": "writable directory entries are not applied by the harness",
-    "edits": [{"file": "src/concorde/harness/write_hook.py", "old": "...", "new": "..."}]
+    "edits": [{"file": "src/concorde/worker_harness/write_hook.py", "old": "...", "new": "..."}]
   },
   "prompt": "Please add a Response.is_informational property to requests: ...",
   "expect": {"types": ["bug"], "basis": ["implements the boundary wrongly"],

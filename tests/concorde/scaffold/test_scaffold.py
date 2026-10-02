@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import json
 
-from concorde.scaffold.command import SCAFFOLD_RECORD_SCHEMA
+from concorde.method.scaffold.command import SCAFFOLD_RECORD_SCHEMA
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies
 from tests.concorde.support.adoption_case import PROPOSAL, AdoptionCase, contract

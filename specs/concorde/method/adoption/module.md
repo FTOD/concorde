@@ -223,16 +223,16 @@ changed.
 ```d2
 adoption: Adoption {
   survey: Survey Operation {
-    "src/concorde/adoption/survey.py"
+    "src/concorde/method/adoption/survey.py"
     "prompts/workers/survey.md"
   }
   codetospec: Code to spec Operation {
-    "src/concorde/adoption/code_to_spec.py"
+    "src/concorde/method/adoption/code_to_spec.py"
     "prompts/workers/code-to-spec.md"
   }
   shared: Adoption shared records {
-    "src/concorde/adoption/__init__.py"
-    "src/concorde/adoption/records.py"
+    "src/concorde/method/adoption/__init__.py"
+    "src/concorde/method/adoption/records.py"
   }
   survey -> shared: validates proposals with
   codetospec -> shared: validates answers with

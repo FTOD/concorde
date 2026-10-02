@@ -36,13 +36,13 @@ import tempfile
 import time
 from pathlib import Path
 
-from .. import errors
+from ..kernel import errors
 from ..spec.schema import ContractError, validate
 from . import binding as binding_file
 from .checkout import Checkout, open_checkout
 from .context import Continue, Provider, RunContext, Stop, component, evidence
-from ..tracing import layout, locks
-from ..tracing.node import Node, TraceError, concorde_commit, protocol_version
+from ..kernel.tracing import layout, locks
+from ..kernel.tracing.node import Node, TraceError, concorde_commit, protocol_version
 from .runs import (
     RESULT_SCHEMA,
     RUN_ID,
@@ -194,15 +194,15 @@ def prog(kind: str, name: str) -> str:
 def definition(kind: str, name: str) -> Provider:
     """The Operation or execution command ``name``; ``UsageError`` for an unknown one."""
     if kind == "operation":
-        from ..operations.catalog import CATALOG, provider
+        from .operations.catalog import CATALOG, provider
 
         table, load = CATALOG, provider
     else:
-        from ..commands.catalog import COMMANDS, command
+        from .commands.catalog import COMMANDS, command
 
         table, load = COMMANDS, command
     if name not in table:
-        from ..commands.catalog import COMMANDS
+        from .commands.catalog import COMMANDS
 
         if kind == "operation" and name in COMMANDS:
             raise UsageError(
@@ -1088,7 +1088,7 @@ def detach(
 
 def _usage(kind: str, name: str | None) -> str:
     if kind == "operation":
-        from ..operations.catalog import CATALOG
+        from .operations.catalog import CATALOG
 
         return (
             "usage: concorde run <operation> [--modules ids] [--input run-id]... [--detach] "

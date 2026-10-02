@@ -16,7 +16,7 @@ from unittest.mock import patch
 from tests.concorde.support.paths import RUNTIME_ROOT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
-from concorde.harness.timing import (
+from concorde.execution.checks.timing import (
     Span,
     Trace,
     diagnostic_sink,
@@ -207,7 +207,9 @@ class ObservationScenarioTests(unittest.TestCase):
             # A new file is created exclusively and never through a symbolic link.
             target = base / "elsewhere.json"
             sink = diagnostic_sink(good)
-            with patch("concorde.harness.timing.uuid.uuid4", return_value="planted"):
+            with patch(
+                "concorde.execution.checks.timing.uuid.uuid4", return_value="planted"
+            ):
                 os.symlink(target, good / "planted.json")
                 with self.assertRaises(OSError):
                     sink({"spans": []})

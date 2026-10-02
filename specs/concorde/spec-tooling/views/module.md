@@ -60,7 +60,7 @@ views: Views {
     "docsite/"
   }
   scaffold: Docsite scaffold {
-    "src/concorde/views/"
+    "src/concorde/spec/views/"
   }
   site: Concorde site {
     "site.json"

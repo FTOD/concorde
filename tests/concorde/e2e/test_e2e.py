@@ -15,7 +15,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from concorde.spec.verification import verifies
-from concorde.tracing import node as trace
+from concorde.kernel.tracing import node as trace
 from concorde.workflows.store import WORKFLOW_TRACE
 from tests.concorde.support.paths import REPOSITORY_ROOT
 

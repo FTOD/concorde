@@ -932,7 +932,7 @@ mainsession: Main session {
   }
   guidance: Main-session guidance
   server: Server program {
-    "src/concorde/project_mcp/"
+    "src/concorde/distribution/project_mcp/"
   }
   sources -> guidance: authors
 }
@@ -950,7 +950,7 @@ observes.
 
 <a id="realization.main-session.project-mcp"></a>
 
-The **server program** in `src/concorde/project_mcp/` holds today both Distribution's host and the
+The **server program** in `src/concorde/distribution/project_mcp/` holds today both Distribution's host and the
 tools of every part, which the code tasks that follow these Specs split along the parts:
 `server.py` runs the stdio session,
 finds the project, decides whether the session listens to it as a channel and sends channel events

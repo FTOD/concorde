@@ -423,14 +423,19 @@ checkout, the run context and definitions that steps work with and the runner it
 tests; the runner finds an execution command by name in the catalog of
 [Commands](commands/module.md). Its run context today also holds the [standard worker sequence](../glossary.json#concept.standard-worker-sequence)'s
 launch of a worker and the computation of the grant, which are Method's
-([Method](../method/module.md#the-standard-worker-sequence)) and leave this package when Method's
-code gets its own. The `concorde` command belongs to [Distribution](../distribution/module.md),
+([Method](../method/module.md#the-standard-worker-sequence)) and leave this package when a later
+code task moves them into Method's package `src/concorde/method/`. The `concorde` command belongs to [Distribution](../distribution/module.md),
 which hands `run`, the execution commands and `workflow` to the parts that register them.
 
 ```d2
 execution: Execution {
   runner: Runner and run store {
-    "src/concorde/execution/"
+    "src/concorde/execution/__init__.py"
+    "src/concorde/execution/binding.py"
+    "src/concorde/execution/checkout.py"
+    "src/concorde/execution/context.py"
+    "src/concorde/execution/runner.py"
+    "src/concorde/execution/runs.py"
     "tests/concorde/execution/"
   }
   result: Run result

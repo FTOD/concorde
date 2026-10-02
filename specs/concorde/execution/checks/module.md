@@ -187,9 +187,7 @@ scratch the check may write, and records a check result and diagnostic spans:
 ```d2
 checks: Check execution {
   runner: Check runner {
-    "check_executor.py"
-    "timing.py"
-    "checks.py"
+    "src/concorde/execution/checks/"
   }
   check: Configured check
   result: Check result

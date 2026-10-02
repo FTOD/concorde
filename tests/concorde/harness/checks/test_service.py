@@ -13,9 +13,9 @@ from pathlib import Path
 from threading import Thread
 from unittest.mock import patch
 
-from concorde.errors import ERROR_SCHEMA
-from concorde.harness.check_executor import execute_check
-from concorde.harness.checks import (
+from concorde.kernel.errors import ERROR_SCHEMA
+from concorde.execution.checks.check_executor import execute_check
+from concorde.execution.checks.checks import (
     affected_modules,
     check_revision,
     environment,
@@ -254,7 +254,7 @@ print('proxy reached; project read-only; scratch writable')
         outer = """
 import os
 from pathlib import Path
-from concorde.harness.checks import run_checks
+from concorde.execution.checks.checks import run_checks
 os.environ['CONCORDE_RUN_ID'] = 'runtime-pollution'
 os.environ['NODE_OPTIONS'] = '--runtime-pollution'
 [result] = run_checks(Path.cwd(), modules=['module.a'],
@@ -320,7 +320,7 @@ assert result['status'] == 'passed', result
         )
 
     def test_the_modules_that_use_a_changed_module_are_checked_too(self):
-        from concorde.harness.checks import checked_modules
+        from concorde.execution.checks.checks import checked_modules
 
         self.assertEqual(
             ["module.b", "module.a"], checked_modules(self.repository(), ["module.b"])
@@ -418,7 +418,7 @@ assert result['status'] == 'passed', result
 
     @verifies("scenario.checks.service-stale")
     def test_input_changed_during_the_run_is_stale(self):
-        from concorde.harness import checks
+        from concorde.execution.checks import checks
 
         real = checks.execute_check
 
@@ -446,8 +446,8 @@ assert result['status'] == 'passed', result
 
     @verifies("scenario.checks.service-refused")
     def test_a_refused_check_has_no_result(self):
-        from concorde.harness import checks
-        from concorde.harness.check_executor import CheckSandboxError
+        from concorde.execution.checks import checks
+        from concorde.execution.checks.check_executor import CheckSandboxError
 
         def refused(*_arguments, **_options):
             raise CheckSandboxError("bubblewrap is unavailable", stderr=b"why")

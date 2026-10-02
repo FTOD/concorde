@@ -7,9 +7,9 @@ import re
 import unittest
 from pathlib import Path
 
-from concorde.harness.runs import read_record
+from concorde.worker_harness.runs import read_record
 from concorde.spec.verification import verifies
-from concorde.understanding.operation import ASSESSMENT_SCHEMA
+from concorde.method.understanding.operation import ASSESSMENT_SCHEMA
 from tests.concorde.support.operation_project import (
     OperationProject,
     link_at,
@@ -290,8 +290,7 @@ class UnderstandTests(unittest.TestCase):
 class ContractTests(unittest.TestCase):
     def test_the_output_schema_is_the_assessment_contract(self):
         text = (
-            REPOSITORY_ROOT
-            / "specs/concorde/method/understanding/contracts.md"
+            REPOSITORY_ROOT / "specs/concorde/method/understanding/contracts.md"
         ).read_text()
         fence = re.search(r"```concorde-contract\n(.*?)\n```", text, re.S).group(1)
         self.assertEqual(json.loads(fence)["schema"], ASSESSMENT_SCHEMA)

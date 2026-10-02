@@ -13,7 +13,7 @@ execute_check(project_root: Path, argv: Sequence[str], *, timeout: float,
 CheckResult(stdout: bytes, stderr: bytes, returncode: int, timed_out: bool = False)
 ```
 
-`execute_check` in `src/concorde/harness/check_executor.py` is trusted host code; no argument comes
+`execute_check` in `src/concorde/execution/checks/check_executor.py` is trusted host code; no argument comes
 from a registry, a task or a model except the command itself. It refuses, with
 `CheckSandboxError(RuntimeError)`, an empty command, a project that is not a directory, a
 nonpositive or nonfinite timeout, a platform other than Linux, a project at `/` or under `/proc`,

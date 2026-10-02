@@ -9,17 +9,17 @@
     "summary": "writable directory entries are not applied by the harness",
     "edits": [
       {
-        "file": "src/concorde/harness/write_hook.py",
+        "file": "src/concorde/worker_harness/write_hook.py",
         "old": "            relative == path or (path.endswith(\"/\") and relative.startswith(path))\n",
         "new": "            relative == path\n            or (level != \"rw\" and path.endswith(\"/\") and relative.startswith(path))\n"
       },
       {
-        "file": "src/concorde/harness/settings.py",
+        "file": "src/concorde/worker_harness/settings.py",
         "old": "    writable = [(worktree / path.rstrip(\"/\")).as_posix() for path in view.paths(\"rw\")]\n",
         "new": "    writable = [\n        (worktree / path).as_posix()\n        for path in view.paths(\"rw\")\n        if not path.endswith(\"/\")\n    ]\n"
       },
       {
-        "file": "src/concorde/harness/pi_policy.ts",
+        "file": "src/concorde/worker_harness/pi_policy.ts",
         "old": "  if (listed(relative, policy.rw)) return null;\n",
         "new": "  if (policy.rw.includes(relative)) return null;\n"
       }

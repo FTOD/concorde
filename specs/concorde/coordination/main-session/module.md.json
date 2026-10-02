@@ -184,7 +184,7 @@
       "title": "Server program",
       "meaning": "#realization.main-session.project-mcp",
       "entries": [
-        "src/concorde/project_mcp/",
+        "src/concorde/distribution/project_mcp/",
         "tests/concorde/project_mcp/"
       ]
     }

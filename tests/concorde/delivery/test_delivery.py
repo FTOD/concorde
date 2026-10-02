@@ -11,12 +11,12 @@ import unittest
 from pathlib import Path
 from types import SimpleNamespace
 
-from concorde.delivery.commits import OUTPUT_SCHEMA
-from concorde.delivery.command import DELIVERY, IndexRecord, State, undo
-from concorde.errors import codes
+from concorde.method.delivery.commits import OUTPUT_SCHEMA
+from concorde.method.delivery.command import DELIVERY, IndexRecord, State, undo
+from concorde.kernel.errors import codes
 from concorde.spec.repository import SpecRepository
 from concorde.spec.verification import verifies
-from concorde.validation.measurement import measure
+from concorde.method.validation.measurement import measure
 from tests.concorde.support.paths import REPOSITORY_ROOT
 from tests.concorde.support.spec_project import write_checks
 from tests.concorde.validation.project import (

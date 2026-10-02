@@ -65,7 +65,7 @@ an execution command whose step calls Check execution, as an Operation's step do
 commands: Commands {
   command: Execution command
   table: Command table {
-    "src/concorde/commands/"
+    "src/concorde/execution/commands/"
   }
   table -> command: lists
 }
@@ -112,7 +112,7 @@ How a task usually ends with Method's `task-validation` and `delivery` is Method
 
 <a id="realization.commands.catalog"></a>
 
-The **Command table** realization, `src/concorde/commands/catalog.py`, maps each command's name to
+The **Command table** realization, `src/concorde/execution/commands/catalog.py`, maps each command's name to
 the definition its provider declares and imports that definition only when the command runs, so
 running one command loads only the code its provider needs. A definition that cannot be imported is
 a command-line error that names why, and no run begins. The providers' own code lives with their

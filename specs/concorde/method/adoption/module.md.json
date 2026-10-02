@@ -59,7 +59,7 @@
       "title": "Survey Operation",
       "meaning": "#realization.adoption.survey",
       "entries": [
-        "src/concorde/adoption/survey.py",
+        "src/concorde/method/adoption/survey.py",
         "prompts/workers/survey.md"
       ]
     },
@@ -69,8 +69,8 @@
       "title": "Code to spec Operation",
       "meaning": "#realization.adoption.code-to-spec",
       "entries": [
-        "src/concorde/adoption/code_to_spec.py",
-        "src/concorde/adoption/test_links.py",
+        "src/concorde/method/adoption/code_to_spec.py",
+        "src/concorde/method/adoption/test_links.py",
         "prompts/workers/code-to-spec.md"
       ]
     },
@@ -80,8 +80,8 @@
       "title": "Adoption shared records",
       "meaning": "#realization.adoption.shared",
       "entries": [
-        "src/concorde/adoption/__init__.py",
-        "src/concorde/adoption/records.py"
+        "src/concorde/method/adoption/__init__.py",
+        "src/concorde/method/adoption/records.py"
       ]
     },
     {

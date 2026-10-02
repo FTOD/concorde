@@ -260,7 +260,7 @@ for the caller and later Operations, such as `plan_review`, to find out. See the
 <a id="realization.understanding.operation"></a>
 
 The **Understanding Operations** realization holds both Operations' steps, worker instructions and
-result schemas in `src/concorde/understanding/` (`operation.py` declares the `UNDERSTAND` provider,
+result schemas in `src/concorde/method/understanding/` (`operation.py` declares the `UNDERSTAND` provider,
 `plan_review.py` the `PLAN_REVIEW` provider) with the prompts `prompts/workers/understand.md` and
 `prompts/workers/plan-review.md`, tested against a fake worker.
 

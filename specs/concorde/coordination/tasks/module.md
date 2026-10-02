@@ -143,9 +143,9 @@ merge lock while it merges, opens or closes a task. Record, log and state fit to
 ```d2
 tasks: Tasks {
   store: Task store {
-    "src/concorde/tasks/cli.py"
-    "src/concorde/tasks/store.py"
-    "src/concorde/tasks/merge.py"
+    "src/concorde/coordination/tasks/cli.py"
+    "src/concorde/coordination/tasks/store.py"
+    "src/concorde/coordination/tasks/merge.py"
   }
   record: Task record
   log: Decision log

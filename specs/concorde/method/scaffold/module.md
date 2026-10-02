@@ -139,7 +139,7 @@ external material when the proposal names it as that file's user.
 
 <a id="realization.scaffold.command"></a>
 
-The **Scaffold command** realization, `src/concorde/scaffold/`, declares the `SCAFFOLD` execution
+The **Scaffold command** realization, `src/concorde/method/scaffold/`, declares the `SCAFFOLD` execution
 command, which launches no worker:
 
 | # | Step | Actor | Stops the run when |
@@ -157,7 +157,7 @@ of a small existing codebase with a fake worker, verifying the [requirements](re
 ```d2
 scaffold: Scaffold {
   command: Scaffold command {
-    "src/concorde/scaffold/"
+    "src/concorde/method/scaffold/"
     "tests/concorde/scaffold/"
   }
 }

@@ -15,8 +15,8 @@ from concorde.distribution.project_defaults import install_project_defaults
 from concorde.spec import changes
 from concorde.spec.initialize import apply_project_proposal, project_proposal
 from concorde.spec.verification import verifies
-from concorde.views import docsite_scaffold
-from concorde.views.docsite_scaffold import propose_docsite
+from concorde.spec.views import docsite_scaffold
+from concorde.spec.views.docsite_scaffold import propose_docsite
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 PROPOSAL = ".concorde/docsite-proposal.json"

@@ -13,8 +13,8 @@ import shutil
 import unittest
 from pathlib import Path
 
-from concorde.errors import ERROR_SCHEMA
-from concorde.harness.workers import run_worker
+from concorde.kernel.errors import ERROR_SCHEMA
+from concorde.worker_harness.workers import run_worker
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
 from tests.concorde.harness.workers.test_workers import WorkerProject

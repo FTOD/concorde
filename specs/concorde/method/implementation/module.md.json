@@ -56,7 +56,7 @@
       "title": "Implement and test Operations",
       "meaning": "#realization.implementation.operations",
       "entries": [
-        "src/concorde/implementation/",
+        "src/concorde/method/implementation/",
         "prompts/workers/implement.md",
         "prompts/workers/test.md",
         "tests/concorde/implementation/"

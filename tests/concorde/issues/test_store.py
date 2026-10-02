@@ -200,7 +200,7 @@ class IssueStoreTests(unittest.TestCase):
 
     @verifies("scenario.issues.store-merge-busy")
     def test_a_write_whose_wait_ends_first_is_refused(self):
-        from concorde.tracing import locks
+        from concorde.kernel.tracing import locks
 
         # The merge lock of the primary worktree, which task merges, opens and closes hold.
         lock = self.root / ".concorde/locks/merge.lock"

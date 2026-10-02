@@ -8,7 +8,7 @@ import re
 import unittest
 from pathlib import Path
 
-from concorde.harness.runs import read_record
+from concorde.worker_harness.runs import read_record
 from tests.concorde.support.brownfield_project import BrownfieldProject
 from tests.concorde.support.paths import REPOSITORY_ROOT
 

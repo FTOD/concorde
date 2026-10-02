@@ -67,7 +67,7 @@
       "title": "Delivery command",
       "meaning": "#realization.delivery.command",
       "entries": [
-        "src/concorde/delivery/",
+        "src/concorde/method/delivery/",
         "tests/concorde/delivery/"
       ]
     }

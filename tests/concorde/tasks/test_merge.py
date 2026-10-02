@@ -17,14 +17,14 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.errors import ERROR_SCHEMA
+from concorde.kernel.errors import ERROR_SCHEMA
 from concorde.execution.runs import workspace_lock
 from concorde.spec.schema import validate
 from concorde.spec.typed_data import TypedDataError, validate_typed
 from concorde.spec.verification import verifies
-from concorde.tasks import cli, merge, store
-from concorde.tracing import layout
-from concorde.tracing import node as trace
+from concorde.coordination.tasks import cli, merge, store
+from concorde.kernel.tracing import layout
+from concorde.kernel.tracing import node as trace
 from tests.concorde.support.operation_project import OperationProject, commit
 from tests.concorde.support.paths import REPOSITORY_ROOT
 from tests.concorde.tasks.deliveries import deliver
@@ -489,7 +489,7 @@ class MergeTests(unittest.TestCase):
             "import sys, time\n"
             f"sys.path.insert(0, {str(REPOSITORY_ROOT / 'src')!r})\n"
             "from pathlib import Path\n"
-            "from concorde.tasks import store\n"
+            "from concorde.coordination.tasks import store\n"
             f"with store.merge_lock(Path({str(self.root)!r}), 'merge', 'a', 0):\n"
             "    print('ready', flush=True)\n"
             "    time.sleep(60)\n"

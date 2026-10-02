@@ -68,7 +68,7 @@
       "title": "Code review Operation",
       "meaning": "#realization.code-review.operation",
       "entries": [
-        "src/concorde/code_review/",
+        "src/concorde/method/code_review/",
         "prompts/workers/review-code.md",
         "tests/concorde/code_review/"
       ]

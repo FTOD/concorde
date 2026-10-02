@@ -90,7 +90,7 @@ def create_parser() -> argparse.ArgumentParser:
 def dispatch(arguments: argparse.Namespace) -> ToolResult:
     root = Path(arguments.project_root)
     if arguments.tool == "docsite":
-        from ..views.docsite_scaffold import apply_docsite, propose_docsite
+        from ..spec.views.docsite_scaffold import apply_docsite, propose_docsite
 
         if arguments.apply:
             if not arguments.proposal:
@@ -495,7 +495,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     # Tasks, Execution, Workflows, Tracing, the project MCP server and the Issues command own
     # their command lines and output; they print no Spec tooling envelope.
     if words and words[0] == "task":
-        from ..tasks.cli import main as task_main
+        from ..coordination.tasks.cli import main as task_main
 
         return task_main(words[1:])
     if words and words[0] == "issues":
@@ -509,18 +509,18 @@ def main(argv: Sequence[str] | None = None) -> int:
         return workflow_main(words[1:])
     if words and words[0] == "project-mcp":
         # The project MCP server owns standard input and output; it prints no envelope.
-        from ..project_mcp.server import main as serve
+        from .project_mcp.server import main as serve
 
         return serve(words[1:])
     if words and words[0] == "trace":
-        from ..tracing.command import main as trace_main
+        from ..kernel.tracing.command import main as trace_main
 
         return trace_main(words[1:])
     if words and words[0] == "run":
         from ..execution.runner import run_main
 
         return run_main("operation", None, words[1:])
-    from ..commands.catalog import COMMANDS
+    from ..execution.commands.catalog import COMMANDS
 
     if words and words[0] in COMMANDS:
         from ..execution.runner import run_main
@@ -545,7 +545,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             ) from None
         if arguments.tool == "spec-mcp":
             # The stdio MCP session owns standard output; it prints no envelope.
-            from ..spec_mcp.server import main as serve
+            from ..spec.mcp.server import main as serve
 
             return serve()
         if arguments.tool == "protocol-manifest":
