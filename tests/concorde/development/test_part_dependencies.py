@@ -1,16 +1,20 @@
-"""Every part imports only the parts it depends on (req.concorde.part-dependencies).
+"""Every part imports only the parts it depends on (req.concorde.part-dependencies), and
+reaches Distribution only through its registration (req.distribution.registration-only).
 
 Each part's code is one directory of ``src/concorde/``. The allowed directions are read from the
 root's parts table; every ``concorde.*`` import of ``src/concorde/`` (module-level and
 function-level, absolute and relative, and the ``"module:attribute"`` strings a catalog imports
-by name) is checked against them. Today's violations are listed below as known exceptions, each
-under the later code task expected to remove it; the check fails on an import neither allowed nor
-listed, and on a listed exception that no longer occurs, so the list can only shrink.
+by name) is checked against them, with no exception. Each part's registration names the part and
+the dependencies the table gives it, and every entry it names lies in the part's own directory, so
+that Distribution, which imports a part's code only through those entries, never reaches one part's
+code through another's registration.
 """
 
 from __future__ import annotations
 
 import ast
+import importlib
+import json
 import re
 import unittest
 
@@ -40,70 +44,6 @@ ROOT_FILES = {"__main__.py": "distribution", "__init__.py": None}
 # Reliances outside the table that are optional integrations: none imports code, each reaches the
 # other part only through its command or a file format its Spec defines.
 OPTIONAL_INTEGRATIONS: set[tuple[str, str]] = set()
-
-# The later code tasks, in their order.
-CODE_TASKS = (
-    "issues",
-    "worker harness",
-    "execution",
-    "workflow",
-    "method",
-    "coordination",
-    "distribution",
-)
-# Code task -> (importing file under src/concorde/, imported module under concorde.) it removes.
-KNOWN_EXCEPTIONS = {
-    # Distribution depends on no part and no part imports it: it reaches the parts only through
-    # their registrations.
-    "distribution": [
-        ("distribution/build.py", "method.brownfield"),
-        ("distribution/build.py", "spec.typed_data"),
-        ("distribution/build.py", "workflows.catalog"),
-        ("distribution/cli.py", "coordination.tasks.cli"),
-        ("distribution/cli.py", "execution.commands.catalog"),
-        ("distribution/cli.py", "execution.runner"),
-        ("distribution/cli.py", "kernel.tracing.command"),
-        ("distribution/cli.py", "method.brownfield"),
-        ("distribution/cli.py", "method.registration"),
-        ("distribution/cli.py", "spec.diagnostics"),
-        ("distribution/cli.py", "spec.errors"),
-        ("distribution/cli.py", "spec.grants"),
-        ("distribution/cli.py", "spec.initialize"),
-        ("distribution/cli.py", "spec.mcp.server"),
-        ("distribution/cli.py", "spec.model"),
-        ("distribution/cli.py", "spec.registry"),
-        ("distribution/cli.py", "spec.repository"),
-        ("distribution/cli.py", "spec.validation"),
-        ("distribution/cli.py", "spec.views.docsite_scaffold"),
-        ("distribution/cli.py", "workflows.cli"),
-        ("distribution/install.py", "dogfooding.develop"),
-        ("distribution/install.py", "kernel.errors"),
-        ("distribution/install.py", "kernel.tracing.layout"),
-        ("distribution/install.py", "kernel.tracing.locks"),
-        ("distribution/install.py", "spec.errors"),
-        ("distribution/install.py", "spec.initialize"),
-        ("distribution/install.py", "spec.views.docsite_template"),
-        ("distribution/project_defaults.py", "spec.repository"),
-        ("distribution/project_defaults.py", "spec.typed_data"),
-        ("distribution/project_mcp/calls.py", "kernel.errors"),
-        ("distribution/project_mcp/server.py", "coordination.tasks.store"),
-        ("distribution/project_mcp/server.py", "kernel.errors"),
-        ("distribution/project_mcp/tools.py", "coordination.tasks.cli"),
-        ("distribution/project_mcp/tools.py", "coordination.tasks.merge"),
-        ("distribution/project_mcp/tools.py", "coordination.tasks.store"),
-        ("distribution/project_mcp/tools.py", "coordination.tasks.wait"),
-        ("distribution/project_mcp/tools.py", "issues.command"),
-        ("distribution/project_mcp/tools.py", "kernel.errors"),
-        ("distribution/project_mcp/tools.py", "kernel.binding"),
-        ("distribution/project_mcp/tools.py", "kernel.refusal"),
-        ("distribution/project_mcp/tools.py", "kernel.tracing.layout"),
-        ("distribution/project_mcp/tools.py", "kernel.tracing.locks"),
-        ("distribution/project_mcp/tools.py", "kernel.tracing.reader"),
-        ("distribution/project_mcp/tools.py", "spec.schema"),
-        ("distribution/project_mcp/tools.py", "workflows.tools"),
-        ("distribution/prompt_resolver.py", "spec.frontmatter"),
-    ],
-}
 
 CATALOG_ENTRY = re.compile(r"concorde(?:\.\w+)+(?::\w+)?")
 
@@ -225,29 +165,67 @@ class PartDependencyTests(unittest.TestCase):
         for path in PACKAGE.rglob("*.py"):
             owner(path)
 
-    def test_exceptions_name_a_later_code_task_once(self):
-        self.assertLessEqual(set(KNOWN_EXCEPTIONS), set(CODE_TASKS))
-        listed = [entry for entries in KNOWN_EXCEPTIONS.values() for entry in entries]
-        self.assertEqual(len(listed), len(set(listed)), "an exception is listed twice")
-
     def test_every_import_follows_the_part_dependencies(self):
         found = violations()
-        listed = {entry for entries in KNOWN_EXCEPTIONS.values() for entry in entries}
-        unexpected = sorted(
-            where for key in found.keys() - listed for where in found[key]
-        )
         self.assertEqual(
             [],
-            unexpected,
+            sorted(where for places in found.values() for where in places),
             "imports a part may not rely on: depend only on the parts the root's parts table "
             "lists, or reach another part through an optional integration",
         )
-        gone = sorted(f"{file} -> {module}" for file, module in listed - found.keys())
-        self.assertEqual(
-            [],
-            gone,
-            "known exceptions that no longer occur: remove them from KNOWN_EXCEPTIONS",
-        )
+
+    def test_every_part_registers_itself_with_its_dependencies(self):
+        table = parts_table()
+        for part, directory in PART_DIRECTORIES.items():
+            with self.subTest(part=part):
+                path = PACKAGE / directory / "registration.json"
+                registration = json.loads(path.read_text(encoding="utf-8"))
+                self.assertEqual(part, registration["part"])
+                self.assertEqual(table[part], set(registration["depends_on"]))
+        for directory in NOT_PARTS:
+            self.assertFalse((PACKAGE / directory / "registration.json").exists())
+
+    def test_every_registration_entry_lies_in_its_own_part(self):
+        for part, directory in PART_DIRECTORIES.items():
+            registration = json.loads(
+                (PACKAGE / directory / "registration.json").read_text(encoding="utf-8")
+            )
+            install = registration["install"]
+            entries = [
+                *(item["entry"] for item in registration["commands"]),
+                *(item["entry"] for item in registration["mcp_tools"]),
+                *(
+                    registration[field]
+                    for field in (
+                        "mcp_definitions",
+                        "renders",
+                        "idle_check",
+                        "after_update",
+                    )
+                ),
+                install["prepare"],
+                install["bind"],
+            ]
+            modules = [*registration["loads"]] + [
+                entry.split(":", 1)[0] for entry in entries if entry is not None
+            ]
+            for module in modules:
+                with self.subTest(part=part, module=module):
+                    self.assertFalse(module.startswith("."), "an entry leaves its part")
+                    target = module_file(f"concorde.{directory}.{module}")
+                    self.assertIsNotNone(
+                        target, f"{module} is no module of the {part} part"
+                    )
+                    self.assertEqual(part, owner(target))
+            for entry in entries:
+                if entry is None:
+                    continue
+                with self.subTest(part=part, entry=entry):
+                    module, attribute = entry.split(":", 1)
+                    loaded = importlib.import_module(f"concorde.{directory}.{module}")
+                    self.assertTrue(
+                        hasattr(loaded, attribute), f"{entry} names nothing"
+                    )
 
 
 if __name__ == "__main__":

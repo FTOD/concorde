@@ -28,6 +28,7 @@ from ..adoption.records import (
     obj,
     proposal_problems,
 )
+from ...execution.checks.checks import configured_checks
 from ...workflows.output import step_output
 from ...execution.context import (
     Continue,
@@ -164,7 +165,7 @@ def recheck(ctx: RunContext):
             repository,
             module,
             proposal,
-            set(repository.checks),
+            {check["id"] for check in configured_checks(repository.root)},
         )
     if problems:
         return ctx.fail(

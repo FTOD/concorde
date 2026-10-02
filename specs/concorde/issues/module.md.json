@@ -70,7 +70,10 @@
       "meaning": "#realization.issues.command",
       "entries": [
         "src/concorde/issues/command.py",
-        "scripts/issues.py"
+        "scripts/issues.py",
+        "src/concorde/issues/cli.py",
+        "src/concorde/issues/tools.py",
+        "src/concorde/issues/registration.json"
       ]
     },
     {

@@ -138,7 +138,6 @@ TARGET_DESCRIPTOR = obj(
         "parent": NULLABLE_ID,
         "uses": array(STRING, unique=True),
         "files": array(LISTING_ENTRY, unique=True),
-        "checks": array(STRING, unique=True),
     }
 )
 
@@ -225,7 +224,6 @@ class DocumentUnitRepository:
         *,
         registry_bytes: bytes | None = None,
         document_overrides: dict[str, bytes] | None = None,
-        configured_checks: list | None = None,
         _defer_document_admission: bool = False,
     ):
         root = Path(project_root)
@@ -278,13 +276,12 @@ class DocumentUnitRepository:
         self.glossary_value: dict | None = None
         self.glossary_entries: dict[str, dict] = {}
         self._terms_cache: dict[str, dict[str, list[dict]]] = {}
-        self.checks: dict[str, dict] = {}
         self._identity_paths: dict[str, str] = {}
         self._reference_digest_cache: dict[str, str] = {}
         self._context_cache: dict[str, dict[str, list[dict]]] = {}
         self._registry()
         self._documents()
-        self._targets(configured_checks or [])
+        self._targets()
         self._glossary()
         outside = sorted(
             self.document_overrides.keys()
@@ -792,7 +789,7 @@ class DocumentUnitRepository:
                     {**record, "document": path, "owner": owner}
                 )
 
-    def _targets(self, configured_checks: list) -> None:
+    def _targets(self) -> None:
         parents: dict[str, list[str]] = {}
         for module in self.declarations.values():
             for item in module.contains:
@@ -851,8 +848,6 @@ class DocumentUnitRepository:
                     )
                     break
                 seen.add(current)
-        for check in configured_checks:
-            self.checks[check["id"]] = check
         for module in self.declarations.values():
             realizations = [
                 item
@@ -869,11 +864,6 @@ class DocumentUnitRepository:
                 parent,
                 tuple(dict.fromkeys(item["target"] for item in module.uses)),
                 tuple(files),
-                tuple(
-                    check["id"]
-                    for check in configured_checks
-                    if check.get("module") == module.id
-                ),
                 tuple(
                     dict.fromkeys(
                         (item["kind"], item["target"])
@@ -1431,7 +1421,6 @@ class DocumentUnitRepository:
             self.root,
             registry_bytes=self._registry_override,
             document_overrides=self.document_overrides,
-            configured_checks=list(self.checks.values()),
         )
 
     def recheck_context(self, context: SpecContext) -> None:

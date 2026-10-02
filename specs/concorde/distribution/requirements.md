@@ -38,7 +38,7 @@ is missing or changed, or whose rendered asset differs from the tracked manifest
 
 ### req.distribution.one-envelope — One envelope per command
 
-Every invocation of the `concorde` command other than `spec-mcp`, `project-mcp`, `task`, `run`, `task-validation`, `delivery`, `scaffold`, `workflow`, `issues`, `trace` and `update` SHALL print exactly one JSON result envelope on standard output, except `--help`.
+Every invocation of the `concorde` command other than `spec-mcp`, `project-mcp`, `task`, `run`, `task-validation`, `delivery`, `scaffold`, `workflow`, `issues`, `trace` and `update` SHALL print exactly one JSON result envelope on standard output, except `--help` and a command of a part that is not installed.
 
 The exit status is the one Spec core's shared envelope assigns to the envelope's status, so it
 follows from this requirement rather than being a separate one: a caller that only checks the status
@@ -83,6 +83,10 @@ The installed `concorde` command SHALL offer exactly the distribution commands a
 ### req.distribution.absent-part-named — A command of an absent part names the part
 
 The `concorde` command SHALL refuse a command that a part of the package registers but the project has not installed, naming that part and how to install it.
+
+It prints the refusal as `{"error": <link>}` with the code `part_missing` and exits with status 1,
+the one refusal by which another part tells that a part is absent; the project MCP server refuses a
+tool of such a part with the same link.
 
 ### req.distribution.unique-names — No two parts register one name
 

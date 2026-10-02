@@ -1,0 +1,35 @@
+{
+  "part": "worker harness",
+  "module": "module.worker-harness",
+  "depends_on": [
+    "kernel"
+  ],
+  "loads": [
+    "workers"
+  ],
+  "commands": [],
+  "mcp_tools": [],
+  "mcp_definitions": null,
+  "mcp_instructions": null,
+  "typed_types": [
+    "concorde-worker-run-trace",
+    "concorde-worker-round-trace"
+  ],
+  "guidance": null,
+  "renders": null,
+  "install": {
+    "files": [
+      "scripts/available_models.py"
+    ],
+    "defaults": {},
+    "gitignore": [],
+    "permissions": [],
+    "programs": [
+      "pi-runtime"
+    ],
+    "prepare": null,
+    "bind": null
+  },
+  "idle_check": null,
+  "after_update": null
+}

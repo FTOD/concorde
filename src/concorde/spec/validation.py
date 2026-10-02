@@ -20,14 +20,12 @@ from .content_repository import DocumentUnitRepository, strictness
 from .errors import system_cause
 from .glossary import plain_definition
 from .model import Finding, ToolResult
-from .repository import SpecRepository, checks_files
+from .repository import SpecRepository
 from .repository_base import (
     GENERATED_PREFIXES,
     INSTALL_RECORD,
     SpecError,
     bound_by,
-    check_input_error,
-    check_input_members,
     control_path,
     covers,
     digest,
@@ -1425,33 +1423,6 @@ def definition_ids(repository: DocumentUnitRepository) -> set[str]:
     return set(repository.modules) | set(repository.scenario_nodes)
 
 
-def check_input_findings(
-    repository: SpecRepository, inputs: list[tuple[str, str]] | None = None
-) -> tuple[Finding, ...]:
-    """Preflight every configured required input without executing checks or reading content."""
-    findings = []
-    for check_id, check in sorted(repository.checks.items()):
-        for relative in check.get("inputs", []):
-            try:
-                state = check_input_members(repository.root, relative)
-            except (SpecError, TypedDataError, OSError) as problem:
-                error = check_input_error(check, relative, problem)
-                findings.append(
-                    Finding(
-                        "CONCORDE-CHECK-001",
-                        "error",
-                        error.path or relative,
-                        f"{error.code}: {error}; {error.reason}",
-                        "Restore the required input or reconcile the configured check; do not skip missing inputs.",
-                        subject_id=check_id,
-                    )
-                )
-                state = (error.code, error.path or relative, str(error))
-            if inputs is not None:
-                inputs.append((f"check-input:{check_id}:{relative}", digest(state)))
-    return tuple(findings)
-
-
 def validate_repository(
     root: str | Path,
     target_id: str | None = None,
@@ -1480,10 +1451,6 @@ def validate_repository(
             _defer_document_admission=True,
         )
         config_digest = digest(read_file(repository.root, ".concorde/config.json"))
-        checks_digests = [
-            (path, digest(read_file(repository.root, path)))
-            for path, _ in checks_files(repository.root)
-        ]
     except (SpecError, TypedDataError, OSError, UnicodeError) as problem:
         repository = None
         load_error = (
@@ -1509,7 +1476,6 @@ def validate_repository(
     if repository is not None:
         if target_id and target_id != ".":
             repository.module(target_id)
-        findings.extend(check_input_findings(repository, inputs))
         for target in repository.modules.values():
             artifacts.extend(
                 member
@@ -1523,7 +1489,6 @@ def validate_repository(
             inputs.append((repository.glossary_path, digest(repository.glossary_bytes)))
         findings.extend(spec_findings(repository))
         inputs.append((".concorde/config.json", config_digest))
-        inputs.extend(checks_digests)
         inputs.append((repository.registry_path, digest(repository.registry_bytes)))
         inputs.append(("protocol", repository.config["protocol"]["digest"]))
     counts = Counter(f.strictness for f in findings)
@@ -1556,7 +1521,6 @@ def validate_repository(
 __all__ = [
     "Checks",
     "DiagramError",
-    "check_input_findings",
     "definition_ids",
     "diagram_model",
     "normalize_title",

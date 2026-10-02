@@ -1094,4 +1094,18 @@ def run_main(kind: str, name: str | None, words) -> int:
     return status
 
 
-__all__ = ["KINDS", "UsageError", "definition", "detach", "execute", "run_main"]
+def operation_main(words, root=None) -> int:
+    """``concorde run <operation>``, the execution part's command as its registration names it;
+    the run takes its workspace from the current worktree, so ``root`` is unused."""
+    return run_main("operation", None, words)
+
+
+__all__ = [
+    "KINDS",
+    "UsageError",
+    "definition",
+    "detach",
+    "execute",
+    "operation_main",
+    "run_main",
+]

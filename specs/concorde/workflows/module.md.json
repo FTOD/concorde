@@ -90,7 +90,8 @@
         "src/concorde/workflows/step.py",
         "src/concorde/workflows/report.py",
         "src/concorde/workflows/store.py",
-        "src/concorde/workflows/tools.py"
+        "src/concorde/workflows/tools.py",
+        "src/concorde/workflows/registration.json"
       ]
     },
     {

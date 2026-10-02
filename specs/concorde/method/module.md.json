@@ -116,7 +116,8 @@
         "src/concorde/method/checks.py",
         "src/concorde/method/prompts.py",
         "src/concorde/method/registration.py",
-        "src/concorde/method/specs.py"
+        "src/concorde/method/specs.py",
+        "src/concorde/method/registration.json"
       ]
     },
     {

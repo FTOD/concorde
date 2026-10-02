@@ -209,11 +209,6 @@ def module(root: Path, arguments: dict) -> dict:
             }
             for item in repository.realizations(identity)
         ],
-        "checks": sorted(
-            check["id"]
-            for check in repository.checks.values()
-            if check["module"] == identity
-        ),
     }
 
 

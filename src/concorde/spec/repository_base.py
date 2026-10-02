@@ -33,8 +33,6 @@ PROTOCOL_DIR = ".concorde/protocol"
 PROTOCOL_MANIFEST_PATH = PROTOCOL_DIR + "/manifest.json"
 # The registry, at a fixed place in every project.
 REGISTRY_PATH = ".concorde/specs.json"
-# The configured checks, one file per Module named by its identity.
-CHECKS_DIR = ".concorde/checks"
 RENDERED_PROTOCOL_PREFIX = "generated/protocol/"
 IDENTITY = re.compile(r"^[a-z][a-z0-9]*(?:[.-][a-z0-9-]+)*$")
 HEADING = re.compile(r"^(#{1,6})[ \t]+(.*?)[ \t]*#*[ \t]*$")
@@ -129,67 +127,6 @@ def read_file(root: Path, relative: str) -> bytes:
             path=relative,
             causes=[system_cause(error, path=relative)],
         ) from error
-
-
-def check_input_error(check: dict, relative: str, error: Exception) -> SpecError:
-    """Attribute input admission/read failures without changing their error identifier."""
-    return SpecError(
-        f"configured check {check['id']} (Module {check['module']}) input {relative}: {error}",
-        getattr(error, "code", "invalid_spec"),
-        path=relative,
-        subject=check["id"],
-        reason=getattr(error, "reason", None)
-        or "a configured check's inputs are canonical project-relative paths of regular "
-        "files or directories",
-        causes=[error] if isinstance(error, SpecError) else [system_cause(error)],
-    )
-
-
-def check_input_members(root: Path, relative: str) -> tuple[str, ...]:
-    """Required check files, using the same exclusions for preflight and revision hashing.
-
-    Like realization entries, every explicit input must exist. Directory inputs may be
-    empty, but symlinks (even excluded members) cannot alias another source.
-    """
-    path = checked_path(root, relative, relative)
-    if not path.exists():
-        raise SpecError(
-            f"the check input {relative} does not exist",
-            "missing_source",
-            path=relative,
-            reason="every declared input of a configured check must exist, because the "
-            "check's result is bound to the digest of its inputs",
-        )
-    if path.is_file():
-        return (relative,)
-    if not path.is_dir():
-        raise SpecError(
-            f"the check input {relative} is neither a regular file nor a directory",
-            "unsafe_path",
-            path=relative,
-        )
-    members = []
-    for member in sorted(path.rglob("*")):
-        name = member.relative_to(root).as_posix()
-        if member.is_symlink():
-            raise SpecError(
-                f"the check input {relative} contains the symbolic link {name}",
-                "unsafe_path",
-                path=name,
-                reason="a symbolic link inside a check input could make the input's digest "
-                "cover another file than the one the check reads",
-            )
-        if member.is_dir():
-            continue
-        if not member.is_file():
-            raise SpecError(
-                f"the check input {relative} contains {name}, which is not a regular file",
-                "unsafe_path",
-                path=name,
-            )
-        if "__pycache__" not in member.parts and member.suffix not in {".pyc", ".pyo"}:
-            members.append(name)
-    return tuple(members)
 
 
 def strings(value: Any, label: str, *, nonempty: bool = False) -> tuple[str, ...]:
@@ -371,8 +308,7 @@ class Module:
 
     Every field is derived from the Module's entry declarations: ``documents`` from ``owns``,
     ``parent`` from the ``contains`` that names it, ``uses`` from its ``uses`` targets, ``files``
-    from its realizations' entries, ``references`` from its ``includes`` and ``checks`` from the
-    project configuration.
+    from its realizations' entries and ``references`` from its ``includes``.
     """
 
     id: str
@@ -382,7 +318,6 @@ class Module:
     parent: str | None
     uses: tuple[str, ...]
     files: tuple[str, ...]
-    checks: tuple[str, ...]
     references: tuple[tuple[str, str], ...] = ()
     entry: str = ""
 
@@ -412,7 +347,6 @@ class Module:
             "parent": self.parent,
             "uses": list(self.uses),
             "files": list(self.files),
-            "checks": list(self.checks),
         }
 
 

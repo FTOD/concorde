@@ -181,10 +181,10 @@
     {
       "id": "realization.main-session.project-mcp",
       "type": "realization",
-      "title": "Server program",
+      "title": "Task tools",
       "meaning": "#realization.main-session.project-mcp",
       "entries": [
-        "src/concorde/distribution/project_mcp/",
+        "src/concorde/coordination/tasks/tools.py",
         "tests/concorde/project_mcp/"
       ]
     }

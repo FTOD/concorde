@@ -119,11 +119,32 @@ def renders(root: Path = PACKAGE_ROOT) -> dict[str, tuple[str, tuple[str, ...]]]
     return files
 
 
+def build_renders(root) -> dict:
+    """The build's entry, which the workflow part's registration names: every registered
+    workflow rendered for Claude Code from the sources under ``root``, as
+    ``{"files": {path: {"content", "sources"}}}``; none when ``root`` holds no step adapter, and
+    ``{"refusal": {"code", "message"}}`` when a render fails."""
+    root = Path(root)
+    if not (root / ADAPTER).is_file():
+        return {"files": {}}
+    try:
+        found = renders(root)
+    except WorkflowError as error:
+        return {"refusal": {"code": "invalid_workflow", "message": str(error)}}
+    return {
+        "files": {
+            path: {"content": content, "sources": list(sources)}
+            for path, (content, sources) in found.items()
+        }
+    }
+
+
 __all__ = [
     "ADAPTER",
     "WORKFLOWS",
     "Workflow",
     "WorkflowError",
+    "build_renders",
     "claude_name",
     "get",
     "output_path",

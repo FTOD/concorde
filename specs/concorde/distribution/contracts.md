@@ -1,42 +1,53 @@
 # Distribution contracts
 
 The [part registration](../glossary.json#concept.part-registration) every part gives Distribution,
-and the exact results that [Distribution](module.md)'s installer and `concorde update` print when
+the parts index the build records, and the exact results that [Distribution](module.md)'s installer and `concorde update` print when
 they succeed. Both print one JSON object on standard output and exit with status 0; every refusal
 instead prints `{"error": <link>}` and exits with status 1, as [Refusals](module.md#refusals)
 describes. Paths are relative to the project root unless stated otherwise.
 
 ## Part registration
 
-Every part declares one registration, plain data that Distribution reads without importing the
-part's code beyond the functions the registration names. An entry is a Python function named
-`<module>:<function>` relative to the part's package; Distribution calls a command's entry with the
-rest of the command line, an MCP tool's entry with the call's JSON object, an idle check's entry with
-the project root, and an after-update entry with the project root, and each answers in its own
-part's shape.
+Every part declares one registration, plain data in the file `registration.json` of its own
+directory of `src/concorde/`, which Distribution reads without importing anything. An entry is a
+Python attribute named `<module>:<attribute>`, the module relative to the part's own package, so
+that an entry never leaves its part; Distribution imports a part's code only through the entries of
+an installed part's registration. What each kind of entry is called with and answers:
+
+| Entry | Called with | Answers |
+| --- | --- | --- |
+| a command's `entry` | the rest of the command line, as a list of words, and the project root the global `--project-root` names (default `.`) | with `output` `own`, its exit status, having printed its own output; with `envelope`, Spec core's [shared envelope](../spec-tooling/spec/contracts.md), which `concorde` prints and exits with |
+| an MCP tool's `entry` | the call as one JSON object: `tool`, `arguments`, the session's provenance `primary`, `where`, `session` and `channel`, and `long_work` for a call of a tool registered as long work | `{"value": …}` or `{"error": <link>}`, with `watch` (a `concorde` command to run and wake the session with), and for a long work `handover` (the command the call's process becomes, with the locked descriptors it hands on) and `work` (what the server watches of it) |
+| `mcp_definitions` | nothing: it is a mapping | each of the part's tool names mapped to its `description` and `inputSchema`, as `tools/list` gives them |
+| `renders` | the checkout root the build renders | `{"files": {<path>: {"content", "sources"}}}`, outputs under `generated/`, or `{"refusal": {"code", "message"}}` |
+| `install.prepare` | the package root and the project root, before the installer writes anything | `{"files": {<project path>: <bytes>}}` to place, or `{"refusal": {"code", "message"}}`, which refuses the install with that code |
+| `install.bind` | the project root, after the receipt was written | `null`, or Spec core's [error record](../spec-tooling/spec/errors.md#contract.spec.error), which the install result carries as `binding_error` |
+| `idle_check` | the project root | a list of descriptions of the part's work still running, empty when idle |
+| `after_update` | the project root | the list the update result carries, such as the open tasks |
 
 ```concorde-contract
 {
   "id": "contract.distribution.part-registration",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
     "additionalProperties": false,
-    "required": ["part", "version", "module", "depends_on", "commands", "mcp_tools", "typed_types", "guidance", "install", "idle_check", "after_update"],
+    "required": ["part", "module", "depends_on", "loads", "commands", "mcp_tools", "mcp_definitions", "mcp_instructions", "typed_types", "guidance", "renders", "install", "idle_check", "after_update"],
     "properties": {
-      "part": {"type": "string", "pattern": "^[a-z][a-z-]*$"},
-      "version": {"type": "string", "minLength": 1},
+      "part": {"type": "string", "pattern": "^[a-z][a-z ]*[a-z]$"},
       "module": {"type": "string", "pattern": "^module\\.[a-z][a-z0-9-]*$"},
-      "depends_on": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z][a-z-]*$"}},
+      "depends_on": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z][a-z ]*[a-z]$"}},
+      "loads": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z_][a-z0-9_]*(\\.[a-z_][a-z0-9_]*)*$"}},
       "commands": {
         "type": "array",
         "items": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["name", "entry"],
+          "required": ["name", "entry", "output"],
           "properties": {
             "name": {"type": "string", "pattern": "^[a-z][a-z-]*$"},
-            "entry": {"type": "string", "minLength": 1}
+            "entry": {"$ref": "#/$defs/entry"},
+            "output": {"enum": ["own", "envelope"]}
           }
         }
       },
@@ -45,50 +56,68 @@ part's shape.
         "items": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["name", "entry", "worktree", "long_work"],
+          "required": ["name", "entry", "worktree", "long_work", "threaded", "requires"],
           "properties": {
             "name": {"type": "string", "pattern": "^[a-z][a-z_]*$"},
-            "entry": {"type": "string", "minLength": 1},
+            "entry": {"$ref": "#/$defs/entry"},
             "worktree": {"enum": ["primary", "session"]},
-            "long_work": {"type": "boolean"}
+            "long_work": {"type": "boolean"},
+            "threaded": {"type": "boolean"},
+            "requires": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z][a-z ]*[a-z]$"}}
           }
         }
       },
+      "mcp_definitions": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/entry"}]},
+      "mcp_instructions": {"type": ["string", "null"], "minLength": 1},
       "typed_types": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
       "guidance": {"type": ["string", "null"], "minLength": 1},
+      "renders": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/entry"}]},
       "install": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["files", "gitignore", "permissions", "programs"],
+        "required": ["files", "defaults", "gitignore", "permissions", "programs", "prepare", "bind"],
         "properties": {
           "files": {"type": "array", "items": {"type": "string", "minLength": 1}},
+          "defaults": {"type": "object", "additionalProperties": {"type": "string"}},
           "gitignore": {"type": "array", "items": {"type": "string", "minLength": 1}},
           "permissions": {"type": "array", "items": {"type": "string", "minLength": 1}},
-          "programs": {"type": "array", "items": {"type": "string", "minLength": 1}}
+          "programs": {"type": "array", "items": {"type": "string", "minLength": 1}},
+          "prepare": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/entry"}]},
+          "bind": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/entry"}]}
         }
       },
-      "idle_check": {"type": ["string", "null"], "minLength": 1},
-      "after_update": {"type": ["string", "null"], "minLength": 1}
+      "idle_check": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/entry"}]},
+      "after_update": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/entry"}]}
+    },
+    "$defs": {
+      "entry": {"type": "string", "pattern": "^[a-z_][a-z0-9_]*(\\.[a-z_][a-z0-9_]*)*:[A-Za-z_][A-Za-z0-9_]*$"}
     }
   },
-  "semantics": "The registration of one part. part is its installer name and version the version of the repository it was built from, the same for every part. module is the top-level Module the part is made of. depends_on names the parts it depends on; the installer installs them with it, and no other part is required for it to work. commands are the concorde subcommands it adds, each routed to its entry; mcp_tools the tools the project MCP server presents for it, each run in a fresh process of the primary worktree's concorde, or of the session's own worktree's when worktree is session, and, when long_work is true, allowed to take locks without waiting and hand them to the process doing the work. typed_types lists the typed value types its code registers. guidance is the build-relative path of its rendered guidance section, or null. install lists what the installer places for it: framework-relative files, .gitignore lines, Claude Code permission rules and programs it needs, such as the pi runtime. idle_check names the function reporting the part's work still running in the project, or null when it has none; after_update the function whose report an update result carries, such as the open tasks, or null. A behaviour or field change increments the version.",
+  "semantics": "The registration of one part, the file registration.json of its directory of src/concorde/. part is its installer name and module the top-level Module the part is made of; the part carries the version of the package it was built from, the same for every part, which concorde.json names. depends_on names the parts it depends on; the installer installs them with it, and no other part is required for it to work. loads names the part's modules that register what its code provides when they load (typed value types, trace roots, Operation and command definitions, workflows), which Distribution imports for every installed part before it routes a command of a part, answers an MCP tool or renders the build. commands are the concorde subcommands it adds, each routed to its entry, which prints its own output or, with output envelope, answers Spec core's shared envelope for concorde to print. mcp_tools are the tools the project MCP server presents for it, each answered by its entry in a fresh process of the primary worktree's concorde, or of the session's own worktree's when worktree is session; long_work allows it to take locks without waiting and become the work it starts, handing them on; threaded serves its calls on a thread of their own, for calls that wait; requires names parts without which the tool is not presented. mcp_definitions names the mapping from each of its tool names to its description and inputSchema, and mcp_instructions the sentence it adds to the server's instructions. typed_types lists the typed value types its code registers. guidance is the build-relative path of its rendered guidance section, generated/<path> rendered from prompts/<path>, or null. renders names the entry through which the build renders the part's own outputs, such as the workflow part's Claude Code workflows. install lists what the installer places for it: framework-relative files, Concorde-owned defaults written where absent by project path, .gitignore lines, Claude Code permission rules and programs it needs, such as the pi runtime; prepare names the service deciding, before any write, the files it places or refusing the install, and bind the service binding the installed files after the receipt. idle_check names the function reporting the part's work still running in the project, or null when it has none; after_update the function whose report an update result carries, such as the open tasks, or null. Every entry is <module>:<attribute> relative to the part's own package. A behaviour or field change increments the version.",
   "example": {
     "part": "coordination",
-    "version": "9.0.0",
     "module": "module.coordination",
     "depends_on": ["kernel"],
-    "commands": [{"name": "task", "entry": "tasks.cli:main"}],
+    "loads": ["tasks.store"],
+    "commands": [{"name": "task", "entry": "tasks.cli:main", "output": "own"}],
     "mcp_tools": [
-      {"name": "task_show", "entry": "tasks.mcp:show", "worktree": "primary", "long_work": false},
-      {"name": "task_merge", "entry": "tasks.mcp:merge", "worktree": "primary", "long_work": true}
+      {"name": "task_show", "entry": "tasks.tools:answer", "worktree": "primary", "long_work": false, "threaded": false, "requires": []},
+      {"name": "run_result", "entry": "tasks.tools:answer", "worktree": "primary", "long_work": false, "threaded": false, "requires": ["execution"]},
+      {"name": "task_merge", "entry": "tasks.tools:answer", "worktree": "primary", "long_work": true, "threaded": false, "requires": []}
     ],
-    "typed_types": ["concorde-task-record"],
+    "mcp_definitions": "tasks.tools:TOOLS",
+    "mcp_instructions": "Tasks: task_show reads a task; task_merge starts its merge without waiting.",
+    "typed_types": ["concorde-task-trace"],
     "guidance": "generated/main-session/skill.md",
+    "renders": null,
     "install": {
       "files": [],
+      "defaults": {},
       "gitignore": [".concorde/tasks/", ".concorde/history/", ".concorde/workspace.json", ".claude/worktrees/"],
       "permissions": [],
-      "programs": []
+      "programs": [],
+      "prepare": null,
+      "bind": null
     },
     "idle_check": null,
     "after_update": "tasks.update:open_tasks"
@@ -100,6 +129,14 @@ The installer resolves the parts to install by following `depends_on` from the p
 refuses before any write a name no registration of the package carries, or a set whose
 dependencies name a part the package does not build. Two parts registering the same command or tool
 name are a build error, never resolved by order.
+
+The build records what every part of the package registers in the **parts index**
+`generated/parts.json`, `{"schema_version": 1, "parts": {<part>: {"module", "depends_on",
+"commands", "mcp_tools"}}}`, so that a project's `concorde` and project MCP server name the part of a
+command or tool that is not installed without reading that part's registration. The installed parts
+are, in a source checkout, every part the package builds, and in a project the parts the receipt
+names under `parts`, an object whose keys are the part names, every part when the receipt names
+none; Distribution is installed with any part.
 
 ## Install result
 

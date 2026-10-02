@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from concorde.kernel.errors import ERROR_SCHEMA
-from concorde.distribution.install import TRACES
+from tests.concorde.support.ignored import TRACES
 from concorde.execution.runs import load_result, run_state
 from concorde.kernel.locking import workspace_lock
 from concorde.distribution.project_mcp.server import channel_from, detect_channel
@@ -289,20 +289,33 @@ class ProjectMcpTests(unittest.TestCase):
         self.assertEqual(["t1"], [record["id"] for record in listed])
         # Concorde changes while the session runs, as a merge or `concorde update` changes it: a
         # tool answers otherwise and another tool is added.
-        tools = source / "concorde/distribution/project_mcp/tools.py"
+        tools = source / "concorde/coordination/tasks/tools.py"
         tools.write_text(
             tools.read_text()
             + textwrap.dedent(
                 """
                 TOOLS["fresh_probe"] = {"description": "added later", "inputSchema": schema({})}
-                Project.fresh_probe = lambda self, arguments: {"code": "new"}
-                _listed = Project.task_list
-                Project.task_list = lambda self, arguments: {
-                    "code": "new", "tasks": _listed(self, arguments)
+                CALLS["fresh_probe"] = lambda call, arguments: {"code": "new"}
+                _listed = CALLS["task_list"]
+                CALLS["task_list"] = lambda call, arguments: {
+                    "code": "new", "tasks": _listed(call, arguments)
                 }
                 """
             )
         )
+        registration = source / "concorde/coordination/registration.json"
+        data = json.loads(registration.read_text())
+        data["mcp_tools"].append(
+            {
+                "name": "fresh_probe",
+                "entry": "tasks.tools:answer",
+                "worktree": "primary",
+                "long_work": False,
+                "threaded": False,
+                "requires": [],
+            }
+        )
+        registration.write_text(json.dumps(data))
         changed, error = client.call("task_list")
         self.assertFalse(error, changed)
         self.assertEqual("new", changed["code"])

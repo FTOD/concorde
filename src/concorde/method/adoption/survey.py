@@ -18,6 +18,7 @@ import copy
 import json
 from pathlib import Path
 
+from ...execution.checks.checks import configured_checks
 from ...execution.context import (
     Continue,
     RunContext,
@@ -215,7 +216,8 @@ def check(ctx: RunContext):
     answers = ctx.state.get("answers") or []
     claims["decisions"], problems = resolved_decisions(claims["decisions"], answers)
     repository = repository_of(ctx)
-    problems += proposal_problems(repository, module, claims, set(repository.checks))
+    existing = {check["id"] for check in configured_checks(repository.root)}
+    problems += proposal_problems(repository, module, claims, existing)
     problems += answer_problems(
         [item for item in answers if item["id"].startswith("d.")], claims["decisions"]
     )

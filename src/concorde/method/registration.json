@@ -1,0 +1,49 @@
+{
+  "part": "method",
+  "module": "module.method",
+  "depends_on": [
+    "spec",
+    "worker harness",
+    "execution",
+    "workflow",
+    "kernel"
+  ],
+  "loads": [
+    "registration",
+    "brownfield"
+  ],
+  "commands": [
+    {
+      "name": "task-validation",
+      "entry": "registration:task_validation",
+      "output": "own"
+    },
+    {
+      "name": "delivery",
+      "entry": "registration:delivery",
+      "output": "own"
+    },
+    {
+      "name": "scaffold",
+      "entry": "registration:scaffold",
+      "output": "own"
+    }
+  ],
+  "mcp_tools": [],
+  "mcp_definitions": null,
+  "mcp_instructions": null,
+  "typed_types": [],
+  "guidance": null,
+  "renders": null,
+  "install": {
+    "files": [],
+    "defaults": {},
+    "gitignore": [],
+    "permissions": [],
+    "programs": [],
+    "prepare": null,
+    "bind": null
+  },
+  "idle_check": null,
+  "after_update": null
+}

@@ -1,7 +1,7 @@
 """A project installed without some parts: its own ``concorde`` refuses their commands.
 
-Distribution's dispatcher refuses a command of a part the project has not installed with an error
-link naming the part. ``without`` gives a test project such a ``concorde``, tracked at
+Distribution's ``concorde`` refuses a command of a part the project has not installed with its
+``part_missing`` link naming the part, which this helper prints with Distribution's own code. ``without`` gives a test project such a ``concorde``, tracked at
 ``.concorde/bin/concorde`` like an installed one and so present in every task worktree opened after
 it: it refuses the commands of the parts named, and runs every other command with this checkout's
 package. ``without_spec`` removes the registry mirror whose existence tells that the spec part is
@@ -27,22 +27,13 @@ SCRIPT = """\
 #!{python}
 import json, os, sys
 
+sys.path.insert(0, {source!r})
+from concorde.distribution.cli import part_missing
+
 ABSENT = {absent!r}
 words = sys.argv[1:]
 if words and words[0] in ABSENT:
-    part = ABSENT[words[0]]
-    print(json.dumps({{"error": {{
-        "level": "component",
-        "actor": "Distribution (concorde)",
-        "code": "part_missing",
-        "detail": f"`concorde {{words[0]}}` belongs to the {{part}} part, which is not installed",
-        "evidence": [],
-        "attempts": [],
-        "unhandled": {{"reason": "input", "explanation": "the part is not installed"}},
-        "options": [f"install the {{part}} part"],
-        "recommendation": "",
-        "causes": [],
-    }}}}))
+    print(json.dumps({{"error": part_missing(ABSENT[words[0]], "commands", words[0])}}))
     sys.exit(1)
 os.environ["PYTHONPATH"] = {source!r}
 os.execv(sys.executable, [sys.executable, "-m", "concorde", *words])

@@ -18,7 +18,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from concorde.kernel.errors import ERROR_SCHEMA
-from concorde.distribution.install import TRACES
+from tests.concorde.support.ignored import TRACES
 from concorde.kernel.locking import workspace_lock
 from concorde.spec.schema import validate
 from concorde.kernel.refusal import KernelError
@@ -792,9 +792,7 @@ class MergeTests(unittest.TestCase):
         held_during_wait = []
 
         def hold():
-            with workspace_lock(
-                store.concorde(self.root), "t1", "run r-1 (delivery)"
-            ):
+            with workspace_lock(store.concorde(self.root), "t1", "run r-1 (delivery)"):
                 taken.set()
                 release.wait(10)
                 # The merge is waiting now; other tasks' merges could take the merge lock.
@@ -818,9 +816,7 @@ class MergeTests(unittest.TestCase):
         self.project.open_task("t1")
         self.deliver()
         before, record = self.head(), store.load_task(self.root, "t1")
-        with workspace_lock(
-            store.concorde(self.root), "t1", "run r-1 (delivery)"
-        ):
+        with workspace_lock(store.concorde(self.root), "t1", "run r-1 (delivery)"):
             merged = self.refusal(
                 "merge", "t1", "--wait", "0.3", "--check", python("pass")
             )

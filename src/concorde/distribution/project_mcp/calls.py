@@ -8,10 +8,15 @@ as it is at that moment, its ``.concorde/bin/concorde`` or, in Concorde's source
 that answers the next call. The call's arguments and the session's provenance go to that process as
 one JSON object on its standard input, and its last line of standard output is the answer.
 
-A wait registered with a channel is ``concorde task wait …`` of the primary worktree, run as a
-child that dies with the server, whose printed answer or refusal becomes the channel event. A merge
-is the very process the call started: having answered, it replaced itself with
-``concorde task merge``, so the server reaps it and reports its exit status.
+A tool whose registration names the session's worktree, such as ``workflow_step``, runs the
+``concorde`` of the worktree the session started in instead. How each tool is served, and the
+server's instructions, come from ``concorde project-mcp --tools`` of the current code.
+
+A wait a tool registered for a channel (its answer's ``watch``), such as ``concorde task wait …`` of
+the primary worktree, runs as a child that dies with the server, whose printed answer or refusal
+becomes the channel event. The long work a ``long_work`` tool starts, such as a merge, is the very
+process the call started: having answered, it replaced itself with the work's command, so the
+server reaps it and reports its exit status as the event the answer's ``work`` names.
 """
 
 from __future__ import annotations
@@ -25,8 +30,8 @@ import tempfile
 import threading
 from pathlib import Path
 
-from ...kernel import errors
-from .tools import ACTOR, STEP_GRACE, STEP_WAIT, Refusal, concorde_of, digest, listing
+from .. import formats
+from .tools import ACTOR, INSTRUCTIONS, Refusal
 
 # How long an ordinary call's process may take before the call is refused.
 CALL_LIMIT = 300
@@ -44,6 +49,39 @@ TIED = (
     "    sys.exit(0)\n"
     "os.execvp(sys.argv[2], sys.argv[2:])\n"
 )
+
+
+def concorde_of(worktree: Path) -> tuple[list[str], dict]:
+    """The worktree's own ``concorde`` command line and the environment to run it with: its
+    installed command, or its checkout's script, or else this package itself."""
+    environment = dict(os.environ)
+    installed = Path(worktree) / ".concorde/bin/concorde"
+    if installed.is_file():
+        return [str(installed)], environment
+    script = Path(worktree) / "scripts/concorde.py"
+    if script.is_file():
+        return [sys.executable, str(script)], environment
+    # This package itself: make it importable for the child.
+    environment["PYTHONPATH"] = os.pathsep.join(
+        [str(Path(__file__).resolve().parents[3])]
+        + ([environment["PYTHONPATH"]] if environment.get("PYTHONPATH") else [])
+    )
+    return [sys.executable, "-m", "concorde"], environment
+
+
+def toplevel(folder: Path) -> Path | None:
+    """The worktree ``folder`` lies in, or None outside a Git worktree."""
+    try:
+        found = subprocess.run(
+            ["git", "-C", str(folder), "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return Path(found.stdout.strip()) if found.returncode == 0 else None
 
 
 def last_answer(text: str) -> dict | None:
@@ -86,6 +124,9 @@ class Calls:
         self.watched: list[subprocess.Popen] = []
         self.closing = False
         self.listed: str | None = None
+        # How each tool is served, from the last listing: worktree, long_work and threaded.
+        self.serving: dict[str, dict] | None = None
+        self.instructions = INSTRUCTIONS
         self._runtime: Path | None = None
 
     def runtime(self) -> Path:
@@ -95,14 +136,17 @@ class Calls:
             self._runtime = Path(tempfile.mkdtemp(prefix="concorde-project-mcp-"))
         return self._runtime
 
-    def command(self, *words: str) -> tuple[list[str], dict]:
-        command, environment = concorde_of(self.primary)
+    def command(
+        self, *words: str, worktree: Path | None = None
+    ) -> tuple[list[str], dict]:
+        command, environment = concorde_of(worktree or self.primary)
         return [*command, *words], environment
 
     # --- the tool listing -------------------------------------------------------------------
 
-    def tools(self) -> list[dict]:
-        """The tools of the current code, or this server's own when its process gives none."""
+    def describe(self) -> dict | None:
+        """What the current code's ``concorde project-mcp --tools`` prints, or None when its
+        process gives nothing readable."""
         argv, environment = self.command("project-mcp", "--tools")
         try:
             done = subprocess.run(
@@ -116,13 +160,32 @@ class Calls:
                 check=False,
             )
             value = json.loads(done.stdout)
-            tools = value["tools"]
-            if not isinstance(tools, list):
+            if not isinstance(value["tools"], list) or not isinstance(
+                value["serving"], dict
+            ):
                 raise TypeError("no list of tools")
         except (OSError, subprocess.TimeoutExpired, ValueError, KeyError, TypeError):
-            tools = listing()
-        self.listed = digest(tools)
-        return tools
+            return None
+        return value
+
+    def tools(self) -> list[dict]:
+        """The tools of the current code, none when its process gives none."""
+        value = self.describe()
+        if value is None:
+            self.listed = None
+            return []
+        self.listed = value["digest"]
+        self.serving = value["serving"]
+        self.instructions = value.get("instructions") or INSTRUCTIONS
+        return value["tools"]
+
+    def served(self, name: str) -> dict:
+        """How the tool ``name`` is served, as the current code's listing says."""
+        if self.serving is None or name not in self.serving:
+            self.tools()
+        return (self.serving or {}).get(
+            name, {"worktree": "primary", "long_work": False, "threaded": False}
+        )
 
     # --- calls ------------------------------------------------------------------------------
 
@@ -135,14 +198,16 @@ class Calls:
             "session": self.session,
             "channel": self.channel,
         }
-        if name == "task_merge":
-            reply = self.merge(name, envelope)
+        served = self.served(name)
+        worktree = (
+            (toplevel(self.where) or self.primary)
+            if served["worktree"] == "session"
+            else self.primary
+        )
+        if served["long_work"]:
+            reply = self.long_work(name, envelope)
         else:
-            limit = CALL_LIMIT
-            if name == "workflow_step":
-                wait = arguments.get("wait") if isinstance(arguments, dict) else None
-                limit = (wait if isinstance(wait, int) else STEP_WAIT) + 2 * STEP_GRACE
-            reply = self.run(name, envelope, limit)
+            reply = self.run(name, envelope, CALL_LIMIT, worktree)
         if self.listed is not None and reply.get("tools") not in (None, self.listed):
             # The session was given other tools than the current code's: it lists them again.
             self.listed = reply["tools"]
@@ -154,16 +219,17 @@ class Calls:
             value = self.start_wait(name, value, reply["watch"])
         return value
 
-    def failed(self, name: str, argv: list[str], detail: str) -> Refusal:
+    def failed(
+        self, name: str, argv: list[str], detail: str, where: Path | None = None
+    ) -> Refusal:
         return Refusal(
-            errors.link(
-                "component",
+            formats.link(
                 f"{ACTOR} ({name})",
                 "call_failed",
-                f"`{shlex.join(argv)}` in {self.primary} {detail}",
+                f"`{shlex.join(argv)}` in {where or self.primary} {detail}",
                 reason="environment",
-                explanation="the server answers only with the answer of the primary worktree's "
-                "current Concorde, which gave none",
+                explanation="the server answers only with the answer of the current Concorde, "
+                "which gave none",
                 options=[
                     (
                         "run a `concorde` command in the primary worktree from Bash to see "
@@ -174,12 +240,14 @@ class Calls:
             )
         )
 
-    def run(self, name: str, envelope: dict, limit: float) -> dict:
-        argv, environment = self.command("project-mcp", "--call", name)
+    def run(self, name: str, envelope: dict, limit: float, worktree: Path) -> dict:
+        argv, environment = self.command(
+            "project-mcp", "--call", name, worktree=worktree
+        )
         try:
             done = subprocess.run(
                 argv,
-                cwd=self.primary,
+                cwd=worktree,
                 env=environment,
                 input=json.dumps(envelope, ensure_ascii=False),
                 capture_output=True,
@@ -189,10 +257,15 @@ class Calls:
             )
         except subprocess.TimeoutExpired:
             raise self.failed(
-                name, argv, f"gave no answer within {limit:g} seconds and was stopped"
+                name,
+                argv,
+                f"gave no answer within {limit:g} seconds and was stopped",
+                worktree,
             ) from None
         except OSError as error:
-            raise self.failed(name, argv, f"could not be started: {error}") from None
+            raise self.failed(
+                name, argv, f"could not be started: {error}", worktree
+            ) from None
         reply = last_answer(done.stdout)
         if reply is None:
             output = (done.stderr or done.stdout).strip()[-2000:] or "(no output)"
@@ -200,22 +273,22 @@ class Calls:
                 name,
                 argv,
                 f"exited with status {done.returncode} and printed no answer: {output}",
+                worktree,
             )
         return reply
 
-    # --- merges -----------------------------------------------------------------------------
+    # --- long work ---------------------------------------------------------------------------
 
-    def merge(self, name: str, envelope: dict) -> dict:
-        """The answer of a ``task_merge`` call, whose process, once it answered that it started the
-        merge, is the merge, as a process of its own session that outlives the server."""
-        arguments = envelope.get("arguments")
-        task = arguments.get("task") if isinstance(arguments, dict) else None
+    def long_work(self, name: str, envelope: dict) -> dict:
+        """The answer of a call of a ``long_work`` tool, such as ``task_merge``, whose process,
+        once it answered that it started the work, is the work, as a process of its own session
+        that outlives the server."""
         runtime = self.runtime()
         with self.lock:
             number = len(list(runtime.glob("*.log"))) + 1
-            messages = runtime / f"{number}-merge-{task}.log"
+            messages = runtime / f"{number}-{name}.log"
             messages.touch()
-        envelope = {**envelope, "merge": {"call": messages.as_posix()}}
+        envelope = {**envelope, "long_work": {"call": messages.as_posix()}}
         argv, environment = self.command("project-mcp", "--call", name)
         try:
             with messages.open("wb") as err:
@@ -237,11 +310,11 @@ class Calls:
             process.stdin.close()
         except OSError:
             pass
-        # The answer ends when the process exits or, having started the merge, became it.
+        # The answer ends when the process exits or, having started the work, became it.
         text = process.stdout.read().decode("utf-8", "replace")
         process.stdout.close()
         reply = last_answer(text)
-        if reply is None or "error" in reply:
+        if reply is None or "error" in reply or not isinstance(reply.get("work"), dict):
             process.wait()
             if reply is None:
                 try:
@@ -255,24 +328,23 @@ class Calls:
                     f"{said or '(no output)'}",
                 )
             return reply
-        started = reply["value"]["started"]
-        self.reap(
-            process, str(task), Path(started["output"]), Path(started["messages"])
-        )
+        self.reap(process, reply.pop("work"))
         return reply
 
-    def reap(self, process, task: str, output: Path, messages: Path) -> None:
+    def reap(self, process, work: dict) -> None:
         def reaped():
             code = process.wait()
             if not self.channel or self.closing:
                 return
-            found = output, messages
-            if not output.is_file():
-                # The close moved the task, with the attempt's folder, to the history.
-                found = self.attempt_files(task) or found
-            output_now, messages_now = found
+            output, messages = Path(work["output"]), Path(work["messages"])
+            if not output.is_file() and work.get("locate"):
+                # The work moved its files, as a close moves a task with the attempt's folder
+                # to the history: the current code finds them where they are now.
+                found = self.located(work["locate"])
+                if found is not None:
+                    output, messages = found
             try:
-                text = output_now.read_text(encoding="utf-8", errors="replace").strip()
+                text = output.read_text(encoding="utf-8", errors="replace").strip()
             except OSError:
                 text = ""
             try:
@@ -287,28 +359,27 @@ class Calls:
             body = (
                 text
                 if len(text) <= CUT
-                else f"{text[:CUT]}\n…(cut; the whole output is in {output_now})"
+                else f"{text[:CUT]}\n…(cut; the whole output is in {output})"
             )
             self.notify(
-                f"Concorde: `concorde task merge {task}` ended with exit status {code} "
-                f"({status}). Its output ({output_now}, errors in {messages_now}):\n{body}",
+                f"Concorde: `{work['command']}` ended with exit status {code} "
+                f"({status}). Its output ({output}, errors in {messages}):\n{body}",
                 {
-                    "event": "merge_ended",
-                    "task": task,
+                    **work.get("meta", {}),
+                    "event": work.get("event", "work_ended"),
                     "exit_code": str(code),
                     "status": status,
                 },
             )
 
-        threading.Thread(target=reaped, name=f"merge {task}", daemon=True).start()
+        threading.Thread(
+            target=reaped, name=f"work {work['command']}", daemon=True
+        ).start()
 
-    def attempt_files(self, task: str) -> tuple[Path, Path] | None:
-        """The output files of the task's latest merge attempt where they are now, as
-        ``concorde task wait <task> --merge`` of the current code finds them; None when it
-        cannot tell."""
-        argv, environment = self.command(
-            "task", "wait", task, "--merge", "--timeout", "30"
-        )
+    def located(self, words: list[str]) -> tuple[Path, Path] | None:
+        """The output files of a long work where they are now, as the current code's
+        ``concorde <words>`` prints them under ``attempt``; None when it cannot tell."""
+        argv, environment = self.command(*words)
         try:
             done = subprocess.run(
                 argv,
@@ -366,7 +437,7 @@ class Calls:
                 link = answer["error"]
                 self.notify(
                     f"Concorde: wait {identity} for {description} ended without it: "
-                    f"{errors.render(link)}",
+                    f"{formats.render(link)}",
                     {**meta, "event": "wait_failed", "code": str(link.get("code"))},
                 )
             elif answer is not None and process.returncode == 0:
@@ -384,7 +455,7 @@ class Calls:
                 ).link
                 self.notify(
                     f"Concorde: wait {identity} for {description} failed: "
-                    f"{errors.render(link)}",
+                    f"{formats.render(link)}",
                     {**meta, "event": "wait_failed", "code": link["code"]},
                 )
 

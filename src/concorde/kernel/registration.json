@@ -1,0 +1,32 @@
+{
+  "part": "kernel",
+  "module": "module.kernel",
+  "depends_on": [],
+  "loads": [],
+  "commands": [
+    {
+      "name": "trace",
+      "entry": "tracing.command:main",
+      "output": "own"
+    }
+  ],
+  "mcp_tools": [],
+  "mcp_definitions": null,
+  "mcp_instructions": null,
+  "typed_types": [],
+  "guidance": null,
+  "renders": null,
+  "install": {
+    "files": [],
+    "defaults": {},
+    "gitignore": [
+      ".concorde/locks/"
+    ],
+    "permissions": [],
+    "programs": [],
+    "prepare": null,
+    "bind": null
+  },
+  "idle_check": null,
+  "after_update": null
+}

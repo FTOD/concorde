@@ -1,4 +1,18 @@
-"""Stable command-line interface for installed Concorde Tools."""
+"""The ``concorde`` command, composed from the registrations of the installed parts.
+
+The command takes a global ``--project-root`` and one subcommand, which it routes to the entry of
+the installed part that registers it, after loading the installed parts' code that registers
+things (typed value types, trace roots, Operation and command definitions, workflows). An entry
+whose registration says ``output: envelope`` answers Spec core's shared envelope, which the command
+prints and exits with; any other prints its own output and answers its exit status. A command that
+a part of the package registers but the project has not installed is refused with ``part_missing``
+naming the part, and a command no part registers with a ``failed`` envelope.
+
+Distribution owns ``build``, ``protocol-manifest``, ``update`` and ``project-mcp``, and adds two
+steps of its own around Spec core's commands: ``spec-validation`` reports an update not validated
+yet and removes its mark after a result without other errors, and ``init --apply`` brings the
+glossary import of the installed ``CLAUDE.md`` block up to date.
+"""
 
 from __future__ import annotations
 
@@ -8,280 +22,79 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from ..spec.diagnostics import canonical_json, envelope, exit_code, tool_envelope
-from ..spec.model import Finding, ToolResult
+from . import formats, parts
+
+ACTOR = "concorde (Distribution)"
+# Distribution's own update mark, which spec-validation reports while it is there.
+UPDATE_STATE = ".concorde/update.json"
 
 
-class _Parser(argparse.ArgumentParser):
-    """Refuses a command line with argparse's own message instead of exiting."""
-
-    def error(self, message):
-        from ..spec.errors import SpecError
-
-        raise SpecError(
-            f"invalid command line: {self.prog}: {message}",
-            "invalid_input",
-            reason="the command line does not match the command's arguments",
-            remediation=f"correct the command line; see `{self.prog} --help`",
-        )
+# --- refusals of the command line -----------------------------------------------------------
 
 
-def create_parser() -> argparse.ArgumentParser:
-    parser = _Parser(prog="concorde")
-    parser.add_argument("--project-root", default=".")
-    subparsers = parser.add_subparsers(dest="tool", required=True, parser_class=_Parser)
-
-    validate = subparsers.add_parser("spec-validation")
-    validate.add_argument("target", nargs="?")
-    validate.add_argument("--format", choices=["json"], default="json")
-
-    registry = subparsers.add_parser("registry")
-    registry_mode = registry.add_mutually_exclusive_group(required=True)
-    registry_mode.add_argument("--write", action="store_true")
-    registry_mode.add_argument("--check", action="store_true")
-    registry.add_argument("--format", choices=["json"], default="json")
-
-    docsite = subparsers.add_parser("docsite")
-    docsite_mode = docsite.add_mutually_exclusive_group(required=True)
-    docsite_mode.add_argument("--propose", action="store_true")
-    docsite_mode.add_argument("--apply", action="store_true")
-    docsite.add_argument("--proposal")
-    docsite.add_argument("--title")
-    docsite.add_argument("--repository")
-    docsite.add_argument("--url")
-    docsite.add_argument("--base-url")
-    docsite.add_argument("--github-pages", action="store_true")
-    docsite.add_argument("--format", choices=["json"], default="json")
-
-    grant = subparsers.add_parser("grant")
-    grant.add_argument("--root")
-    grant.add_argument("--modules", required=True)
-    grant.add_argument("--type", dest="task_type", required=True)
-    grant.add_argument("--format", choices=["json"], default="json")
-
-    subparsers.add_parser("spec-mcp")
-
-    init = subparsers.add_parser("init")
-    init_mode = init.add_mutually_exclusive_group(required=True)
-    init_mode.add_argument("--propose", action="store_true")
-    init_mode.add_argument("--apply", action="store_true")
-    init.add_argument("--name")
-    init.add_argument("--target", default="module.project")
-    init.add_argument(
-        "--python",
-        help="the project's own interpreter, which its checks run as {python} "
-        "(default: .venv/bin/python or venv/bin/python when present)",
+def part_missing(part: str, kind: str, name: str) -> dict:
+    """The link refusing a command or MCP tool of a part the project has not installed."""
+    what = f"`concorde {name}`" if kind == "commands" else f"the MCP tool {name}"
+    return formats.link(
+        ACTOR,
+        "part_missing",
+        f"{what} needs the {part} part, which this project has not installed",
+        reason="input",
+        explanation="Distribution offers only the commands and tools of the installed parts; "
+        "installing a part is the developer's choice",
+        options=[
+            f"install the {part} part into the project: `concorde update --parts {part}`, or "
+            f"`python3 <Concorde checkout>/scripts/install-concorde.py <project> --parts {part}`",
+            f"do without {what}: the {part} part is optional for the parts installed",
+        ],
     )
-    init.add_argument("--proposal")
-    init.add_argument("--format", choices=["json"], default="json")
-
-    build = subparsers.add_parser("build")
-    build.add_argument("--check", action="store_true")
-    build.add_argument("--format", choices=["json"], default="json")
-
-    protocol_manifest = subparsers.add_parser("protocol-manifest")
-    protocol_manifest.add_argument("--write", action="store_true")
-    protocol_manifest.add_argument("--bind-project", action="store_true")
-    protocol_manifest.add_argument("--format", choices=["json"], default="json")
-
-    return parser
 
 
-def dispatch(arguments: argparse.Namespace) -> ToolResult:
-    root = Path(arguments.project_root)
-    if arguments.tool == "docsite":
-        from ..spec.views.docsite_scaffold import apply_docsite, propose_docsite
-
-        if arguments.apply:
-            if not arguments.proposal:
-                return ToolResult(
-                    "docsite",
-                    ".",
-                    "invalid",
-                    findings=(
-                        Finding(
-                            "CONCORDE-DOCSITE-008",
-                            "error",
-                            "docsite/site.json",
-                            "--apply requires --proposal.",
-                            "Pass a project-relative accepted proposal JSON file.",
-                        ),
-                    ),
-                )
-            return apply_docsite(root, arguments.proposal)
-        return propose_docsite(
-            root,
-            title=arguments.title,
-            repository=arguments.repository,
-            url=arguments.url,
-            base_url=arguments.base_url,
-            github_pages=arguments.github_pages,
-        )
-    if arguments.tool == "build":
-        from .build import BuildError, check_build, write_build
-
-        try:
-            if arguments.check:
-                current, differences = check_build(root)
-                if current:
-                    return ToolResult(
-                        "build", ".", "success", result={"differences": []}
-                    )
-                return ToolResult(
-                    "build",
-                    ".",
-                    "invalid",
-                    findings=(
-                        Finding(
-                            "CONCORDE-BUILD-001",
-                            "error",
-                            "generated/",
-                            f"Build outputs are stale or missing: {', '.join(differences)}",
-                            "Run `python3 scripts/concorde.py build` to refresh the generated outputs.",
-                        ),
-                    ),
-                    result={"differences": list(differences)},
-                )
-            result = write_build(root)
-            artifacts = tuple(output.path for output in result.outputs) + (
-                "generated/build-manifest.json",
-            )
-            return ToolResult(
-                "build",
-                ".",
-                "success",
-                artifacts=artifacts,
-                result={"outputs": len(result.outputs)},
-            )
-        except BuildError as error:
-            return ToolResult(
-                "build",
-                ".",
-                "invalid",
-                findings=(
-                    Finding(
-                        "CONCORDE-BUILD-001",
-                        "error",
-                        "prompts",
-                        str(error),
-                        "Repair the prompt, role, or operation guidance source and rebuild.",
-                    ),
-                ),
-            )
-    if arguments.tool == "grant":
-        from ..spec.grants import grant_command
-
-        return grant_command(
-            Path(arguments.root) if arguments.root else root,
-            arguments.modules,
-            arguments.task_type,
-        )
-    if arguments.tool == "init":
-        import json as json_module
-
-        from ..spec.errors import SpecError, system_cause
-        from ..spec.initialize import initialize
-
-        package = Path(__file__).resolve().parents[3]
-        if arguments.apply:
-            if not arguments.proposal:
-                raise SpecError(
-                    "init --apply requires --proposal <file>",
-                    "invalid_input",
-                    "--proposal",
-                )
-            try:
-                proposed = json_module.loads(
-                    (root / arguments.proposal).read_text(encoding="utf-8")
-                )
-            except (OSError, ValueError) as error:
-                raise SpecError(
-                    f"the proposal file {arguments.proposal} cannot be read as JSON",
-                    "invalid_input",
-                    "--proposal",
-                    path=arguments.proposal,
-                    causes=[system_cause(error, path=arguments.proposal)],
-                ) from error
-            if not isinstance(proposed, dict) or not {
-                "proposal",
-                "proposal_digest",
-            } <= set(proposed):
-                raise SpecError(
-                    f"the proposal file {arguments.proposal} must hold the proposal and its "
-                    "proposal_digest, as `concorde init --propose` prints them under result",
-                    "invalid_proposal",
-                    "--proposal",
-                    path=arguments.proposal,
-                )
-            data = {
-                "action": "apply",
-                "proposal": proposed["proposal"],
-                "proposal_digest": proposed["proposal_digest"],
-            }
-        else:
-            if not arguments.name:
-                raise SpecError(
-                    "init --propose requires --name <project name>",
-                    "invalid_input",
-                    "--name",
-                )
-            data = {
-                "action": "propose",
-                "name": arguments.name,
-                "target_id": arguments.target,
-                **({"python": arguments.python} if arguments.python else {}),
-            }
-        result = initialize(root, package, data)
-        if data["action"] == "apply":
-            # The first glossary now exists: the installed CLAUDE.md block imports it, so every
-            # Claude Code session starts with the project's terms. Spec core's initialization
-            # never writes CLAUDE.md; this is Distribution's own step after it succeeded.
-            from .install import CLAUDE_MD, refresh_glossary
-
-            try:
-                refresh_glossary(root)
-            except (OSError, UnicodeError) as error:
-                return ToolResult(
-                    "init",
-                    ".",
-                    "failed",
-                    result=result,
-                    error=SpecError(
-                        f"the project's Specs were initialized, but the import of its glossary "
-                        f"could not be added to the Concorde block of {CLAUDE_MD}",
-                        "guidance_failed",
-                        path=CLAUDE_MD,
-                        reason="initialization succeeded and is complete; only Distribution's "
-                        "amendment of the installed guidance after it failed",
-                        remediation="repair what the cause names, then run `concorde update` or "
-                        "the installer again, which installs the block with the glossary "
-                        "import; never run `init --apply` again, which refuses an initialized "
-                        "project",
-                        causes=[system_cause(error, path=CLAUDE_MD)],
-                    ),
-                )
-        return ToolResult("init", ".", "success", result=result)
-    if arguments.tool == "registry":
-        from ..spec.registry import registry_command
-
-        return registry_command(root, write=arguments.write)
-    from ..spec.validation import validate_repository
-
-    return with_update_state(root, validate_repository(root, arguments.target))
+def _refuse(link: dict) -> int:
+    """Print a refusal of the command line as ``{"error": <link>}`` and answer status 1."""
+    sys.stdout.write(json.dumps({"error": link}, indent=2, ensure_ascii=False) + "\n")
+    return 1
 
 
-def with_update_state(root: Path, result):
-    """A validation of a project Concorde was updated in: while `concorde update`'s state is
+def _unknown(words: list[str], offered: list[str]) -> int:
+    """One ``failed`` envelope for a command line naming no command of the package."""
+    named = words[0] if words else None
+    message = (
+        f"invalid command line: concorde has no command {named!r}"
+        if named
+        else "invalid command line: no command named"
+    )
+    payload = formats.envelope(
+        "concorde",
+        "failed",
+        error=formats.error_record(
+            "invalid_input",
+            message,
+            reason="the command line names no command of an installed part",
+            remediation=f"run one of: {', '.join(sorted(offered))}",
+        ),
+    )
+    sys.stdout.write(formats.canonical_json(payload))
+    return formats.exit_code("failed")
+
+
+def _usage(offered: list[str]) -> str:
+    return (
+        "usage: concorde [--project-root ROOT] <command> ...\n\n"
+        "commands of the installed parts:\n  " + "\n  ".join(sorted(offered)) + "\n"
+    )
+
+
+# --- Distribution's steps around Spec core's commands -----------------------------------------
+
+
+def with_update_state(root: Path, payload: dict) -> dict:
+    """A validation of a project Concorde was updated in: while `concorde update`'s mark is
     there, the project is Concorde unvalidated, which is an error; the first validation that
-    passes removes the state. Only the update sets it, so the project's own changes never do."""
-    from dataclasses import replace
-
-    from ..spec.model import Finding
-    from .install import UPDATE_STATE
-
+    passes removes the mark. Only the update sets it, so the project's own changes never do."""
     path = root / UPDATE_STATE
     if not path.is_file():
-        return result
+        return payload
     try:
         state = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -295,43 +108,280 @@ def with_update_state(root: Path, result):
         f"from {named(state.get('from'), commits.get('from'))} "
         f"to {named(state.get('to'), commits.get('to'))}"
     )
-    if result.status == "success":
+    if payload["status"] == "success":
         path.unlink(missing_ok=True)
-        return replace(
-            result,
-            findings=tuple(result.findings)
-            + (
-                Finding(
+        return formats.with_findings(
+            payload,
+            [
+                formats.finding(
                     "CONCORDE-UPDATE-002",
                     "info",
                     UPDATE_STATE,
                     f"the update of Concorde {versions} is validated: the project validates "
                     "with the new Concorde",
                     "Nothing to do.",
-                ),
-            ),
+                )
+            ],
         )
-    return replace(
-        result,
-        status="invalid",
-        findings=tuple(result.findings)
-        + (
-            Finding(
+    return formats.with_findings(
+        payload,
+        [
+            formats.finding(
                 "CONCORDE-UPDATE-001",
                 "error",
                 UPDATE_STATE,
                 f"Concorde was updated {versions} and the project has not validated since: "
                 "it is Concorde unvalidated until the other findings are repaired",
                 "Repair the other findings and run `concorde spec-validation` again.",
+            )
+        ],
+        status="invalid",
+    )
+
+
+def with_glossary_import(root: Path, payload: dict) -> dict:
+    """After an ``init --apply`` that succeeded the first glossary exists: the installed
+    CLAUDE.md block imports it, so every Claude Code session starts with the project's terms.
+    Spec core's initialization never writes CLAUDE.md; this is Distribution's own step."""
+    from .install import CLAUDE_MD, refresh_glossary
+
+    if payload["status"] != "success":
+        return payload
+    try:
+        refresh_glossary(root)
+    except (OSError, UnicodeError) as error:
+        return {
+            **payload,
+            "status": "failed",
+            "error": formats.error_record(
+                "guidance_failed",
+                f"the project's Specs were initialized, but the import of its glossary could "
+                f"not be added to the Concorde block of {CLAUDE_MD}",
+                reason="initialization succeeded and is complete; only Distribution's "
+                "amendment of the installed guidance after it failed",
+                remediation="repair what the cause names, then run `concorde update` or the "
+                "installer again, which installs the block with the glossary import; never run "
+                "`init --apply` again, which refuses an initialized project",
+                path=CLAUDE_MD,
+                causes=[formats.system_cause(error, CLAUDE_MD)],
             ),
+        }
+    return payload
+
+
+# --- Distribution's own commands --------------------------------------------------------------
+
+
+class _Parser(argparse.ArgumentParser):
+    """Refuses a command line with argparse's own message instead of exiting."""
+
+    def error(self, message):
+        raise _CommandLine(f"invalid command line: {self.prog}: {message}")
+
+
+class _CommandLine(ValueError):
+    pass
+
+
+def _command_line(tool: str, message: str) -> dict:
+    return formats.envelope(
+        tool,
+        "failed",
+        error=formats.error_record(
+            "invalid_input",
+            message,
+            reason="the command line does not match the command's arguments",
+            remediation=f"correct the command line; see `concorde {tool} --help`",
         ),
     )
 
 
-def update_main(words: list[str]) -> int:
+def _failed(tool: str, error: BaseException) -> dict:
+    return formats.envelope(
+        tool,
+        "failed",
+        error=formats.error_record(
+            "unexpected_error",
+            f"{type(error).__name__}: {error}",
+            reason="an unexpected error ended the command",
+            remediation="read the message, repair its cause and run the command again",
+        ),
+    )
+
+
+def build(words, root) -> dict:
+    """``concorde build [--check]``: render or check the generated files."""
+    from .build import BuildError, check_build, write_build
+
+    parser = _Parser(prog="concorde build")
+    parser.add_argument("--check", action="store_true")
+    parser.add_argument("--format", choices=["json"], default="json")
+    try:
+        arguments = parser.parse_args(list(words))
+    except _CommandLine as error:
+        return _command_line("build", str(error))
+    root = Path(root)
+    try:
+        if arguments.check:
+            current, differences = check_build(root)
+            if current:
+                return formats.envelope("build", "success", result={"differences": []})
+            return formats.envelope(
+                "build",
+                "invalid",
+                findings=[
+                    formats.finding(
+                        "CONCORDE-BUILD-001",
+                        "error",
+                        "generated/",
+                        f"Build outputs are stale or missing: {', '.join(differences)}",
+                        "Run `python3 scripts/concorde.py build` to refresh the generated "
+                        "outputs.",
+                    )
+                ],
+                result={"differences": list(differences)},
+            )
+        result = write_build(root)
+        return formats.envelope(
+            "build",
+            "success",
+            artifacts=[output.path for output in result.outputs]
+            + ["generated/build-manifest.json"],
+            result={"outputs": len(result.outputs)},
+        )
+    except BuildError as error:
+        return formats.envelope(
+            "build",
+            "invalid",
+            findings=[
+                formats.finding(
+                    "CONCORDE-BUILD-001",
+                    "error",
+                    "prompts",
+                    str(error),
+                    "Repair the prompt, workflow or part registration source and rebuild.",
+                )
+            ],
+        )
+    except Exception as error:  # noqa: BLE001 -- the command boundary always answers an envelope
+        return _failed("build", error)
+
+
+def protocol_manifest(words, root) -> dict:
+    """``concorde protocol-manifest [--write] [--bind-project]``: reconcile the tracked Protocol
+    manifest with the current build, as Distribution's Spec describes.
+
+    With neither flag this only reports whether ``protocol/manifest.json`` matches the current
+    ``generated/protocol/...`` build; ``--write`` accepts the current build's digests into the
+    tracked manifest; ``--bind-project`` binds ``.concorde/config.json``'s ``protocol`` to the
+    (possibly just rewritten) manifest's version and digest and refreshes this checkout's
+    Protocol copy.
+    """
+    from .build import (
+        PROTOCOL_MANIFEST_PATH,
+        BuildError,
+        recompute_protocol_manifest,
+        verify_fresh,
+    )
+    from .project_defaults import PROTOCOL_DIR, CopyError, binding, write_protocol_copy
+
+    parser = _Parser(prog="concorde protocol-manifest")
+    parser.add_argument("--write", action="store_true")
+    parser.add_argument("--bind-project", action="store_true")
+    parser.add_argument("--format", choices=["json"], default="json")
+    try:
+        arguments = parser.parse_args(list(words))
+    except _CommandLine as error:
+        return _command_line("protocol-manifest", str(error))
+    root = Path(root)
+    try:
+        verify_fresh(root)
+        updated = recompute_protocol_manifest(root)
+    except BuildError as error:
+        return formats.envelope(
+            "protocol-manifest",
+            "invalid",
+            findings=[
+                formats.finding(
+                    "CONCORDE-PROTOCOL-MANIFEST-001",
+                    "error",
+                    PROTOCOL_MANIFEST_PATH,
+                    str(error),
+                    "Run `python -m concorde build` to refresh generated/protocol/ outputs.",
+                )
+            ],
+        )
+    try:
+        manifest_path = root / PROTOCOL_MANIFEST_PATH
+        current = json.loads(manifest_path.read_text(encoding="utf-8"))
+        differences = [
+            item["path"]
+            for item, fresh in zip(current["assets"], updated["assets"], strict=True)
+            if item["digest"] != fresh["digest"]
+        ]
+        artifacts: list[str] = []
+        if arguments.write and differences:
+            manifest_path.write_text(json.dumps(updated, indent=2) + "\n")
+            artifacts.append(PROTOCOL_MANIFEST_PATH)
+        if arguments.bind_project:
+            # The source checkout has no installer run: bind the configuration to the current
+            # manifest and refresh its Protocol copy under .concorde/protocol/ from the build.
+            config_path = root / ".concorde/config.json"
+            config = json.loads(config_path.read_text(encoding="utf-8"))
+            config["protocol"] = binding(manifest_path.read_bytes())
+            config_path.write_text(json.dumps(config, indent=2) + "\n")
+            artifacts.append(".concorde/config.json")
+            try:
+                write_protocol_copy(root, root)
+            except CopyError as error:
+                return formats.envelope(
+                    "protocol-manifest",
+                    "failed",
+                    artifacts=artifacts,
+                    result={"differences": differences},
+                    error=formats.error_record(
+                        error.code,
+                        str(error),
+                        reason="the Protocol copy would not match the current build",
+                        remediation="accept the build's digests with `--write --bind-project`",
+                        path=PROTOCOL_DIR,
+                    ),
+                )
+            artifacts.append(PROTOCOL_DIR + "/")
+    except Exception as error:  # noqa: BLE001 -- the command boundary always answers an envelope
+        return _failed("protocol-manifest", error)
+    if differences and not arguments.write:
+        return formats.envelope(
+            "protocol-manifest",
+            "invalid",
+            artifacts=artifacts,
+            findings=[
+                formats.finding(
+                    "CONCORDE-PROTOCOL-MANIFEST-001",
+                    "error",
+                    PROTOCOL_MANIFEST_PATH,
+                    "tracked Protocol manifest digests differ from the current build: "
+                    f"{differences}",
+                    "Run `python -m concorde protocol-manifest --write` to accept the current "
+                    "build's digests.",
+                )
+            ],
+            result={"differences": differences},
+        )
+    return formats.envelope(
+        "protocol-manifest",
+        "success",
+        artifacts=artifacts,
+        result={"differences": differences},
+    )
+
+
+def update_main(words, root=None) -> int:
     """`concorde update [--from <checkout>]`: run the installer of the Concorde checkout this
     project was installed from (or ``--from``) in update mode."""
     import subprocess
+
+    from .install import refusal
 
     parser = argparse.ArgumentParser(
         prog="concorde update",
@@ -341,14 +391,14 @@ def update_main(words: list[str]) -> int:
         "may load partly replaced code.",
     )
     parser.add_argument("--from", dest="source")
-    parser.add_argument("--project-root", default=".")
-    arguments = parser.parse_args(words)
-    root = Path(arguments.project_root).resolve()
+    parser.add_argument("--project-root", default=str(root or "."))
+    arguments = parser.parse_args(list(words))
+    project = Path(arguments.project_root).resolve()
     try:
-        receipt = json.loads((root / ".concorde/install.json").read_text())
+        receipt = json.loads((project / ".concorde/install.json").read_text())
     except (OSError, ValueError) as error:
         receipt = {}
-        problem = f"{root / '.concorde/install.json'} cannot be read ({error})"
+        problem = f"{project / '.concorde/install.json'} cannot be read ({error})"
     else:
         problem = None
     source = arguments.source or receipt.get("source")
@@ -359,8 +409,6 @@ def update_main(words: list[str]) -> int:
             if not source
             else f"{installer} does not exist"
         )
-        from .install import refusal
-
         sys.stdout.write(
             json.dumps(
                 {
@@ -375,209 +423,98 @@ def update_main(words: list[str]) -> int:
             + "\n"
         )
         return 1
-    command = [sys.executable, str(installer), str(root), "--update"]
+    command = [sys.executable, str(installer), str(project), "--update"]
     return subprocess.run(command, check=False).returncode
 
 
-def _protocol_manifest(arguments: argparse.Namespace) -> ToolResult:
-    """Recompute tracked Protocol asset digests from the current build (developer-only).
-
-    With neither flag this only reports whether ``protocol/manifest.json`` matches the current
-    ``generated/protocol/...`` build; ``--write`` accepts the current build's digests into the tracked manifest;
-    ``--bind-project`` pins ``.concorde/config.json``'s ``protocol`` binding to the (possibly just
-    rewritten) manifest's version and digest.
-    """
-
-    import json as json_module
-
-    from ..spec.repository import digest as digest_bytes
-    from .build import (
-        PROTOCOL_MANIFEST_PATH,
-        BuildError,
-        recompute_protocol_manifest,
-        verify_fresh,
-    )
-
-    root = Path(arguments.project_root)
-    try:
-        verify_fresh(root)
-        updated = recompute_protocol_manifest(root)
-    except BuildError as error:
-        return ToolResult(
-            "protocol-manifest",
-            ".",
-            "invalid",
-            findings=(
-                Finding(
-                    "CONCORDE-PROTOCOL-MANIFEST-001",
-                    "error",
-                    PROTOCOL_MANIFEST_PATH,
-                    str(error),
-                    "Run `python -m concorde build` to refresh generated/protocol/ outputs.",
-                ),
-            ),
-        )
-    manifest_path = root / PROTOCOL_MANIFEST_PATH
-    current = json_module.loads(manifest_path.read_text(encoding="utf-8"))
-    differences = [
-        item["path"]
-        for item, fresh in zip(current["assets"], updated["assets"], strict=True)
-        if item["digest"] != fresh["digest"]
-    ]
-    artifacts: tuple[str, ...] = ()
-    if arguments.write and differences:
-        manifest_path.write_text(json_module.dumps(updated, indent=2) + "\n")
-        artifacts += (PROTOCOL_MANIFEST_PATH,)
-    if arguments.bind_project:
-        # The source checkout has no installer run: bind the configuration to the current manifest
-        # and refresh its Protocol copy under .concorde/protocol/ from the current build.
-        from .project_defaults import PROTOCOL_DIR, write_protocol_copy
-
-        config_path = root / ".concorde/config.json"
-        config = json_module.loads(config_path.read_text(encoding="utf-8"))
-        config["protocol"] = {
-            "version": updated["version"],
-            "digest": digest_bytes(manifest_path.read_bytes()),
-        }
-        config_path.write_text(json_module.dumps(config, indent=2) + "\n")
-        write_protocol_copy(root, root)
-        artifacts += (".concorde/config.json", PROTOCOL_DIR + "/")
-    if differences and not arguments.write:
-        return ToolResult(
-            "protocol-manifest",
-            ".",
-            "invalid",
-            artifacts=artifacts,
-            findings=(
-                Finding(
-                    "CONCORDE-PROTOCOL-MANIFEST-001",
-                    "error",
-                    PROTOCOL_MANIFEST_PATH,
-                    f"tracked Protocol manifest digests differ from the current build: {differences}",
-                    "Run `python -m concorde protocol-manifest --write` to accept the current build's digests.",
-                ),
-            ),
-            result={"differences": differences},
-        )
-    return ToolResult(
-        "protocol-manifest",
-        ".",
-        "success",
-        artifacts=artifacts,
-        result={"differences": differences},
-    )
+# --- routing ----------------------------------------------------------------------------------
 
 
-TOOLS = frozenset(
-    {
-        "spec-validation",
-        "registry",
-        "docsite",
-        "grant",
-        "spec-mcp",
-        "init",
-        "build",
-        "protocol-manifest",
-    }
-)
-
-
-def _failed(tool: str, error: BaseException) -> dict:
-    """The envelope of a command that raised, with Spec tooling's record of the error."""
-    from ..spec.errors import unexpected
-
-    return envelope(tool, ".", "failed", [], [], {}, unexpected(error))
-
-
-def load_definitions() -> None:
-    """Load the definitions the installed parts register with Execution's catalogs.
-
-    Until the parts give Distribution their registrations, loading Method's registering module is
-    what registers Concorde's Operations and execution commands."""
-    from ..method import registration  # noqa: F401
+def _global(words: list[str]) -> tuple[Path, list[str]]:
+    """The global ``--project-root`` and the words after it."""
+    root = Path(".")
+    while words and words[0].startswith("--project-root"):
+        if words[0] == "--project-root" and len(words) > 1:
+            root, words = Path(words[1]), words[2:]
+        elif words[0].startswith("--project-root="):
+            root, words = Path(words[0].split("=", 1)[1]), words[1:]
+        else:
+            break
+    return root, words
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = create_parser()
     words = list(sys.argv[1:] if argv is None else argv)
-    # Tasks, Execution, Workflows, Tracing, the project MCP server and the Issues command own
-    # their command lines and output; they print no Spec tooling envelope.
-    if words and words[0] == "task":
-        from ..coordination.tasks.cli import main as task_main
-
-        return task_main(words[1:])
-    if words and words[0] == "issues":
-        import runpy
-
-        script = Path(__file__).resolve().parents[3] / "scripts/issues.py"
-        return runpy.run_path(str(script))["main"](words[1:])
-    if words and words[0] == "workflow":
-        # A workflow step tells an execution command from an Operation by the command catalog.
-        load_definitions()
-        # The report names a workflow's last step from the catalog the parts register when their
-        # code loads; until the parts register with Distribution, loading Method's registering
-        # module is what registers the brownfield workflow.
-        from ..method import brownfield as _brownfield  # noqa: F401
-        from ..workflows.cli import main as workflow_main
-
-        return workflow_main(words[1:])
-    if words and words[0] == "project-mcp":
-        # The project MCP server owns standard input and output; it prints no envelope.
-        from .project_mcp.server import main as serve
-
-        return serve(words[1:])
-    if words and words[0] == "trace":
-        # Tracing reads only the trace roots the parts register when their code loads: Tasks'
-        # current tasks and history, Execution's unbound runs and lobby. Until the parts register
-        # with Distribution, loading their commands is what registers them.
-        from ..coordination.tasks import cli as _tasks  # noqa: F401
-        from ..execution import runner as _runner  # noqa: F401
-        from ..kernel.tracing.command import main as trace_main
-
-        return trace_main(words[1:])
-    if words and words[0] == "run":
-        load_definitions()
-        from ..execution.runner import run_main
-
-        return run_main("operation", None, words[1:])
-    if words and words[0] not in TOOLS and words[0] != "update":
-        load_definitions()
-    from ..execution.commands.catalog import COMMANDS
-
-    if words and words[0] in COMMANDS:
-        from ..execution.runner import run_main
-
-        return run_main("command", words[0], words[1:])
-    if words and words[0] == "update":
-        return update_main(words[1:])
-    requested = next((word for word in words if word in TOOLS), "spec-validation")
-    arguments: argparse.Namespace | None = None
+    root, words = _global(words)
     try:
-        try:
-            arguments = parser.parse_args(words)
-        except SystemExit as exit_:
-            # --help ends normally; a refused command line raises ValueError from the parser
-            # and still prints exactly one envelope rather than only argparse's usage text.
-            if exit_.code in (0, None):
-                raise
-            from ..spec.errors import SpecError
+        installed = parts.installed()
+    except parts.RegistrationError as error:
+        return _refuse(
+            formats.link(
+                ACTOR,
+                error.code,
+                str(error),
+                reason="input",
+                explanation="the command is composed from the part registrations, and one of "
+                "them cannot be served",
+                options=[
+                    "repair the registration and rebuild, or install Concorde again"
+                ],
+            )
+        )
+    commands = {
+        item["name"]: (registration, item)
+        for registration in installed.values()
+        for item in registration.data["commands"]
+    }
+    if words and words[0] in ("-h", "--help"):
+        sys.stdout.write(_usage(list(commands)))
+        return 0
+    if not words:
+        return _unknown(words, list(commands))
+    name, rest = words[0], words[1:]
+    found = commands.get(name)
+    if found is None:
+        owner = parts.owner_of("commands", name)
+        if owner is not None and owner not in installed:
+            return _refuse(part_missing(owner, "commands", name))
+        return _unknown(words, list(commands))
+    owners = sorted(
+        registration.part
+        for registration in installed.values()
+        if any(item["name"] == name for item in registration.data["commands"])
+    )
+    if len(owners) > 1:
+        return _refuse(
+            formats.link(
+                ACTOR,
+                "name_conflict",
+                f"the command {name} is registered by {' and '.join(owners)}",
+                reason="input",
+                explanation="two parts registering one name are never resolved by order",
+                options=["rebuild, which refuses the conflict, and install again"],
+            )
+        )
+    registration, command = found
+    if registration.part != "distribution":
+        parts.load(installed)
+    entry = registration.entry(command["entry"])
+    if command["output"] != "envelope":
+        return int(entry(rest, root) or 0)
+    payload = entry(rest, root)
+    if name == "spec-validation":
+        payload = with_update_state(root, payload)
+    elif name == "init" and "--apply" in rest:
+        payload = with_glossary_import(root, payload)
+    sys.stdout.write(formats.canonical_json(payload))
+    return formats.exit_code(payload["status"])
 
-            raise SpecError(
-                f"invalid command line: {' '.join(words)}", "invalid_input"
-            ) from None
-        if arguments.tool == "spec-mcp":
-            # The stdio MCP session owns standard output; it prints no envelope.
-            from ..spec.mcp.server import main as serve
 
-            return serve()
-        if arguments.tool == "protocol-manifest":
-            payload = tool_envelope(_protocol_manifest(arguments))
-            sys.stdout.write(canonical_json(payload))
-            return exit_code(payload["status"])
-        result = dispatch(arguments)
-        payload = tool_envelope(result)
-    except Exception as error:  # noqa: BLE001 -- command boundary always returns the normative envelope
-        tool = arguments.tool if arguments is not None else requested
-        payload = _failed(tool if tool in TOOLS else "spec-validation", error)
-    sys.stdout.write(canonical_json(payload))
-    return exit_code(payload["status"])
+__all__ = [
+    "build",
+    "main",
+    "part_missing",
+    "protocol_manifest",
+    "update_main",
+    "with_update_state",
+]

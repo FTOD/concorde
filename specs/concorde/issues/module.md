@@ -303,8 +303,8 @@ another session. Sessions discover recorded problems by reading `list` and `show
 
 The bookkeeping command is the sessions' interface. In an installed project it is
 `concorde issues` (`concorde` stands for `.concorde/bin/concorde`); in Concorde's source checkout it
-is `python3 scripts/concorde.py issues`, which routes to `python3 scripts/issues.py`. The issues
-part registers the same actions with the project MCP server as the tools `issue_list`,
+is `python3 scripts/concorde.py issues`, which routes to the issues part's command entry, the one
+`python3 scripts/issues.py` also runs. The issues part registers the same actions with the project MCP server as the tools `issue_list`,
 `issue_show`, `issue_check`, `issue_report`, `issue_close` and `issue_reopen`, which answer and
 refuse exactly as the command does; `recover` and `archive` are the command's alone. A session, the main agent or a [task session](../glossary.json#concept.task-session), uses
 those tools because they record the calling session as reporter and actor, which the command cannot
@@ -521,7 +521,9 @@ putback -> failed: putting back failed
 
 **The bookkeeping command** is the sessions' face of the store — `report`/`close`/`reopen` write,
 `recover` puts back, `archive` moves misplaced records, `list`/`show`/the store check read — kept in `src/concorde/issues/command.py` so that
-`scripts/issues.py` and the Issue tools share every answer and refusal. Where the spec part is
+its command line `src/concorde/issues/cli.py`, which `concorde issues` and `scripts/issues.py`
+run, and the Issue tools `src/concorde/issues/tools.py` share every answer and refusal; the issues
+part's [part registration](../glossary.json#concept.part-registration) names both. Where the spec part is
 installed it reads the [registry](../glossary.json#concept.registry) for which Modules exist, which
 is root, and which digest names a report's context; elsewhere a Module is a label. It supplies provenance rather than trusting report-file
 claims; the report's optional `origin` describes a separate, cross-project observation. An owner

@@ -16,9 +16,11 @@ under ``.concorde/tools/pi-runtime/``, which every pi worker runs in (workers ru
 worker configuration chooses Claude Code). The main agent and its task sessions are Claude Code
 sessions, so every rendered workflow is installed for Claude Code under ``.claude/workflows/``
 with the permission rules its step agents need in ``.claude/settings.json``.
-With ``develop`` it makes a develop install (see ``concorde.dogfooding.develop``): only from the
-clean primary worktree of a Concorde repository, with Dogfooding's guidance added to the skill and
-the ``CLAUDE.md`` block. It refuses a package whose build is stale and a project in which a
+With ``develop`` it makes a develop install through the check the package descriptor names under
+``develop`` (Dogfooding's): only from the clean primary worktree of a Concorde repository, with
+Dogfooding's guidance added to the skill and the ``CLAUDE.md`` block. It reaches the parts only
+through their registrations: the files, defaults, ignore rules and install services each part
+contributes, and the idle checks it asks before replacing anything. It refuses a package whose build is stale and a project in which a
 Concorde run is still running, and checks that ``uv`` and, when the pi runtime is still to be
 installed, ``npm`` are on ``PATH`` before it writes anything; it then fetches and verifies ``d2``
 before writing anything else, so only the installation of the pi runtime, the creation of the
@@ -39,19 +41,16 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
-from ..dogfooding.develop import DevelopError, develop_source, guidance
-from ..kernel.errors import link
-from ..spec.errors import SpecError
-from ..spec.initialize import bind_installation
-from ..kernel.tracing import layout, locks
-from ..spec.views.docsite_template import (
-    DocsiteTemplateError,
-    template_files,
-    verify_package_root,
-)
+from . import formats, parts
 from .build import BuildError, skill_path, verify_fresh
-from .project_defaults import install_project_defaults, project_default_files
-from .tools import TOOLS, ToolError, install_d2, install_pi_runtime, plan_pi_runtime
+from .project_defaults import (
+    PROTOCOL_MANIFEST_PATH,
+    CopyError,
+    binding,
+    project_default_files,
+    protocol_files,
+)
+from .tools import ToolError, install_d2, install_pi_runtime, plan_pi_runtime
 
 FRAMEWORK = ".concorde/framework"
 # Concorde's own Python environment, a venv inside the framework copy that uv creates: installed
@@ -82,23 +81,16 @@ NOT_INSTALLED = ("e2e",)
 # Written by `concorde update` and removed by the first validation that passes after it: the
 # project is "Concorde unvalidated" until then. It is this checkout's state, never committed.
 UPDATE_STATE = ".concorde/update.json"
-# The folders of the trace roots Concorde's parts register (Tasks' current tasks and history,
-# Execution's unbound runs and lobby) and Tracing's locks, which Git ignores; the parts' install
-# contributions will name them once Distribution reads their registrations.
-TRACES = tuple(
-    f"{layout.CONCORDE}/{name}/"
-    for name in ("tasks", "history", "unbound", "lobby", layout.LOCKS)
-)
-IGNORED = (
-    UPDATE_STATE,
-    *TRACES,
-    # Dogfooding's defect reports and End-to-end testing's session logs.
-    ".concorde/runs/",
-    ".concorde/workspace.json",
-    ".concorde/framework/",
-    f"{TOOLS}/",
-    ".claude/worktrees/",
-)
+
+
+def ignored(registrations: dict) -> tuple[str, ...]:
+    """The ignore rules the parts contribute, in the order of their registrations."""
+    found: list[str] = []
+    for registration in parts.ordered(registrations):
+        for line in registration.data["install"]["gitignore"]:
+            if line not in found:
+                found.append(line)
+    return tuple(found)
 
 
 class InstallError(RuntimeError):
@@ -143,9 +135,7 @@ def refusal(
             "the installer cannot change what it runs among: running Concorde processes, the "
             "network, npm or uv"
         )
-    return link(
-        "component", actor, code, message, reason=reason, explanation=explanation
-    )
+    return formats.link(actor, code, message, reason=reason, explanation=explanation)
 
 
 def _guidance(package: Path, name: str) -> str:
@@ -175,70 +165,51 @@ def _source_commit(package: Path) -> str | None:
     return (found.stdout.strip() or None) if found.returncode == 0 else None
 
 
-def _run_progress(concorde: Path, run_ids: set[str]) -> dict[str, tuple[Path, dict]]:
-    """The progress file of each run of ``run_ids`` found below ``concorde``, wherever the part
-    that keeps it placed its node, with what it holds, by run identity. The run's node folder is
-    named after it or, for a run a workflow step started, is the step's ``run/``."""
-    found: dict[str, tuple[Path, dict]] = {}
-    for current, names, files in os.walk(concorde):
-        names[:] = sorted(name for name in names if name != layout.LOCKS)
-        folder = Path(current)
-        if layout.PROGRESS not in files:
-            continue
-        if folder.name not in run_ids and folder.name != "run":
-            continue
-        progress = folder / layout.PROGRESS
-        try:
-            state = json.loads(progress.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            continue
-        if isinstance(state, dict) and state.get("kind") in ("operation", "command"):
-            identity = str(state.get("run_id") or folder.name)
-            if identity in run_ids:
-                found[identity] = (progress, state)
-    return found
-
-
-def active_runs(project: Path) -> list[str]:
-    """Every Concorde run in ``project`` whose process still lives, described for a refusal:
-    Operation and execution command runs by their run locks under ``.concorde/locks/runs/``,
-    named with their progress files."""
+def active_work(project: Path, registrations: dict) -> list[str]:
+    """Everything the installed parts' idle checks report still running in ``project``, such as
+    the execution part's runs whose runners hold their run locks."""
     found = []
-    concorde = project / layout.CONCORDE
-    runs = layout.locks_folder(concorde) / layout.LOCK_KINDS["run"]
-    held = []
-    for path in sorted(runs.glob("*.lock")) if runs.is_dir() else []:
-        # The run lock, not a process identifier, which a runner in another PID namespace
-        # records meaninglessly.
-        holder = locks.holder(path)
-        if holder is not None:
-            held.append((path, holder))
-    progress = _run_progress(concorde, {path.stem for path, _ in held}) if held else {}
-    for path, holder in held:
-        lock = path.relative_to(project).as_posix()
-        known = progress.get(path.stem)
-        if known is None:
-            found.append(f"run {path.stem} (held by {holder}, run lock {lock})")
-            continue
-        file, state = known
-        found.append(
-            f"{state.get('kind')} run {path.stem} ({state.get('name')}, workspace "
-            f"{state.get('workspace') or 'none'}, held by {holder}, run lock {lock}, "
-            f"progress {file.relative_to(project).as_posix()})"
-        )
+    for registration in parts.ordered(registrations):
+        check = registration.data["idle_check"]
+        if check is not None:
+            found += list(registration.entry(check)(project))
     return found
 
 
-def _docsite_template(package: Path) -> dict[str, bytes]:
-    """The docsite template the package ships, by Views' inventory rule, refused if unsafe."""
-    try:
-        verify_package_root(package)
-        return template_files(package)
-    except DocsiteTemplateError as error:
-        raise InstallError("invalid_docsite_template", str(error)) from error
+def _prepared(package: Path, project: Path, registrations: dict) -> dict[str, bytes]:
+    """What the parts' ``install.prepare`` services place, decided before the first write, by
+    project-relative path; a service's refusal refuses the install."""
+    files: dict[str, bytes] = {}
+    for registration in parts.ordered(registrations):
+        prepare = registration.data["install"]["prepare"]
+        if prepare is None:
+            continue
+        answer = registration.entry(prepare)(package, project)
+        if "refusal" in answer:
+            raise InstallError(answer["refusal"]["code"], answer["refusal"]["message"])
+        files.update(answer["files"])
+    return files
 
 
-def _copy_runtime(package: Path, target: Path, docsite: dict[str, bytes]) -> None:
+def _develop(package: Path) -> dict:
+    """The develop source check the package descriptor names, refused with its code."""
+    import importlib
+
+    descriptor = json.loads((package / "concorde.json").read_text(encoding="utf-8"))
+    entry = (descriptor.get("develop") or {}).get("check")
+    if not isinstance(entry, str) or ":" not in entry:
+        raise InstallError(
+            "invalid_descriptor",
+            f"{package / 'concorde.json'} names no develop check under develop.check",
+        )
+    module, attribute = entry.split(":", 1)
+    answer = getattr(importlib.import_module(module), attribute)(package)
+    if "refusal" in answer:
+        raise InstallError(answer["refusal"]["code"], answer["refusal"]["message"])
+    return answer
+
+
+def _copy_runtime(package: Path, target: Path) -> None:
     if target.exists():
         shutil.rmtree(target)
     ignore = shutil.ignore_patterns(
@@ -259,11 +230,6 @@ def _copy_runtime(package: Path, target: Path, docsite: dict[str, bytes]) -> Non
                 source, target / name, ignore=runtime_ignore, symlinks=False
             )
     shutil.copy2(package / "concorde.json", target / "concorde.json")
-    # Only the inventoried template files: the scaffold reads them from here, and a project's
-    # `concorde docsite --propose` fails without them.
-    for path, content in docsite.items():
-        (target / path).parent.mkdir(parents=True, exist_ok=True)
-        (target / path).write_bytes(content)
 
 
 # Marks the part of the CLAUDE.md block that imports the project's glossary. Claude Code loads
@@ -425,10 +391,10 @@ def _register_server(project: Path, config: dict) -> None:
     )
 
 
-def _ignore(project: Path) -> None:
+def _ignore(project: Path, lines: tuple[str, ...]) -> None:
     path = project / ".gitignore"
     text = path.read_text(encoding="utf-8") if path.exists() else ""
-    missing = [line for line in IGNORED if line not in text.splitlines()]
+    missing = [line for line in lines if line not in text.splitlines()]
     if missing:
         prefix = "" if not text or text.endswith("\n") else "\n"
         path.write_text(text + prefix + "\n".join(missing) + "\n", encoding="utf-8")
@@ -462,21 +428,27 @@ def install(
         verify_fresh(package)
     except BuildError as error:
         raise InstallError("stale_build", str(error)) from error
-    docsite = _docsite_template(package)
+    try:
+        registrations = parts.package_parts(package)
+    except parts.RegistrationError as error:
+        raise InstallError("stale_build", str(error)) from error
+    prepared = _prepared(package, project, registrations)
+    try:
+        protocol = protocol_files(package) if "spec" in registrations else {}
+    except CopyError as error:
+        raise InstallError("stale_build", str(error)) from error
     skill = _guidance(package, "skill")
     block = _guidance(package, "claude-md")
-    try:
-        installed_from = develop_source(package) if develop else None
-        if develop:
-            section, paragraph = guidance(package)
-            skill = skill.rstrip("\n") + "\n\n" + section
-            block = block.rstrip("\n") + "\n\n" + paragraph
-    except DevelopError as error:
-        raise InstallError(error.code, str(error)) from error
+    installed_from = None
+    if develop:
+        checked = _develop(package)
+        installed_from = checked["source"]
+        skill = skill.rstrip("\n") + "\n\n" + checked["guidance"]["skill"]
+        block = block.rstrip("\n") + "\n\n" + checked["guidance"]["claude_md"]
     # Replacing the Framework copy under a running Operation or execution command would change
     # the code it runs halfway through. This is checked once and holds no lock: a run started
     # after it is the developer's to avoid, as Distribution's Spec says.
-    running = active_runs(project)
+    running = active_work(project, registrations)
     if running:
         raise InstallError(
             "concorde_busy",
@@ -530,7 +502,9 @@ def install(
             project,
             package,
             descriptor=descriptor,
-            docsite=docsite,
+            registrations=registrations,
+            prepared=prepared,
+            protocol=protocol,
             skill=skill,
             block=block,
             installed_from=installed_from,
@@ -566,7 +540,9 @@ def _place(
     package: Path,
     *,
     descriptor: dict,
-    docsite: dict[str, bytes],
+    registrations: dict,
+    prepared: dict[str, bytes],
+    protocol: dict[str, bytes],
     skill: str,
     block: str,
     installed_from: dict | None,
@@ -583,8 +559,21 @@ def _place(
     run: Callable | None,
 ) -> dict:
     """Place Concorde's files once every refusal was decided; return the receipt."""
-    written = install_project_defaults(project, package)
-    _copy_runtime(package, project / FRAMEWORK, docsite)
+    defaults = project_default_files(registrations)
+    written = list(protocol)
+    for path, content in protocol.items():
+        (project / path).parent.mkdir(parents=True, exist_ok=True)
+        (project / path).write_bytes(content)
+    for path, content in defaults.items():
+        if not (project / path).exists():
+            (project / path).parent.mkdir(parents=True, exist_ok=True)
+            (project / path).write_bytes(content)
+    _copy_runtime(package, project / FRAMEWORK)
+    # What the parts' install services prepared, such as the spec part's docsite template under
+    # the Framework copy, from which `concorde docsite --propose` scaffolds a project's site.
+    for path, content in prepared.items():
+        (project / path).parent.mkdir(parents=True, exist_ok=True)
+        (project / path).write_bytes(content)
     own_python = _own_python(project, uv, requirement)
     installed = (
         _python_dependencies(project, package, uv, run or subprocess.run)
@@ -628,7 +617,7 @@ def _place(
         list(previous.get("permissions") or []),
     )
     _register_server(project, mcp_config)
-    _ignore(project)
+    _ignore(project, ignored(registrations))
     amended = [".gitignore", CLAUDE_MD, MCP_CONFIG] + (
         [CLAUDE_SETTINGS] if (project / CLAUDE_SETTINGS).exists() else []
     )
@@ -657,7 +646,7 @@ def _place(
         "files": sorted(
             {
                 *written,
-                *project_default_files(package),
+                *defaults,
                 COMMAND,
                 SKILL,
                 *placed,
@@ -673,36 +662,25 @@ def _place(
     partial.write_text(json.dumps(receipt, indent=2) + "\n")
     os.replace(partial, project / RECEIPT)
     # An initialized project keeps every installed file bound, those this install added too.
-    try:
-        bind_installation(project)
-    except SpecError as error:
-        # Everything else is installed, so the install still succeeds; the result keeps Spec
-        # core's account, which names any file a failed restore left with new content, and
-        # validation reports what is left unbound.
-        return {**receipt, "binding_error": error.record()}
+    for registration in parts.ordered(registrations):
+        bind = registration.data["install"]["bind"]
+        failed = registration.entry(bind)(project) if bind is not None else None
+        if failed is not None:
+            # Everything else is installed, so the install still succeeds; the result keeps the
+            # part's account (Spec core's error record), which names any file a failed restore
+            # left with new content, and validation reports what is left unbound.
+            return {**receipt, "binding_error": failed}
     return receipt
 
 
-def open_tasks(project: Path) -> list[dict]:
-    """The tasks of ``project`` that have not ended, from their records."""
-    found = []
-    for path in sorted((project / ".concorde/tasks").glob("*/task.json")):
-        try:
-            record = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            continue
-        if (
-            isinstance(record, dict)
-            and isinstance(record.get("id"), str)
-            and record.get("state") not in ("closed", "failed")
-        ):
-            found.append(
-                {
-                    "id": record["id"],
-                    "branch": record.get("branch"),
-                    "worktree": record.get("worktree"),
-                }
-            )
+def open_tasks(project: Path, registrations: dict) -> list[dict]:
+    """What the installed parts' after-update entries report, the coordination part's open
+    tasks; none without such a part."""
+    found: list[dict] = []
+    for registration in parts.ordered(registrations):
+        entry = registration.data["after_update"]
+        if entry is not None:
+            found += list(registration.entry(entry)(project))
     return found
 
 
@@ -734,8 +712,6 @@ def update(
     validation passes; open tasks keep the old Protocol copy until the primary branch is merged
     into them, so they are listed.
     """
-    from ..spec.initialize import installed_protocol_binding
-
     project = Path(project).resolve()
     try:
         previous = json.loads((project / RECEIPT).read_text())
@@ -761,7 +737,7 @@ def update(
         if config_path.is_file():
             config = json.loads(config_path.read_text(encoding="utf-8"))
             before = config.get("protocol")
-            after = installed_protocol_binding(project)
+            after = binding((project / PROTOCOL_MANIFEST_PATH).read_bytes())
             if before != after:
                 config["protocol"] = after
                 config_path.write_text(
@@ -802,7 +778,7 @@ def update(
             raise
     except OSError as error:
         raise _failed_write("updating Concorde in", project, error) from error
-    tasks = open_tasks(project)
+    tasks = open_tasks(project, parts.package_parts(Path(package).resolve()))
     return {
         "receipt": receipt,
         "update": state,
@@ -1030,7 +1006,8 @@ def main(argv) -> int:
 __all__ = [
     "UPDATE_STATE",
     "InstallError",
-    "active_runs",
+    "active_work",
+    "ignored",
     "install",
     "main",
     "open_tasks",

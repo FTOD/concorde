@@ -1,0 +1,58 @@
+{
+  "part": "workflow",
+  "module": "module.workflows",
+  "depends_on": [
+    "execution",
+    "kernel"
+  ],
+  "loads": [
+    "store"
+  ],
+  "commands": [
+    {
+      "name": "workflow",
+      "entry": "cli:main",
+      "output": "own"
+    }
+  ],
+  "mcp_tools": [
+    {
+      "name": "workflow_step",
+      "entry": "tools:answer",
+      "worktree": "session",
+      "long_work": false,
+      "threaded": true,
+      "requires": []
+    },
+    {
+      "name": "workflow_report",
+      "entry": "tools:answer",
+      "worktree": "primary",
+      "long_work": false,
+      "threaded": false,
+      "requires": []
+    }
+  ],
+  "mcp_definitions": "tools:TOOLS",
+  "mcp_instructions": "workflow_step starts or awaits a workflow step of the bound workspace the session started in, as a process of this server, for step agents; workflow_report reads a saved workflow result.",
+  "typed_types": [
+    "concorde-workflow-trace",
+    "concorde-step-trace"
+  ],
+  "guidance": null,
+  "renders": "catalog:build_renders",
+  "install": {
+    "files": [],
+    "defaults": {},
+    "gitignore": [],
+    "permissions": [
+      "mcp__concorde__workflow_step",
+      "Bash(.concorde/bin/concorde workflow report:*)"
+    ],
+    "programs": [],
+    "prepare": null,
+    "bind": null
+  },
+  "idle_check": null,
+  "after_update": null
+}

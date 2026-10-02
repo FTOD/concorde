@@ -42,8 +42,9 @@ BLOCKING = TIERS[1:]
 ACTOR = "Method (Issues through concorde issues)"
 # How long one call of the command may take: a write waits up to 300 s for the merge lock.
 TIMEOUT = 900
-# The refusal code by which ``concorde`` names a command of a part the project has not installed.
-ABSENT_CODE = "part_not_installed"
+# The refusal code by which ``concorde`` names a command of a part the project has not installed,
+# which it prints as ``{"error": <link>}`` on standard output, exiting with status 1.
+ABSENT_CODE = "part_missing"
 NOT_RECORDED = (
     "the findings were not recorded as Issues, since the issues part is not installed"
 )
@@ -117,10 +118,12 @@ def _failed(detail: str, explanation: str) -> Refusal:
 
 
 def _absent(completed: subprocess.CompletedProcess, answer) -> bool:
-    if isinstance(answer, dict) and isinstance(answer.get("error"), dict):
-        return answer["error"].get("code") == ABSENT_CODE
-    # A ``concorde`` whose command line knows no ``issues`` at all.
-    return completed.returncode == 2 and "invalid choice: 'issues'" in completed.stderr
+    return (
+        completed.returncode == 1
+        and isinstance(answer, dict)
+        and isinstance(answer.get("error"), dict)
+        and answer["error"].get("code") == ABSENT_CODE
+    )
 
 
 def call(ctx: RunContext, *words: str) -> dict:

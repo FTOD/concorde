@@ -1,0 +1,41 @@
+{
+  "part": "execution",
+  "module": "module.execution",
+  "depends_on": [
+    "kernel"
+  ],
+  "loads": [
+    "runs",
+    "checks.checks"
+  ],
+  "commands": [
+    {
+      "name": "run",
+      "entry": "runner:operation_main",
+      "output": "own"
+    }
+  ],
+  "mcp_tools": [],
+  "mcp_definitions": null,
+  "mcp_instructions": null,
+  "typed_types": [
+    "concorde-run-trace",
+    "concorde-check-trace"
+  ],
+  "guidance": null,
+  "renders": null,
+  "install": {
+    "files": [],
+    "defaults": {},
+    "gitignore": [
+      ".concorde/unbound/",
+      ".concorde/lobby/"
+    ],
+    "permissions": [],
+    "programs": [],
+    "prepare": null,
+    "bind": null
+  },
+  "idle_check": "idle:active_runs",
+  "after_update": null
+}
