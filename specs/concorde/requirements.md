@@ -87,14 +87,22 @@ without a worker, the execution command `scaffold`, writes only what such a work
 
 Every grant a worker receives SHALL be computed from the Specs of the checkout its run works in: the worktree of the run's [workspace](glossary.json#concept.workspace) for a bound run, and the [unbound checkout](glossary.json#concept.unbound-checkout) for an [unbound run](glossary.json#concept.unbound-run).
 
-### req.concorde.no-wider-than-type — A worker never exceeds its task type
+### req.concorde.no-wider-than-type — A worker's grant never exceeds its task type
 
-A worker's readable and writable paths among the project's files SHALL NOT exceed what its task type assigns to its bound Modules.
+The [grant](glossary.json#concept.grant) computed for a worker SHALL NOT make readable or writable any of the project's files beyond what its task type assigns to its bound Modules.
 
 The complete assignment, the level each task type gives every
 [boundary set](glossary.json#concept.boundary-set), is the task-type table of
 [Spec core's grants](spec-tooling/spec/contracts.md#grants), and Spec core's
 [boundary sets](spec-tooling/spec/contracts.md#boundary-sets) say which paths each set holds.
+
+The promise bounds the computed grant, which the [Harness](harness/module.md) then enforces on
+both backends. On Claude Code that enforcement has one gap: a file created in the task worktree
+after the worker's [deny rules](glossary.json#concept.deny-rules) were generated has no rule of its
+own, so the file tools can read it unless a directory rule hides it, although the
+[write hook](glossary.json#concept.write-hook) still refuses to change it unless the grant makes it
+writable. The worker cannot create such a file itself, since it writes only writable paths; the
+Harness's [known limits](harness/module.md#known-limits-of-v1) state the gap.
 
 Besides the project's files, the [Harness](harness/module.md) gives a worker its run's own working,
 home and temporary directories and leaves readable the system paths every program needs; its

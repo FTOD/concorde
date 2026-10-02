@@ -68,7 +68,7 @@
       {
         "kind": "document",
         "target": "document.spec.contracts",
-        "reason": "Spec core's grants, whose task-type table is the complete assignment req.concorde.no-wider-than-type bounds every worker by, and its boundary sets, which say which paths each set holds"
+        "reason": "Spec core's grants, whose task-type table is the complete assignment req.concorde.no-wider-than-type bounds every worker's grant by, and its boundary sets, which say which paths each set holds"
       }
     ],
     "participates": [],
