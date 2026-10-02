@@ -28,11 +28,10 @@ from ...execution.context import (
     RunContext,
     Stop,
     evidence,
-    spec_cause,
-    spec_finding,
 )
+from ..specs import spec_cause, spec_finding
 from ..workers import operation, run_worker
-from ...execution.operations.provider import (
+from ..prompts import (
     load_prompt,
     protocol_guide,
 )
@@ -264,7 +263,7 @@ REPAIR_ROUNDS = 2
 
 def validation_repair(ctx: RunContext) -> str | None:
     """After a round: the errors the baseline did not have, as a resume prompt, or None."""
-    from ...execution.operations.provider import spec_repair_prompt
+    from ..prompts import spec_repair_prompt
     from ...spec.validation import validate_repository
 
     errors = [

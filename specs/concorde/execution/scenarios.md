@@ -127,6 +127,13 @@ which every Concorde installation of the method part registers.
 - AND the result has `removed-module` evidence naming the removed Module
 - AND the binding still names both Modules
 
+### scenario.execution.modules-as-names — A definition that reads no Spec takes the Modules as names
+
+- GIVEN a definition that admits no Modules itself, such as one of a part that reads no [Spec](../glossary.json#concept.spec)
+- WHEN it runs in a bound workspace naming `module.nowhere` with `--modules`, and again without `--modules`
+- THEN the runner reads no Spec: the first run works on `module.nowhere` and the second on every Module the binding names, registered or not
+- AND a definition that admits its Modules itself, as Method's do, refuses `module.nowhere` with `unknown_module`, its admission's link the cause of the run's `refused` link
+
 ### scenario.execution.modules-removed — A binding whose Modules were all removed
 
 - GIVEN a binding whose Modules the workspace has all removed or renamed

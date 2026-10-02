@@ -2,13 +2,15 @@
 
 A test names its run as ``<name> [--task <task>] [arguments]``: the task picks the worktree the run
 starts in, whose workspace binding the runner reads, and ``--task`` itself never reaches the
-runner, which knows no task.
+runner, which knows no task. Importing this module registers Method's definitions, as
+Distribution's `concorde` command does before it runs one.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
+import concorde.method.registration  # noqa: F401 -- registers Method's definitions
 from concorde.execution.commands.catalog import COMMANDS
 from concorde.execution.runner import execute
 from concorde.coordination.tasks import store

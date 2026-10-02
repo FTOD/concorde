@@ -31,7 +31,7 @@ class AdmissionTests(unittest.TestCase):
         self.project = OperationProject(self)
         self.project.open_task("t1")
         self.worktree = self.project.worktree("t1")
-        patcher = patch.dict(catalog.CATALOG, {"spec_panel": f"{__name__}:PANEL"})
+        patcher = patch.dict(catalog.OPERATIONS.definitions, {"spec_panel": PANEL})
         patcher.start()
         self.addCleanup(patcher.stop)
 
@@ -47,7 +47,7 @@ class AdmissionTests(unittest.TestCase):
             )
         )
 
-    @verifies("scenario.operations.worker-models-checked-at-admission")
+    @verifies("scenario.method.worker-models-checked-at-admission")
     def test_every_worker_is_checked_against_the_map_before_the_first_launches(self):
         # The test model map gives `fast` a pi id only.
         self.configure({"reviewer1": {"model": "fast"}, "chair": {"model": "fast"}})
@@ -77,13 +77,14 @@ class AdmissionTests(unittest.TestCase):
 
     def test_a_definition_without_workers_is_not_checked(self):
         self.assertEqual(
-            "check_worker_models", catalog.provider("spec_panel").steps[0].__name__
+            "check_worker_models",
+            catalog.OPERATIONS.get("spec_panel").steps[0].__name__,
         )
         with patch.dict(
-            catalog.CATALOG,
-            {"spec_panel": f"{__name__}:NO_WORKERS"},
+            catalog.OPERATIONS.definitions,
+            {"spec_panel": NO_WORKERS},
         ):
-            self.assertEqual((panel_step,), catalog.provider("spec_panel").steps)
+            self.assertEqual((panel_step,), catalog.OPERATIONS.get("spec_panel").steps)
 
 
 if __name__ == "__main__":

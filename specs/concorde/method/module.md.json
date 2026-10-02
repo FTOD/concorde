@@ -10,6 +10,7 @@
     "owns": [
       "specs/concorde/method/module.md",
       "specs/concorde/method/requirements.md",
+      "specs/concorde/method/scenarios.md",
       "specs/concorde/method/workers.md",
       "specs/concorde/method/brownfield.md"
     ],
@@ -104,6 +105,18 @@
       "meaning": "#realization.method.workers",
       "entries": [
         "src/concorde/method/workers.py"
+      ]
+    },
+    {
+      "id": "realization.method.definitions",
+      "type": "realization",
+      "title": "Definitions",
+      "meaning": "#realization.method.definitions",
+      "entries": [
+        "src/concorde/method/checks.py",
+        "src/concorde/method/prompts.py",
+        "src/concorde/method/registration.py",
+        "src/concorde/method/specs.py"
       ]
     },
     {

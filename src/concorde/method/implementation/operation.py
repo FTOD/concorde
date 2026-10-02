@@ -16,7 +16,8 @@ import os
 import subprocess
 from pathlib import Path
 
-from ...execution.checks.checks import checked_modules, run_checks
+from ...execution.checks.checks import CheckError
+from ..checks import checked_modules, run_module_checks
 from ...execution.context import (
     Continue,
     RunContext,
@@ -24,7 +25,7 @@ from ...execution.context import (
     evidence,
 )
 from ..workers import grant_failure, operation, run_worker
-from ...execution.operations.provider import (
+from ..prompts import (
     load_prompt,
 )
 from ...spec.grants import grant
@@ -190,12 +191,14 @@ def preflight(ctx: RunContext, task_type: str) -> Stop | None:
 def host_checks(ctx: RunContext) -> list[dict] | Stop:
     """Run the bound Modules' configured checks outside any worker, logs in the run directory."""
     try:
-        return run_checks(
+        repository = SpecRepository(ctx.worktree)
+        return run_module_checks(
             ctx.worktree,
-            modules=checked_modules(SpecRepository(ctx.worktree), ctx.modules),
+            checked_modules(repository, ctx.modules),
             trace_directory=ctx.run_dir / "checks",
+            repository=repository,
         )
-    except (SpecError, OSError) as error:
+    except (CheckError, SpecError, OSError) as error:
         return ctx.checks_unavailable(error)
 
 

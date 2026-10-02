@@ -1001,6 +1001,7 @@
       "owns": [
         "specs/concorde/method/module.md",
         "specs/concorde/method/requirements.md",
+        "specs/concorde/method/scenarios.md",
         "specs/concorde/method/workers.md",
         "specs/concorde/method/brownfield.md"
       ],

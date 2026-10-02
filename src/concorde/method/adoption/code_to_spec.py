@@ -29,11 +29,10 @@ from ...execution.context import (
     RunContext,
     Stop,
     evidence,
-    spec_cause,
-    spec_finding,
 )
+from ..specs import spec_cause, spec_finding
 from ..workers import operation, run_worker
-from ...execution.operations.provider import (
+from ..prompts import (
     load_prompt,
     protocol_guide,
     spec_repair_prompt,
@@ -601,7 +600,7 @@ def link_described_tests(ctx: RunContext, output: dict):
 
     Only the host edits the test files, and only by adding decorators and the no-op helper; a
     link it cannot make is reported, never a reason to fail the run."""
-    from ...execution.checks.checks import affected_modules
+    from ..checks import affected_modules
     from ...spec.repository import SpecRepository
 
     try:

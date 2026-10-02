@@ -47,9 +47,10 @@ class Provider:
     steps: tuple[Callable, ...]
     output_schema: dict | None = None
     add_arguments: Callable[[argparse.ArgumentParser], None] | None = None
-    # False for a provider that diagnoses the workspace's Specs itself, such as task-validation:
-    # the runner then begins the run even when those Specs cannot be loaded.
-    requires_loaded_specs: bool = True
+    # The definition's own admission of the run's Modules, called once the inputs are admitted
+    # and before the first step: it may narrow ``context.modules`` and refuses the run by
+    # raising ``Refused``. None takes the Modules as names.
+    admit: Callable[["RunContext"], None] | None = None
     # "required": every run needs a workspace binding. "optional": an unbound run works on the
     # worktree it starts in and may launch only read-only workers.
     binding: str = "required"
@@ -61,6 +62,29 @@ class Provider:
     # checkout's root before anything is linked, it returns the runtime paths, relative ones
     # linked from the worktree the run started in. None links nothing.
     runtime_paths: Callable[[Path], Sequence[str]] | None = None
+
+
+class Refused(Exception):
+    """A definition's admission refusing a run before its steps begin.
+
+    ``actor`` is the component that refused, such as the providing part's admission; the reason,
+    explanation and options say why the run cannot handle the refusal and what the caller may do.
+    """
+
+    def __init__(
+        self,
+        code: str,
+        message: str,
+        *,
+        actor: str,
+        reason: str = "input",
+        explanation: str = "the Modules named for the run are refused and only the caller can "
+        "correct them",
+        options=("correct the command line and run it again",),
+    ):
+        super().__init__(message)
+        self.code, self.actor = code, actor
+        self.reason, self.explanation, self.options = reason, explanation, list(options)
 
 
 def command(name: str, steps, **fields) -> Provider:
@@ -78,7 +102,7 @@ def command(name: str, steps, **fields) -> Provider:
 def component(
     actor: str, code: str, detail: str, reason: str, explanation: str, **extra
 ):
-    """A link of a deterministic component the host called, such as Git, Tasks or Spec core."""
+    """A link of a deterministic component a step called, such as Git or Check execution."""
     return link(
         "component",
         actor,
@@ -87,50 +111,6 @@ def component(
         reason=reason,
         explanation=explanation,
         **extra,
-    )
-
-
-def spec_cause(error: BaseException, actor: str = "Spec core") -> dict:
-    """Spec tooling's own error as a component link: its message and location, its reason
-    as the explanation, its remediation as the option, and its causes as nested links."""
-    from ..spec.errors import SpecError
-
-    if not isinstance(error, SpecError):
-        return component(
-            actor,
-            "system_error",
-            f"{type(error).__name__}: {error}",
-            "environment",
-            "the operating system refused an operation Spec tooling needed",
-        )
-    where = error.where()
-    return link(
-        "component",
-        actor,
-        error.code,
-        str(error) + (f" (at {where})" if where else ""),
-        reason={"system_error": "environment", "unexpected_error": "capability"}.get(
-            error.code, "input"
-        ),
-        explanation=error.reason,
-        evidence=[evidence("location", where, "")] if where else [],
-        options=[error.remediation],
-        recommendation=error.remediation,
-        causes=[spec_cause(cause, actor) for cause in error.causes],
-    )
-
-
-def spec_finding(rule_id: str, source: str, line, message: str, explanation: str):
-    """The link of one Spec validation finding, as Spec core reported it."""
-    location = (source or "-") + (f":{line}" if line else "")
-    return link(
-        "component",
-        "Spec core validation",
-        "spec_finding",
-        f"{rule_id} at {location}: {message}",
-        reason="capability",
-        explanation=explanation,
-        evidence=[evidence("finding", location, rule_id)],
     )
 
 
@@ -144,6 +124,8 @@ class RunContext:
     workspace: dict | None
     # The worktree the run works in: the bound workspace, or an unbound run's checkout.
     worktree: Path
+    # The Modules the run works on, as names: ``--modules``, else the binding's, as the
+    # definition's admission left them.
     modules: list[str]
     run_id: str
     # The run's trace node folder, where its result, progress file, checks and worker runs lie.
@@ -165,6 +147,8 @@ class RunContext:
     origin: Path | None = None
     # The commit an unbound run's checkout holds; None for a bound run.
     commit: str | None = None
+    # Whether ``--modules`` named the Modules, rather than the binding.
+    modules_named: bool = False
     # The steps that began, with their timings, for the run's trace node.
     steps: list[dict] = field(default_factory=list)
     # References of the run's trace node its steps add, as (relation, target).
@@ -302,11 +286,10 @@ class RunContext:
 __all__ = [
     "Continue",
     "Provider",
+    "Refused",
     "RunContext",
     "Stop",
     "command",
     "component",
     "evidence",
-    "spec_cause",
-    "spec_finding",
 ]

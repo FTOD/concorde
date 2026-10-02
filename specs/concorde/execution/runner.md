@@ -313,7 +313,9 @@ With `--detach` the command checks the command line (a malformed one starts noth
 status 2), reads the workspace binding to select the node folder as the parse does, chooses the
 run identity, creates the run's folder, in the [lobby](#the-lobby) for a bound run and its unbound
 node otherwise, and starts the runner as a process of its own, in a new session, handing it the
-identity, so that the runner records in that folder and writes its output to `host.out` there. It
+identity, so that the runner records in that folder and writes its output to `host.out` there. That
+process is the host's `concorde` command run again with the same command line, which loads the
+definitions the installed parts register before it looks the definition up, as the first did. It
 then waits until the run progress file exists, in the lobby or, once the run entered its
 workspace, in its node there, and prints `{run_id, kind, name, host_pid, trace, progress, result,
 lobby}` with exit status 0: `trace` is the run's node folder in the workspace folder, or its
@@ -384,7 +386,7 @@ it as follows.
 
 | Error | Code | Reason | Causes |
 | --- | --- | --- | --- |
-| Refusal before the steps began | `refused` | `decision` for `workspace_busy`; `scope` for `binding_required` and `specs_unloadable`; `environment` for `binding_unreadable`, `workspace_retired`, `run_store_unwritable` and `checkout_unavailable`; `input` otherwise | the `component` link of `Execution (workspace binding)` for a binding refusal and `workspace_retired`, `Execution (unbound checkout)` for `checkout_unavailable`, or `Execution (run store)` otherwise, with the refusal's code and message |
+| Refusal before the steps began | `refused` | `decision` for `workspace_busy`; `scope` for `binding_required`; `environment` for `binding_unreadable`, `workspace_retired`, `run_store_unwritable` and `checkout_unavailable`; for a refusal of the definition's admission, the reason it gives, such as `scope` for Method's `specs_unloadable`; `input` otherwise | the `component` link of `Execution (workspace binding)` for a binding refusal and `workspace_retired`, `Execution (unbound checkout)` for `checkout_unavailable`, the admission's own component, such as `Method (Module admission)`, for a refusal of the definition's admission, or `Execution (run store)` otherwise, with the refusal's code and message |
 | A step raised | `host_error` | `capability` | the exception's `component` link |
 | Cancelled | `cancelled` | `environment` | none |
 | Invalid result or output | `invalid_result` | `capability` | the error the run had, if any |
@@ -396,14 +398,14 @@ The two failures to write the run's records
 the reason `environment`.
 
 Spec tooling reports with [its own error record](../spec-tooling/spec/errors.md), never with a link.
-When a Spec tooling error causes a run's error, the step translates it into a `component` link of
-the actor `Spec core`: the record's message and location become the detail, its reason becomes the
-explanation of why Spec core could not handle it (reason `input`, or `environment` for a
-`system_error`), its remediation becomes the option and recommendation, and each of its causes
-becomes a nested link the same way.
+When a Spec tooling error causes a run's error, a step that reads the Specs, such as one of
+Method's, translates it into a `component` link of the actor `Spec core`: the record's message and
+location become the detail, its reason becomes the explanation of why Spec core could not handle it
+(reason `input`, or `environment` for a `system_error`), its remediation becomes the option and
+recommendation, and each of its causes becomes a nested link the same way.
 
-Two Modules whose errors are subclasses of the Spec tooling error type make their links
-themselves, and a step never translates their errors: Check execution gives its failures as its own
+Two Modules with error types of their own make their links themselves, and a step never
+translates their errors: Check execution gives its failures as its own
 link, made by `service_error` of [the check service](checks/service.md#check-executions-error-as-a-link),
 of the actor `Check execution` and with the reason its code maps to, and the
 [Issues](../issues/interface.md) store gives each refusal its own link, of the actor

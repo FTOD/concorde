@@ -34,8 +34,9 @@ from ...execution.context import (
     evidence,
 )
 from ..workers import grant_failure, operation, run_worker
-from ...execution.checks.checks import checked_modules, run_checks
-from ...execution.operations.provider import load_prompt
+from ...execution.checks.checks import CheckError
+from ..checks import checked_modules, run_module_checks
+from ..prompts import load_prompt
 from ...spec.grants import Grant, grant
 from ...spec.repository import SpecRepository
 from ...spec.repository_base import SpecError, is_identity
@@ -495,10 +496,13 @@ def prepare(ctx: RunContext):
     try:
         repository = SpecRepository(ctx.worktree)
         modules = checked or checked_modules(repository, ctx.modules)
-        state.results = run_checks(
-            ctx.worktree, modules=modules, trace_directory=ctx.run_dir / "checks"
+        state.results = run_module_checks(
+            ctx.worktree,
+            modules,
+            trace_directory=ctx.run_dir / "checks",
+            repository=repository,
         )
-    except (SpecError, OSError) as error:
+    except (CheckError, SpecError, OSError) as error:
         stop = ctx.checks_unavailable(error)
         stop.evidence[:0] = found
         return stop

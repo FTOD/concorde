@@ -363,13 +363,15 @@ class ValidateTests(unittest.TestCase):
 
     @verifies("scenario.validation.inputs-changed")
     def test_a_worktree_changing_during_the_run_gets_no_readiness(self):
-        original = check_service.run_checks
+        from concorde.method import checks as method_checks
+
+        original = method_checks.run_module_checks
 
         def changing(*arguments, **options):
             (self.worktree / "src/a/calc.py").write_text("changed = True\n")
             return original(*arguments, **options)
 
-        with patch("concorde.method.validation.command.run_checks", changing):
+        with patch("concorde.method.validation.command.run_module_checks", changing):
             status, envelope = self.project.validate()
         self.assertEqual((status, envelope["status"]), (1, "failed"))
         self.assertIsNone(envelope["output"])

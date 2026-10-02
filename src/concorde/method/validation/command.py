@@ -26,15 +26,10 @@ from ...execution.context import (
     command,
     component,
     evidence,
-    spec_cause,
 )
-from ...execution.checks.checks import (
-    affected_modules,
-    check_error,
-    checked_modules,
-    run_checks,
-    service_error,
-)
+from ..specs import admission, spec_cause
+from ...execution.checks.checks import CheckError, check_error, service_error
+from ..checks import affected_modules, checked_modules, run_module_checks
 from ...spec.repository import SpecRepository
 from ...spec.repository_base import SpecError, bound_by, control_path, covers
 from ...spec.validation import (
@@ -404,14 +399,15 @@ def run_configured_checks(ctx: RunContext):
     groups.append((", ".join(selected), selected, "selective"))
     for label, modules, kinds in groups:
         try:
-            results = run_checks(
+            results = run_module_checks(
                 ctx.worktree,
-                modules=modules,
+                modules,
                 trace_directory=trace_directory,
                 stage="readiness",
                 kinds=kinds,
+                repository=state.repository,
             )
-        except SpecError as error:
+        except (CheckError, SpecError) as error:
             if error.code == "check_sandbox_unavailable":
                 stop = ctx.checks_unavailable(error, modules)
                 stop.evidence[:0] = found
@@ -609,7 +605,8 @@ TASK_VALIDATION = command(
     (check_branch, *READINESS_STEPS, issue_readiness),
     writes=False,
     output_schema=READINESS_SCHEMA,
-    requires_loaded_specs=False,
+    # It diagnoses Specs that cannot be loaded itself.
+    admit=admission(diagnoses_specs=True),
 )
 
 

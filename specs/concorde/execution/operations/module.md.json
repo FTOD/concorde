@@ -36,7 +36,7 @@
     {
       "id": "realization.operations.catalog",
       "type": "realization",
-      "title": "Catalog and worker steps",
+      "title": "Catalog",
       "meaning": "#realization.operations.catalog",
       "entries": [
         "src/concorde/execution/operations/"

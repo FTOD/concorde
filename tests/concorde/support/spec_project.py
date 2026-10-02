@@ -152,8 +152,9 @@ def write_checks(root, checks):
 
 
 def read_checks(root):
-    """The configured checks as loaded, each with its ``module``, in configuration order."""
-    from concorde.spec.repository import configured_checks
+    """The configured checks as Check execution loads them, each with its ``module``, in
+    configuration order."""
+    from concorde.execution.checks.checks import configured_checks
 
     return configured_checks(Path(root))
 

@@ -16,16 +16,24 @@ from unittest.mock import patch
 from concorde.kernel.errors import ERROR_SCHEMA
 from concorde.execution.checks.check_executor import execute_check
 from concorde.execution.checks.checks import (
-    affected_modules,
+    CheckError,
     check_revision,
+    configured_checks,
     environment,
     measured_digest,
     project_python,
     run_checks,
     service_error,
+    validate_checks,
+)
+from concorde.method.checks import (
+    affected_modules,
+    checked_modules,
+    measured_files,
+    run_module_checks,
+    verified_tests,
 )
 from concorde.spec.repository import SpecRepository
-from concorde.spec.repository_base import SpecError
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
 from tests.concorde.harness.workers.test_workers import WorkerProject
@@ -44,6 +52,37 @@ class CheckServiceTests(unittest.TestCase):
     def repository(self):
         return SpecRepository(self.root, REPOSITORY_ROOT)
 
+    def run_checks(self, modules, **options):
+        """Run the checks of ``modules`` as Method's steps call the service: with each Module's
+        implementation files, the tests verifying its scenarios and the project's interpreter."""
+        return run_module_checks(
+            self.root,
+            modules,
+            trace_directory=self.logs,
+            repository=self.repository(),
+            **options,
+        )
+
+    def revision(self, module: str) -> str:
+        """The check revision of ``module`` over its implementation files."""
+        return check_revision(
+            self.root,
+            configured_checks(self.root),
+            module,
+            self.repository().bound_files(module),
+        )
+
+    def digest(self, check: dict, modules) -> str:
+        """The measured digest of ``check`` for ``modules``, as Method selects its input."""
+        repository = self.repository()
+        return measured_digest(
+            self.root,
+            check,
+            modules,
+            measured=measured_files(repository, modules),
+            tests=verified_tests(repository, modules),
+        )
+
     @verifies("scenario.checks.service-run", "scenario.checks.service-no-checks")
     def test_the_checks_of_changed_modules_run_and_log(self):
         self.assertEqual(
@@ -54,8 +93,8 @@ class CheckServiceTests(unittest.TestCase):
             ["module.a"],
             affected_modules(self.repository(), ["specs/a/module.md"]),
         )
-        [result] = run_checks(
-            self.root, changed=["src/a/calc.py"], trace_directory=self.logs
+        [result] = self.run_checks(
+            affected_modules(self.repository(), ["src/a/calc.py"])
         )
         self.assertEqual(
             ("check.a", "module.a", "passed", 0),
@@ -80,17 +119,11 @@ class CheckServiceTests(unittest.TestCase):
                 for k in ("status", "exit_code", "source_digest")
             ),
         )
-        self.assertEqual(
-            check_revision(self.repository(), "module.a"), result["source_digest"]
-        )
+        self.assertEqual(self.revision("module.a"), result["source_digest"])
         (self.root / "src/a/flag").write_text("broken")
-        [failed] = run_checks(
-            self.root, modules=["module.a"], trace_directory=self.logs
-        )
+        [failed] = self.run_checks(["module.a"])
         self.assertEqual(("failed", 1), (failed["status"], failed["exit_code"]))
-        self.assertEqual(
-            [], run_checks(self.root, modules=["module.b"], trace_directory=self.logs)
-        )
+        self.assertEqual([], self.run_checks(["module.b"]))
 
     def configure(self, **changes) -> None:
         path = self.root / ".concorde/config.json"
@@ -115,8 +148,8 @@ class CheckServiceTests(unittest.TestCase):
         )
         self.change_check(argv=["{python}", "-c", probe], env={"MARK": "yes"})
         self.configure(python="env/bin/python")
-        with self.assertRaises(SpecError) as raised:
-            run_checks(self.root, modules=["module.a"], trace_directory=self.logs)
+        with self.assertRaises(CheckError) as raised:
+            self.run_checks(["module.a"])
         self.assertEqual("project_python_missing", raised.exception.code)
         self.assertIn(str(self.root / "env/bin/python"), str(raised.exception))
         interpreter = self.root / "env/bin/python"
@@ -125,17 +158,15 @@ class CheckServiceTests(unittest.TestCase):
             f'#!/bin/sh\necho "project interpreter"\nexec {sys.executable} "$@"\n'
         )
         interpreter.chmod(0o755)
-        [result] = run_checks(
-            self.root, modules=["module.a"], trace_directory=self.logs
-        )
+        [result] = self.run_checks(["module.a"])
         self.assertEqual("passed", result["status"])
         log = (self.logs / "check.a/output.log").read_text()
         self.assertIn("project interpreter", log)
         # The check's own env, and nothing of Concorde's runtime on the path.
         self.assertIn("mark=yes pythonpath=None", log)
         self.change_check(env={"not a name": "x"})
-        with self.assertRaises(SpecError) as raised:
-            run_checks(self.root, modules=["module.a"], trace_directory=self.logs)
+        with self.assertRaises(CheckError) as raised:
+            self.run_checks(["module.a"])
         self.assertEqual("invalid_check", raised.exception.code)
 
     @verifies("scenario.checks.transport-environment")
@@ -252,12 +283,13 @@ print('proxy reached; project read-only; scratch writable')
             ),
         )
         outer = """
-import os
+import json, os
 from pathlib import Path
 from concorde.execution.checks.checks import run_checks
 os.environ['CONCORDE_RUN_ID'] = 'runtime-pollution'
 os.environ['NODE_OPTIONS'] = '--runtime-pollution'
-[result] = run_checks(Path.cwd(), modules=['module.a'],
+python = json.loads(Path('.concorde/config.json').read_text()).get('python')
+[result] = run_checks(Path.cwd(), modules=['module.a'], python=python,
                       trace_directory=Path(os.environ['CONCORDE_CHECK_TMPDIR'])/'nested-trace')
 print(Path(result['log']).read_text())
 assert result['status'] == 'passed', result
@@ -305,7 +337,7 @@ assert result['status'] == 'passed', result
         interpreter.parent.mkdir(parents=True)
         interpreter.write_text("#!/bin/sh\n")
         interpreter.chmod(0o755)
-        config = {"python": ".venv/bin/python"}
+        config = ".venv/bin/python"
         self.assertEqual(
             os.path.realpath(interpreter),
             os.path.realpath(project_python(worktree, config, "check.a")),
@@ -320,8 +352,6 @@ assert result['status'] == 'passed', result
         )
 
     def test_the_modules_that_use_a_changed_module_are_checked_too(self):
-        from concorde.execution.checks.checks import checked_modules
-
         self.assertEqual(
             ["module.b", "module.a"], checked_modules(self.repository(), ["module.b"])
         )
@@ -359,12 +389,8 @@ assert result['status'] == 'passed', result
         ]
         write_checks(self.root, checks)
         # No test verifies a scenario of B: the selective check is skipped.
-        self.assertEqual(
-            [], run_checks(self.root, modules=["module.b"], trace_directory=self.logs)
-        )
-        [result] = run_checks(
-            self.root, modules=["module.a"], trace_directory=self.logs
-        )
+        self.assertEqual([], self.run_checks(["module.b"]))
+        [result] = self.run_checks(["module.a"])
         self.assertEqual(
             ("check.a.selected", "passed"), (result["check_id"], result["status"])
         )
@@ -376,27 +402,21 @@ assert result['status'] == 'passed', result
         [check] = [
             item for item in read_checks(self.root) if item["id"] == checks[0]["id"]
         ]
-        alone = measured_digest(self.repository(), check, ["module.a"])
+        alone = self.digest(check, ["module.a"])
         self.assertEqual(alone, result["source_digest"])
-        self.assertNotEqual(check_revision(self.repository(), "module.b"), alone)
-        [both] = run_checks(
-            self.root, modules=["module.a", "module.b"], trace_directory=self.logs
-        )
+        self.assertNotEqual(self.revision("module.b"), alone)
+        [both] = self.run_checks(["module.a", "module.b"])
         self.assertEqual(
-            measured_digest(self.repository(), check, ["module.b", "module.a"]),
+            self.digest(check, ["module.b", "module.a"]),
             both["source_digest"],
         )
         self.assertNotEqual(alone, both["source_digest"])
         with (self.root / "src/a/test_answer.py").open("a") as stream:
             stream.write("# changed\n")
-        self.assertNotEqual(
-            alone, measured_digest(self.repository(), check, ["module.a"])
-        )
+        self.assertNotEqual(alone, self.digest(check, ["module.a"]))
         # A readiness check runs only when readiness is decided.
-        results = run_checks(
-            self.root,
-            modules=["module.a"],
-            trace_directory=self.logs,
+        results = self.run_checks(
+            ["module.a"],
             stage="readiness",
         )
         self.assertEqual(
@@ -407,9 +427,7 @@ assert result['status'] == 'passed', result
     def test_a_check_cannot_change_the_worktree(self):
         check = self.root / "checks/a_check.py"
         check.write_text("open('src/a/calc.py', 'w').write('changed')\n")
-        [result] = run_checks(
-            self.root, modules=["module.a"], trace_directory=self.logs
-        )
+        [result] = self.run_checks(["module.a"])
         self.assertEqual("failed", result["status"])
         self.assertIn("def add", (self.root / "src/a/calc.py").read_text())
         self.assertIn(
@@ -428,8 +446,8 @@ assert result['status'] == 'passed', result
             return outcome
 
         with patch.object(checks, "execute_check", changing):
-            with self.assertRaises(SpecError) as raised:
-                run_checks(self.root, modules=["module.a"], trace_directory=self.logs)
+            with self.assertRaises(CheckError) as raised:
+                self.run_checks(["module.a"])
         self.assertEqual("stale_evidence", raised.exception.code)
         error = service_error(raised.exception)
         validate(error, ERROR_SCHEMA)
@@ -453,8 +471,8 @@ assert result['status'] == 'passed', result
             raise CheckSandboxError("bubblewrap is unavailable", stderr=b"why")
 
         with patch.object(checks, "execute_check", refused):
-            with self.assertRaises(SpecError) as raised:
-                run_checks(self.root, modules=["module.a"], trace_directory=self.logs)
+            with self.assertRaises(CheckError) as raised:
+                self.run_checks(["module.a"])
         self.assertEqual("check_sandbox_unavailable", raised.exception.code)
         self.assertIn("why", (self.logs / "check.a/output.log").read_text())
         node = json.loads((self.logs / "check.a/trace.json").read_text())
@@ -468,8 +486,8 @@ assert result['status'] == 'passed', result
     @verifies("scenario.checks.service-input-missing")
     def test_a_missing_input_stops_before_any_command(self):
         self.change_check(inputs=["checks/missing.py"])
-        with self.assertRaises(SpecError) as raised:
-            run_checks(self.root, modules=["module.a"], trace_directory=self.logs)
+        with self.assertRaises(CheckError) as raised:
+            self.run_checks(["module.a"])
         self.assertIn("checks/missing.py", str(raised.exception))
         self.assertFalse((self.logs / "check.a").exists())
         # A wrong configuration is input only its sender can correct.
@@ -487,3 +505,112 @@ assert result['status'] == 'passed', result
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ChecksFileTests(unittest.TestCase):
+    """Check execution reads its own checks files, with no Spec in the worktree."""
+
+    def setUp(self):
+        self.root = Path(tempfile.mkdtemp())
+        self.folder = self.root / ".concorde/checks"
+        self.folder.mkdir(parents=True)
+
+    def write(self, name: str, value) -> None:
+        text = value if isinstance(value, str) else json.dumps(value)
+        (self.folder / name).write_text(text)
+
+    def refused(self, code: str = "invalid_check") -> CheckError:
+        with self.assertRaises(CheckError) as raised:
+            configured_checks(self.root)
+        self.assertEqual(code, raised.exception.code)
+        return raised.exception
+
+    @verifies("scenario.checks.checks-files")
+    def test_checks_are_read_from_one_file_per_module(self):
+        self.write(
+            "module.b.json", {"checks": [{"id": "check.b1"}, {"id": "check.b2"}]}
+        )
+        self.write("module.a.json", {"checks": [{"id": "check.a"}]})
+        self.assertEqual(
+            [
+                ("check.a", "module.a"),
+                ("check.b1", "module.b"),
+                ("check.b2", "module.b"),
+            ],
+            [(check["id"], check["module"]) for check in configured_checks(self.root)],
+        )
+        # A Module identity is a label: nothing checks it against a registry.
+        self.write("module.unregistered.json", {"checks": [{"id": "check.c"}]})
+        self.assertEqual(4, len(configured_checks(self.root)))
+        (self.folder / "module.unregistered.json").unlink()
+        for name, value, named in (
+            ("module.c.json", {"checks": [{"id": "check.c", "module": "x"}]}, "module"),
+            ("module.c.json", {"checks": [{"id": "check.a"}]}, "check.a"),
+            ("module.c.json", {"checks": [], "extra": 1}, "module.c.json"),
+            ("module.c.json", "{not json", "module.c.json"),
+            ("checks.txt", {"checks": []}, "checks.txt"),
+            (
+                "module.c.json",
+                {"checks": [{"id": "check.c", "inputs": ["../outside"]}]},
+                "../outside",
+            ),
+            ("module.c.json", {"checks": [{"id": "check.c", "flag": 1}]}, "flag"),
+        ):
+            with self.subTest(name=name, value=value):
+                self.write(name, value)
+                self.assertIn(named, str(self.refused()))
+                (self.folder / name).unlink()
+
+    @verifies("scenario.checks.check-input-missing")
+    def test_validating_the_checks_names_a_missing_input_and_runs_nothing(self):
+        self.write(
+            "module.a.json",
+            {
+                "checks": [
+                    {"id": "check.a", "argv": ["false"], "inputs": ["src/gone.py"]}
+                ]
+            },
+        )
+        with self.assertRaises(CheckError) as raised:
+            validate_checks(self.root)
+        self.assertEqual("check_input_missing", raised.exception.code)
+        self.assertIn("check.a", str(raised.exception))
+        self.assertIn("src/gone.py", str(raised.exception))
+        (self.root / "src").mkdir()
+        (self.root / "src/gone.py").write_text("")
+        self.assertEqual(["check.a"], [c["id"] for c in validate_checks(self.root)])
+
+    def test_checks_run_in_a_worktree_without_specs(self):
+        (self.root / "code.py").write_text("x = 1\n")
+        self.write(
+            "module.a.json",
+            {
+                "checks": [
+                    {
+                        "id": "check.a",
+                        "argv": ["{python}", "-c", "print('ran')"],
+                        "timeout_seconds": 60,
+                    }
+                ]
+            },
+        )
+        logs = self.root.parent / f"{self.root.name}-logs"
+        [result] = run_checks(
+            self.root,
+            modules=["module.a"],
+            trace_directory=logs,
+            measured={"module.a": ["code.py"]},
+            python=sys.executable,
+        )
+        self.assertEqual("passed", result["status"])
+        self.assertEqual(
+            check_revision(
+                self.root, configured_checks(self.root), "module.a", ["code.py"]
+            ),
+            result["source_digest"],
+        )
+        # The measured files are the caller's: another file set is another revision.
+        self.assertNotEqual(
+            result["source_digest"],
+            check_revision(self.root, configured_checks(self.root), "module.a"),
+        )

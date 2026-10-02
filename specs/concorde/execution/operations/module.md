@@ -119,22 +119,21 @@ Spec tooling nor the worker harness to run, and a project may register Operation
 
 <a id="realization.operations.catalog"></a>
 
-The **Catalog and worker steps** realization holds the catalog (`catalog.py`) and, until a later
-code task moves it into Method's package `src/concorde/method/`, one piece of Method's: the prompt
-and brief helpers of worker-backed providers (`provider.py`). The step Method puts first in every
-Operation it registers, checking all its workers against the
-[model map](../../glossary.json#concept.model-map), and the review providers' shared handling of
-their Issues are already Method's own. Their behaviour is
-specified by [Method](../../method/module.md#the-standard-worker-sequence) and its children, not by
-this framework.
+The **Catalog** realization (`catalog.py`) holds the catalog: the definitions registered with it,
+each with the part that registered it, and the refusal of a second definition under a registered
+name. It also gives the command catalog of [Commands](../commands/module.md) its shape. Every
+Operation's own code, such as the prompt and brief helpers of Method's worker-backed providers
+(`src/concorde/method/prompts.py`), lives with the part that registers it, and its behaviour is
+specified by that part, for Method's by [Method](../../method/module.md#the-standard-worker-sequence)
+and its children.
 
 <a id="realization.operations.tests"></a>
 
-The **Operations tests**, under `tests/concorde/operations/`, run an Operation through the runner in
-a real task worktree with a stand-in provider registered as Method registers its Operations and
-show that its first step checks all its workers against the model map before any of the provider's
-own steps; the worker-backed scenarios
-are verified with the runner's tests.
+The **Operations tests**, under `tests/concorde/operations/`, register stand-in definitions and run
+them through the runner in a real task worktree, show the catalog refusing a second definition of
+one name, and show that the first step Method puts in every Operation checks all its workers
+against the [model map](../../glossary.json#concept.model-map) before any of the provider's own steps; Method's worker-backed scenarios are
+verified with the runner's tests.
 
 ### What Operations relies on
 

@@ -121,7 +121,6 @@ class ModuleImplementationTests(SharedFileProject, unittest.TestCase):
         self.write(".concorde/config.json", json.dumps(config))
         self.assertEqual("module.a", self.repository().module("module.a").id)
 
-    @verifies("scenario.spec.checks-files")
     def test_configured_checks_are_read_from_one_file_per_module(self):
         def check(identity):
             return {"id": identity, "argv": ["true"], "timeout_seconds": 5}
