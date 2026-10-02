@@ -1,0 +1,88 @@
+{
+  "part": "issues",
+  "module": "module.issues",
+  "depends_on": [
+    "kernel"
+  ],
+  "loads": [
+    "shapes"
+  ],
+  "commands": [
+    {
+      "name": "issues",
+      "entry": "cli:main",
+      "output": "own"
+    }
+  ],
+  "mcp_tools": [
+    {
+      "name": "issue_list",
+      "entry": "tools:answer",
+      "worktree": "primary",
+      "long_work": false,
+      "threaded": false,
+      "requires": []
+    },
+    {
+      "name": "issue_show",
+      "entry": "tools:answer",
+      "worktree": "primary",
+      "long_work": false,
+      "threaded": false,
+      "requires": []
+    },
+    {
+      "name": "issue_check",
+      "entry": "tools:answer",
+      "worktree": "primary",
+      "long_work": false,
+      "threaded": false,
+      "requires": []
+    },
+    {
+      "name": "issue_report",
+      "entry": "tools:answer",
+      "worktree": "primary",
+      "long_work": false,
+      "threaded": false,
+      "requires": []
+    },
+    {
+      "name": "issue_close",
+      "entry": "tools:answer",
+      "worktree": "primary",
+      "long_work": false,
+      "threaded": false,
+      "requires": []
+    },
+    {
+      "name": "issue_reopen",
+      "entry": "tools:answer",
+      "worktree": "primary",
+      "long_work": false,
+      "threaded": false,
+      "requires": []
+    }
+  ],
+  "mcp_definitions": "tools:TOOLS",
+  "mcp_instructions": "Issues: issue_list, issue_show and issue_check read the project's Issues; issue_report, issue_close and issue_reopen write them, refused at once with merge_busy while another process holds the merge lock.",
+  "typed_types": [
+    "concorde-issue-report",
+    "concorde-issue-receipt"
+  ],
+  "guidance": null,
+  "renders": null,
+  "install": {
+    "files": [],
+    "defaults": {
+      ".concorde/issues/.gitignore": "# Issue records are versioned project data. Host locks live under ../locks/.\n"
+    },
+    "gitignore": [],
+    "permissions": [],
+    "programs": [],
+    "prepare": null,
+    "bind": null
+  },
+  "idle_check": null,
+  "after_update": null
+}

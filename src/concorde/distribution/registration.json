@@ -1,0 +1,50 @@
+{
+  "part": "distribution",
+  "module": "module.distribution",
+  "depends_on": [],
+  "loads": [],
+  "commands": [
+    {
+      "name": "build",
+      "entry": "cli:build",
+      "output": "envelope"
+    },
+    {
+      "name": "protocol-manifest",
+      "entry": "cli:protocol_manifest",
+      "output": "envelope"
+    },
+    {
+      "name": "update",
+      "entry": "cli:update_main",
+      "output": "own"
+    },
+    {
+      "name": "project-mcp",
+      "entry": "project_mcp.server:main",
+      "output": "own"
+    }
+  ],
+  "mcp_tools": [],
+  "mcp_definitions": null,
+  "mcp_instructions": null,
+  "typed_types": [],
+  "guidance": null,
+  "renders": null,
+  "install": {
+    "files": [],
+    "defaults": {},
+    "gitignore": [
+      ".concorde/update.json",
+      ".concorde/runs/",
+      ".concorde/framework/",
+      ".concorde/tools/"
+    ],
+    "permissions": [],
+    "programs": [],
+    "prepare": null,
+    "bind": null
+  },
+  "idle_check": null,
+  "after_update": null
+}

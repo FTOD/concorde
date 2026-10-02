@@ -19,6 +19,7 @@ from pathlib import Path
 from ..kernel import binding as binding_file
 from ..kernel import errors
 from ..kernel.refusal import KernelError
+from ..kernel.schema import validate
 from ..kernel.tracing import layout
 from .step import concorde_command
 
@@ -89,9 +90,6 @@ TOOLS: dict[str, dict] = {
         ),
     },
 }
-# The tools whose calls may take long and are served on a thread of their own, so the session's
-# other calls are answered meanwhile.
-THREADED = frozenset({"workflow_step"})
 
 
 def concorde_of(worktree: Path) -> tuple[list[str], dict]:
@@ -255,12 +253,50 @@ def workflow_report(where: Path, arguments: dict) -> dict:
 
 CALLS = {"workflow_step": workflow_step, "workflow_report": workflow_report}
 
+
+def answer(envelope: dict) -> dict:
+    """The answer of one call of the tool ``envelope["tool"]``, which the project MCP server
+    passes with its ``arguments`` and the folder the session started in (``where``):
+    ``{"value"}`` or ``{"error"}``."""
+    name = str(envelope.get("tool"))
+    try:
+        if name not in CALLS:
+            raise own(
+                name,
+                "invalid_input",
+                f"the workflow part has no tool {name!r}",
+                explanation="the server passes only the tools the workflow part registers",
+            )
+        arguments = envelope.get("arguments")
+        arguments = {} if arguments is None else arguments
+        if not isinstance(arguments, dict):
+            raise own(
+                name,
+                "invalid_input",
+                f"the arguments are not an object: {arguments!r}"[:300],
+                explanation="a tool's arguments are one JSON object",
+            )
+        try:
+            validate(arguments, TOOLS[name]["inputSchema"])
+        except KernelError as error:
+            raise own(
+                name,
+                "invalid_input",
+                f"the arguments of {name} are invalid: {error}",
+                explanation="a tool's arguments satisfy its input schema",
+            ) from None
+        value = CALLS[name](Path(envelope["where"]), arguments)
+    except ToolRefusal as refusal:
+        return {"error": refusal.link}
+    return {"value": value}
+
+
 __all__ = [
     "CALLS",
     "STEP_GRACE",
     "STEP_WAIT",
-    "THREADED",
     "TOOLS",
     "ToolRefusal",
+    "answer",
     "concorde_of",
 ]

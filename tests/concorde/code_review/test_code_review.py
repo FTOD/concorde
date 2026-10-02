@@ -25,12 +25,14 @@ FIXED = "def add(a, b):\n    return a + b\n"
 FAKE_REVIEWER = Path(__file__).with_name("fake_reviewer.py")
 
 
-# A ``concorde`` whose command line knows no ``issues``: the issues part is not installed.
+# A ``concorde`` that refuses ``issues`` as Distribution's does where the issues part is not
+# installed.
 NO_ISSUES = [
     sys.executable,
     "-c",
-    'import sys; sys.stderr.write("concorde: error: argument command: invalid choice: '
-    "'issues'\\n\"); sys.exit(2)",
+    f"import json, sys; sys.path.insert(0, {str(REPOSITORY_ROOT / 'src')!r}); "
+    "from concorde.distribution.cli import part_missing; "
+    "print(json.dumps({'error': part_missing('issues', 'commands', 'issues')})); sys.exit(1)",
 ]
 
 

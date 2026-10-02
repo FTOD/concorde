@@ -13,10 +13,9 @@ defines, and never through its Python code:
   ``delivery``, and Execution's run store through its formats (``runs.py``).
 
 A part is absent from an installation when the worktree's own ``concorde`` does not offer its
-command: Distribution's dispatcher refuses a command of a part the project has not installed with
-an error link whose code names that refusal (``ABSENT_CODES``), and a ``concorde`` whose command
-line does not know the command at all answers ``invalid choice: '<command>'``. Either way the
-command is absent; any other answer, a refusal of the arguments included, means it is offered.
+command: Distribution's ``concorde`` refuses a command of a part the project has not installed by
+printing ``{"error": <link>}`` with the code ``part_missing`` (``ABSENT_CODE``) and exiting with
+status 1. Any other answer, a refusal of the arguments included, means the command is offered.
 """
 
 from __future__ import annotations
@@ -35,10 +34,8 @@ from ...kernel.tracing import locks
 REGISTRY = ".concorde/specs.json"
 # Distribution's mark of an update not validated since.
 UPDATE_MARK = ".concorde/update.json"
-# The codes by which ``concorde`` refuses a command of a part the project has not installed:
-# Coordination's own and the one Method assumed for Distribution's dispatcher (decision log of
-# parts-coordination); the distribution task makes them one.
-ABSENT_CODES = ("part_missing", "part_not_installed")
+# The code by which ``concorde`` refuses a command of a part the project has not installed.
+ABSENT_CODE = "part_missing"
 # How long one call of another part's command may take: a write waits up to 300 s for the merge
 # lock, and an Issue write commits.
 TIMEOUT = 900
@@ -101,12 +98,12 @@ def _environment(command: list[str], extra: dict | None = None) -> dict:
     return environment
 
 
-def _absent(word: str, completed: subprocess.CompletedProcess, value) -> bool:
-    if isinstance(value, dict):
-        error = value.get("error")
-        if isinstance(error, dict) and error.get("code") in ABSENT_CODES:
-            return True
-    return f"invalid choice: '{word}'" in (completed.stdout + completed.stderr)
+def _absent(completed: subprocess.CompletedProcess, value) -> bool:
+    """Whether ``concorde`` refused the command as one of a part that is not installed."""
+    if completed.returncode != 1 or not isinstance(value, dict):
+        return False
+    error = value.get("error")
+    return isinstance(error, dict) and error.get("code") == ABSENT_CODE
 
 
 def _decoded(text: str):
@@ -148,7 +145,7 @@ def call(
             f"{type(error).__name__}: {error}"
         ) from error
     value = _decoded(completed.stdout)
-    if _absent(words[0], completed, value):
+    if _absent(completed, value):
         raise Absent(PARTS.get(words[0], words[0]), words[0])
     if value is None:
         raise Failed(
@@ -178,7 +175,7 @@ def offers(worktree: Path, command: str) -> bool:
             f"asking `concorde {command} --help` in {worktree} whether the {PARTS[command]} "
             f"part is installed could not run to its end: {type(error).__name__}: {error}"
         ) from error
-    return not _absent(command, completed, _decoded(completed.stdout))
+    return not _absent(completed, _decoded(completed.stdout))
 
 
 def registry_modules(root: Path) -> set[str] | None:
@@ -209,7 +206,7 @@ def update_unvalidated(primary: Path) -> bool:
 
 
 __all__ = [
-    "ABSENT_CODES",
+    "ABSENT_CODE",
     "REGISTRY",
     "UPDATE_MARK",
     "Absent",

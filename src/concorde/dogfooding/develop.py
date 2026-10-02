@@ -4,8 +4,8 @@ A develop install runs the Concorde of an independent Concorde repository that t
 changes. It is made and updated only from the clean primary worktree of that repository, on a
 branch: a task worktree disappears once its branch is merged, a detached checkout names no line of
 development, and uncommitted changes would install a Concorde no commit records. The installer
-calls ``develop_source`` before writing anything and adds ``guidance`` to the main-session guidance
-it places.
+calls ``check``, which the package descriptor names, before writing anything and adds the guidance
+it answers to the main-session guidance it places.
 """
 
 from __future__ import annotations
@@ -116,4 +116,17 @@ def guidance(package: str | Path) -> tuple[str, str]:
     return sections[0], sections[1]
 
 
-__all__ = ["DevelopError", "develop_source", "guidance"]
+def check(package) -> dict:
+    """The installer's entry, which the package descriptor names under ``develop``: the source
+    a develop install of ``package`` installs from with the guidance it adds, as
+    ``{"source": {...}, "guidance": {"skill", "claude_md"}}``, or
+    ``{"refusal": {"code", "message"}}`` when the checkout may not be installed from."""
+    try:
+        source = develop_source(package)
+        skill, claude_md = guidance(package)
+    except DevelopError as error:
+        return {"refusal": {"code": error.code, "message": str(error)}}
+    return {"source": source, "guidance": {"skill": skill, "claude_md": claude_md}}
+
+
+__all__ = ["DevelopError", "check", "develop_source", "guidance"]

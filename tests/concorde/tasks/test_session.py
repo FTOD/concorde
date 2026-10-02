@@ -15,7 +15,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from concorde.spec.verification import verifies
-from concorde.distribution.install import TRACES
+from tests.concorde.support.ignored import TRACES
 from concorde.coordination.tasks import cli, session, store
 from concorde.kernel.tracing import node as trace
 from tests.concorde.support.operation_project import OperationProject, commit

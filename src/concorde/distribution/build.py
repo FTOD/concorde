@@ -13,8 +13,9 @@ import copy
 import hashlib
 import json
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
+from . import parts
 from .prompt_resolver import (
     PromptResolverError,
     find_unreachable_prompts,
@@ -82,18 +83,62 @@ GENERATED_OWNED_DIRS: tuple[str, ...] = (
 )
 
 
+def registrations(project_root: Path) -> dict[str, parts.Registration]:
+    """Every part registration of the tree, refused as a build error when one does not satisfy
+    the registration contract or two parts register one command or MCP tool name."""
+    try:
+        found = parts.package_parts(project_root)
+    except parts.RegistrationError as error:
+        raise BuildError(f"part registration: {error}") from error
+    conflicts = parts.conflicts(found)
+    if conflicts:
+        raise BuildError(
+            "two parts register one name, which is never resolved by order: "
+            + "; ".join(conflicts)
+        )
+    return found
+
+
+def guidance_roots(project_root: Path) -> tuple[str, ...]:
+    """The prompt root of every part's registered guidance: ``generated/<path>`` is rendered from
+    ``prompts/<path>``."""
+    roots = []
+    for registration in registrations(project_root).values():
+        guidance = registration.data["guidance"]
+        if guidance is None:
+            continue
+        if not guidance.startswith("generated/") or not guidance.endswith(".md"):
+            raise BuildError(
+                f"{registration.path}: guidance {guidance} is no Markdown render under generated/"
+            )
+        root = "prompts/" + guidance.removeprefix("generated/")
+        if not (project_root / root).is_file():
+            raise BuildError(
+                f"{registration.path}: the guidance {guidance} has no prompt root {root}"
+            )
+        roots.append(root)
+    return tuple(roots)
+
+
 def prompt_roots(project_root: Path) -> tuple[str, ...]:
-    """The fixed roots and every Markdown file directly in a root directory, sorted."""
+    """The fixed roots, every Markdown file directly in a root directory and every part's
+    registered guidance, each once, sorted within its kind."""
     found = [
         path.relative_to(project_root).as_posix()
         for directory in PROMPT_ROOT_DIRECTORIES
         for path in sorted((project_root / directory).glob("*.md"))
         if path.is_file()
     ]
-    return (*PROMPT_ROOTS, *found)
+    roots = (*PROMPT_ROOTS, *found)
+    return roots + tuple(
+        root for root in sorted(set(guidance_roots(project_root))) if root not in roots
+    )
 
 
-GENERATED_OWNED_FILES: tuple[str, ...] = ("generated/build-manifest.json",)
+GENERATED_OWNED_FILES: tuple[str, ...] = (
+    "generated/build-manifest.json",
+    parts.INDEX,
+)
 
 # Inputs whose change makes every render stale even though no prompt includes them.
 EXTRA_SOURCES: tuple[str, ...] = ("concorde.json",)
@@ -189,22 +234,48 @@ def _manifest(project_root: Path, outputs: tuple[BuildOutput, ...]) -> bytes:
     return (json.dumps(payload, sort_keys=True, indent=2) + "\n").encode("utf-8")
 
 
-def render_workflows(project_root: Path) -> list[BuildOutput]:
-    """Every registered workflow, wrapped for each client, when the tree holds their sources."""
-    # The parts register their workflows when their code loads. Until the build reads the part
-    # registrations, loading Method's registering module is what registers the brownfield workflow.
-    from ..method import brownfield as _brownfield  # noqa: F401
-    from ..workflows.catalog import ADAPTER, WorkflowError, renders
+def render_parts_index(project_root: Path) -> BuildOutput:
+    """The parts index: what every part of the package registers, from which the installed
+    ``concorde`` names the part of a command or tool that is not installed."""
+    found = registrations(project_root)
+    return BuildOutput(
+        path=parts.INDEX,
+        content=(
+            json.dumps(parts.index_of(found), indent=2, sort_keys=True) + "\n"
+        ).encode(),
+        sources=tuple(sorted(registration.path for registration in found.values())),
+    )
 
-    if not (project_root / ADAPTER).is_file():
-        return []
+
+def render_workflows(project_root: Path) -> list[BuildOutput]:
+    """Every output the parts' ``renders`` entries produce from the tree, such as the workflow
+    part's Claude Code workflows; each part's code that registers things is loaded first, so the
+    workflows every part contributes are registered."""
+    found = registrations(project_root)
     try:
-        return [
-            BuildOutput(path=path, content=content.encode("utf-8"), sources=sources)
-            for path, (content, sources) in renders(project_root).items()
+        parts.load(found)
+    except ImportError as error:
+        raise BuildError(f"loading the parts' registering code: {error}") from error
+    outputs = []
+    for registration in parts.ordered(found):
+        entry = registration.data["renders"]
+        if entry is None:
+            continue
+        answer = registration.entry(entry)(project_root)
+        if "refusal" in answer:
+            refusal = answer["refusal"]
+            raise BuildError(
+                f"{registration.part} render: {refusal['code']}: {refusal['message']}"
+            )
+        outputs += [
+            BuildOutput(
+                path=path,
+                content=item["content"].encode("utf-8"),
+                sources=tuple(item["sources"]),
+            )
+            for path, item in answer["files"].items()
         ]
-    except WorkflowError as error:
-        raise BuildError(f"workflow render: {error}") from error
+    return outputs
 
 
 def build(project_root: str | Path) -> BuildResult:
@@ -216,6 +287,7 @@ def build(project_root: str | Path) -> BuildResult:
         prompts
         + render_skills({output.path: output for output in prompts})
         + render_workflows(root)
+        + [render_parts_index(root)]
     )
     unreachable = find_unreachable_prompts(root, list(roots))
     if unreachable:
@@ -232,12 +304,21 @@ def build(project_root: str | Path) -> BuildResult:
 
 def _checked_output(root: Path, relative: str) -> Path:
     """Reject traversal, symlink ancestors and non-file destinations before mutation."""
-    from ..spec.typed_data import checked_path
-
-    try:
-        path = checked_path(root, relative)
-    except ValueError as error:
-        raise BuildError(f"unsafe build output {relative}: {error}") from error
+    pure = PurePosixPath(relative)
+    if (
+        not relative
+        or pure.is_absolute()
+        or "\\" in relative
+        or any(part in ("", ".", "..") for part in relative.split("/"))
+    ):
+        raise BuildError(f"unsafe build output {relative}: not a safe relative path")
+    path = root
+    for component in relative.split("/"):
+        path = path / component
+        if path.is_symlink():
+            raise BuildError(
+                f"unsafe build output {relative}: symlink paths are forbidden"
+            )
     for parent in path.parents:
         if parent == root:
             break

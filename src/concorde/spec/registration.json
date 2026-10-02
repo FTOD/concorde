@@ -1,0 +1,61 @@
+{
+  "part": "spec",
+  "module": "module.spec-tooling",
+  "depends_on": [],
+  "loads": [
+    "initialize"
+  ],
+  "commands": [
+    {
+      "name": "spec-validation",
+      "entry": "commands:spec_validation",
+      "output": "envelope"
+    },
+    {
+      "name": "registry",
+      "entry": "commands:registry",
+      "output": "envelope"
+    },
+    {
+      "name": "docsite",
+      "entry": "commands:docsite",
+      "output": "envelope"
+    },
+    {
+      "name": "grant",
+      "entry": "commands:grant",
+      "output": "envelope"
+    },
+    {
+      "name": "init",
+      "entry": "commands:init",
+      "output": "envelope"
+    },
+    {
+      "name": "spec-mcp",
+      "entry": "commands:spec_mcp",
+      "output": "own"
+    }
+  ],
+  "mcp_tools": [],
+  "mcp_definitions": null,
+  "mcp_instructions": null,
+  "typed_types": [
+    "concorde-project-proposal"
+  ],
+  "guidance": null,
+  "renders": null,
+  "install": {
+    "files": [],
+    "defaults": {},
+    "gitignore": [],
+    "permissions": [],
+    "programs": [
+      "d2"
+    ],
+    "prepare": "installation:prepare",
+    "bind": "installation:bind"
+  },
+  "idle_check": null,
+  "after_update": null
+}

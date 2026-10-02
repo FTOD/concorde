@@ -38,5 +38,8 @@
         "windows-arm64": "dd05cab459410c287d7ca3eb9cf78145a071742ee8e1b81a0122f84f471883e1"
       }
     }
+  },
+  "develop": {
+    "check": "concorde.dogfooding.develop:check"
   }
 }

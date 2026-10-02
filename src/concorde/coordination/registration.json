@@ -1,0 +1,163 @@
+{
+  "part": "coordination",
+  "module": "module.coordination",
+  "depends_on": [
+    "kernel"
+  ],
+  "loads": [
+    "tasks.store",
+    "tasks.merge",
+    "tasks.deliver"
+  ],
+  "commands": [
+    {
+      "name": "task",
+      "entry": "tasks.cli:main",
+      "output": "own"
+    }
+  ],
+  "mcp_tools": [
+    {
+      "name": "task_list",
+      "entry": "tasks.tools:answer",
+      "worktree": "primary",
+      "long_work": false,
+      "threaded": false,
+      "requires": []
+    },
+    {
+      "name": "task_show",
+      "entry": "tasks.tools:answer",
+      "worktree": "primary",
+      "long_work": false,
+      "threaded": false,
+      "requires": []
+    },
+    {
+      "name": "trace_show",
+      "entry": "tasks.tools:answer",
+      "worktree": "primary",
+      "long_work": false,
+      "threaded": false,
+      "requires": []
+    },
+    {
+      "name": "run_result",
+      "entry": "tasks.tools:answer",
+      "worktree": "primary",
+      "long_work": false,
+      "threaded": false,
+      "requires": [
+        "execution"
+      ]
+    },
+    {
+      "name": "locks",
+      "entry": "tasks.tools:answer",
+      "worktree": "primary",
+      "long_work": false,
+      "threaded": false,
+      "requires": []
+    },
+    {
+      "name": "task_open",
+      "entry": "tasks.tools:answer",
+      "worktree": "primary",
+      "long_work": false,
+      "threaded": false,
+      "requires": []
+    },
+    {
+      "name": "task_escalate",
+      "entry": "tasks.tools:answer",
+      "worktree": "primary",
+      "long_work": false,
+      "threaded": false,
+      "requires": []
+    },
+    {
+      "name": "task_rebind",
+      "entry": "tasks.tools:answer",
+      "worktree": "primary",
+      "long_work": false,
+      "threaded": false,
+      "requires": []
+    },
+    {
+      "name": "task_report",
+      "entry": "tasks.tools:answer",
+      "worktree": "primary",
+      "long_work": false,
+      "threaded": false,
+      "requires": []
+    },
+    {
+      "name": "task_answer",
+      "entry": "tasks.tools:answer",
+      "worktree": "primary",
+      "long_work": false,
+      "threaded": false,
+      "requires": []
+    },
+    {
+      "name": "task_close",
+      "entry": "tasks.tools:answer",
+      "worktree": "primary",
+      "long_work": false,
+      "threaded": false,
+      "requires": []
+    },
+    {
+      "name": "task_resolve",
+      "entry": "tasks.tools:answer",
+      "worktree": "primary",
+      "long_work": false,
+      "threaded": false,
+      "requires": []
+    },
+    {
+      "name": "task_merge",
+      "entry": "tasks.tools:answer",
+      "worktree": "primary",
+      "long_work": true,
+      "threaded": false,
+      "requires": []
+    },
+    {
+      "name": "register_wait",
+      "entry": "tasks.tools:answer",
+      "worktree": "primary",
+      "long_work": false,
+      "threaded": false,
+      "requires": []
+    }
+  ],
+  "mcp_definitions": "tasks.tools:TOOLS",
+  "mcp_instructions": "Tasks: task_list, task_show, trace_show, run_result and locks read the project's tasks, traces and locks; task_open, task_escalate, task_report, task_answer, task_rebind, task_resolve and task_close are short writes. task_merge takes the task's workspace lock and the merge lock without waiting (a busy lock is refused naming its holder) and starts the merge as its own process. register_wait asks to be woken when a task reaches a state or is rebound to another main agent's session, a run ends or a lock is released; it never takes a lock for you.",
+  "typed_types": [
+    "concorde-task-trace",
+    "concorde-session-trace",
+    "concorde-merge-trace",
+    "concorde-merge-check-trace",
+    "concorde-delivery-trace",
+    "concorde-delivery-check-trace"
+  ],
+  "guidance": "generated/main-session/skill.md",
+  "renders": null,
+  "install": {
+    "files": [],
+    "defaults": {},
+    "gitignore": [
+      ".concorde/tasks/",
+      ".concorde/history/",
+      ".concorde/workspace.json",
+      ".claude/worktrees/"
+    ],
+    "permissions": [],
+    "programs": [],
+    "prepare": null,
+    "bind": null
+  },
+  "idle_check": null,
+  "after_update": "tasks.update:open_tasks"
+}

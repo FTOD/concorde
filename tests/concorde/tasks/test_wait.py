@@ -13,7 +13,7 @@ import time
 import unittest
 
 from concorde.kernel.errors import ERROR_SCHEMA
-from concorde.distribution.install import TRACES
+from tests.concorde.support.ignored import TRACES
 from concorde.kernel.locking import workspace_lock
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies

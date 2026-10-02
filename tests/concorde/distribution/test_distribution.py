@@ -24,7 +24,8 @@ from concorde.distribution.build import (
     write_build,
 )
 from concorde.distribution.install import InstallError, install, refusal, update
-from concorde.distribution.project_defaults import write_protocol_copy
+from concorde.distribution.project_defaults import CopyError, write_protocol_copy
+from concorde.spec.views.docsite_template import DocsiteTemplateError
 from concorde.distribution.tools import platform_key
 from concorde.kernel.errors import ERROR_SCHEMA
 from concorde.execution.runs import Store, run_lock
@@ -418,7 +419,7 @@ class ProtocolTests(unittest.TestCase):
         before = (project / ".concorde/protocol/principles.md").read_bytes()
         chapter = package / "protocol/views.md"
         chapter.write_text(chapter.read_text() + "\nStale.\n")
-        with self.assertRaises(SpecError):
+        with self.assertRaises(CopyError):
             write_protocol_copy(project, package)
         self.assertEqual(
             before, (project / ".concorde/protocol/principles.md").read_bytes()
@@ -1318,9 +1319,7 @@ class InstallTests(unittest.TestCase):
             "system_error",
             path="specs/project/module.md.json",
         )
-        with patch(
-            "concorde.distribution.install.bind_installation", side_effect=refused
-        ):
+        with patch("concorde.spec.installation.bind_installation", side_effect=refused):
             result = install(
                 project, package, d2=False, pi_runtime=False, dependencies=False
             )
@@ -1414,6 +1413,8 @@ class InstallTests(unittest.TestCase):
                     (REPOSITORY_ROOT / source).read_text(),
                 )
             )
+        # The spec part's install service refuses a template Views' inventory rule rejects.
+        raised.add(DocsiteTemplateError.DEFAULT_CODE)
         self.assertEqual(raised, set(table))
 
     @verifies("scenario.distribution.install-write-failed")

@@ -23,8 +23,6 @@ import shlex
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
-from ..spec.frontmatter import FrontMatterError, parse_document
-
 AUDIENCES = frozenset({"worker", "ambient", "shared"})
 PROTOCOL_PREFIX = "prompts/protocol/"
 PROTOCOL_TEXT_ROOT = "protocol/"
@@ -37,6 +35,47 @@ _DIRECTIVE_LINE = re.compile(r"^@(?P<target>[^\s@`\"'()<>]+)(?:[ \t]+.*)?$")
 _VARIABLE = re.compile(r"(?<!\{)\{([A-Za-z_][A-Za-z0-9_]*)\}(?!\})")
 _ESCAPED = re.compile(r"\{\{([A-Za-z_][A-Za-z0-9_]*)\}\}")
 _KEY = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_FIELD = re.compile(r"^(?P<key>[A-Za-z_][A-Za-z0-9_-]*):[ \t]*(?P<value>.*?)[ \t]*$")
+
+
+class FrontMatterError(ValueError):
+    """A prompt's front matter is not a fenced block of ``key: value`` lines."""
+
+
+def parse_document(text: str, source: str = "") -> tuple[dict[str, str], str]:
+    """A prompt's front matter, a fenced block of plain ``key: value`` lines (a value may be
+    quoted), and the body after it."""
+    lines = text.replace("\r\n", "\n").splitlines()
+    if not lines or lines[0].strip() != "---":
+        raise FrontMatterError(
+            f"{source}:1: document must begin with a front-matter fence"
+        )
+    try:
+        end = next(
+            index
+            for index, line in enumerate(lines[1:], start=1)
+            if line.strip() == "---"
+        )
+    except StopIteration:
+        raise FrontMatterError(
+            f"{source}:1: front matter has no closing fence"
+        ) from None
+    metadata: dict[str, str] = {}
+    for number, line in enumerate(lines[1:end], start=2):
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        found = _FIELD.match(line)
+        if found is None or found["key"] in metadata:
+            raise FrontMatterError(
+                f"{source}:{number}: expected one `key: value` line per key"
+            )
+        value = found["value"]
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        metadata[found["key"]] = value
+    return metadata, "\n".join(lines[end + 1 :]).lstrip("\n") + (
+        "\n" if end + 1 < len(lines) else ""
+    )
 
 
 class PromptResolverError(ValueError):

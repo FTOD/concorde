@@ -22,15 +22,15 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import subprocess
 import sys
 import threading
 from pathlib import Path
 from typing import IO
 
-from ...kernel import errors
-from ...coordination.tasks import store
+from .. import formats
 from .calls import Calls
-from .tools import ACTOR, THREADED, Refusal, digest, listing, serve_call
+from .tools import ACTOR, INSTRUCTIONS, Refusal, describe, serve_call
 
 NAME = "concorde"
 SUPPORTED_VERSIONS = ("2025-06-18", "2025-03-26", "2024-11-05")
@@ -39,22 +39,6 @@ CHANNEL_FLAGS = ("--dangerously-load-development-channels", "--channels")
 CLAUDE_PROGRAMS = ("claude", "claude.exe")
 # How far up the process tree the server looks for the claude that started it.
 ANCESTORS = 8
-INSTRUCTIONS = (
-    "Concorde's project MCP server: the project's tasks, traces and locks, read fresh from the "
-    "primary worktree on every call by the Concorde its `concorde` runs at that moment. "
-    "Queries: task_list, task_show, trace_show, run_result, workflow_report, locks. Short "
-    "writes: task_open, task_escalate, task_report, task_answer, task_rebind, task_close. "
-    "workflow_step starts or awaits a workflow step of the bound "
-    "workspace the session started in, as a process of this server, for step agents. "
-    "task_merge "
-    "takes the task's workspace lock and the merge lock without waiting (a busy lock is refused "
-    "naming its holder) and starts the merge as its own process. register_wait asks to be woken "
-    "when a task reaches a state or is rebound to another main agent's session, a run ends or a "
-    "lock is released; it never takes a lock for you. When this server is loaded as a channel, events arrive as "
-    '<channel source="concorde" event="...">: wait_done, wait_failed or merge_ended, with '
-    "the task, run or lock in the attributes and the answer or output in the body; act on them "
-    "as on a finished background command. Every refusal is an error chain link: read it whole."
-)
 
 
 def _on_terminal(pid: int) -> bool:
@@ -125,11 +109,29 @@ def detect_channel(name: str, environment: dict, pid: int | None = None) -> bool
 
 
 def find_primary(environment: dict, cwd: Path) -> Path | None:
+    """The primary worktree of the Git repository the session's folder lies in, found through
+    Git's common directory, or None outside a Git repository."""
     here = Path(environment.get("CLAUDE_PROJECT_DIR") or cwd)
     try:
-        return store.primary_of(here)
-    except store.TaskError:
+        found = subprocess.run(
+            [
+                "git",
+                "-C",
+                str(here),
+                "rev-parse",
+                "--path-format=absolute",
+                "--git-common-dir",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
         return None
+    if found.returncode != 0 or not found.stdout.strip():
+        return None
+    return Path(os.path.realpath(found.stdout.strip())).parent
 
 
 class Session:
@@ -208,7 +210,7 @@ class Session:
                         "experimental": {"claude/channel": {}},
                     },
                     "serverInfo": {"name": NAME, "version": "1"},
-                    "instructions": INSTRUCTIONS,
+                    "instructions": self.instructions(),
                 },
             )
         elif method == "ping":
@@ -216,12 +218,12 @@ class Session:
         elif method == "tools/list":
             self.reply(
                 identity,
-                {"tools": self.calls.tools() if self.calls is not None else listing()},
+                {"tools": self.calls.tools() if self.calls is not None else []},
             )
         elif method == "tools/call":
             params = message.get("params") or {}
             name, arguments = params.get("name"), params.get("arguments")
-            if name in THREADED:
+            if self.calls is not None and self.calls.served(str(name))["threaded"]:
                 # A workflow step waits up to its bound: answer the other calls meanwhile.
                 threading.Thread(
                     target=lambda: self.reply(
@@ -241,12 +243,19 @@ class Session:
                 }
             )
 
+    def instructions(self) -> str:
+        """The server's instructions with each installed part's, as the current code gives them
+        when the session starts; they stay what they were for the rest of the session."""
+        if self.calls is None:
+            return INSTRUCTIONS
+        self.calls.tools()
+        return self.calls.instructions
+
     def tool_result(self, name, arguments) -> dict:
         try:
             if self.calls is None:
                 raise Refusal(
-                    errors.link(
-                        "component",
+                    formats.link(
                         f"{ACTOR} ({name})",
                         "no_project",
                         f"{self.where} lies in no Git repository, so the server has no primary "
@@ -264,7 +273,7 @@ class Session:
             value, error = {"error": refusal.link}, True
         except Exception as failure:  # noqa: BLE001 -- every failure is a detailed error link
             value = {
-                "error": errors.from_exception(
+                "error": formats.from_exception(
                     f"{ACTOR} ({name})",
                     failure,
                     explanation="the server has no recovery for an unexpected error; nothing "
@@ -297,7 +306,8 @@ class Session:
         return 0
 
 
-def main(argv=None) -> int:
+def main(argv=None, root=None) -> int:
+    """``concorde project-mcp``, Distribution's command as its registration names it."""
     parser = argparse.ArgumentParser(prog="concorde project-mcp")
     parser.add_argument(
         "--name",
@@ -320,8 +330,7 @@ def main(argv=None) -> int:
     if arguments.call is not None:
         return serve_call(arguments.call, sys.stdin, sys.stdout)
     if arguments.tools:
-        tools = listing()
-        sys.stdout.write(json.dumps({"tools": tools, "digest": digest(tools)}) + "\n")
+        sys.stdout.write(json.dumps(describe()) + "\n")
         return 0
     return Session(sys.stdin, sys.stdout, name=arguments.name).run()
 
