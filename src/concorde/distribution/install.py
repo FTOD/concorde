@@ -29,6 +29,7 @@ writes a Spec document, the registry or the project configuration.
 from __future__ import annotations
 
 import hashlib
+import contextlib
 import json
 import os
 import shutil
@@ -109,6 +110,7 @@ INPUT_CODES = frozenset(
         "stale_build",
         "invalid_docsite_template",
         "settings_invalid",
+        "mcp_config_invalid",
         "not_installed",
         "update_source_missing",
         "develop_source_not_repository",
@@ -168,8 +170,8 @@ def _source_commit(package: Path) -> str | None:
 
 
 def _run_progress(concorde: Path) -> dict[str, tuple[Path, dict]]:
-    """The progress file of every run of the current tasks' workspace folders and of the unbound
-    runs, with what it holds, by run identity."""
+    """The progress file of every run of the current tasks' workspace folders, of the unbound
+    runs and of the bound runs in the lobby, with what it holds, by run identity."""
     folders: list[Path] = []
     try:
         tasks = sorted(
@@ -179,16 +181,12 @@ def _run_progress(concorde: Path) -> dict[str, tuple[Path, dict]]:
         tasks = []
     for task in tasks:
         folders.extend(reader.workspace_runs(layout.workspace_folder(task)))
-    try:
-        folders.extend(
-            sorted(
-                item
-                for item in layout.unbound_folder(concorde).iterdir()
-                if item.is_dir()
-            )
-        )
-    except OSError:
-        pass
+    # A bound run keeps its node in the lobby until it holds its workspace's lock.
+    for store in (layout.unbound_folder(concorde), layout.lobby_folder(concorde)):
+        try:
+            folders.extend(sorted(item for item in store.iterdir() if item.is_dir()))
+        except OSError:
+            pass
     found: dict[str, tuple[Path, dict]] = {}
     for folder in folders:
         progress = folder / layout.PROGRESS
@@ -677,9 +675,11 @@ def _place(
     # An initialized project keeps every installed file bound, those this install added too.
     try:
         bind_installation(project)
-    except SpecError:
-        # The Specs changed under the install; validation reports what is left unbound.
-        pass
+    except SpecError as error:
+        # Everything else is installed, so the install still succeeds; the result keeps Spec
+        # core's account, which names any file a failed restore left with new content, and
+        # validation reports what is left unbound.
+        return {**receipt, "binding_error": error.record()}
     return receipt
 
 
@@ -704,6 +704,17 @@ def open_tasks(project: Path) -> list[dict]:
                 }
             )
     return found
+
+
+def _update_mark(project: Path) -> dict | None:
+    """The mark of an earlier update not validated since, or None when there is none to read."""
+    try:
+        mark = json.loads((project / UPDATE_STATE).read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, ValueError):
+        return None
+    return (
+        mark if isinstance(mark, dict) and mark.get("state") == "unvalidated" else None
+    )
 
 
 def update(
@@ -757,19 +768,38 @@ def update(
                     json.dumps(config, indent=2) + "\n", encoding="utf-8"
                 )
                 rebound = {"from": before, "to": after}
+        # A project still unvalidated since an earlier update keeps that update's before-state:
+        # what has not been validated reaches back to it.
+        earlier = _update_mark(project)
+        if earlier is not None:
+            if earlier.get("protocol"):
+                rebound = {
+                    "from": earlier["protocol"].get("from"),
+                    "to": rebound["to"] if rebound else earlier["protocol"].get("to"),
+                }
         state = {
             "state": "unvalidated",
-            "from": previous.get("version"),
+            "from": (earlier or {}).get("from", previous.get("version")),
             "to": receipt["version"],
             # The version seldom changes between commits of a Concorde repository; the commits do.
             "commits": {
-                "from": previous.get("source_commit"),
+                "from": ((earlier or {}).get("commits") or {}).get(
+                    "from", previous.get("source_commit")
+                ),
                 "to": receipt["source_commit"],
             },
             "protocol": rebound,
             "at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
-        (project / UPDATE_STATE).write_text(json.dumps(state, indent=2) + "\n")
+        # Replaced whole, so that a failure leaves the earlier mark, if any, as it was.
+        partial = project / (UPDATE_STATE + ".partial")
+        try:
+            partial.write_text(json.dumps(state, indent=2) + "\n")
+            os.replace(partial, project / UPDATE_STATE)
+        except OSError:
+            with contextlib.suppress(OSError):
+                partial.unlink(missing_ok=True)
+            raise
     except OSError as error:
         raise _failed_write("updating Concorde in", project, error) from error
     tasks = open_tasks(project)

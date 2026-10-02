@@ -9,6 +9,7 @@
     "title": "Distribution",
     "owns": [
       "specs/concorde/distribution/module.md",
+      "specs/concorde/distribution/contracts.md",
       "specs/concorde/distribution/requirements.md",
       "specs/concorde/distribution/scenarios.md"
     ],
@@ -22,7 +23,9 @@
           "concept.registry",
           "concept.protocol-binding",
           "req.spec.init-explicit-envelope",
-          "req.spec.installation-follows-record"
+          "req.spec.installation-follows-record",
+          "concept.file-transaction",
+          "contract.spec.error"
         ]
       },
       {
@@ -37,7 +40,8 @@
         "target": "module.main-session",
         "meaning": "#uses-main-session",
         "relies_on": [
-          "concept.main-session-guidance"
+          "concept.main-session-guidance",
+          "concept.project-mcp-server"
         ]
       },
       {
@@ -74,6 +78,42 @@
           "contract.tracing.node",
           "contract.tracing.error",
           "concept.trace"
+        ]
+      },
+      {
+        "target": "module.tasks",
+        "meaning": "#uses-tasks",
+        "relies_on": [
+          "concept.task",
+          "concept.task-record",
+          "contract.tasks.record"
+        ]
+      },
+      {
+        "target": "module.issues",
+        "meaning": "#uses-issues",
+        "relies_on": [
+          "concept.issue",
+          "contract.issues.receipt"
+        ]
+      },
+      {
+        "target": "module.spec-mcp",
+        "meaning": "#uses-spec-mcp",
+        "relies_on": [
+          "req.spec-mcp.one-root",
+          "req.spec-mcp.stdio-only"
+        ]
+      },
+      {
+        "target": "module.workers",
+        "meaning": "#uses-workers",
+        "relies_on": [
+          "concept.worker-backend",
+          "concept.worker-configuration",
+          "concept.model-map",
+          "concept.progress-file",
+          "req.workers.pi-sandbox"
         ]
       }
     ],

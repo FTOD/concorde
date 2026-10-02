@@ -234,10 +234,32 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
         result = initialize(root, package, data)
         if data["action"] == "apply":
             # The first glossary now exists: the installed CLAUDE.md block imports it, so every
-            # Claude Code session starts with the project's terms.
-            from .install import refresh_glossary
+            # Claude Code session starts with the project's terms. Spec core's initialization
+            # never writes CLAUDE.md; this is Distribution's own step after it succeeded.
+            from .install import CLAUDE_MD, refresh_glossary
 
-            refresh_glossary(root)
+            try:
+                refresh_glossary(root)
+            except (OSError, UnicodeError) as error:
+                return ToolResult(
+                    "init",
+                    ".",
+                    "failed",
+                    result=result,
+                    error=SpecError(
+                        f"the project's Specs were initialized, but the import of its glossary "
+                        f"could not be added to the Concorde block of {CLAUDE_MD}",
+                        "guidance_failed",
+                        path=CLAUDE_MD,
+                        reason="initialization succeeded and is complete; only Distribution's "
+                        "amendment of the installed guidance after it failed",
+                        remediation="repair what the cause names, then run `concorde update` or "
+                        "the installer again, which installs the block with the glossary "
+                        "import; never run `init --apply` again, which refuses an initialized "
+                        "project",
+                        causes=[system_cause(error, path=CLAUDE_MD)],
+                    ),
+                )
         return ToolResult("init", ".", "success", result=result)
     if arguments.tool == "registry":
         from ..spec.registry import registry_command

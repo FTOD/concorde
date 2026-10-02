@@ -118,13 +118,14 @@ what is wrong.
 
 ### req.distribution.installer-no-specs — The installer writes no Spec but its installation realization
 
-The installer SHALL NOT create, modify or remove a registered [Spec](../glossary.json#concept.spec)
-document, the registry or, except in update mode, the project configuration's
-[Protocol binding](../glossary.json#concept.protocol-binding), other than the Concorde installation
-realization that keeps the installed files bound.
+The installer SHALL NOT create, modify or remove the registry, a registered
+[Spec](../glossary.json#concept.spec) document except in the Concorde installation realization that
+keeps the installed files bound, or any part of the project configuration except, in update mode,
+its [Protocol binding](../glossary.json#concept.protocol-binding).
 
 That realization exists only because Concorde is installed, so it is the installer's like the files
-it binds; everything else in the project's Specs stays the project's.
+it binds; everything else in the project's Specs stays the project's. A plain install leaves the
+project configuration as it is, and an update changes in it only the Protocol binding.
 
 ### req.distribution.installer-keeps-installation-bound — Installed files stay bound
 
@@ -137,12 +138,21 @@ The binding is [Spec core's](../spec-tooling/spec/requirements.md#req.spec.insta
 an installed file that exists and that no realization binds by its exact path is added, and an entry
 whose file no longer exists is removed. When the project's Specs cannot be read, the installer binds
 nothing and does not fail, since everything else was already written; `spec-validation` reports why.
+When Spec core refuses the binding, the installer does not fail either, and its result carries Spec
+core's error under `binding_error`.
 
 ### req.distribution.update-unvalidated — An update marks the project Concorde unvalidated
 
 `concorde update` SHALL mark the project Concorde unvalidated.
 
 The mark is the file `.concorde/update.json`, which the project ignores; only an update writes it.
+
+### req.distribution.update-mark-kept — An earlier mark is kept until replaced
+
+`concorde update` of a project still marked by an earlier update SHALL write its own mark with the earlier mark's version, installed commit and Protocol binding from before, and leave the earlier mark as it was until then.
+
+What has not been validated then reaches back to the earlier update, so a second update before a
+validation never hides it.
 
 ### req.distribution.unvalidated-reported — Validation reports an unvalidated update
 
@@ -197,7 +207,7 @@ When a file operation of the installer or of `concorde update` fails after the f
 Nothing is rolled back: what the earlier steps wrote stays. The receipt is replaced whole after
 every other installed file, so a failure before it leaves the previous receipt, and a failure
 after it, while the installed files are bound or an update rebinds the Protocol and writes its
-mark, leaves the new receipt without the update's mark. Running the same command again repeats
+mark, leaves the new receipt without this update's mark, an earlier mark staying as it was. Running the same command again repeats
 every step.
 
 ### req.distribution.uv-owns-python — uv creates Concorde's own environment

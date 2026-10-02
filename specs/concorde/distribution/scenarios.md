@@ -23,7 +23,7 @@ Concrete situations that show the [requirements](requirements.md) at work.
 
 ### scenario.distribution.build-workflows — Render every workflow for Claude Code
 
-- GIVEN a workflow catalog with the [brownfield workflow](../glossary.json#concept.brownfield-workflow)
+- GIVEN a workflow catalog whose only workflow is the [brownfield workflow](../glossary.json#concept.brownfield-workflow)
 - WHEN the developer runs `build`
 - THEN `generated/workflows/claude/concorde-brownfield.js` starts with a `meta` block naming `concorde-brownfield`, followed by the Claude Code step adapter and the procedure
 - AND it is the only workflow render under `generated/workflows/`
@@ -41,6 +41,13 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - GIVEN a prompt file that no root includes, an include cycle, an include of a [Spec](../glossary.json#concept.spec) document or an owned output replaced by a link
 - WHEN the developer runs `build`
 - THEN the result is `invalid` with a finding naming the problem
+- BUT no output is written or removed
+
+### scenario.distribution.build-refuses-repeated-include — Refuse a prompt reached twice
+
+- GIVEN a prompt root that includes two prompts, each of which includes the same third prompt with its own values
+- WHEN the developer runs `build`
+- THEN the build is refused, naming the third prompt and both include chains from the root that reach it
 - BUT no output is written or removed
 
 ### scenario.distribution.build-removes-own-leftover — Remove an output the build no longer produces
@@ -71,6 +78,13 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - WHEN the developer runs `protocol-manifest` without flags
 - THEN the result is `invalid` and names the assets whose digests differ
 
+### scenario.distribution.protocol-manifest-single-flag — Write or bind alone
+
+- GIVEN a Protocol chapter that changed and a fresh build
+- WHEN the developer runs `protocol-manifest --bind-project`
+- THEN the result is `failed` with `protocol_mismatch`, the configuration is bound to the tracked manifest and `.concorde/protocol/` is left as it was
+- AND when the developer then runs `protocol-manifest --write`, the tracked manifest is rewritten with the new digests, its result names the changed assets and the configuration's binding is unchanged
+
 ### scenario.distribution.stale-copy-refused — Refuse to copy from a stale build
 
 - GIVEN a package whose Protocol source changed after its last build
@@ -97,7 +111,8 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - AND the `d2` release pinned in `concorde.json` for this platform is at `.concorde/tools/d2`, ignored by Git and named in the receipt
 - AND `.gitignore` ignores `.claude/worktrees/`, where task worktrees go, and `.concorde/workspace.json`, their [workspace binding](../glossary.json#concept.workspace-binding)
 - AND every rendered Claude Code workflow is at `.claude/workflows/concorde-<name>.js`
-- AND `.claude/settings.json` allows `Workflow(concorde-brownfield)` and the two `concorde workflow` commands, keeps every setting it had, and the receipt records the added rules
+- AND `.claude/settings.json` allows `Workflow(concorde-brownfield)`, `mcp__concorde__workflow_step` and `Bash(.concorde/bin/concorde workflow report:*)`, keeps every setting it had, and the receipt records the added rules
+- AND the installer prints the receipt as its [install result](contracts.md#contract.distribution.install-result) and exits with status 0
 - AND the receipt records the package as `source`, mode `normal`, and `source_commit` `null` for a package outside a Git checkout
 - AND nothing is placed under `.pi/`, no `AGENTS.md` is created, and a project's own `AGENTS.md` is left as it is and not listed under `amended`
 - BUT no Spec document, registry or project configuration with its [Protocol binding](../glossary.json#concept.protocol-binding) is created, which only initialization creates
@@ -129,6 +144,13 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - WHEN `concorde init --apply` creates the project's first glossary, or an install or update finds one declared
 - THEN the Concorde block of `CLAUDE.md` imports that glossary with `@<path>`, once, so Claude Code loads every term at launch
 - AND the rest of `CLAUDE.md` is kept
+
+### scenario.distribution.glossary-import-failed — A glossary import that cannot be written after init
+
+- GIVEN a project in which Concorde is installed and whose `CLAUDE.md` cannot be written
+- WHEN `concorde init --apply` creates the project's first glossary
+- THEN the result is `failed` with `guidance_failed`, keeping the initialization's result and naming the operating system's error, and the project is initialized
+- AND once `CLAUDE.md` can be written, `concorde update` adds the glossary import to the Concorde block
 
 ### scenario.distribution.glossary-import-none — The CLAUDE.md block imports nothing before a glossary
 
@@ -168,8 +190,15 @@ Concrete situations that show the [requirements](requirements.md) at work.
 
 - GIVEN an initialized project with an open task, installed from a checkout whose Protocol has since changed
 - WHEN the developer runs `concorde update`
-- THEN the configuration binds the new Protocol copy, the result names the bindings, versions and installed commits before and after and the open task, and `.concorde/update.json` marks the project Concorde unvalidated
+- THEN the configuration binds the new Protocol copy, the [update result](contracts.md#contract.distribution.update-result) names the bindings, versions and installed commits before and after and the open task, and `.concorde/update.json` marks the project Concorde unvalidated
 - AND the result asks for the primary branch to be merged into the open task
+
+### scenario.distribution.update-marked-again — Updating again before a validation
+
+- GIVEN a project that an update from an older Concorde marked Concorde unvalidated, rebinding its Protocol, and that has not validated since
+- WHEN the developer runs `concorde update` again and it fails before writing its mark
+- THEN the earlier mark is as it was
+- AND once the developer runs `concorde update` again and it succeeds, the mark names the older Concorde's version, installed commit and Protocol binding as the ones before and this update's as the ones after
 
 ### scenario.distribution.update-unvalidated-reported — Validation reports an update not yet validated
 
@@ -190,6 +219,7 @@ Concrete situations that show the [requirements](requirements.md) at work.
 ### scenario.distribution.install-busy — An install is refused while a run holds its run lock
 
 - GIVEN an installed project in which the runner of an [Operation](../glossary.json#concept.operation) or [execution command](../glossary.json#concept.execution-command) run still holds its [run lock](../glossary.json#concept.run-lock)
+- AND a bound run still waiting for its workspace's lock holds its run lock, with its [run progress file](../glossary.json#concept.run-progress-file) in the lobby
 - AND its [run store](../glossary.json#concept.run-store) also holds the [progress file](../glossary.json#concept.progress-file) of the running Operation's worker and a run whose run lock nobody holds
 - WHEN the developer installs Concorde again or runs `concorde update`
 - THEN the install is refused with `concorde_busy`, naming each running run with its run lock, the process holding it and its progress file
@@ -227,7 +257,7 @@ Concrete situations that show the [requirements](requirements.md) at work.
 
 ### scenario.distribution.own-python — Concorde ignores the caller's Python
 
-- GIVEN a project where Concorde is installed
+- GIVEN a project where Concorde is installed and that has no task, open or ended
 - AND a caller whose `python3` on `PATH` fails and whose `PYTHONPATH` names a package called `concorde` that fails on import
 - WHEN the caller runs `.concorde/bin/concorde task list`
 - THEN it prints the project's empty task list `[]` and exits with status 0, run by the interpreter of `.concorde/framework/python/`
@@ -269,7 +299,7 @@ Concrete situations that show the [requirements](requirements.md) at work.
 
 ### scenario.distribution.task-worktree-command — The command works in a task worktree
 
-- GIVEN a project where Concorde is installed and committed, and a linked worktree of it, which has no Framework copy of its own
+- GIVEN a project where Concorde is installed and committed, that has no task, open or ended, and a linked worktree of it, which has no Framework copy of its own
 - WHEN `.concorde/bin/concorde task list` of the linked worktree runs
 - THEN it runs the primary worktree's Framework copy, prints the empty task list `[]` and exits with status 0
 
@@ -316,6 +346,13 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - THEN every file the receipt names outside `.concorde/` that the install added is an exact entry of the installation realization
 - AND once the files are committed, `concorde spec-validation` reports no `CHK.binds.unbound` for them
 - BUT a project that is not initialized gets no Spec, and installing again with nothing new leaves the Specs unchanged
+
+### scenario.distribution.install-binding-failed — A failed binding is reported and the install kept
+
+- GIVEN an initialized project in which Spec core refuses to bind the installation, for instance because writing the root [Module](../glossary.json#concept.module)'s metadata fails
+- WHEN the developer installs Concorde
+- THEN the install succeeds with the new receipt in place, and its result carries Spec core's error under `binding_error`, naming the file concerned
+- BUT the receipt written to `.concorde/install.json` holds no `binding_error`
 
 ### scenario.distribution.update-keeps-pi-runtime-choice — An update keeps a runtime left out
 
