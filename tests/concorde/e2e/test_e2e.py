@@ -342,6 +342,15 @@ class E2ETests(unittest.TestCase):
                     {"kind": "operation", "name": "understand", "workspace": None}
                 )
             )
+            # A run waiting in the lobby for its workspace's lock.
+            waiting = project / ".concorde/lobby/r-20260927T100300-delivery-00000000"
+            waiting.mkdir(parents=True)
+            (waiting / "status.json").write_text(
+                json.dumps(
+                    {"kind": "command", "name": "delivery", "workspace": "adopt"}
+                    | {"phase": "waiting"}
+                )
+            )
             step = {"key": "survey", "name": "survey", "run_id": run_id}
             workflow_node(workspace, [step])
             value = e2e.watch(project)
@@ -354,6 +363,7 @@ class E2ETests(unittest.TestCase):
                     (direct.name, "adopt", None),
                     (run_id, "adopt", "worker"),
                     (unbound.name, None, None),
+                    (waiting.name, "adopt", "waiting"),
                 ],
                 [
                     (listed["run"], listed["workspace"], listed["phase"])

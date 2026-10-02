@@ -423,10 +423,15 @@ def run_workflow(
 
 
 def watch(project: Path) -> dict:
-    """Every run of the project with its phase and outcome, and each workspace's workflow
-    steps."""
+    """Every run of the project with its phase and outcome, the runs waiting in the lobby for
+    their workspace's lock included, and each workspace's workflow steps."""
     runs = []
-    for directory in sessions.run_folders(project):
+    lobby = sorted(
+        item
+        for item in (sessions.records_of(project) / "lobby").glob("r-*")
+        if item.is_dir()
+    )
+    for directory in [*sessions.run_folders(project), *lobby]:
         status = directory / "status.json"
         if not status.is_file():
             continue

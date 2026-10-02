@@ -62,7 +62,11 @@ cases worked on real issues, and [Dogfood scenarios](dogfood/module.md) tests a
 [Concorde defect](../glossary.json#concept.concorde-defect). Each reaches a different part of
 Concorde: a headless session wakes on the runs of Execution, a case is set up through Distribution,
 and a dogfood scenario drives headless sessions against a develop install that Dogfooding describes.
-The parent itself sets test projects up through Distribution and runs the workflows they execute.
+The parent itself sets test projects up through Distribution's installer and `concorde` command,
+whose `init` Spec core's initialization carries out and whose `task open` Tasks carries out,
+checks their worker configuration with Workers over every worker the Operations' catalog lists,
+runs the workflows of Workflows in the workspaces Execution runs, and checks with the owners case
+the promise Main session makes about who a run wakes ([Around it](#around-it)).
 
 ```d2
 e2e: End-to-end testing {
@@ -75,9 +79,19 @@ execution: Execution
 distribution: Distribution
 dogfooding: Dogfooding
 workflows: Workflows
+spec: Spec core
+tasks: Tasks
+workers: Workers
+operations: Operations
+main_session: Main session
 e2e -> workflows
 e2e -> execution
 e2e -> distribution
+e2e -> spec
+e2e -> tasks
+e2e -> workers
+e2e -> operations
+e2e -> main_session
 e2e.sessions -> execution
 e2e.cases -> distribution
 e2e.dogfood -> distribution
@@ -131,7 +145,10 @@ developer -> tool.watch
 ## The commands
 
 The tool is one command of this checkout, `scripts/e2e/e2e.py`, printing one JSON object per
-command and `{"error": …}` with the failed command and its output otherwise:
+command and `{"error": …}` with the failed command and its output otherwise. It exits 0 when it
+prints its result, also a workflow result whose status is not `ok` and an owners case that ended
+`failed`, since those are the test's findings; 1 when it prints `{"error": …}`; and 2, printing its
+usage to standard error and doing nothing, for a malformed command line:
 
 ```text
 python3 scripts/e2e/e2e.py repos
@@ -169,6 +186,19 @@ $ python3 scripts/e2e/e2e.py watch /tmp/concorde-e2e/test-requests
 The project is then a throwaway: the developer reads its Specs, runs and records, and removes the
 directory, or prepares the next one under another `--name`.
 
+The [owners case](#owners-case) plays its runs on a task of its own, `t1` by default, so the
+developer prepares a project for it with that task and then runs it there:
+
+```text
+$ python3 scripts/e2e/e2e.py prepare psf/requests --rev v2.31.0 --name owners --task t1
+{"project": "/tmp/concorde-e2e/test-owners", "task": "t1", …}
+
+$ python3 scripts/e2e/e2e.py owners /tmp/concorde-e2e/test-owners
+{"task": "t1", "status": "passed",
+ "phases": [{"phase": "unowned", "owner": null, …}, {"phase": "owned-by-claude", "owner": "claude-1", …}],
+ "problems": []}
+```
+
 ### Preparing a test project
 
 `repos` lists the repositories SWE-bench's harness names, read from the vendored
@@ -176,19 +206,39 @@ directory, or prepares the next one under another `--name`.
 branch or a commit, without earlier history into the end-to-end root, under `--name` or the
 repository's name, checks it out as a `main` branch, installs Concorde from this checkout without
 `d2`, initializes it, writes its worker configuration, commits and opens a task bound to the root
-Module, which makes a test project. The task is `--task` (default `adopt`), and `--python` records
-the project's interpreter, which its
-[configured checks](../glossary.json#concept.configured-check) run for `{python}`. The worker
-configuration runs every worker on `--worker-model`, a project model name, when it is given,
-enabling only that model, and otherwise takes this checkout's own `.concorde/workers.json` without
-its `runtime` paths, which name this checkout's directories. The test project's sessions and workers
-run in the developer's own environment, so the developer's [model
-map](../glossary.json#concept.model-map) resolves its models as it does the developer's own
-projects', and no map is written for it. It refuses a repository SWE-bench does not name unless
-`--any` is given, then, before anything is cloned, a worker configuration whose models that map
-cannot resolve for every worker of every Operation, with Workers' own refusal (`model_unmapped`,
-`model_map_missing` or `model_map_invalid`), which names each entry the map lacks, and a project
-directory that already exists.
+Module, which makes a test project. The task is `--task` (default `adopt`).
+
+It initializes the project as a user does, in the two steps of Spec core's
+[initialization](../spec-tooling/spec/contracts.md#initialization): `concorde init --propose` with
+the project directory's name and, when `--python` is given, `--python <interpreter>`, then
+`concorde init --apply` of that proposal. Initialization creates the root Module, `module.project`,
+and records the interpreter in the project configuration, where the project's
+[configured checks](../glossary.json#concept.configured-check) take it for `{python}`; `prepare`
+writes neither itself.
+
+The [worker configuration](../glossary.json#concept.worker-configuration) runs every worker on
+`--worker-model`, a project model name, when it is given, enabling only that model, and otherwise
+takes this checkout's own `.concorde/workers.json` without its `runtime` paths, which name this
+checkout's directories. The test project's sessions and workers run in the developer's own
+environment, so the developer's [model map](../glossary.json#concept.model-map) resolves its models
+as it does the developer's own projects', and no map is written for it. Before anything is cloned,
+`prepare` hands the configuration it built to Workers' check of a configuration, which validates it
+and resolves through that map the model of every worker of every Operation the
+[Operation catalog](../glossary.json#concept.operation-catalog) lists; `prepare` enumerates no
+worker itself and passes Workers' refusal on with its code ([Around it](#uses-workers)).
+
+`prepare` refuses, each time before anything is cloned:
+
+- an end-to-end root inside this checkout, with `root_inside_checkout`
+  ([Test project](#core-concepts));
+- a repository SWE-bench does not name, unless `--any` is given, with `unknown_repository` naming
+  the known ones;
+- without `--worker-model`, this checkout's own worker configuration when it cannot be read as JSON,
+  with `worker_configuration_unreadable`;
+- a worker configuration Workers refuses, with Workers' own code: `config_invalid` for a
+  configuration its contract does not admit, `model_map_missing` or `model_map_invalid` for the map,
+  and `model_unmapped` naming each entry the map lacks;
+- a project directory that already exists, with `project_exists`.
 
 Each of `prepare`'s choices has its reason:
 
@@ -209,10 +259,10 @@ Each of `prepare`'s choices has its reason:
 - It binds the task to the root Module, because the brownfield workflow a test project first runs
   describes the whole project from it.
 
-A step that fails, such as the fetch, the install, `init` or `task open`, stops `prepare` with
-`command_failed`, naming the command, its exit status and its output. `prepare` removes nothing it
-made: the partial project directory is left for the developer to read, and a later `prepare` under
-the same name refuses it with `project_exists` until the developer removes it.
+A step that fails, such as the fetch, the install, either step of `init` or `task open`, stops
+`prepare` with `command_failed`, naming the command, its exit status and its output. `prepare`
+removes nothing it made: the partial project directory is left for the developer to read, and a
+later `prepare` under the same name refuses it with `project_exists` until the developer removes it.
 
 ### Trusting test projects
 
@@ -223,6 +273,13 @@ root, a parent folder's trust does not count, and a headless session never shows
 `~/.claude.json` (or under `CLAUDE_CONFIG_DIR`), after backing the file up once. It changes the
 developer's own configuration, so the developer runs it; a headless run does not need it.
 
+The developer trusts a test project before opening an interactive Claude Code session in it, such as
+to watch or continue a task by hand, so that the installer's allow rules apply there as in a user's
+trusted project and its workflow and commands run without a prompt each. `trust` prints its
+configuration file, under `trusted` the repository roots it newly marked trusted and under `already`
+those that were trusted before; trusting a trusted project again changes nothing and names its root
+under `already` alone.
+
 ### Running a workflow
 
 `run` runs a workflow to its end in the worktree of the test project's task `--task` (default
@@ -231,9 +288,9 @@ every run it starts work on, so neither the workflow's arguments nor any command
 prints the [workflow result](../glossary.json#concept.workflow-result) the workflow saved last in
 its [workflow record](../glossary.json#concept.workflow-record), under
 `.concorde/tasks/<task>/workspace/workflow/` of the project, and logs the session under
-`.concorde/runs/e2e/`:
+`.concorde/runs/e2e/`. A run is headless unless `--via driver` is given:
 
-- A **headless run** (`--via claude`) runs, as a headless session kept under
+- A **headless run** (`--via claude`, the default) runs, as a headless session kept under
   `.concorde/runs/e2e/<task>-claude/`, a session started in the task's worktree that works there as
   the task's [task session](../glossary.json#concept.task-session), since running a task's
   workflow is its task session's work and the main agent never works inside a task worktree, and is
@@ -264,7 +321,8 @@ answers to continue it. `--retry <key>` and `--restart <key>=<label>` become the
 `retry` list and `restart` map, for a run that continues a task.
 
 A workflow result whose status is not `ok` is printed like any other. `run` fails instead with
-`run_failed` when the headless session ends `exited` or `no_session`, naming its `session.json`,
+`run_failed` when the headless session ends `exited` or `no_session`
+([how a headless session ends](sessions/module.md#overview)), naming its `session.json`,
 or when the driver exits with a non-zero status, with its standard error and log; with the
 session's own error, such as `wait_exceeded`, when the session fails, naming its `session.json`;
 and with `no_result` when the run saved no workflow result of its own. `run` counts the saved results
@@ -272,6 +330,14 @@ of the workflow record before it starts and takes only a result saved since: a r
 more saved results after the run than before it, or whose newest saved result is missing, fails with
 `no_result` naming both counts or the missing file, so a result an earlier run of the task saved is
 never printed as this run's ([requirements](requirements.md#req.e2e.own-result)).
+
+A saved result carries nothing that names the `run` that caused it, and Workflows lets anyone report
+in the workspace at any time, so a result saved since the run started is the run's own only when
+nobody else saves one meanwhile. A test project is therefore driven by one `run` at a time, and
+while it runs nobody else reports a workflow there: no second `run`, no session of the developer
+running or reporting the task's workflow, and no `concorde workflow report` by hand. The tool does
+not detect a breach; a result someone else saved during a run that saved none would be printed as
+the run's.
 
 ### Watching
 
@@ -283,25 +349,42 @@ with their runs and whether they were superseded.
 
 <a id="owners-case"></a>
 
-`owners` checks, with real sessions, the promise of
-[Main session](../coordination/main-session/module.md#owners) that a run wakes only its owner
-while every other main session may see it: it keeps `--claude` Claude Code main sessions running at
-once in the test project's primary worktree, two by default and at least two, each a live session
-of [Headless sessions](sessions/module.md) whose wakes are its own program's, and plays two phases
-on the project's task `--task` (default `t1`), which must have a worktree:
+`owners` checks, with real sessions, the promise of [Main
+session](../coordination/main-session/module.md#owners) that a run wakes only its owner while every
+other main session may see it: it keeps `--claude` Claude Code main sessions running at once in the
+test project's primary worktree, two by default and at least two, each a live session of [Headless
+sessions](sessions/module.md) whose wakes are its own program's, and plays two phases on the
+project's task `--task` (default `t1`), which must have a worktree. `--claude-model` names the model
+every session runs on, passed unchanged to Claude Code's `--model`, so it is a Claude Code model id
+or alias, not a project model name: the sessions are main sessions, which the model map does not
+concern. Without it each session runs on Claude Code's own default model.
 
 1. **unowned**: the case itself starts `concorde task-validation` in the task worktree, a run of
    nobody's tool;
 2. **owned by Claude Code**: the first session starts `task-validation` of the task in background
    Bash.
 
-Each run is started with `--wait` while the case holds the task's [workspace
+Each run is started while the case holds the task's [workspace
 lock](../glossary.json#concept.workspace-lock), so that the run cannot start its work before the
-case has seen its launch completed. For an owned run the case, still holding the lock, first waits
-until the owner has ended the turn in which it launched the run; for either run it then waits until
-the run is in the run store, and only then releases the lock. The run therefore ends only after the
-launching turn did, and its end reaches the owner as a wake, never as the launching tool's own
-answer, within the time the case judges.
+case has seen its launch completed. The case takes that lock as Execution's runs take it, an
+exclusive file lock on `locks/workspaces/<task>.lock` of the `.concorde` the task worktree's
+[workspace binding](../glossary.json#concept.workspace-binding) names, waiting for a run that still
+holds it at most the case's limit, and releases it when it leaves the phase, however the phase ends.
+For an owned run the case, still holding the lock, first waits until the owner has ended the turn
+in which it launched the run; for either run it then waits until the run is in the
+[run store](../glossary.json#concept.run-store), waiting in its lobby, and only then releases the
+lock. The launching turn and the run's arrival share one deadline, the case's limit counted from
+the launch, so the case holds the lock at most that long after the launch. The run therefore ends
+only after the launching turn did, and its end reaches the owner as a wake, never as the launching
+tool's own answer, within the time the case judges.
+
+The run queues for the lock as Execution's
+[`--wait <seconds>`](../execution/module.md#waiting-for-a-busy-workspace) lets it, with twice the
+case's limit, 1200 seconds, so its wait outlasts every hold of the case and never expires while the
+case holds the lock ([requirements](requirements.md#req.e2e.owners-queue)). Should it still be
+refused with `workspace_busy`, because another run took the lock after the case released it and held
+it past the run's wait, the run did no work and there is no run end to judge: the case stops with
+`workspace_busy` naming that run's result.
 
 Once the run has written its result, the case observes the sessions for a bounded window. For an
 owned run it waits until the owner has been woken and has ended the turn it was woken into, but at
@@ -340,19 +423,23 @@ problem, such as `claude-2 was woken by a run it does not own` or `the owner cla
 when its run ended` ([requirements](requirements.md#req.e2e.owners-deadline)). A contradicted
 promise is the case's verdict, not an error. What stops the case with an error is only what keeps it
 from observing: fewer than two sessions (`invalid_input`), a missing task (`no_task`), a session
-that cannot start or ends (`session_failed`), another run holding the task's workspace lock for
-the case's whole limit (`workspace_busy`), and `live_timeout`, the infrastructure's deadline,
-when within the case's limit of 600 seconds a session does not end a turn the case prompted, no run
-of the task appears in the run store or the run writes no result. The case spends real model turns
-and is run by hand, like every end-to-end run.
+that cannot start or ends (`session_failed`), another run holding the task's workspace lock for the
+case's whole limit, or the case's own run refused because another run held it (`workspace_busy`),
+and `live_timeout`, the infrastructure's deadline, when within the case's limit of 600 seconds a
+session does not end a turn the case prompted, the launching turn and the run's arrival in the run
+store together take longer, or the run writes no result. The case spends real model turns and is run
+by hand, like every end-to-end run.
 
 ## Why it is built this way
 
 **Two kinds of run, to locate a failure.** When a headless run fails, a driver run of the same task
 with `--retry` for the failed step's key runs that step again without Claude Code's workflow
-runtime, reusing the steps that succeeded, and so points to whether Concorde or that runtime is at
-fault; without `--retry` it would only find the failed run recorded. Since the workers are real,
-one such comparison is evidence, not proof.
+runtime, reusing the steps before it that succeeded, and so points to whether Concorde or that
+runtime is at fault; without `--retry` it would only find the failed run recorded. A retry
+supersedes the retried step and every step recorded after it, as
+[Workflows](../execution/workflows/module.md#steps-and-their-keys) says, so every later step runs
+anew too, those that had succeeded included, at their cost again and with new evidence. Since the
+workers are real, one such comparison is evidence, not proof.
 
 **The driver reuses the Workflows tests' runtime.** The driver run does not have a runtime of its
 own: it runs the JavaScript sandbox of the Workflows tests, `tests/concorde/workflows/run_script.mjs`,
@@ -381,18 +468,17 @@ Workflows.
 <a id="realization.e2e.tests"></a>
 
 The **End-to-end tool tests**, `tests/concorde/e2e/test_e2e.py`, check the tool's pure parts, the
-repository list, trust, the headless command, cloning a revision and grading, on local
-repositories only, without the network or agents, verifying the
-[requirements](requirements.md) and [scenarios](scenarios.md).
+repository list, trust, the headless command, cloning a revision, watching and the result `run`
+takes, on local repositories only, without the network or agents.
 
 <a id="realization.e2e.owners"></a>
 
 The **owners case** is `scripts/e2e/owners.py`: the phases, holding the workspace lock, judging
 who was woken and asking the others what they see. Its tests,
 `tests/concorde/e2e/test_owners.py`, run the whole case with stand-ins for `claude` and
-`concorde`, the first speaking the live sessions' protocol, including a `claude` stand-in that is
-also woken for every run it does not own and one never woken by its own run, each of which must
-fail the case.
+`concorde`, the first speaking the live sessions' protocol, among them a `claude` stand-in that is
+also woken for every run it does not own, one never woken by its own run, and a `concorde`
+stand-in whose run waits in the lobby for the lock, as Execution's does, or is refused there.
 
 ## The children
 
@@ -419,17 +505,45 @@ it or changing Concorde.
 
 ## Around it
 
-End-to-end testing relies on three providers to set a test project up, run it and follow it,
-Distribution, Workflows and Execution, and on two more for the owners case, Main session and Tasks.
+End-to-end testing relies on Distribution, Spec core, Tasks, Workers and Operations to set a test
+project up, on Workflows and Execution to run it and follow it, and on Main session for the promise
+the owners case checks.
 
 <a id="uses-distribution"></a>
 
 **Distribution** provides the installer and the `concorde` command that set a test project up the
-way a user's project is set up; a test project always runs the Concorde of this checkout. When the
-installer, `concorde init` or `concorde task open` fails, `prepare` stops with `command_failed`
+way a user's project is set up, routing each command to the Module that carries it out; a test
+project always runs the Concorde of this checkout. When the installer, `concorde init` or
+`concorde task open` fails, `prepare` stops with `command_failed`
 naming that command, its exit status and its output, and leaves the partial project directory as it
 is (see [Preparing a test project](#preparing-a-test-project)); End-to-end testing never repairs a
 failed setup, since the failure is the finding.
+
+<a id="uses-spec"></a>
+
+**Spec core** carries out `concorde init`, which `prepare` runs as a propose followed by an apply of
+that proposal, the envelope
+[req.spec.init-explicit-envelope](../spec-tooling/spec/requirements.md#req.spec.init-explicit-envelope)
+checks; its [initialization contract](../spec-tooling/spec/contracts.md#initialization) creates the
+root Module, `module.project` unless named otherwise, to which `prepare` binds the task, and records
+the interpreter `--python` names. `prepare` stops with `command_failed` when either step fails.
+
+<a id="uses-workers"></a>
+
+**Workers** owns the [worker configuration](../glossary.json#concept.worker-configuration) that
+`prepare` writes and the [model map](../glossary.json#concept.model-map) by which the developer's
+machine reaches each model, both defined by its [contracts](../execution/workers/contracts.md).
+Workers' check of a configuration validates it and resolves the model of every worker of every
+Operation through the map, refusing with `config_invalid`, `model_map_missing`, `model_map_invalid`
+or `model_unmapped`. `prepare` builds the configuration as a developer writes it, hands it to that
+check before anything is cloned, and passes a refusal on with its code and the map's path, preparing
+nothing.
+
+<a id="uses-operations"></a>
+
+**Operations** lists in its [Operation catalog](../glossary.json#concept.operation-catalog) every
+Operation with the ids of the workers it may launch, the workers whose models Workers' check
+resolves for `prepare`, so that a test project's first workflow finds a model for each of them.
 
 <a id="uses-workflows"></a>
 
@@ -458,9 +572,13 @@ session, while every other main session may see it.
 
 <a id="uses-tasks"></a>
 
-**Tasks** provides the [task record](../glossary.json#concept.task-record) in the task's folder,
-whose worktree the owners case runs its unowned run in, and `concorde task show`, which a Claude
-Code session asks.
+**Tasks** carries out `concorde task open`, by which `prepare` opens the test project's task: the
+task's branch and worktree, the [workspace binding](../glossary.json#concept.workspace-binding) that
+every run there reads, and the task's folder whose workspace folder holds the workflow record `run`
+reads. It provides the [task record](../glossary.json#concept.task-record) in that folder, whose
+worktree `run` works in and the owners case runs its unowned run in, and `concorde task show`, which
+a Claude Code session asks. When `task open` fails, `prepare` stops with `command_failed` as for
+every other setup step.
 
 SWE-bench is included as external material: its harness names the Python projects it draws from,
 such as `psf/requests` and `pallets/flask`, existing codebases of known size and quality to test on.

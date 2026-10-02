@@ -30,19 +30,24 @@ SPEC.loader.exec_module(e2e)
 owners = e2e.owners
 live = sys.modules["live"]
 
-# `concorde task-validation --wait N` records a run that waits for the workspace lock and then
-# ends ok; `concorde task show t1` lists the runs of t1 with their status.
+# `concorde task-validation --wait N` records a run that waits in the lobby for the workspace lock,
+# then enters the workspace folder and ends ok, or, with REFUSED, is refused in the lobby with
+# workspace_busy once it holds the lock, as a run whose wait expired is; `concorde task show t1`
+# lists the runs of t1 with their status.
 FAKE_CONCORDE = """#!/usr/bin/env python3
 import fcntl, json, os, sys, time, uuid
 from pathlib import Path
 RECORDS = Path(%(records)r)
+REFUSED = %(refused)r
 args = sys.argv[1:]
-# Tracing's layout: the task's runs in its workspace folder, every lock under locks/.
+# Tracing's layout: the task's runs in its workspace folder, a run waiting for the workspace lock
+# in the lobby, every lock under locks/.
 runs = RECORDS / "tasks" / "t1" / "workspace" / "runs"
 locks = RECORDS / "locks"
 if args[0] == "task-validation":
+    assert int(args[args.index("--wait") + 1]) > 0
     run_id = "r-" + time.strftime("%%Y%%m%%dT%%H%%M%%S") + "-task_validation-" + uuid.uuid4().hex[:8]
-    directory = runs / run_id
+    directory = RECORDS / "lobby" / run_id
     directory.mkdir(parents=True)
     (locks / "runs").mkdir(parents=True, exist_ok=True)
     held = (locks / "runs" / (run_id + ".lock")).open("a+")
@@ -55,7 +60,13 @@ if args[0] == "task-validation":
     (locks / "workspaces").mkdir(parents=True, exist_ok=True)
     lock = (locks / "workspaces" / "t1.lock").open("a+")
     fcntl.flock(lock, fcntl.LOCK_EX)
-    result = {"run_id": run_id, "status": "ok", "summary": "t1 may be delivered"}
+    if REFUSED:
+        result = {"run_id": run_id, "status": "failed", "summary": "t1 is busy",
+                  "host_evidence": [{"ref": "workspace_busy"}]}
+    else:
+        runs.mkdir(parents=True, exist_ok=True)
+        directory = directory.rename(runs / run_id)
+        result = {"run_id": run_id, "status": "ok", "summary": "t1 may be delivered"}
     (directory / "result.json").write_text(json.dumps(result))
     (directory / "status.json").write_text(json.dumps({**state, "phase": "finished",
                                                        "status": "ok"}))
@@ -147,10 +158,13 @@ class OwnersCaseTests(unittest.TestCase):
                 }
             )
         )
+        self.concorde()
+
+    def concorde(self, refused: bool = False) -> None:
         for place in (self.project, self.worktree):
             self.program(
                 place / ".concorde/bin/concorde",
-                FAKE_CONCORDE % {"records": str(self.records)},
+                FAKE_CONCORDE % {"records": str(self.records), "refused": refused},
             )
 
     def program(self, path: Path, text: str) -> Path:
@@ -249,6 +263,22 @@ class OwnersCaseTests(unittest.TestCase):
         self.assertEqual("ok", value["phases"][1]["status"])
         self.assertEqual(
             value, json.loads((self.base / "case/owners.json").read_text())
+        )
+
+    @verifies("scenario.e2e.owners-run-refused")
+    def test_a_run_refused_for_a_busy_workspace_stops_the_case_with_an_error(self):
+        self.concorde(refused=True)
+        with self.assertRaises(e2e.E2EError) as raised:
+            self.run_case()
+        self.assertEqual("workspace_busy", raised.exception.code)
+        self.assertIn("phase unowned", raised.exception.detail)
+        refused = Path(raised.exception.evidence["result"])
+        self.assertEqual(self.records / "lobby", refused.parent.parent)
+
+    def test_the_queued_run_waits_longer_than_the_case_holds_the_lock(self):
+        self.assertEqual(1200, owners.queue_wait(owners.LIMIT_SECONDS))
+        self.assertIn(
+            "task-validation --wait 120\n", owners.owner_prompt(self.worktree, 60.0)
         )
 
     @verifies("scenario.e2e.owners-too-few-sessions")
