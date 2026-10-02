@@ -70,6 +70,44 @@
         "change_id": null,
         "head": "2b45ea76e4576f85aa05b911937d874314daa7c8"
       }
+    },
+    {
+      "id": "sha256:cb9cc104688a0eb35e0b6fed305ca5f4b8140382eb01b1b93476e780e3f73714",
+      "created_at": "2026-10-02T02:30:30.083068+00:00",
+      "report": {
+        "report_key": "fix-e2e/workers-whole-check-caller",
+        "tier": "decision-needed",
+        "severity": "medium",
+        "type": "bug",
+        "subtype": null,
+        "title": "Whole-configuration map checking has no defined invocation policy",
+        "description": "A caller of the whole-configuration check exists: End-to-end testing's `prepare` (scripts/e2e/e2e.py `require_mapped`) calls `concorde.harness.models.check_mapped` on the worker configuration it builds for a test project before anything is cloned, and passes its refusal on with its code. module.e2e now declares this reliance as `uses module.workers` with `relies_on` `scenario.workers.model-map-checked`, and names the codes `config_invalid`, `model_map_missing`, `model_map_invalid` and `model_unmapped`. Whatever this Issue decides should keep a callable check of a whole configuration, or tell End-to-end testing what replaces it.",
+        "impact": "Removing the scenario or the function, as one repair option suggests, would leave E2E's preparation without the promise it relies on.",
+        "basis": "Read at fix-e2e (base 84994940): scripts/e2e/e2e.py `require_mapped` calls `models.check_mapped`; src/concorde/harness/models.py `check_mapped` validates the configuration and resolves every worker of every Operation through the map, raising `model_unmapped` with every missing entry; specs/concorde/e2e/module.md (Preparing a test project, Around it) now relies on scenario.workers.model-map-checked.",
+        "owner_target_id": "module.workers",
+        "evidence": [
+          {
+            "path": "scripts/e2e/e2e.py",
+            "description": "require_mapped, the caller"
+          },
+          {
+            "path": "src/concorde/harness/models.py",
+            "description": "check_mapped, the whole-configuration check"
+          }
+        ],
+        "issue_id": "I-88e8ba4c962e51db9b8dfa9fdbd52e61",
+        "expected_revision": "sha256:a377f23be5f353273c900e18969e33314c5ba12ac37e764545f70efc1df9e497"
+      },
+      "source": {
+        "invocation_id": "cli-15a88396-3762-431a-bf85-bb4b213692a0",
+        "agent": "main-agent",
+        "operation": "issues",
+        "phase": "report",
+        "target_id": "module.workers",
+        "context_id": "sha256:dfb4f137a9680b00f2a784cd5cd2ac8ab37e1dbe2996939b1f308ef5168552c3",
+        "change_id": "fix-e2e",
+        "head": "ed5d82660960b9945565f41382ff2ea7aaa29103"
+      }
     }
   ],
   "dispositions": []
