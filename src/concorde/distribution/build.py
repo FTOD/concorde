@@ -190,10 +190,13 @@ def _manifest(project_root: Path, outputs: tuple[BuildOutput, ...]) -> bytes:
 
 
 def render_workflows(project_root: Path) -> list[BuildOutput]:
-    """Every workflow of the catalog, wrapped for each client, when the tree holds their sources."""
-    from ..workflows.catalog import SCRIPTS, WorkflowError, renders
+    """Every registered workflow, wrapped for each client, when the tree holds their sources."""
+    # The parts register their workflows when their code loads. Until the build reads the part
+    # registrations, loading Method's registering module is what registers the brownfield workflow.
+    from ..method import brownfield as _brownfield  # noqa: F401
+    from ..workflows.catalog import ADAPTER, WorkflowError, renders
 
-    if not (project_root / SCRIPTS).is_dir():
+    if not (project_root / ADAPTER).is_file():
         return []
     try:
         return [

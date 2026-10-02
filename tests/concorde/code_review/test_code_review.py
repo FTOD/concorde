@@ -29,14 +29,16 @@ FAKE_REVIEWER = Path(__file__).with_name("fake_reviewer.py")
 NO_ISSUES = [
     sys.executable,
     "-c",
-    "import sys; sys.stderr.write(\"concorde: error: argument command: invalid choice: "
+    'import sys; sys.stderr.write("concorde: error: argument command: invalid choice: '
     "'issues'\\n\"); sys.exit(2)",
 ]
 
 
 def without_issues():
     """Patch the reviews' ``concorde`` so that it offers no ``issues``."""
-    return patch("concorde.method.review_issues.concorde_command", return_value=NO_ISSUES)
+    return patch(
+        "concorde.method.review_issues.concorde_command", return_value=NO_ISSUES
+    )
 
 
 def finding(basis="scenario.a.answer", **values):
@@ -219,6 +221,10 @@ class CodeReviewTests(unittest.TestCase):
         _, envelope = self.change(*findings)
         self.assertEqual("ok", envelope["status"], envelope)
         self.assertEqual("changes_required", envelope["output"]["verdict"])
+        [note] = envelope["output"]["workflow"]["notes"]
+        self.assertEqual(
+            ("review", "changes_required"), (note["kind"], note["data"]["verdict"])
+        )
         entry = self.module_entry(envelope)
         self.assertEqual("changes_required", entry["outcome"])
         reported = [item["issue"] for item in entry["findings"]]
@@ -634,7 +640,6 @@ class CodeReviewTests(unittest.TestCase):
         [store] = cause["causes"]
         self.assertEqual("merge_incomplete", store["code"])
 
-
     @verifies("scenario.code-review.without-issues")
     def test_without_the_issues_part_the_findings_stay_in_the_report(self):
         with without_issues():
@@ -648,6 +653,7 @@ class CodeReviewTests(unittest.TestCase):
         self.assertEqual({}, self.issues())
         _, brief = self.worker(envelope)
         self.assertIn("the issues part is not installed", brief)
+
 
 class ContractTests(unittest.TestCase):
     def test_the_output_schema_is_the_contract(self):

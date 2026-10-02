@@ -146,12 +146,13 @@ per run in the [run directory](../../glossary.json#concept.run-directory).
 ```concorde-contract
 {
   "id": "contract.spec-review.panel-payload",
-  "version": 4,
+  "version": 5,
   "schema": {
     "type": "object",
     "required": [
       "verdict",
-      "modules"
+      "modules",
+      "workflow"
     ],
     "additionalProperties": false,
     "properties": {
@@ -161,6 +162,9 @@ per run in the [run directory](../../glossary.json#concept.run-directory).
           "changes_required",
           "incomplete"
         ]
+      },
+      "workflow": {
+        "type": "object"
       },
       "modules": {
         "type": "array",
@@ -661,7 +665,7 @@ per run in the [run directory](../../glossary.json#concept.run-directory).
       }
     }
   },
-  "semantics": "The outcome of one Spec panel. For each Module, reviews holds every worker's own findings and claimed resolutions, reviewers then architects, each in seat order, with its worker id, role and seat, each finding labelled r<seat>.<n> for a reviewer and a<seat>.<n> for an architect by the Operation; a worker that did not finish has its status and whatever it returned before stopping, usually nothing. findings is the chair's report: each merged finding lists in sources the labels it merges, with the chair's note, severity and tier, workers counts the distinct workers among those labels, issue is the Issue the Operation reported it to, null when the Issue store refused an earlier report, and earlier, present only when it was appended to an earlier Issue the Operation offered, names that Issue. rejected holds the labels the chair judged not to hold, each with its reason, which are reported nowhere. In a complete report every label appears exactly once, in one finding's sources or as one rejection. earlier_issues, null when the Module's earlier Issues were never read, lists the earlier Issues carried, those the chair found resolved, for the task to close, and the names ignored, as in the Spec review payload. context_identity is the Module's review-spec grant identity and architecture_identity its review-architecture grant identity, null when no architect ran or no grant could be computed. A Module's outcome is incomplete when its panel stopped or its Issues could not be read or all written, changes_required when an Issue of a blocking tier stands for it, reported now or carried, and accepted otherwise; the verdict is the highest outcome in the order accepted, changes_required, incomplete. Findings, severities, tiers, merges, notes, rejections and resolutions are worker claims; the Operation labels, normalizes, counts, checks the accounting and reports the Issues. A behaviour or field change increments the version.",
+  "semantics": "The outcome of one Spec panel. For each Module, reviews holds every worker's own findings and claimed resolutions, reviewers then architects, each in seat order, with its worker id, role and seat, each finding labelled r<seat>.<n> for a reviewer and a<seat>.<n> for an architect by the Operation; a worker that did not finish has its status and whatever it returned before stopping, usually nothing. findings is the chair's report: each merged finding lists in sources the labels it merges, with the chair's note, severity and tier, workers counts the distinct workers among those labels, issue is the Issue the Operation reported it to, null when the Issue store refused an earlier report, and earlier, present only when it was appended to an earlier Issue the Operation offered, names that Issue. rejected holds the labels the chair judged not to hold, each with its reason, which are reported nowhere. In a complete report every label appears exactly once, in one finding's sources or as one rejection. earlier_issues, null when the Module's earlier Issues were never read, lists the earlier Issues carried, those the chair found resolved, for the task to close, and the names ignored, as in the Spec review payload. context_identity is the Module's review-spec grant identity and architecture_identity its review-architecture grant identity, null when no architect ran or no grant could be computed. A Module's outcome is incomplete when its panel stopped or its Issues could not be read or all written, changes_required when an Issue of a blocking tier stands for it, reported now or carried, and accepted otherwise; the verdict is the highest outcome in the order accepted, changes_required, incomplete. Findings, severities, tiers, merges, notes, rejections and resolutions are worker claims; the Operation labels, normalizes, counts, checks the accounting and reports the Issues. workflow is the object of Workflows' step output convention, which defines its fields: one review note whose data holds the verdict and each Module's outcome with its count of blocking findings that stand. A behaviour or field change increments the version.",
   "example": {
     "verdict": "changes_required",
     "modules": [
@@ -757,7 +761,30 @@ per run in the [run directory](../../glossary.json#concept.run-directory).
           "ignored": []
         }
       }
-    ]
+    ],
+    "workflow": {
+      "decision_points": [],
+      "decisions": [],
+      "deviations": [],
+      "notes": [
+        {
+          "kind": "review",
+          "text": "spec_panel verdict changes_required: module.checkout changes_required",
+          "data": {
+            "verdict": "changes_required",
+            "modules": [
+              {
+                "module": "module.checkout",
+                "outcome": "changes_required",
+                "blocking": 1
+              }
+            ]
+          }
+        }
+      ],
+      "blocking": null,
+      "data": {}
+    }
   }
 }
 ```

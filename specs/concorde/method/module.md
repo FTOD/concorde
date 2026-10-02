@@ -116,7 +116,7 @@ delivery. Its arguments add `module`, the Module to describe, usually the root. 
 child further is a new workspace running the workflow on that child, since a workspace's [step keys](../glossary.json#concept.step-key),
 `validate` and `delivery` included, belong to one procedure. Method contributes its
 [workflow script](../glossary.json#concept.workflow-script), which names `delivery` as its last
-step and reads the scaffold's created Modules from that run's output itself; its decision points
+step and reads the scaffold's created Modules from the data that run hands it; its decision points
 are those its Operations declare in the [step output convention](../workflows/contracts.md):
 every decision the survey took itself and every [open question](../glossary.json#concept.open-question).
 [The brownfield workflow](brownfield.md) walks through it.
@@ -216,9 +216,14 @@ The **Standard sequence** realization, `src/concorde/method/workers.py`, holds t
 registers, with the runtime-path resolver of one that may run unbound; the projection of Spec
 core's grant into the worker harness's grant input; the composition of the task instructions; the
 round validation and the glossary check after the worker run; and the mapping of a worker run
-record to a step outcome. The brownfield script is still in `src/concorde/workflows/scripts/`;
-its Module's realization binds it until the code tasks that follow this Spec move it into Method's
-package.
+record to a step outcome.
+
+<a id="realization.method.brownfield"></a>
+
+The **Brownfield procedure** realization, `src/concorde/method/brownfield/`, holds the
+[brownfield workflow](../glossary.json#concept.brownfield-workflow)'s script, `brownfield.js`, and
+the module that registers the workflow, with its last step `delivery`, with Workflows' catalog when
+its code loads ([The brownfield workflow](brownfield.md)).
 
 <a id="realization.method.review-issues"></a>
 

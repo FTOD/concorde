@@ -18,7 +18,7 @@ Printed by `concorde workflow step`, from the workspace's
 ```concorde-contract
 {
   "id": "contract.workflows.step",
-  "version": 5,
+  "version": 6,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -33,8 +33,8 @@ Printed by `concorde workflow step`, from the workspace's
       "summary",
       "result_path",
       "decision_points",
-      "created_modules",
-      "ready",
+      "blocking",
+      "data",
       "error"
     ],
     "properties": {
@@ -113,39 +113,33 @@ Printed by `concorde workflow step`, from the workspace's
         "type": "integer",
         "minimum": 0
       },
-      "created_modules": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "id",
-            "uses"
-          ],
-          "properties": {
-            "id": {
-              "type": "string",
-              "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
-            },
-            "uses": {
-              "type": "array",
-              "items": {
+      "blocking": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "detail"
+            ],
+            "properties": {
+              "code": {
                 "type": "string",
-                "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "detail": {
+                "type": "string",
+                "minLength": 1
               }
             }
           }
-        }
-      },
-      "ready": {
-        "anyOf": [
-          {
-            "type": "boolean"
-          },
-          {
-            "type": "null"
-          }
         ]
+      },
+      "data": {
+        "type": "object"
       },
       "error": {
         "anyOf": [
@@ -282,7 +276,7 @@ Printed by `concorde workflow step`, from the workspace's
       }
     }
   },
-  "semantics": "The outcome of one workflow step in the bound workspace the step command runs in. workspace names that workspace as its binding does. key is the step key, including the restart label after # and the answers digest after @ when they were given. name is the Operation or execution command the step runs. run_id names the run recorded for the key, null for a refused step, except one whose run started before its workspace was retired, which names that run, and for a step that is still waiting for the workspace lock, and result_path the path in the run store where its run result is or will be saved. state is running while the run has no result and its runner lives, and also when the command's wait ended before the workspace lock was free, in which case nothing was started or recorded and asking again waits for the lock again; finished once it has a result, lost when it has neither a result nor a living runner, and refused when the run could not start, the workflow record refused the step or the workspace was retired while the command waited for its workflow lock, which nothing records; status and summary are the result's once finished and null otherwise. decision_points counts the result's open questions, and for a survey also its decisions decided by the worker, leaving out the points the step's own answers settle. created_modules lists the Modules a scaffold created, each with the other created Modules it uses, empty for any other step. ready is a task-validation result's readiness and null otherwise. error is null for running and finished, and the workflow's link for lost and refused. A behaviour or field change increments the version.",
+  "semantics": "The outcome of one workflow step in the bound workspace the step command runs in. workspace names that workspace as its binding does. key is the step key, including the restart label after # and the answers digest after @ when they were given. name is the Operation or execution command the step runs. run_id names the run recorded for the key, null for a refused step, except one whose run started before its workspace was retired, which names that run, and for a step that is still waiting for the workspace lock, and result_path the path in the run store where its run result is or will be saved. state is running while the run has no result and its runner lives, and also when the command's wait ended before the workspace lock was free, in which case nothing was started or recorded and asking again waits for the lock again; finished once it has a result, lost when it has neither a result nor a living runner, and refused when the run could not start, the workflow record refused the step or the workspace was retired while the command waited for its workflow lock, which nothing records; status and summary are the result's once finished and null otherwise. decision_points counts the decision points the finished run declared under the step output convention, leaving out those the step's own answers settle, and 0 otherwise. blocking is the run's declared blocking item, null when it declared none or has not finished, and data is the data object it declared, handed to the script unchanged and uninterpreted, {} when it declared none or has not finished; Workflows reads nothing else of a run's output. error is null for running and finished, and the workflow's link for lost and refused. A behaviour or field change increments the version.",
   "example": {
     "workflow": "brownfield",
     "workspace": "adopt",
@@ -294,8 +288,8 @@ Printed by `concorde workflow step`, from the workspace's
     "summary": "survey finished for module.shop.",
     "result_path": "/home/dev/shop/.concorde/tasks/adopt/workspace/workflow/steps/1-survey/run/result.json",
     "decision_points": 1,
-    "created_modules": [],
-    "ready": null,
+    "blocking": null,
+    "data": {},
     "error": null
   }
 }
@@ -309,7 +303,7 @@ What `concorde workflow step --json` takes, as the
 ```concorde-contract
 {
   "id": "contract.workflows.step-request",
-  "version": 5,
+  "version": 6,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -362,7 +356,7 @@ What `concorde workflow step --json` takes, as the
               "properties": {
                 "id": {
                   "type": "string",
-                  "pattern": "^[dq]\\.[a-z0-9-]+$"
+                  "pattern": "^[a-z][a-z0-9-]*\\.[a-z0-9-]+$"
                 },
                 "question": {
                   "type": "string",
@@ -399,7 +393,7 @@ What `concorde workflow step --json` takes, as the
       }
     }
   },
-  "semantics": "One step request, with the meaning of the command line's options: the workflow, mode and base step key, argv as the name of an Operation or an execution command followed by its arguments, answers as the list of every answer given for this step so far or null, each in the shape of an answer of Adoption's answers contract, saying in answered_by whether the main agent or the developer settled it, retry to start a new run for a key whose current step did not end ok, and restart, a short generation label or null, to start the step again whatever its outcome: the label is part of the step key, so the restarted step supersedes the earlier one and every later step once, and a relaunch with the same label finds it again. The request names no workspace: the step runs in the workspace whose binding lies in the worktree the command starts in, and argv carries no workspace either. An Operation in argv is started as concorde run <argv> --detach and an execution command as concorde <argv> --detach. answers, retry and restart are optional and mean null, false and null when left out; the workflow scripts leave them out whenever they hold that value, so that a step agent that retypes the request has less to copy. A behaviour or field change increments the version.",
+  "semantics": "One step request, with the meaning of the command line's options: the workflow, mode and base step key, argv as the name of an Operation or an execution command followed by its arguments, answers as the list of every answer given for this step so far or null, each in the shape of an answer of the step output convention ($defs.answer of contract.workflows.step-output), naming by id the decision point it settles, saying in answered_by whether the main agent or the developer settled it, retry to start a new run for a key whose current step did not end ok, and restart, a short generation label or null, to start the step again whatever its outcome: the label is part of the step key, so the restarted step supersedes the earlier one and every later step once, and a relaunch with the same label finds it again. The request names no workspace: the step runs in the workspace whose binding lies in the worktree the command starts in, and argv carries no workspace either. An Operation in argv is started as concorde run <argv> --detach and an execution command as concorde <argv> --detach. answers, retry and restart are optional and mean null, false and null when left out; the workflow scripts leave them out whenever they hold that value, so that a step agent that retypes the request has less to copy. A behaviour or field change increments the version.",
   "example": {
     "workflow": "brownfield",
     "mode": "interactive",
@@ -663,7 +657,7 @@ command's own [Spec](../glossary.json#concept.spec) says which of its items it d
       }
     }
   },
-  "semantics": "The workflow object, the top-level field workflow of a run's output, through which any Operation or execution command tells a workflow what it must know about the run without Workflows knowing that Operation or command; an output without it declares nothing and hands the script nothing. decision_points are the items the run leaves to be settled above the task before an interactive workflow goes on, each with an identity unique within the run, kind decision for a choice the run took or proposes and question for an open question it could not settle, the question, the options, the run's recommendation and optionally the Module it concerns; which of its items are decision points is the producing Operation's or command's decision, which its own Spec states. decisions are every decision the run took or followed, each with decided_by worker when the run took it itself and main-agent or developer when it follows an answer that one gave; a decision a workflow must stop for is listed both here and, with the same identity, among the decision points. deviations are the places where the run found its subject departing from what was intended, each optionally naming the decision point it concerns. notes are items for whoever reads the workflow result, which the report lists unchanged with their step and run, such as a review's verdict and findings or proposed checks, each with a kind the producing Operation or command names and a data object of its own. blocking, when not null, says that the procedure cannot go on from this run although it ended ok, such as a readiness that is not ready; the report counts the step blocked. data is handed unchanged to the workflow script in the step outcome, for the script to read the fields its procedure needs, such as the Modules a scaffold created. Answers a workflow passes to a run with --answers are a JSON list of $defs.answer, each naming by id the decision point it settles; a run that declares decision points takes them and lists the decisions that follow them with decided_by the answer's answered_by. A behaviour or field change increments the version.",
+  "semantics": "The workflow object, the top-level field workflow of a run's output, through which any Operation or execution command tells a workflow what it must know about the run without Workflows knowing that Operation or command; an output without it declares nothing and hands the script nothing. decision_points are the items the run leaves to be settled above the task before an interactive workflow goes on, each with an identity unique within the run, kind decision for a choice the run took or proposes and question for an open question it could not settle, the question, the options, the run's recommendation and optionally the Module it concerns; which of its items are decision points is the producing Operation's or command's decision, which its own Spec states. decisions are every decision the run took or followed, each with decided_by worker when the run took it itself and main-agent or developer when it follows an answer that one gave; a decision a workflow must stop for is listed both here and, with the same identity, among the decision points. deviations are the places where the run found its subject departing from what was intended, each optionally naming the decision point it concerns. notes are items for whoever reads the workflow result, which the report lists unchanged with their step and run, such as a review's verdict and findings or proposed checks, each with a kind the producing Operation or command names and a data object of its own. blocking, when not null, says that the procedure cannot go on from this run whatever its status, such as a task validation that found its workspace not ready; the report counts a last step that declared it blocked. data is handed unchanged to the workflow script in the step outcome, for the script to read the fields its procedure needs, such as the Modules a scaffold created. Answers a workflow passes to a run with --answers are a JSON list of $defs.answer, each naming by id the decision point it settles; a run that declares decision points takes them and lists the decisions that follow them with decided_by the answer's answered_by. A behaviour or field change increments the version.",
   "example": {
     "decision_points": [
       {
@@ -728,7 +722,7 @@ Printed by `concorde workflow report` and saved in the workflow's trace node, at
 ```concorde-contract
 {
   "id": "contract.workflows.result",
-  "version": 7,
+  "version": 8,
   "schema": {
     "$defs": {
       "error": {
@@ -864,10 +858,9 @@ Printed by `concorde workflow report` and saved in the workflow's trace node, at
       "steps",
       "superseded",
       "decisions",
-      "open_questions",
+      "decision_points",
       "deviations",
-      "reviews",
-      "proposed_checks",
+      "notes",
       "pending",
       "problems",
       "error",
@@ -1038,10 +1031,8 @@ Printed by `concorde workflow report` and saved in the workflow's trace node, at
             "step",
             "run_id",
             "id",
-            "module",
             "question",
-            "options",
-            "chosen",
+            "decision",
             "reason",
             "decided_by"
           ],
@@ -1056,11 +1047,7 @@ Printed by `concorde workflow report` and saved in the workflow's trace node, at
             },
             "id": {
               "type": "string",
-              "pattern": "^d\\.[a-z0-9-]+$"
-            },
-            "module": {
-              "type": "string",
-              "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
+              "pattern": "^[a-z][a-z0-9-]*\\.[a-z0-9-]+$"
             },
             "question": {
               "type": "string",
@@ -1068,13 +1055,12 @@ Printed by `concorde workflow report` and saved in the workflow's trace node, at
             },
             "options": {
               "type": "array",
-              "minItems": 2,
               "items": {
                 "type": "string",
                 "minLength": 1
               }
             },
-            "chosen": {
+            "decision": {
               "type": "string",
               "minLength": 1
             },
@@ -1088,11 +1074,15 @@ Printed by `concorde workflow report` and saved in the workflow's trace node, at
                 "main-agent",
                 "developer"
               ]
+            },
+            "module": {
+              "type": "string",
+              "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
             }
           }
         }
       },
-      "open_questions": {
+      "decision_points": {
         "type": "array",
         "items": {
           "type": "object",
@@ -1101,11 +1091,8 @@ Printed by `concorde workflow report` and saved in the workflow's trace node, at
             "step",
             "run_id",
             "id",
-            "module",
-            "subject",
-            "observed",
-            "evidence",
-            "why_uncertain",
+            "kind",
+            "question",
             "options",
             "recommendation"
           ],
@@ -1120,35 +1107,20 @@ Printed by `concorde workflow report` and saved in the workflow's trace node, at
             },
             "id": {
               "type": "string",
-              "pattern": "^q\\.[a-z0-9-]+$"
+              "pattern": "^[a-z][a-z0-9-]*\\.[a-z0-9-]+$"
             },
-            "module": {
-              "type": "string",
-              "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
+            "kind": {
+              "enum": [
+                "decision",
+                "question"
+              ]
             },
-            "subject": {
-              "type": "string",
-              "minLength": 1
-            },
-            "observed": {
-              "type": "string",
-              "minLength": 1
-            },
-            "evidence": {
-              "type": "array",
-              "minItems": 1,
-              "items": {
-                "type": "string",
-                "minLength": 1
-              }
-            },
-            "why_uncertain": {
+            "question": {
               "type": "string",
               "minLength": 1
             },
             "options": {
               "type": "array",
-              "minItems": 1,
               "items": {
                 "type": "string",
                 "minLength": 1
@@ -1157,6 +1129,10 @@ Printed by `concorde workflow report` and saved in the workflow's trace node, at
             "recommendation": {
               "type": "string",
               "minLength": 1
+            },
+            "module": {
+              "type": "string",
+              "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
             }
           }
         }
@@ -1169,8 +1145,7 @@ Printed by `concorde workflow report` and saved in the workflow's trace node, at
           "required": [
             "step",
             "run_id",
-            "module",
-            "question",
+            "subject",
             "intended",
             "observed"
           ],
@@ -1183,13 +1158,9 @@ Printed by `concorde workflow report` and saved in the workflow's trace node, at
               "type": "string",
               "pattern": "^r-[0-9]{8}T[0-9]{6}-[a-z_]+-[0-9a-f]{8}$"
             },
-            "module": {
+            "subject": {
               "type": "string",
-              "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
-            },
-            "question": {
-              "type": "string",
-              "pattern": "^q\\.[a-z0-9-]+$"
+              "minLength": 1
             },
             "intended": {
               "type": "string",
@@ -1198,113 +1169,49 @@ Printed by `concorde workflow report` and saved in the workflow's trace node, at
             "observed": {
               "type": "string",
               "minLength": 1
-            }
-          }
-        }
-      },
-      "reviews": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "step",
-            "run_id",
-            "verdict",
-            "modules"
-          ],
-          "properties": {
-            "step": {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_:.-]*(?:#[a-z0-9-]+)?(?:@[0-9a-f]{8})?$"
             },
-            "run_id": {
+            "point": {
               "type": "string",
-              "pattern": "^r-[0-9]{8}T[0-9]{6}-[a-z_]+-[0-9a-f]{8}$"
-            },
-            "verdict": {
-              "enum": [
-                "accepted",
-                "changes_required",
-                "incomplete"
-              ]
-            },
-            "modules": {
-              "type": "array",
-              "items": {
-                "type": "object"
-              }
-            }
-          }
-        }
-      },
-      "proposed_checks": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "step",
-            "run_id",
-            "id",
-            "module",
-            "argv",
-            "timeout_seconds",
-            "inputs",
-            "reason"
-          ],
-          "properties": {
-            "step": {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_:.-]*(?:#[a-z0-9-]+)?(?:@[0-9a-f]{8})?$"
-            },
-            "run_id": {
-              "type": "string",
-              "pattern": "^r-[0-9]{8}T[0-9]{6}-[a-z_]+-[0-9a-f]{8}$"
-            },
-            "id": {
-              "type": "string",
-              "pattern": "^check\\.[a-z0-9-]+(?:\\.[a-z0-9-]+)*$"
+              "pattern": "^[a-z][a-z0-9-]*\\.[a-z0-9-]+$"
             },
             "module": {
               "type": "string",
               "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
+            }
+          }
+        }
+      },
+      "notes": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "step",
+            "run_id",
+            "kind",
+            "text",
+            "data"
+          ],
+          "properties": {
+            "step": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_:.-]*(?:#[a-z0-9-]+)?(?:@[0-9a-f]{8})?$"
             },
-            "argv": {
-              "type": "array",
-              "minItems": 1,
-              "items": {
-                "type": "string",
-                "minLength": 1
-              }
+            "run_id": {
+              "type": "string",
+              "pattern": "^r-[0-9]{8}T[0-9]{6}-[a-z_]+-[0-9a-f]{8}$"
             },
-            "env": {
-              "type": "object",
-              "additionalProperties": {
-                "type": "string",
-                "minLength": 1
-              }
+            "kind": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$"
             },
-            "when": {
-              "enum": [
-                "always",
-                "readiness"
-              ]
-            },
-            "timeout_seconds": {
-              "type": "integer",
-              "minimum": 1
-            },
-            "inputs": {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "minLength": 1
-              }
-            },
-            "reason": {
+            "text": {
               "type": "string",
               "minLength": 1
+            },
+            "data": {
+              "type": "object"
             }
           }
         }
@@ -1317,9 +1224,8 @@ Printed by `concorde workflow report` and saved in the workflow's trace node, at
           "required": [
             "step",
             "run_id",
-            "kind",
             "id",
-            "module",
+            "kind",
             "question",
             "options",
             "recommendation"
@@ -1333,19 +1239,15 @@ Printed by `concorde workflow report` and saved in the workflow's trace node, at
               "type": "string",
               "pattern": "^r-[0-9]{8}T[0-9]{6}-[a-z_]+-[0-9a-f]{8}$"
             },
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*\\.[a-z0-9-]+$"
+            },
             "kind": {
               "enum": [
                 "decision",
-                "open_question"
+                "question"
               ]
-            },
-            "id": {
-              "type": "string",
-              "pattern": "^[dq]\\.[a-z0-9-]+$"
-            },
-            "module": {
-              "type": "string",
-              "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
             },
             "question": {
               "type": "string",
@@ -1361,6 +1263,10 @@ Printed by `concorde workflow report` and saved in the workflow's trace node, at
             "recommendation": {
               "type": "string",
               "minLength": 1
+            },
+            "module": {
+              "type": "string",
+              "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
             }
           }
         }
@@ -1423,13 +1329,13 @@ Printed by `concorde workflow report` and saved in the workflow's trace node, at
       }
     }
   },
-  "semantics": "The result of the workflow of one bound workspace, built from its workflow record and the saved run results. workspace names the workspace; mode is the mode of the latest recorded step. steps lists the current steps in the order recorded, each with the name of its Operation or execution command, its Modules, run and status: ok, blocked or failed from its result, running while its runner lives, lost without result or runner, refused without a run. superseded lists the steps a later rerun superseded, which contribute nothing else. decisions and open_questions are every decision and open question of the finished current steps exactly as their runs reported them, with their step and run, so a decision says whether the worker took it or it follows an answer the main agent or the developer gave; deviations likewise. reviews holds each spec_review step's verdict and its modules, the per-Module entries of the Spec review's output (each reviewed Module's outcome with its findings), copied unchanged. proposed_checks are the checks the survey proposed, each with the env and when it was proposed with, which nothing has configured. pending lists the decision points an interactive run ended at, empty otherwise. problems lists every current step that did not end ok with its run's error chain unchanged, or the workflow's own link for a running, lost or refused step. status is running while a current step runs; otherwise failed when the procedure stopped at a failed, lost or refused step, blocked when it stopped at a blocked step or unready validation, awaiting_decision when an interactive run ended at decision points, ok when its last step ended ok, and failed with the code incomplete when the recorded steps end before the procedure's last step without any of these stops. error is null exactly when status is ok; otherwise it is the workflow's link, level workflow, whose causes are the errors of the steps that stopped it, unchanged. Each report is saved beside the workflow record as reports/<n>.json, with its Markdown rendering as reports/<n>.md. A behaviour or field change increments the version.",
+  "semantics": "The result of the workflow of one bound workspace, built from its workflow record and the saved run results. workspace names the workspace; mode is the mode of the latest recorded step. steps lists the current steps in the order recorded, each with the name of its Operation or execution command, its Modules, run and status: ok, blocked or failed from its result, running while its runner lives, lost without result or runner, refused without a run. superseded lists the steps a later rerun superseded, which contribute nothing else. decisions, decision_points, deviations and notes are every item of those kinds the finished current steps declared under the step output convention, exactly as their runs declared them, each with its step and run, in the order of the steps; so a decision says whether the worker took it or it follows an answer the main agent or the developer gave, and a note, such as a review's verdict or a proposed check, keeps the kind and data its run gave it. Workflows interprets none of them. pending lists the decision points of the last step an interactive run ended at that its answers did not settle, empty otherwise. problems lists every current step that did not end ok with its run's error chain unchanged, or the workflow's own link for a running, lost or refused step. status is running while a current step runs; otherwise failed when the procedure stopped at a failed, lost or refused step, blocked when it stopped at a blocked step or at a step that declared blocking, awaiting_decision when an interactive run ended at decision points, ok when its last step, as the part that registered the workflow names it, ended ok, and failed with the code incomplete when the recorded steps end before that last step, or no installed part registers the workflow, without any of these stops. error is null exactly when status is ok; otherwise it is the workflow's link, level workflow, whose causes are the errors of the steps that stopped it, unchanged, and whose evidence names a declared blocking item or every pending point. Each report is saved beside the workflow record as reports/<n>.json, with its Markdown rendering as reports/<n>.md. A behaviour or field change increments the version.",
   "example": {
     "workflow": "brownfield",
     "workspace": "adopt",
     "mode": "no-ask",
     "status": "ok",
-    "summary": "workflow brownfield of workspace adopt is ok after survey ok, scaffold ok, describe:module.checkout ok, describe:module.inventory failed, describe:module.shop ok, spec_review ok, validate ok, delivery ok; 1 problem(s), 1 decision(s), 1 open question(s), 1 proposed check(s)",
+    "summary": "workflow brownfield of workspace adopt is ok after survey ok, scaffold ok, describe:module.checkout ok, describe:module.inventory failed, describe:module.shop ok, spec_review ok, validate ok, delivery ok; 1 problem(s), 1 decision(s), 2 decision point(s), 0 deviation(s), 2 note(s)",
     "steps": [
       {
         "key": "survey",
@@ -1520,107 +1426,95 @@ Printed by `concorde workflow report` and saved in the workflow's trace node, at
         "step": "survey",
         "run_id": "r-20260925T101500-survey-1a2b3c4d",
         "id": "d.db-helper",
-        "module": "module.shop",
         "question": "Does the shared database helper get a Module of its own?",
         "options": [
           "a Module of its own",
           "stay with the root"
         ],
-        "chosen": "stay with the root",
+        "decision": "stay with the root",
         "reason": "it is 40 lines of connection setup with no behaviour of its own",
-        "decided_by": "worker"
+        "decided_by": "worker",
+        "module": "module.shop"
       }
     ],
-    "open_questions": [
+    "decision_points": [
+      {
+        "step": "survey",
+        "run_id": "r-20260925T101500-survey-1a2b3c4d",
+        "id": "d.db-helper",
+        "kind": "decision",
+        "question": "Does the shared database helper get a Module of its own?",
+        "options": [
+          "a Module of its own",
+          "stay with the root"
+        ],
+        "recommendation": "the worker chose 'stay with the root': it is 40 lines of connection setup with no behaviour of its own",
+        "module": "module.shop"
+      },
       {
         "step": "describe:module.checkout",
         "run_id": "r-20260925T103000-code_to_spec-5a6b7c8d",
         "id": "q.payment-retry",
-        "module": "module.checkout",
-        "subject": "retrying a declined payment",
-        "observed": "a declined payment is retried once after two seconds, but a timed-out one is not",
-        "evidence": [
-          "src/checkout/payment.py"
-        ],
-        "why_uncertain": "no comment, test or configuration says whether the difference is intended",
+        "kind": "question",
+        "question": "retrying a declined payment: a declined payment is retried once after two seconds, but a timed-out one is not",
         "options": [
           "retry declined payments once, never timeouts",
           "retry both",
           "retry neither"
         ],
-        "recommendation": "ask whether a timeout should be retried"
+        "recommendation": "ask whether a timeout should be retried",
+        "module": "module.checkout"
       }
     ],
     "deviations": [],
-    "reviews": [
-      {
-        "step": "spec_review",
-        "run_id": "r-20260925T105000-spec_review-1b2c3d4e",
-        "verdict": "accepted",
-        "modules": [
-          {
-            "module": "module.checkout",
-            "outcome": "accepted",
-            "context_identity": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
-            "findings": [],
-            "memory": {
-              "new": [],
-              "updated": [],
-              "resolved": [],
-              "carried": [],
-              "ignored": [],
-              "unchanged_since": null
-            }
-          },
-          {
-            "module": "module.inventory",
-            "outcome": "accepted",
-            "context_identity": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
-            "findings": [],
-            "memory": {
-              "new": [],
-              "updated": [],
-              "resolved": [],
-              "carried": [],
-              "ignored": [],
-              "unchanged_since": null
-            }
-          },
-          {
-            "module": "module.shop",
-            "outcome": "accepted",
-            "context_identity": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
-            "findings": [],
-            "memory": {
-              "new": [],
-              "updated": [],
-              "resolved": [],
-              "carried": [],
-              "ignored": [],
-              "unchanged_since": null
-            }
-          }
-        ]
-      }
-    ],
-    "proposed_checks": [
+    "notes": [
       {
         "step": "survey",
         "run_id": "r-20260925T101500-survey-1a2b3c4d",
-        "id": "check.checkout.tests",
-        "module": "module.checkout",
-        "argv": [
-          "{python}",
-          "-m",
-          "pytest",
-          "tests/checkout"
-        ],
-        "timeout_seconds": 300,
-        "inputs": [
-          "src/checkout",
-          "tests/checkout"
-        ],
-        "reason": "pyproject.toml configures pytest"
+        "kind": "proposed-check",
+        "text": "check.checkout.tests for module.checkout: pyproject.toml configures pytest",
+        "data": {
+          "id": "check.checkout.tests",
+          "module": "module.checkout",
+          "argv": [
+            "{python}",
+            "-m",
+            "pytest",
+            "tests/checkout"
+          ],
+          "timeout_seconds": 300,
+          "inputs": [
+            "src/checkout",
+            "tests/checkout"
+          ],
+          "reason": "pyproject.toml configures pytest"
+        }
+      },
+      {
+        "step": "spec_review",
+        "run_id": "r-20260925T105000-spec_review-1b2c3d4e",
+        "kind": "review",
+        "text": "spec_review verdict accepted: module.checkout accepted, module.inventory accepted, module.shop accepted",
+        "data": {
+          "verdict": "accepted",
+          "modules": [
+            {
+              "module": "module.checkout",
+              "outcome": "accepted",
+              "blocking": 0
+            },
+            {
+              "module": "module.inventory",
+              "outcome": "accepted",
+              "blocking": 0
+            },
+            {
+              "module": "module.shop",
+              "outcome": "accepted",
+              "blocking": 0
+            }
+          ]
+        }
       }
     ],
     "pending": [],
@@ -1979,7 +1873,10 @@ The step and report commands also answer with a `component` link of the actor
 `Workflows (concorde workflow report)`, printed as `{"error": <link>}` with exit status 1, when they
 cannot work at all: `binding_required` when the worktree they start in has no
 [workspace binding](../glossary.json#concept.workspace-binding), `binding_unreadable`,
-`binding_invalid` or `binding_misplaced` when its binding is refused, and, for the report,
+`binding_invalid` or `binding_misplaced` when its binding is refused, `invalid_step_output` with
+reason `input` when a finished run's output carries a `workflow` object that breaks the
+[step output convention](#contract.workflows.step-output), which a report answers as
+`report_failed`, and, for the report,
 `no_workflow` when the workspace ran no [workflow step](../glossary.json#concept.workflow-step)
 and `record_unreadable` when its workflow record cannot be read, and, for the report, `workspace_retired` with reason `environment` when the workspace was retired while it waited for the workflow lock, as for a step. A command line that breaks the
 [step request](#contract.workflows.step-request) contract, or a malformed report command line, is

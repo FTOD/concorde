@@ -67,9 +67,10 @@ binding names.
 
 ### req.validation.step-output — A workspace that is not ready stops a workflow
 
-The output of every `ok` task-validation run SHALL carry, under the [step output convention](../../workflows/contracts.md#contract.workflows.step-output), its readiness's `ready` as `data.ready` and, when the workspace is not ready, a `blocking` item naming the blocking findings.
+The output of every task-validation run that decided a readiness SHALL carry, under the [step output convention](../../workflows/contracts.md#contract.workflows.step-output), its readiness's `ready` as `data.ready` and, when the workspace is not ready, a `blocking` item naming the blocking findings.
 
-A run that decided readiness ends `ok` whether or not the workspace is ready, so the `blocking` item
-is what tells a workflow, which reads nothing else of a run's output, not to go on to delivery
+A run that found the workspace not ready ends `blocked`, which stops a workflow already; the
+`blocking` item says the same in the convention, which is all a workflow reads of a run's output,
+so that the decision never depends on a run's status alone
 ([contracts](contracts.md#readiness)).
 

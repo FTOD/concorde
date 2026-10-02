@@ -76,12 +76,14 @@ KNOWN_EXCEPTIONS = {
     # Distribution depends on no part and no part imports it: it reaches the parts only through
     # their registrations.
     "distribution": [
+        ("distribution/build.py", "method.brownfield"),
         ("distribution/build.py", "spec.typed_data"),
         ("distribution/build.py", "workflows.catalog"),
         ("distribution/cli.py", "coordination.tasks.cli"),
         ("distribution/cli.py", "execution.commands.catalog"),
         ("distribution/cli.py", "execution.runner"),
         ("distribution/cli.py", "kernel.tracing.command"),
+        ("distribution/cli.py", "method.brownfield"),
         ("distribution/cli.py", "spec.diagnostics"),
         ("distribution/cli.py", "spec.errors"),
         ("distribution/cli.py", "spec.grants"),
@@ -117,7 +119,7 @@ KNOWN_EXCEPTIONS = {
         ("distribution/project_mcp/tools.py", "kernel.tracing.locks"),
         ("distribution/project_mcp/tools.py", "kernel.tracing.reader"),
         ("distribution/project_mcp/tools.py", "spec.schema"),
-        ("distribution/project_mcp/tools.py", "workflows.step"),
+        ("distribution/project_mcp/tools.py", "workflows.tools"),
         ("distribution/prompt_resolver.py", "spec.frontmatter"),
     ],
 }

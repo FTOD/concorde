@@ -13,8 +13,9 @@
 // The workflow runs in the bound workspace it is started in: the step tool works on the worktree
 // the session started in, and the report command runs from the current working directory, whose
 // workspace binding names the workspace.
-if (!args || !args.module || !args.mode) {
-  throw new Error("concorde workflow needs args { module, mode } and optionally answers, retry and restart")
+// Every workflow takes mode, answers, retry and restart; a procedure checks its own arguments.
+if (!args || !args.mode) {
+  throw new Error("concorde workflow " + WORKFLOW + " needs args { mode } and optionally answers, retry and restart")
 }
 const CONCORDE = args.concorde || ".concorde/bin/concorde"
 // The project MCP server's tool, as Claude Code names it for the server registered as `concorde`.
@@ -42,8 +43,8 @@ const STEP_SCHEMA = {
     status: { type: ["string", "null"] },
     summary: { type: ["string", "null"] },
     decision_points: { type: "integer" },
-    created_modules: { type: "array", items: { type: "object" } },
-    ready: { type: ["boolean", "null"] },
+    blocking: { type: ["object", "null"] },
+    data: { type: "object" },
     error: { type: ["object", "null"] },
   },
 }

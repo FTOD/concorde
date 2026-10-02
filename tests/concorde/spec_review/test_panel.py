@@ -183,6 +183,10 @@ class SpecPanelTests(unittest.TestCase):
         output = envelope["output"]
         validate(output, PAYLOAD_SCHEMA)
         self.assertEqual("changes_required", output["verdict"])
+        [note] = output["workflow"]["notes"]
+        self.assertEqual(
+            ("review", "changes_required"), (note["kind"], note["data"]["verdict"])
+        )
         (module,) = output["modules"]
         self.assertEqual(self.identity("review-spec"), module["context_identity"])
         self.assertIsNone(module["architecture_identity"])

@@ -43,6 +43,7 @@ from ...spec.schema import ContractError, validate
 from ...spec.typed_data import TypedDataError, safe_path
 from ...spec.validation import validate_repository
 from .. import review_issues
+from ..review_issues import review_output
 from . import reporting
 
 TASK_TYPE = "review-spec"
@@ -195,13 +196,15 @@ FINDING: dict = {
     },
 }
 
-# contract.spec-review.payload, version 5 (operation.md); a test keeps the two equal.
+# contract.spec-review.payload, version 6 (operation.md); a test keeps the two equal.
 PAYLOAD_SCHEMA: dict = {
     "type": "object",
-    "required": ["verdict", "modules"],
+    "required": ["verdict", "modules", "workflow"],
     "additionalProperties": False,
     "properties": {
         "verdict": {"enum": OUTCOMES},
+        # The workflow object of the step output convention, whose own contract defines it.
+        "workflow": {"type": "object"},
         "modules": {
             "type": "array",
             "minItems": 1,
@@ -691,6 +694,23 @@ def review_modules(ctx: RunContext):
     return Continue(evidence=found)
 
 
+def blocking_counts(modules: list[dict]) -> list[dict]:
+    """Each reviewed Module's outcome with the count of its blocking findings that stand."""
+    return [
+        {
+            "module": item["module"],
+            "outcome": item["outcome"],
+            "blocking": sum(
+                1
+                for finding in item["findings"]
+                if reporting.is_blocking(finding["tier"])
+                and (finding.get("check") or {}).get("status") != "disputed"
+            ),
+        }
+        for item in modules
+    ]
+
+
 def derive_verdict(ctx: RunContext):
     """Step 7 and the verdict: counted by the host from the findings, never taken from a worker."""
     reviews = list(_state(ctx).reviews.values())
@@ -706,7 +726,11 @@ def derive_verdict(ctx: RunContext):
     ]
     outcomes = {item["outcome"] for item in modules}
     verdict = next(value for value in reversed(OUTCOMES) if value in outcomes)
-    payload = {"verdict": verdict, "modules": modules}
+    payload = {
+        "verdict": verdict,
+        "modules": modules,
+        "workflow": review_output("spec_review", verdict, blocking_counts(modules)),
+    }
     validate(payload, PAYLOAD_SCHEMA)
     ctx.output = payload
     incomplete = [review for review in reviews if review.stop is not None]

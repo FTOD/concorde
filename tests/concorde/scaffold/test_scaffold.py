@@ -43,6 +43,15 @@ class ScaffoldTests(AdoptionCase):
             ["module.checkout", "module.inventory"],
             [item["id"] for item in record["created"]],
         )
+        # A workflow script reads the created Modules, with their uses among them, from the
+        # data the scaffold declares under the step output convention (req.scaffold.step-output).
+        self.assertEqual(
+            [
+                {"id": "module.checkout", "uses": ["module.inventory"]},
+                {"id": "module.inventory", "uses": []},
+            ],
+            record["workflow"]["data"]["created_modules"],
+        )
         checkout = worktree / "specs/project/checkout/module.md"
         text = checkout.read_text()
         self.assertIn("Checkout turns a basket into one order.", text)
