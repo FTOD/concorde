@@ -257,6 +257,13 @@ network ([req.workers.bash-sandbox](#req.workers.bash-sandbox),
 
 ## Audit
 
+The audit attributes every change since its snapshot to the worker, so the caller keeps every other
+writer away from the worktree's files and its `HEAD`, index and branch from before the snapshot
+until the run has ended, its round validations and the host's deletions included, while readers
+may go on ([The caller isolates the worktree](../module.md#the-caller-isolates-the-worktree)); in
+Concorde the [workspace lock](../../glossary.json#concept.workspace-lock) the launching run holds does it. The host takes no lock of its own for
+this.
+
 Before the first round the host records a snapshot of the
 worktree: `HEAD`, the index digest, and the digest of every tracked change and untracked file
 that already exists. After each round it runs read-only Git

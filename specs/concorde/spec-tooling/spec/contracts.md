@@ -454,6 +454,11 @@ closed JSON object `{"type_id": ..., "schema_version": ..., "data": ...}`. Types
 their owners within the spec part, Spec core, the Spec MCP server and Views; Spec core registers only
 its own.
 
+The schema dialect a registered type may use, and the `typed_schema` reference by which one type
+embeds another, are the Kernel's [registered schemas](../../kernel/contracts.md#registered-schemas);
+Spec core's copy admits exactly that dialect, while the wider dialect of `concorde-contract` fences
+below is Spec tooling's own.
+
 ```python
 register(type_id: str, version: int, schema: dict) -> None
 typed_schema(type_id: str) -> dict

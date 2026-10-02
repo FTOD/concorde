@@ -6,7 +6,8 @@ The Kernel is the kernel [part](../glossary.json#concept.part): the few contract
 cooperate through without importing each other. Coordination writes a
 [workspace binding](../glossary.json#concept.workspace-binding) that Execution, Workflows and Method
 read; Method makes a [delivery commit](../glossary.json#concept.delivery-commit) that Coordination
-recognizes; Tasks and Issues take the same [merge lock](../glossary.json#concept.merge-lock); every
+recognizes; Coordination's Tasks and the issues part's Issues take the same
+[merge lock](../glossary.json#concept.merge-lock); every
 level records the same [trace node](../glossary.json#concept.trace-node) and reports with the same
 [error chain](../glossary.json#concept.error-chain). Each of these agreements belongs to neither
 side, so it lives here, and every part that cooperates through it depends on the Kernel instead of
@@ -14,9 +15,16 @@ on the part at the other end.
 
 The Kernel holds formats, conventions and the small library that reads and writes them; it decides
 nothing about the work. It knows no task, no run, no [Operation](../glossary.json#concept.operation) and no [Spec](../glossary.json#concept.spec): a contract here may name
-an example of who uses it, never rely on that user. It depends on no part, and every part but the
-Spec tooling, which keeps its own copy of the data utilities it shares with the Kernel, and
-Distribution, which reaches the parts only through their registrations, depends on it.
+an example of who uses it, never rely on that user. It depends on no part, and every part depends on it but two: the Spec tooling, the spec part,
+whose Spec core keeps its own copy of the data utilities it shares with the Kernel, and
+Distribution, which reaches the parts only through their registrations.
+
+The Kernel's code is a small library: reading and checking a workspace binding, registering and
+checking typed values, applying a file transaction and finding and verifying the delivery commits
+of a workspace, each refusing with a stable code its caller turns into its own error link; Tracing,
+its child, adds the trace nodes and locks
+([Library](contracts.md#library)). Its precise obligations are its
+[requirements](requirements.md).
 
 ## Core concepts
 
@@ -29,15 +37,22 @@ and the error chain.
 
 <a id="concept.typed-value"></a><a id="concept.file-transaction"></a>
 
-Every structured value parts exchange or record is a
+A value its owner's contract designates as a typed value is a
 **[typed value](../glossary.json#concept.typed-value)** `{type_id, schema_version, data}`, whose
-`data` is checked against the schema its owner registered for that type and version: a [run result](../glossary.json#concept.run-result),
-a trace node's content, an Issue record. The owner registers its own types when its code loads, and
-a record of one part may embed a value of another part's type by name, so neither imports the other.
+`data` is checked against the schema its owner registered for that type and version: a
+[trace node](../glossary.json#concept.trace-node)'s content, such as a run's steps or a worker
+round's audit, or an [Issue report](../glossary.json#concept.issue-report). The owner registers its own types when its code loads, and a
+schema of one part may embed a value of another part's type by name, so neither imports the other.
+Not every structured record is one: a workspace binding, a [run result](../glossary.json#concept.run-result),
+a grant or an Issue record file keeps the representation its own contract defines, and is checked
+against that contract's schema without an envelope.
 A **[file transaction](../glossary.json#concept.file-transaction)** writes a set of whole files,
-each bound to the digest of the bytes it replaces, completely or, when a write or its final check
-fails, not at all; a process killed in the middle can leave it partly applied, which is why every
-writer that uses one also says how its records are recovered. The
+each bound to the digest of the bytes it replaces. When a write or its final check fails while the
+process runs, it restores every file it wrote; that restoration may itself be refused by the
+operating system, and then the failure names every file still holding its new content, and a
+process killed in the middle restores nothing. Every writer that uses one therefore says how its
+records are recovered from both. A transaction protects nothing against another writer: its caller
+holds whatever lock its records require for the whole transaction. The
 [contracts](contracts.md#typed-values) give both formats exactly.
 
 ### The workspace
@@ -85,11 +100,12 @@ A **[delivery commit](../glossary.json#concept.delivery-commit)** is the one mar
 commit on the workspace's branch, since its base commit, whose subject is exactly
 `concorde: deliver <workspace>`, with the workspace's goal as body. It is recognized by its subject
 alone, so no part keeps a list of deliveries, and it verifies only when it has exactly one parent,
-so that a merge commit carrying the subject is never taken for one. Only a delivering command makes
-it: Method's `delivery`, which validates the whole workspace first and commits only when it is
-ready, or, where the method part is not installed, Coordination's `task deliver`, which runs the
-checks it is given. Whoever reads deliveries, such as Coordination deriving that a task is
-delivered, relies on this convention alone and not on the part that made the commit
+so that a merge commit carrying the subject is never taken for one. The Kernel defines the mark and
+how it is recognized and verified, never who may make one, what it must check first or which
+changes it holds: those are the delivering command's own rules. In Concorde, Method's `delivery`
+validates the whole workspace first, and Coordination's `task deliver` runs the checks it is given
+where the method part is not installed. Whoever reads deliveries, such as Coordination deriving
+that a task is delivered, relies on this convention alone and not on the part that made the commit
 ([exact rule](contracts.md#delivery-commit)).
 
 <a id="concept.merge-lock"></a>

@@ -79,3 +79,14 @@ The section stands where the reading order of an entry puts the core concepts an
 a reader meets the unknowns before the parts. A Parts section follows, which explains the
 realization binding the child's code, and then a Collaborations section, which explains each
 proposed `uses`.
+
+## The workflow handoff
+
+### req.scaffold.step-output — The created Modules reach a workflow script
+
+The output of every `ok` scaffold run SHALL carry, under the [step output convention](../../workflows/contracts.md#contract.workflows.step-output), `data.created_modules`: every Module it created, in its record's order, each with the `uses` the survey proposed among the created Modules.
+
+A [workflow script](../../glossary.json#concept.workflow-script) reads only what the convention hands it, so this is how the
+[brownfield workflow](../../glossary.json#concept.brownfield-workflow) orders its descriptions
+([contracts](contracts.md)).
+

@@ -276,11 +276,12 @@ here called its origin:
    the origin's checkout is sparse; `submodule` evidence names each. A submodule the origin has not
    checked out, or that Git cannot check out, stays empty, as in a fresh clone, with
    `submodule-absent` evidence naming why.
-3. Each relative runtime path the run's definition names — for Method's Operations, the
-   checked-out [worker configuration](../glossary.json#concept.worker-configuration)'s `runtime`
-   (default `.venv` and `node_modules`) — that exists in the origin and that Git ignores is linked
-   into the
-   checkout as a symbolic link to the origin's, with `environment` evidence; the run's checks and
+3. The runner calls the definition's runtime-path resolver, when it has one, with the checkout's
+   root, and links what it returns; the runner itself reads no configuration. For Method's
+   Operations the resolver returns the checked-out
+   [worker configuration](../glossary.json#concept.worker-configuration)'s `runtime` (default
+   `.venv` and `node_modules`), and nothing when that file is invalid. Each relative runtime path so
+   named that exists in the origin and that Git ignores is linked into the checkout as a symbolic link to the origin's, with `environment` evidence; the run's checks and
    workers only read it, the checks inside their read-only boundary. A runtime path Git does not
    ignore is not linked, with `environment-not-linked` evidence, since the commit holds it.
 4. From here on the run context's worktree is the checkout: the steps work there, and with them

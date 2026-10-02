@@ -100,7 +100,7 @@ different amounts of each, and a different part applies each:
 | | Main session | Task session | Worker |
 | --- | --- | --- | --- |
 | Context | the installed [guidance](glossary.json#concept.main-session-guidance) and whatever the developer's own configuration adds | the developer's configuration, the task-session guidance and the task's goal, Modules and decision log | only its [brief](glossary.json#concept.brief): its caller's instructions and the grant's `rw`, `ro` and `names` lists, from which it reads its [Spec context](glossary.json#concept.spec-context), [external context](glossary.json#concept.external-context), [implementation context](glossary.json#concept.implementation-context) and [task context](glossary.json#concept.task-context); its tool set is its [capability context](glossary.json#concept.capability-context) |
-| Permission | none | the file tools write only the task worktree and its decision log; the shell and everything else are open, and the merge audits that nothing outside the task worktree changed | the grant: `rw` writable, `ro` readable, `names` named only, everything else hidden; no network, no Git |
+| Permission | none | the file tools write only the task worktree and its decision log; the shell and everything else are open, kept inside the task by its guidance, and the merge audits only some working trees outside the task worktree ([Tasks](coordination/tasks/module.md#nothing-changed-outside-the-task)) | the grant: `rw` writable, `ro` readable, `names` named only, everything else hidden; no network, no Git |
 | Environment | the developer's | the developer's Claude Code configuration | its own configuration directory, a cleared environment, its own working directory and limits |
 | Applied by | Distribution, which installs the guidance | Coordination's [session boundary](glossary.json#concept.session-boundary) | the worker harness's [worker settings](glossary.json#concept.worker-settings) or [permission extension](glossary.json#concept.permission-extension) |
 
@@ -346,12 +346,13 @@ The levels are levels of work, not of Modules. Nine parts carry them, each a chi
 | issues | [Issues](issues/module.md) | the project's durable problem records | kernel |
 | coordination | [Coordination](coordination/module.md) | the main session, tasks, task sessions and their merges | kernel |
 | method | [Method](method/module.md) | Concorde's Spec-driven development work: the Operations, the execution commands `task-validation`, `delivery` and `scaffold`, the [brownfield workflow](glossary.json#concept.brownfield-workflow) and the standard worker sequence | spec, worker harness, execution, workflow, kernel |
-| distribution | [Distribution](distribution/module.md) | the build, the installer, `concorde update`, the `concorde` command and the project MCP server that compose the installed parts | the parts, only through their [part registrations](glossary.json#concept.part-registration) |
+| distribution | [Distribution](distribution/module.md) | the build, the installer, `concorde update`, the `concorde` command and the project MCP server that compose the installed parts | nothing: installed with every selection as its host, it reads only the [part registrations](glossary.json#concept.part-registration) of the parts installed beside it |
 
 Each arrow below is a dependency between parts, the only directions in which one part may rely on
 another; every other reliance is an optional integration, drawn dashed for the ones that matter
-most. Distribution, which installs and composes every part, is left out: no part imports it, and it
-reaches the parts only through what they register.
+most. Distribution, the installation host installed beside whatever parts a project selects, is
+left out: it depends on no part, no part imports it, and it reaches only the parts installed beside
+it, through what they register. "Installed alone" below always means with that host.
 
 ```d2 illustrative
 spec: spec
@@ -424,9 +425,21 @@ records a worker without reading a Spec; Method is the part that takes the grant
 tooling and hands it over. Execution runs what definitions tell it, launches no worker itself and
 knows no Spec. Coordination needs nothing but the kernel to open, delegate, merge and close tasks,
 and reaches runs, Issues, Specs and Method's delivery only where they are installed. Distribution is
-the one piece present in every installation: it installs the parts and composes the `concorde`
-command and the [project MCP server](glossary.json#concept.project-mcp-server) from their
-[registrations](glossary.json#concept.part-registration), relying on them only through those.
+the installation host, present in every installation whatever parts it holds: it installs the
+selected parts and composes the `concorde` command and the
+[project MCP server](glossary.json#concept.project-mcp-server) from the
+[registrations](glossary.json#concept.part-registration) of those installed, depending on none of
+them, so a spec-only installation is the spec part and its host.
+
+A part's dependencies are package dependencies: what must be installed and may be imported. A
+Module's `uses`, the Protocol's relation, says something else, whose promises it relies on, and a
+`uses` into another part is one of two things. It is reliance on a format or convention that part
+defines, such as the Kernel's [typed values](glossary.json#concept.typed-value) the Spec tooling
+implements in its own copy, the error contract Distribution prints its refusals in, or the host
+promises of the always-present Distribution; the relying part implements or meets that format
+itself, imports nothing and needs nothing else installed. Or it is an
+[optional integration](glossary.json#concept.optional-integration), behaviour that runs only
+where the other part is installed.
 
 ### Two halves, one seam
 
@@ -442,8 +455,11 @@ in the [run store](glossary.json#concept.run-store), with their
 installed, and its [delivery commits](glossary.json#concept.delivery-commit) on the task branch.
 The binding and the delivery commit are the kernel's contracts, so both halves agree on them
 without importing each other. The lower half reads the binding and never learns that tasks exist.
-No record is written by both, so whether a task is active or delivered is derived each time from
-what happened, together with the task branch's head and whether its worktree is clean, never kept
+No record is written by both: in an installation the delivery commits are made by exactly one
+delivering command, Method's `delivery` where the method part is installed and otherwise
+Coordination's `task deliver`, and whichever made it, a task's state follows from the Kernel's one
+rule for recognizing a delivery commit. So whether a task is active or delivered is derived each
+time from what happened, together with the task branch's head and whether its worktree is clean, never kept
 as a second copy that could disagree; and the parts of the lower half serve any workspace someone
 prepares, not only a task.
 
@@ -466,7 +482,8 @@ coordination.main -> lower.runs: "starts unbound runs\nin the primary worktree"
 coordination.task -> lower.runs: starts in its worktree
 lower.runs -> kernel.binding: read
 lower.runs -> lower.store: record
-lower.runs -> kernel.commit: "delivery makes"
+lower.runs -> kernel.commit: "delivery makes,\nwhere Method is installed"
+coordination.task -> kernel.commit: "task deliver makes,\nwhere it is not"
 coordination.tasks -> lower.store: reads
 coordination.tasks -> kernel.commit: reads
 ```
@@ -549,7 +566,8 @@ Every run returns a structured result, and a failure carries an
 to Workers, the Operation adds its own, a workflow keeps each run's chain whole in its result, a
 task session escalates to the main agent with its link on top, and the main agent adds its link
 above that when the developer must decide. Every `concorde` command refuses in the same shape,
-except Spec tooling's deterministic commands, which keep their own error types.
+except Spec tooling's deterministic commands, and Distribution's `build` and `protocol-manifest`,
+which report with Spec tooling's own error record.
 [Tracing](kernel/tracing/contracts.md#reading-an-error-chain) explains how to read a chain.
 
 Errors travel as a chain because every level handles some errors and must pass the others up:

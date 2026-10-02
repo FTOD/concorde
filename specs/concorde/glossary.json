@@ -228,7 +228,7 @@
       "id": "concept.file-transaction",
       "title": "File transaction",
       "owner": "module.kernel",
-      "definition": "A set of whole-file writes, each bound to the digest of the bytes it replaces, that is applied completely or, when a write or its final check fails while the process runs, not at all.",
+      "definition": "A set of whole-file writes, each bound to the digest of the bytes it replaces, whose failure observed by its process restores every file it wrote, a refused restoration being reported file by file.",
       "explanation": "specs/concorde/kernel/module.md#concept.file-transaction"
     },
     {

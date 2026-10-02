@@ -74,6 +74,10 @@
         "meaning": "#uses-operations"
       },
       {
+        "target": "module.execution",
+        "meaning": "#uses-execution"
+      },
+      {
         "target": "module.checks",
         "meaning": "#uses-checks"
       },

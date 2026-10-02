@@ -8,20 +8,26 @@ together.
 
 ### req.concorde.part-dependencies — A part relies only on the parts it depends on
 
-Every [part](glossary.json#concept.part) SHALL rely only on the parts it depends on, in the directions the root's [parts table](module.md#the-parts) lists, and reach any other part only through an [optional integration](glossary.json#concept.optional-integration).
+Every [part](glossary.json#concept.part) SHALL import code of, and require the installation of, only the parts it depends on, in the directions the root's [parts table](module.md#the-parts) lists.
 
-A Module's `uses` of a Module in a part its own part does not depend on is such an integration, and
-its explanation says what the feature does with that part and without it. No part imports
-Distribution, which reaches the parts only through their
-[registrations](glossary.json#concept.part-registration).
+A Module's `uses` of a Module in a part its own part does not depend on is therefore one of two
+things, and its explanation says which. Either it relies on a format or convention that part
+defines, which the relying part implements or meets itself without importing it, as the Spec
+tooling keeps its own copy of the Kernel's [typed values](glossary.json#concept.typed-value) and every part meets the host promises of
+Distribution, the installation host present in every installation; or it is an
+[optional integration](glossary.json#concept.optional-integration), whose explanation says what the
+feature does with that part and without it. No part imports Distribution, which reaches the parts
+only through their [registrations](glossary.json#concept.part-registration).
 
 ### req.concorde.part-alone — A part works with its dependencies alone
 
 Every part SHALL do its work when it is installed with only the parts it depends on.
 
 What it cannot do without another part is an optional integration, never a failure of its own
-work: the spec part checks, serves and publishes Specs with nothing else installed, and the
-coordination part opens, delivers, merges and closes tasks with the kernel alone.
+work: the spec part checks, serves and publishes Specs with no other part installed, and the
+coordination part opens, delivers, merges and closes tasks with the kernel alone. Distribution, the
+installation host, is installed beside every selection and counts as no dependency: it depends on
+no part and reads only the registrations of the parts installed with it.
 
 ### req.concorde.absent-part-stated — An absent part is stated, not failed
 
@@ -115,11 +121,15 @@ without a worker, the execution command `scaffold`, writes only what such a work
 
 ### req.concorde.grant-from-task-worktree — Grants come from the Specs the worker works on
 
-Every grant a worker receives SHALL be computed from the Specs of the checkout its run works in: the worktree of the run's [workspace](glossary.json#concept.workspace) for a bound run, and the [unbound checkout](glossary.json#concept.unbound-checkout) for an [unbound run](glossary.json#concept.unbound-run).
+Every grant Method computes for a worker it launches SHALL be computed from the Specs of the checkout its run works in: the worktree of the run's [workspace](glossary.json#concept.workspace) for a bound run, and the [unbound checkout](glossary.json#concept.unbound-checkout) for an [unbound run](glossary.json#concept.unbound-run).
 
 ### req.concorde.no-wider-than-type — A worker's grant never exceeds its task type
 
-The [grant](glossary.json#concept.grant) computed for a worker SHALL NOT make readable or writable any of the project's files beyond what its task type assigns to its bound Modules.
+The [grant](glossary.json#concept.grant) Method computes for a worker SHALL NOT make readable or writable any of the project's files beyond what its task type assigns to its bound Modules.
+
+These two promises are Method's, which computes every grant of Concorde's own workers. The worker
+harness, used alone, enforces and audits whatever grant its caller hands it and promises nothing
+about where that grant came from ([Worker harness](worker-harness/module.md)).
 
 The complete assignment, the level each task type gives every
 [boundary set](glossary.json#concept.boundary-set), is the task-type table of
@@ -151,13 +161,15 @@ merges.
 
 ### req.concorde.detailed-errors — Errors are reported in detail
 
-Every Operation, execution command, worker, step, `concorde` command other than Spec tooling's deterministic commands, and the main agent SHALL report a failure to its parent as an error link that describes it completely: what failed, where, the exact message or output, the evidence and what was tried.
+Every Operation, execution command, worker, step, `concorde` command other than Spec tooling's deterministic commands and Distribution's `build` and `protocol-manifest`, and the main agent SHALL report a failure to its parent as an error link that describes it completely: what failed, where, the exact message or output, the evidence and what was tried.
 
 A status, a code or a one-line summary alone is never the whole report. The parent must be able to reason about the error from the link without asking the actor that wrote it.
 
-Spec tooling's deterministic commands and library, such as `concorde spec-validation`, are the one
+Spec tooling's deterministic commands and library, such as `concorde spec-validation`, are the
 exception: they depend on no other Module and report with Spec tooling's own, equally detailed error
-record, which a Module that cannot handle it translates into a link
+record. Distribution's `build` and `protocol-manifest` print Spec core's shared envelope with that
+record too ([req.distribution.one-envelope](distribution/requirements.md#req.distribution.one-envelope)).
+A Module that cannot handle such a record translates it into a link
 ([Where links appear](kernel/tracing/contracts.md#where-links-appear)).
 
 ### req.concorde.error-chain — An unhandled error keeps its chain

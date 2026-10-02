@@ -62,3 +62,14 @@ needs no binding of its own.
 A `task-validation` run SHALL NOT change any file, index entry, branch or commit of the workspace
 outside its own [trace node](../../glossary.json#concept.trace-node) and the locks directory its
 binding names.
+
+## The workflow handoff
+
+### req.validation.step-output — A workspace that is not ready stops a workflow
+
+The output of every `ok` task-validation run SHALL carry, under the [step output convention](../../workflows/contracts.md#contract.workflows.step-output), its readiness's `ready` as `data.ready` and, when the workspace is not ready, a `blocking` item naming the blocking findings.
+
+A run that decided readiness ends `ok` whether or not the workspace is ready, so the `blocking` item
+is what tells a workflow, which reads nothing else of a run's output, not to go on to delivery
+([contracts](contracts.md#readiness)).
+

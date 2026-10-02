@@ -77,6 +77,31 @@
         "kind": "document",
         "target": "document.spec.contracts",
         "reason": "Spec core's grants, whose task-type table is the complete assignment req.concorde.no-wider-than-type bounds every worker's grant by, and its boundary sets, which say which paths each set holds"
+      },
+      {
+        "kind": "document",
+        "target": "document.tracing.contracts",
+        "reason": "Tracing's error contract and where links appear, which req.concorde.error-chain, req.concorde.structured-errors and req.concorde.detailed-errors require every link to follow"
+      },
+      {
+        "kind": "document",
+        "target": "document.workers.contracts",
+        "reason": "the worker result contract, whose link without level, actor and causes req.concorde.structured-errors describes"
+      },
+      {
+        "kind": "document",
+        "target": "document.harness.module",
+        "reason": "the Harness's known limits, which req.concorde.no-wider-than-type cites for what enforcement of a grant leaves out"
+      },
+      {
+        "kind": "document",
+        "target": "document.adoption.requirements",
+        "reason": "Adoption's no-code-change and test-edit rules, which req.concorde.spec-first and the brownfield scenario rely on"
+      },
+      {
+        "kind": "document",
+        "target": "document.delivery.requirements",
+        "reason": "Delivery's readiness and marking rules, which req.concorde.delivery-separate and req.concorde.delivery-commit-by-delivery rely on"
       }
     ],
     "participates": [],

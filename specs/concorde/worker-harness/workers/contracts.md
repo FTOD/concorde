@@ -187,8 +187,10 @@ Framework's [error chain](../../kernel/tracing/contracts.md#contract.tracing.err
 The [grant](../../glossary.json#concept.grant) a caller hands the worker harness for one run, as
 data. The worker harness owns this format and computes nothing in it: it never derives a grant from
 Specs, widens one or reads where it came from. In Concorde, a step of Method fills it from the grant
-Spec core computes, whose `entries` and `context_identity` have exactly this shape; a contract test
-on each side keeps the two formats equal, so neither part imports the other.
+Spec core computes, projecting its `task_type`, `entries` and `context_identity`, which have exactly
+this shape; Spec core's grant also carries the Modules and glossary terms, which Method keeps for
+itself and never passes. A contract test on each side keeps the three shared fields equal, so
+neither part imports the other.
 
 ```concorde-contract
 {

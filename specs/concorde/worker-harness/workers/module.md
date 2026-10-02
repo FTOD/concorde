@@ -625,7 +625,8 @@ kernel part; everything else it needs arrives in the request. In particular the
 identity](../../glossary.json#concept.context-identity) its caller computed: Workers relies on the
 caller listing every path's level (`rw`/`ro`/`names`, ungranted omitted) and never computes or
 widens a grant. A missing or malformed grant is a host failure before launch. In Concorde, Method
-fills it from Spec core's grant, whose shape a contract test keeps equal.
+fills it by projecting Spec core's grant onto its `task_type`, `entries` and `context_identity`,
+whose shape a contract test keeps equal.
 
 <a id="uses-harness"></a>
 

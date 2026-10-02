@@ -18,6 +18,14 @@ computes no grant, reads no [Spec](../glossary.json#concept.spec), knows no
 [Operation](../glossary.json#concept.operation) catalog and runs no check of its own. It depends on
 the kernel part alone.
 
+What it enforces guards against a worker's scope drift and mistakes, not against a malicious agent,
+and it is no complete isolation of the host. System directories and other paths outside the
+worktree, the primary worktree, the Git administrative paths and the home stay readable to every
+tool, since Bash needs them to run anything; on Claude Code a Git-ignored file another process
+creates in the worktree while the run lasts may be read without anything failing; and writes to
+Git-ignored paths are not audited. The [Harness's known limits](harness/module.md#known-limits-of-v1)
+and [Workers](workers/module.md#why-the-run-is-built-this-way) state these boundaries exactly.
+
 ## Core concepts
 
 The part has two children, and their terms carry it: the [Harness](harness/module.md) derives a
@@ -39,16 +47,22 @@ back:
 
 - **the grant**, in the worker harness's own input format: the paths the worker may write (`rw`),
   read (`ro`) and only know by name (`names`), with the
-  [context identity](../glossary.json#concept.context-identity) that identifies them. In Concorde,
-  Method computes it through the Spec tooling and converts it into this format; the two formats are
-  the same shape, which a contract test keeps so;
+  [context identity](../glossary.json#concept.context-identity) that identifies them, and the
+  [task type](../glossary.json#concept.task-type) it was computed for, exactly as the
+  [grant input contract](workers/contracts.md#grant-input) defines. In Concorde, Method computes the
+  grant through the Spec tooling and projects its `task_type`, `entries` and `context_identity`
+  into this format, keeping the grant's Modules and glossary terms for its own instructions and
+  validation; those three fields have the same shape on both sides, which a contract test keeps so;
 - **the task instructions**: the caller's prompt for the job, to which the worker harness appends the
   grant's lists and the rules of its boundary to make the [brief](../glossary.json#concept.brief);
 - **who the worker is**: the Operation's name and the [worker id](../glossary.json#concept.worker-id)
-  as labels, which select its entry of the worker configuration, and the [task type](../glossary.json#concept.task-type), which selects its
-  tool set;
-- **where it works**: the worktree, whether the worker may write there at all, the runtime paths it
-  may read beside the grant, and the trace node folder in which its run directory is made;
+  as labels, recorded with the run, and the backend, model, reasoning level and limits the
+  configuration reader resolved for them beforehand (see [A launch from start to end](#a-launch-from-start-to-end));
+  the task type also selects the worker's tool set;
+- **where it works**: the worktree, which must lie directly in `.claude/worktrees/` of its
+  repository's primary worktree ([Placement](workers/launch.md#placement)), the runtime paths it may
+  read beside the grant, and the trace node folder in which its run directory is made; a grant
+  with no `rw` path makes a worker that changes nothing;
 - **the round validation**: a callback the worker harness calls after each round that ended with a
   valid `ok` [worker result](../glossary.json#concept.worker-result) and a clean audit. It returns
   the evidence to keep with the round, such as [check results](../glossary.json#concept.check-result),
@@ -59,6 +73,62 @@ back:
 So everything that depends on the Specs or on the job — which paths, which instructions, which
 checks and what counts as done — stays with the caller, and everything that depends on the agent
 program — settings, sandbox, launch, audit, resume and record — stays here.
+
+<a id="the-caller-isolates-the-worktree"></a>
+
+**The caller isolates the worktree.** The [write audit](../glossary.json#concept.write-audit)
+compares the worktree with a snapshot taken before the first round and attributes every change
+since then to the worker. So the caller guarantees that nothing else writes the worktree's files or
+its Git state, `HEAD`, index and branch, from before the launch until the run has ended, its round
+validations and the host's deletions included; other processes may read it meanwhile. The worker
+harness takes no lock for this and cannot tell another writer's change from the worker's: a change
+by another writer outside `rw` fails the run as a violation, and one inside `rw` is recorded as the
+worker's. In Concorde, Execution's runner holds the
+[workspace lock](../glossary.json#concept.workspace-lock) for the whole run that launches the
+worker, and an [unbound run](../glossary.json#concept.unbound-run)'s worker works in a checkout no one else writes; a program that uses the
+worker harness alone must give the same guarantee its own way.
+
+### A launch from start to end
+
+A caller that uses the worker harness alone, without Method, goes through two stages:
+
+1. **Prepare and resolve.** It prepares a worktree in its primary worktree's `.claude/worktrees/`,
+   a committed worker configuration `.concorde/workers.json` and the user's model map, with the
+   worker's program installed. It declares the Operations and worker ids it may launch and asks the
+   [configuration reader](workers/module.md#choosing-worker-models) for the worker's backend, model,
+   reasoning level and limits, optionally checking every worker of its job against the model map at
+   once. A refusal here, such as `config_invalid`, `model_unmapped` or `backend_missing`, comes
+   before any worker run exists: no run directory or record is made, and the caller turns it into
+   its own error link ([Refusals before a run](workers/launch.md#refusals-before-a-run)).
+2. **Launch and read the record.** It hands the host the resolved inputs with the grant, the
+   instructions, the worktree, the parent trace node folder and, optionally, its round validation,
+   and gets back the [returned run record](workers/contracts.md#contract.workers.worker-run-record)
+   once the run has ended. The record's status is `ok`, `blocked` or `failed`; it keeps the
+   worker's own [worker result](../glossary.json#concept.worker-result) verbatim, as a claim, apart
+   from the host's evidence: each round's audit, the round validation's evidence, the rounds used,
+   the transcript. A run that does not end `ok` carries Workers' error link with its causes.
+
+### When a launch fails
+
+Each child's failure becomes something the caller sees in one of two ways:
+
+- **Before any run**: the configuration reader's refusals above, and nothing else.
+- **In the run record**, `failed` with Workers' error link ([Errors](workers/launch.md#errors)): a
+  missing or malformed grant, which the Harness refuses to generate settings from, so no worker
+  starts; a misplaced worktree or a runtime directory the deny rules would cover; a launch the
+  operating system refuses; a round that timed out or reached its turn or budget limit; an invalid
+  worker result; an [audit](workers/launch.md#audit) violation; a round validation that answers a
+  violation, that cannot validate, or whose repair still stands when the rounds are used up and it
+  says so; a proposed deletion that failed; and an interruption from outside, which ends every
+  worker process before it is reported.
+- **In the run record, with the worker's own status**: a worker that ended `blocked` or `failed`,
+  whose link becomes the cause of Workers' own.
+
+Only a clean `ok` round goes on to the round validation and may be resumed; every other outcome ends
+the run at once ([Rounds](workers/launch.md#rounds)), and an audit violation is never retried. The
+host never reverts or commits what a worker wrote, whatever the outcome: what the run leaves in the
+worktree is the caller's to keep or discard. The grant stays frozen for the whole run, and every
+round is audited before its validation ([Requirements](workers/launch.md#requirements)).
 
 ## Overview
 
@@ -93,8 +163,9 @@ The worker harness and the Spec tooling change for different reasons and are use
 grant follows the Protocol, while settings, sandboxes and backends follow Claude Code and pi. If the
 worker harness computed the grant, it could not be installed without the Spec tooling, and a program
 that bounds workers by some other rule could not use it at all. Taking the grant as data in its own
-format keeps the worker harness to what it enforces, while the format's equality with Spec core's
-grant, checked by a contract test, keeps Concorde's own path exact.
+format keeps the worker harness to what it enforces, while a contract test keeps the shared fields,
+`task_type`, `entries` and `context_identity`, the same shape as Spec core's grant, so that
+Concorde's own path stays exact.
 
 ### Why the round validation is a callback
 
@@ -104,9 +175,13 @@ validate, and both whether the worker changed glossary entries its Modules do no
 checks here would tie the worker harness to Check execution and to the Specs. A callback keeps the
 resume loop here, where the worker session lives, and the judgement with the caller, which
 returns both what it found and what the worker must repair. A resume round still feeds the worker
-only what a program found; a [Spec gap](../glossary.json#concept.spec-gap) or a path outside the
-grant is never repaired by another round, because the caller's validation never asks for it and
-the worker harness stops when the worker reports one.
+only what the round validation found. The worker harness's own stopping rule depends only on
+outcomes: a `blocked` or `failed` worker result, an invalid result and an audit violation are never
+resumed, and a clean `ok` round goes on as its round validation answers. What a
+[Spec gap](../glossary.json#concept.spec-gap) or a path outside the grant means is the caller's to
+say, in its instructions and its validation: in Concorde an `understand` worker reports a gap and
+ends `ok`, a review worker reports one as a finding and goes on, and every other worker ends
+`blocked`, which no round resumes; Method's round validation never asks a worker to repair a gap.
 
 ### The children
 
@@ -114,8 +189,9 @@ the worker harness stops when the worker reports one.
 
 **Harness** turns one grant into the agent program's own configuration: on Claude Code the worker
 settings, with deny rules, the write hook and the Bash sandbox; on pi the permission extension with
-the same sandbox engine; and the tool set of each task type. It does not launch, audit or record,
-which Workers does, and it serves only workers: a [task session](../glossary.json#concept.task-session)'s boundary is Coordination's own.
+the same sandbox engine; and the tool set of each task type. It refuses a malformed grant with
+`grant_malformed` before generating anything, which Workers reports as a run that failed before
+its worker started. It does not launch, audit or record, which Workers does, and it serves only workers: a [task session](../glossary.json#concept.task-session)'s boundary is Coordination's own.
 
 <a id="contains-workers"></a>
 
@@ -123,3 +199,12 @@ which Workers does, and it serves only workers: a [task session](../glossary.jso
 configuration and the model map, prepares the [runtime directory](../glossary.json#concept.runtime-directory) and the brief, launches and resumes
 the worker, audits every round against the grant's `rw` list, calls the caller's round validation,
 and writes the run record in the run directory it makes inside the trace node folder it was given.
+It keeps the grant frozen for the whole run
+([req.workers.frozen-grant](workers/launch.md#req.workers.frozen-grant)), calls the round
+validation only after a clean `ok` round
+([req.workers.validation-after-clean-round](workers/launch.md#req.workers.validation-after-clean-round)),
+never retries a violation ([req.workers.violation-ends-run](workers/launch.md#req.workers.violation-ends-run))
+and reports every failure as a link of the [error chain](../glossary.json#concept.error-chain)
+([req.workers.error-chain](workers/launch.md#req.workers.error-chain)); every run leaves a final
+record ([req.workers.always-recorded](workers/launch.md#req.workers.always-recorded)), with the
+outcomes [When a launch fails](#when-a-launch-fails) lists.

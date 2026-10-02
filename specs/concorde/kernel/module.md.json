@@ -9,7 +9,8 @@
     "title": "Kernel",
     "owns": [
       "specs/concorde/kernel/module.md",
-      "specs/concorde/kernel/contracts.md"
+      "specs/concorde/kernel/contracts.md",
+      "specs/concorde/kernel/requirements.md"
     ],
     "contains": [
       {

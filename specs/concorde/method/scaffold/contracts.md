@@ -5,6 +5,14 @@ The exact shape [Scaffold](module.md) returns, the `output` of its
 proposal it applies is Adoption's
 [decomposition proposal](../adoption/contracts.md#contract.adoption.decomposition).
 
+The output also carries, beside the record's fields, the `workflow` object of the
+[step output convention](../../workflows/contracts.md#contract.workflows.step-output), whose `data`
+hands a [workflow script](../../glossary.json#concept.workflow-script) what it needs to describe the created Modules, as
+[req.scaffold.step-output](requirements.md#req.scaffold.step-output) says: `created_modules`, the
+list of the created Modules in the record's order, each `{"id": "<module>", "uses":
+["<module>", …]}` with the `uses` the survey proposed among the created Modules alone. It declares
+no [decision point](../../glossary.json#concept.decision-point), decision or note; the convention, not this contract, defines the object.
+
 ## Scaffold record
 
 The `output` of `scaffold`, entirely observed by its steps.

@@ -56,9 +56,11 @@ only run that commits, which decides the readiness again and makes the workspace
 [delivery commit](../glossary.json#concept.delivery-commit); and [Scaffold](scaffold/module.md)'s
 `scaffold`, which creates the child Modules a survey proposed.
 
-A review's findings become [Issues](../glossary.json#concept.issue) of the project only where the
-issues part is installed; elsewhere each finding stays in the run result, and the verdict is derived
-from the findings' tiers the same way.
+The findings of `spec_review`, `spec_panel` and `code_review` become
+[Issues](../glossary.json#concept.issue) of the project only where the issues part is installed;
+elsewhere each finding stays in the run result, and the verdict is derived from the findings' tiers
+the same way. `plan_review`'s findings judge a plan within one run and always stay in its report
+([requirements](requirements.md#optional-integrations)).
 
 ### The standard worker sequence
 
@@ -71,10 +73,12 @@ order until one step stops the run. A worker-backed step follows the
 1. **Admit.** Before any of its provider's own steps, every Operation checks all the workers it may
    launch against the [worker configuration](../glossary.json#concept.worker-configuration) and
    the [model map](../glossary.json#concept.model-map), and the configuration's Operation names and
-   worker ids against the Operations Method registers, so that a run never stops at a later worker
-   after earlier ones ran.
+   worker ids against every Operation the installed parts register, so that a run never stops at a
+   later worker, after earlier ones ran, for a configuration or model-map problem it could have
+   found first ([what admission checks](workers.md#admitting-the-workers)).
 2. **Bound.** The step computes the [grant](../glossary.json#concept.grant) for the task type and
-   Modules from the **workspace's** Specs through Spec core, freezes it with its
+   Modules from the **workspace's** Specs through Spec core, lowers every writable level to read when
+   its provider withholds writes, freezes the result with the computed grant's
    [context identity](../glossary.json#concept.context-identity), and converts it into the worker
    harness's input format.
 3. **Instruct.** It composes the task instructions: the provider's prompt, the definitions of the
@@ -88,14 +92,18 @@ order until one step stops the run. A worker-backed step follows the
 5. **Decide.** It keeps the [worker result](../glossary.json#concept.worker-result) unchanged and
    decides what the outcome means for the run.
 
-The round validation is Method's: when the step asks for them, it runs the
-[configured checks](../glossary.json#concept.configured-check) of the bound Modules and of every
-Module that uses one of them, through Check execution, outside the worker; then the step's own
-validation, if it has one, such as the structural validation a Spec-writing step runs instead of
-configured checks; and the glossary ownership audit, which reports every glossary entry the worker
-changed that a [Module](../glossary.json#concept.module) outside its grant owns. It returns the [check results](../glossary.json#concept.check-result) as the round's evidence
-and their failures as what to repair. [How an Operation runs its workers](workers.md) gives the
-sequence exactly.
+The round validation is Method's, and checks in this order: first glossary ownership, which ends
+the run at once when the worker changed a glossary entry that a
+[Module](../glossary.json#concept.module) outside its grant owns; then, when the step asks for
+them, the [configured checks](../glossary.json#concept.configured-check) of the bound Modules and of
+every Module that uses one of them, through Check execution, outside the worker; then, when every
+check passed or none ran, the step's own validation, if it has one, such as the structural
+validation a Spec-writing step runs instead of configured checks. It returns the
+[check results](../glossary.json#concept.check-result) as the round's evidence and what failed as
+what to repair. Glossary ownership is checked once more after the worker run, whatever the worker's
+status, so that no round and no deletion escapes it. A [Spec gap](../glossary.json#concept.spec-gap)
+or a path outside the grant is never something to repair. [How an Operation runs its
+workers](workers.md#the-round-validation) gives the sequence exactly.
 
 ### The brownfield workflow
 
@@ -156,14 +164,15 @@ wh: Worker harness {
   record: "Write the run record"
   prepare -> launch -> audit
 }
-validation: "Round validation (Method):\nconfigured checks, the step's own\nvalidation, glossary ownership"
+validation: "Round validation (Method):\nglossary ownership, configured checks,\nthe step's own validation"
 decide: "Decide what the outcome\nmeans for the run"
 admit -> grant -> instruct -> wh.prepare
 wh.audit -> validation: "worker ended ok, audit clean"
 validation -> wh.launch: "something to repair,\nrounds left: resume round" {style.stroke-dash: 3}
 validation -> wh.record: "nothing to repair, or rounds used up"
 wh.audit -> wh.record: "worker blocked or failed, invalid result,\ntimeout or audit violation" {style.stroke-dash: 3}
-wh.record -> decide
+ownership: "Glossary ownership,\nafter the worker run"
+wh.record -> ownership -> decide
 ```
 
 ### Claims and evidence
@@ -302,17 +311,32 @@ with Workers' link as a cause of the Operation's own.
 
 **Operations** and **Commands** of Execution are the frameworks Method's definitions plug into:
 Method registers each Operation's and command's definition, its steps, arguments, whether it may run
-unbound and its output contract, and the runner runs them like any definition, reading the
-[workspace binding](../glossary.json#concept.workspace-binding), holding the [workspace lock](../glossary.json#concept.workspace-lock) and
-writing the [run result](../glossary.json#concept.run-result).
+unbound, its output contract and, for an Operation that may run unbound, its runtime-path resolver.
+
+<a id="uses-execution"></a>
+
+**Execution**'s runner runs those definitions like any other, and Method relies on it directly: it
+reads the [workspace binding](../glossary.json#concept.workspace-binding), holds the
+[workspace lock](../glossary.json#concept.workspace-lock) of a bound run, creates and removes an
+unbound run's [unbound checkout](../glossary.json#concept.unbound-checkout), calling the
+definition's runtime-path resolver before it links anything into it, builds the run's error link
+over the links Method's steps return, and writes the [run result](../glossary.json#concept.run-result),
+keeping the worker result apart from the host evidence. Method's steps add the codes of
+[the worker sequence](workers.md#errors-of-the-worker-sequence) and never write a result
+themselves; [How a run is executed](../execution/runner.md) is the canonical account.
 
 <a id="uses-checks"></a>
 
-**Check execution** runs the project's configured checks read-only for Method's round validations,
-for `test` and for the readiness of `task-validation` and `delivery`, returning each result's
-command, exit code and log as evidence. Method relies on a check writing nothing in the workspace
-outside its check scratch, and on a result being refused as `stale_evidence` when the input it
-measured changed during the run.
+**Check execution** runs the project's configured checks for Method's round validations, for
+`test` and for the readiness of `task-validation` and `delivery`, returning each result's command,
+exit code and log as evidence. Method relies on two promises: a check's direct writes to the
+filesystem are confined to its own scratch, the workspace being mounted read-only, and a result is
+refused as `stale_evidence` when the inputs it measured before and after the check differ. Both
+have limits Method does not hide: a check can still ask a host service to act through a socket, and
+a change undone before the second measurement is not detected
+([What the boundary enforces](../execution/checks/module.md#what-the-boundary-enforces)). A
+configured check is the project's own trusted command, so Method treats a check's result as
+evidence about the inputs it measured, not as proof that nothing else happened.
 
 <a id="uses-workflows"></a>
 

@@ -44,6 +44,15 @@ the same workspace.
 
 ## Readiness
 
+The `output` of `task-validation` also carries, beside the readiness's fields, the `workflow` object
+of the [step output convention](../../workflows/contracts.md#contract.workflows.step-output), as
+[req.validation.step-output](requirements.md#req.validation.step-output) says: `data` holds `ready`,
+the readiness's own value, and `blocking` is `null` when the workspace is ready and otherwise
+`{"code": "not_ready", "detail": "<each blocking finding's code and subject>"}`, so that a workflow
+counts a run that ended `ok` on a workspace that is not ready as a step that stops its procedure.
+It declares no [decision point](../../glossary.json#concept.decision-point), decision or note; the convention, not this contract, defines the
+object.
+
 ```concorde-contract
 {
   "id": "contract.validation.readiness",
