@@ -66,7 +66,7 @@ still reaches the existing work a node reported, as
 
 ### req.tracing.large-by-reference — Large content is referenced
 
-A trace node SHALL keep a transcript, an event stream or a log as a file of its folder named among
+A trace node SHALL keep a transcript or a log as a file of its folder named among
 its artifacts, never copied into its `trace.json`.
 
 ### req.tracing.no-credentials — Credentials are never retained
