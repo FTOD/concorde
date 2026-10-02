@@ -337,7 +337,6 @@ class TracingTests(unittest.TestCase):
             / "workers"
             / "w-1"
             / "transcript.jsonl",
-            history / "sessions" / "s2" / "rounds" / "1" / "events.jsonl",
         ]
         for path in conversations:
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -351,7 +350,7 @@ class TracingTests(unittest.TestCase):
             str(old),
             str(refused),
             str(history / "sessions" / "s1" / "transcript"),
-            *(str(conversations[index]) for index in (0, 3, 2)),
+            *(str(conversations[index]) for index in (0, 2)),
         ]
         dry = retention.prune(self.concorde, dry_run=True, moment=now)
         self.assertEqual(sorted(removed), sorted(dry))

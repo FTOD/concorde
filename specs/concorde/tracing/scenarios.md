@@ -53,7 +53,7 @@ and the command are defined in the [contracts](contracts.md).
 
 ### scenario.tracing.prune — Retention removes only what has ended long enough ago
 
-- GIVEN an unbound run that ended 8 days ago, one that ended yesterday, one still running, a run refused in the lobby 8 days ago, a history folder closed a year ago whose [task sessions](../glossary.json#concept.task-session) and worker runs kept their transcripts and event streams, and one closed two days ago with a transcript, without a Tracing configuration
+- GIVEN an unbound run that ended 8 days ago, one that ended yesterday, one still running, a run refused in the lobby 8 days ago, a history folder closed a year ago whose [task sessions](../glossary.json#concept.task-session) and worker runs kept their transcripts, and one closed two days ago with a transcript, without a Tracing configuration
 - WHEN `concorde trace prune` runs
 - THEN it removes the unbound run that ended 8 days ago, the run of the lobby and the conversation records of the folder closed a year ago, and prints each
 - AND the year-old folder keeps its [decision log](../glossary.json#concept.decision-log) and [trace nodes](../glossary.json#concept.trace-node), and the folder closed two days ago keeps its transcript

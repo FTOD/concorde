@@ -233,7 +233,7 @@ Traces are removed only at defined points, never by a process running in the
 background: `concorde trace prune`, and the start of every `task open` and `task close`, remove
 each unbound run and each run of the lobby that ended more than 7 days ago; from each history folder of a task closed more
 than 30 days ago, its **conversation records**, the transcripts of its task sessions and worker
-runs and their event streams, which make up most of the history's size and are read mostly while
+runs, which make up most of the history's size and are read mostly while
 the task is fresh; and, when the project configures it, each history folder of a task closed longer
 ago than that, whole. By default the rest of the history is kept. A project changes the three
 periods in its tracked [Tracing configuration](contracts.md#contract.tracing.configuration),
@@ -280,7 +280,7 @@ rounds' costs, and a run that also recorded that sum would count it twice in eve
 Metadata records only what Concorde observed, since a worker's statement about itself is a claim,
 kept in the content where the producer puts it.
 
-Large and growing content, a transcript, an event stream, a log, stays a file of the node's folder
+Large and growing content, a transcript or a log, stays a file of the node's folder
 named by path and digest; copying it into the record would make every record as large as its
 largest file and make the uniform part slow to read. Writing the record at the start and again at
 the end costs one more write per node and means a crashed process still leaves a node that says when

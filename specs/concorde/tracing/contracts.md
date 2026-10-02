@@ -464,7 +464,7 @@ its content type.
 - The parent creates the child's folder, or names it to the child's process before starting it,
   before the child's first write. A child never records its parent's identity.
 - Every artifact path is relative to the node's folder; every other node is named by identity.
-- A file that grows while the node runs, such as a transcript or an event stream, is an artifact of
+- A file that grows while the node runs, such as a transcript or a log, is an artifact of
   the node; its content is never copied into `trace.json`.
 - The live [progress file](../glossary.json#concept.progress-file) `status.json` of a run or worker
   run, and a [run result](../glossary.json#concept.run-result) `result.json`, stay
@@ -521,9 +521,8 @@ The history key of a closed task is its name, or `<task>.<n>` with the smallest 
 free when that name is taken: when the history already holds a task of that name or a
 [decision log](../glossary.json#concept.decision-log) `decisions/<name>.md` exists, so no closed task ever replaces another, in the history or in Git.
 
-The **conversation records** of a task are the transcripts of its task sessions and worker runs and
-their event streams: every file `transcript.jsonl` or `events.jsonl` and every folder `transcript/`
-in its folder, at any depth.
+The **conversation records** of a task are the transcripts of its task sessions and worker runs:
+every file `transcript.jsonl` and every folder `transcript/` in its folder, at any depth.
 
 ## Locks
 

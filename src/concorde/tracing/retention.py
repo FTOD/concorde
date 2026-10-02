@@ -4,7 +4,7 @@ Only three things are ever removed: an unbound run, or a run of the lobby, that 
 than ``unbound_days`` and whose run lock nobody holds, whole; a history folder of a task closed longer ago than
 ``history_days``, whole; and, from a history folder of a task closed longer ago than
 ``conversation_days``, its conversation records, the transcripts of its task sessions and
-worker runs and their event streams. Nothing runs in the background; ``prune`` runs when called,
+worker runs. Nothing runs in the background; ``prune`` runs when called,
 by ``concorde trace prune`` and at the start of ``task open`` and ``task close``.
 """
 
@@ -21,9 +21,9 @@ from .node import parse_time, read
 from .reader import run_alive
 
 DEFAULTS = {"unbound_days": 7, "history_days": None, "conversation_days": 30}
-# The conversation records of a history folder, by name at any depth: a transcript, the folder
-# Claude Code keeps beside a session's transcript, and an event stream.
-CONVERSATION_FILES = ("transcript.jsonl", "events.jsonl")
+# The conversation records of a history folder, by name at any depth: a transcript and the folder
+# Claude Code keeps beside a session's transcript.
+CONVERSATION_FILES = ("transcript.jsonl",)
 CONVERSATION_FOLDERS = ("transcript",)
 _DAYS = {"anyOf": [{"type": "null"}, {"type": "integer", "minimum": 0}]}
 
