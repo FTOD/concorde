@@ -465,6 +465,10 @@ class SettingsTests(unittest.TestCase):
             ([*entries, {"path": "/etc/passwd", "level": "ro"}], "is absolute"),
             ([*entries, {"path": "src/../../x", "level": "ro"}], "'..'"),
             ([*entries, {"path": "src/x.py", "level": "write"}], "level 'write'"),
+            (
+                [*entries, {"path": "src/x.py", "level": "ro", "why": "x"}],
+                "field(s) why",
+            ),
         ):
             with self.subTest(expected=expected):
                 grant_value = {**self.project.grant, "entries": bad}
@@ -792,6 +796,11 @@ class WorkerRunTests(unittest.TestCase):
         self.assertFalse((runtime / "control/write_hook.py").exists())
         self.assertFalse(Path(record["runtime_directory"]).exists())
         self.assertEqual([], record["rounds"])
+        # Entries that are present but no list are malformed too, not missing.
+        self.project.grant["entries"] = "src/a/"
+        record = self.project.run([{}])
+        self.assertEqual("grant_malformed", record["error"]["code"])
+        self.assertIn("not a list", record["error"]["detail"])
 
     @verifies("scenario.workers.audit-violation")
     def test_a_write_outside_rw_fails_the_run(self):

@@ -647,7 +647,7 @@ def run_worker(request: WorkerRequest) -> dict:
             or not isinstance(request.grant, dict)
             or not request.grant.get("task_type")
             or not request.grant.get("context_identity")
-            or not isinstance(request.grant.get("entries"), list)
+            or "entries" not in request.grant
         ):
             missing = [
                 name
@@ -666,8 +666,7 @@ def run_worker(request: WorkerRequest) -> dict:
                     ),
                     (
                         "grant entries",
-                        isinstance(request.grant, dict)
-                        and isinstance(request.grant.get("entries"), list),
+                        isinstance(request.grant, dict) and "entries" in request.grant,
                     ),
                 )
                 if not present

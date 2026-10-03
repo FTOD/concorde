@@ -161,7 +161,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ### scenario.workers.malformed-grant-refused — A malformed grant is refused before launch
 
-- GIVEN a grant whose entries are not a list, or with an entry that is not an object, has no path, an absolute path or one leaving the task worktree through `..`, or a level other than `rw`, `ro` and `names`
+- GIVEN a grant whose entries are not a list, or with an entry that is not an object, has a field other than `path` and `level`, has no path, an absolute path or one leaving the task worktree through `..`, or a level other than `rw`, `ro` and `names`
 - WHEN the host is asked to start the worker, or generates its settings
 - THEN settings generation raises `grant_malformed` naming the entry and what is wrong with it
 - AND the host refuses before launch with `grant_malformed` and the reason `input`, generating no settings or write hook
