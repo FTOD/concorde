@@ -4,7 +4,9 @@ The exact behaviour of the [Execution runner](../glossary.json#concept.execution
 command lines, the [workspace binding](../glossary.json#concept.workspace-binding) it reads, what
 the runner does from the parse to the finish, the [run progress file](../glossary.json#concept.run-progress-file) and how refusals
 and failures become a result. The Operation or execution command a command line names is the run's
-definition: its steps, its arguments, whether it may run unbound and its output contract. The
+definition: its steps, its arguments, whether it may run unbound, its admission of the Modules, its
+runtime-path resolver and its output contract
+([What a definition gives the runner](#what-a-definition-gives-the-runner)). The
 envelope is the [run result contract](contracts.md#contract.execution.run-result) and the binding
 the [workspace binding contract](../kernel/contracts.md#contract.kernel.workspace-binding). What Method's
 [Operations](../glossary.json#concept.operation) add in their steps, the [standard worker sequence](../glossary.json#concept.standard-worker-sequence), is
@@ -120,6 +122,47 @@ error, metadata, inputs as `input` references, the digests of its files, and the
 timings. Its metadata are the workspace, the Modules, the Operation or command, the base commit of a
 bound run and the `HEAD` it started on, or the commit an unbound run examined, the Concorde commit
 and the Protocol version the project binds.
+
+## What a definition gives the runner
+
+A definition is plain data and functions the runner calls in its own process; the runner relies on
+nothing else of it, and the catalogs of [Operations](operations/module.md) and
+[Commands](commands/module.md) hand it over by name. The other things a definition declares, such as
+the ids of its workers and the Module that provides it, are for the catalogs and the definition's
+own steps.
+
+- **Its arguments**: a function the parse calls with the run's command-line parser before parsing,
+  which adds the definition's own arguments beside the common options. The runner parses them with
+  the rest; an unknown or malformed argument is a command-line error that starts no run.
+- **Whether it may run unbound**: required or optional binding. A definition that requires one is
+  refused unbound in the lock row with `binding_required`; one whose binding is optional runs
+  unbound in its [unbound checkout](#unbound-checkout) and its steps learn from the run context that
+  the run may only read.
+- **Its runtime-path resolver**, optional, for a definition that may run unbound: called once in the
+  lock row, after the unbound checkout and its submodules exist, with the checkout's root, it
+  returns relative paths, which the runner links as [Unbound checkout](#unbound-checkout) step 3
+  says; without one, nothing is linked. The runner reads no configuration of its own to find them.
+- **Its admission of the Modules**, optional: called once in the admission row, after the inputs
+  are admitted, with the run context, whose Modules are then `--modules` or else the binding's, as
+  names. It returns nothing: it may narrow the run context's Modules and add evidence to it, as
+  Method's leave out a Module the workspace removed with `removed-module` evidence, or refuse the
+  run by raising the refusal the run context's library defines, with a code, a message, the actor
+  that refused, a reason, an explanation and options. The runner turns that refusal into the run's
+  `refused` link, with the reason, explanation and options the refusal gives, and the refusal as a
+  `component` link of its actor below it ([Errors](#errors)); no step runs. Without an admission
+  the runner takes the Modules as they are.
+- **Its steps**: an ordered list of functions, each called with the run context and returning
+  "continue" or "stop", as the [Runner](#runner) section says; an exception a step raises becomes a
+  `failed` result with `host-error` evidence.
+- **Its output contract**, optional: a JSON Schema the output of an `ok` result must satisfy. The
+  runner checks it in the composition and replaces a result whose output breaks it by a `failed` one
+  with `invalid-output` evidence and the `invalid_result` link; without one, any output passes.
+
+An admission or a resolver is called outside every step, but what it raises other than an
+admission's refusal, or the runner's own refusals of the checkout, ends the run as a step's
+exception does: a `failed` result with `host-error` evidence and the `host_error` link, whose cause
+names the definition's admission or resolver and keeps the traceback, no step running; the runner
+removes the checkout it made first.
 
 ## Runner
 
@@ -397,17 +440,12 @@ The two failures to write the run's records
 `Execution runner (<command line>)`, to standard error, `run_unrecorded` or `result_unsaved`, with
 the reason `environment`.
 
-Spec tooling reports with [its own error record](../spec-tooling/spec/errors.md), never with a link.
-When a Spec tooling error causes a run's error, a step that reads the Specs, such as one of
-Method's, translates it into a `component` link of the actor `Spec core`: the record's message and
-location become the detail, its reason becomes the explanation of why Spec core could not handle it
-(reason `input`, or `environment` for a `system_error`), its remediation becomes the option and
-recommendation, and each of its causes becomes a nested link the same way.
-
-Two Modules with error types of their own make their links themselves, and a step never
-translates their errors: Check execution gives its failures as its own
-link, made by `service_error` of [the check service](checks/service.md#check-executions-error-as-a-link),
-of the actor `Check execution` and with the reason its code maps to, and the
+A step keeps the link of whatever it called unchanged as a cause under the run's own link, actor,
+code and reason included. Check execution gives its failures as its own link, made by
+`service_error` of [the check service](checks/service.md#check-executions-error-as-a-link), of the
+actor `Check execution` and with the reason its code maps to, and the
 [Issues](../issues/interface.md) store gives each refusal its own link, of the actor
-`Issues (concorde issues)`. The step keeps that link unchanged as a cause under the run's own
-link, actor, code and reason included.
+`Issues (concorde issues)`. A component that reports without a link is the concern of the
+definition whose step calls it: Method's steps, for one, turn Spec tooling's own error record into
+a link as [How an Operation runs its workers](../method/workers.md#errors-of-the-worker-sequence)
+says.

@@ -566,7 +566,7 @@ class RunnerTests(unittest.TestCase):
             self.assertFalse((self.worktree / ".concorde" / place).exists(), place)
         self.assertEqual("ok", self.run_status(envelope))
 
-    @verifies("scenario.execution.unbound-read-only", "scenario.execution.unbound-run")
+    @verifies("scenario.method.unbound-write")
     def test_an_unbound_run_launches_no_writing_worker(self):
         status, envelope = self.project.run(
             "code_review",
@@ -578,7 +578,11 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual((1, "failed"), (status, envelope["status"]))
         self.assertEqual([], envelope["worker_runs"])
         self.assertEqual("unbound_write", envelope["error"]["code"])
+        self.assertEqual("scope", envelope["error"]["unhandled"]["reason"])
         self.assertIn("(unbound, ", envelope["error"]["actor"])
+
+    @verifies("scenario.execution.unbound-bound-input-refused")
+    def test_an_unbound_run_refuses_the_output_of_a_bound_run(self):
         status, bound_run = self.implement([{}])
         self.assertEqual(0, status, bound_run)
         status, envelope = self.project.run(
@@ -944,8 +948,9 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual("ok", following["status"])
         self.assertEqual(envelope, self.saved(envelope))
 
-    @verifies("scenario.execution.workspace-wait")
-    def test_a_waiting_run_queues_behind_the_running_one(self):
+    def hold_workspace(self) -> threading.Event:
+        """Hold the workspace lock of t1 as a running implement run would, in a thread, until
+        the returned event is set."""
         taken, release = threading.Event(), threading.Event()
 
         def hold():
@@ -958,7 +963,11 @@ class RunnerTests(unittest.TestCase):
         self.addCleanup(holder.join)
         self.addCleanup(release.set)
         self.assertTrue(taken.wait(10))
-        # A wait the holder outlasts is still refused, saying how long it waited.
+        return release
+
+    @verifies("scenario.execution.workspace-wait-timeout")
+    def test_a_wait_the_holder_outlasts_is_refused(self):
+        self.hold_workspace()
         status, envelope = self.project.run(
             "task-validation", "--task", "t1", "--wait", "0.3"
         )
@@ -967,6 +976,18 @@ class RunnerTests(unittest.TestCase):
         )
         self.assertIn("after waiting 0 s", json.dumps(envelope["error"]))
         self.assertIn("--wait <seconds>", json.dumps(envelope["error"]["options"]))
+        self.assertEqual([], envelope["worker_runs"])
+        # It never entered its workspace: its node and result stay in the lobby.
+        lobby = self.lobby(envelope["run_id"])
+        self.assertEqual(
+            envelope, json.loads((lobby / "result.json").read_text(encoding="utf-8"))
+        )
+        self.assertTrue((lobby / "trace.json").is_file())
+        self.assertFalse(self.run_folder(envelope).exists())
+
+    @verifies("scenario.execution.workspace-wait")
+    def test_a_waiting_run_queues_behind_the_running_one(self):
+        release = self.hold_workspace()
         # A detached run waits in its own process, naming the run it waits for.
         status, announced = detach(
             "command", "task-validation", ["--wait", "60"], cwd=self.worktree
@@ -1192,9 +1213,16 @@ class RunnerTests(unittest.TestCase):
             self.assertEqual(
                 (0, ["module.a", "module.gone"]), (status, envelope["modules"])
             )
+
+    @verifies("scenario.execution.unknown-module-refused")
+    def test_a_definitions_admission_refuses_an_unknown_module(self):
+        # The test project's task-validation admits its Modules through Method's admission.
         status, envelope = self.project.run(
             "task-validation", "--task", "t1", "--modules", "module.a,module.nowhere"
         )
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+        # No step ran: the refusal came from the admission, before the steps.
+        self.assertEqual([], self.node(envelope)["content"]["data"]["steps"])
         self.assertEqual(["refused", "unknown_module"], codes(envelope["error"]))
         cause = envelope["error"]["causes"][0]
         self.assertEqual("Method (Module admission)", cause["actor"])
@@ -1271,8 +1299,12 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(envelope["status"], self.run_status(envelope))
         # The detached runner's own output is kept in the run's node.
         self.assertTrue((folder / "host.out").is_file())
-        # A workspace already running something still gets its refusal as the result. The
-        # finished runner may still hold the lock after its result is written, so wait for it.
+        with self.assertRaises(UsageError):
+            detach("operation", "frobnicate", ["--detach"], cwd=self.worktree)
+
+    @verifies("scenario.execution.detached-busy")
+    def test_a_detached_run_of_a_busy_workspace_is_refused_in_the_lobby(self):
+        # A workspace already running something still gets its refusal as the result.
         with runs.workspace_lock(self.store(), "t1", "implement run r-other", wait=30):
             status, announced = detach(
                 "command", "task-validation", [], cwd=self.worktree
@@ -1284,8 +1316,6 @@ class RunnerTests(unittest.TestCase):
         self.assertIn(
             "workspace_busy", [item["ref"] for item in refused["host_evidence"]]
         )
-        with self.assertRaises(UsageError):
-            detach("operation", "frobnicate", ["--detach"], cwd=self.worktree)
 
     @verifies("scenario.execution.detached-namespace")
     def test_a_run_detached_inside_a_pid_namespace_dies_with_it(self):
@@ -1562,6 +1592,30 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(self.run_folder(envelope), Path(trace[0]["ref"]).parent)
         self.assertTrue(Path(trace[0]["ref"]).is_file())
         self.assertIn("raising_step", Path(trace[0]["ref"]).read_text())
+        self.assertEqual("failed", self.run_status(envelope))
+
+    @verifies("scenario.execution.admission-error")
+    def test_a_raising_admission_is_a_failed_result(self):
+        def raising_admission(ctx):
+            raise RuntimeError("admission boom")
+
+        with patch.dict(
+            catalog.OPERATIONS.definitions,
+            {
+                "test": Provider(
+                    "test", None, False, (deterministic_step,), admit=raising_admission
+                )
+            },
+        ):
+            status, envelope = self.project.run("test", "--task", "t1")
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+        self.assertEqual("host_error", envelope["error"]["code"])
+        [error] = [
+            item for item in envelope["host_evidence"] if item["kind"] == "host-error"
+        ]
+        self.assertEqual("test admission", error["ref"])
+        self.assertIn("RuntimeError: admission boom", error["detail"])
+        self.assertEqual([], self.node(envelope)["content"]["data"]["steps"])
         self.assertEqual("failed", self.run_status(envelope))
 
     @verifies("scenario.execution.cancelled")

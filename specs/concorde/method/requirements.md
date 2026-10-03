@@ -97,8 +97,14 @@ never become Issues, whatever parts are installed.
 
 ### req.method.issues-where-installed — Findings become Issues only where Issues are installed
 
-`spec_review`, `spec_panel` and `code_review` SHALL report their findings as [Issues](../glossary.json#concept.issue) where the issues part is installed, and state in their result, where it is not, that the findings were not recorded as Issues.
+`spec_review`, `spec_panel` and `code_review` SHALL report their findings as [Issues](../glossary.json#concept.issue) where the issues part is installed.
+
+Each review's own [Spec](../glossary.json#concept.spec) gives the shape.
+
+### req.method.issues-absent-stated — Findings not recorded as Issues are said to be so
+
+`spec_review`, `spec_panel` and `code_review` SHALL state in their result, where the issues part is not installed, that the findings were not recorded as Issues.
 
 That statement is how the [optional integration](../glossary.json#concept.optional-integration)
 rule of the root ([req.concorde.absent-part-stated](../requirements.md#req.concorde.absent-part-stated))
-applies to them; each review's own [Spec](../glossary.json#concept.spec) gives the shape.
+applies to them; the findings stay in the run result with their tiers.

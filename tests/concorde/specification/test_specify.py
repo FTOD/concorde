@@ -486,7 +486,7 @@ class GlossaryAfterRunTests(unittest.TestCase):
         self.assertIn("module.b's term", link_at(error, "worker")["detail"])
         self.assertEqual("needs module.b", envelope["worker"]["summary"])
 
-    @verifies("scenario.method.glossary-after-run")
+    @verifies("scenario.method.glossary-deletion-proposed")
     def test_a_proposed_deletion_of_the_glossary_fails(self):
         status, envelope = self.project.run(
             "specify",

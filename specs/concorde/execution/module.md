@@ -351,16 +351,28 @@ shell may record 2, a number that names an unrelated, living process on the host
 
 ### What other parts may ask of Execution
 
-Execution offers two [optional integrations](../glossary.json#concept.optional-integration) to parts
-that do not depend on it, through its [part registration](../glossary.json#concept.part-registration):
+Two parts that do not depend on Execution reach it, each through an
+[optional integration](../glossary.json#concept.optional-integration) of its own:
 
-- **The runs of a workspace**, for whoever prepared it, in Concorde Coordination: the runs of a
-  workspace with their state, from its workspace folder and the lobby, as running, ended or lost by
-  their run locks; stopping the runs that still run, lobby included, as a task's close does; and
-  waiting for one run to end without polling. Without the execution part a workspace has no runs,
-  and Coordination says so.
-- **An idle check**, for Distribution: whether any run of the project still holds its run lock,
-  naming each, so that an install or an update never replaces the code a runner is running.
+- **The runs of a workspace**, for whoever prepared it, in Concorde Coordination's task level,
+  through records rather than a call. Execution promises them: each run's node folder in the
+  workspace folder or, until the run holds the workspace lock and for good when it is refused
+  before, in the lobby ([The run store](#the-run-store)); its
+  [run progress file](../glossary.json#concept.run-progress-file) and its result; its
+  [run lock](../glossary.json#concept.run-lock), held exactly while its runner lives, from before its
+  first run progress file until after its result
+  ([req.execution.run-lock-held](requirements.md#req.execution.run-lock-held)); and a runner that,
+  sent `SIGTERM` wherever its run lies, lobby included, ends its running step, if one runs, and
+  finishes with a `failed` result with `cancelled` evidence ([Runner](runner.md#runner)). The preparer reads those
+  records itself to tell each run running, ended or lost, waits on a run lock to learn that a run
+  ended, and sends `SIGTERM` itself, as a task's close does; Execution registers no call for any of
+  it. Without the execution part none of these records exists, so a workspace has no runs, and
+  Coordination says so.
+- **An idle check**, for Distribution, the one integration Execution's
+  [part registration](../glossary.json#concept.part-registration) names: whether any run of the
+  project holds its run lock when asked, naming each, so that the installer refuses to replace the
+  code under a run it finds running. It keeps no run from starting afterwards
+  ([Distribution](../distribution/requirements.md#req.distribution.idle-install)).
 
 ## How it is built
 
@@ -487,7 +499,7 @@ each result with its log. The steps of Operations and execution commands, and th
 they give the worker harness, call it in-process; it starts no run and no worker. When checks cannot
 run, it gives its caller its own error link, made by `service_error` of
 [the check service](checks/service.md), which a step keeps unchanged as a cause under the run's link
-rather than translating it as it translates Spec tooling's errors ([Errors](runner.md#errors)).
+([Errors](runner.md#errors)).
 
 ## What Execution relies on
 
@@ -511,8 +523,22 @@ its errors in the error contract. Execution relies on the
 [layout](../kernel/tracing/contracts.md#layout) and the [locks](../kernel/tracing/contracts.md#locks),
 and records nothing that Tracing's node contract refuses.
 
-The runner, its run store and its children rely on no Module of the upper half and on no part but
-the kernel, and nothing in Execution reads or writes the task store. The task level of Coordination
+<a id="uses-distribution"></a>
+
+**Distribution**, the installation host present in every installation, installs the execution part
+from its [part registration](../glossary.json#concept.part-registration), the plain data its
+[registration contract](../distribution/contracts.md#contract.distribution.part-registration)
+defines: the `run` command and its entry, the modules it loads, which register the run and check
+traces' node kinds and the trace roots of the unbound runs and the lobby, the
+[typed value](../glossary.json#concept.typed-value) types of those traces, the part's guidance sections, the ignore rules for
+`.concorde/unbound/`, `.concorde/lobby/` and `.claude/worktrees/`, and the idle check over the run
+locks. Execution relies on Distribution routing `concorde run` to the runner's entry, composing its
+guidance and asking its idle check before an install or an update; it imports nothing of
+Distribution.
+
+The runner, its run store and its children depend on no Module of the upper half and on no part but
+the kernel, meeting Distribution's host promises as every part does, and nothing in Execution reads
+or writes the task store. The task level of Coordination
 uses Execution where it is installed: it writes the binding and reads the run store and the delivery
 commits, as its own Spec explains. Workflows' Claude Code workflows start each step through the
 `workflow_step` tool that Workflows registers with the

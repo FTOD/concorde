@@ -6,9 +6,15 @@ own.
 
 ## Independence
 
-### req.kernel.no-part-imports — The Kernel depends on no part
+### req.kernel.no-part-imports — The Kernel imports no part
 
-The Kernel SHALL import no part's code and register no part's [typed value](../glossary.json#concept.typed-value) type.
+The Kernel SHALL import no part's code.
+
+So every part may depend on the Kernel without bringing in any other part.
+
+### req.kernel.no-part-types — The Kernel registers no part's types
+
+The Kernel SHALL register no part's [typed value](../glossary.json#concept.typed-value) type.
 
 A part's types are registered by that part's own code when it loads; whoever checks a value of a
 type must have loaded its owner, as [Typed values](contracts.md#typed-values) says.
@@ -63,8 +69,8 @@ When a write or the final check of a file transaction fails while its process ru
 
 The guarantee covers only what the transaction's own process observes and assumes that its caller
 excludes every other writer of the target files, as [File transactions](contracts.md#file-transactions)
-says: a killed process restores nothing, and another writer's change during the transaction may be
-overwritten.
+says: a killed process restores nothing and may leave its `.concorde-write-` temporary files beside
+the target files, and another writer's change during the transaction may be overwritten.
 
 ### req.kernel.transaction-unrestored-named — A refused restoration is named
 
@@ -84,7 +90,7 @@ workspace that was retired while it waited.
 
 ### req.kernel.refusals-coded — Every refusal carries a stable code
 
-Every refusal of the Kernel's library SHALL carry a stable code, the JSON pointer or path concerned and a message that describes it completely.
+Every refusal of the Kernel's library SHALL carry a stable code, the JSON pointer of the offending value or the path of the offending file, empty when the refusal concerns the whole input, and a message that describes it completely.
 
 The level that called the library builds its own error link from it, as the
 [Library](contracts.md#library) says; the Kernel writes no link itself.

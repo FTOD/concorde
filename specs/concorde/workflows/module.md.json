@@ -27,7 +27,13 @@
           "req.execution.workspace-lock",
           "req.execution.workspace-busy",
           "req.execution.no-chaining",
-          "contract.execution.run-result"
+          "contract.execution.run-result",
+          "req.execution.detached-announced",
+          "req.execution.detach-failed-ends-runner",
+          "req.execution.detach-failed-leaves-nothing",
+          "req.execution.trace-node",
+          "req.execution.run-lock-held",
+          "concept.run-lock"
         ]
       },
       {
@@ -69,7 +75,8 @@
         "meaning": "#uses-distribution",
         "relies_on": [
           "concept.project-mcp-server",
-          "concept.part-registration"
+          "concept.part-registration",
+          "contract.distribution.part-registration"
         ]
       }
     ],

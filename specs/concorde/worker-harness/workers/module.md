@@ -324,8 +324,9 @@ A violation of the write audit ends the run `failed` with every violating path a
 resume follows, and the worktree is left for the main agent — never reverted or committed by the
 host. The audit judges whole files against `rw`; a finer judgement of what a writable file may hold,
 such as which entries of the shared glossary a Spec-writing worker may change, is its caller's round
-validation's, which in Concorde reports every glossary entry a Module outside the grant owns as
-something to repair.
+validation's, which in Concorde reports every glossary entry a Module outside the grant owns as a
+violation that ends the run `failed` ([Method's round
+validation](../../method/workers.md#the-round-validation)).
 
 A resume round happens only when the worker ended `ok`, the audit was clean, and the caller's round
 validation reported something to repair: the host sends the validation's repair text, in Concorde

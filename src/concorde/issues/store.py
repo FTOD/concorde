@@ -109,6 +109,12 @@ class IssueError(ValueError):
             "unfinished",
             "have the main agent resume or abort the unfinished merge, then repeat the write",
         ),
+        "unreadable_task_record": (
+            "no Issue is committed on the primary branch while a task's merge there may be "
+            "unfinished, and a task record that cannot be read may be the merging task's",
+            "have the main agent repair the named task record, then repeat the write; carry "
+            "this error chain, never an Issue",
+        ),
         "commit_failed": (
             "an Issue write is acknowledged only once its record is committed on the primary "
             "branch",
@@ -792,7 +798,7 @@ def _writing(root: Path, what: str, wait: float):
     A process that holds the lock, such as a task merge closing the Issues its task resolves,
     hands it on to the ``concorde issues`` it starts, which adopts it without waiting; an
     unfinished merge refuses the write all the same. Refused with ``not_primary``,
-    ``merge_busy``, ``merge_incomplete`` or ``recovery_failed``.
+    ``merge_busy``, ``merge_incomplete``, ``unreadable_task_record`` or ``recovery_failed``.
     """
     primary = _require_primary(root)
     try:
@@ -816,21 +822,28 @@ TASK_RECORDS = ".concorde/tasks"
 def unfinished_merge(primary: Path) -> dict | None:
     """The record of the current task Tasks stores as ``merging``, read through Tasks' task record
     format, or None; also None where the coordination part is not installed, since no
-    ``.concorde/tasks/`` then exists. A record that does not read as JSON cannot be told merging
-    and is passed over: Tasks refuses its own commands on it."""
+    ``.concorde/tasks/`` then exists. A record that cannot be read as a JSON object cannot be told
+    not to be merging, and may be the merge's own, so it is refused with
+    ``unreadable_task_record``, as Tasks refuses its own commands on it."""
     folder = Path(primary) / TASK_RECORDS
     if not folder.is_dir():
         return None
     for path in sorted(folder.glob("*/task.json")):
         try:
             record = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            continue
-        if (
-            isinstance(record, dict)
-            and record.get("state") == "merging"
-            and isinstance(record.get("merging"), dict)
-        ):
+            if not isinstance(record, dict):
+                raise ValueError(
+                    f"it holds a JSON {type(record).__name__}, not an object"
+                )
+        except (OSError, ValueError) as error:
+            raise IssueError(
+                f"the task record {path} cannot be read as a JSON object ({error}), so no "
+                "Issue write can tell whether that task's merge into the primary branch is "
+                "unfinished",
+                "unreadable_task_record",
+                path=str(path),
+            ) from None
+        if record.get("state") == "merging" and isinstance(record.get("merging"), dict):
             return {**record, "id": record.get("id") or path.parent.name}
     return None
 
@@ -864,8 +877,14 @@ def merge_account(primary: Path, record: dict) -> str:
 
 
 def _refuse_unfinished_merge(primary: Path, what: str) -> None:
-    """``merge_incomplete`` while a task is stored ``merging``; the merge lock is held."""
-    unfinished = unfinished_merge(primary)
+    """``merge_incomplete`` while a task is stored ``merging``, ``unreadable_task_record`` while
+    a task record cannot be read; the merge lock is held."""
+    try:
+        unfinished = unfinished_merge(primary)
+    except IssueError as error:
+        raise IssueError(
+            f"{what} was not written: {error.message}", error.code, path=error.path
+        ) from None
     if unfinished is not None:
         raise IssueError(
             f"{what} was not written: {merge_account(primary, unfinished)}",

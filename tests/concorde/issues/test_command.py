@@ -918,8 +918,8 @@ class IssueCommandTests(unittest.TestCase):
         self.assertEqual("environment", value["error"]["unhandled"]["reason"])
         self.assertIn(NOT_AN_ISSUE, value["error"]["options"])
         self.assertEqual((0, {"issues": []}), self.run_command("list"))
-        # A record edited by hand is left alone, and only its own Issue's writes are refused.
-        self.assertEqual(0, self.run_command("recover")[0])
+
+    def test_a_record_edited_by_hand_refuses_only_its_own_issues_writes(self):
         recorded = self.recorded()
         path = self.root / recorded["receipt"]["path"]
         path.write_text(path.read_text().replace('"open"', '"closed"', 1))
@@ -939,6 +939,25 @@ class IssueCommandTests(unittest.TestCase):
         self.assertEqual(
             [recorded["receipt"]["path"]], [item["path"] for item in value["left"]]
         )
+
+    @verifies("scenario.issues.command-unreadable-task-record")
+    def test_a_task_record_that_cannot_be_read_refuses_the_write(self):
+        broken = self.root / ".concorde/tasks/broken/task.json"
+        broken.parent.mkdir(parents=True)
+        for text in ("{not json", '"a string"'):
+            with self.subTest(text=text):
+                broken.write_text(text)
+                value = self.assert_refused(
+                    1,
+                    "unreadable_task_record",
+                    [str(broken)],
+                    "report",
+                    "--file",
+                    self.report_file(),
+                )
+                self.assertEqual("environment", value["error"]["unhandled"]["reason"])
+                self.assertIn(NOT_AN_ISSUE, value["error"]["options"])
+                self.assertEqual([], list_issues(self.root))
 
 
 class OptionalIntegrationTests(unittest.TestCase):
@@ -988,6 +1007,10 @@ class OptionalIntegrationTests(unittest.TestCase):
             ),
             record["reports"][0]["source"],
         )
+
+    @verifies("scenario.issues.command-report-provenance-usage")
+    def test_a_provenance_file_with_task_or_check_is_refused(self):
+        path = self.report_file()
         for extra in (("--task", "t"), ("--check",)):
             with self.subTest(extra=extra):
                 self.assert_refused(
@@ -1001,6 +1024,10 @@ class OptionalIntegrationTests(unittest.TestCase):
                     self.provenance_file(),
                     *extra,
                 )
+
+    @verifies("scenario.issues.command-report-provenance-invalid")
+    def test_a_provenance_file_breaking_its_shape_is_refused(self):
+        path = self.report_file()
         self.assert_refused(
             1,
             "invalid_issue",
@@ -1022,6 +1049,15 @@ class OptionalIntegrationTests(unittest.TestCase):
         record, _ = read_issue(self.root, value["receipt"]["issue_id"])
         self.assertEqual("module.unlisted", record["reports"][0]["source"]["target_id"])
         self.assertEqual(digest(b""), record["reports"][0]["source"]["context_id"])
+        status, value = self.run_command("check")
+        self.assertEqual(0, status, value)
+        self.assertEqual([], value["errors"])
+        [note] = value["notes"]
+        self.assertIn("the spec part is not installed", note)
+
+    @verifies("scenario.issues.command-without-spec-part-null-owner")
+    def test_without_the_spec_part_a_report_without_owner_is_refused(self):
+        (self.root / ".concorde/specs.json").unlink()
         self.assert_refused(
             1,
             "no_reporting_module",
@@ -1030,11 +1066,40 @@ class OptionalIntegrationTests(unittest.TestCase):
             "--file",
             self.report_file(owner_target_id=None),
         )
-        status, value = self.run_command("check")
+
+    @verifies("scenario.issues.command-report-check-origin")
+    def test_without_the_spec_part_a_defect_report_is_checked(self):
+        (self.root / ".concorde/specs.json").unlink()
+        elsewhere = tempfile.TemporaryDirectory()
+        self.addCleanup(elsewhere.cleanup)
+        (Path(elsewhere.name) / RUN).mkdir(parents=True)
+        path = Path(elsewhere.name) / "defect.json"
+        path.write_text(
+            json.dumps(
+                report(
+                    owner_target_id=None,
+                    evidence=[{"path": RUN, "description": "the refused run"}],
+                    origin={
+                        "project": elsewhere.name,
+                        "head": None,
+                        "concorde_commit": None,
+                        "task": None,
+                    },
+                )
+            )
+        )
+        status, value = self.run_command("report", "--file", str(path), "--check")
         self.assertEqual(0, status, value)
-        self.assertEqual([], value["errors"])
-        [note] = value["notes"]
-        self.assertIn("the spec part is not installed", note)
+        self.assertEqual(
+            {
+                "valid": True,
+                "file": str(path),
+                "report_key": "missing-retry",
+                "reporting_module": None,
+            },
+            value,
+        )
+        self.assertEqual([], list_issues(self.root))
 
 
 if __name__ == "__main__":

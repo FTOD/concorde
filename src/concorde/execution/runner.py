@@ -148,6 +148,15 @@ class Cancelled(Exception):
     pass
 
 
+class DefinitionFailed(Exception):
+    """An unexpected exception of a definition's admission or runtime-path resolver, which the
+    runner turns into a failed result as it does a step's."""
+
+    def __init__(self, part: str, error: Exception):
+        super().__init__(f"{part} raised {type(error).__name__}: {error}")
+        self.part, self.error = part, error
+
+
 class RunUnrecorded(Exception):
     """The run's initial records could not be created: no step ran and no result is written.
 
@@ -227,7 +236,19 @@ def _checkout(chosen: Provider, context: RunContext) -> Checkout:
             f"{chosen.name} works only in a bound workspace, and {context.worktree} has no "
             f"workspace binding ({binding_file.BINDING})",
         )
-    checkout = open_checkout(context.worktree, context.run_id, chosen.runtime_paths)
+    resolver = chosen.runtime_paths
+
+    def runtime_paths(root: Path):
+        try:
+            return resolver(root)
+        except Exception as error:  # noqa: BLE001 -- a resolver error is a failed result
+            raise DefinitionFailed("runtime-path resolver", error) from error
+
+    checkout = open_checkout(
+        context.worktree,
+        context.run_id,
+        runtime_paths if resolver is not None else None,
+    )
     context.origin, context.worktree = context.worktree, checkout.path
     context.commit = checkout.commit
     context.evidence.append(
@@ -257,7 +278,12 @@ def _resolve(chosen: Provider, context: RunContext, arguments) -> Stop | None:
     else:
         context.modules = []
     if chosen.admit is not None:
-        chosen.admit(context)
+        try:
+            chosen.admit(context)
+        except (RunError, KernelError, Refused):
+            raise
+        except Exception as error:  # noqa: BLE001 -- an admission error is a failed result
+            raise DefinitionFailed("admission", error) from error
     return None
 
 
@@ -526,6 +552,14 @@ def execute(
                     stop = _resolve(chosen, context, arguments)
                 except (RunError, KernelError, Refused) as refusal:
                     stop = _refused(chosen, context, refusal)
+                except DefinitionFailed as failed:
+                    stop = context.exception(
+                        f"{chosen.name} {failed.part}",
+                        failed.error,
+                        "host_error",
+                        f"The {failed.part} of {chosen.name} raised "
+                        f"{type(failed.error).__name__}: {failed.error}",
+                    )
                 if stop is None:
                     stop = _steps(chosen, context, node, words)
             except Cancelled as cancelled:

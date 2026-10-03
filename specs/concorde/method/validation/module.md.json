@@ -52,6 +52,13 @@
           "concept.workspace-lock",
           "contract.kernel.workspace-binding"
         ]
+      },
+      {
+        "target": "module.workflows",
+        "meaning": "#uses-workflows",
+        "relies_on": [
+          "contract.workflows.step-output"
+        ]
       }
     ],
     "includes": [

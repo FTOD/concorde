@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The Worker harness is the worker harness [part](../glossary.json#concept.part): it runs one headless
+The Worker harness is the [part](../glossary.json#concept.part) of Concorde that runs one headless
 [worker](../glossary.json#concept.worker) on Claude Code or on pi under a
 [grant](../glossary.json#concept.grant) it is given, bounds what the worker may read, write and run,
 audits what it changed, resumes it with what its caller wants repaired, and records the worker run
@@ -11,17 +11,18 @@ as a [trace node](../glossary.json#concept.trace-node). It also keeps the
 worker's backend, model and reasoning level, and reads the user's
 [model map](../glossary.json#concept.model-map) to reach those models on one machine.
 
-Whoever launches a worker relies on it: in Concorde, the steps of Method's Operations, through the
+Whoever launches a worker relies on it: in Concorde, the steps of [Method](../method/module.md)'s
+Operations, through the
 [standard worker sequence](../glossary.json#concept.standard-worker-sequence); but any program that
 can hand over a grant and its instructions may use it alone. It decides nothing about the job: it
 computes no grant, reads no [Spec](../glossary.json#concept.spec), knows no
 [Operation](../glossary.json#concept.operation) catalog and runs no check of its own. It depends on
-the kernel part alone.
+the [kernel](../kernel/module.md) part alone.
 
 What it enforces guards against a worker's scope drift and mistakes, not against a malicious agent,
-and it is no complete isolation of the host. System directories and other paths outside the
-worktree, the primary worktree, the Git administrative paths and the home stay readable to every
-tool, since Bash needs them to run anything; on Claude Code a Git-ignored file another process
+and it is no complete isolation of the host. The deny rules cover the worktree, the primary
+worktree, the Git administrative paths and the home; system directories and every other path outside
+them stay readable to every tool, since Bash needs them to run anything; on Claude Code a Git-ignored file another process
 creates in the worktree while the run lasts may be read without anything failing; and writes to
 Git-ignored paths are not audited. The [Harness's known limits](harness/module.md#known-limits-of-v1)
 and [Workers](workers/module.md#why-the-run-is-built-this-way) state these boundaries exactly.
@@ -106,21 +107,26 @@ A caller that uses the worker harness alone, without Method, goes through two st
    once the run has ended. The record's status is `ok`, `blocked` or `failed`; it keeps the
    worker's own [worker result](../glossary.json#concept.worker-result) verbatim, as a claim, apart
    from the host's evidence: each round's audit, the round validation's evidence, the rounds used,
-   the transcript. A run that does not end `ok` carries Workers' error link with its causes.
+   the transcript. The deletions a worker proposes are made by the host after the last round's
+   validation, so that validation's evidence describes the worktree before them
+   ([Proposed deletions](workers/launch.md#proposed-deletions)). A run that does not end `ok`
+   carries Workers' error link with its causes.
 
 ### When a launch fails
 
-Each child's failure becomes something the caller sees in one of two ways:
+Each child's failure becomes something the caller sees in one of three ways; the exact codes are
+Workers' [Errors](workers/launch.md#errors):
 
 - **Before any run**: the configuration reader's refusals above, and nothing else.
-- **In the run record**, `failed` with Workers' error link ([Errors](workers/launch.md#errors)): a
-  missing or malformed grant, which the Harness refuses to generate settings from, so no worker
-  starts; a misplaced worktree or a runtime directory the deny rules would cover; a launch the
-  operating system refuses; a round that timed out or reached its turn or budget limit; an invalid
-  worker result; an [audit](workers/launch.md#audit) violation; a round validation that answers a
-  violation, that cannot validate, or whose repair still stands when the rounds are used up and it
-  says so; a proposed deletion that failed; and an interruption from outside, which ends every
-  worker process before it is reported.
+- **In the run record**, `failed` with Workers' error link: a run that could not start its worker —
+  a missing grant, which Workers refuses, a malformed one, which the Harness refuses to generate
+  settings from, a misplaced worktree, a runtime directory the deny rules would cover, a snapshot or
+  a launch that failed, a backend program or runtime that is missing or fails; a round that timed out
+  or reached its turn or budget limit, or ended with an invalid worker result; an
+  [audit](workers/launch.md#audit) violation; a round validation that answers a violation, that
+  cannot validate, or whose repair still stands when the rounds are used up and it says so; a
+  proposed deletion that failed; and an interruption from outside, which ends every worker process
+  before it is reported.
 - **In the run record, with the worker's own status**: a worker that ended `blocked` or `failed`,
   whose link becomes the cause of Workers' own.
 
@@ -152,7 +158,7 @@ wh.workers -> program: launches, resumes
 wh.workers -> caller.validation: "after each clean round"
 caller.validation -> wh.workers: "evidence, what to repair"
 wh.workers -> record: writes
-record -> caller: "returned"
+wh.workers -> caller: "returned run record"
 ```
 
 ## How it is built
@@ -171,8 +177,10 @@ Concorde's own path stays exact.
 
 Whether a round needs repair is the job's question, not the worker's: an `implement` step asks
 whether the project's checks pass on the changed code, a Spec-writing step whether the Specs still
-validate, and both whether the worker changed glossary entries its Modules do not own. Running those
-checks here would tie the worker harness to Check execution and to the Specs. A callback keeps the
+validate, and both whether the worker changed glossary entries its Modules do not own, which is no
+repair but a violation that ends the run, as
+[Method's round validation](../method/workers.md#the-round-validation) answers. Running those checks
+here would tie the worker harness to Check execution and to the Specs. A callback keeps the
 resume loop here, where the worker session lives, and the judgement with the caller, which
 returns both what it found and what the worker must repair. A resume round still feeds the worker
 only what the round validation found. The worker harness's own stopping rule depends only on
@@ -180,8 +188,10 @@ outcomes: a `blocked` or `failed` worker result, an invalid result and an audit 
 resumed, and a clean `ok` round goes on as its round validation answers. What a
 [Spec gap](../glossary.json#concept.spec-gap) or a path outside the grant means is the caller's to
 say, in its instructions and its validation: in Concorde an `understand` worker reports a gap and
-ends `ok`, a review worker reports one as a finding and goes on, and every other worker ends
-`blocked`, which no round resumes; Method's round validation never asks a worker to repair a gap.
+ends `ok`, a review worker reports one as a finding and goes on, a `code-to-spec` worker describes
+the code it reads and reports doubtful intent without promising it
+([The brief](workers/module.md#the-brief)), and every other worker ends `blocked`, which no round
+resumes; Method's round validation never asks a worker to repair a gap.
 
 ### Guidance
 
@@ -191,9 +201,20 @@ The **Worker harness guidance** is the part's sections of the [main-session
 guidance](../glossary.json#concept.main-session-guidance), kept in
 `prompts/guidance/worker_harness/` and registered under `guidance` in the part's registration, which
 [Distribution](../distribution/module.md#guidance-composition) composes after Coordination's working
-method wherever the part is installed: the project skill's "Worker models", the worker configuration
-and the model map, and the `CLAUDE.md` block's sentence on them. Each section says what happens
-where a part it mentions is not installed.
+method wherever the part is installed: the project skill's "Worker models", which explains the
+worker configuration and the model map, and the `CLAUDE.md` block's sentence on them. Each section
+says what happens where a part it mentions is not installed.
+
+<a id="uses-distribution"></a>
+
+**Distribution**, the installation host present in every installation, installs the part from its
+[part registration](../glossary.json#concept.part-registration), the plain data its
+[registration contract](../distribution/contracts.md#contract.distribution.part-registration)
+defines and Workers keeps: the module that registers the worker run's trace types, the guidance
+sections, `scripts/available_models.py` and the pi runtime. The worker harness relies on
+Distribution placing those and composing its guidance
+([req.distribution.composed-guidance](../distribution/requirements.md#req.distribution.composed-guidance)),
+and imports nothing of it.
 
 ### The children
 

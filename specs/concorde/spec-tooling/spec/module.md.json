@@ -16,7 +16,23 @@
       "specs/concorde/spec-tooling/spec/errors.md"
     ],
     "contains": [],
-    "uses": [],
+    "uses": [
+      {
+        "target": "module.kernel",
+        "meaning": "#uses-kernel",
+        "relies_on": [
+          "concept.typed-value",
+          "concept.file-transaction"
+        ]
+      },
+      {
+        "target": "module.distribution",
+        "meaning": "#uses-distribution",
+        "relies_on": [
+          "concept.build-manifest"
+        ]
+      }
+    ],
     "includes": [],
     "participates": []
   },

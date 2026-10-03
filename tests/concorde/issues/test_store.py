@@ -373,14 +373,21 @@ class IssueStoreTests(unittest.TestCase):
     def test_without_the_coordination_part_no_write_waits_for_a_merge(self):
         self.assertFalse((self.root / ".concorde/tasks").exists())
         first = report_issue(self.root, report(), source())
+        self.assertEqual(
+            [first["issue_id"]], [row["id"] for row in list_issues(self.root)]
+        )
+
+    def test_a_task_record_that_cannot_be_read_refuses_the_write(self):
         unreadable = self.root / ".concorde/tasks/broken"
         unreadable.mkdir(parents=True)
-        (unreadable / "task.json").write_text("{not json")
-        second = report_issue(self.root, report(report_key="other"), source())
-        self.assertEqual(
-            {first["issue_id"], second["issue_id"]},
-            {row["id"] for row in list_issues(self.root)},
-        )
+        for text in ("{not json", "[]"):
+            with self.subTest(text=text):
+                (unreadable / "task.json").write_text(text)
+                with self.assertRaises(IssueError) as raised:
+                    report_issue(self.root, report(), source())
+                self.assertEqual("unreadable_task_record", raised.exception.code)
+                self.assertIn(str(unreadable / "task.json"), str(raised.exception))
+                self.assertEqual([], list_issues(self.root))
 
     @verifies("scenario.issues.store-disposition")
     def test_a_closing_disposition_keeps_every_report(self):

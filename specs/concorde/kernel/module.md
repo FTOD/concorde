@@ -26,6 +26,18 @@ its caller turns into its own error link; Tracing, its child, adds the trace nod
 ([Library](contracts.md#library)). Its precise obligations are its
 [requirements](requirements.md), and its [scenarios](scenarios.md) show them at work.
 
+For example, a part that keeps notes registers the type `example-note` at version 1 when its code
+loads, with a schema that requires a nonblank `text`. To record a note it makes the typed value of
+the data `{"text": "Retry limit agreed."}` and receives a checked copy,
+`{"type_id": "example-note", "schema_version": 1, "data": {"text": "Retry limit agreed."}}`
+([Typed values](contracts.md#typed-values)). Holding the merge lock, it applies a file transaction
+below the primary worktree that creates `notes/n-1.json` holding that value, with the
+`before_digest` `null` since the file must not exist yet, and allows only that path
+([File transactions](contracts.md#file-transactions)). The transaction returns `["notes/n-1.json"]`
+once the file is renamed into place; had another writer created the file first, it would have been
+refused with `stale_proposal` before writing anything. The part then commits the file and releases
+the lock, which the Kernel leaves to it ([Library](contracts.md#library)).
+
 ## Core concepts
 
 The Kernel's terms fall into three groups: the data parts exchange, the workspace one part prepares
@@ -41,7 +53,7 @@ A value its owner's contract designates as a typed value is a
 **[typed value](../glossary.json#concept.typed-value)** `{type_id, schema_version, data}`, whose
 `data` is checked against the schema its owner registered for that type and version: a
 [trace node](../glossary.json#concept.trace-node)'s content, such as a run's steps or a worker
-round's audit, or an [Issue report](../glossary.json#concept.issue-report). The owner registers its own types when its code loads, and a
+round's audit. The owner registers its own types when its code loads, and a
 schema of one part may embed a value of another part's type by name, so neither imports the other.
 Not every structured record is one: a workspace binding, a [run result](../glossary.json#concept.run-result),
 a grant or an Issue record file keeps the representation its own contract defines, and is checked
@@ -100,7 +112,9 @@ A **[delivery commit](../glossary.json#concept.delivery-commit)** is the one mar
 commit on the workspace's branch, since its base commit, whose subject is exactly
 `concorde: deliver <workspace>`, with the workspace's goal as body. It is recognized by its subject
 alone, so no part keeps a list of deliveries, and it verifies only when it has exactly one parent,
-so that a merge commit carrying the subject is never taken for one. The Kernel defines the mark and
+so that a merge commit given the subject never marks the workspace delivered: a reader judges a
+workspace delivered by its latest delivery commit verifying, as Coordination's Tasks does. The
+Kernel defines the mark and
 how it is recognized and verified, never who may make one, what it must check first or which
 changes it holds: those are the delivering command's own rules. In Concorde, Method's `delivery`
 validates the whole workspace first, and Coordination's `task deliver` runs the checks it is given
@@ -147,13 +161,14 @@ coordination -> kernel.workspace: "writes the binding,\ntakes the lock to merge 
 coordination -> kernel.primary: "reads delivery commits,\ntakes the merge lock"
 execution -> kernel.workspace: "reads the binding,\nholds the lock for a run"
 workflow -> kernel.workspace: reads the binding
+method -> kernel.workspace: reads the binding
 method -> kernel.primary: makes delivery commits
 issues -> kernel.primary: takes the merge lock
 issues -> kernel.data: records and writes
 harness -> kernel.tracing: records worker runs
-coordination -> kernel.tracing
-execution -> kernel.tracing
-workflow -> kernel.tracing
+coordination -> kernel.tracing: "records task nodes,\nhands on and waits for locks"
+execution -> kernel.tracing: "records runs,\ntakes run locks"
+workflow -> kernel.tracing: records the workflow node
 ```
 
 ## How it is built
@@ -179,6 +194,19 @@ general it looks. The Spec tooling depends on no part, not even the Kernel, so i
 of typed values, file transactions, schema checking and digests, accepting the duplication so that
 the Specs can be checked and published with nothing else installed; the two copies agree on the
 formats in [the contracts](contracts.md), not on code.
+
+### Installed through Distribution
+
+<a id="uses-distribution"></a>
+
+**Distribution** installs the kernel part as it installs every part, from its
+[part registration](../glossary.json#concept.part-registration): the Kernel declares there, as the
+plain data the [registration contract](../distribution/contracts.md#contract.distribution.part-registration)
+defines, its guidance, its child Tracing's `trace` command and the `.concorde/locks/` entry Git
+ignores, and meets the host promises that contract makes of each entry, such as a command printing
+its own output. The Kernel relies on Distribution reading the registration without importing the
+Kernel's code beyond those entries, and on nothing else of it; it imports nothing of Distribution,
+so the dependency stays a format the Kernel meets.
 
 ### The children
 
@@ -208,9 +236,9 @@ Spec tooling's copy lives in Spec core.
 <a id="realization.kernel.tests"></a>
 
 The **Kernel tests** exercise the library on the scenarios of the Kernel's
-[scenarios](scenarios.md): bindings read and refused, deliveries listed and verified, types
-registered and values checked, transactions refused, restored and unrestored, and busy locks
-refused.
+[scenarios](scenarios.md): bindings read and refused, delivery messages made and deliveries listed
+and verified, types registered, typed values and contract records checked, transactions refused,
+restored and unrestored, and locks refused, retired and taken.
 
 <a id="realization.kernel.guidance"></a>
 

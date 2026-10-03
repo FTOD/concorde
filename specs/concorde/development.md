@@ -247,15 +247,16 @@ Each [part](glossary.json#concept.part)'s code is one directory of `src/concorde
 `kernel/`, `worker_harness/`, `execution/`, `workflows/`, `issues/`, `coordination/`, `method/`
 and `distribution/`, with `__main__.py` counted as Distribution's and `dogfooding/` as no part,
 together with the Python files outside that tree that its registration ships under
-`install.files`, such as `scripts/issues.py` of the issues part.
-`tests/concorde/development/test_part_dependencies.py` checks
-[req.concorde.part-dependencies](requirements.md#req.concorde.part-dependencies) on that code: it
-reads the allowed directions from the root's [parts table](module.md#the-parts) and fails on any
-`concorde.*` import, at module or function level and including the `"module:attribute"` strings a
-catalog imports by name, that crosses to a part its own part does not depend on, with no exception:
-an [optional integration](glossary.json#concept.optional-integration) imports no code of the part
-it uses. Dogfooding's code imports no part and no part imports it; the one entry Distribution
-reaches it through, by name, is the package descriptor's `develop.check`, which the check requires
-to name Dogfooding's code, the reliance Distribution's `uses` of Dogfooding declares. It also checks
-[req.concorde.part-installation](requirements.md#req.concorde.part-installation) on the
-registrations: each names its part and exactly the dependencies the parts table gives it.
+`install.files`, such as `scripts/issues.py` of the issues part. The part dependency check, one of
+the development environment's tests, reads the allowed directions from the table of
+[req.concorde.part-dependencies](requirements.md#req.concorde.part-dependencies) and fails on any
+`concorde.*` import of that code, at module or function level and including the
+`"module:attribute"` strings a catalog imports by name, that crosses to a part its own part does not
+depend on, with no exception: an [optional integration](glossary.json#concept.optional-integration)
+imports no code of the part it uses. Distribution, which depends on no part, reaches a part's code
+only by the names its registration gives, each of which the check requires to lie in that part's own
+directory. Dogfooding's code imports no part and no part imports it; the one entry
+Distribution reaches it through, by name, is the package descriptor's `develop.check`, which the
+check requires to name Dogfooding's code, the reliance Distribution's `uses` of Dogfooding declares.
+It also checks the registrations: each names its part and exactly the dependencies that table gives
+it.

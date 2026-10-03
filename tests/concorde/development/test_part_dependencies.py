@@ -3,7 +3,7 @@ reaches Distribution only through its registration (req.distribution.registratio
 
 Each part's code is one directory of ``src/concorde/``, together with the Python files outside it
 that its registration ships under ``install.files``. The allowed directions are read from the
-root's parts table; every ``concorde.*`` import of that code (module-level and function-level,
+table of req.concorde.part-dependencies; every ``concorde.*`` import of that code (module-level and function-level,
 absolute and relative, and the ``"module:attribute"`` strings a catalog imports by name) is checked
 against them, with no exception. The one entry Distribution imports by a name it does not
 register, the package descriptor's ``develop.check``, must be Dogfooding's, the reliance
@@ -25,11 +25,11 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 
 SOURCE = REPOSITORY_ROOT / "src"
 PACKAGE = SOURCE / "concorde"
-PARTS_TABLE = REPOSITORY_ROOT / "specs/concorde/module.md"
+PARTS_TABLE = REPOSITORY_ROOT / "specs/concorde/requirements.md"
 DESCRIPTOR = REPOSITORY_ROOT / "concorde.json"
 DISTRIBUTION_SPEC = REPOSITORY_ROOT / "specs/concorde/distribution/module.md.json"
 
-# Part (as the root's parts table names it) -> its directory under src/concorde/.
+# Part (as the table of req.concorde.part-dependencies names it) -> its directory under src/concorde/.
 PART_DIRECTORIES = {
     "spec": "spec",
     "kernel": "kernel",
@@ -52,15 +52,17 @@ CATALOG_ENTRY = re.compile(r"concorde(?:\.\w+)+(?::\w+)?")
 
 
 def parts_table() -> dict[str, set[str]]:
-    """Each part of the root's parts table with the parts it depends on."""
+    """Each part of req.concorde.part-dependencies' table with the parts it depends on."""
     text = PARTS_TABLE.read_text(encoding="utf-8")
-    section = text.split("\n### The parts\n", 1)[1].split("\n#", 1)[0]
+    section = text.split("\n### req.concorde.part-dependencies ", 1)[1].split("\n#", 1)[0]
     table = {}
     for line in section.splitlines():
-        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
-        if len(cells) != 4 or cells[0] in ("Part", "") or set(cells[0]) <= {"-", " "}:
+        if not line.startswith("|"):
             continue
-        depends = cells[3].split(":", 1)[0].strip()
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if len(cells) != 2 or cells[0] in ("Part", "") or set(cells[0]) <= {"-", " "}:
+            continue
+        depends = cells[1]
         table[cells[0]] = (
             set()
             if depends == "nothing"
@@ -193,7 +195,7 @@ class PartDependencyTests(unittest.TestCase):
         self.assertEqual(
             [],
             sorted(where for places in found.values() for where in places),
-            "imports a part may not rely on: depend only on the parts the root's parts table "
+            "imports a part may not rely on: depend only on the parts req.concorde.part-dependencies "
             "lists, and reach any other part only through its command or a file format its "
             "Spec defines",
         )

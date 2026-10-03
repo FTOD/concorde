@@ -282,7 +282,15 @@ class BuildTests(unittest.TestCase):
             three["claude_md"],
         )
         self.assertNotIn("issues", "".join(three.values()))
-        alone = of(["spec", "distribution"])
+
+    @verifies("scenario.distribution.composed-guidance-without-coordination")
+    def test_the_guidance_without_coordination_is_the_given_sections_alone(self):
+        everything = parts.package_parts(REPOSITORY_ROOT)
+        read = lambda path: f"<{path}>\n"  # noqa: E731
+        chosen = {name: everything[name] for name in ("spec", "distribution")}
+        alone = {
+            kind: guidance.compose(chosen, kind, read) for kind in parts.GUIDANCE_FIELDS
+        }
         fields = strict_frontmatter(self, alone["skill"])
         self.assertEqual("concorde", fields["name"])
         self.assertNotIn("main agent", fields["description"])
@@ -918,6 +926,67 @@ class InstallTests(unittest.TestCase):
         with which():
             update(project, package)
         self.assertEqual(1, claude.read_text().count("@specs/project/glossary.json"))
+
+    @verifies(
+        "scenario.distribution.install-idle-check-failed",
+        "scenario.distribution.update-open-tasks-failed",
+    )
+    def test_a_failing_idle_check_or_open_task_report_is_refused(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        project.mkdir()
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+        install(project, package, pi_runtime=False, d2=False, dependencies=False)
+        receipt = (project / ".concorde/install.json").read_bytes()
+        entry = parts.Registration.entry
+
+        def failing(field, answer):
+            """The part's ``field`` entry raising ``answer`` or answering it."""
+
+            def patched(registration, name):
+                if name != registration.data[field]:
+                    return entry(registration, name)
+
+                def broken(root):
+                    if isinstance(answer, Exception):
+                        raise answer
+                    return answer
+
+                return broken
+
+            return patch.object(parts.Registration, "entry", patched)
+
+        for answer in (RuntimeError("the run store cannot be read"), "busy", [3]):
+            with self.subTest(answer=answer), failing("idle_check", answer):
+                with self.assertRaises(InstallError) as raised:
+                    install(
+                        project, package, pi_runtime=False, d2=False, dependencies=False
+                    )
+                self.assertEqual("part_failed", raised.exception.code)
+                self.assertIn(
+                    "execution part's idle_check entry", str(raised.exception)
+                )
+                link = refusal(
+                    "part_failed", str(raised.exception), causes=raised.exception.causes
+                )
+                validate(link, ERROR_SCHEMA)
+                self.assertEqual("environment", link["unhandled"]["reason"])
+                self.assertEqual(
+                    isinstance(answer, Exception), bool(raised.exception.causes)
+                )
+                self.assertEqual(
+                    receipt, (project / ".concorde/install.json").read_bytes()
+                )
+        with failing("after_update", RuntimeError("no task records")), which():
+            with self.assertRaises(InstallError) as raised:
+                update(project, package)
+        self.assertEqual("part_failed", raised.exception.code)
+        self.assertIn("coordination part's after_update entry", str(raised.exception))
+        self.assertIn("only the list of open tasks is lost", str(raised.exception))
+        self.assertEqual("unexpected_error", raised.exception.causes[0]["code"])
+        # The update installed and marked before it asked for the open tasks.
+        mark = json.loads((project / ".concorde/update.json").read_text())
+        self.assertEqual("unvalidated", mark["state"])
 
     @verifies(
         "scenario.distribution.install-busy",
@@ -1633,7 +1702,7 @@ class InstallTests(unittest.TestCase):
         self.assertIsNone(report["receipt"]["dependencies"])
         self.assertFalse((project / ".concorde/update.json").exists())
 
-    @verifies("scenario.distribution.update-installed-parts")
+    @verifies("scenario.distribution.update-adds-programs")
     def test_an_update_places_what_an_added_part_needs(self):
         package = package_copy(self)
         fetch = fake_d2(self, package)

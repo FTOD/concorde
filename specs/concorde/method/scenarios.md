@@ -91,12 +91,21 @@ run does, whatever its definition, is shown by the [Execution scenarios](../exec
 - THEN the Operation's link has that error as a `component` cause with its code and message
 - AND the cause's explanation is the error's reason, its option is the error's remediation, and the error's own cause is nested below it
 
-### scenario.method.glossary-after-run — The glossary is audited again after the worker run
+### scenario.method.glossary-after-run — A blocked worker's foreign glossary edit is audited after the run
 
-- GIVEN a `specify` worker bound to [Module](../glossary.json#concept.module) A, whose grant makes the project glossary writable
-- WHEN the worker changes the glossary entry of a concept Module B owns and ends `blocked`, or ends `ok` proposing the deletion of the glossary
+- GIVEN a `specify` worker bound to [Module](../glossary.json#concept.module) A, whose grant makes the project glossary writable, and a glossary entry Module B owns
+- WHEN the worker changes Module B's entry and ends `blocked`
 - THEN the run ends `failed` with `audit_violation` and the reason `permission`, naming Module B's entry, with its `glossary-ownership` evidence
-- AND a blocked worker's own link stays below the Operation's link and its claims stay unchanged in `worker`
+- AND the worker's own link stays below the Operation's link and its claims stay unchanged in `worker`
+- BUT no resume round follows
+
+This illustrates [the glossary audited by entry](requirements.md#req.method.glossary-by-entry).
+
+### scenario.method.glossary-deletion-proposed — A proposed deletion of the glossary is a violation
+
+- GIVEN a `specify` worker bound to Module A, whose grant makes the project glossary writable, and a glossary entry Module B owns
+- WHEN the worker ends `ok` proposing the deletion of the glossary
+- THEN the run ends `failed` with `audit_violation` and the reason `permission`, naming Module B's entry, with its `glossary-ownership` evidence
 - BUT no resume round follows
 
 This illustrates [the glossary audited by entry](requirements.md#req.method.glossary-by-entry).
@@ -108,6 +117,17 @@ This illustrates [the glossary audited by entry](requirements.md#req.method.glos
 - THEN the result has status `failed` with the violation as `audit` evidence
 - AND its error's top link gives `permission` as the reason and names the file
 - AND no configured check is run for that worker
+
+### scenario.method.unbound-write — An unbound run never launches a writing worker
+
+- GIVEN an [Operation](../glossary.json#concept.operation) whose definition allows unbound runs
+- WHEN an [unbound run](../glossary.json#concept.unbound-run) of it asks for a `specify`, `implement` or `code-to-spec` worker without withholding every writable level of its grant
+- THEN no worker starts and the result lists no worker run
+- AND the result is `failed` with `unbound_write`, reason `scope`, its actor naming the run as unbound
+
+This illustrates the guard that [The round validation](workers.md#the-round-validation) states for
+the Operations that may run unbound, and the
+[error of the worker sequence](workers.md#errors-of-the-worker-sequence) it ends with.
 
 ## The brownfield workflow
 

@@ -59,7 +59,9 @@ cannot be known.
 **What counts as an unbound file.** `CHK.binds.unbound` looks at every file under version control.
 It exempts document members, everything under `.concorde/` (the registry, the configuration and
 other control records), generated outputs (everything under `generated/`, build output directories,
-and every output that `generated/build-manifest.json` lists), and external material declared with
+and every output that
+[`generated/build-manifest.json`](../../distribution/contracts.md#contract.distribution.build-manifest)
+lists), and external material declared with
 `includes` of kind `external`, including the vendored material under `references/`.
 
 **Links to definitions.** The Protocol requires a link fragment that names a stable identity to
@@ -89,7 +91,8 @@ The spec part reads no file format of another part but two of Distribution's, th
 host present in every installation, and reads each only when it is present: the installation record
 `.concorde/install.json`, whose installed files a Module binds by their exact paths
 (`CHK.binds.installed`), and the [build manifest](../../glossary.json#concept.build-manifest)
-`generated/build-manifest.json`, whose listed outputs are exempt from `CHK.binds.unbound`. Without
+`generated/build-manifest.json`, in the shape of its
+[contract](../../distribution/contracts.md#contract.distribution.build-manifest), whose listed outputs are exempt from `CHK.binds.unbound`. Without
 an installation record no file counts as installed, and without a build manifest only the other
 generated outputs are exempt; neither absence is a finding.
 

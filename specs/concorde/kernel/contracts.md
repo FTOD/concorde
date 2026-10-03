@@ -106,11 +106,12 @@ workspace's branch since the binding's base commit and its subject is exactly
 delivery commits are the only record of a delivery: anyone who needs to know whether and how often a
 workspace was delivered reads them from the branch this way, and no part keeps a list of its own.
 
-A delivery commit **verifies** when it has exactly one parent. A head that carries the subject but
-has another number of parents, such as a merge commit, is no delivery: every part that reads
-delivery commits refuses to treat it as one and names the mismatch. A delivery commit is made with
-the repository's configured author identity and its commit hooks, and is never amended: a workspace
-delivered again gets a new delivery commit on top, so the first-parent history keeps every delivery.
+A delivery commit **verifies** when it has exactly one parent. A delivery commit with another number
+of parents, such as a merge commit given the subject, does not verify: every part that reads
+delivery commits refuses to take the workspace as delivered by it and names the mismatch. A delivery
+commit is made with the repository's configured author identity and its commit hooks, and is never
+amended: a workspace delivered again gets a new delivery commit on top, so the first-parent history
+keeps every delivery.
 
 This convention says what a delivery commit is, not who makes one. Which command may make it, what
 it checks before, and which of the workspace's changes it holds, such as every change Git does not
@@ -126,7 +127,7 @@ A **typed value** is a closed JSON object `{"type_id": ..., "schema_version": ..
 `type_id` is a nonblank name such as `concorde-run-trace`, `schema_version` a positive integer, and
 `data` the value's content, checked against the schema the type's owner registered for that version.
 Only a value its owner's contract designates as typed carries the envelope, such as a trace node's
-`content` or an [Issue report](../glossary.json#concept.issue-report); a record whose contract defines its own representation, such as the
+`content`; a record whose contract defines its own representation, such as the
 workspace binding above, a [run result](../glossary.json#concept.run-result) or a grant, is checked against that contract's schema as it
 is.
 
@@ -153,9 +154,14 @@ is.
   checked value is returned as a copy, never shared with its caller.
 - **Paths and artifacts.** A field whose registered schema gives it `"format": "project-path"` is a
   canonical project-relative POSIX path: nonempty, no leading `/`, no backslash, colon or control
-  character, no empty, `.` or `..` component. An artifact is `{id, path, digest}`, its `path`
-  relative to the root its owner names and its digest `sha256:` and 64 lowercase hexadecimal digits
-  of the file's bytes, and a value whose artifact's bytes changed is refused as `stale_reference`.
+  character, no empty, `.` or `..` component. An **artifact** is an object with exactly the keys
+  `id`, `path` and `digest`: its `path` a project path relative to a root, its digest `sha256:` and
+  64 lowercase hexadecimal digits of the file's bytes. Checking a typed value never reads a file:
+  artifacts are made and verified by operations of their own over a root the caller chooses, since
+  only the caller knows in which worktree its record lives. Making one digests a file that must
+  exist below the root, and verifying a value walks it whole, treats every object with exactly
+  those three keys as an artifact and refuses as `stale_reference` one whose file is missing or
+  whose bytes changed ([Library](#library)).
   The file an artifact or a [file transaction](#file-transactions) names is reached below its root
   only through real directories: a path any of whose components is a symbolic link is refused,
   naming the path and the link, with `invalid_field` for an artifact and as a malformed list
@@ -225,7 +231,8 @@ caller also names the paths it allows and, optionally, a final check to run afte
 1. A malformed list (`invalid_proposal`), a path outside the allowed ones (`permission_denied`) or a
    file whose current bytes, or existence, do not match its `before_digest` (`stale_proposal`)
    refuses the transaction before any write; the match is checked again just before each write.
-2. Each file is written to a temporary file in its own directory, flushed and renamed into place.
+2. Each file is written to a temporary file named `.concorde-write-` and a random suffix in its own
+   directory, flushed and renamed into place.
 3. After the last write the final check runs. On success the transaction returns the written paths
    in order.
 4. When a write or the final check fails, every file written so far is restored to its original
@@ -245,7 +252,7 @@ What the caller then receives:
 
 These guarantees hold for failures the process observes. A killed process restores nothing: each
 file already renamed into place keeps its new content, every other file its original bytes, and
-temporary files may remain beside them.
+`.concorde-write-` temporary files may remain beside them, which a writer's recovery may remove.
 
 **Concurrency.** The digest checks catch a change that happened before the transaction, not one made
 during it: a writer that changes a target file between a check and its rename, or before a
@@ -260,7 +267,8 @@ The Spec tooling keeps its own copy of this mechanism, with its own error types
 ## Library
 
 The Kernel's library gives every part the same operations on these contracts. Each refuses with a
-Kernel error carrying a stable `code`, the JSON pointer or path concerned and a message; it never
+Kernel error carrying a stable `code`, the JSON pointer of the offending value or the path of the
+offending file, empty when the refusal concerns the whole input, and a message; it never
 writes an error link itself, since the level that called it decides why it cannot handle the
 refusal and builds its own link in the
 [error contract](tracing/contracts.md#contract.tracing.error), keeping the code and message as its
@@ -271,11 +279,14 @@ detail. Tracing's operations on trace nodes and locks are its child's
 | --- | --- | --- | --- |
 | Find the worktree | a directory | the real root of the Git worktree it lies in | `not_a_worktree` |
 | Read a binding | a worktree | its workspace binding, or none when the worktree has no binding file | `binding_unreadable` (the file cannot be read or is no JSON), `binding_invalid` (it breaks the contract, names a relative folder or a workspace folder that does not exist), `binding_misplaced` (its `root` is another worktree) |
-| Write a binding | a worktree and a binding | the file's path | `binding_invalid` |
+| Write a binding | a worktree and a binding | the file's path, having checked the binding against its contract and replaced any binding there in one rename | `binding_invalid` |
 | Register a type | an identity, a version and a schema | nothing | `duplicate_type`, `invalid_input` |
-| Make or check a typed value | a type identity and data, or a value and the type expected | a checked copy | `unknown_type`, `unsupported_version`, `incompatible_handoff`, `invalid_field`, `stale_reference` |
+| Make or check a typed value | a type identity and data, or a value and the type expected | a checked copy | `unknown_type`, `unsupported_version`, `incompatible_handoff`, `invalid_field` |
+| Make an artifact | a root, an identity and a path below the root | `{id, path, digest}` of the file | `stale_reference` (the file does not exist), `invalid_field` (a path that is not canonical or passes through a symbolic link) |
+| Verify artifacts | a root and a value | nothing | `stale_reference` (an artifact's file is missing or its bytes changed), `invalid_field` (an artifact's fields break the artifact format or its path passes through a symbolic link) |
 | Check a record | a value and its contract schema | nothing | `invalid_input` (the schema), `invalid_field` (the value), and the codes of an embedded typed value |
 | Apply a file transaction | a root, the changes, the allowed paths and an optional final check | the written paths | the outcomes of [File transactions](#file-transactions) |
+| Make a delivery message | a workspace's name and its goal | the message of a [delivery commit](#delivery-commit): the subject `concorde: deliver <workspace>`, a blank line and the goal without its surrounding whitespace, ending in one newline | nothing |
 | List deliveries | a worktree, its branch, its base commit and the workspace's name | the delivery commits on the first-parent history since the base, oldest first, each with how it fails to verify, nothing when it verifies | `git_failed`, naming the Git command and its output |
 | Take the [workspace lock](../glossary.json#concept.workspace-lock) | the `.concorde` a binding names, the workspace, the holder, how long to wait and whether to take a lock file its holder removed meanwhile | holds it until released | `workspace_busy` naming the holder, `workspace_retired` (its holder removed the file while the taker waited, as a close does) |
 | Take the merge lock | the primary worktree's `.concorde`, the holder, the task when there is one and how long to wait, 300 seconds by default | holds it until released | `merge_busy` naming the holder |

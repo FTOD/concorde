@@ -158,7 +158,7 @@
       "id": "concept.delivery-commit",
       "title": "Delivery commit",
       "owner": "module.kernel",
-      "definition": "A commit on a workspace's branch, since its base commit, whose subject is exactly `concorde: deliver <workspace>`, which alone marks the workspace delivered and which only a part's delivering command makes: Method's `delivery` after validating the workspace, or Coordination's `task deliver` where Method is not installed.",
+      "definition": "A commit on the first-parent history of a workspace's branch, since its base commit, whose subject is exactly `concorde: deliver <workspace>`, which marks the workspace delivered when it verifies by having exactly one parent; delivering commands such as Method's `delivery` and Coordination's `task deliver` make it.",
       "explanation": "specs/concorde/kernel/module.md#concept.delivery-commit"
     },
     {

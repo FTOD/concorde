@@ -224,6 +224,8 @@ class TypedDataTests(unittest.TestCase):
             {"oneOf": [STRING]},
             {"allOf": [STRING]},
             {"$defs": {"a": STRING}, "$ref": "#/$defs/a"},
+            {"$schema": "https://json-schema.org/draft/2020-12/schema", **STRING},
+            {"$id": "https://example.com/note", **STRING},
             obj({"a": {"type": ["string", "null"]}}),
             obj({"a": {"anyOf": [{"type": "null"}, {"allOf": [STRING]}]}}),
         ):

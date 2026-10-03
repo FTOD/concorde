@@ -13,7 +13,7 @@ which every Concorde installation of the method part registers.
 - GIVEN a task worktree whose binding names the workspace `severity`, the [Module](../glossary.json#concept.module) `module.issues`, its branch and base commit, the workspace folder `.concorde/tasks/severity/workspace/` of the primary worktree and that worktree's `.concorde`
 - WHEN the task level runs `concorde run implement --goal "…"` in that worktree
 - THEN the run works on `module.issues`, its steps computing the grant from that worktree's Specs
-- AND its result names the workspace `severity` and is saved in its [trace node](../glossary.json#concept.trace-node) `runs/<run-id>/` of that workspace folder, whose `trace.json` names the workspace, the Module and the Operation
+- AND its result names the workspace `severity` and is saved in its [trace node](../glossary.json#concept.trace-node) `runs/<run-id>/` of that workspace folder, whose `trace.json` names the workspace, the Module and the [Operation](../glossary.json#concept.operation)
 - AND its run lock and the [workspace lock](../glossary.json#concept.workspace-lock) are files under the primary worktree's `.concorde/locks/`
 - AND neither the binding nor any [task record](../glossary.json#concept.task-record) changes
 
@@ -38,7 +38,12 @@ which every Concorde installation of the method part registers.
 - THEN the reviewer runs in an [unbound checkout](../glossary.json#concept.unbound-checkout) of the primary worktree's `HEAD`, with the grant its steps compute from that checkout's Specs
 - AND the result has `workspace` null, names that `HEAD` as `commit` and is saved in the trace node `.concorde/unbound/<run-id>/` of the primary worktree
 - AND a later [unbound run](../glossary.json#concept.unbound-run) may admit it with `--input`
-- BUT an `--input` naming a run of a workspace is refused with `input_not_admissible`
+
+### scenario.execution.unbound-bound-input-refused — An unbound run refuses the output of a bound run
+
+- GIVEN a primary worktree with `module.a` and a run of a task's workspace that ended `ok`
+- WHEN the main agent runs `concorde run spec_review --modules module.a --input <that run>` in the primary worktree
+- THEN the run is refused with `input_not_admissible` before any step, its error naming the run as one of that workspace, not of no workspace
 
 ### scenario.execution.unbound-checkout — A merge during an unbound run changes nothing it examines
 
@@ -70,12 +75,6 @@ which every Concorde installation of the method part registers.
 - THEN the run is refused with `checkout_unavailable`, its cause naming the path Git does not ignore
 - AND no `.claude/` directory is created and the repository lists no worktree but its own
 
-### scenario.execution.unbound-read-only — An unbound run never launches a writing worker
-
-- GIVEN an [Operation](../glossary.json#concept.operation) that allows unbound runs
-- WHEN an unbound run of it asks for a `specify`, `implement` or `code-to-spec` worker without withholding every writable level of its grant
-- THEN no worker starts and the result is `failed` with `unbound_write`, the refusal [How an Operation runs its workers](../method/workers.md) defines, its actor naming the run as unbound
-
 ### scenario.execution.command-run — An execution command is a run without a worker
 
 - GIVEN a bound workspace
@@ -99,9 +98,15 @@ which every Concorde installation of the method part registers.
 - GIVEN a bound workspace whose lock a running `implement` run holds
 - WHEN `concorde delivery --wait 600` is started in the same workspace
 - THEN its run progress file shows the step `workspace-lock` and names the `implement` run in `waiting_for`
-- AND once the `implement` run releases the lock, the delivery runs its steps and ends with its own result
-- BUT a run whose `--wait` ends while the lock is still held is refused with `workspace_busy`, saying how long it waited
-- AND while it waits, its node, run progress file and, when detached, its runner's output lie in `lobby/<run-id>/` of the binding's `.concorde` and nothing of it lies in the workspace folder; once it holds the lock its node is in `runs/<run-id>/` of the workspace folder, and a run refused while waiting keeps its node and result in the lobby
+- AND while it waits, its node, run progress file and, when detached, its runner's output lie in `lobby/<run-id>/` of the binding's `.concorde` and nothing of it lies in the workspace folder
+- AND once the `implement` run releases the lock, the delivery's node moves to `runs/<run-id>/` of the workspace folder, and the delivery runs its steps and ends with its own result
+
+### scenario.execution.workspace-wait-timeout — A run whose wait runs out is refused
+
+- GIVEN a bound workspace whose lock a running `implement` run holds for longer than a second
+- WHEN `concorde task-validation --wait 0.3` is started in the same workspace
+- THEN once the 0.3 seconds have passed with the lock still held, the run is refused with `workspace_busy`, saying how long it waited and offering a longer `--wait <seconds>`
+- AND it runs no step, and its node and result stay in `lobby/<run-id>/` of the binding's `.concorde`, nothing of it lying in the workspace folder
 
 ### scenario.execution.workspace-wait-merge — A run waiting behind a merge names the merge
 
@@ -132,7 +137,13 @@ which every Concorde installation of the method part registers.
 - GIVEN a definition that admits no Modules itself, such as one of a part that reads no [Spec](../glossary.json#concept.spec)
 - WHEN it runs in a bound workspace naming `module.nowhere` with `--modules`, and again without `--modules`
 - THEN the runner reads no Spec: the first run works on `module.nowhere` and the second on every Module the binding names, registered or not
-- AND a definition that admits its Modules itself, as Method's do, refuses `module.nowhere` with `unknown_module`, its admission's link the cause of the run's `refused` link
+
+### scenario.execution.unknown-module-refused — A definition's admission refuses an unknown Module
+
+- GIVEN a definition that admits its Modules itself through Method's admission, as Method's `implement` does, and a bound workspace whose Specs register `module.a` but not `module.nowhere`
+- WHEN it runs there with `--modules module.a,module.nowhere`
+- THEN no step runs and the result is `failed` with the runner's `refused` link
+- AND the cause of that link is the admission's own `Method (Module admission)` link with the code `unknown_module`, naming `module.nowhere`
 
 ### scenario.execution.modules-removed — A binding whose Modules were all removed
 
@@ -175,6 +186,12 @@ which every Concorde installation of the method part registers.
 - THEN the result has status `failed` with `host-error` evidence naming the step and the error
 - AND the cause of its error is a `component` link with the exception's type, message and output, where it was raised and the traceback's path
 
+### scenario.execution.admission-error — A definition's admission raises an error
+
+- GIVEN a definition whose admission of the Modules raises an unexpected error, not a refusal
+- WHEN a run of it is started
+- THEN the run ends with one result of status `failed`, with `host-error` evidence naming the admission and the error, and no step runs
+
 ### scenario.execution.detached — A run started detached
 
 - GIVEN a bound workspace `severity`
@@ -182,7 +199,13 @@ which every Concorde installation of the method part registers.
 - THEN the command prints the run identity, the path of its future result and its lobby folder and exits with status 0 while the runner keeps running
 - AND the run's [run progress file](../glossary.json#concept.run-progress-file) exists when the command exits, in the lobby or, once the run entered its workspace, in its node
 - AND the runner writes the same [run result](../glossary.json#concept.run-result) and trace node as a run started without `--detach`, its output `host.out` moving with its node into the workspace folder
-- BUT a workspace already running something still gets a `failed` result naming the refusal, written in the printed lobby folder, where every reader that looks the run up by its identity finds it
+
+### scenario.execution.detached-busy — A detached run of a busy workspace is refused in the lobby
+
+- GIVEN a bound workspace whose lock a running run holds
+- WHEN the task level runs `concorde task-validation --detach` there
+- THEN the command announces the run with exit status 0, as for a free workspace
+- AND the run's `failed` result, naming the `workspace_busy` refusal, is written in the printed lobby folder, where every reader that looks the run up by its identity finds it, and nothing of it lies in the workspace folder
 
 ### scenario.execution.detached-namespace — A detached run dies with its PID namespace
 

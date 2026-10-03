@@ -27,9 +27,10 @@ the realization that keeps its own installed files bound.
 <a id="concept.build-manifest"></a>
 
 The **[build manifest](../glossary.json#concept.build-manifest)**, `generated/build-manifest.json`,
-is the build's record of the digest of every source it read and of every output it wrote. It lets
-the build tell what is stale, which `build --check` reports and the installer refuses, and remove a
-leftover output only while its bytes still match the previous manifest.
+is the build's record of the digest of every source it read and of every output it wrote, in the
+shape its [contract](contracts.md#contract.distribution.build-manifest) fixes. It lets the build
+tell what is stale, which `build --check` reports and the installer refuses, and remove a leftover
+output only while its bytes still match the previous manifest.
 
 ### The Protocol copy
 
@@ -78,7 +79,7 @@ reading that part's registration.
 | spec | [Spec tooling](../spec-tooling/module.md) | `spec-validation`, `registry`, `grant`, `init`, `docsite`, `spec-mcp`; its install services, which place the docsite template and bind the installed files; where it is installed Distribution places the Protocol copy |
 | kernel | [Kernel](../kernel/module.md) | `trace`; the `.concorde/locks/` ignore rule |
 | worker harness | [Worker harness](../worker-harness/module.md) | the pi runtime, the model discovery entry point |
-| execution | [Execution](../execution/module.md) | `run` and every execution command a part registers; the idle check over the [run locks](../glossary.json#concept.run-lock) |
+| execution | [Execution](../execution/module.md) | `run`; the idle check over the [run locks](../glossary.json#concept.run-lock) |
 | workflow | [Workflows](../workflows/module.md) | `workflow`; the `workflow_step` and `workflow_report` tools; the rendered workflows and their permission rules |
 | issues | [Issues](../issues/module.md) | `issues`; the `issue_*` tools |
 | coordination | [Coordination](../coordination/module.md) | `task`; the `task_*`, `task_merge`, `locks`, `register_wait` and `trace_show` tools, and `run_result` where the execution part is installed; the main-session guidance; the open tasks an update reports |
@@ -93,8 +94,9 @@ Spec tooling commands, `issues` the Issues commands, `trace` the Tracing command
 Operation and `workflow` a workflow step, and `build`, `protocol-manifest`, `update` and
 `project-mcp` the **distribution commands**, the only ones Distribution owns itself. The
 [execution commands](../glossary.json#concept.execution-command), runs without a worker, are named
-by the part that provides them, such as Method's `task-validation`, `delivery` and `scaffold`, and
-reach the Execution runner through the execution part's registration.
+and registered by the part that provides them, such as Method's `task-validation`, `delivery` and
+`scaffold`, whose entries run them through the Execution runner
+([Commands](../execution/commands/module.md)).
 
 ### The project MCP server
 
@@ -111,58 +113,10 @@ registering code and passes the call, with the session's provenance, to the entr
 registration names, whose answer or refusal is the tool's. A tool of a part the project has not
 installed is refused with `part_missing` naming the part, as a command is, and a tool whose
 registration requires a part that is not installed, such as Coordination's `run_result` without the
-execution part, is not presented. The host's own promises are these:
-
-- **Current code.** The server process lives as long as its Claude Code session, which may be hours,
-  while Concorde itself changes under it: a task merge in Concorde's own checkout, or
-  `concorde update` in an installed project. Code loaded once would then keep answering with the
-  rules and record formats it started with, and refuse the records the new code writes. So the
-  server runs none of its tools itself. Each call runs `concorde project-mcp --call <tool>` with the
-  `concorde` of the primary worktree as it is when the call arrives, its `.concorde/bin/concorde`
-  or, in Concorde's source checkout, its `scripts/concorde.py`, as a process of its own, unless the
-  tool's registration names the session's own worktree instead, as `workflow_step` does; the call's
-  arguments and the session's provenance go to it as one JSON object, and its answer or refusal is
-  the tool's. A call whose process gives no answer is refused with the server's own `call_failed`
-  link, naming the command and what it printed. The tools, how each is served and the server's
-  instructions, its own followed by the sentence each installed part registers, come from
-  `concorde project-mcp --tools` of the current code. The server routes a call as the last such
-  listing says how the tool is served: in which worktree its process runs, whether it hands on
-  long work and whether it is answered on a thread of its own. The call's process, the current
-  code, checks that routing against its own registration of the tool first and, when they differ,
-  answers how it serves every tool instead of running anything, and the server routes the call
-  again that way, so an update that changes only how a tool is served takes effect at the next
-  call. Each answer also says which tools the current code has; when they differ from those the
-  server last listed to the session, the server tells its session that its tools changed, and
-  Claude Code lists them again: a listing the server fetches only to learn how a tool is served is
-  not one the session was given. Only the server's own session code, its few
-  protocol messages and its instructions, stays what the session started with until the next
-  session.
-- **Locks handed to the work.** A tool whose registration says it starts long work, such as
-  Coordination's `task_merge`, never waits for a lock: the call's process takes the locks the work
-  needs at once or is refused at once naming the holder, and when it gets them it replaces itself
-  with the command doing the work, which keeps them, since a `flock` belongs to the open file
-  description that survives the change of program
-  ([Handing a lock on](../kernel/tracing/contracts.md#handing-a-lock-on)). The server never holds a
-  lock, so a lock belongs to the work and is released when the work ends, however it ends, even
-  when the session and its server end first.
-- **Watching and waking.** A tool may ask the server to watch a process, such as a wait for a task,
-  a run or a lock that Coordination's `register_wait` registers, or the long work a tool started;
-  the server wakes its session with a Claude Code channel event carrying that process's answer when
-  it ends. The watched process ends with the server. Claude Code delivers a server's
-  `notifications/claude/channel` only to an interactive session started with that server as a
-  channel, a research preview that needs `--dangerously-load-development-channels server:concorde`,
-  Anthropic authentication and an organization that has not disabled channels; a background session
-  is never woken by them. A server cannot learn from Claude Code whether it is a channel, so it reads
-  it from the command line of the interactive `claude` above it, one whose standard input is a
-  terminal, unless the environment variable `CONCORDE_CHANNEL` is `1` or `0`, which then decides,
-  as the configuration a task session's server is started with sets it to `0`; when it has none,
-  the tool returns the equivalent blocking `concorde` command for the session's background Bash
-  instead, which wakes the session when it ends.
-
-The server answers calls that wait, each on a thread of its own, so the session's other calls are
-not held up meanwhile. Using it is recommended, not enforced: the `concorde` command and the server
-take the same locks, so both paths see each other's holders. [Workers](../glossary.json#concept.worker)
-never receive it: they launch with an empty MCP configuration.
+execution part, is not presented. How the server serves a call, keeps it on the current code,
+hands locks to long work and wakes its session is described in [Serving a
+call](#serving-a-call), and its exact session and call protocol in its
+[contract](contracts.md#project-mcp-server).
 
 ## Overview
 
@@ -347,7 +301,7 @@ commands of the installed parts.
 | `docsite --propose` or `--apply` | proposes or applies the docsite scaffold | spec, [Views](../spec-tooling/views/module.md) |
 | `grant --modules <ids> --type <task type> [--root <worktree>]` | prints a [task type](../glossary.json#concept.task-type)'s grant | spec, [Spec core](../spec-tooling/spec/module.md) |
 | `spec-mcp` | runs the stdio MCP server rooted at `CLAUDE_PROJECT_DIR` or the client's root; it prints no envelope | spec, [Spec MCP server](../spec-tooling/spec-mcp/module.md) |
-| `project-mcp [--name <name>]` | runs the stdio [project MCP server](../glossary.json#concept.project-mcp-server) of the primary worktree; it prints no envelope | distribution, this Module, serving the tools the installed parts register |
+| `project-mcp [--name <name>]` | runs the stdio [project MCP server](../glossary.json#concept.project-mcp-server) of the primary worktree, `<name>` being the name it is registered under, `concorde` by default, which a channel flag names as `server:<name>`; it prints no envelope | distribution, this Module, serving the tools the installed parts register |
 | `init --propose --name <name>` or `--apply --proposal <file>` | proposes or applies a project's first [Spec](../glossary.json#concept.spec); after an apply Distribution adds the glossary import to the `CLAUDE.md` block | spec, [Spec core](../spec-tooling/spec/module.md), with Distribution's glossary import |
 | `task open`, `list`, `show`, `close`, `merge`, `escalate` or `wait` | opens, lists, shows, closes, merges or escalates tasks, or waits for a task, run or lock; prints the task command's own JSON | coordination, [Tasks](../coordination/tasks/module.md) |
 | `run <operation>` | runs one [Operation](../glossary.json#concept.operation) in the workspace of the current worktree or, when the Operation allows it, unbound; prints the [run result](../glossary.json#concept.run-result) | execution, [Execution](../execution/module.md), running the definitions the installed parts register with [Operations](../execution/operations/module.md) |
@@ -359,11 +313,12 @@ commands of the installed parts.
 | `protocol-manifest [--write] [--bind-project]` | [reconciles the Protocol manifest](#reconciling-the-protocol-manifest) | distribution |
 | `update [--from <checkout>] [--parts <part>[,<part>…]]` | updates the installed Concorde, adding the parts `--parts` names, as described below; prints its [update result](contracts.md#contract.distribution.update-result) | distribution |
 
-Every command but `spec-mcp`, `project-mcp`, `task`, `run`, the execution commands, `workflow`, `issues`, `trace`
-and `update` prints exactly one JSON envelope and exits with its
-status, even when refused ([requirements](requirements.md#req.distribution.one-envelope)); those
-route to their owners, which define their own output and exit codes, except `update`, which prints
-its [update result](contracts.md#contract.distribution.update-result) or its
+A command registered with `output` `envelope`, today every distribution and Spec tooling command
+but `spec-mcp`, `project-mcp` and `update`, prints exactly one JSON envelope and exits with its
+status, even when refused ([requirements](requirements.md#req.distribution.one-envelope)). A
+command registered with `own`, such as `task`, `run`, the execution commands, `workflow`, `issues`
+and `trace`, prints what its owner defines, with its owner's exit codes, and `update` prints its
+[update result](contracts.md#contract.distribution.update-result) or its
 [error link](requirements.md#req.distribution.installer-error-links).
 
 The worker harness part's standalone Workers entry point
@@ -379,19 +334,112 @@ The command runs the Framework copy of the worktree it belongs to; a task worktr
 own, since Git ignores it, unless the task reinstalled Concorde there, so its command runs the
 primary worktree's copy, found through Git's common directory.
 
+### Serving a call
+
+The [project MCP server](#the-project-mcp-server) is a host for the tools of the installed parts.
+A call travels from the session through the server to a fresh process of the current Concorde,
+which calls the entry the tool's registration names and answers; a tool that starts long work
+becomes that work, and the server watches what outlives the call and wakes the session when it
+ends. [The contract](contracts.md#project-mcp-server) fixes every message exactly.
+
+```d2 illustrative
+direction: right
+session: Claude Code session
+server: "Project MCP server\nconcorde project-mcp"
+call: "Call process\nconcorde project-mcp --call\nof the current Concorde"
+entry: "The tool's entry\nin its part's code"
+work: "Long work, such as a merge:\nthe call process after exec"
+wait: "Wait process,\nsuch as concorde task wait"
+session -> server: "tools/call"
+server -> call: "the call and provenance\non standard input"
+call -> entry: "the call object"
+entry -> call: "value or error, with\nwatch, handover or work"
+call -> server: "one answer line,\nor reroute"
+server -> session: "the tool's result"
+call -> work: "handover: keeps\nthe locks it took" {style.stroke-dash: 3}
+server -> wait: "watch"
+wait -> server: "its answer"
+work -> server: "its exit and output"
+server -> session: "channel event"
+```
+
+The host's own promises are these:
+
+- **Current code.** The server process lives as long as its Claude Code session, which may be hours,
+  while Concorde itself changes under it: a task merge in Concorde's own checkout, or
+  `concorde update` in an installed project. Code loaded once would then keep answering with the
+  rules and record formats it started with, and refuse the records the new code writes. So the
+  server runs none of its tools itself. Each call runs `concorde project-mcp --call <tool>` with the
+  `concorde` of the primary worktree as it is when the call arrives, its `.concorde/bin/concorde`
+  or, in Concorde's source checkout, its `scripts/concorde.py`, as a process of its own, unless the
+  tool's registration names the session's own worktree instead, as `workflow_step` does; the call's
+  arguments and the session's provenance go to it as one JSON object, and its answer or refusal is
+  the tool's. A call whose process gives no answer, or none within its time, is refused with the
+  server's own `call_failed` link, naming the command and what it printed. The tools, how each is served and the server's
+  instructions, its own followed by the sentence each installed part registers, come from
+  `concorde project-mcp --tools` of the current code. The server routes a call as the last such
+  listing says how the tool is served: in which worktree its process runs, whether it hands on
+  long work and whether it is answered on a thread of its own. The call's process, the current
+  code, checks that routing against its own registration of the tool first and, when they differ,
+  answers how it serves every tool instead of running anything, and the server routes the call
+  again that way, so an update that changes only how a tool is served takes effect at the next
+  call. Each answer also says which tools the current code has; when they differ from those the
+  server last listed to the session, the server tells its session that its tools changed, and
+  Claude Code lists them again: a listing the server fetches only to learn how a tool is served is
+  not one the session was given. Only the server's own session code, its few
+  protocol messages and its instructions, stays what the session started with until the next
+  session.
+- **Locks handed to the work.** A tool whose registration says it starts long work, such as
+  Coordination's `task_merge`, never waits for a lock: the call's process takes the locks the work
+  needs at once or is refused at once naming the holder, and when it gets them it replaces itself
+  with the command doing the work, which keeps them, since a `flock` belongs to the open file
+  description that survives the change of program
+  ([Handing a lock on](../kernel/tracing/contracts.md#handing-a-lock-on)). The server never holds a
+  lock, so a lock belongs to the work and is released when the work ends, however it ends, even
+  when the session and its server end first.
+- **Watching and waking.** A tool may ask the server to watch a process, such as a wait for a task,
+  a run or a lock that Coordination's `register_wait` registers, or the long work a tool started;
+  the server wakes its session with a Claude Code channel event carrying that process's answer when
+  it ends. A wait ends with the server; long work goes on and keeps its locks until it ends, the
+  server only ceasing to watch it. Claude Code delivers a server's
+  `notifications/claude/channel` only to an interactive session started with that server as a
+  channel, a research preview that needs `--dangerously-load-development-channels server:concorde`,
+  Anthropic authentication and an organization that has not disabled channels; a background session
+  is never woken by them. A server cannot learn from Claude Code whether it is a channel, so it reads
+  it from the command line of the interactive `claude` above it, one whose standard input is a
+  terminal, unless the environment variable `CONCORDE_CHANNEL` is `1` or `0`, which then decides,
+  as the configuration a task session's server is started with sets it to `0`; when it has none,
+  the tool returns the equivalent blocking `concorde` command for the session's background Bash
+  instead, which wakes the session when it ends.
+
+The server answers calls that wait, each on a thread of its own, so the session's other calls are
+not held up meanwhile. Using it is recommended, not enforced: the `concorde` command and the server
+take the same locks, so both paths see each other's holders. [Workers](../glossary.json#concept.worker)
+never receive it: they launch with an empty MCP configuration.
+
 ### Installing into a project
 
-The developer runs `python3 scripts/install-concorde.py <project> [--parts <part>[,<part>…]]`
-from a built Concorde checkout. `--parts` names the parts to install, by the names of the
+The developer runs, from a built Concorde checkout:
+
+```text
+python3 scripts/install-concorde.py <project> [--parts <part>[,<part>…]] [--develop]
+    [--without-d2] [--without-pi-runtime] [--without-dependencies] [--update]
+```
+
+`--parts` names the parts to install, by the names of the
 [parts table](#parts-and-their-registrations); the installer adds every part they depend on, and
 installs every part when the option is left out. Distribution itself is installed with any part.
+`--develop` makes a [develop install](#uses-dogfooding); `--without-d2`, `--without-pi-runtime`
+and `--without-dependencies` leave out the pinned `d2`, the [pi runtime](#the-pi-runtime) and
+Concorde's Python dependencies, as steps 2 and 4 below describe; and `--update` runs the installer
+in [update mode](#updating-an-installed-concorde), as `concorde update` does.
 The installer first decides everything that could refuse the install and only then writes, so a refusal among these checks leaves the project as it was. On a
 project where every check passes, it goes through these steps in order:
 
 1. **It checks, writing nothing.** It refuses a directory that is not a project
    (`invalid_project`); a part name the package does not build, among those asked for or those
    they depend on (`unknown_part`,
-   [requirements](requirements.md#req.distribution.parts-installable)); a stale build
+   [requirements](requirements.md#req.distribution.unknown-part-refused)); a stale build
    (`stale_build`), which includes a stale render of the
    [main-session guidance](../glossary.json#concept.main-session-guidance); a docsite template
    that [Views](../spec-tooling/views/module.md)' inventory rule rejects
@@ -400,7 +448,7 @@ project where every check passes, it goes through these steps in order:
    render of the guidance (`stale_build`,
    [requirements](requirements.md#req.distribution.installer-fresh-guidance)); with
    `--develop`, a source that Dogfooding's check refuses; a project in which an installed part reports
-   work running (`concorde_busy`, described below); a `concorde.json` that names no Python requirement
+   work running (`concorde_busy`, described below) or whose idle check fails (`part_failed`); a `concorde.json` that names no Python requirement
    (`invalid_descriptor`); a `.claude/settings.json` that is not a JSON object with an optional
    `permissions.allow` list (`settings_invalid`,
    [checked first](requirements.md#req.distribution.installer-settings-checked)); a `.mcp.json`
@@ -680,7 +728,10 @@ the new Concorde installed with the Protocol binding old or new and without this
 a project that was not marked before has no mark, and running the update again completes it, but
 its mark then names the Concorde just installed as the one before; a project already marked keeps
 its earlier mark, whose before-state the completed update keeps too. A killed update may leave
-`.concorde/update.json.partial` behind. When the
+`.concorde/update.json.partial` behind. An update whose coordination part fails to report its open
+tasks is refused with `part_failed` once it has installed, rebound and marked: the new Concorde is
+in place and the project marked, and only the result's list of open tasks is lost, which
+`concorde task list` shows. When the
 installed command no longer runs because the failure left its Framework copy or environment
 incomplete, the update is run again with `install-concorde.py --update` from the checkout.
 
@@ -706,7 +757,8 @@ something:
 | `invalid_docsite_template` | Views' inventory rule rejects the package's docsite template | `input` | no |
 | `develop_source_not_repository`, `develop_source_not_primary`, `develop_source_detached`, `develop_source_dirty` | [Dogfooding's](#uses-dogfooding) source check refuses the checkout of a develop install | `input` | no |
 | `develop_source_unreadable` | Git cannot run to check the checkout of a develop install | `environment` | no |
-| `concorde_busy` | a run's runner holds its run lock | `environment` | no |
+| `concorde_busy` | an installed part's idle check reports work running, in Concorde a run whose runner holds its run lock | `environment` | no |
+| `part_failed` | an installed part's `idle_check` or `after_update` entry raises or answers what the [registration contract](contracts.md#contract.distribution.part-registration) does not allow, refused before any write for `idle_check` and after the update's install and mark for `after_update` | `environment` | for `after_update` |
 | `invalid_descriptor` | `concorde.json` names no Python requirement or pins no `d2` release, or the pi runtime's lockfile pins no runtime | `input` | no |
 | `settings_invalid` | `.claude/settings.json` is not a JSON object with an optional `permissions.allow` list | `input` | no |
 | `mcp_config_invalid` | `.mcp.json` is not a JSON object with an optional `mcpServers` object | `input` | no |
@@ -808,22 +860,43 @@ installed from in develop mode, and the guidance a develop install adds. Dogfood
 the installer reaches it through the entry the package descriptor names under `develop.check`.
 With `--develop`, and on every update of a develop install, the installer calls its source check
 before writing anything
-and refuses with its code and message when the check refuses, then adds its rendered guidance to
-the skill and the `CLAUDE.md` block and records the mode and the checked commit in the receipt.
+and refuses with its code and message when the check refuses, then, where the coordination and
+issues parts are installed, adds its rendered guidance to the skill and the `CLAUDE.md` block
+([guidance composition](#guidance-composition)), and records the mode and the checked commit in the
+receipt.
+
+<a id="uses-execution"></a>
+
+**Execution**, in the execution part, is an
+[optional integration](../glossary.json#concept.optional-integration) reached through that part's
+idle check. Distribution never reads a run lock itself, but it relies on what the check reports
+meaning a run still running: a [run](../glossary.json#concept.run) whose runner holds its
+[run lock](../glossary.json#concept.run-lock), found through its
+[run progress file](../glossary.json#concept.run-progress-file) wherever the
+[run store](../glossary.json#concept.run-store) keeps it, the lobby included, so that a busy
+refusal names exactly the runs whose code an install would replace under them. Where the execution
+part is installed, an install is refused while such a run runs; without it no part reports a run,
+and the installer finds the project idle.
+
+<a id="uses-tasks"></a>
+
+**Tasks**, in the coordination part, is an optional integration too. Distribution relies on its
+promise that, while an update's mark is in the primary worktree, every `task merge` runs
+`concorde spec-validation` on the merged result
+([requirements](../coordination/tasks/requirements.md#req.tasks.merge-update-validated)), which is
+how the mark stops a merge until the project validates; and after an update it lists the open
+tasks only from what the coordination part's `after_update` entry reports. Without the coordination
+part there is no task to merge or list, and the update result's `open_tasks` is empty.
 
 Every other part reaches Distribution only through its registration, and Distribution relies on
 nothing of it but what the registration says. It routes `task`, `run`, the execution commands,
 `workflow`, `issues` and `trace` to the part that registered each, handing it the rest of the
 command line, and that part defines its own output and exit codes; it names no Operation's or
 command's meaning and passes no task. It places the workflows the workflow part renders, with the
-permission rules their step agents need, refusing stale renders like any other build output; it
-places the worker harness part's pi runtime and discovery entry point, and writes neither the
+permission rules their step agents need, refusing stale renders like any other build output; and
+it places the worker harness part's pi runtime and discovery entry point, and writes neither the
 [worker configuration](../glossary.json#concept.worker-configuration) nor the
-[model map](../glossary.json#concept.model-map); it asks the execution part's idle check rather
-than reading run locks itself; and it lists open tasks after an update only from what the
-coordination part reports. A `task merge` runs `concorde spec-validation` in the primary worktree as
-its default check where the spec part is installed, which is how an update's mark stops a merge
-until the project validates.
+[model map](../glossary.json#concept.model-map).
 
 ### Inside
 
@@ -890,9 +963,9 @@ which is still a develop install in its source check and receipt.
 
 The **command entry points** are thin: they load the registrations of the installed parts, take the
 global `--project-root`, load the installed parts' registering code and call the entry the
-registering part names for the command with the rest of the command line, and, for the distribution
-and Spec tooling commands other than `spec-mcp` and `update`, print the shared envelope the entry
-answers and exit with its status, so a command's meaning changes only in its owner.
+registering part names for the command with the rest of the command line, and, for a command
+registered with `output` `envelope`, print the shared envelope the entry answers and exit with its
+status, so a command's meaning changes only in its owner.
 The commands routed to other owners keep their owners' output unchanged. Two Spec core commands
 are the exceptions, where Distribution adds a step of its own to its owner's work:
 

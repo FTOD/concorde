@@ -103,6 +103,16 @@
         "kind": "document",
         "target": "document.delivery.requirements",
         "reason": "Delivery's readiness and marking rules, which req.concorde.delivery-separate and req.concorde.delivery-commit-by-delivery rely on"
+      },
+      {
+        "kind": "document",
+        "target": "document.tasks.requirements",
+        "reason": "Tasks' merge-check rules req.tasks.merge-default-check and req.tasks.merge-update-validated, which the root's account of self-validation in Concorde's own checkout relies on"
+      },
+      {
+        "kind": "document",
+        "target": "document.tasks.module",
+        "reason": "Tasks' audit of the working trees outside a task worktree, which the root's agent-harness table cites for what a task session's boundary leaves to the merge"
       }
     ],
     "participates": [],

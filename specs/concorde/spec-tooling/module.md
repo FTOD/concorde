@@ -41,8 +41,12 @@ Each child has its own entry point:
 | Spec MCP server (stdio) | Spec MCP server | which Modules exist, what one selects, whom a change concerns, what grant a task type gives |
 | Published site | Views | the Specs as pages for people |
 
-The spec part registers these commands, the Spec MCP server and its guidance with Distribution
-through its [part registration](../glossary.json#concept.part-registration), together with its
+<a id="uses-distribution"></a>
+
+The spec part registers these commands, the Spec MCP server and its guidance with
+[Distribution](../distribution/module.md), the installation host present in every installation,
+through its [part registration](../glossary.json#concept.part-registration), the plain data whose
+shape [Distribution's contract](../distribution/contracts.md#part-registration) fixes, together with its
 install contribution: the [Protocol copy](../glossary.json#concept.protocol-copy) under
 `.concorde/protocol/`, the project configuration's
 [Protocol binding](../glossary.json#concept.protocol-binding) and the initialization of a project
@@ -91,8 +95,12 @@ alone, so it depends on no part. It keeps its own copy of the few data utilities
 with the Kernel — [typed values](../glossary.json#concept.typed-value),
 [file transactions](../glossary.json#concept.file-transaction), schema checking and digests — in
 its own code and with its own error types, accepting the duplication so that installing it pulls in
-nothing else. The two copies agree on the formats the Kernel's contracts give, not on code. What
-it hands to other parts, above all a grant, leaves it as plain data in a format the receiver owns.
+nothing else. The two copies agree on the formats the Kernel's contracts give, not on code, which
+is why Spec core's `uses` of the Kernel is a reliance on formats alone. What it hands to other
+parts leaves it as plain data: a [grant](../glossary.json#concept.grant) is Spec core's own record
+([Grants](spec/contracts.md#grants)), which Method freezes and projects into the
+[grant input](../worker-harness/workers/contracts.md#grant-input) the worker harness owns, so the
+spec part never learns the harness's format.
 
 ### Split by what each child depends on
 
@@ -130,12 +138,35 @@ The **Part entries** are the spec part's
 [part registration](../glossary.json#concept.part-registration) and the code it names for
 Distribution: the `concorde` commands `spec-validation`, `registry`, `grant` and `init`, which call
 Spec core, `docsite`, which calls Views' scaffold, and `spec-mcp`, which runs the Spec MCP server,
-each answering Spec core's shared envelope for Distribution to print except `spec-mcp`, which owns
-standard input and output; and the install services, which place the docsite template Views'
-inventory rule selects and keep an installed project's files bound through Spec core's
-initializer. They belong to the part rather than to one child because they call all three, so
-that Spec core imports neither Views nor the Spec MCP server
-([req.spec.no-owner-imports](spec/requirements.md#req.spec.no-owner-imports)).
+each answering Spec core's [shared envelope](spec/contracts.md#validation-result) for Distribution to
+print except `spec-mcp`, which owns standard input and output; and the install services, which place
+the docsite template Views' inventory rule selects and, after every install or update, keep the
+installation realization's exact file entries in step with the installation record through Spec
+core's `bind_installation` ([Initialization](spec/contracts.md#initialization)). They belong to the
+part rather than to one child because they call all three, so that Spec core imports neither Views
+nor the Spec MCP server ([req.spec.no-owner-imports](spec/requirements.md#req.spec.no-owner-imports)).
+
+```d2 illustrative
+direction: right
+distribution: Distribution {
+  command: "concorde command"
+  installer: installer
+  composition: guidance composition
+}
+part: Spec tooling {
+  entries: Part entries
+  guidance: Guidance
+  core: Spec core
+  mcp: Spec MCP server
+  views: Views
+  entries -> core: "spec-validation, registry,\ngrant, init, bind"
+  entries -> views: "docsite, template"
+  entries -> mcp: spec-mcp
+}
+distribution.command -> part.entries: routes a command
+distribution.installer -> part.entries: "install services"
+part.guidance -> distribution.composition: sections
+```
 
 ### Guidance
 

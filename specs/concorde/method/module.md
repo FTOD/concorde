@@ -339,13 +339,28 @@ what it wrote; it never decides which Modules to create.
 
 ### What Method relies on
 
+<a id="uses-distribution"></a>
+
+**Distribution**, the installation host present in every installation, installs the method part from
+its [part registration](../glossary.json#concept.part-registration), the plain data its
+[registration contract](../distribution/contracts.md#contract.distribution.part-registration)
+defines: the modules that register its Operations and execution commands, `task-validation`,
+`delivery` and `scaffold`, the brownfield workflow's script, its guidance sections and LangGraph, the
+Python dependency its panels import. Method relies on Distribution loading those modules before it
+routes `concorde run` or a [workflow step](../glossary.json#concept.workflow-step) to the execution
+part, and on a command of a part that is
+not installed being refused with `part_missing`, as the [command line](../distribution/module.md#the-command-line)
+says, which is how its optional integrations tell an absent part; it imports nothing of Distribution.
+
 <a id="uses-spec"></a>
 
 **Spec core** loads the workspace's Specs, resolves the named Modules, and computes each worker's
 grant and context identity. Method's steps check the Modules a run names against the registry in
 their admission, rely on Spec core computing the same grant from the same Specs, and freeze it before
-any worker starts. A Spec that cannot be loaded is refused rather than partially read, ending the run
-`failed`, unless the definition diagnoses the Specs itself, as `task-validation` and `delivery` do.
+any worker starts, through the library of [Spec core's contracts](../spec-tooling/spec/contracts.md).
+A Spec that cannot be loaded is refused rather than partially read, ending the run `failed` with
+Spec core's [error record](../spec-tooling/spec/errors.md#contract.spec.error) translated into the
+run's link, unless the definition diagnoses the Specs itself, as `task-validation` and `delivery` do.
 
 <a id="uses-workers"></a>
 
@@ -408,7 +423,9 @@ stays in the run result with its tier, and the result says that the findings wer
 Issues. They reach Issues only through the issues part's
 [bookkeeping command](../issues/interface.md#bookkeeping-command), `concorde issues` of the worktree
 the run started in, JSON in and out (`list`, `show`, and `report --provenance` with the provenance
-the Operation vouches for), never through its code; the issues part counts as not installed when
+the Operation vouches for), writing each finding as an
+[Issue report](../issues/interface.md#contract.issues.report) and reading back its
+[receipt](../issues/interface.md#contract.issues.receipt), never through its code; the issues part counts as not installed when
 that `concorde` refuses `issues` as a command of a part the project has not installed, printing
 `{"error": <link>}` with the code `part_missing` and exiting with status 1, as
 [Distribution](../distribution/module.md#the-command-line) does.
