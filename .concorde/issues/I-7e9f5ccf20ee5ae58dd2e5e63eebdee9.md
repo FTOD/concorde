@@ -49,6 +49,40 @@
         "change_id": "parts-review",
         "head": "43871f64ab7162b4b32fd566e2f81ec15aba06d2"
       }
+    },
+    {
+      "id": "sha256:cedcba55e163bfc78940b866e2684888a444b726946eb13ec34ba135879afa86",
+      "created_at": "2026-10-03T05:19:20.508060+00:00",
+      "report": {
+        "issue_id": "I-7e9f5ccf20ee5ae58dd2e5e63eebdee9",
+        "report_key": "verify/module.understanding/2",
+        "tier": "obvious-fix",
+        "severity": "low",
+        "type": "bug",
+        "subtype": null,
+        "owner_target_id": "module.understanding",
+        "title": "plan_review accepts duplicate finding ids from its reviewer",
+        "description": "FINDING_SCHEMA checks only the F<n> pattern and inconsistencies() never checks that the reviewer's current finding ids are distinct. When a reviewer emits two findings named F1, the next iteration's iteration_problems() and inconsistencies() count answers and responses per id, so one answer and one response to F1 pass for both findings. The obvious fix is to reject duplicate ids as an inconsistent review.",
+        "impact": "Reachable only when the reviewer misbehaves by repeating an id; then one of two findings can be settled without its own answer. The plan is reviewed afresh in the next iteration, so the problem is likely to resurface.",
+        "basis": "contract.understanding.plan-review (each finding has a run-local id; every finding of the previous iteration answered exactly once).",
+        "evidence": [
+          {
+            "path": "src/concorde/method/understanding/plan_review.py",
+            "description": "FINDING_SCHEMA, iteration_problems, inconsistencies"
+          }
+        ],
+        "expected_revision": "sha256:38a2d56e453fb1924a6fda0673ea3597dff9e1937624eb24b25307068eedbd0d"
+      },
+      "source": {
+        "invocation_id": "cli-e02e908f-eb4a-4897-bfe4-830fe2b21df7",
+        "agent": "main-agent",
+        "operation": "issues",
+        "phase": "report",
+        "target_id": "module.understanding",
+        "context_id": "sha256:1d5cfc2a2a7ba74b163c0a7da2044601cb98d3bb39fa931e4f515946b2ee70f4",
+        "change_id": "parts-review",
+        "head": "43871f64ab7162b4b32fd566e2f81ec15aba06d2"
+      }
     }
   ],
   "dispositions": []
