@@ -138,12 +138,35 @@ The **Part entries** are the spec part's
 [part registration](../glossary.json#concept.part-registration) and the code it names for
 Distribution: the `concorde` commands `spec-validation`, `registry`, `grant` and `init`, which call
 Spec core, `docsite`, which calls Views' scaffold, and `spec-mcp`, which runs the Spec MCP server,
-each answering Spec core's shared envelope for Distribution to print except `spec-mcp`, which owns
-standard input and output; and the install services, which place the docsite template Views'
-inventory rule selects and keep an installed project's files bound through Spec core's
-initializer. They belong to the part rather than to one child because they call all three, so
-that Spec core imports neither Views nor the Spec MCP server
-([req.spec.no-owner-imports](spec/requirements.md#req.spec.no-owner-imports)).
+each answering Spec core's [shared envelope](spec/contracts.md#validation-result) for Distribution to
+print except `spec-mcp`, which owns standard input and output; and the install services, which place
+the docsite template Views' inventory rule selects and, after every install or update, keep the
+installation realization's exact file entries in step with the installation record through Spec
+core's `bind_installation` ([Initialization](spec/contracts.md#initialization)). They belong to the
+part rather than to one child because they call all three, so that Spec core imports neither Views
+nor the Spec MCP server ([req.spec.no-owner-imports](spec/requirements.md#req.spec.no-owner-imports)).
+
+```d2 illustrative
+direction: right
+distribution: Distribution {
+  command: "concorde command"
+  installer: installer
+  composition: guidance composition
+}
+part: Spec tooling {
+  entries: Part entries
+  guidance: Guidance
+  core: Spec core
+  mcp: Spec MCP server
+  views: Views
+  entries -> core: "spec-validation, registry,\ngrant, init, bind"
+  entries -> views: "docsite, template"
+  entries -> mcp: spec-mcp
+}
+distribution.command -> part.entries: routes a command
+distribution.installer -> part.entries: "install services"
+part.guidance -> distribution.composition: sections
+```
 
 ### Guidance
 
