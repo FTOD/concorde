@@ -34,14 +34,25 @@ The formats are the [contracts](contracts.md).
 - WHEN the Kernel lists the deliveries of workspace `retry` on the branch since the base
 - THEN it lists exactly the two commits after the base with the subject `concorde: deliver retry`, oldest first
 - AND each verifies, having exactly one parent
-- AND a [delivery commit](../glossary.json#concept.delivery-commit) made with the Kernel's message carries the workspace's goal as its body
+
+### scenario.kernel.delivery-message — A delivery message carries the subject and the goal
+
+- GIVEN the workspace `retry` with the goal `Limit HTTP retries to three attempts.` followed by a newline
+- WHEN the Kernel makes its delivery message and a [delivery commit](../glossary.json#concept.delivery-commit) is made with it
+- THEN the commit's subject is `concorde: deliver retry`
+- AND its body is the goal without the trailing newline
 
 ### scenario.kernel.delivery-merge-unverified — A merge commit with the subject does not verify
 
 - GIVEN a branch whose head is a merge commit given the subject `concorde: deliver retry`
 - WHEN the Kernel lists the deliveries of workspace `retry`
 - THEN it lists the merge commit, saying that it has two parents instead of one, so it does not verify
-- AND a revision Git cannot resolve is refused with `git_failed`, naming the Git command and its output
+
+### scenario.kernel.deliveries-unresolvable — A branch Git cannot resolve is refused
+
+- GIVEN a repository with no branch `missing`
+- WHEN the Kernel lists the deliveries of workspace `retry` on the branch `missing`
+- THEN it refuses with `git_failed`, naming the Git command and its output
 
 ## Typed values
 
@@ -58,7 +69,20 @@ The formats are the [contracts](contracts.md).
 - GIVEN schemas using `oneOf`, local `$defs`, a `$ref` to `#/$defs/note`, a list of types, the format `email` and `minLength` greater than `maxLength`
 - WHEN each is registered as a type
 - THEN each is refused with `invalid_input`, and none of the types is registered
-- AND a record checked against a contract schema may use local `$defs` with `{"$ref": "#/$defs/<name>"}`, while a local reference that names no entry of its `$defs` is refused with `invalid_input`
+
+### scenario.kernel.contract-schema-defs — A contract schema describes a recursive record through its `$defs`
+
+- GIVEN a contract schema for objects whose `child` is a `node`, where its top-level `$defs` defines `node` as `null` or such an object again through `{"$ref": "#/$defs/node"}`, and the records `{"child": {"child": {"child": null}}}` and `{"child": 1}`
+- WHEN each record is checked against the schema
+- THEN the first is accepted
+- AND the second is refused with `invalid_field`, naming `/child`
+
+### scenario.kernel.contract-schema-refused — A contract schema outside its dialect is refused
+
+- GIVEN a contract schema whose local reference names no entry of its `$defs`, and one that keeps a `$defs` inside one of its properties
+- WHEN a record is checked against each
+- THEN each schema is refused with `invalid_input`
+- AND the refusal of the second names the JSON pointer of its misplaced `$defs`
 
 ### scenario.kernel.typed-embedded — A typed value is checked with every value it embeds
 
@@ -66,7 +90,13 @@ The formats are the [contracts](contracts.md).
 - WHEN a value of `example-batch` holding one run is checked, and again after `example-run` is registered
 - THEN the first check fails with `unknown_type` at `/data/runs/0`
 - AND the second accepts the value and returns a copy that is not the value given
-- AND a run with another `schema_version` fails with `unsupported_version`, a run of another type with `incompatible_handoff` and a run whose data breaks its schema with `invalid_field`, each naming the JSON pointer of the offending field
+
+### scenario.kernel.typed-embedded-refused — A broken embedded value refuses its container
+
+- GIVEN the types `example-batch` and `example-run` above, both registered, and three values of `example-batch` whose one run has another `schema_version`, is of another type or holds data that breaks the schema of `example-run`
+- WHEN each value is checked
+- THEN they fail with `unsupported_version`, `incompatible_handoff` and `invalid_field` respectively
+- AND each refusal names the JSON pointer of the offending field inside the run
 
 ## File transactions
 
@@ -76,7 +106,20 @@ The formats are the [contracts](contracts.md).
 - WHEN the transaction is applied
 - THEN it is refused with `stale_proposal`, naming the second file
 - AND neither file was written
-- AND a change of a path outside the allowed ones is refused with `permission_denied` and a malformed list with `invalid_proposal`, before any write
+
+### scenario.kernel.transaction-not-allowed — A change outside the allowed paths writes nothing
+
+- GIVEN two files, and a transaction that changes both while allowing only the first
+- WHEN the transaction is applied
+- THEN it is refused with `permission_denied`
+- AND neither file was written
+
+### scenario.kernel.transaction-malformed — A malformed list of changes writes nothing
+
+- GIVEN an empty list of changes, a change without its `before_digest` and `content`, a list that names one path twice and a change of the path `../a.txt`
+- WHEN each is applied as a transaction
+- THEN each is refused with `invalid_proposal`
+- AND no file was written
 
 ### scenario.kernel.transaction-restored — A failed final check restores every file
 
@@ -100,5 +143,17 @@ The formats are the [contracts](contracts.md).
 - GIVEN a process holding the [merge lock](../glossary.json#concept.merge-lock) for `concorde task merge` of task `t1`, and another holding the [workspace lock](../glossary.json#concept.workspace-lock) of workspace `t2`
 - WHEN a third process takes each without waiting
 - THEN it is refused with `merge_busy` and `workspace_busy`, each naming the holder its holder line names
-- AND a process that waited for the workspace lock of `t2` while its holder removed the lock file, without asking to take a new file, is refused with `workspace_retired`
-- AND once the holders released them, both locks are taken and their holders read back
+
+### scenario.kernel.workspace-lock-retired — A workspace retired while its lock was awaited is refused
+
+- GIVEN a process holding the workspace lock of `t2` for `concorde task close`, which removes the lock file as it releases it, and another process waiting for that lock that asked not to take a new file
+- WHEN the holder releases the lock
+- THEN the waiting process is refused with `workspace_retired`
+- AND it does not hold the lock
+
+### scenario.kernel.lock-taken — A free lock is taken and its holder read back
+
+- GIVEN the merge lock and the workspace lock of `t2`, which their earlier holders released
+- WHEN a process takes each
+- THEN it holds both, and reading each lock's holder gives the holder line it wrote
+- AND once it released them, reading either holder gives none

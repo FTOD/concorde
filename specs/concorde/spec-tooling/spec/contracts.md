@@ -493,10 +493,12 @@ non-integral numbers and `integer` only integers, neither a boolean, and `minimu
 bound both. `pattern` matches anywhere in the string unless it is anchored. `const` and `enum`
 compare values with their JSON type, so `true` is not `1`. Each keyword applies to the kind of value
 it constrains, whether the schema names a `type` or not. Beyond JSON Schema, a string whose schema
-sets `minLength` must not consist of whitespace only. A registered schema may use every keyword of
-the offline subset below except `$defs`, `oneOf`, `allOf`, a list of types and a `$ref` other than
-`typed_schema`'s, which the checker does not evaluate: registering one fails with `invalid_input`,
-so that no registered type promises more than its values are checked for.
+sets `minLength` must not consist of whitespace only. A registered schema may use only the Kernel's
+[registered dialect](../../kernel/contracts.md#registered-schemas), every keyword of which the
+checker evaluates: one that uses any other keyword of the offline subset below, `$schema`, `$id`,
+`$defs`, `oneOf` and `allOf` among them, a list of types or a `$ref` other than `typed_schema`'s
+fails with `invalid_input` when registered, so that no registered type promises more than its values
+are checked for.
 
 The shared building blocks are `obj(properties, optional=())` (a closed object whose listed
 properties are required unless optional), `array(items, unique=False)`, `STRING` (a nonempty

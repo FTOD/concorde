@@ -65,9 +65,10 @@ _TYPES: dict[str, tuple[int, dict]] = {}
 # The Python module whose code registered each type.
 
 
-# Keywords the offline subset admits but ``check_schema`` does not evaluate; a registered schema
-# must not use them, so that no registered type promises more than its values are checked for.
-_UNCHECKED = frozenset({"$defs", "oneOf", "allOf"})
+# Keywords the offline subset admits but the Kernel's registered dialect does not: ``check_schema``
+# does not evaluate them, so a registered schema must not use them, and no registered type promises
+# more than its values are checked for.
+_UNCHECKED = frozenset({"$schema", "$id", "$defs", "oneOf", "allOf"})
 
 
 def _evaluated(schema: Any) -> None:

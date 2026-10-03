@@ -137,9 +137,23 @@ class DeliveryTests(unittest.TestCase):
             [{"commit": first, "mismatches": []}, {"commit": second, "mismatches": []}],
             delivery.deliveries(root, "main", base, "retry"),
         )
+
+    @verifies("scenario.kernel.delivery-message")
+    def test_a_delivery_message_carries_the_subject_and_the_goal(self):
+        root = repository()
+        made = commit(
+            root, delivery.message("retry", "Limit HTTP retries to three attempts.\n")
+        )
         self.assertEqual(
-            "concorde: deliver retry\n\nLimit retries.",
-            git(root, "log", "-1", "--format=%B", second),
+            "concorde: deliver retry", git(root, "log", "-1", "--format=%s", made)
+        )
+        self.assertEqual(
+            "Limit HTTP retries to three attempts.",
+            git(root, "log", "-1", "--format=%b", made),
+        )
+        self.assertEqual(
+            "concorde: deliver retry\n\nLimit HTTP retries to three attempts.\n",
+            delivery.message("retry", "Limit HTTP retries to three attempts.\n"),
         )
 
     @verifies("scenario.kernel.delivery-merge-unverified")
@@ -155,11 +169,16 @@ class DeliveryTests(unittest.TestCase):
         self.assertEqual(git(root, "rev-parse", "HEAD"), listed["commit"])
         self.assertEqual(1, len(listed["mismatches"]))
         self.assertIn("2 parent(s)", listed["mismatches"][0])
+
+    @verifies("scenario.kernel.deliveries-unresolvable")
+    def test_a_branch_git_cannot_resolve_is_refused(self):
+        root = repository()
+        base = git(root, "rev-parse", "HEAD")
         with self.assertRaises(KernelError) as refused:
-            delivery.deliveries(root, "no-such-branch", base, "retry")
+            delivery.deliveries(root, "missing", base, "retry")
         self.assertEqual("git_failed", refused.exception.code)
         self.assertIn("git log", str(refused.exception))
-        self.assertIn("no-such-branch", str(refused.exception))
+        self.assertIn("missing", str(refused.exception))
 
 
 NOTE = {
@@ -168,6 +187,9 @@ NOTE = {
     "required": ["text"],
     "properties": {"text": {"type": "string", "minLength": 1}},
 }
+
+
+RUN = {"type_id": "example-run", "schema_version": 1, "data": {"text": "one"}}
 
 
 class TypedValueTests(unittest.TestCase):
@@ -211,25 +233,43 @@ class TypedValueTests(unittest.TestCase):
             self.assertEqual("invalid_input", refused.exception.code)
             with self.assertRaises(KernelError):
                 schema.type_version(f"example-{name}")
+
+    @verifies("scenario.kernel.contract-schema-defs")
+    def test_a_contract_schema_describes_a_recursive_record_through_its_defs(self):
         record = {
             "type": "object",
             "properties": {"child": {"$ref": "#/$defs/node"}},
             "$defs": {
-                "node": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/node2"}]},
-                "node2": {
-                    "type": "object",
-                    "properties": {"child": {"$ref": "#/$defs/node"}},
+                "node": {
+                    "anyOf": [
+                        {"type": "null"},
+                        {
+                            "type": "object",
+                            "properties": {"child": {"$ref": "#/$defs/node"}},
+                        },
+                    ]
                 },
             },
         }
         schema.validate({"child": {"child": {"child": None}}}, record)
+        for value in ({"child": 1}, {"child": {"child": 1}}):
+            with self.subTest(value), self.assertRaises(KernelError) as refused:
+                schema.validate(value, record)
+            # The alternative that fails names where it lies.
+            self.assertEqual(
+                ("invalid_field", "/child"),
+                (refused.exception.code, refused.exception.field),
+            )
+        deep = None
+        for _ in range(60):
+            deep = {"child": deep}
         with self.assertRaises(KernelError) as refused:
-            schema.validate({"child": {"child": 1}}, record)
-        # The alternative that fails names where it lies.
-        self.assertEqual(
-            ("invalid_field", "/child"),
-            (refused.exception.code, refused.exception.field),
-        )
+            schema.validate(deep, record)
+        self.assertEqual("invalid_field", refused.exception.code)
+        self.assertIn("deeper than 100 levels", str(refused.exception))
+
+    @verifies("scenario.kernel.contract-schema-refused")
+    def test_a_contract_schema_outside_its_dialect_is_refused(self):
         with self.assertRaises(KernelError) as refused:
             schema.validate({}, {"$ref": "#/$defs/missing", "$defs": {}})
         self.assertEqual("invalid_input", refused.exception.code)
@@ -255,16 +295,8 @@ class TypedValueTests(unittest.TestCase):
                 ("invalid_input", field),
                 (refused.exception.code, refused.exception.field),
             )
-        deep = None
-        for _ in range(60):
-            deep = {"child": deep}
-        with self.assertRaises(KernelError) as refused:
-            schema.validate(deep, record)
-        self.assertEqual("invalid_field", refused.exception.code)
-        self.assertIn("deeper than 100 levels", str(refused.exception))
 
-    @verifies("scenario.kernel.typed-embedded")
-    def test_a_typed_value_is_checked_with_every_value_it_embeds(self):
+    def register_batch(self) -> None:
         schema.register(
             "example-batch",
             1,
@@ -277,11 +309,14 @@ class TypedValueTests(unittest.TestCase):
                 },
             },
         )
-        run = {"type_id": "example-run", "schema_version": 1, "data": {"text": "one"}}
+
+    @verifies("scenario.kernel.typed-embedded")
+    def test_a_typed_value_is_checked_with_every_value_it_embeds(self):
+        self.register_batch()
         batch = {
             "type_id": "example-batch",
             "schema_version": 1,
-            "data": {"runs": [run]},
+            "data": {"runs": [RUN]},
         }
         with self.assertRaises(KernelError) as refused:
             schema.validate_typed(batch)
@@ -293,18 +328,28 @@ class TypedValueTests(unittest.TestCase):
         checked = schema.validate_typed(batch, "example-batch")
         self.assertEqual(batch, checked)
         self.assertIsNot(batch["data"]["runs"][0], checked["data"]["runs"][0])
+
+    @verifies("scenario.kernel.typed-embedded-refused")
+    def test_a_broken_embedded_value_refuses_its_container(self):
+        self.register_batch()
+        schema.register("example-run", 1, NOTE)
+        batch = {
+            "type_id": "example-batch",
+            "schema_version": 1,
+            "data": {"runs": [RUN]},
+        }
         for broken, code, field in (
             (
-                {**run, "schema_version": 2},
+                {**RUN, "schema_version": 2},
                 "unsupported_version",
                 "/data/runs/0/schema_version",
             ),
             (
-                {**run, "type_id": "example-batch"},
+                {**RUN, "type_id": "example-batch"},
                 "incompatible_handoff",
                 "/data/runs/0/type_id",
             ),
-            ({**run, "data": {"text": ""}}, "invalid_field", "/data/runs/0/data/text"),
+            ({**RUN, "data": {"text": ""}}, "invalid_field", "/data/runs/0/data/text"),
         ):
             with self.subTest(code), self.assertRaises(KernelError) as refused:
                 schema.validate_typed({**batch, "data": {"runs": [broken]}})
@@ -312,7 +357,7 @@ class TypedValueTests(unittest.TestCase):
                 (code, field), (refused.exception.code, refused.exception.field)
             )
         with self.assertRaises(KernelError) as refused:
-            schema.validate_typed(run, "example-batch")
+            schema.validate_typed(RUN, "example-batch")
         self.assertEqual("incompatible_handoff", refused.exception.code)
 
 
@@ -348,9 +393,16 @@ class TransactionTests(unittest.TestCase):
         self.assertEqual(
             {"a.txt": "a\n", "b.txt": "changed meanwhile\n"}, self.contents()
         )
+
+    @verifies("scenario.kernel.transaction-not-allowed")
+    def test_a_change_outside_the_allowed_paths_writes_nothing(self):
         with self.assertRaises(KernelError) as refused:
             files.apply_files(self.root, self.changes(), {"a.txt"})
         self.assertEqual("permission_denied", refused.exception.code)
+        self.assertEqual({"a.txt": "a\n", "b.txt": "b\n"}, self.contents())
+
+    @verifies("scenario.kernel.transaction-malformed")
+    def test_a_malformed_list_of_changes_writes_nothing(self):
         for malformed in (
             [],
             [{"path": "a.txt"}],
@@ -363,9 +415,7 @@ class TransactionTests(unittest.TestCase):
             ):
                 files.apply_files(self.root, malformed, {"a.txt", "b.txt", "../a.txt"})
             self.assertEqual("invalid_proposal", refused.exception.code)
-        self.assertEqual(
-            {"a.txt": "a\n", "b.txt": "changed meanwhile\n"}, self.contents()
-        )
+        self.assertEqual({"a.txt": "a\n", "b.txt": "b\n"}, self.contents())
 
     @verifies("scenario.kernel.transaction-restored")
     def test_a_failed_final_check_restores_every_file(self):
@@ -441,7 +491,25 @@ class LockTests(unittest.TestCase):
         self.assertIsNone(locking.merge_lock_holder(concorde))
         self.assertIsNone(locking.workspace_lock_holder(concorde, "t2"))
 
-    @verifies("scenario.kernel.busy-lock-refused")
+    @verifies("scenario.kernel.lock-taken")
+    def test_a_free_lock_is_taken_and_its_holder_read_back(self):
+        concorde = Path(tempfile.mkdtemp())
+        with locking.merge_lock(concorde, "an earlier merge", wait=0):
+            pass
+        with locking.workspace_lock(concorde, "t2", "an earlier run"):
+            pass
+        with (
+            locking.merge_lock(concorde, "an Issue write", wait=0),
+            locking.workspace_lock(concorde, "t2", "implement run r-3"),
+        ):
+            self.assertIn("an Issue write", locking.merge_lock_holder(concorde))
+            self.assertIn(
+                "implement run r-3", locking.workspace_lock_holder(concorde, "t2")
+            )
+        self.assertIsNone(locking.merge_lock_holder(concorde))
+        self.assertIsNone(locking.workspace_lock_holder(concorde, "t2"))
+
+    @verifies("scenario.kernel.workspace-lock-retired")
     def test_a_workspace_retired_while_awaited_is_refused(self):
         concorde = Path(tempfile.mkdtemp())
         waiting = threading.Event()
@@ -471,6 +539,7 @@ class LockTests(unittest.TestCase):
         thread.join(30)
         [error] = outcome
         self.assertEqual("workspace_retired", error.code)
+        self.assertIsNone(locking.workspace_lock_holder(concorde, "t2"))
 
 
 if __name__ == "__main__":
