@@ -28,7 +28,7 @@ an installed part's registration. What each kind of entry is called with and ans
 ```concorde-contract
 {
   "id": "contract.distribution.part-registration",
-  "version": 3,
+  "version": 4,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -89,13 +89,14 @@ an installed part's registration. What each kind of entry is called with and ans
       "install": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["files", "defaults", "gitignore", "permissions", "programs", "prepare", "bind"],
+        "required": ["files", "defaults", "gitignore", "permissions", "programs", "python_dependencies", "prepare", "bind"],
         "properties": {
-          "files": {"type": "array", "items": {"type": "string", "minLength": 1}},
+          "files": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*/?$"}},
           "defaults": {"type": "object", "additionalProperties": {"type": "string"}},
           "gitignore": {"type": "array", "items": {"type": "string", "minLength": 1}},
           "permissions": {"type": "array", "items": {"type": "string", "minLength": 1}},
-          "programs": {"type": "array", "items": {"type": "string", "minLength": 1}},
+          "programs": {"type": "array", "uniqueItems": true, "items": {"enum": ["d2", "pi-runtime"]}},
+          "python_dependencies": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
           "prepare": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/entry"}]},
           "bind": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/entry"}]}
         }
@@ -108,7 +109,7 @@ an installed part's registration. What each kind of entry is called with and ans
       "section": {"oneOf": [{"type": "null"}, {"type": "string", "pattern": "^generated/[a-z0-9_./-]+\\.md$"}]}
     }
   },
-  "semantics": "The registration of one part, the file registration.json of its directory of src/concorde/. part is its installer name and module the top-level Module the part is made of; the part carries the version of the package it was built from, the same for every part, which concorde.json names. depends_on names the parts it depends on; the installer installs them with it, and no other part is required for it to work. loads names the part's modules that register what its code provides when they load (typed value types, trace roots, Operation and command definitions, workflows), which Distribution imports for every installed part before it routes a command of a part, answers an MCP tool or renders the build. commands are the concorde subcommands it adds, each routed to its entry, which prints its own output or, with output envelope, answers Spec core's shared envelope for concorde to print. mcp_tools are the tools the project MCP server presents for it, each answered by its entry in a fresh process of the primary worktree's concorde, or of the session's own worktree's when worktree is session; long_work allows it to take locks without waiting and become the work it starts, handing them on; threaded serves its calls on a thread of their own, for calls that wait; requires names parts without which the tool is not presented. mcp_definitions names the mapping from each of its tool names to its description and inputSchema, and mcp_instructions the sentence it adds to the server's instructions. typed_types lists the typed value types its code registers. guidance names the part's guidance sections, or is null when it has none: skill its section of the project skill, task_session its section of the task-session prompt and claude_md its section of the CLAUDE.md block, each the build-relative path of a rendered section, generated/<path> rendered from prompts/<path>, or null when the part contributes no section of that kind; Distribution composes each kind from the sections of a set of parts, Coordination's first and the others in the order of the parts table. renders names the entry through which the build renders the part's own outputs, such as the workflow part's Claude Code workflows. install lists what the installer places for it: framework-relative files, Concorde-owned defaults written where absent by project path, .gitignore lines, Claude Code permission rules and programs it needs, such as the pi runtime; prepare names the service deciding, before any write, the files it places or refusing the install, and bind the service binding the installed files after the receipt. idle_check names the function reporting the part's work still running in the project, or null when it has none; after_update the function whose report an update result carries, such as the open tasks, or null. Every entry is <module>:<attribute> relative to the part's own package. A behaviour or field change increments the version.",
+  "semantics": "The registration of one part, the file registration.json of its directory of src/concorde/. part is its installer name and module the top-level Module the part is made of; the part carries the version of the package it was built from, the same for every part, which concorde.json names. depends_on names the parts it depends on; the installer installs them with it, and no other part is required for it to work. loads names the part's modules that register what its code provides when they load (typed value types, trace roots, Operation and command definitions, workflows), which Distribution imports for every installed part before it routes a command of a part, answers an MCP tool or renders the build. commands are the concorde subcommands it adds, each routed to its entry, which prints its own output or, with output envelope, answers Spec core's shared envelope for concorde to print. mcp_tools are the tools the project MCP server presents for it, each answered by its entry in a fresh process of the primary worktree's concorde, or of the session's own worktree's when worktree is session; long_work allows it to take locks without waiting and become the work it starts, handing them on; threaded serves its calls on a thread of their own, for calls that wait; requires names parts without which the tool is not presented. mcp_definitions names the mapping from each of its tool names to its description and inputSchema, and mcp_instructions the sentence it adds to the server's instructions. typed_types lists the typed value types its code registers. guidance names the part's guidance sections, or is null when it has none: skill its section of the project skill, task_session its section of the task-session prompt and claude_md its section of the CLAUDE.md block, each the build-relative path of a rendered section, generated/<path> rendered from prompts/<path>, or null when the part contributes no section of that kind; Distribution composes each kind from the sections of a set of parts, Coordination's first and the others in the order of the parts table. renders names the entry through which the build renders the part's own outputs, such as the workflow part's Claude Code workflows. install lists what the installer places for it: files names, relative to the package and to the Framework copy alike, the files the part ships beside its code directory src/concorde/<directory>/, which is always shipped, a path ending with / naming a whole directory, such as the spec part's protocol/ or the worker harness's scripts/available_models.py; defaults the Concorde-owned defaults written where absent, by project path; gitignore its .gitignore lines; permissions the Claude Code permission rules a placed workflow needs, added only when a workflow is placed; programs the programs it needs placed, d2 or pi-runtime; python_dependencies the runtime dependencies of the package's pyproject.toml its code imports, which the installer places, from uv.lock, only where an installed part names one; prepare names the service deciding, before any write, the files it places or refusing the install, and bind the service binding the installed files after the receipt. idle_check names the function reporting the part's work still running in the project, or null when it has none; after_update the function whose report an update result carries, such as the open tasks, or null. Every entry is <module>:<attribute> relative to the part's own package. A behaviour or field change increments the version.",
   "example": {
     "part": "coordination",
     "module": "module.coordination",
@@ -135,6 +136,7 @@ an installed part's registration. What each kind of entry is called with and ans
       "gitignore": [".concorde/tasks/", ".concorde/history/", ".concorde/workspace.json", ".claude/worktrees/"],
       "permissions": [],
       "programs": [],
+      "python_dependencies": [],
       "prepare": null,
       "bind": null
     },
@@ -166,11 +168,12 @@ refused adds `binding_error`, which the receipt file never holds.
 ```concorde-contract
 {
   "id": "contract.distribution.install-result",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
     "required": [
       "version",
+      "parts",
       "source",
       "mode",
       "source_commit",
@@ -187,6 +190,11 @@ refused adds `binding_error`, which the receipt file never holds.
     "additionalProperties": false,
     "properties": {
       "version": {"type": "string", "minLength": 1},
+      "parts": {
+        "type": "object",
+        "required": ["distribution"],
+        "additionalProperties": {"type": "string", "minLength": 1}
+      },
       "source": {"type": "string", "minLength": 1},
       "mode": {"enum": ["normal", "develop"]},
       "source_commit": {"type": ["string", "null"]},
@@ -256,9 +264,20 @@ refused adds `binding_error`, which the receipt file never holds.
       }
     }
   },
-  "semantics": "The result of a successful install, equal to the receipt .concorde/install.json it wrote except for binding_error. version is the installed package's version from concorde.json; source the absolute path of the Concorde checkout installed from, which concorde update installs from again; mode normal, or develop for a develop install; source_commit the commit installed, the develop source check's commit in a develop install and otherwise the checkout's HEAD, or null outside a Git checkout. framework and command are where the Framework runtime and the command lie. python names Concorde's own environment: its path, the Python requirement concorde.json names under runtime.python, the interpreter uv chose (base, an absolute path) and that interpreter's version. dependencies is null when the install left Concorde's Python dependencies out, and otherwise names the requirements file exported from the package's uv.lock, the SHA-256 of that lock and the number of packages installed. tools holds d2 when the pinned d2 is placed (its release, platform key, the archive's pinned SHA-256 and the program's path) and pi-runtime when the pi runtime is placed (the package, its locked version, the SHA-256 of the lockfile and its folder); a tool left out has no key. pi_runtime is false when the install was made with --without-pi-runtime, a choice concorde update keeps. files lists, sorted, every file Concorde owns in the project, a default an earlier install wrote included; amended lists the project's own files the installer only amends (.gitignore, CLAUDE.md, .mcp.json and, once written, .claude/settings.json); permissions lists the permission rules of .claude/settings.json the installer added and owns. binding_error is present only when Spec core refused to bind the installed files after the receipt was written: it is Spec core's error record (contract.spec.error) and the install has still succeeded. A behaviour or field change increments the version.",
+  "semantics": "The result of a successful install, equal to the receipt .concorde/install.json it wrote except for binding_error. version is the installed package's version from concorde.json; parts names every installed part, the parts asked for with every part they depend on and Distribution, each mapped to the version it carries, which is the package's version for every part; source the absolute path of the Concorde checkout installed from, which concorde update installs from again; mode normal, or develop for a develop install; source_commit the commit installed, the develop source check's commit in a develop install and otherwise the checkout's HEAD, or null outside a Git checkout. framework and command are where the Framework runtime and the command lie. python names Concorde's own environment: its path, the Python requirement concorde.json names under runtime.python, the interpreter uv chose (base, an absolute path) and that interpreter's version. dependencies is null when the install left Concorde's Python dependencies out, and otherwise names the requirements file exported from the package's uv.lock, the SHA-256 of that lock and the number of packages installed. dependencies is also null when no installed part needs a Python dependency. tools holds d2 when the pinned d2 is placed (its release, platform key, the archive's pinned SHA-256 and the program's path), which happens only where the spec part is installed, and pi-runtime when the pi runtime is placed (the package, its locked version, the SHA-256 of the lockfile and its folder), only where the worker harness part is; a tool left out has no key. pi_runtime is false when the install was made with --without-pi-runtime, a choice concorde update keeps. files lists, sorted, every file Concorde owns in the project, a default an earlier install wrote included; amended lists the project's own files the installer only amends (.gitignore, CLAUDE.md, .mcp.json and, once written, .claude/settings.json); permissions lists the permission rules of .claude/settings.json the installer added and owns. binding_error is present only when Spec core refused to bind the installed files after the receipt was written: it is Spec core's error record (contract.spec.error) and the install has still succeeded. A behaviour or field change increments the version.",
   "example": {
     "version": "9.0.0",
+    "parts": {
+      "coordination": "9.0.0",
+      "distribution": "9.0.0",
+      "execution": "9.0.0",
+      "issues": "9.0.0",
+      "kernel": "9.0.0",
+      "method": "9.0.0",
+      "spec": "9.0.0",
+      "worker harness": "9.0.0",
+      "workflow": "9.0.0"
+    },
     "source": "/home/dev/concorde",
     "mode": "normal",
     "source_commit": "3f37048934c2a1b0d9e8f7a6b5c4d3e2f1a0b9c8",
@@ -300,12 +319,13 @@ refused adds `binding_error`, which the receipt file never holds.
 ## Update result
 
 `concorde update`, and `python3 <checkout>/scripts/install-concorde.py <project> --update`, print
-what the update did. Its `update` is the mark it wrote to `.concorde/update.json`, field for field.
+what the update did. Its `update` is the mark it wrote to `.concorde/update.json`, field for field,
+or `null` where the spec part is not installed, since the mark waits for a Spec validation.
 
 ```concorde-contract
 {
   "id": "contract.distribution.update-result",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
     "required": ["receipt", "update", "open_tasks", "next"],
@@ -313,10 +333,10 @@ what the update did. Its `update` is the mark it wrote to `.concorde/update.json
     "properties": {
       "receipt": {
         "type": "object",
-        "required": ["version", "source", "mode", "source_commit", "files", "amended"]
+        "required": ["version", "parts", "source", "mode", "source_commit", "files", "amended"]
       },
       "update": {
-        "type": "object",
+        "type": ["object", "null"],
         "required": ["state", "from", "to", "commits", "protocol", "at"],
         "additionalProperties": false,
         "properties": {
@@ -362,13 +382,14 @@ what the update did. Its `update` is the mark it wrote to `.concorde/update.json
           }
         }
       },
-      "next": {"type": "array", "minItems": 2, "items": {"type": "string", "minLength": 1}}
+      "next": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
     }
   },
-  "semantics": "The result of a successful concorde update. receipt is the install result of the update's install (contract.distribution.install-result), the new receipt. update is the mark .concorde/update.json the update wrote: state unvalidated; from and commits.from the version and installed commit before, those of the previous receipt or, when an earlier update's mark was still there, that mark's, each null when the record they come from has none; to and commits.to those just installed, commits.to null outside a Git checkout; protocol null when neither this update nor a kept earlier mark rebound the Protocol binding, and otherwise the binding before (null when the configuration had none) and after, each a {version, digest} object as the project configuration holds it; at the UTC time the mark was written. open_tasks lists what the coordination part's after-update report names, in the order of their folders: the tasks of the primary worktree that have not ended, each with its identity, branch and worktree as its task record names them, null when the record lacks one; it is empty where the coordination part is not installed. next says what the developer does next: commit the updated files, run concorde spec-validation and repair what it reports, and, when the Protocol binding changed and a task is open, merge the primary branch into each open task. A behaviour or field change increments the version.",
+  "semantics": "The result of a successful concorde update. receipt is the install result of the update's install (contract.distribution.install-result), the new receipt, whose parts are those the previous receipt named (every part when it named none), every part the new Concorde makes one of them depend on and the parts --parts added. update is null where the spec part is not installed, which leaves the Protocol binding alone and writes no mark, and otherwise the mark .concorde/update.json the update wrote: state unvalidated; from and commits.from the version and installed commit before, those of the previous receipt or, when an earlier update's mark was still there, that mark's, each null when the record they come from has none; to and commits.to those just installed, commits.to null outside a Git checkout; protocol null when neither this update nor a kept earlier mark rebound the Protocol binding, and otherwise the binding before (null when the configuration had none) and after, each a {version, digest} object as the project configuration holds it; at the UTC time the mark was written. open_tasks lists what the coordination part's after-update report names, in the order of their folders: the tasks of the primary worktree that have not ended, each with its identity, branch and worktree as its task record names them, null when the record lacks one; it is empty where the coordination part is not installed. next says what the developer does next: commit the updated files; where the update wrote a mark, run concorde spec-validation and repair what it reports; and, when the Protocol binding changed and a task is open, merge the primary branch into each open task. A behaviour or field change increments the version.",
   "example": {
     "receipt": {
       "version": "9.0.0",
+      "parts": {"distribution": "9.0.0", "spec": "9.0.0"},
       "source": "/home/dev/concorde",
       "mode": "normal",
       "source_commit": "3f37048934c2a1b0d9e8f7a6b5c4d3e2f1a0b9c8",

@@ -50,13 +50,17 @@
   },
   "renders": null,
   "install": {
-    "files": [],
+    "files": [
+      "generated/protocol/",
+      "protocol/"
+    ],
     "defaults": {},
     "gitignore": [],
     "permissions": [],
     "programs": [
       "d2"
     ],
+    "python_dependencies": [],
     "prepare": "installation:prepare",
     "bind": "installation:bind"
   },

@@ -38,7 +38,7 @@ import os
 import shutil
 import subprocess
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -66,19 +66,11 @@ CLAUDE_SETTINGS = ".claude/settings.json"
 # The project's Claude Code MCP configuration, where the project MCP server is registered.
 MCP_CONFIG = ".mcp.json"
 MCP_SERVER = "concorde"
-# What every workflow's Claude Code step agents use: the project MCP server's step tool, which
-# runs each step as the server's own process so that the run outlives the step agent's short call,
-# and the report command.
-STEP_RULES = (
-    f"mcp__{MCP_SERVER}__workflow_step",
-    f"Bash({COMMAND} workflow report:*)",
-)
 RECEIPT = ".concorde/install.json"
 START = "<!-- concorde:start -->"
 END = "<!-- concorde:end -->"
-RUNTIME = ("src", "scripts", "prompts", "protocol", "generated")
-# Directories of ``scripts/`` that serve only the development of Concorde.
-NOT_INSTALLED = ("e2e",)
+# Where each part's code lies in the package and in the Framework copy.
+SOURCE = "src/concorde"
 # Written by `concorde update` and removed by the first validation that passes after it: the
 # project is "Concorde unvalidated" until then. It is this checkout's state, never committed.
 UPDATE_STATE = ".concorde/update.json"
@@ -105,6 +97,7 @@ class InstallError(RuntimeError):
 INPUT_CODES = frozenset(
     {
         "invalid_project",
+        "unknown_part",
         "invalid_descriptor",
         "stale_build",
         "invalid_docsite_template",
@@ -215,27 +208,49 @@ def _develop(package: Path) -> dict:
     return answer
 
 
-def _copy_runtime(package: Path, target: Path) -> None:
+def shipped(registrations: dict) -> list[str]:
+    """The package-relative paths the Framework copy of the given parts holds: each part's code
+    directory and the files and directories its registration lists under ``install.files``, a
+    directory ending with ``/``; the package descriptor first."""
+    found = ["concorde.json"]
+    for registration in parts.ordered(registrations):
+        for path in (
+            f"{SOURCE}/{registration.directory}/",
+            *registration.data["install"]["files"],
+        ):
+            if path not in found:
+                found.append(path)
+    return found
+
+
+def _copy_runtime(package: Path, target: Path, registrations: dict) -> None:
+    """Replace the Framework copy with the runtime of the given parts alone, so that the code of a
+    part that is not installed is not in the project at all."""
     if target.exists():
         shutil.rmtree(target)
     ignore = shutil.ignore_patterns(
         "__pycache__", "*.pyc", "node_modules", ".pytest_cache"
     )
+    for path in shipped(registrations):
+        source = package / path.rstrip("/")
+        (target / path).parent.mkdir(parents=True, exist_ok=True)
+        if path.endswith("/"):
+            shutil.copytree(source, target / path, ignore=ignore, symlinks=False)
+        else:
+            shutil.copy2(source, target / path)
 
-    def runtime_ignore(directory, names):
-        # End-to-end testing is how Concorde tests itself; it never reaches a user's project.
-        skipped = set(ignore(directory, names))
-        if Path(directory) == package / "scripts":
-            skipped |= {name for name in names if name in NOT_INSTALLED}
-        return skipped
 
-    for name in RUNTIME:
-        source = package / name
-        if source.is_dir():
-            shutil.copytree(
-                source, target / name, ignore=runtime_ignore, symlinks=False
-            )
-    shutil.copy2(package / "concorde.json", target / "concorde.json")
+def _missing_shipped(package: Path, registrations: dict) -> list[str]:
+    """The shipped paths the package lacks, which a stale or incomplete build leaves out."""
+    return [
+        path
+        for path in shipped(registrations)
+        if not (
+            (package / path.rstrip("/")).is_dir()
+            if path.endswith("/")
+            else (package / path).is_file()
+        )
+    ]
 
 
 # Marks the part of the CLAUDE.md block that imports the project's glossary. Claude Code loads
@@ -299,20 +314,56 @@ def _amend(project: Path, name: str, block: str) -> None:
     path.write_text(text, encoding="utf-8")
 
 
-def _rendered_workflows(package: Path) -> dict[str, Path]:
-    """The build's workflow renders, by the path the installer places each at."""
-    rendered = package / "generated/workflows"
+def _rendered_workflows(package: Path, registrations: dict) -> dict[str, Path]:
+    """The build's workflow renders of the given parts, by the path the installer places each
+    at: none without the workflow part, and otherwise each render whose every source in a part's
+    code directory, as the build manifest records them, lies in one of those parts, so that a
+    workflow comes with the part whose procedure it is."""
+    if "workflow" not in registrations:
+        return {}
+    try:
+        outputs = json.loads(
+            (package / "generated/build-manifest.json").read_text(encoding="utf-8")
+        )["outputs"]
+    except (OSError, UnicodeError, ValueError, KeyError, TypeError) as error:
+        raise InstallError(
+            "stale_build", f"{package / 'generated/build-manifest.json'}: {error}"
+        ) from error
+    directories = {registration.directory for registration in registrations.values()}
     placed = {}
-    for path in sorted((rendered / "claude").glob("*.js")):
-        placed[f"{CLAUDE_WORKFLOWS}/{path.name}"] = path
+    for path in sorted((package / "generated/workflows/claude").glob("*.js")):
+        record = outputs.get(path.relative_to(package).as_posix())
+        sources = record.get("sources") if isinstance(record, dict) else None
+        if not isinstance(sources, list):
+            raise InstallError(
+                "stale_build",
+                f"the build manifest records no sources for {path}; run the build",
+            )
+        owners = {
+            source.split("/")[2]
+            for source in sources
+            if isinstance(source, str) and source.startswith(f"{SOURCE}/")
+        }
+        if owners <= directories:
+            placed[f"{CLAUDE_WORKFLOWS}/{path.name}"] = path
     return placed
 
 
-def _permission_rules(placed: dict[str, Path]) -> list[str]:
+def _permission_rules(placed: dict[str, Path], registrations: dict) -> list[str]:
+    """``Workflow(<name>)`` for each placed workflow, then the rules the installed parts
+    contribute, such as the workflow part's rules for its step agents, when a workflow is
+    placed."""
     names = [
         Path(path).stem for path in placed if path.startswith(f"{CLAUDE_WORKFLOWS}/")
     ]
-    return [f"Workflow({name})" for name in names] + (list(STEP_RULES) if names else [])
+    if not names:
+        return []
+    rules = [f"Workflow({name})" for name in names]
+    for registration in parts.ordered(registrations):
+        for rule in registration.data["install"]["permissions"]:
+            if rule not in rules:
+                rules.append(rule)
+    return rules
 
 
 def _read_settings(project: Path) -> dict:
@@ -406,10 +457,30 @@ def _ignore(project: Path, lines: tuple[str, ...]) -> None:
         path.write_text(text + prefix + "\n".join(missing) + "\n", encoding="utf-8")
 
 
+def _previous_parts(previous: dict, everything: dict) -> set[str]:
+    """The parts an earlier receipt names, every part of the package when it names none, and
+    none without an earlier receipt."""
+    if not previous:
+        return set()
+    named = previous.get("parts")
+    return set(named) if isinstance(named, dict) else set(everything)
+
+
+def needs(registrations: dict, field: str) -> set[str]:
+    """What the given parts need, the union of one of their install fields, such as the programs
+    or the Python dependencies."""
+    return {
+        item
+        for registration in registrations.values()
+        for item in registration.data["install"][field]
+    }
+
+
 def install(
     project: str | Path,
     package: str | Path,
     *,
+    part_names: Iterable[str] | None = None,
     d2: bool = True,
     fetch: Callable[[str], bytes] | None = None,
     pi_runtime: bool = True,
@@ -419,13 +490,16 @@ def install(
 ) -> dict:
     """Install ``package`` into ``project``; return the receipt.
 
-    With ``d2`` false the docsite's diagram program is left to the developer. ``fetch`` replaces
-    the download of the pinned ``d2`` archive, for tests and offline mirrors. With
-    ``pi_runtime`` (the default) the pi runtime every pi worker runs in is installed; without it
-    workers can run only on Claude Code. ``run`` replaces the ``npm ci`` call and the ``uv`` calls that
-    install the Python dependencies, never the creation of the environment. ``develop`` makes a
-    develop install. With ``dependencies`` false Concorde's Python dependencies are left out of
-    its environment, and the Operations that need them refuse.
+    ``part_names`` names the parts to install, which come with every part they depend on and
+    Distribution; every part of the package when it is None. With ``d2`` false the docsite's
+    diagram program is left to the developer. ``fetch`` replaces the download of the pinned ``d2``
+    archive, for tests and offline mirrors. With ``pi_runtime`` (the default) the pi runtime every
+    pi worker runs in is installed where the worker harness part is; without it workers can run
+    only on Claude Code. ``run`` replaces the ``npm ci`` call and the ``uv`` calls that install
+    the Python dependencies, never the creation of the environment. ``develop`` makes a develop
+    install. With ``dependencies`` false Concorde's Python dependencies are left out of its
+    environment, and the Operations that need them refuse; they are installed only where an
+    installed part needs one.
     """
     project, package = Path(project).resolve(), Path(package).resolve()
     if not project.is_dir():
@@ -435,9 +509,22 @@ def install(
     except BuildError as error:
         raise InstallError("stale_build", str(error)) from error
     try:
-        registrations = parts.package_parts(package)
+        everything = parts.package_parts(package)
+        registrations = parts.closure(
+            everything, everything if part_names is None else list(part_names)
+        )
     except parts.RegistrationError as error:
-        raise InstallError("stale_build", str(error)) from error
+        raise InstallError(
+            "unknown_part" if error.code == "unknown_part" else "stale_build",
+            str(error),
+        ) from error
+    missing = _missing_shipped(package, registrations)
+    if missing:
+        raise InstallError(
+            "stale_build",
+            f"{package} lacks {', '.join(missing)}, which the installed parts ship; run the "
+            "build",
+        )
     prepared = _prepared(package, project, registrations)
     try:
         protocol = protocol_files(package) if "spec" in registrations else {}
@@ -451,10 +538,23 @@ def install(
         installed_from = checked["source"]
         skill = skill.rstrip("\n") + "\n\n" + checked["guidance"]["skill"]
         block = block.rstrip("\n") + "\n\n" + checked["guidance"]["claude_md"]
+    previous = {}
+    if (project / RECEIPT).is_file():
+        try:
+            previous = json.loads((project / RECEIPT).read_text())
+        except ValueError:
+            previous = {}
+    previous = previous if isinstance(previous, dict) else {}
     # Replacing the Framework copy under a running Operation or execution command would change
     # the code it runs halfway through. This is checked once and holds no lock: a run started
-    # after it is the developer's to avoid, as Distribution's Spec says.
-    running = active_work(project, registrations)
+    # after it is the developer's to avoid, as Distribution's Spec says. The parts installed until
+    # now are asked too, since their work may run under a copy this install replaces.
+    asked = {
+        name: everything[name]
+        for name in _previous_parts(previous, everything) | set(registrations)
+        if name in everything
+    }
+    running = active_work(project, asked)
     if running:
         raise InstallError(
             "concorde_busy",
@@ -466,13 +566,11 @@ def install(
     requirement = _python_requirement(descriptor, package)
     settings = _read_settings(project)
     mcp_config = _read_mcp_config(project)
-    previous = {}
-    if (project / RECEIPT).is_file():
-        try:
-            previous = json.loads((project / RECEIPT).read_text())
-        except ValueError:
-            previous = {}
-    placed = _rendered_workflows(package)
+    placed = _rendered_workflows(package, registrations)
+    programs = needs(registrations, "programs")
+    with_d2 = d2 and "d2" in programs
+    with_pi_runtime = pi_runtime and "pi-runtime" in programs
+    python_dependencies = sorted(needs(registrations, "python_dependencies"))
     # Every cheap precondition is checked before the first write: only the npm and uv steps
     # below, which the installer cannot foresee, can still fail once something was written.
     uv = shutil.which("uv")
@@ -485,19 +583,19 @@ def install(
             "nothing was written",
         )
     try:
-        runtime_plan = plan_pi_runtime(project, package) if pi_runtime else None
+        runtime_plan = plan_pi_runtime(project, package) if with_pi_runtime else None
     except ToolError as error:
         raise InstallError(error.code, str(error)) from error
     tools = {}
     try:
-        if d2:
+        if with_d2:
             try:
                 tools["d2"] = install_d2(
                     project, descriptor, **({"fetch": fetch} if fetch else {})
                 )
             except ToolError as error:
                 raise InstallError(error.code, str(error)) from error
-        if pi_runtime:
+        if with_pi_runtime:
             try:
                 tools["pi-runtime"] = install_pi_runtime(
                     project, package, plan=runtime_plan, **({"run": run} if run else {})
@@ -509,6 +607,7 @@ def install(
             package,
             descriptor=descriptor,
             registrations=registrations,
+            everything=everything,
             prepared=prepared,
             protocol=protocol,
             skill=skill,
@@ -524,7 +623,7 @@ def install(
             uv=uv,
             tools=tools,
             pi_runtime=pi_runtime,
-            dependencies=dependencies,
+            python_dependencies=python_dependencies if dependencies else [],
             run=run,
         )
     except OSError as error:
@@ -548,6 +647,7 @@ def _place(
     *,
     descriptor: dict,
     registrations: dict,
+    everything: dict,
     prepared: dict[str, bytes],
     protocol: dict[str, bytes],
     skill: str,
@@ -563,7 +663,7 @@ def _place(
     uv: str,
     tools: dict,
     pi_runtime: bool,
-    dependencies: bool,
+    python_dependencies: list[str],
     run: Callable | None,
 ) -> dict:
     """Place Concorde's files once every refusal was decided; return the receipt."""
@@ -576,7 +676,7 @@ def _place(
         if not (project / path).exists():
             (project / path).parent.mkdir(parents=True, exist_ok=True)
             (project / path).write_bytes(content)
-    _copy_runtime(package, project / FRAMEWORK)
+    _copy_runtime(package, project / FRAMEWORK, registrations)
     # The task-session prompt Coordination reads from its Framework copy, composed of the
     # installed parts' sections in place of the build's composition of every part.
     prompt = project / FRAMEWORK / guidance.TASK_SESSION
@@ -592,8 +692,10 @@ def _place(
         (project / path).write_bytes(content)
     own_python = _own_python(project, uv, requirement)
     installed = (
-        _python_dependencies(project, package, uv, run or subprocess.run)
-        if dependencies
+        _python_dependencies(
+            project, package, uv, run or subprocess.run, python_dependencies
+        )
+        if python_dependencies
         else None
     )
     command = project / COMMAND
@@ -634,16 +736,32 @@ def _place(
     owned_rules = _settings(
         project,
         settings,
-        _permission_rules(placed),
+        _permission_rules(placed, registrations),
         list(previous.get("permissions") or []),
     )
     _register_server(project, mcp_config)
     _ignore(project, ignored(registrations))
+    owned = {*written, *defaults, COMMAND, SKILL, *placed}
+    kept = project_default_files(everything)
+    # What an earlier install owned and this one no longer ships, such as the workflows of a part
+    # it leaves out, goes; a Concorde-owned default stays, since it holds the project's own data.
+    for path in previous.get("files") or []:
+        if (
+            isinstance(path, str)
+            and path not in owned
+            and path not in kept
+            and not path.startswith("/")
+            and ".." not in Path(path).parts
+        ):
+            (project / path).unlink(missing_ok=True)
     amended = [".gitignore", CLAUDE_MD, MCP_CONFIG] + (
         [CLAUDE_SETTINGS] if (project / CLAUDE_SETTINGS).exists() else []
     )
     receipt = {
         "version": descriptor["version"],
+        # The installed parts, each with the one version every part carries, which
+        # `concorde update` installs again.
+        "parts": {name: descriptor["version"] for name in sorted(registrations)},
         # The Concorde checkout installed from, which `concorde update` installs from again.
         "source": str(package),
         # A develop install runs a Concorde the developer also changes; see Dogfooding.
@@ -664,15 +782,7 @@ def _place(
         "pi_runtime": pi_runtime,
         # Every file Concorde owns, whether this install wrote it or found it in place: a
         # default is written only when absent, yet stays Concorde's.
-        "files": sorted(
-            {
-                *written,
-                *defaults,
-                COMMAND,
-                SKILL,
-                *placed,
-            }
-        ),
+        "files": sorted(owned),
         # Files of the project that the installer only amends: a delimited block, ignore
         # lines, permission rules. They stay the project's own files.
         "amended": amended,
@@ -716,42 +826,109 @@ def _update_mark(project: Path) -> dict | None:
     )
 
 
+def _left_out(previous: dict, chosen: dict) -> dict[str, bool]:
+    """What an earlier install left out by the developer's choice, which an update keeps: d2 or
+    the Python dependencies only when a part it installed needed them and it placed none, the pi
+    runtime when its receipt records that choice. A choice that changed nothing is not recorded,
+    so the program or dependencies come with a part added later."""
+    return {
+        "d2": "d2" in needs(chosen, "programs")
+        and "d2" not in (previous.get("tools") or {}),
+        "dependencies": bool(needs(chosen, "python_dependencies"))
+        and previous.get("dependencies", {}) is None,
+        "pi_runtime": previous.get("pi_runtime", True) is False,
+    }
+
+
 def update(
     project: str | Path,
     package: str | Path,
     *,
+    part_names: Iterable[str] = (),
     fetch: Callable[[str], bytes] | None = None,
     run: Callable | None = None,
 ) -> dict:
     """Update the Concorde installed in ``project`` from ``package``.
 
-    It installs as the first install did (keeping d2 and develop mode when they were installed),
-    always with the pi worker runtime
-    unless the first install left it out and with Concorde's own environment created again by
-    uv for the new package's Python requirement, binds the
-    new Protocol copy in the configuration, and marks the project Concorde unvalidated until a
+    It installs exactly the parts the receipt names (every part when it names none), with every
+    part the new package makes one of them depend on and the parts ``part_names`` adds, as the
+    first install did (keeping d2, the Python dependencies and the pi runtime left out when the
+    first install left them out, and develop mode), with Concorde's own environment created again
+    by uv for the new package's Python requirement. Where the spec part is installed it binds the
+    new Protocol copy in the configuration and marks the project Concorde unvalidated until a
     validation passes; open tasks keep the old Protocol copy until the primary branch is merged
     into them, so they are listed.
     """
-    project = Path(project).resolve()
+    project, package = Path(project).resolve(), Path(package).resolve()
     try:
         previous = json.loads((project / RECEIPT).read_text())
+        if not isinstance(previous, dict):
+            raise ValueError("the receipt is not a JSON object")
     except (OSError, ValueError) as error:
         raise InstallError(
             "not_installed",
             f"{project} has no readable {RECEIPT} ({error}); install Concorde first",
         ) from error
-    tools = previous.get("tools") or {}
+    try:
+        everything = parts.package_parts(package)
+    except parts.RegistrationError as error:
+        raise InstallError("stale_build", str(error)) from error
+    named = sorted(_previous_parts(previous, everything) | set(part_names))
+    chosen = {name: everything[name] for name in named if name in everything}
+    left_out = _left_out(previous, chosen)
     receipt = install(
         project,
         package,
-        d2="d2" in tools,
+        part_names=named,
+        d2=not left_out["d2"],
         fetch=fetch,
-        pi_runtime=previous.get("pi_runtime", True),
+        pi_runtime=not left_out["pi_runtime"],
         run=run,
         develop=previous.get("mode") == "develop",
-        dependencies=previous.get("dependencies", {}) is not None,
+        dependencies=not left_out["dependencies"],
     )
+    installed = {name: everything[name] for name in receipt["parts"]}
+    state = None
+    rebound = None
+    # The Protocol copy, its binding and the update mark that validation removes are the spec
+    # part's: without it there is nothing to rebind and no validation to wait for.
+    if "spec" in installed:
+        state, rebound = _rebind_and_mark(project, previous, receipt)
+    tasks = open_tasks(project, installed)
+    return {
+        "receipt": receipt,
+        "update": state,
+        "open_tasks": tasks,
+        "next": ["commit the updated files"]
+        + (
+            [
+                (
+                    "run `concorde spec-validation` and repair what it reports; the first "
+                    "validation that passes marks the update validated"
+                )
+            ]
+            if state is not None
+            else []
+        )
+        + (
+            [
+                (
+                    "merge the primary branch into each open task, whose worktree still "
+                    "carries the previous Protocol copy"
+                )
+            ]
+            # Only a new Protocol copy makes an open task's own copy stale.
+            if tasks and rebound
+            else []
+        ),
+    }
+
+
+def _rebind_and_mark(
+    project: Path, previous: dict, receipt: dict
+) -> tuple[dict, dict | None]:
+    """Bind the new Protocol copy in the configuration and write the update mark; the mark and
+    the rebinding it records."""
     config_path = project / ".concorde/config.json"
     rebound = None
     try:
@@ -799,30 +976,7 @@ def update(
             raise
     except OSError as error:
         raise _failed_write("updating Concorde in", project, error) from error
-    tasks = open_tasks(project, parts.package_parts(Path(package).resolve()))
-    return {
-        "receipt": receipt,
-        "update": state,
-        "open_tasks": tasks,
-        "next": [
-            "commit the updated files",
-            (
-                "run `concorde spec-validation` and repair what it reports; the first validation "
-                "that passes marks the update validated"
-            ),
-        ]
-        + (
-            [
-                (
-                    "merge the primary branch into each open task, whose worktree still "
-                    "carries the previous Protocol copy"
-                )
-            ]
-            # Only a new Protocol copy makes an open task's own copy stale.
-            if tasks and rebound
-            else []
-        ),
-    }
+    return state, rebound
 
 
 def _python_requirement(descriptor: dict, package: Path) -> str:
@@ -900,13 +1054,16 @@ def _own_python(project: Path, uv: str, requirement: str) -> dict:
 REQUIREMENTS = f"{FRAMEWORK}/requirements.txt"
 
 
-def _python_dependencies(project: Path, package: Path, uv: str, run: Callable) -> dict:
-    """Install the package's locked Python dependencies into Concorde's own environment.
+def _python_dependencies(
+    project: Path, package: Path, uv: str, run: Callable, names: list[str]
+) -> dict:
+    """Install the package's locked Python dependencies into Concorde's own environment, for the
+    installed parts that need the dependencies ``names``.
 
     ``uv export`` writes the runtime part of the package's ``uv.lock`` (no development group, no
     project itself) with every hash, and ``uv pip install --require-hashes`` installs exactly those
     versions; the environment has no pip of its own. A check that the environment imports every
-    top-level dependency closes the step.
+    dependency the installed parts need closes the step.
     """
     requirements = project / REQUIREMENTS
     interpreter = project / OWN_PYTHON / "bin/python"
@@ -935,7 +1092,13 @@ def _python_dependencies(project: Path, package: Path, uv: str, run: Callable) -
             "-r",
             str(requirements),
         ],
-        [str(interpreter), "-E", "-s", "-c", "import langgraph.graph"],
+        [
+            str(interpreter),
+            "-E",
+            "-s",
+            "-c",
+            "; ".join(f"import {name.replace('-', '_')}" for name in names),
+        ],
     ]
     for command in steps:
         try:
@@ -964,6 +1127,15 @@ def _python_dependencies(project: Path, package: Path, uv: str, run: Callable) -
     }
 
 
+def split_parts(values: list[str] | None) -> list[str] | None:
+    """The part names of every ``--parts`` value, each a comma-separated list; None for none."""
+    if not values:
+        return None
+    return [
+        name.strip() for value in values for name in value.split(",") if name.strip()
+    ]
+
+
 def main(argv) -> int:
     import argparse
 
@@ -974,6 +1146,14 @@ def main(argv) -> int:
         "running when it checks, and a command started meanwhile may load partly replaced code.",
     )
     parser.add_argument("project")
+    parser.add_argument(
+        "--parts",
+        action="append",
+        metavar="PART[,PART...]",
+        help="install only these parts, by the names of Distribution's parts table (quote "
+        "'worker harness'), with every part they depend on and Distribution; every part when "
+        "left out. With --update, parts to add to those the receipt names",
+    )
     parser.add_argument(
         "--without-d2",
         action="store_true",
@@ -1003,13 +1183,15 @@ def main(argv) -> int:
     )
     arguments = parser.parse_args(argv)
     package = Path(__file__).resolve().parents[3]
+    named = split_parts(arguments.parts)
     try:
         if arguments.update:
-            receipt = update(arguments.project, package)
+            receipt = update(arguments.project, package, part_names=named or ())
         else:
             receipt = install(
                 arguments.project,
                 package,
+                part_names=named,
                 d2=not arguments.without_d2,
                 pi_runtime=not arguments.without_pi_runtime,
                 develop=arguments.develop,
@@ -1033,5 +1215,7 @@ __all__ = [
     "main",
     "open_tasks",
     "refusal",
+    "shipped",
+    "split_parts",
     "update",
 ]

@@ -698,9 +698,23 @@ class InstallTests(unittest.TestCase):
         self.assertTrue(
             (project / ".concorde/framework/src/concorde/spec/grants.py").exists()
         )
-        self.assertTrue(
-            (project / ".concorde/framework/generated/main-session/skill.md").exists()
+        # The Framework copy is the installed parts' runtime: no prompt source, no guidance
+        # section the installer already composed, no development tooling.
+        copy = project / ".concorde/framework"
+        self.assertEqual(
+            {
+                "concorde.json",
+                "generated",
+                "protocol",
+                "scripts",
+                "src",
+                "docsite",
+                "python",
+            },
+            {path.name for path in copy.iterdir()} - {"requirements.txt"},
         )
+        self.assertFalse((copy / "prompts").exists())
+        self.assertFalse((copy / "scripts/development").exists())
         # The task-session prompt of the installed parts, all of them, which Coordination reads.
         self.assertEqual(
             (package / "generated/guidance/task-session.md").read_text(),
@@ -1207,7 +1221,9 @@ class InstallTests(unittest.TestCase):
             pip[:6],
         )
         self.assertEqual(
-            [interpreter, "-E", "-s", "-c", "import langgraph.graph"], probe
+            # Method's dependency, the only one an installed part names.
+            [interpreter, "-E", "-s", "-c", "import langgraph"],
+            probe,
         )
         self.assertEqual(
             {

@@ -32,6 +32,30 @@ A no-ask run in which a `code_to_spec` run did not end `ok` goes on as well, and
 Module whose entry is still a stub or a partial description; its workflow result names that step's
 problem ([Workflows](workflows/requirements.md#req.workflows.no-ask-describe-continues)).
 
+## Installing some of the parts
+
+### scenario.concorde.spec-alone — Installing the spec part alone
+
+- GIVEN a project in which Concorde has never been installed
+- WHEN the developer runs the installer with `--parts spec`
+- THEN the project's `concorde` checks, serves and publishes its Specs: `spec-validation`, `registry`, `grant` and `docsite` work
+- AND `task`, `run` and `issues` are refused with `part_missing`, each naming its part and the `--parts` that installs it
+- AND the project holds no code, guidance section, workflow or ignore rule of another part
+
+### scenario.concorde.coordination-without-method — A task delivered and merged without Method
+
+- GIVEN a project without Specs in which the coordination part is installed without Method, the spec part or the issues part
+- WHEN the main agent opens a task naming its Modules by plain labels, the task session delivers it with `concorde task deliver --check "<command>"`, and the main agent merges and closes it
+- THEN the task branch carries the delivery commit and the primary branch the task's change
+- AND no step asked for `spec-validation`, a run or an [Issue](glossary.json#concept.issue), whose parts are absent
+
+### scenario.concorde.method-without-issues — A review keeps its findings without the issues part
+
+- GIVEN a project in which Method is installed with the parts it depends on, without the issues and coordination parts
+- WHEN the developer runs a Spec review whose reviewer reports a finding
+- THEN the run result keeps the finding and states that the issues part is not installed
+- AND the run does not fail because of it
+
 ## Working on a task
 
 ### scenario.concorde.task-to-merge — A task from opening to merge

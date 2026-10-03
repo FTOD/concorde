@@ -148,6 +148,35 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - AND nothing is placed under `.pi/`, no `AGENTS.md` is created, and a project's own `AGENTS.md` is left as it is and not listed under `amended`
 - BUT no Spec document, registry or project configuration with its [Protocol binding](../glossary.json#concept.protocol-binding) is created, which only initialization creates
 
+### scenario.distribution.install-parts — Install a set of parts with their dependencies
+
+- GIVEN a built Concorde package and a project
+- WHEN the developer runs the installer with `--parts coordination`
+- THEN the receipt names under `parts` the coordination, kernel and distribution parts, each with the package's version
+- AND the Framework copy holds the code of exactly those parts, and the guidance, ignore rules, programs and workflows of no other part
+- AND the installed `concorde` refuses a command of a part left out with `part_missing`
+
+### scenario.distribution.install-unknown-part — A part the package does not build installs nothing
+
+- GIVEN a built Concorde package and a project
+- WHEN the developer runs the installer with `--parts` naming a part the package does not build
+- THEN the installer refuses with `unknown_part`, naming the part and the package's parts
+- AND nothing is written into the project
+
+### scenario.distribution.update-installed-parts — An update keeps the installed parts and adds those asked for
+
+- GIVEN a project in which only the spec part is installed
+- WHEN the developer runs `concorde update`
+- THEN the update installs the spec and distribution parts again and no other
+- AND `concorde update --parts issues` then installs the issues part and the kernel it depends on beside them
+
+### scenario.distribution.update-without-spec — An update without the spec part waits for no validation
+
+- GIVEN a project in which the coordination part is installed without the spec part
+- WHEN the developer runs `concorde update`
+- THEN the update result carries `update` `null` and no `.concorde/update.json` is written
+- AND its `next` asks only for the updated files to be committed
+
 ### scenario.distribution.install-repeat — Installing again repeats no download
 
 - GIVEN a project in which Concorde was installed with the pinned `d2` and the locked pi runtime

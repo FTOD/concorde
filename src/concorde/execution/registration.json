@@ -37,6 +37,7 @@
     ],
     "permissions": [],
     "programs": [],
+    "python_dependencies": [],
     "prepare": null,
     "bind": null
   },

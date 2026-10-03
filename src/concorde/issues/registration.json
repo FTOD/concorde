@@ -77,13 +77,16 @@
   },
   "renders": null,
   "install": {
-    "files": [],
+    "files": [
+      "scripts/issues.py"
+    ],
     "defaults": {
       ".concorde/issues/.gitignore": "# Issue records are versioned project data. Host locks live under ../locks/.\n"
     },
     "gitignore": [],
     "permissions": [],
     "programs": [],
+    "python_dependencies": [],
     "prepare": null,
     "bind": null
   },
