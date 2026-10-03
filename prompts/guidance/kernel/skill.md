@@ -6,7 +6,10 @@ audience: shared
 
 Every level of the work leaves a record, and `concorde trace show <task>` shows a task's whole
 trace, from its sessions down to each worker round, with how long each part took and what it cost;
-`concorde trace show <run-id>` shows one run.
+`concorde trace show <run-id>` shows one run. Tasks exist only where the coordination part is
+installed and runs only where the execution part is: without them there is no task or run to name,
+and `concorde trace show <folder>` still shows the node whose folder you give, absolute or relative
+to a `.concorde` directory.
 
 Every `concorde` command that cannot do what it was asked refuses with `{"error": <link>}`, the top
 link of an **error chain**, except Spec tooling's commands. Each link is one level's own account:

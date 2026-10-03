@@ -145,6 +145,10 @@ def _admit(schema: Any, root: Any, field: str, depth: int, contract: bool) -> No
         return
     if not isinstance(schema, dict):
         raise _refuse_schema(field, "a schema is an object or a boolean")
+    if contract and depth and "$defs" in schema:
+        raise _refuse_schema(
+            pointer(field, "$defs"), "a contract schema has $defs only at its top"
+        )
     allowed = KEYWORDS | {"$defs"} if contract else KEYWORDS
     unknown = sorted(set(schema) - allowed)
     if unknown:
@@ -161,15 +165,18 @@ def _admit(schema: Any, root: Any, field: str, depth: int, contract: bool) -> No
     if "$ref" in schema:
         _admit_reference(schema, root, field, contract)
 
-    def child(value, key):
-        _admit(value, root, pointer(field, key), depth + 1, contract)
+    def child(value, *keys):
+        location = field
+        for key in keys:
+            location = pointer(location, key)
+        _admit(value, root, location, depth + 1, contract)
 
     for name in ("properties", "$defs"):
         if name in schema:
             if not isinstance(schema[name], dict):
                 raise _refuse_schema(pointer(field, name), f"{name} must be an object")
             for key, value in schema[name].items():
-                child(value, f"{name}/{key}")
+                child(value, name, key)
     for name in ("items", "additionalProperties"):
         if name in schema:
             child(schema[name], name)
@@ -177,7 +184,7 @@ def _admit(schema: Any, root: Any, field: str, depth: int, contract: bool) -> No
         if not isinstance(schema["anyOf"], list) or not schema["anyOf"]:
             raise _refuse_schema(pointer(field, "anyOf"), "anyOf must list schemas")
         for index, value in enumerate(schema["anyOf"]):
-            child(value, f"anyOf/{index}")
+            child(value, "anyOf", index)
     required = schema.get("required", [])
     if (
         not isinstance(required, list)
