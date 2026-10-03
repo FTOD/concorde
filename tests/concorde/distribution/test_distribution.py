@@ -617,8 +617,12 @@ class PartsTests(unittest.TestCase):
         self.assertEqual(0, listed.returncode, listed.stderr)
         names = {tool["name"] for tool in json.loads(listed.stdout)["tools"]}
         self.assertIn("task_list", names)
-        # Neither the issues part's tools nor run_result, which requires the execution part.
-        self.assertFalse({"issue_list", "issue_report", "run_result"} & names)
+        # Neither the issues part's tools nor the coordination part's run_result and
+        # task_resolve, which require the execution and issues parts.
+        self.assertFalse(
+            {"issue_list", "issue_report", "run_result", "task_resolve"} & names
+        )
+        self.assertIn("register_wait", names)
         call = {"arguments": {}, "primary": str(project), "where": str(project)}
         answered = framework_command(
             project, "project-mcp", "--call", "issue_list", stdin=json.dumps(call)
@@ -631,6 +635,17 @@ class PartsTests(unittest.TestCase):
             project, "project-mcp", "--call", "run_result", stdin=json.dumps(call)
         )
         link = json.loads(answered.stdout)["error"]
+        self.assertEqual("part_missing", link["code"])
+        self.assertIn("the execution part", link["detail"])
+        # A wait for a run is refused as `concorde task wait --run` is.
+        waited = framework_command(
+            project,
+            "project-mcp",
+            "--call",
+            "register_wait",
+            stdin=json.dumps({**call, "arguments": {"run": "r-1"}}),
+        )
+        link = json.loads(waited.stdout)["error"]
         self.assertEqual("part_missing", link["code"])
         self.assertIn("the execution part", link["detail"])
 

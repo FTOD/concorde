@@ -358,6 +358,25 @@ class ProjectMcpTests(unittest.TestCase):
         self.assertFalse(error, escalated)
         self.assertEqual(1, escalated["number"])
         self.assertEqual("task-session", escalated["escalated"]["level"])
+        # Without `by`, the level is the calling session's.
+        worktree = self.project.worktree("t2")
+        for session, level in (
+            (client, "main-agent"),
+            (
+                self.client(cwd=worktree, CLAUDE_PROJECT_DIR=str(worktree)),
+                "task-session",
+            ),
+        ):
+            derived, error = session.call(
+                "task_escalate",
+                task="t2",
+                code="need_choice",
+                detail="Which retry limit?",
+                reason="decision",
+                explanation="the limit is a promise of the Module",
+            )
+            self.assertFalse(error, derived)
+            self.assertEqual(level, derived["escalated"]["level"])
         rebound, error = client.call("task_rebind", task="t2", main="concorde-8e")
         self.assertFalse(error, rebound)
         self.assertEqual(

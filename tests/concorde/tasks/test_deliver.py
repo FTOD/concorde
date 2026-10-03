@@ -235,9 +235,7 @@ class DeliverTests(ProjectCase):
         closed = self.refusal("deliver", "t1", "--wait", "30", cwd=worktree)
         self.assertEqual("task_closed", closed["code"])
         self.assertEqual(base, git(worktree, "rev-parse", "HEAD"))
-        self.assertFalse(
-            workspace_lock_path(store.concorde(self.root), "t1").exists()
-        )
+        self.assertFalse(workspace_lock_path(store.concorde(self.root), "t1").exists())
 
 
 class CoordinationAloneTests(ProjectCase):
