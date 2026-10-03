@@ -49,25 +49,73 @@ function finish(outcome, key) {
   return report(null)
 }
 
-// Providers before the Modules that use them, otherwise in the scaffold's order.
+// Providers before the Modules that use them (req.method.brownfield-providers-first): the uses
+// among the created Modules condensed into strongly connected groups; each time, of the groups
+// whose used groups are all placed, the one whose first Module the scaffold lists first, its
+// Modules in the scaffold's order.
 function providersFirst(created) {
-  const ordered = []
-  const placed = {}
-  let progress = true
-  while (ordered.length < created.length && progress) {
-    progress = false
-    for (const item of created) {
-      if (placed[item.id]) continue
-      const ready = item.uses.every(function (target) { return placed[target] || target === item.id })
-      if (ready) {
-        ordered.push(item.id)
-        placed[item.id] = true
-        progress = true
+  const index = {}
+  created.forEach(function (item, i) { index[item.id] = i })
+  const uses = created.map(function (item) {
+    return (item.uses || [])
+      .filter(function (target) { return target in index && target !== item.id })
+      .map(function (target) { return index[target] })
+  })
+  // Tarjan's algorithm: group[v] numbers the strongly connected group of the v-th created Module.
+  const group = []
+  const seen = []
+  const low = []
+  const stack = []
+  const onStack = []
+  let counter = 0
+  let groups = 0
+  function visit(v) {
+    seen[v] = low[v] = counter++
+    stack.push(v)
+    onStack[v] = true
+    for (const w of uses[v]) {
+      if (seen[w] === undefined) {
+        visit(w)
+        low[v] = Math.min(low[v], low[w])
+      } else if (onStack[w]) {
+        low[v] = Math.min(low[v], seen[w])
       }
     }
+    if (low[v] === seen[v]) {
+      let w
+      do {
+        w = stack.pop()
+        onStack[w] = false
+        group[w] = groups
+      } while (w !== v)
+      groups++
+    }
   }
-  for (const item of created) {
-    if (!placed[item.id]) ordered.push(item.id)  // a cycle: keep the scaffold's order
+  created.forEach(function (_, v) { if (seen[v] === undefined) visit(v) })
+  // The groups' members in the scaffold's order, and the other groups each one uses.
+  const members = []
+  const needs = []
+  for (let g = 0; g < groups; g++) {
+    members.push([])
+    needs.push([])
+  }
+  created.forEach(function (_, v) {
+    members[group[v]].push(v)
+    for (const w of uses[v]) {
+      if (group[w] !== group[v]) needs[group[v]].push(group[w])
+    }
+  })
+  // The groups form no cycle, so some group whose providers are all placed is always left.
+  const ordered = []
+  const placed = []
+  for (let n = 0; n < groups; n++) {
+    let next = null
+    for (let g = 0; g < groups; g++) {
+      if (placed[g] || !needs[g].every(function (h) { return placed[h] })) continue
+      if (next === null || members[g][0] < members[next][0]) next = g
+    }
+    placed[next] = true
+    for (const v of members[next]) ordered.push(created[v].id)
   }
   return ordered
 }

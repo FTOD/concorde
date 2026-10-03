@@ -124,7 +124,7 @@ finds `survey@<digest>` again instead of running it once more.
 | --- | --- | --- | --- | --- |
 | 1 | `survey` | Operation `survey --modules <module>` | always | not `ok`; interactive with [decision points](../glossary.json#concept.decision-point) not answered |
 | 2 | `scaffold` | [execution command](../glossary.json#concept.execution-command) `scaffold --input <survey run>` | the survey is `ok` | not `ok` |
-| 3 | `describe:<id>` | Operation `code_to_spec --modules <id>` | for each created [Module](../glossary.json#concept.module), providers before the Modules that use them, then `<module>` | interactive, and either not `ok` or with open questions not answered |
+| 3 | `describe:<id>` | Operation `code_to_spec --modules <id>` | for each created [Module](../glossary.json#concept.module), providers before the Modules that use them, Modules that use each other in the scaffold's order, then `<module>` | interactive, and either not `ok` or with open questions not answered |
 | 4 | `spec_review` | Operation `spec_review --modules <module and created Modules>` | always after 3 | interactive and not `ok` |
 | 5 | `validate` | execution command `task-validation` | always after 4 | not `ok`, or readiness not ready |
 | 6 | `delivery` | execution command `delivery --adoption` | validation ready | — |
@@ -138,9 +138,12 @@ The order, the stops and the last step are Method's requirements
 without a binding runs no workflow at all, as Workflows requires
 ([req.workflows.bound-only](../workflows/requirements.md#req.workflows.bound-only)).
 
-Created Modules are described providers first, by the `uses` the survey proposed among them, and
-otherwise in the proposal's order, so that a worker describing a consumer reads its providers'
-descriptions rather than their stubs. A `describe` step that did not end `ok` does not end a no-ask
+Created Modules are described providers first, by the `uses` the survey proposed among them, so
+that a worker describing a consumer reads its providers' descriptions rather than their stubs.
+Those `uses` may form cycles, which the Protocol allows, so the order condenses them into strongly
+connected groups: each time, of the groups whose used groups are all described, the one whose
+first Module the scaffold lists first is described next, its Modules in the scaffold's order. Within a group no order puts every provider first, so a Module there may be
+described while a Module it uses still has its stub; nothing is refused for it. A `describe` step that did not end `ok` does not end a no-ask
 workflow: the Module keeps its stub or partial description, task validation decides whether the
 workspace can still be delivered, and the problem is reported. Spec review findings are reported,
 not repaired, because repairing a [Spec](../glossary.json#concept.spec) needs a decision.

@@ -254,7 +254,19 @@ This illustrates [present evidence](requirements.md#req.issues.report-evidence-p
 - THEN the command prints the error code `io_error` with the reason `environment` and a message naming the file it could not write
 - AND its options say to carry the error chain in the [decision log](../glossary.json#concept.decision-log), escalation or [run result](../glossary.json#concept.run-result) and never to report it as an Issue
 - AND exits with status 1
+- AND below its link come the file transaction's refusal and, below that, the operating system's error
 - BUT no Issue is recorded
+
+### scenario.issues.command-restore-refused — A record the file transaction could not restore is recovery_failed
+
+- GIVEN a valid report file and a file transaction that publishes the record, fails, and is refused restoring it by the operating system
+- WHEN the main agent runs `report --file` with that file
+- THEN the command prints the error code `recovery_failed` with the reason `environment`, saying that no read shows the uncommitted record
+- AND below its link come the file transaction's refusal and each error of the operating system it received
+- AND `list` names no new Issue, and `recover` removes the record the write left
+
+This illustrates [a refused request recording nothing](requirements.md#req.issues.refusal-writes-nothing)
+and [the Issue system never reporting itself](requirements.md#req.issues.own-failures).
 
 ### scenario.issues.command-write-raced — A record changed during the write is refused as stale
 

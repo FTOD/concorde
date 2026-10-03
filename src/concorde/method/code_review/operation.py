@@ -21,6 +21,7 @@ evidence.
 
 from __future__ import annotations
 
+import copy
 import os
 import subprocess
 from dataclasses import dataclass, field
@@ -109,7 +110,8 @@ REVIEWER_FINDING: dict = {
         "locations": {"type": "array", "minItems": 1, "items": _STRING},
         "evidence": _STRING,
         "suggestion": _STRING,
-        "earlier": _STRING,
+        # The earlier Issue the finding is the problem of; an empty one names none.
+        "earlier": {"type": "string"},
     },
 }
 RESOLVED: dict = {
@@ -137,6 +139,22 @@ FINDING: dict = {
         "earlier": ISSUE_ID,
         "issue": {"anyOf": [ISSUE_ID, {"type": "null"}]},
     },
+}
+# A reviewer's finding the host did not report since its evidence does not hold, as the
+# reviewer returned it but for the earlier Issue it named, with the host's reason.
+_UNREPORTED: dict = {
+    **REVIEWER_FINDING,
+    "properties": {
+        key: value
+        for key, value in REVIEWER_FINDING["properties"].items()
+        if key != "earlier"
+    },
+}
+REJECTED: dict = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["finding", "reason"],
+    "properties": {"finding": _UNREPORTED, "reason": _STRING},
 }
 EARLIER_ISSUES: dict = {
     "anyOf": [
@@ -175,7 +193,7 @@ EARLIER_ISSUES: dict = {
     ]
 }
 
-# contract.code-review.review, version 5 (contracts.md); a test keeps the two equal.
+# contract.code-review.review, version 6 (contracts.md); a test keeps the two equal.
 REVIEW_SCHEMA: dict = {
     "type": "object",
     "additionalProperties": False,
@@ -212,6 +230,7 @@ REVIEW_SCHEMA: dict = {
                     "context_identity",
                     "summary",
                     "findings",
+                    "rejected",
                     "earlier_issues",
                 ],
                 "properties": {
@@ -225,6 +244,7 @@ REVIEW_SCHEMA: dict = {
                     },
                     "summary": {"anyOf": [_STRING, {"type": "null"}]},
                     "findings": {"type": "array", "items": FINDING},
+                    "rejected": {"type": "array", "items": REJECTED},
                     "earlier_issues": EARLIER_ISSUES,
                 },
             },
@@ -243,6 +263,8 @@ class ModuleReview:
     context_identity: str | None = None
     summary: str | None = None
     findings: list[dict] = field(default_factory=list)
+    # The reviewer's findings about the Module whose evidence did not hold, never reported.
+    rejected: list[dict] = field(default_factory=list)
     stop: Stop | None = None
     # The Module's earlier Issues as offered to its reviewer, and what the review did with them.
     earlier: list[dict] | None = None
@@ -614,18 +636,20 @@ def _line_count(path: Path) -> int:
 
 def check_evidence(
     ctx: RunContext, state: CodeReview, modules: list[str], findings: list[dict]
-) -> tuple[list[dict], dict[str, str | None]]:
-    """Every problem with the findings' Modules, bases and locations, as host evidence, and the
-    document that defines each basis. Locations are rewritten relative to the worktree."""
+) -> tuple[dict[int, list[dict]], dict[str, str | None]]:
+    """The problems with each finding's Module, basis and locations, as host evidence by the
+    finding's index, and the document that defines each basis. Locations are rewritten relative
+    to the worktree."""
     repository = SpecRepository(ctx.worktree)
     documents: set[str] = set()
     for module in modules:
         documents.update(repository.spec_context(module).paths)
     changed = set(state.reviewed) | set(state.named)
     defined: dict[str, str | None] = {}
-    problems: list[dict] = []
-    for position, finding in enumerate(findings, 1):
-        label = f"finding {position} ({finding['module']})"
+    unresolved: dict[int, list[dict]] = {}
+    for index, finding in enumerate(findings):
+        problems = unresolved.setdefault(index, [])
+        label = f"finding {index + 1} ({finding['module']})"
         if finding["module"] not in modules:
             problems.append(
                 evidence(
@@ -680,7 +704,7 @@ def check_evidence(
                 suffix = item.strip()[len(parsed[0]) :]
                 located.append(path + suffix)
         finding["locations"] = located
-    return problems, defined
+    return {index: items for index, items in unresolved.items() if items}, defined
 
 
 def _identity(items: list[dict]) -> str | None:
@@ -763,15 +787,32 @@ def _judge(
         results = [item for item in state.results if item["module"] in own]
     else:
         results = state.results
+
+    def citations(result: dict) -> str | None:
+        # The reviewer is resumed once with every citation that does not hold.
+        claimed = [
+            copy.deepcopy(review_issues.without_blank_earlier(item))
+            for item in (result.get("output") or {}).get("findings") or []
+        ]
+        unresolved, _ = check_evidence(ctx, state, modules, claimed)
+        return review_issues.citation_repair(
+            [
+                f"{item['detail']} (finding titled {claimed[index]['title']!r})"
+                for index, problems in unresolved.items()
+                for item in problems
+            ]
+        )
+
     launched = len(ctx.worker_runs)
     outcome = run_worker(
         ctx,
         instructions(ctx, state, reviews, results),
         task_type=TASK_TYPE,
         output_schema=REVIEWER_OUTPUT,
-        rounds=0,
+        rounds=review_issues.CITATION_ROUNDS,
         modules=modules,
         readable=(ctx.run_dir / "checks",),
+        validate=citations,
     )
     found.extend(_labelled(outcome.evidence, label))
     if len(ctx.worker_runs) > launched:
@@ -785,39 +826,30 @@ def _judge(
         stop_all(outcome)
         return found
     output = outcome.output or {}
-    findings = list(output.get("findings") or [])
-    problems, defined = check_evidence(ctx, state, modules, findings)
+    findings = [
+        review_issues.without_blank_earlier(item)
+        for item in output.get("findings") or []
+    ]
+    unresolved, defined = check_evidence(ctx, state, modules, findings)
+    # A finding whose evidence does not hold is rejected alone, with the reasons, and never
+    # reported; the reviewer's other findings stand.
+    for index, problems in unresolved.items():
+        found.extend(problems)
+        finding = findings[index]
+        owner = finding["module"] if finding["module"] in modules else modules[0]
+        state.reviews[owner].rejected.append(
+            {
+                "finding": {
+                    key: value for key, value in finding.items() if key != "earlier"
+                },
+                "reason": "; ".join(item["detail"] for item in problems),
+            }
+        )
+    findings = [item for index, item in enumerate(findings) if index not in unresolved]
     for finding in findings:
         finding["issue"] = None
     for review in reviews:
         review.findings = [item for item in findings if item["module"] == review.module]
-    # A finding about a Module nobody reviewed stays in the report, with the first Module's.
-    reviews[0].findings += [item for item in findings if item["module"] not in modules]
-    if problems:
-        for finding in findings:
-            finding.pop(
-                "earlier", None
-            )  # nothing is reported, so no Issue is appended to
-        found.extend(problems)
-        stop_all(
-            ctx.fail(
-                "failed",
-                "unresolved_evidence",
-                f"A finding about {', '.join(modules)} cites evidence that does not hold.",
-                f"the reviewer of {', '.join(modules)} returned findings whose Module, basis or "
-                "locations do not hold, so none of its findings is reported: "
-                + "; ".join(item["detail"] for item in problems),
-                reason="capability",
-                explanation="the host checks every finding's evidence but never corrects a "
-                "finding or relaunches the reviewer",
-                evidence=problems,
-                options=[
-                    "run code_review again for these Modules",
-                    "check the Spec context of the reviewed Modules",
-                ],
-            )
-        )
-        return found
     resolved = list(output.get("resolved") or [])
     offered = {item["issue"] for review in reviews for item in review.earlier or []}
     unoffered = [item for item in resolved if item["issue"] not in offered]
@@ -870,6 +902,7 @@ def derive_verdict(ctx: RunContext):
             "context_identity": item.context_identity,
             "summary": item.summary,
             "findings": item.findings,
+            "rejected": item.rejected,
             "earlier_issues": item.settled,
         }
         for item in reviews

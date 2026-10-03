@@ -28,7 +28,7 @@ from concorde.kernel.tracing import locks
 from concorde.kernel.tracing import node as trace
 from concorde.method import brownfield  # noqa: F401 -- registers the brownfield workflow
 from concorde.workflows import catalog, store
-from concorde.workflows.output import step_output
+from concorde.workflows.output import StepOutputError, step_output
 from concorde.workflows import step as steps
 from concorde.workflows.cli import refused
 from concorde.workflows.report import RESULT_SCHEMA, report
@@ -619,6 +619,21 @@ class StepTests(unittest.TestCase):
             ["describe:module.checkout", "validate", "delivery"],
             [s["key"] for s in result["superseded"]],
         )
+
+    @verifies("scenario.workflows.superseded")
+    def test_a_superseded_step_breaking_the_convention_still_reports(self):
+        # The step is recorded before its outcome refuses the object, as the step command does.
+        with (
+            self.starter(output={"workflow": {"decision_points": []}}),
+            self.assertRaises(StepOutputError),
+        ):
+            run_step(self.space, self.request())
+        # The run ended ok, so only a restart label runs the step again and supersedes it.
+        with self.starter(output=SURVEY_OUTPUT):
+            run_step(self.space, self.request(restart="2"))
+        result = report(self.space)
+        self.assertEqual(["survey"], [s["key"] for s in result["superseded"]])
+        self.assertEqual(["d.db-helper"], [d["id"] for d in result["decisions"]])
 
     @verifies("scenario.workflows.interactive-resume")
     def test_answers_make_a_new_step_that_admits_the_asking_run(self):
@@ -1270,6 +1285,50 @@ class ScriptTests(unittest.TestCase):
         self.assertEqual("ok", run["result"]["reported"]["status"])
         self.assertEqual("concorde-brownfield", run["meta"]["name"])
         self.assertEqual("haiku", run["calls"][0]["options"]["model"])
+
+    @verifies("scenario.method.brownfield-mutual-uses")
+    def test_modules_that_use_each_other_are_described_as_a_group(self):
+        def describe(order, created):
+            outcomes = self.full()
+            outcomes["scaffold"] = self.outcome(
+                "scaffold", "scaffold", data={"created_modules": created}
+            )
+            for item in created:
+                key = "describe:" + item["id"]
+                outcomes[key] = self.outcome(key, "code_to_spec")
+            run = self.run_script(self.ARGS, outcomes)
+            described = [
+                c["key"] for c in run["calls"] if c["key"].startswith("describe:")
+            ]
+            self.assertEqual(["describe:" + m for m in order], described)
+
+        describe(
+            ["module.catalog", "module.orders", "module.billing", "module.shop"],
+            [
+                {"id": "module.orders", "uses": ["module.billing"]},
+                {"id": "module.billing", "uses": ["module.orders", "module.catalog"]},
+                {"id": "module.catalog", "uses": []},
+            ],
+        )
+        # A cycle followed by an independent Module keeps the scaffold's order.
+        describe(
+            ["module.a", "module.b", "module.c", "module.shop"],
+            [
+                {"id": "module.a", "uses": ["module.b"]},
+                {"id": "module.b", "uses": ["module.a"]},
+                {"id": "module.c", "uses": []},
+            ],
+        )
+        # A consumer listed before its provider waits for it; a later group does not.
+        describe(
+            ["module.d", "module.c", "module.a", "module.b", "module.shop"],
+            [
+                {"id": "module.c", "uses": ["module.d"]},
+                {"id": "module.a", "uses": ["module.b", "module.c"]},
+                {"id": "module.b", "uses": ["module.a"]},
+                {"id": "module.d", "uses": ["module.unknown"]},
+            ],
+        )
 
     @verifies("scenario.workflows.interactive-pause")
     def test_an_interactive_run_stops_after_the_survey(self):

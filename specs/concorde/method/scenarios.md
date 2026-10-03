@@ -91,6 +91,16 @@ run does, whatever its definition, is shown by the [Execution scenarios](../exec
 - THEN the Operation's link has that error as a `component` cause with its code and message
 - AND the cause's explanation is the error's reason, its option is the error's remediation, and the error's own cause is nested below it
 
+### scenario.method.glossary-after-run — The glossary is audited again after the worker run
+
+- GIVEN a `specify` worker bound to [Module](../glossary.json#concept.module) A, whose grant makes the project glossary writable
+- WHEN the worker changes the glossary entry of a concept Module B owns and ends `blocked`, or ends `ok` proposing the deletion of the glossary
+- THEN the run ends `failed` with `audit_violation` and the reason `permission`, naming Module B's entry, with its `glossary-ownership` evidence
+- AND a blocked worker's own link stays below the Operation's link and its claims stay unchanged in `worker`
+- BUT no resume round follows
+
+This illustrates [the glossary audited by entry](requirements.md#req.method.glossary-by-entry).
+
 ### scenario.method.audit-violation — A write outside the grant fails the run
 
 - GIVEN a worker that changed a file outside its grant's writable paths
@@ -98,3 +108,15 @@ run does, whatever its definition, is shown by the [Execution scenarios](../exec
 - THEN the result has status `failed` with the violation as `audit` evidence
 - AND its error's top link gives `permission` as the reason and names the file
 - AND no configured check is run for that worker
+
+## The brownfield workflow
+
+### scenario.method.brownfield-mutual-uses — Modules that use each other are described as a group
+
+- GIVEN a scaffold that created, in this order, `module.orders` using `module.billing`, `module.billing` using `module.orders` and `module.catalog`, and `module.catalog` using none
+- WHEN the [brownfield workflow](../glossary.json#concept.brownfield-workflow) describes the created Modules
+- THEN it describes `module.catalog` first, since the group of `module.orders` and `module.billing` uses it
+- AND then `module.orders` and `module.billing`, in the scaffold's order, and last the surveyed Module
+- AND each created Module is described exactly once
+
+This illustrates [providers described first](requirements.md#req.method.brownfield-providers-first).

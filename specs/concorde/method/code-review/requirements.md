@@ -80,11 +80,12 @@ whose problem says why, rather than as a defect of the code.
 
 ### req.code-review.evidence-resolves — Cited evidence exists
 
-The code review Operation SHALL make a reviewer's Modules `incomplete` with `unresolved_evidence`,
-reporting none of their findings, when a finding names a Module the reviewer did not review, cites
-a stable identity or document that the reviewed Modules' Spec context does not define, or names a
-location whose file is neither in the worktree nor a changed path of the diff, or whose line lies
-beyond that file's end.
+The code review Operation SHALL report no finding that, after the reviewer's one [resume round](../../glossary.json#concept.resume-round) to correct its citations, still names a Module the reviewer did not review, cites a stable identity or document that the reviewed Modules' Spec context does not define, or names a location whose file is neither in the worktree nor a changed path of the diff, or whose line lies beyond that file's end, listing each such finding as rejected with the reason and still reporting every other finding of that reviewer.
+
+A citation that does not hold is usually a slip of an otherwise sound finding, such as a line range
+a little past a file's end, so the reviewer is resumed once with every such citation to correct, and
+what still does not hold afterwards costs only that finding: the reviewer's other findings stand
+and its Modules' outcomes follow from them.
 
 ## Issues and verdict
 
@@ -104,6 +105,12 @@ recorded as Issues.
 
 Issues is an [optional integration](../../glossary.json#concept.optional-integration) of the method
 part: the review's judgement, its evidence checks and its verdict are the same either way.
+
+### req.code-review.blank-earlier — An empty earlier names no Issue
+
+The code review Operation SHALL treat a reviewer's finding whose `earlier` is empty or blank as
+naming no earlier Issue, as if the field were left out, while every other `earlier` is checked
+against the earlier Issues it offered.
 
 ### req.code-review.no-closing — The review closes no Issue
 
@@ -125,6 +132,6 @@ issues part is not installed, when the run reports a finding of a blocking tier 
 otherwise, and the verdict as `incomplete` when any Module is, else `changes_required` when any
 Module is, else `accepted`.
 
-### req.code-review.no-resume — No automatic resume
+### req.code-review.no-resume — No resume but to correct citations
 
-The code review Operation SHALL NOT resume a reviewer after it has returned its result.
+The code review Operation SHALL NOT resume a reviewer after it has returned its result, except once when a finding's Module, basis or location does not hold, with those citations to correct.

@@ -82,8 +82,10 @@ The review below has one of two scopes:
 - `evidence`: what the cited code and Spec say, quoted exactly where possible;
 - `suggestion`: a concrete direction for the repair.
 
-Every finding needs a basis and at least one location: the host checks each, and when one does not
-hold it reports none of your findings and the review is incomplete.
+Every finding needs a basis and at least one location: the host checks each, so check every line
+range against the file before you cite it. When one does not hold, the host resumes you once with
+the citations to correct; a finding whose citation still does not hold is rejected and never
+reported.
 
 `findings` is empty when the code keeps every promise. Summarize the review in `summary`. The host
 derives the verdict from the tiers of your findings and of the earlier Issues that still stand.

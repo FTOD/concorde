@@ -82,7 +82,9 @@ links to readable, which the caller therefore lists among the runtime paths.
 Whether a round left something to repair is the caller's judgement, not the worker harness's: the
 worker harness runs no check, reads no [Spec](../../glossary.json#concept.spec) and knows no glossary. A caller that has such a judgement
 passes a **round validation**, a callback the host calls once after every round whose worker ended
-`ok` with a clean audit, with the worktree and the folder of the round's trace node. It answers with:
+`ok` with a clean audit, with the worktree, the folder of the round's trace node and the round's
+[worker result](../../glossary.json#concept.worker-result), valid against its schema, so that a
+caller may judge what the worker returned as well as what it changed. It answers with:
 
 | Field | Meaning |
 | --- | --- |

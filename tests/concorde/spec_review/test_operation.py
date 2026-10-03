@@ -386,6 +386,66 @@ class SpecReviewTests(unittest.TestCase):
         self.assertNotIn("Earlier problem fourth.", brief)
         self.assertNotIn("r-earlier", brief)
 
+    @verifies("scenario.spec-review.blank-earlier")
+    def test_a_blank_earlier_names_no_earlier_issue(self):
+        unknown = "I-" + "9" * 32
+        status, envelope = self.review(
+            {
+                "reviewer module.a": reviewer(
+                    finding("specs/a/module.md", earlier=""),
+                    finding("specs/a/module.md", "suggestion", earlier="  "),
+                    finding("specs/a/module.md", "suggestion", earlier=unknown),
+                )
+            }
+        )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        (module,) = envelope["output"]["modules"]
+        self.assertEqual(3, len(module["findings"]))
+        for item in module["findings"]:
+            self.assertNotIn("earlier", item)
+            self.assertIsNotNone(item["issue"])
+        self.assertEqual(
+            [unknown], [item["issue"] for item in module["earlier_issues"]["ignored"]]
+        )
+        self.assertEqual(3, len(self.issues()))
+
+    @verifies("scenario.spec-review.finding-path")
+    def test_a_finding_whose_path_does_not_hold_is_rejected_alone(self):
+        status, envelope = self.review(
+            {
+                "reviewer module.a": reviewer(
+                    finding("../elsewhere/module.md", earlier="I-" + "1" * 32),
+                    finding("specs/a/module.md"),
+                )
+            }
+        )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        (module,) = envelope["output"]["modules"]
+        [rejected] = module["rejected"]
+        self.assertEqual("../elsewhere/module.md", rejected["finding"]["path"])
+        self.assertNotIn("earlier", rejected["finding"])
+        self.assertIn("not a path in the task worktree", rejected["reason"])
+        self.assertIn("invalid-output", self.kinds(envelope))
+        [reported] = module["findings"]
+        self.assertEqual([reported["issue"]], list(self.issues()))
+        self.assertEqual("changes_required", module["outcome"])
+
+    @verifies("scenario.spec-review.citation-resume")
+    def test_a_reviewer_is_resumed_once_to_correct_a_path(self):
+        status, envelope = self.review(
+            {
+                "reviewer module.a": reviewer(finding("../elsewhere/module.md"))
+                + reviewer(finding("specs/a/module.md"))
+            }
+        )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        (module,) = envelope["output"]["modules"]
+        self.assertEqual([], module["rejected"])
+        self.assertEqual(["specs/a/module.md"], [f["path"] for f in module["findings"]])
+        record = self.record(envelope["worker_runs"][0])
+        self.assertEqual(["initial", "repair"], [r["prompt"] for r in record["rounds"]])
+        self.assertIn("'../elsewhere/module.md'", record["rounds"][0]["validation"])
+
     @verifies("scenario.spec-review.without-issues")
     def test_without_the_issues_part_the_findings_stay_in_the_result(self):
         with without_issues():
@@ -636,6 +696,7 @@ class SpecReviewTests(unittest.TestCase):
                 "outcome": "incomplete",
                 "context_identity": None,
                 "findings": [],
+                "rejected": [],
                 "earlier_issues": None,
             },
             output["modules"][0],

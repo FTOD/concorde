@@ -243,9 +243,16 @@ class GuidanceTests(unittest.TestCase):
         )
         self.assertIn("`entries` of the right realization", self.session)
         self.assertIn("commit both together", self.session)
-        self.assertIn("The task session prepares the workers' environment", self.skill)
+        self.assertIn(
+            "Whoever works in the workspace (the task session, where the coordination part "
+            "is installed) prepares the workers' environment",
+            self.skill,
+        )
         self.assertIn("When the work needs a new implementation file", self.session)
-        self.assertIn("creates any other new implementation file", self.skill)
+        self.assertIn(
+            "any other new implementation file the work needs is created first",
+            self.skill,
+        )
         # A new Spec document is Specification's to create, never a session's.
         self.assertIn(
             "A new Spec document is not such a file: never create one for a worker, since "
@@ -258,8 +265,13 @@ class GuidanceTests(unittest.TestCase):
             "Operation creates it and registers it in its Module's `owns`",
             self.skill,
         )
+        self.assertIn("creates the delivery commit on the task branch", self.session)
+        self.assertIn(
+            "creates the delivery commit on the workspace's branch, a task branch where the "
+            "coordination part is installed",
+            self.skill,
+        )
         for text in (self.session, self.skill):
-            self.assertIn("creates the delivery commit on the task branch", text)
             self.assertNotIn("commits the result on the task branch", text)
 
     @verifies("scenario.main-session.task-session-plan-review")
@@ -286,7 +298,7 @@ class GuidanceTests(unittest.TestCase):
         )
         self.assertIn("concorde run plan_review --plan <file>", self.skill)
         self.assertIn(
-            "optionally `plan_review` of the plan the task session writes", self.skill
+            "optionally `plan_review` of the plan written for the work", self.skill
         )
         self.assertIn("`reviewer` for `plan_review`", self.skill)
 
@@ -513,14 +525,17 @@ class GuidanceTests(unittest.TestCase):
     @verifies("scenario.main-session.brownfield")
     def test_existing_code_is_adopted_through_the_brownfield_workflow(self):
         self.assertIn(
-            "the `brownfield` workflow: open a task bound to the root Module",
+            "with `module` set to the root Module (or to the Module to split) in a workspace "
+            "bound to that Module",
             self.skill,
         )
-        self.assertIn("have its task session run it", self.skill)
+        self.assertIn("open a task bound to it and have its task", self.skill)
+        self.assertIn("the task's session starts it", self.skill)
+        self.assertIn("never names a task", self.skill)
         self.assertIn(
-            "the task's session starts it inside the task worktree", self.skill
+            "Without the coordination part nothing in Concorde binds a worktree",
+            self.skill,
         )
-        self.assertIn("never names the task", self.skill)
         self.assertIn(
             "Ask the developer which mode to use unless they already said", self.skill
         )
@@ -528,19 +543,20 @@ class GuidanceTests(unittest.TestCase):
             "put the rest to the developer at once, with their options and recommendations",
             self.skill,
         )
-        self.assertIn("it starts the same workflow again with them", self.skill)
+        self.assertIn("the same workflow is started again with them", self.skill)
         self.assertIn(
             ".concorde/tasks/<task>/workspace/workflow/reports/<n>.json", self.skill
         )
         self.assertIn(
-            "The task session copies its decisions and problems into the task's decision log",
+            "Where the coordination part is installed, the task session copies its decisions "
+            "and problems into the task's decision log",
             self.skill,
         )
         self.assertIn("treat it like an Operation result", self.skill)
         self.assertIn("never configured automatically", self.skill)
         self.assertIn("`survey`", self.skill)
         self.assertIn(
-            "Run a task that follows a known procedure as its workflow", self.block
+            "Run work that follows a known procedure as its workflow", self.block
         )
         self.assertIn("describe that code with the `brownfield` workflow", self.block)
 

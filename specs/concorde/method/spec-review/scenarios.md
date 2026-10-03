@@ -63,6 +63,28 @@ Spec panel in its [definition](panel.md).
 - AND the result lists I1 as carried with its severity, tier and title, I3 as resolved with the reason and I9 as ignored
 - AND the outcome is `changes_required`, since the carried I1 and the reported I2 are of blocking tiers
 
+### scenario.spec-review.blank-earlier — An empty earlier names no earlier Issue
+
+- GIVEN a reviewer that returns three new findings, the first with `earlier` empty, the second with `earlier` blank and the third naming an Issue that was not offered
+- WHEN the Operation reports the findings
+- THEN the run ends `ok` and each finding is recorded as a new Issue, none naming an earlier Issue
+- AND only the Issue the third named is listed as ignored
+
+### scenario.spec-review.citation-resume — A reviewer corrects a path once
+
+- GIVEN a reviewer whose finding names a path outside the workspace
+- WHEN the Operation checks the reviewer's result
+- THEN it resumes the reviewer once, its repair naming that path
+- AND when the resumed reviewer returns the finding with a path of the workspace, it is reported and nothing is rejected
+
+### scenario.spec-review.finding-path — A finding whose path does not hold is rejected alone
+
+- GIVEN a reviewer that returns, also after its one [resume round](../../glossary.json#concept.resume-round), a finding naming a path outside the workspace and a finding that holds
+- WHEN the Operation reports the findings
+- THEN the first is listed under the Module's `rejected` with the reason and as `invalid-output` evidence, and is reported as no Issue
+- AND the second is reported as an Issue, the Module is `changes_required` and the run ends `ok`
+- AND in a panel, a worker's such finding is rejected unlabelled, and a merged finding of the chair's that names such a path turns its labels into rejections
+
 ### scenario.spec-review.last-blocker-resolved — Resolving the last blocking Issue accepts the Module
 
 - GIVEN the open Issue I1 of `module.a`, of a blocking tier, reported by an earlier Spec review, and no other earlier Issue
@@ -155,3 +177,10 @@ Spec panel in its [definition](panel.md).
 - WHEN the workers have ended
 - THEN the chair does not run, no Issue is recorded, and A's outcome and the verdict are `incomplete`
 - AND the result's error is the Operation's `panel_incomplete` link whose cause for A is `panel_short`, with reviewer 2's link, naming its worker id, and below it the reviewer's own link unchanged
+
+### scenario.spec-review.panel-without-issues — A panel keeps its settled findings without the issues part
+
+- GIVEN a project whose `concorde` does not offer `issues`, and a panel whose chair merges a reviewer's finding and names an `earlier` for it against its brief
+- WHEN the panel reports
+- THEN the run ends `ok`, the Module is `changes_required` and its report finding names no `earlier` and keeps `issue` null
+- AND a Module whose panel stopped after a chair report lists that report's findings without the `earlier` the chair named

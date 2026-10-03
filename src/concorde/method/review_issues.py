@@ -213,6 +213,35 @@ def earlier_issues(
     return found
 
 
+# The resume rounds a review gives a worker to correct citations that do not hold.
+CITATION_ROUNDS = 1
+
+
+def citation_repair(problems: list[str]) -> str | None:
+    """The repair text that resumes a review worker once with every citation of its findings that
+    does not hold, or None when every one holds."""
+    if not problems:
+        return None
+    return (
+        "The host checked the citations of your findings, and these do not hold, so those "
+        "findings would be rejected and never reported:\n\n"
+        + "".join(f"- {problem}\n" for problem in problems)
+        + "\nCorrect each of them from the material you were given, or leave the finding out "
+        "when you cannot support it. Then end again with your complete structured result: every "
+        "finding, the corrected ones included, and every resolution, since it replaces your "
+        "previous result.\n"
+    )
+
+
+def without_blank_earlier(finding: dict) -> dict:
+    """``finding`` without an ``earlier`` that is empty or blank, which names no earlier Issue: a
+    worker may write one for a new finding instead of leaving the field out."""
+    name = finding.get("earlier")
+    if isinstance(name, str) and not name.strip():
+        finding = {key: value for key, value in finding.items() if key != "earlier"}
+    return finding
+
+
 def settle(
     earlier: list[dict],
     findings: list[dict],
@@ -233,7 +262,7 @@ def settle(
     ignored: list[dict] = []
     for finding in findings:
         name = finding.pop("earlier", None)
-        if name is None or skipped(finding):
+        if not (name or "").strip() or skipped(finding):
             continue
         if name not in offered:
             ignored.append({"issue": name, "reason": unoffered})
@@ -374,10 +403,12 @@ def report(
 
 __all__ = [
     "BLOCKING",
+    "CITATION_ROUNDS",
     "NOT_RECORDED",
     "SEVERITIES",
     "TIERS",
     "Absent",
+    "citation_repair",
     "Refusal",
     "earlier_issues",
     "installed",
@@ -386,4 +417,5 @@ __all__ = [
     "report",
     "settle",
     "statement",
+    "without_blank_earlier",
 ]

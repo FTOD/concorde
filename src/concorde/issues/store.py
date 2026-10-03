@@ -1001,11 +1001,30 @@ def _publish_texts(root: Path, records: list[tuple[str, str, str, str | None]]) 
     try:
         apply_files(root, changes, {change["path"] for change in changes})
     except KernelError as error:
-        # The file transaction's refusal, as an Issue error naming its file.
-        refusal = IssueError(str(error), error.code, path=error.field or None)
-        # Another program created or changed the record after this write read it.
+        # The file transaction's refusal, as an Issue error naming its file, with its causes.
+        refusal = IssueError(
+            str(error), error.code, path=error.field or None, causes=(error,)
+        )
         if error.code != "stale_proposal":
-            raise refusal from error
+            # A record the transaction could not restore stays published, uncommitted.
+            left = [
+                (identifier, path)
+                for identifier, path, text, _ in records
+                if _holds(root, path, text)
+            ]
+            if not left:
+                raise refusal from error
+            raise IssueError(
+                f"Issue {left[0][0]} was not written: publishing "
+                f"{', '.join(path for _, path in left)} failed and the operating system refused "
+                "to put back what it replaced; the uncommitted record stays in the primary "
+                "worktree, no read shows it, and the next Issue write or `concorde issues "
+                "recover` puts it back",
+                "recovery_failed",
+                path=left[0][1],
+                causes=(refusal,),
+            ) from error
+        # Another program created or changed the record after this write read it.
         identifier, path, _, before = next(
             (item for item in records if item[1] == error.field), records[0]
         )
@@ -1020,6 +1039,14 @@ def _publish_texts(root: Path, records: list[tuple[str, str, str, str | None]]) 
             path=path,
             causes=(refusal,),
         ) from error
+
+
+def _holds(root: Path, path: str, text: str) -> bool:
+    """Whether the file at ``path`` holds exactly ``text``; an unreadable one does not."""
+    try:
+        return (root / path).read_bytes() == text.encode()
+    except OSError:
+        return False
 
 
 def _commit(

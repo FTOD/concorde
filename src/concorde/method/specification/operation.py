@@ -389,7 +389,7 @@ def launch(ctx: RunContext, created: list[str]):
         output_schema=WORKER_OUTPUT_SCHEMA,
         checks=False,
         rounds=REPAIR_ROUNDS,
-        validate=lambda: validation_repair(ctx),
+        validate=lambda _result: validation_repair(ctx),
     )
 
 

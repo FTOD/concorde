@@ -24,6 +24,7 @@ from tests.concorde.support.operation_project import (
     worker_error,
 )
 from tests.concorde.support.paths import REPOSITORY_ROOT
+from tests.concorde.spec_review.test_operation import without_issues
 
 FAKE_PANELIST = Path(__file__).with_name("fake_panelist.py")
 
@@ -384,6 +385,72 @@ class SpecPanelTests(unittest.TestCase):
         self.assertEqual(
             1, len(envelope["output"]["modules"][0]["reviews"][0]["findings"])
         )
+
+    @verifies("scenario.spec-review.panel-without-issues")
+    def test_without_issues_the_panel_keeps_its_settled_findings(self):
+        plans = {
+            "reviewer module.a 1": worker(findings=[finding(earlier="")]),
+            "reviewer module.a 2": worker(findings=[]),
+            "chair module.a 1": worker(
+                findings=[merged("r1.1", earlier="not an Issue")], rejected=[]
+            ),
+        }
+        with without_issues():
+            exit_status, envelope = self.panel(plans, "--reviewers", "2")
+        self.assertEqual((0, "ok"), (exit_status, envelope["status"]), envelope)
+        (module,) = envelope["output"]["modules"]
+        (reported,) = module["findings"]
+        self.assertNotIn("earlier", reported)
+        self.assertIsNone(reported["issue"])
+        self.assertNotIn("earlier", module["reviews"][0]["findings"][0])
+        self.assertEqual("changes_required", module["outcome"])
+
+    @verifies("scenario.spec-review.panel-without-issues")
+    def test_a_stopped_panel_drops_the_chairs_earlier_claims(self):
+        plans = {
+            "reviewer module.a 1": worker(findings=[finding()]),
+            "reviewer module.a 2": worker(findings=[finding(problem="B.")]),
+            "chair module.a 1": worker(
+                findings=[merged("r1.1", earlier="I-" + "1" * 32)], rejected=[]
+            ),
+            "chair module.a 2": worker(
+                findings=[merged("r1.1", earlier="I-" + "1" * 32)], rejected=[]
+            ),
+        }
+        exit_status, envelope = self.panel(plans, "--reviewers", "2")
+        self.assertEqual((1, "failed"), (exit_status, envelope["status"]), envelope)
+        (module,) = envelope["output"]["modules"]
+        self.assertEqual("incomplete", module["outcome"])
+        self.assertEqual([None], [item["issue"] for item in module["findings"]])
+        self.assertNotIn("earlier", module["findings"][0])
+
+    @verifies("scenario.spec-review.finding-path")
+    def test_a_panel_rejects_a_finding_whose_path_does_not_hold_alone(self):
+        plans = {
+            "reviewer module.a 1": worker(
+                findings=[finding("/etc/elsewhere.md"), finding(problem="A.")]
+            ),
+            "reviewer module.a 2": worker(findings=[finding(problem="B.")]),
+            "chair module.a 1": worker(
+                findings=[
+                    merged("r1.1"),
+                    merged("r2.1", path="../outside.md", tier="suggestion"),
+                ],
+                rejected=[],
+            ),
+        }
+        exit_status, envelope = self.panel(plans, "--reviewers", "2")
+        self.assertEqual((0, "ok"), (exit_status, envelope["status"]), envelope)
+        (module,) = envelope["output"]["modules"]
+        first = module["reviews"][0]
+        self.assertEqual(["r1.1"], [item["label"] for item in first["findings"]])
+        [unusable] = first["rejected"]
+        self.assertEqual("/etc/elsewhere.md", unusable["finding"]["path"])
+        self.assertEqual(["r1.1"], module["findings"][0]["sources"])
+        [rejection] = module["rejected"]
+        self.assertEqual("r2.1", rejection["source"])
+        self.assertIn("the host rejected the chair's finding", rejection["reason"])
+        self.assertEqual(1, len(self.issues()))
 
     @verifies("scenario.spec-review.panel-short")
     def test_a_blocked_reviewer_stops_the_panel_before_the_chair(self):

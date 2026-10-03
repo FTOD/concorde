@@ -20,7 +20,7 @@ in the [contracts](contracts.md).
 - THEN one report lists all three problems as findings of a blocking tier, each naming its basis and locations
 - AND the Operation reports each as a new [Issue](../../glossary.json#concept.issue) owned by that Module with the finding's severity and tier, and names the Issue in the finding
 - AND the verdict is `changes_required`
-- BUT the reviewer is not resumed and nothing in the worktree changes
+- BUT the reviewer is not resumed, since every citation holds, and nothing in the worktree changes
 
 ### scenario.code-review.spec-gap — Behaviour the Spec does not settle
 
@@ -86,6 +86,13 @@ in the [contracts](contracts.md).
 - AND lists the second under `resolved` in the report, without closing it
 - AND an earlier Issue the reviewer neither names nor resolves is listed as `carried` and, when of a blocking tier, makes the outcome `changes_required`
 
+### scenario.code-review.blank-earlier — An empty earlier names no earlier Issue
+
+- GIVEN a reviewer that returns new findings, one with `earlier` empty and one with `earlier` blank
+- WHEN the Operation reports them
+- THEN the run ends `ok` and each finding is recorded as a new Issue
+- BUT no finding names an earlier Issue and none is listed as ignored
+
 ### scenario.code-review.store-refusal — A refusal of the Issue store
 
 - GIVEN a review whose report the Issue store refuses
@@ -104,18 +111,26 @@ in the [contracts](contracts.md).
 
 ## Host checks
 
+### scenario.code-review.citation-resume — A reviewer corrects its citations once
+
+- GIVEN a reviewer whose finding names lines beyond its file's end, beside a finding that holds
+- WHEN the Operation checks the reviewer's result
+- THEN it resumes the reviewer once, its repair naming the location that does not hold and the finding's title
+- AND when the resumed reviewer returns the finding with a location that holds, both findings are reported as Issues and nothing is rejected
+
 ### scenario.code-review.unknown-basis — A finding citing an unknown promise is not reported
 
-- GIVEN a reviewer whose finding cites a requirement identity the reviewed Modules' [Spec context](../../glossary.json#concept.spec-context) does not define
+- GIVEN a reviewer that, also after its one [resume round](../../glossary.json#concept.resume-round), returns a first finding citing a requirement identity the reviewed Modules' [Spec context](../../glossary.json#concept.spec-context) does not define and names an earlier Issue, and whose second finding holds
 - WHEN the Operation checks the findings
-- THEN the result has status `failed` with `unresolved_evidence` and the unresolved identity as host evidence
-- AND none of those Modules' findings is reported as an Issue
+- THEN the first finding is reported as no Issue and listed under its Module's `rejected` without that earlier Issue, with the reason naming the unresolved identity, which is also host evidence
+- AND the second finding is reported as an Issue, the Module is `changes_required` and the run ends `ok`
 
 ### scenario.code-review.unknown-location — A finding located in no file is not reported
 
-- GIVEN a reviewer whose finding names a location whose file does not exist
+- GIVEN a reviewer that, also after its one resume round, returns findings naming locations whose file does not exist, whose lines lie beyond the file's end or that lie outside the project, and one finding whose location holds
 - WHEN the Operation checks the findings
-- THEN the result has status `failed` with `unresolved_evidence` and the location as host evidence
+- THEN each finding whose location does not hold is listed under `rejected` with the reason, and each such location is host evidence
+- BUT the finding whose location holds is reported as an Issue and the run ends `ok`
 
 ### scenario.code-review.reviewer-change — A reviewer that changes a file fails the run
 

@@ -31,17 +31,18 @@ another. Step 1 validates the worktree once for all Modules.
 | 1 | Load the workspace's Specs and validate the Module | Operation (Spec core) | loading error: the Operation fails; structural error in the Module's own documents or about the Module or a node it defines: the Module is `incomplete`, with the findings as host evidence |
 | 2 | Compute the `review-spec` grant for the Module with the workspace as root and freeze it with its [context identity](../../glossary.json#concept.context-identity) | Operation (Spec core) | the Module is `incomplete` |
 | 3 | Read the Module's [earlier Issues](#earlier-issues) from the project's Issues, then generate the reviewer's settings, tool list and brief from the grant, the Reviewer brief and those Issues | Operation (Issues, Workers) | Issues that cannot be read: the Module is `incomplete` (`issues_unreadable`); otherwise the Operation fails |
-| 4 | Launch the reviewer and wait for its [worker result](../../glossary.json#concept.worker-result) with findings; there is one round and no resume | Operation (Workers) | `blocked`, `failed`, timeout or an invalid result: the Module is `incomplete` |
+| 4 | Launch the reviewer and wait for its [worker result](../../glossary.json#concept.worker-result) with findings; when a finding's path is not one of the workspace, the reviewer is resumed once with those paths to correct, and its last result counts | Operation (Workers) | `blocked`, `failed`, timeout or an invalid result: the Module is `incomplete` |
 | 5 | Audit that the worktree has no change | Operation (Workers) | any change: the Module is `incomplete`, with the audit violations as host evidence |
 | 6 | With `--check-findings` and at least one finding, launch the checker under the same grant with the reviewer's numbered findings as task material, then audit again | Operation (Workers) | as steps 4 and 5; the reviewer's findings stay unchecked |
-| 7 | Normalize the findings and settle which earlier Issue each names and which it resolves | Operation | a finding whose path is not in the workspace: the Module is `incomplete`, with `invalid-output` evidence |
+| 7 | Normalize the findings and settle which earlier Issue each names and which it resolves | Operation | none: a finding whose path is not in the workspace is rejected alone, listed under the Module's `rejected` with the reason and as `invalid-output` evidence, and the other findings go on |
 | 8 | [Report](#reporting-findings) every finding the checker did not dispute as an Issue, in the order of the findings | Operation (Issues) | a refusal of the Issue store: the Module is `incomplete` (`issues_unreported`) and its later findings are not reported |
 | 9 | Derive the Module's outcome from the Issues that stand | Operation | none |
 | 10 | Write a [run record](../../glossary.json#concept.run-record) per worker | Operation (Workers) | the Operation fails |
 
 After every Module is done, the Operation derives the verdict and returns the run's output. No step
-runs [configured checks](../../glossary.json#concept.configured-check) and no step resumes a worker,
-because no reviewer or checker changes a file. A Module whose review stopped before step 8 reports
+runs [configured checks](../../glossary.json#concept.configured-check), because no reviewer or checker
+changes a file, and the only [resume round](../../glossary.json#concept.resume-round) is the one that asks a reviewer to correct the paths of its
+findings. A Module whose review stopped before step 8 reports
 no Issue.
 
 Normalizing a finding means: an absolute path inside the workspace becomes relative to it;
@@ -166,7 +167,7 @@ The [run result](../../glossary.json#concept.run-result) carries this payload as
 ```concorde-contract
 {
   "id": "contract.spec-review.payload",
-  "version": 6,
+  "version": 7,
   "schema": {
     "type": "object",
     "required": [
@@ -196,6 +197,7 @@ The [run result](../../glossary.json#concept.run-result) carries this payload as
             "outcome",
             "context_identity",
             "findings",
+            "rejected",
             "earlier_issues"
           ],
           "additionalProperties": false,
@@ -349,6 +351,103 @@ The [run result](../../glossary.json#concept.run-result) carries this payload as
                 }
               }
             },
+            "rejected": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "finding",
+                  "reason"
+                ],
+                "properties": {
+                  "finding": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "module",
+                      "path",
+                      "dimension",
+                      "severity",
+                      "tier",
+                      "title",
+                      "problem",
+                      "impact",
+                      "evidence",
+                      "suggestion"
+                    ],
+                    "properties": {
+                      "module": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "path": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "anchor": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "line": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "dimension": {
+                        "enum": [
+                          "readability",
+                          "obligations",
+                          "design",
+                          "views",
+                          "terminology",
+                          "context"
+                        ]
+                      },
+                      "severity": {
+                        "enum": [
+                          "critical",
+                          "high",
+                          "medium",
+                          "low"
+                        ]
+                      },
+                      "tier": {
+                        "enum": [
+                          "suggestion",
+                          "obvious-fix",
+                          "preferred-fix",
+                          "decision-needed"
+                        ]
+                      },
+                      "title": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "problem": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "impact": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "evidence": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "suggestion": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            },
             "earlier_issues": {
               "anyOf": [
                 {
@@ -467,7 +566,7 @@ The [run result](../../glossary.json#concept.run-result) carries this payload as
       }
     }
   },
-  "semantics": "The outcome of one Spec review. Each Module's outcome is incomplete when it could not be reviewed or its Issues could not be read or all written, changes_required when an Issue of a blocking tier (obvious-fix, preferred-fix, decision-needed) stands for it, reported by this review or an earlier Issue it carried, and accepted otherwise; the verdict is incomplete if any Module is incomplete, else changes_required if any Module requires changes, else accepted. Findings, severities, tiers and checker statuses are worker claims; check is null when no checker ran. context_identity is null only when no grant could be computed. Each finding's issue is the Issue the Operation reported it to, and null when the checker disputed it or it was not reported because the Issue store refused an earlier report; earlier, present only when the Operation appended the finding to an earlier Issue it offered, names that Issue. earlier_issues is null when the Module's earlier Issues were never read; otherwise carried lists the earlier Issues no finding named and no resolution resolved, which still stand, with their severity, tier and title; resolved lists the earlier Issues the reviewer found the Specs no longer have, with its reason, for the task to close, since the Operation closes none; ignored lists the names of Issues a finding or resolution gave that were not offered or already settled, with why. workflow is the object of Workflows' step output convention, which defines its fields: one review note whose data holds the verdict and each Module's outcome with its count of blocking findings that stand. A behaviour or field change increments the version.",
+  "semantics": "The outcome of one Spec review. Each Module's outcome is incomplete when it could not be reviewed or its Issues could not be read or all written, changes_required when an Issue of a blocking tier (obvious-fix, preferred-fix, decision-needed) stands for it, reported by this review or an earlier Issue it carried, and accepted otherwise; the verdict is incomplete if any Module is incomplete, else changes_required if any Module requires changes, else accepted. Findings, severities, tiers and checker statuses are worker claims; check is null when no checker ran. context_identity is null only when no grant could be computed. Each finding's issue is the Issue the Operation reported it to, and null when the checker disputed it or it was not reported because the Issue store refused an earlier report; earlier, present only when the Operation appended the finding to an earlier Issue it offered, names that Issue. rejected lists the reviewer's findings whose path is not one of the workspace, each as the reviewer returned it but for the earlier Issue it named, with the Operation's reason: they are reported nowhere, count for no outcome and leave the earlier Issue they named carried, while the reviewer's other findings stand. earlier_issues is null when the Module's earlier Issues were never read; otherwise carried lists the earlier Issues no finding named and no resolution resolved, which still stand, with their severity, tier and title; resolved lists the earlier Issues the reviewer found the Specs no longer have, with its reason, for the task to close, since the Operation closes none; ignored lists the names of Issues a finding or resolution gave that were not offered or already settled, with why. workflow is the object of Workflows' step output convention, which defines its fields: one review note whose data holds the verdict and each Module's outcome with its count of blocking findings that stand. A behaviour or field change increments the version.",
   "example": {
     "verdict": "changes_required",
     "modules": [
@@ -495,6 +594,7 @@ The [run result](../../glossary.json#concept.run-result) carries this payload as
             "issue": "I-0123456789abcdef0123456789abcdef"
           }
         ],
+        "rejected": [],
         "earlier_issues": {
           "carried": [],
           "resolved": [
@@ -540,7 +640,7 @@ worker's worker id, backend, model and level
 ([worker settings](../workers.md#worker-backend-and-model)), the audits,
 the transcript paths, the
 structural findings of step 1 (kind `structural`), the scope corrections of step 7 (kind
-`finding-scope`), any unusable finding (kind `invalid-output`) and every Issue it reported to (kind
+`finding-scope`), every rejected finding (kind `invalid-output`) and every Issue it reported to (kind
 `issue`, naming the Issue, whether the report created or appended to it, and its receipt's report
 identity). The worker run identities are in the result's `worker_runs`, reviewer before checker, in
 Module order.

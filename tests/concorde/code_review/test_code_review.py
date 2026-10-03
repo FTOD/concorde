@@ -344,32 +344,72 @@ class CodeReviewTests(unittest.TestCase):
 
     # --- host checks -----------------------------------------------------------------------
 
-    def unresolved(self, envelope) -> list[dict]:
-        self.assertEqual("failed", envelope["status"], envelope)
-        self.assertEqual("review_incomplete", envelope["error"]["code"])
-        [cause] = envelope["error"]["causes"]
-        self.assertEqual("unresolved_evidence", cause["code"])
-        self.assertEqual("incomplete", envelope["output"]["verdict"])
-        self.assertEqual({}, self.issues())
-        return [
+    def unresolved(self, envelope, module="module.a") -> list[dict]:
+        """The host's evidence of the findings it rejected, after checking that the review went
+        on without them: each rejected finding listed with its reason, and nothing more."""
+        self.assertEqual("ok", envelope["status"], envelope)
+        problems = [
             item
             for item in envelope["host_evidence"]
             if item["kind"].startswith("unresolved-")
         ]
+        rejected = self.module_entry(envelope, module)["rejected"]
+        self.assertTrue(rejected)
+        for item in rejected:
+            self.assertNotIn("issue", item["finding"])
+            self.assertTrue(
+                any(problem["detail"] in item["reason"] for problem in problems), item
+            )
+        return problems
 
     @verifies("scenario.code-review.unknown-basis")
     def test_a_finding_citing_an_unknown_promise_is_not_reported(self):
-        status, envelope = self.change(finding("req.a.nothing"), finding())
-        self.assertEqual(1, status)
+        status, envelope = self.change(
+            finding("req.a.nothing", earlier="I-" + "1" * 32), finding()
+        )
+        self.assertEqual(0, status)
         [problem] = self.unresolved(envelope)
         self.assertEqual(
             ("unresolved-basis", "req.a.nothing"), (problem["kind"], problem["ref"])
         )
-        self.assertIn("req.a.nothing", envelope["error"]["causes"][0]["detail"])
+        entry = self.module_entry(envelope)
+        [rejected] = entry["rejected"]
+        self.assertEqual("req.a.nothing", rejected["finding"]["basis"])
+        self.assertNotIn("earlier", rejected["finding"])
+        # The reviewer's other finding is reported all the same.
+        [reported] = entry["findings"]
+        self.assertEqual("scenario.a.answer", reported["basis"])
+        self.assertEqual([reported["issue"]], list(self.issues()))
+        self.assertEqual("changes_required", entry["outcome"])
+
+    @verifies("scenario.code-review.citation-resume")
+    def test_a_reviewer_is_resumed_once_to_correct_its_citations(self):
+        wrong = finding(locations=["src/a/calc.py:40"])
+        held = finding(tier="suggestion", title="kept")
+        right = finding(locations=["src/a/calc.py:2"])
+        plan = reviewer(wrong, held) + reviewer(right, held)
+        _, envelope = self.review({"module.a": plan}, modules=("module.a",))
+        self.assertEqual("ok", envelope["status"], envelope)
+        entry = self.module_entry(envelope)
+        self.assertEqual([], entry["rejected"])
         self.assertEqual(
-            [None, None],
-            [item["issue"] for item in self.module_entry(envelope)["findings"]],
+            [["src/a/calc.py:2"], ["src/a/calc.py:2"]],
+            [item["locations"] for item in entry["findings"]],
         )
+        record, _ = self.worker(envelope)
+        self.assertEqual(["initial", "repair"], [r["prompt"] for r in record["rounds"]])
+        repair = record["rounds"][0]["validation"]
+        self.assertIn("'src/a/calc.py:40' gives lines beyond the file's end", repair)
+        self.assertIn("add subtracts", repair)
+        self.assertEqual(2, len(self.issues()))
+
+    def test_a_citation_still_wrong_after_the_resume_is_rejected(self):
+        wrong = finding(locations=["src/a/calc.py:40"])
+        _, envelope = self.change(wrong)
+        record, _ = self.worker(envelope)
+        self.assertEqual(2, len(record["rounds"]))
+        [rejected] = self.module_entry(envelope)["rejected"]
+        self.assertEqual(["src/a/calc.py:40"], rejected["finding"]["locations"])
 
     def test_a_document_outside_the_context_does_not_resolve(self):
         _, envelope = self.change(finding("specs/elsewhere.md#x"))
@@ -382,12 +422,17 @@ class CodeReviewTests(unittest.TestCase):
             finding(locations=["src/a/calc.py:40"]),
             finding(locations=["../outside.py"]),
             finding(locations=["src/a/"]),
+            finding(locations=["src/a/calc.py:2"], tier="suggestion"),
         )
         problems = self.unresolved(envelope)
         self.assertEqual(
             ["src/a/missing.py:3", "src/a/calc.py:40", "../outside.py", "src/a/"],
             [item["ref"] for item in problems],
         )
+        entry = self.module_entry(envelope)
+        self.assertEqual(4, len(entry["rejected"]))
+        self.assertEqual(["suggestion"], [item["tier"] for item in entry["findings"]])
+        self.assertEqual(1, len(self.issues()))
 
     def test_a_finding_about_a_module_not_reviewed_is_not_reported(self):
         _, envelope = self.change(finding(module="module.b"))
@@ -496,16 +541,15 @@ class CodeReviewTests(unittest.TestCase):
         _, envelope = self.review(
             {"module.a": reviewer(), "module.b": reviewer(b)}, "--scope", "module"
         )
-        self.assertEqual("failed", envelope["status"], envelope)
+        [problem] = self.unresolved(envelope, "module.b")
+        self.assertEqual("unresolved-basis", problem["kind"])
         self.assertEqual(
-            [("module.a", "accepted"), ("module.b", "incomplete")],
+            [("module.a", "accepted"), ("module.b", "accepted")],
             [
                 (item["module"], item["outcome"])
                 for item in envelope["output"]["modules"]
             ],
         )
-        [cause] = envelope["error"]["causes"]
-        self.assertEqual("unresolved_evidence", cause["code"])
 
     @verifies("scenario.code-review.module-review-base")
     def test_a_module_review_refuses_a_base(self):
@@ -601,6 +645,20 @@ class CodeReviewTests(unittest.TestCase):
         )
         self.assertEqual("open", self.issues()[gone]["status"])
         self.assertEqual("changes_required", entry["outcome"])
+
+    @verifies("scenario.code-review.blank-earlier")
+    def test_a_blank_earlier_names_no_earlier_issue(self):
+        _, envelope = self.change(
+            finding(earlier=""),
+            finding(earlier=" ", tier="suggestion"),
+        )
+        self.assertEqual("ok", envelope["status"], envelope)
+        entry = self.module_entry(envelope)
+        for item in entry["findings"]:
+            self.assertNotIn("earlier", item)
+            self.assertIsNotNone(item["issue"])
+        self.assertEqual([], entry["earlier_issues"]["ignored"])
+        self.assertEqual(2, len(self.issues()))
 
     @verifies("scenario.code-review.store-refusal")
     def test_a_refusal_of_the_issue_store_is_an_error_not_an_issue(self):

@@ -259,9 +259,10 @@ class WorkerRequest:
     pi_config: Path | None = None
     sandbox_runtime: Path | None = None
     extra: dict = field(default_factory=dict)
-    # The caller's round validation, called with the worktree and the round's node folder after
-    # every round whose worker ended ok with a clean audit; it answers a ``RoundValidation``.
-    round_validation: Callable[[Path, Path], RoundValidation] | None = None
+    # The caller's round validation, called with the worktree, the round's node folder and the
+    # round's worker result, valid against its schema, after every round whose worker ended ok
+    # with a clean audit; it answers a ``RoundValidation``.
+    round_validation: Callable[[Path, Path, dict], RoundValidation] | None = None
     # Told the run identity as soon as the run exists, so that a caller interrupted while the
     # worker runs can still name it.
     started: Callable[[str], None] | None = None
@@ -909,7 +910,7 @@ def run_worker(request: WorkerRequest) -> dict:
                 return finalized(result, None, attempts)
             progress.phase("validation", round=number)
             try:
-                answer = request.round_validation(worktree, round_node.folder)
+                answer = request.round_validation(worktree, round_node.folder, result)
                 if not isinstance(answer, RoundValidation):
                     raise TypeError(
                         f"it answered a {type(answer).__name__}, not a RoundValidation"

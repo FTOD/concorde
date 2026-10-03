@@ -60,7 +60,12 @@ The [brownfield workflow](../glossary.json#concept.brownfield-workflow) SHALL ru
 
 ### req.method.brownfield-providers-first — Providers are described before their consumers
 
-The brownfield workflow SHALL describe a created Module only after every created Module it uses, by the `uses` the scaffold hands it, whenever those `uses` among the created Modules form no cycle, and otherwise in the order the scaffold lists them.
+The brownfield workflow SHALL describe the created Modules in the order of the `uses` among them that the scaffold hands it, condensed into strongly connected groups: each time, of the groups whose used groups are all described, the one whose first Module the scaffold lists first, and the Modules of one group in the order the scaffold lists them.
+
+Without a cycle among the created Modules every group is one Module, so each is described after
+every created Module it uses. Modules that use each other form one group: one of them is described
+before a Module it uses, and its worker reads that Module's stub or description as it stands then.
+Every created Module is still described once, and the surveyed Module last.
 
 ### req.method.brownfield-stops — The procedure stops where its mode says
 

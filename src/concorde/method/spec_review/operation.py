@@ -92,8 +92,9 @@ REVIEWER_FINDING: dict = {
         "impact": {"type": "string", "minLength": 1},
         "evidence": {"type": "string", "minLength": 1},
         "suggestion": {"type": "string", "minLength": 1},
-        # The earlier Issue this finding is the problem of; the host checks it was offered.
-        "earlier": {"type": "string", "minLength": 1},
+        # The earlier Issue this finding is the problem of; the host checks it was offered, and
+        # an empty one names none.
+        "earlier": {"type": "string"},
     },
 }
 RESOLVED: dict = {
@@ -140,6 +141,25 @@ CHECKER_OUTPUT: dict = {
                 },
             },
         }
+    },
+}
+
+# A worker's finding the host did not report since its path does not hold, as the worker returned
+# it but for the earlier Issue it named, with the host's reason.
+REJECTED: dict = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["finding", "reason"],
+    "properties": {
+        "finding": {
+            **REVIEWER_FINDING,
+            "properties": {
+                key: value
+                for key, value in REVIEWER_FINDING["properties"].items()
+                if key != "earlier"
+            },
+        },
+        "reason": {"type": "string", "minLength": 1},
     },
 }
 
@@ -195,7 +215,7 @@ FINDING: dict = {
     },
 }
 
-# contract.spec-review.payload, version 6 (operation.md); a test keeps the two equal.
+# contract.spec-review.payload, version 7 (operation.md); a test keeps the two equal.
 PAYLOAD_SCHEMA: dict = {
     "type": "object",
     "required": ["verdict", "modules", "workflow"],
@@ -214,6 +234,7 @@ PAYLOAD_SCHEMA: dict = {
                     "outcome",
                     "context_identity",
                     "findings",
+                    "rejected",
                     "earlier_issues",
                 ],
                 "additionalProperties": False,
@@ -227,6 +248,7 @@ PAYLOAD_SCHEMA: dict = {
                         ]
                     },
                     "findings": {"type": "array", "items": FINDING},
+                    "rejected": {"type": "array", "items": REJECTED},
                     "earlier_issues": EARLIER_ISSUES,
                 },
             },
@@ -243,10 +265,14 @@ class ModuleReview:
     documents: tuple[str, ...] = ()
     context_identity: str | None = None
     findings: list[dict] = field(default_factory=list)
+    # The reviewer's findings whose path did not hold, never reported.
+    rejected: list[dict] = field(default_factory=list)
     stop: Stop | None = None
     # The Module's earlier Issues as offered to its workers, and what the review did with them.
     earlier: list[dict] | None = None
     summary: dict | None = None
+    # Whether the host settled and reported the findings, with or without the issues part.
+    settled: bool = False
 
     @property
     def outcome(self) -> str:
@@ -491,22 +517,36 @@ def _project_path(ctx: RunContext, path: str) -> str | None:
 
 
 def _normalize(ctx: RunContext, review: ModuleReview, claimed: list[dict]):
-    """The payload findings and the host's scope corrections, or None for an unusable path."""
+    """The payload findings, in the order claimed with None for each rejected one, the host's
+    scope corrections and the rejected findings, each with its reason: a finding whose path is
+    not one of the task worktree is rejected alone, never reported."""
     repository = _state(ctx).repository
     own = {member for path in review.documents for member in (path, path + ".json")}
-    findings, corrections = [], []
+    findings, corrections, rejected = [], [], []
     for position, item in enumerate(claimed, 1):
         path = _project_path(ctx, item["path"])
         if path is None:
-            return None, [
-                evidence(
-                    "invalid-output",
-                    review.module,
-                    f"finding {position} names {item['path']!r}, which is not a path in the "
-                    "task worktree",
-                )
-            ]
-        finding = {**item, "path": path, "check": None, "issue": None}
+            reason = (
+                f"finding {position} names {item['path']!r}, which is not a path in the "
+                "task worktree"
+            )
+            corrections.append(evidence("invalid-output", review.module, reason))
+            rejected.append(
+                {
+                    "finding": {
+                        key: value for key, value in item.items() if key != "earlier"
+                    },
+                    "reason": reason,
+                }
+            )
+            findings.append(None)
+            continue
+        finding = {
+            **review_issues.without_blank_earlier(item),
+            "path": path,
+            "check": None,
+            "issue": None,
+        }
         owners = repository.document_targets.get(path.removesuffix(".json"))
         if owners:
             finding["module"] = owners[0]
@@ -521,7 +561,22 @@ def _normalize(ctx: RunContext, review: ModuleReview, claimed: list[dict]):
                 )
             )
         findings.append(finding)
-    return findings, corrections
+    return findings, corrections, rejected
+
+
+def path_repair(ctx: RunContext, result: dict) -> str | None:
+    """The repair that resumes a reviewing worker once with every finding whose path is not one
+    of the task worktree, or None when every path holds."""
+    return review_issues.citation_repair(
+        [
+            f"finding {position} (titled {item.get('title')!r}) names {item['path']!r}, which is "
+            "not a path in the task worktree"
+            for position, item in enumerate(
+                (result.get("output") or {}).get("findings") or [], 1
+            )
+            if _project_path(ctx, item["path"]) is None
+        ]
+    )
 
 
 def _checker_material(findings: list[dict]) -> str:
@@ -585,6 +640,7 @@ def report_findings(
 ) -> list[dict]:
     """Settle the earlier Issues and report the findings as Issues; returns the host evidence."""
     review.summary = reporting.settle(review.earlier or [], review.findings, resolved)
+    review.settled = True
     if review.earlier is None:
         # No earlier Issue was read, so none is carried or resolved.
         review.summary = None
@@ -610,9 +666,10 @@ def _review(ctx: RunContext, review: ModuleReview, prompt: str) -> list[dict]:
         + criteria(ctx.worktree),
         task_type=TASK_TYPE,
         output_schema=REVIEWER_OUTPUT,
-        rounds=0,
+        rounds=review_issues.CITATION_ROUNDS,
         modules=[review.module],
         worker="reviewer",
+        validate=lambda result: path_repair(ctx, result),
     )
     found.extend(_labelled(outcome.evidence, f"{review.module} reviewer"))
     if len(ctx.worker_runs) > launched:
@@ -621,24 +678,12 @@ def _review(ctx: RunContext, review: ModuleReview, prompt: str) -> list[dict]:
         outcome.error["actor"] += f", review of {review.module}"
         review.stop = outcome
         return found
-    findings, corrections = _normalize(
+    findings, corrections, rejected = _normalize(
         ctx, review, (outcome.output or {}).get("findings", [])
     )
     found.extend(corrections)
-    if findings is None:
-        review.stop = ctx.fail(
-            "failed",
-            "unusable_finding",
-            f"The reviewer of {review.module} returned an unusable finding.",
-            f"the reviewer of {review.module} named a path outside the task worktree: "
-            + "; ".join(item["detail"] for item in corrections),
-            reason="capability",
-            explanation="the host checks every finding's path but never corrects a finding "
-            "or relaunches the reviewer",
-            evidence=corrections,
-            options=["run spec_review again"],
-        )
-        return found
+    review.rejected = rejected
+    findings = [item for item in findings if item is not None]
     review.findings = findings
     resolved = list((outcome.output or {}).get("resolved") or [])
     if ctx.arguments.check_findings and findings:
@@ -710,6 +755,15 @@ def blocking_counts(modules: list[dict]) -> list[dict]:
     ]
 
 
+def unsettled(review: ModuleReview) -> list[dict]:
+    """The findings of a Module that stopped before the host settled them, without the earlier
+    Issue each claimed: a payload finding names only an offered Issue it was appended to."""
+    return [
+        {key: value for key, value in finding.items() if key != "earlier"}
+        for finding in review.findings
+    ]
+
+
 def derive_verdict(ctx: RunContext):
     """Step 7 and the verdict: counted by the host from the findings, never taken from a worker."""
     reviews = list(_state(ctx).reviews.values())
@@ -718,7 +772,8 @@ def derive_verdict(ctx: RunContext):
             "module": review.module,
             "outcome": review.outcome,
             "context_identity": review.context_identity,
-            "findings": review.findings,
+            "findings": review.findings if review.settled else unsettled(review),
+            "rejected": review.rejected,
             "earlier_issues": review.summary,
         }
         for review in reviews

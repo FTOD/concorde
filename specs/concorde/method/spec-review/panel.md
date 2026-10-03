@@ -33,7 +33,7 @@ run with `langgraph_unavailable` before any worker is launched.
 | --- | --- | --- | --- |
 | 1 | Load the workspace's Specs and validate every named Module, as step 1 of [Spec review](operation.md#host-sequence) | Operation (Spec core) | as there: a loading error fails the run, a structural error makes the Module `incomplete` |
 | 2 | For each Module that passed, read its [earlier Issues](operation.md#earlier-issues) as step 3 of Spec review does | Operation (Issues) | as there: the Module is `incomplete` (`issues_unreadable`) |
-| 3 | For each Module whose earlier Issues were read, run the panel graph below. Every reviewer runs under the Module's `review-spec` grant, every architect under its `review-architecture` grant, and the chair under the `review-architecture` grant when the panel has an architect and the `review-spec` grant otherwise; each worker receives the Panel brief and the earlier Issues, is waited for without being resumed, and is followed by an audit that nothing changed | Operation (Workers) | a worker that ends `blocked` or `failed`, times out, returns an invalid result, changes a file or names a finding path outside the workspace stops that Module's panel, and so does a chair report still unaccounted after its last attempt: the Module is `incomplete` |
+| 3 | For each Module whose earlier Issues were read, run the panel graph below. Every reviewer runs under the Module's `review-spec` grant, every architect under its `review-architecture` grant, and the chair under the `review-architecture` grant when the panel has an architect and the `review-spec` grant otherwise; each worker receives the Panel brief and the earlier Issues, is resumed once only when a finding's path is not one of the workspace, with those paths to correct, and is followed by an audit that nothing changed | Operation (Workers) | a worker that ends `blocked` or `failed`, times out, returns an invalid result, changes a file stops that Module's panel, and so does a chair report still unaccounted after its last attempt: the Module is `incomplete` |
 | 4 | For each Module whose panel completed, settle the earlier Issues the chair's findings name and resolve, as step 7 of Spec review does, and report every finding of the chair's report as an [Issue](../../glossary.json#concept.issue), as step 8 of Spec review does, in the order of the report | Operation (Issues) | as there: the Module is `incomplete` (`issues_unreported`) |
 | 5 | Derive every Module's outcome and the verdict from the Issues that stand | Operation | none |
 
@@ -66,7 +66,9 @@ chair -> chair: "a label unaccounted\nand an attempt remains"
   own, by the Module quality criteria, and architect `n` judges it on its own, by the architecture
   quality criteria, each seeing no other review. The Operation normalizes their findings as [Spec
   review](operation.md#host-sequence) does and labels a reviewer's `r<n>.1`, `r<n>.2` and so on and
-  an architect's `a<n>.1`, `a<n>.2` and so on. It keeps each worker's resolutions as its claims.
+  an architect's `a<n>.1`, `a<n>.2` and so on. A finding whose path is not one of the workspace is
+  rejected alone, unlabelled, and kept with the reason among that worker's `rejected`. It keeps
+  each worker's resolutions as its claims.
 - **gather** waits for every seat. When any worker did not finish, it stops the Module with
   `panel_short`, whose causes are every such worker's error link; the chair does not run, because
   a report must never silently lack a review.
@@ -74,7 +76,8 @@ chair -> chair: "a label unaccounted\nand an attempt remains"
   the earlier Issues, and returns the report: merged findings, each with the labels it merges as
   `sources`, a `note` and the severity and tier the chair gives it, rejections, each with a label and a reason,
   and the earlier Issues it finds resolved, each with a reason. The Operation normalizes the merged
-  findings as well.
+  findings as well; a merged finding whose path is not one of the workspace is reported nowhere,
+  and each of its labels becomes a rejection with the Operation's reason.
 - **accounting**, part of the chair node, is the Operation's check that the report accounts for
   every label exactly once: in one finding's `sources` or as one rejection, and names no other
   label. The result is host evidence of kind `panel-accounting`.
@@ -146,7 +149,7 @@ per run in the [run directory](../../glossary.json#concept.run-directory).
 ```concorde-contract
 {
   "id": "contract.spec-review.panel-payload",
-  "version": 5,
+  "version": 6,
   "schema": {
     "type": "object",
     "required": [
@@ -227,6 +230,7 @@ per run in the [run directory](../../glossary.json#concept.run-directory).
                   "seat",
                   "status",
                   "findings",
+                  "rejected",
                   "resolved"
                 ],
                 "properties": {
@@ -262,6 +266,12 @@ per run in the [run directory](../../glossary.json#concept.run-directory).
                     "type": "array",
                     "items": {
                       "$ref": "#/$defs/labelled"
+                    }
+                  },
+                  "rejected": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/unusable"
                     }
                   },
                   "resolved": {
@@ -662,10 +672,117 @@ per run in the [run directory](../../glossary.json#concept.run-directory).
             ]
           }
         }
+      },
+      "unusable": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "finding",
+          "reason"
+        ],
+        "properties": {
+          "finding": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "module",
+              "path",
+              "dimension",
+              "severity",
+              "tier",
+              "title",
+              "problem",
+              "impact",
+              "evidence",
+              "suggestion"
+            ],
+            "properties": {
+              "module": {
+                "type": "string",
+                "minLength": 1
+              },
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "anchor": {
+                "type": "string",
+                "minLength": 1
+              },
+              "line": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "dimension": {
+                "enum": [
+                  "readability",
+                  "obligations",
+                  "design",
+                  "views",
+                  "terminology",
+                  "context",
+                  "responsibilities",
+                  "ownership",
+                  "interfaces",
+                  "dependencies",
+                  "failure-containment",
+                  "consistency"
+                ]
+              },
+              "severity": {
+                "enum": [
+                  "critical",
+                  "high",
+                  "medium",
+                  "low"
+                ]
+              },
+              "tier": {
+                "enum": [
+                  "suggestion",
+                  "obvious-fix",
+                  "preferred-fix",
+                  "decision-needed"
+                ]
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1
+              },
+              "problem": {
+                "type": "string",
+                "minLength": 1
+              },
+              "impact": {
+                "type": "string",
+                "minLength": 1
+              },
+              "evidence": {
+                "type": "string",
+                "minLength": 1
+              },
+              "suggestion": {
+                "type": "string",
+                "minLength": 1
+              },
+              "related": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
       }
     }
   },
-  "semantics": "The outcome of one Spec panel. For each Module, reviews holds every worker's own findings and claimed resolutions, reviewers then architects, each in seat order, with its worker id, role and seat, each finding labelled r<seat>.<n> for a reviewer and a<seat>.<n> for an architect by the Operation; a worker that did not finish has its status and whatever it returned before stopping, usually nothing. findings is the chair's report: each merged finding lists in sources the labels it merges, with the chair's note, severity and tier, workers counts the distinct workers among those labels, issue is the Issue the Operation reported it to, null when the Issue store refused an earlier report, and earlier, present only when it was appended to an earlier Issue the Operation offered, names that Issue. rejected holds the labels the chair judged not to hold, each with its reason, which are reported nowhere. In a complete report every label appears exactly once, in one finding's sources or as one rejection. earlier_issues, null when the Module's earlier Issues were never read, lists the earlier Issues carried, those the chair found resolved, for the task to close, and the names ignored, as in the Spec review payload. context_identity is the Module's review-spec grant identity and architecture_identity its review-architecture grant identity, null when no architect ran or no grant could be computed. A Module's outcome is incomplete when its panel stopped or its Issues could not be read or all written, changes_required when an Issue of a blocking tier stands for it, reported now or carried, and accepted otherwise; the verdict is the highest outcome in the order accepted, changes_required, incomplete. Findings, severities, tiers, merges, notes, rejections and resolutions are worker claims; the Operation labels, normalizes, counts, checks the accounting and reports the Issues. workflow is the object of Workflows' step output convention, which defines its fields: one review note whose data holds the verdict and each Module's outcome with its count of blocking findings that stand. A behaviour or field change increments the version.",
+  "semantics": "The outcome of one Spec panel. For each Module, reviews holds every worker's own findings and claimed resolutions, reviewers then architects, each in seat order, with its worker id, role and seat, each finding labelled r<seat>.<n> for a reviewer and a<seat>.<n> for an architect by the Operation; a worker that did not finish has its status and whatever it returned before stopping, usually nothing; rejected holds a worker's findings whose path is not one of the workspace, unlabelled, each as returned but for the earlier Issue it named, with the Operation's reason. findings is the chair's report: each merged finding lists in sources the labels it merges, with the chair's note, severity and tier, workers counts the distinct workers among those labels, issue is the Issue the Operation reported it to, null when the Issue store refused an earlier report, and earlier, present only when it was appended to an earlier Issue the Operation offered, names that Issue. rejected holds the labels the chair judged not to hold, each with its reason, and the labels of a merged finding whose path is not one of the workspace, with the Operation's reason, all reported nowhere. In a complete report every label appears exactly once, in one finding's sources or as one rejection. earlier_issues, null when the Module's earlier Issues were never read, lists the earlier Issues carried, those the chair found resolved, for the task to close, and the names ignored, as in the Spec review payload. context_identity is the Module's review-spec grant identity and architecture_identity its review-architecture grant identity, null when no architect ran or no grant could be computed. A Module's outcome is incomplete when its panel stopped or its Issues could not be read or all written, changes_required when an Issue of a blocking tier stands for it, reported now or carried, and accepted otherwise; the verdict is the highest outcome in the order accepted, changes_required, incomplete. Findings, severities, tiers, merges, notes, rejections and resolutions are worker claims; the Operation labels, normalizes, counts, checks the accounting and reports the Issues. workflow is the object of Workflows' step output convention, which defines its fields: one review note whose data holds the verdict and each Module's outcome with its count of blocking findings that stand. A behaviour or field change increments the version.",
   "example": {
     "verdict": "changes_required",
     "modules": [
@@ -696,6 +813,7 @@ per run in the [run directory](../../glossary.json#concept.run-directory).
                 "label": "r1.1"
               }
             ],
+            "rejected": [],
             "resolved": []
           },
           {
@@ -722,6 +840,7 @@ per run in the [run directory](../../glossary.json#concept.run-directory).
                 "label": "a1.1"
               }
             ],
+            "rejected": [],
             "resolved": []
           }
         ],

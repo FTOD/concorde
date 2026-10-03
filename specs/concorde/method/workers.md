@@ -116,7 +116,8 @@ was asked to start, including one refused before launch.
 ### The round validation
 
 The round validation is the step's, and Workers only calls it and acts on its answer. It checks, in
-this order, what the worker's round left in the workspace:
+this order, what the worker's round left in the workspace and, for a step that judges it, the
+worker result the round returned:
 
 1. **Glossary ownership.** When the grant makes the project glossary writable, every glossary entry
    the round changed, added or removed whose owner, before or after, is a Module outside the grant is
@@ -131,7 +132,8 @@ this order, what the worker's round left in the workspace:
    repair.
 3. **The step's own validation**, when the provider has one and every check passed or none ran,
    such as the structural validation a Spec-writing step runs against its baseline instead of
-   configured checks; what it reports is something to repair.
+   configured checks, or a review's check that every finding's citations hold, which reads the
+   round's worker result; what it reports is something to repair.
 
 It returns the evidence to keep with the round and the text to repair, empty when nothing needs
 repair.

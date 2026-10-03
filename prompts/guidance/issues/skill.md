@@ -69,9 +69,11 @@ cannot be trusted to record its own failure. Treat it as any other failure of a 
 chain in the task's decision log and escalation. When you met the failure for no task, such as on an
 Issue you recorded while discussing the project, there is no decision log or escalation to carry it:
 show the developer its whole error chain at once, as rendered, never a summary of it, and open a
-task only when the failure leads to work. `merge_busy` means a merge, task open or close holds the
-merge lock that every Issue write takes: where the coordination part is installed, `register_wait`
-for the merge lock and write again once it is released. `recovery_failed` means a record an Issue write published could not be put back and
+task only when the failure leads to work. `merge_busy` means another process holds the merge lock
+that every Issue write takes, such as another Issue write or, where the coordination part is
+installed, a merge, task open or close: there, `register_wait` for the merge lock and write again
+once it is released; without that part only another Issue write holds it, for moments, so write
+again shortly after. `recovery_failed` means a record an Issue write published could not be put back and
 stays uncommitted in the primary worktree, shown by no read: fix the cause the refusal names, such
 as a stale `index.lock` or a refusing commit hook, then run `concorde issues recover` (it has no MCP
 tool), which puts it back, and write again. `uncommitted_change` means the record of the Issue you
