@@ -339,6 +339,19 @@ what it wrote; it never decides which Modules to create.
 
 ### What Method relies on
 
+<a id="uses-distribution"></a>
+
+**Distribution**, the installation host present in every installation, installs the method part from
+its [part registration](../glossary.json#concept.part-registration), the plain data its
+[registration contract](../distribution/contracts.md#contract.distribution.part-registration)
+defines: the modules that register its Operations and execution commands, `task-validation`,
+`delivery` and `scaffold`, the brownfield workflow's script, its guidance sections and LangGraph, the
+Python dependency its panels import. Method relies on Distribution loading those modules before it
+routes `concorde run` or a [workflow step](../glossary.json#concept.workflow-step) to the execution
+part, and on a command of a part that is
+not installed being refused with `part_missing`, as the [command line](../distribution/module.md#the-command-line)
+says, which is how its optional integrations tell an absent part; it imports nothing of Distribution.
+
 <a id="uses-spec"></a>
 
 **Spec core** loads the workspace's Specs, resolves the named Modules, and computes each worker's

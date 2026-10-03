@@ -46,6 +46,15 @@
           "req.tasks.merging-recorded",
           "req.tasks.merge-incomplete-refused"
         ]
+      },
+      {
+        "target": "module.distribution",
+        "meaning": "#uses-distribution",
+        "relies_on": [
+          "concept.part-registration",
+          "contract.distribution.part-registration",
+          "concept.project-mcp-server"
+        ]
       }
     ],
     "includes": [],

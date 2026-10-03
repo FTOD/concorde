@@ -405,6 +405,18 @@ running `concorde issues close` for each, handing that process the merge lock it
 For provenance the command asks Git for the reporting worktree's `HEAD` and records `null` when Git
 fails.
 
+<a id="uses-distribution"></a>
+
+**Distribution**, the installation host present in every installation, installs the issues part
+from its [part registration](../glossary.json#concept.part-registration), the plain data its
+[registration contract](../distribution/contracts.md#contract.distribution.part-registration)
+defines: the `issues` command, the `issue_*` tools, the typed value types of reports and receipts,
+the part's guidance sections and `scripts/issues.py`. Issues relies on Distribution routing the
+command to its entry and on the [project MCP server](../glossary.json#concept.project-mcp-server)
+answering each tool call with a fresh process of the primary worktree's Concorde and returning its
+answer or refusal unchanged, which is why a session's tool call and its shell's `concorde issues`
+write the same records under the same lock; it imports nothing of Distribution.
+
 <a id="uses-tracing"></a>
 
 **Tracing** provides the Framework's
