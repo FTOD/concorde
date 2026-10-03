@@ -830,15 +830,15 @@ def _update_mark(project: Path) -> dict | None:
     )
 
 
-def _left_out(previous: dict, chosen: dict) -> dict[str, bool]:
+def _left_out(previous: dict, earlier: dict) -> dict[str, bool]:
     """What an earlier install left out by the developer's choice, which an update keeps: d2 or
-    the Python dependencies only when a part it installed needed them and it placed none, the pi
-    runtime when its receipt records that choice. A choice that changed nothing is not recorded,
-    so the program or dependencies come with a part added later."""
+    the Python dependencies only when a part it installed, one of ``earlier``, needed them and it
+    placed none, the pi runtime when its receipt records that choice. A choice that changed
+    nothing is not recorded, so the program or dependencies come with a part added later."""
     return {
-        "d2": "d2" in needs(chosen, "programs")
+        "d2": "d2" in needs(earlier, "programs")
         and "d2" not in (previous.get("tools") or {}),
-        "dependencies": bool(needs(chosen, "python_dependencies"))
+        "dependencies": bool(needs(earlier, "python_dependencies"))
         and previous.get("dependencies", {}) is None,
         "pi_runtime": previous.get("pi_runtime", True) is False,
     }
@@ -877,9 +877,11 @@ def update(
         everything = parts.package_parts(package)
     except parts.RegistrationError as error:
         raise InstallError("stale_build", str(error)) from error
-    named = sorted(_previous_parts(previous, everything) | set(part_names))
-    chosen = {name: everything[name] for name in named if name in everything}
-    left_out = _left_out(previous, chosen)
+    earlier = _previous_parts(previous, everything)
+    named = sorted(earlier | set(part_names))
+    left_out = _left_out(
+        previous, {name: everything[name] for name in earlier if name in everything}
+    )
     receipt = install(
         project,
         package,

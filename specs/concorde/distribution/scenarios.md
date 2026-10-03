@@ -170,6 +170,7 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - WHEN the developer runs `concorde update`
 - THEN the update installs the spec and distribution parts again and no other
 - AND `concorde update --parts issues` then installs the issues part and the kernel it depends on beside them
+- AND an update adding, to an install of the coordination part alone, the spec and method parts places `d2` and the Python dependencies they need, which the earlier install, needing neither, placed none of
 
 ### scenario.distribution.update-without-spec — An update without the spec part waits for no validation
 

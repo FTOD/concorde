@@ -1573,6 +1573,39 @@ class InstallTests(unittest.TestCase):
         self.assertIsNone(report["receipt"]["dependencies"])
         self.assertFalse((project / ".concorde/update.json").exists())
 
+    @verifies("scenario.distribution.update-installed-parts")
+    def test_an_update_places_what_an_added_part_needs(self):
+        package = package_copy(self)
+        fetch = fake_d2(self, package)
+        project = package.parent / "project"
+        project.mkdir()
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+        calls = []
+
+        def fake_uv(command, cwd, **options):
+            calls.append(command)
+            if command[1] == "export":
+                Path(command[command.index("--output-file") + 1]).write_text(
+                    "# locked\nlanggraph==1.2.12 \\\n    --hash=sha256:00\n"
+                )
+            return subprocess.CompletedProcess(command, 0, "", "")
+
+        # Coordination needs neither d2 nor a Python dependency: none is placed.
+        with which():
+            first = install(
+                project, package, part_names=["coordination"], pi_runtime=False
+            )
+        self.assertNotIn("d2", first["tools"])
+        self.assertIsNone(first["dependencies"])
+        with which():
+            updated = update(
+                project, package, part_names=["method"], fetch=fetch, run=fake_uv
+            )["receipt"]
+        self.assertIn("d2", updated["tools"])
+        self.assertEqual(1, len(fetch.urls))
+        self.assertIsNotNone(updated["dependencies"])
+        self.assertTrue(any(command[1:3] == ["pip", "install"] for command in calls))
+
     @verifies("scenario.distribution.install-unknown-part")
     def test_a_part_the_package_does_not_build_installs_nothing(self):
         package = package_copy(self)
