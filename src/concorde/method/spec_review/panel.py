@@ -130,7 +130,7 @@ IDENTITY: dict = {
     ]
 }
 
-# contract.spec-review.panel-payload, version 5 (panel.md); a test keeps the two equal.
+# contract.spec-review.panel-payload, version 6 (panel.md); a test keeps the two equal.
 PAYLOAD_SCHEMA: dict = {
     "type": "object",
     "required": ["verdict", "modules", "workflow"],
@@ -171,6 +171,7 @@ PAYLOAD_SCHEMA: dict = {
                                 "seat",
                                 "status",
                                 "findings",
+                                "rejected",
                                 "resolved",
                             ],
                             "properties": {
@@ -181,6 +182,10 @@ PAYLOAD_SCHEMA: dict = {
                                 "findings": {
                                     "type": "array",
                                     "items": {"$ref": "#/$defs/labelled"},
+                                },
+                                "rejected": {
+                                    "type": "array",
+                                    "items": {"$ref": "#/$defs/unusable"},
                                 },
                                 "resolved": {"type": "array", "items": RESOLUTION},
                             },
@@ -210,7 +215,15 @@ _REPORTED["properties"]["earlier"] = review.ISSUE_ID
 _REPORTED["required"] = [*_REPORTED["required"], "workers", "issue"]
 _REPORTED["properties"]["workers"] = {"type": "integer", "minimum": 1}
 _REPORTED["properties"]["issue"] = {"anyOf": [{"type": "null"}, review.ISSUE_ID]}
-PAYLOAD_SCHEMA["$defs"] = {"labelled": _LABELLED, "reported": _REPORTED}
+# A worker's finding the host rejected for its path, as returned but for its earlier claim.
+_UNUSABLE: dict = copy.deepcopy(review.REJECTED)
+_UNUSABLE["properties"]["finding"] = copy.deepcopy(FINDING)
+del _UNUSABLE["properties"]["finding"]["properties"]["earlier"]
+PAYLOAD_SCHEMA["$defs"] = {
+    "labelled": _LABELLED,
+    "reported": _REPORTED,
+    "unusable": _UNUSABLE,
+}
 
 
 class PanelState(TypedDict):
@@ -316,31 +329,23 @@ class Panel:
             return None, found, identity, result
         return result.output or {}, found, identity, None
 
-    def _normalized(self, claimed: list[dict], label: str):
-        """The findings normalized as Spec review does, the corrections, or None and a stop."""
-        findings, corrections = review._normalize(self.ctx, self.subject, claimed)
-        if findings is None:
-            return (
-                None,
-                corrections,
-                self.ctx.fail(
-                    "failed",
-                    "unusable_finding",
-                    f"The {label} of {self.subject.module} returned an unusable finding.",
-                    f"the {label} of {self.subject.module} named a path outside the task "
-                    "worktree: " + "; ".join(item["detail"] for item in corrections),
-                    reason="capability",
-                    explanation="the host checks every finding's path but never corrects a "
-                    "finding or relaunches a worker for it",
-                    evidence=corrections,
-                    options=["run spec_panel again"],
-                ),
-            )
+    def _normalized(self, claimed: list[dict]):
+        """The findings normalized as Spec review does, in the order claimed with None for each
+        rejected one, the host's corrections and the rejected findings with their reasons."""
+        findings, corrections, rejected = review._normalize(
+            self.ctx, self.subject, claimed
+        )
         cleaned = [
-            {key: value for key, value in item.items() if key not in ("check", "issue")}
+            None
+            if item is None
+            else {
+                key: value
+                for key, value in item.items()
+                if key not in ("check", "issue")
+            }
             for item in findings
         ]
-        return cleaned, corrections, None
+        return cleaned, corrections, rejected
 
     # -- nodes -----------------------------------------------------------------------------
 
@@ -371,18 +376,22 @@ class Panel:
             "seat": seat,
             "status": "ok",
             "findings": [],
+            "rejected": [],
             "resolved": [],
             "identity": identity,
         }
         if stop is None:
-            findings, corrections, stop = self._normalized(output["findings"], label)
+            findings, corrections, rejected = self._normalized(output["findings"])
             found += corrections
-            if stop is None:
-                entry["findings"] = [
-                    {**finding, "label": f"{PREFIX[role]}{seat}.{number}"}
-                    for number, finding in enumerate(findings, 1)
-                ]
-                entry["resolved"] = list(output.get("resolved") or [])
+            # A rejected finding gets no label, so the chair never has to account for it.
+            entry["findings"] = [
+                {**finding, "label": f"{PREFIX[role]}{seat}.{number}"}
+                for number, finding in enumerate(
+                    [item for item in findings if item is not None], 1
+                )
+            ]
+            entry["rejected"] = rejected
+            entry["resolved"] = list(output.get("resolved") or [])
         if stop is not None:
             entry["status"] = stop.status
             entry["stop"] = _stop_value(stop)
@@ -475,7 +484,7 @@ class Panel:
         if stop is not None:
             updates["stop"] = _stop_value(stop)
             return updates
-        merged, corrections, stop = self._normalized(
+        merged, corrections, dropped = self._normalized(
             [
                 {
                     key: value
@@ -483,19 +492,26 @@ class Panel:
                     if key not in ("sources", "note")
                 }
                 for item in output["findings"]
-            ],
-            f"chair attempt {attempt}",
+            ]
         )
         updates["evidence"] = found + corrections
-        if stop is not None:
-            updates["stop"] = _stop_value(stop)
-            return updates
+        # A merged finding the host rejected is reported nowhere: its labels count as rejected,
+        # with the host's reason, so that the accounting stays whole.
+        reasons = iter(item["reason"] for item in dropped)
+        host_rejected = []
+        for finding, item in zip(merged, output["findings"], strict=True):
+            if finding is None:
+                reason = f"the host rejected the chair's finding: {next(reasons)}"
+                host_rejected += [
+                    {"source": source, "reason": reason} for source in item["sources"]
+                ]
         report = {
             "findings": [
                 {**finding, "sources": item["sources"], "note": item["note"]}
                 for finding, item in zip(merged, output["findings"], strict=True)
+                if finding is not None
             ],
-            "rejected": output["rejected"],
+            "rejected": output["rejected"] + host_rejected,
             "resolved": list(output.get("resolved") or []),
         }
         problems = account(_labels(reviews), report)
@@ -684,6 +700,7 @@ def _module_payload(subject: review.ModuleReview, state: PanelState | None) -> d
                 "seat": item["seat"],
                 "status": item["status"],
                 "findings": item["findings"],
+                "rejected": item.get("rejected", []),
                 "resolved": item["resolved"],
             }
             for item in _ordered(state.get("reviews", []))

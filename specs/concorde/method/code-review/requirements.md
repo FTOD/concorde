@@ -80,11 +80,11 @@ whose problem says why, rather than as a defect of the code.
 
 ### req.code-review.evidence-resolves — Cited evidence exists
 
-The code review Operation SHALL make a reviewer's Modules `incomplete` with `unresolved_evidence`,
-reporting none of their findings, when a finding names a Module the reviewer did not review, cites
-a stable identity or document that the reviewed Modules' Spec context does not define, or names a
-location whose file is neither in the worktree nor a changed path of the diff, or whose line lies
-beyond that file's end.
+The code review Operation SHALL report no finding that names a Module the reviewer did not review, cites a stable identity or document that the reviewed Modules' Spec context does not define, or names a location whose file is neither in the worktree nor a changed path of the diff, or whose line lies beyond that file's end, listing each such finding as rejected with the reason and still reporting every other finding of that reviewer.
+
+A citation that does not hold is usually a slip of an otherwise sound finding, such as a line range
+a little past a file's end, so it costs only that finding: the reviewer's other findings stand and
+its Modules' outcomes follow from them.
 
 ## Issues and verdict
 

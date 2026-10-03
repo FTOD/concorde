@@ -409,6 +409,27 @@ class SpecReviewTests(unittest.TestCase):
         )
         self.assertEqual(3, len(self.issues()))
 
+    @verifies("scenario.spec-review.finding-path")
+    def test_a_finding_whose_path_does_not_hold_is_rejected_alone(self):
+        status, envelope = self.review(
+            {
+                "reviewer module.a": reviewer(
+                    finding("../elsewhere/module.md", earlier="I-" + "1" * 32),
+                    finding("specs/a/module.md"),
+                )
+            }
+        )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        (module,) = envelope["output"]["modules"]
+        [rejected] = module["rejected"]
+        self.assertEqual("../elsewhere/module.md", rejected["finding"]["path"])
+        self.assertNotIn("earlier", rejected["finding"])
+        self.assertIn("not a path in the task worktree", rejected["reason"])
+        self.assertIn("invalid-output", self.kinds(envelope))
+        [reported] = module["findings"]
+        self.assertEqual([reported["issue"]], list(self.issues()))
+        self.assertEqual("changes_required", module["outcome"])
+
     @verifies("scenario.spec-review.without-issues")
     def test_without_the_issues_part_the_findings_stay_in_the_result(self):
         with without_issues():
@@ -659,6 +680,7 @@ class SpecReviewTests(unittest.TestCase):
                 "outcome": "incomplete",
                 "context_identity": None,
                 "findings": [],
+                "rejected": [],
                 "earlier_issues": None,
             },
             output["modules"][0],

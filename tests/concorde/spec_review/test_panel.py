@@ -424,6 +424,34 @@ class SpecPanelTests(unittest.TestCase):
         self.assertEqual([None], [item["issue"] for item in module["findings"]])
         self.assertNotIn("earlier", module["findings"][0])
 
+    @verifies("scenario.spec-review.finding-path")
+    def test_a_panel_rejects_a_finding_whose_path_does_not_hold_alone(self):
+        plans = {
+            "reviewer module.a 1": worker(
+                findings=[finding("/etc/elsewhere.md"), finding(problem="A.")]
+            ),
+            "reviewer module.a 2": worker(findings=[finding(problem="B.")]),
+            "chair module.a 1": worker(
+                findings=[
+                    merged("r1.1"),
+                    merged("r2.1", path="../outside.md", tier="suggestion"),
+                ],
+                rejected=[],
+            ),
+        }
+        exit_status, envelope = self.panel(plans, "--reviewers", "2")
+        self.assertEqual((0, "ok"), (exit_status, envelope["status"]), envelope)
+        (module,) = envelope["output"]["modules"]
+        first = module["reviews"][0]
+        self.assertEqual(["r1.1"], [item["label"] for item in first["findings"]])
+        [unusable] = first["rejected"]
+        self.assertEqual("/etc/elsewhere.md", unusable["finding"]["path"])
+        self.assertEqual(["r1.1"], module["findings"][0]["sources"])
+        [rejection] = module["rejected"]
+        self.assertEqual("r2.1", rejection["source"])
+        self.assertIn("the host rejected the chair's finding", rejection["reason"])
+        self.assertEqual(1, len(self.issues()))
+
     @verifies("scenario.spec-review.panel-short")
     def test_a_blocked_reviewer_stops_the_panel_before_the_chair(self):
         exit_status, envelope = self.panel(

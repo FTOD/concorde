@@ -70,6 +70,14 @@ Spec panel in its [definition](panel.md).
 - THEN the run ends `ok` and each finding is recorded as a new Issue, none naming an earlier Issue
 - AND only the Issue the third named is listed as ignored
 
+### scenario.spec-review.finding-path — A finding whose path does not hold is rejected alone
+
+- GIVEN a reviewer that returns a finding naming a path outside the workspace and a finding that holds
+- WHEN the Operation reports the findings
+- THEN the first is listed under the Module's `rejected` with the reason and as `invalid-output` evidence, and is reported as no Issue
+- AND the second is reported as an Issue, the Module is `changes_required` and the run ends `ok`
+- AND in a panel, a worker's such finding is rejected unlabelled, and a merged finding of the chair's that names such a path turns its labels into rejections
+
 ### scenario.spec-review.last-blocker-resolved — Resolving the last blocking Issue accepts the Module
 
 - GIVEN the open Issue I1 of `module.a`, of a blocking tier, reported by an earlier Spec review, and no other earlier Issue

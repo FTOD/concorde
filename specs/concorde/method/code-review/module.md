@@ -147,7 +147,7 @@ Issues, which the primary worktree keeps.
 | --- | --- | --- | --- |
 | `ok` | — | — | every reviewed Module reviewed and its Issues written, any verdict |
 | `blocked` | `review_incomplete` | `decision` | a Module is `incomplete` only because its reviewer ended `blocked`, for example when it could not judge at all; one cause per incomplete Module |
-| `failed` | `review_incomplete` | `decision` | a Module is `incomplete` for another cause: its grant, its reviewer failing, an audit-found change, unresolved evidence or a refusal of the Issue store; one cause per incomplete Module |
+| `failed` | `review_incomplete` | `decision` | a Module is `incomplete` for another cause: its grant, its reviewer failing, an audit-found change or a refusal of the Issue store; one cause per incomplete Module |
 | `failed` | a code of the [worker sequence](../workers.md#errors-of-the-worker-sequence) | as that table gives | the change review's grant could not be computed, or the configured checks could not be started |
 | `failed` | `no_base` | `input` | an unbound change review without `--base`, or a binding without a base commit |
 | `failed` | `unresolved_base` | `input` | `--base` or the binding's base names no commit; Git's message as cause |
@@ -160,11 +160,12 @@ for `blocked` and `failed`, even when no reviewer could be launched, so each Mod
 findings of the Modules that were reviewed are never lost; an incomplete Module keeps its reviewer's
 summary when one returned and lists its earlier Issues, once read, as carried. The error of an incomplete Module is
 the Operation's link for it: the worker sequence's own link, with the worker's below it when the
-worker ended `blocked` or `failed` and the audit's violations when it found a change,
-`unresolved_evidence` naming every finding whose basis, location or
-Module does not hold, or `issues_unreadable` and `issues_unreported` with the Issue store's error as
-cause. In a change review, whose one reviewer judges every bound Module, a reviewer or evidence
-failure makes every bound Module incomplete with that one link.
+worker ended `blocked` or `failed` and the audit's violations when it found a change, or
+`issues_unreadable` and `issues_unreported` with the Issue store's error as cause. In a change
+review, whose one reviewer judges every bound Module, a reviewer failure makes every bound Module
+incomplete with that one link. A finding whose basis, location or Module does not hold makes no
+Module incomplete: it is listed under its Module's `rejected` with the reason, as host evidence
+names each failed check, and the reviewer's other findings are reported.
 
 The task handles the Issues as it handles a Spec review's, by their tier, as the
 [main-session guidance](../../coordination/main-session/module.md#issues) says: it fixes an
@@ -191,7 +192,7 @@ the grant of its Module alone.
 | 3 | Per reviewer: read its Modules' [earlier Issues](#earlier-issues), then build [worker settings](../../glossary.json#concept.worker-settings), tools and [brief](../../glossary.json#concept.brief): scope, focus, the reviewed Module's documents and code files (Module review) or the diff and named-only paths (change review), its [check results](../../glossary.json#concept.check-result) with every log's path and the last part of every log that did not pass, the earlier Issues; the run's check logs stay readable to the reviewer besides its grant | Operation (Issues), Workers | Issues unreadable: its Modules `incomplete` |
 | 4 | Launch the reviewer, await its [worker result](../../glossary.json#concept.worker-result) | Workers, worker | launch error, timeout, `blocked` or `failed`: its Modules `incomplete` |
 | 5 | [Audit](../../glossary.json#concept.write-audit) the worktree (no writable path, so any change is a violation); write the [run record](../../glossary.json#concept.run-record) | Workers | any change: its Modules `incomplete` |
-| 6 | Check every finding's Module, basis and locations | Operation, Spec core | any that does not hold: its Modules `incomplete`, nothing reported for them |
+| 6 | Check every finding's Module, basis and locations | Operation, Spec core | — (a finding that does not hold is rejected alone, with the reason) |
 | 7 | Settle the earlier Issues; report every finding as an Issue, Module by Module | Operation (Issues) | a store refusal: that Module `incomplete`, its later findings unreported |
 | 8 | Derive each Module's outcome and the verdict, and return the run's output | Operation, Execution runner | — |
 

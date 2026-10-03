@@ -63,6 +63,13 @@ The Operation SHALL treat a worker's finding whose `earlier` is empty or blank a
 A worker may write an empty `earlier` for a new finding instead of leaving the field out; refusing
 its whole result for it would lose every other finding of that worker.
 
+### req.spec-review.finding-path — A finding whose path does not hold is rejected alone
+
+The Operation SHALL report no worker finding whose path is not one of the workspace, listing it as rejected with the reason and still reporting every other finding of that worker.
+
+A path that does not hold is a slip of one finding, so it costs only that finding; the Module is not
+made `incomplete` for it.
+
 ### req.spec-review.never-disposes — Review closes no Issue
 
 Spec review SHALL NOT close or reopen an Issue.

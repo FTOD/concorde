@@ -113,16 +113,17 @@ in the [contracts](contracts.md).
 
 ### scenario.code-review.unknown-basis — A finding citing an unknown promise is not reported
 
-- GIVEN a reviewer whose finding cites a requirement identity the reviewed Modules' [Spec context](../../glossary.json#concept.spec-context) does not define
+- GIVEN a reviewer whose first finding cites a requirement identity the reviewed Modules' [Spec context](../../glossary.json#concept.spec-context) does not define and names an earlier Issue, and whose second finding holds
 - WHEN the Operation checks the findings
-- THEN the result has status `failed` with `unresolved_evidence` and the unresolved identity as host evidence
-- AND none of those Modules' findings is reported as an Issue
+- THEN the first finding is reported as no Issue and listed under its Module's `rejected` without that earlier Issue, with the reason naming the unresolved identity, which is also host evidence
+- AND the second finding is reported as an Issue, the Module is `changes_required` and the run ends `ok`
 
 ### scenario.code-review.unknown-location — A finding located in no file is not reported
 
-- GIVEN a reviewer whose finding names a location whose file does not exist
+- GIVEN a reviewer whose findings name locations whose file does not exist, whose lines lie beyond the file's end or that lie outside the project, and one finding whose location holds
 - WHEN the Operation checks the findings
-- THEN the result has status `failed` with `unresolved_evidence` and the location as host evidence
+- THEN each finding whose location does not hold is listed under `rejected` with the reason, and each such location is host evidence
+- BUT the finding whose location holds is reported as an Issue and the run ends `ok`
 
 ### scenario.code-review.reviewer-change — A reviewer that changes a file fails the run
 
