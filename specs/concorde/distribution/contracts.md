@@ -320,7 +320,7 @@ refused adds `binding_error`, which the receipt file never holds.
 
 `concorde update`, and `python3 <checkout>/scripts/install-concorde.py <project> --update`, print
 what the update did. Its `update` is the mark it wrote to `.concorde/update.json`, field for field,
-or `null` where the spec part is not installed, since the mark waits for a Spec validation.
+or `null` where the spec part is not installed, since the mark waits for a `spec-validation`.
 
 ```concorde-contract
 {

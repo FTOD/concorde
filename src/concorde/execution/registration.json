@@ -33,7 +33,8 @@
     "defaults": {},
     "gitignore": [
       ".concorde/unbound/",
-      ".concorde/lobby/"
+      ".concorde/lobby/",
+      ".claude/worktrees/"
     ],
     "permissions": [],
     "programs": [],

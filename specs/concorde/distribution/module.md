@@ -51,8 +51,9 @@ version number, and each gives Distribution a
 [registration contract](contracts.md#contract.distribution.part-registration) fixes, naming the
 part, the parts it depends on, its `concorde` commands, its MCP tools, the
 [typed value](../glossary.json#concept.typed-value) types it registers, its guidance, its install
-contributions — the files it places, the `.gitignore` lines, the permission rules and the program it
-needs, such as the worker harness's pi runtime — and its idle check, which says whether work of the
+contributions — the files it ships beside its code, the `.gitignore` lines, the permission rules,
+the programs it needs, such as the worker harness's pi runtime, and the Python dependencies its code
+imports, such as Method's LangGraph — and its idle check, which says whether work of the
 part is running in the project. The registration is data, not an interface a part implements against
 Distribution's code, so a part that depends on nothing, such as the spec part, registers without
 importing anything, and Distribution loads only the registrations of the installed parts. What a
@@ -347,7 +348,7 @@ commands of the installed parts.
 | `trace show`, `list` or `prune` | shows a [trace](../glossary.json#concept.trace) with its timing and cost rolled up, lists traces, or removes what retention allows; prints its own JSON | kernel, [Tracing](../kernel/tracing/module.md) |
 | `build [--check]` | renders or checks the generated files | distribution |
 | `protocol-manifest [--write] [--bind-project]` | [reconciles the Protocol manifest](#reconciling-the-protocol-manifest) | distribution |
-| `update [--from <checkout>]` | updates the installed Concorde, as described below; prints its [update result](contracts.md#contract.distribution.update-result) | distribution |
+| `update [--from <checkout>] [--parts <part>[,<part>…]]` | updates the installed Concorde, adding the parts `--parts` names, as described below; prints its [update result](contracts.md#contract.distribution.update-result) | distribution |
 
 Every command but `spec-mcp`, `project-mcp`, `task`, `run`, the execution commands, `workflow`, `issues`, `trace`
 and `update` prints exactly one JSON envelope and exits with its
@@ -478,7 +479,9 @@ project where every check passes, it goes through these steps in order:
    ([requirements](requirements.md#req.distribution.installer-project-mcp),
    [the rest kept](requirements.md#req.distribution.installer-mcp-kept)).
 8. **It records the install.** It adds the ignore rules each installed part contributes, such as
-   the Kernel's `.concorde/locks/`, Execution's `.concorde/unbound/` and `.concorde/lobby/`,
+   the Kernel's `.concorde/locks/`, Execution's `.concorde/unbound/`, `.concorde/lobby/` and the
+   `.claude/worktrees/` its
+   [unbound checkouts](../glossary.json#concept.unbound-checkout) go to,
    Coordination's `.concorde/tasks/` and `.concorde/history/`, the
    [workspace binding](../glossary.json#concept.workspace-binding) `.concorde/workspace.json` that
    each task worktree gets and `.claude/worktrees/`, where task worktrees go, and its own,

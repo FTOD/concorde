@@ -9,7 +9,8 @@ source checkout `python3 scripts/concorde.py`), composed of the Concorde parts t
 installed, which the receipt `.concorde/install.json` names under `parts`. This guidance holds the
 sections of those parts alone, and the project MCP server `concorde` presents only their tools: a
 command or tool of a part that is not installed is refused with `part_missing`, naming the part.
-Never work around it; tell the developer, who may install that part.
+Never work around it; tell the developer, who may install that part with `concorde update --parts
+<part>`, which adds it with the parts it depends on.
 
 Update Concorde only when the developer asks, with `concorde update` in the primary worktree, in
 background Bash. It installs the parts the receipt names again from the Concorde checkout the

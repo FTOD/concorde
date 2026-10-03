@@ -525,6 +525,10 @@ class IssueCommandTests(unittest.TestCase):
         ):
             with self.subTest(args=args):
                 self.assert_refused(2, "not_a_project", [str(self.root)], *args)
+        # The receipt of an installation without the spec part makes it a project too.
+        (self.root / ".concorde/install.json").write_text("{}")
+        status, value = self.run_command("list")
+        self.assertEqual(0, status, value)
 
     @verifies("scenario.issues.command-refused")
     def test_a_report_file_with_an_invalid_field_is_refused(self):

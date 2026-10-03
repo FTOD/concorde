@@ -407,8 +407,8 @@ session, and tolerating changes would make the audit meaningless. A checkout of 
 run a fixed input that no other session touches, and naming that commit in the result tells the
 caller exactly what was examined. The checkout is Git's own linked worktree (`git worktree add
 --detach`), which shares the repository's objects, so it costs no clone and needs no copying code;
-it lives in the primary worktree's `.claude/worktrees/`, which Git ignores, beside the task
-worktrees, because that is the one placement where the worker harness lets a worker run and knows
+it lives in the primary worktree's `.claude/worktrees/`, which Git ignores, the execution part's
+registration contributing that ignore rule as Coordination's does, beside the task worktrees, because that is the one placement where the worker harness lets a worker run and knows
 every Git administrative path to hide from it, and the runner removes it through Git again. What a
 commit never holds, the environments Git ignores and the checkouts of submodules, comes from the
 worktree the run started in: the environments linked, since the run only reads them, and each

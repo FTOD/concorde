@@ -1,9 +1,12 @@
-"""The installer: place Concorde into a project without touching its Specs.
+"""The installer: place Concorde's parts into a project without touching its Specs.
 
-It copies the package's runtime (``src``, ``scripts``, ``prompts``, ``protocol`` and the rendered
-``generated`` outputs) to ``.concorde/framework/``, with the docsite template under
-``.concorde/framework/docsite/`` selected by Views' template inventory rule, writes the
-``.concorde/bin/concorde`` command, the Protocol copy under ``.concorde/protocol/``, the guidance
+It installs the parts it is asked for with every part they depend on and Distribution, every part
+when it is asked for none, and records them in the receipt. It copies the installed parts' runtime
+(``concorde.json``, each part's code directory and the files its registration ships) to
+``.concorde/framework/``, so that no code of another part reaches the project, with the spec part's
+docsite template under ``.concorde/framework/docsite/`` selected by Views' template inventory rule,
+writes the ``.concorde/bin/concorde`` command, the spec part's Protocol copy under
+``.concorde/protocol/``, the guidance
 composed of the installed parts' rendered sections as the project skill
 ``.claude/skills/concorde/SKILL.md``, a delimited block in ``CLAUDE.md`` and the task-session
 prompt of its Framework copy, the project MCP server's entry ``concorde`` in ``.mcp.json``, Concorde-owned
@@ -11,12 +14,13 @@ defaults when absent, the pinned ``d2`` program under ``.concorde/tools/``, igno
 state and task worktrees, and a receipt ``.concorde/install.json``. ``uv`` owns Concorde's Python:
 it creates Concorde's own environment under ``.concorde/framework/python/`` on an interpreter that
 satisfies the package's ``runtime.python`` requirement, a uv-managed CPython when the machine has
-none, and installs the locked runtime dependencies of the package's ``uv.lock`` there, such as
-LangGraph. The installer also places the locked pi runtime
-under ``.concorde/tools/pi-runtime/``, which every pi worker runs in (workers run on pi unless the
-worker configuration chooses Claude Code). The main agent and its task sessions are Claude Code
-sessions, so every rendered workflow is installed for Claude Code under ``.claude/workflows/``
-with the permission rules its step agents need in ``.claude/settings.json``.
+none, and, where an installed part needs one, installs the locked runtime dependencies of the
+package's ``uv.lock`` there, such as Method's LangGraph. With the worker harness part the installer
+also places the locked pi runtime under ``.concorde/tools/pi-runtime/``, which every pi worker runs
+in (workers run on pi unless the worker configuration chooses Claude Code), and with the spec part
+the pinned ``d2``. The main agent and its task sessions are Claude Code sessions, so every rendered
+workflow of the installed parts is installed for Claude Code under ``.claude/workflows/`` with the
+permission rules its step agents need in ``.claude/settings.json``.
 With ``develop`` it makes a develop install through the check the package descriptor names under
 ``develop`` (Dogfooding's): only from the clean primary worktree of a Concorde repository, with
 Dogfooding's guidance added to the skill and the ``CLAUDE.md`` block. It reaches the parts only

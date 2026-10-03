@@ -294,7 +294,9 @@ commits nothing. When something cannot be put back or removed, it tries the rest
 ## Bookkeeping command
 
 `python3 scripts/issues.py <action> ... [--root <path>]` works from the worktree `--root` (default
-the current directory), which must contain `.concorde/config.json`. Every action but `check` acts on
+the current directory), which must contain `.concorde/config.json`, the project configuration
+the spec part writes, or `.concorde/install.json`, the receipt of an installation, which a project
+without the spec part has alone. Every action but `check` acts on
 the project's Issues, the records of the primary worktree of the repository `--root` lies in, and
 refuses with `not_a_repository` outside one; `check` checks the record files of `--root` itself.
 Where the spec part is installed, the command reads the registry `.concorde/specs.json` whenever an
@@ -439,7 +441,7 @@ recovery itself being `concorde issues recover`'s alone.
 | `unreadable_registry` | where the spec part is installed, the registry `.concorde/specs.json` cannot be read |
 | `io_error` | a file operation failed |
 | `usage` | the arguments do not form a request of the command |
-| `not_a_project` | `--root` has no `.concorde/config.json` |
+| `not_a_project` | `--root` has neither `.concorde/config.json` nor `.concorde/install.json` |
 | `unreadable_file` | the report file cannot be read as UTF-8 text |
 | `not_a_repository` | `--root` lies in no Git repository, whose primary worktree would keep the Issues |
 | `not_primary` | a store write names a root that is not the primary worktree |

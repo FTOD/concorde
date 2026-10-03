@@ -130,13 +130,18 @@ def unexpected(error: BaseException) -> dict:
     return from_exception(ACTOR, error)
 
 
+# What makes a directory a Concorde project: the spec part's project configuration, or the receipt
+# of an installation, which a project without the spec part has alone.
+PROJECT_MARKS = (".concorde/config.json", ".concorde/install.json")
+
+
 def project(root: Path) -> Path:
     """``root`` resolved, refused with ``not_a_project`` unless it holds a Concorde project."""
     root = Path(root).resolve()
-    if not (root / ".concorde/config.json").is_file():
+    if not any((root / mark).is_file() for mark in PROJECT_MARKS):
         raise Refusal(
             "not_a_project",
-            f"{root} is not an initialized Concorde project: .concorde/config.json is missing",
+            f"{root} is not a Concorde project: it has neither {' nor '.join(PROJECT_MARKS)}",
             USAGE,
         )
     return root
