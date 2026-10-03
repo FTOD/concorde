@@ -365,8 +365,8 @@ error translates it into a link.
 
 The **tracing library** gives every producer the same means: the layout's paths, writing a node at
 its start and its end atomically with its artifacts' digests, checking a node against the node
-contract and its content against the type its producer registered, the trace roots the parts
-register, the locks under
+contract and the registration of its kind and its content against the type its producer registered,
+the node kinds and trace roots the parts register, the locks under
 `.concorde/locks/` with handing a held lock on to a process and waiting for a lock's release or its
 next holder without polling, walking a tree and rolling usage up, finding a node by identity, telling a run
 lost by its run lock, and removing what retention allows. It never decides what a producer records.

@@ -34,6 +34,7 @@ from pathlib import Path
 from ..kernel.errors import WORKER_ERROR_SCHEMA, evidence, exception_detail, link
 from ..kernel.refusal import KernelError
 from ..kernel.schema import register, validate
+from ..kernel.tracing.kinds import NodeKind, register as register_kinds
 from ..kernel.tracing import layout
 from ..kernel.tracing.node import Node
 from .audit import audit, rw_allows, snapshot
@@ -144,6 +145,26 @@ register(
             "agent": _OBJECT,
         },
     },
+)
+register_kinds(
+    NodeKind(
+        "worker-run",
+        WORKER_RUN_TRACE,
+        (
+            "modules",
+            "operation",
+            "worker",
+            "task_type",
+            "backend",
+            "model",
+            "reasoning",
+            "context_identity",
+            "grant_digest",
+            "brief_digest",
+            "settings_digest",
+        ),
+    ),
+    NodeKind("worker-round", WORKER_ROUND_TRACE, ("backend", "model")),
 )
 
 WORKER_RESULT_SCHEMA: dict = {

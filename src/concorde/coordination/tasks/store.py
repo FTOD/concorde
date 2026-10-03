@@ -37,6 +37,7 @@ from ...kernel import binding as workspace_binding
 from ...kernel import delivery, locking
 from ...kernel.refusal import KernelError
 from ...kernel.schema import register
+from ...kernel.tracing.kinds import NodeKind, register as register_kinds
 from ...kernel.tracing import layout, locks, retention, roots
 from ...kernel.tracing import node as trace
 from ...kernel.tracing.node import Node, concorde_commit, protocol_version
@@ -871,6 +872,21 @@ register(
             "model_usage": {"anyOf": [{"type": "null"}, {"type": "object"}]},
         },
     },
+)
+register_kinds(
+    NodeKind(
+        "task",
+        TASK_TRACE,
+        (
+            "task",
+            "modules",
+            "branch",
+            "base_commit",
+            "concorde_commit",
+            "protocol_version",
+        ),
+    ),
+    NodeKind("session", SESSION_TRACE, ("task", "model")),
 )
 
 

@@ -22,22 +22,8 @@ from pathlib import Path
 
 from ..refusal import KernelError
 from ..schema import typed, validate, validate_typed
-from . import layout
+from . import kinds, layout
 
-KINDS = (
-    "task",
-    "session",
-    "merge",
-    "merge-check",
-    "delivery",
-    "delivery-check",
-    "workflow",
-    "step",
-    "run",
-    "check",
-    "worker-run",
-    "worker-round",
-)
 STATUSES = ("running", "ok", "blocked", "failed", "unknown")
 USAGE_FIELDS = (
     "tokens_in",
@@ -78,7 +64,7 @@ _TEXT = {"$ref": "#/$defs/text"}
 _COUNT = {"anyOf": [{"type": "null"}, {"type": "integer", "minimum": 0}]}
 _AMOUNT = {"anyOf": [{"type": "null"}, {"type": "number", "minimum": 0}]}
 
-# contract.tracing.node, version 4
+# contract.tracing.node, version 5
 NODE_SCHEMA: dict = {
     "type": "object",
     "additionalProperties": False,
@@ -100,7 +86,7 @@ NODE_SCHEMA: dict = {
     "properties": {
         "schema_version": {"const": 1},
         "id": {"type": "string", "minLength": 1},
-        "kind": {"enum": list(KINDS)},
+        "kind": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"},
         "started_at": {"type": "string", "minLength": 1},
         "ended_at": {"anyOf": [{"type": "null"}, {"type": "string", "minLength": 1}]},
         "status": {"enum": list(STATUSES)},
@@ -248,7 +234,8 @@ def read(folder: Path) -> dict | None:
 
 
 def check(record: dict) -> dict:
-    """``record`` if it satisfies the node contract and its content its type; else TraceError."""
+    """``record`` if it satisfies the node contract and the registration of its kind, and its
+    content the type that registration names; else TraceError."""
     try:
         validate(record, NODE_SCHEMA)
     except KernelError as error:
@@ -257,7 +244,28 @@ def check(record: dict) -> dict:
             f"the trace node {record.get('kind')} {record.get('id')} breaks the node contract at "
             f"{error.field or 'the top'}: {error}",
         ) from error
+    kind = kinds.lookup(record["kind"])
+    if kind is None:
+        raise TraceError(
+            "node_invalid",
+            f"the trace node {record['kind']} {record['id']} is of a kind no installed part "
+            "registered",
+        )
+    extra = sorted(set(record["metadata"]) - set(kind.metadata))
+    if extra:
+        raise TraceError(
+            "node_invalid",
+            f"the trace node {record['kind']} {record['id']} lists the metadata {extra}, which "
+            f"its kind does not provide (it provides {list(kind.metadata) or 'none'})",
+        )
     if record["content"] is not None:
+        if record["content"]["type_id"] != kind.content_type:
+            raise TraceError(
+                "content_invalid",
+                f"the content of trace node {record['kind']} {record['id']} is of type "
+                f"{record['content']['type_id']}, not {kind.content_type}, the type its kind "
+                "registered",
+            )
         try:
             validate_typed(record["content"], field="content")
         except KernelError as error:

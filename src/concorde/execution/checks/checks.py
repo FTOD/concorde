@@ -23,6 +23,7 @@ from pathlib import Path
 from ...kernel.errors import evidence, link
 from ...kernel.refusal import KernelError
 from ...kernel.schema import checked_path, register, safe_path
+from ...kernel.tracing.kinds import NodeKind, register as register_kinds
 from ...kernel.tracing import layout
 from ...kernel.tracing.layout import primary_worktree
 from ...kernel.tracing.node import Node
@@ -48,6 +49,9 @@ register(
             },
         },
     },
+)
+register_kinds(
+    NodeKind("check", CHECK_TRACE, ("check", "module")),
 )
 
 # The configured checks, one file per Module named by its identity.

@@ -44,6 +44,7 @@ from pathlib import Path
 
 from ...kernel import errors
 from ...kernel.schema import register
+from ...kernel.tracing.kinds import NodeKind, register as register_kinds
 from ...kernel.tracing import locks
 from ...kernel.tracing import node as trace
 from ...kernel.tracing.node import Node
@@ -97,6 +98,10 @@ register(
             "exit_code": {"anyOf": [{"type": "null"}, {"type": "integer"}]},
         },
     },
+)
+register_kinds(
+    NodeKind("merge", MERGE_TRACE, ("task", "branch", "commit")),
+    NodeKind("merge-check", MERGE_CHECK_TRACE, ()),
 )
 # The environment variable naming the attempt folder the project MCP server made for the merge,
 # and the files of it the merge's standard output and error go to.
