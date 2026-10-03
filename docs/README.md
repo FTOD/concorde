@@ -93,7 +93,8 @@ Use Python 3.11+ and [uv](https://docs.astral.sh/uv/) on Linux with bubblewrap, 
 Code for the main agent and a configured [pi](https://github.com/earendil-works/pi) for workers that
 run on pi. The installer places the
 runtime, the `concorde` command, the Protocol copy and the main agent's guidance; it never writes
-your Specs.
+your Specs. It installs every part of Concorde, or with `--parts spec` (or any other list of parts)
+only those and the parts they depend on.
 
 ```bash
 git clone https://github.com/FTOD/concorde.git

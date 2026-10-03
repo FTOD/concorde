@@ -698,9 +698,23 @@ class InstallTests(unittest.TestCase):
         self.assertTrue(
             (project / ".concorde/framework/src/concorde/spec/grants.py").exists()
         )
-        self.assertTrue(
-            (project / ".concorde/framework/generated/main-session/skill.md").exists()
+        # The Framework copy is the installed parts' runtime: no prompt source, no guidance
+        # section the installer already composed, no development tooling.
+        copy = project / ".concorde/framework"
+        self.assertEqual(
+            {
+                "concorde.json",
+                "generated",
+                "protocol",
+                "scripts",
+                "src",
+                "docsite",
+                "python",
+            },
+            {path.name for path in copy.iterdir()} - {"requirements.txt"},
         )
+        self.assertFalse((copy / "prompts").exists())
+        self.assertFalse((copy / "scripts/development").exists())
         # The task-session prompt of the installed parts, all of them, which Coordination reads.
         self.assertEqual(
             (package / "generated/guidance/task-session.md").read_text(),
@@ -1207,7 +1221,9 @@ class InstallTests(unittest.TestCase):
             pip[:6],
         )
         self.assertEqual(
-            [interpreter, "-E", "-s", "-c", "import langgraph.graph"], probe
+            # Method's dependency, the only one an installed part names.
+            [interpreter, "-E", "-s", "-c", "import langgraph"],
+            probe,
         )
         self.assertEqual(
             {
@@ -1495,6 +1511,74 @@ class InstallTests(unittest.TestCase):
         with which():
             update(project, package)
         self.assertEqual(bound, metadata.read_bytes())
+
+    @verifies(
+        "scenario.distribution.install-parts",
+        "scenario.distribution.update-installed-parts",
+        "scenario.distribution.update-without-spec",
+    )
+    def test_the_installer_and_update_take_the_parts_to_install(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        project.mkdir()
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+        installed = subprocess.run(
+            [sys.executable, str(package / "scripts/install-concorde.py"), str(project)]
+            # The choice to leave the pi runtime out holds for the worker harness added later.
+            + ["--parts", "coordination", "--without-pi-runtime"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(0, installed.returncode, installed.stdout + installed.stderr)
+        result = json.loads(installed.stdout)
+        validate(result, contract_schema("contract.distribution.install-result"))
+        self.assertEqual(
+            {"coordination", "distribution", "kernel"}, set(result["parts"])
+        )
+        updated = subprocess.run(
+            [str(project / ".concorde/bin/concorde"), "update"]
+            + ["--parts", "issues,worker harness"],
+            cwd=project,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(0, updated.returncode, updated.stdout + updated.stderr)
+        report = json.loads(updated.stdout)
+        validate(report, contract_schema("contract.distribution.update-result"))
+        self.assertEqual(
+            {"coordination", "distribution", "issues", "kernel", "worker harness"},
+            set(report["receipt"]["parts"]),
+        )
+        # Without the spec part nothing waits for a validation.
+        self.assertIsNone(report["update"])
+        self.assertEqual(["commit the updated files"], report["next"])
+        self.assertNotIn("pi-runtime", report["receipt"]["tools"])
+        self.assertIsNone(report["receipt"]["dependencies"])
+        self.assertFalse((project / ".concorde/update.json").exists())
+
+    @verifies("scenario.distribution.install-unknown-part")
+    def test_a_part_the_package_does_not_build_installs_nothing(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        project.mkdir()
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+        refused = subprocess.run(
+            [sys.executable, str(package / "scripts/install-concorde.py"), str(project)]
+            + ["--parts", "spec,dashboard"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(1, refused.returncode, refused.stdout + refused.stderr)
+        link = json.loads(refused.stdout)["error"]
+        validate(link, ERROR_SCHEMA)
+        self.assertEqual("unknown_part", link["code"])
+        self.assertEqual("input", link["unhandled"]["reason"])
+        self.assertIn("'dashboard'", link["detail"])
+        self.assertIn("worker harness", link["detail"])
+        self.assertEqual([".git"], sorted(path.name for path in project.iterdir()))
 
     @verifies("scenario.distribution.install")
     def test_install_and_update_print_their_contracted_results(self):

@@ -391,6 +391,12 @@ def update_main(words, root=None) -> int:
         "may load partly replaced code.",
     )
     parser.add_argument("--from", dest="source")
+    parser.add_argument(
+        "--parts",
+        action="append",
+        metavar="PART[,PART...]",
+        help="parts to install besides those the receipt names, with the parts they depend on",
+    )
     parser.add_argument("--project-root", default=str(root or "."))
     arguments = parser.parse_args(list(words))
     project = Path(arguments.project_root).resolve()
@@ -424,6 +430,8 @@ def update_main(words, root=None) -> int:
         )
         return 1
     command = [sys.executable, str(installer), str(project), "--update"]
+    for value in arguments.parts or []:
+        command += ["--parts", value]
     return subprocess.run(command, check=False).returncode
 
 

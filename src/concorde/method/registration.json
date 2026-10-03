@@ -40,11 +40,16 @@
   },
   "renders": null,
   "install": {
-    "files": [],
+    "files": [
+      "generated/workers/"
+    ],
     "defaults": {},
     "gitignore": [],
     "permissions": [],
     "programs": [],
+    "python_dependencies": [
+      "langgraph"
+    ],
     "prepare": null,
     "bind": null
   },

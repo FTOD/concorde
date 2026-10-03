@@ -73,25 +73,44 @@ python3 scripts/concorde.py build
 python3 scripts/install-concorde.py /absolute/path/to/project
 ```
 
-The installer places:
+Concorde is made of parts you can install separately: `spec` (checking, serving and publishing
+Specs), `kernel`, `worker harness`, `execution`, `workflow`, `issues`, `coordination` (the main
+agent's tasks) and `method` (the Operations that run workers). Without `--parts` the installer
+installs every part; `--parts` installs only the parts you name, with every part they depend on:
 
-- the Concorde runtime under `.concorde/framework/`, with its own Python environment (a venv
+```bash
+# Specs alone: spec-validation, registry, grant, docsite, the Spec MCP server
+python3 scripts/install-concorde.py /absolute/path/to/project --parts spec
+# Tasks without Operations: the coordination part brings the kernel with it
+python3 scripts/install-concorde.py /absolute/path/to/project --parts coordination,issues
+```
+
+A command of a part you did not install is refused with `part_missing`, naming the part and the
+`--parts` that adds it; a part that works with another one only when it is there, such as a review
+that records its findings as Issues where the issues part is installed, says what it skipped
+instead of failing. The receipt `.concorde/install.json` names the parts installed.
+
+The installer places, for the parts you install:
+
+- the runtime of the installed parts, and no other part's code, under `.concorde/framework/`, with
+  its own Python environment (a venv
   under `.concorde/framework/python/` that uv creates on a Python version Concorde supports: one
   already on your machine, or a Python uv downloads for it when you have none), and the
   `concorde` command as `.concorde/bin/concorde`, which always runs in that environment, never in
   your project's Python environment, even when your project's venv is activated;
-- a copy of the Spec Protocol under `.concorde/protocol/`, so the rules your Specs follow travel
-  with your project;
+- with the `spec` part, a copy of the Spec Protocol under `.concorde/protocol/`, so the rules your
+  Specs follow travel with your project;
 - the main agent's guidance, as the Claude Code skill `.claude/skills/concorde/SKILL.md` and a short
   block between `<!-- concorde:start -->` and `<!-- concorde:end -->` in your `CLAUDE.md` (the
   rest of the file is left untouched). Each Concorde part contributes its own section of it, after
   the part that runs tasks, so the guidance tells your sessions only about the parts you installed;
   a task session's first prompt is composed the same way;
 - the project MCP server, registered as `concorde` in your `.mcp.json` (other servers there are
-  kept), which gives Claude Code sessions your tasks, traces and locks as tools;
-- the [`d2`](https://github.com/d2lang/d2) program that draws your Specs' diagrams, as
+  kept), which gives Claude Code sessions the tools of the installed parts, such as your tasks,
+  traces and locks;
+- with the `spec` part, the [`d2`](https://github.com/d2lang/d2) program that draws your Specs' diagrams, as
   `.concorde/tools/d2`, at a pinned release whose checksum it verifies (`--without-d2` skips it);
-- the sandbox engine pi workers run their commands in, `@anthropic-ai/sandbox-runtime`, under
+- with the `worker harness` part, the sandbox engine pi workers run their commands in, `@anthropic-ai/sandbox-runtime`, under
   `.concorde/tools/pi-runtime/`, installed with `npm ci --ignore-scripts` from the lockfile
   Concorde ships, so you get exactly the versions it was tested with. Workers run on pi unless you
   choose Claude Code for them, so this needs npm;
@@ -110,11 +129,12 @@ use is your choice, made before the first Operation runs, as
 [Choose the worker models](#choose-the-worker-models) explains.
 
 To update Concorde, pull the checkout and build it again, then run `concorde update` in your
-project (`--from <checkout>` if the checkout moved). It installs the new version the way the first
-install did, binds the new Protocol copy in `.concorde/config.json` (read what changed in
+project (`--from <checkout>` if the checkout moved). It installs the new version of the parts the
+receipt names, with any part they now depend on, the way the first install did; `concorde update
+--parts <part>` adds parts. With the `spec` part it binds the new Protocol copy in `.concorde/config.json` (read what changed in
 `.concorde/protocol/`), and lists your open tasks: the main agent has the task session of each
 merge your primary branch into its task branch, since their worktrees keep the previous Protocol
-copy. Your project is then **Concorde unvalidated**:
+copy. With the `spec` part your project is then **Concorde unvalidated**:
 `concorde spec-validation` reports it as an error, and nothing merges, until you have repaired what the
 new version finds and a validation passes. That mark comes only from an update; your own changes
 never set it. An update also waits for Concorde to be idle: while an Operation or an execution command is still
@@ -123,7 +143,7 @@ running in your project, it refuses and names what runs.
 ### Use Concorde while developing it
 
 If you also work on Concorde itself, install it with `--develop` from your Concorde checkout's
-primary worktree, on its branch and with everything committed:
+primary worktree, on its branch and with everything committed (`--parts` works here too):
 
 ```bash
 python3 scripts/install-concorde.py /absolute/path/to/project --develop

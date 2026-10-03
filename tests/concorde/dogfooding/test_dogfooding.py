@@ -201,6 +201,26 @@ class DevelopInstallTests(unittest.TestCase):
             SECTION, (project / ".claude/skills/concorde/SKILL.md").read_text()
         )
 
+    def test_a_develop_install_of_some_parts_keeps_them_on_update(self):
+        package = repository(self)
+        project = new_project(package)
+        first = install(
+            project,
+            package,
+            part_names=["issues"],
+            pi_runtime=False,
+            d2=False,
+            develop=True,
+            dependencies=False,
+        )
+        self.assertEqual({"distribution", "issues", "kernel"}, set(first["parts"]))
+        report = update(project, package)
+        self.assertEqual("develop", report["receipt"]["mode"])
+        self.assertEqual(first["parts"], report["receipt"]["parts"])
+        self.assertIn(
+            SECTION, (project / ".claude/skills/concorde/SKILL.md").read_text()
+        )
+
     @verifies("scenario.dogfooding.update-dirty-source")
     def test_an_update_from_a_dirty_repository_changes_nothing(self):
         package = repository(self)

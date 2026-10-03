@@ -62,9 +62,15 @@ INSTALL_FIELDS = (
     "gitignore",
     "permissions",
     "programs",
+    "python_dependencies",
     "prepare",
     "bind",
 )
+# A framework-relative file a part ships beside its code directory, or a whole directory when the
+# path ends with ``/``.
+SHIPPED_PATH = re.compile(r"^[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*/?$")
+# The programs a part may need placed: the pinned d2 and the pi runtime.
+PROGRAMS = ("d2", "pi-runtime")
 
 
 class RegistrationError(ValueError):
@@ -218,8 +224,19 @@ def check(data, path: str) -> dict:
     _optional(path, "renders", data["renders"], ENTRY)
     install = data["install"]
     _exact(path, "install", install, INSTALL_FIELDS)
-    for field in ("files", "gitignore", "permissions", "programs"):
+    for field in ("gitignore", "permissions", "python_dependencies"):
         _strings(path, f"install.{field}", install[field])
+    _strings(path, "install.files", install["files"], SHIPPED_PATH)
+    if any(".." in item.split("/") for item in install["files"]):
+        raise _fail(path, "install.files leaves the Framework copy")
+    _strings(path, "install.programs", install["programs"])
+    unknown = sorted(set(install["programs"]) - set(PROGRAMS))
+    if unknown:
+        raise _fail(
+            path,
+            f"install.programs names {', '.join(unknown)}, which the installer cannot place; "
+            f"it places {', '.join(PROGRAMS)}",
+        )
     if not isinstance(install["defaults"], dict) or not all(
         isinstance(key, str) and key and isinstance(value, str)
         for key, value in install["defaults"].items()
@@ -298,6 +315,32 @@ def installed_names(package: Path = PACKAGE) -> set[str] | None:
     if not isinstance(parts, dict):
         return None
     return set(parts)
+
+
+def closure(everything: dict[str, Registration], names) -> dict[str, Registration]:
+    """The parts ``names`` with every part they depend on, transitively, and Distribution, out of
+    ``everything`` the package builds; ``RegistrationError`` ``unknown_part`` naming a part the
+    package does not build, whether named or depended on."""
+    chosen: dict[str, Registration] = {}
+    pending = [("distribution", None), *((name, None) for name in names)]
+    while pending:
+        name, needed_by = pending.pop()
+        if name in chosen:
+            continue
+        if name not in everything:
+            raise RegistrationError(
+                "unknown_part",
+                (
+                    f"the part {name!r}, which {needed_by} depends on, is not built by this "
+                    "package"
+                    if needed_by
+                    else f"no part of this package is named {name!r}"
+                )
+                + f"; its parts are {', '.join(sorted(everything))}",
+            )
+        chosen[name] = everything[name]
+        pending += [(item, name) for item in everything[name].data["depends_on"]]
+    return chosen
 
 
 def installed(package: Path = PACKAGE) -> dict[str, Registration]:
@@ -383,6 +426,7 @@ __all__ = [
     "Registration",
     "RegistrationError",
     "check",
+    "closure",
     "conflicts",
     "index",
     "index_of",

@@ -51,8 +51,9 @@ version number, and each gives Distribution a
 [registration contract](contracts.md#contract.distribution.part-registration) fixes, naming the
 part, the parts it depends on, its `concorde` commands, its MCP tools, the
 [typed value](../glossary.json#concept.typed-value) types it registers, its guidance, its install
-contributions — the files it places, the `.gitignore` lines, the permission rules and the program it
-needs, such as the worker harness's pi runtime — and its idle check, which says whether work of the
+contributions — the files it ships beside its code, the `.gitignore` lines, the permission rules,
+the programs it needs, such as the worker harness's pi runtime, and the Python dependencies its code
+imports, such as Method's LangGraph — and its idle check, which says whether work of the
 part is running in the project. The registration is data, not an interface a part implements against
 Distribution's code, so a part that depends on nothing, such as the spec part, registers without
 importing anything, and Distribution loads only the registrations of the installed parts. What a
@@ -347,7 +348,7 @@ commands of the installed parts.
 | `trace show`, `list` or `prune` | shows a [trace](../glossary.json#concept.trace) with its timing and cost rolled up, lists traces, or removes what retention allows; prints its own JSON | kernel, [Tracing](../kernel/tracing/module.md) |
 | `build [--check]` | renders or checks the generated files | distribution |
 | `protocol-manifest [--write] [--bind-project]` | [reconciles the Protocol manifest](#reconciling-the-protocol-manifest) | distribution |
-| `update [--from <checkout>]` | updates the installed Concorde, as described below; prints its [update result](contracts.md#contract.distribution.update-result) | distribution |
+| `update [--from <checkout>] [--parts <part>[,<part>…]]` | updates the installed Concorde, adding the parts `--parts` names, as described below; prints its [update result](contracts.md#contract.distribution.update-result) | distribution |
 
 Every command but `spec-mcp`, `project-mcp`, `task`, `run`, the execution commands, `workflow`, `issues`, `trace`
 and `update` prints exactly one JSON envelope and exits with its
@@ -379,7 +380,10 @@ The installer first decides everything that could refuse the install and only th
 project where every check passes, it goes through these steps in order:
 
 1. **It checks, writing nothing.** It refuses a directory that is not a project
-   (`invalid_project`); a stale build (`stale_build`), which includes a stale render of the
+   (`invalid_project`); a part name the package does not build, among those asked for or those
+   they depend on (`unknown_part`,
+   [requirements](requirements.md#req.distribution.parts-installable)); a stale build
+   (`stale_build`), which includes a stale render of the
    [main-session guidance](../glossary.json#concept.main-session-guidance); a docsite template
    that [Views](../spec-tooling/views/module.md)' inventory rule rejects
    (`invalid_docsite_template`,
@@ -396,16 +400,27 @@ project where every check passes, it goes through these steps in order:
    without `uv` on `PATH` (`uv_missing`), since uv owns Concorde's Python; and, when the pi runtime described
    below is still to be placed, a machine without `npm` (`npm_missing`)
    ([requirements](requirements.md#req.distribution.installer-programs-first)).
-2. **It places the pinned programs.** It fetches the `d2` release `concorde.json` pins, checks it
+2. **It places the pinned programs** the installed parts' registrations name under
+   `install.programs`. Where the spec part is installed, it fetches the `d2` release
+   `concorde.json` pins, checks it
    against its SHA-256 before anything else is written and places it at `.concorde/tools/d2`,
    keeping it on a later install with the same pin
    ([requirements](requirements.md#req.distribution.installer-pinned-d2),
    [checked first](requirements.md#req.distribution.installer-d2-first); `--without-d2` skips
-   it). It then places the pi runtime under `.concorde/tools/pi-runtime/`, as described below.
+   it). Where the worker harness part is installed, it then places the pi runtime under
+   `.concorde/tools/pi-runtime/`, as described below.
 3. **It places Concorde's files.** It places the Framework runtime of the chosen parts under
-   `.concorde/framework/`, replacing an earlier copy and leaving out `scripts/e2e/`, which only
-   [End-to-end testing](../e2e/module.md) uses, and writes the files each chosen part contributes,
-   Concorde-owned defaults only where absent. With the spec part go the Protocol copy under
+   `.concorde/framework/`, replacing an earlier copy: `concorde.json`, each chosen part's code
+   directory `src/concorde/<directory>/` and the files and directories its registration lists under
+   `install.files`, such as Distribution's `scripts/concorde.py` and parts index, the spec part's
+   `protocol/` and rendered Protocol, Method's rendered worker prompts, the Issues command
+   `scripts/issues.py` and the worker harness's `scripts/available_models.py`, and nothing else,
+   so the code of a part that is not installed is not in the project at all and Concorde's own
+   development tooling, such as `scripts/e2e/`, never reaches it. It writes the files each chosen
+   part contributes, Concorde-owned defaults only where absent, and removes every file an earlier
+   install owned that this one no longer places, such as the workflow of a part left out, except a
+   Concorde-owned default, which holds the project's own data. With the spec part go the Protocol
+   copy under
    `.concorde/protocol/` and the docsite template under `.concorde/framework/docsite/`, exactly the
    files Views' template inventory selects, `scaffold/` included, from which
    `concorde docsite --propose` scaffolds a project's site
@@ -416,9 +431,11 @@ project where every check passes, it goes through these steps in order:
    which uv downloads when none fits — whatever interpreter runs the installer
    ([requirements](requirements.md#req.distribution.uv-owns-python)); when uv cannot create it,
    the install is refused with `python_env_failed` and uv's output. Into that environment go
-   Concorde's Python dependencies, such as LangGraph, which `spec_panel` runs on: exactly the
-   runtime part of the checkout's `uv.lock`, exported with `uv export` to
-   `.concorde/framework/requirements.txt` and installed with `uv pip install --require-hashes`. A
+   Concorde's Python dependencies, such as LangGraph, which Method's `spec_panel` runs on, only
+   where an installed part's registration names one under `install.python_dependencies`: exactly
+   the runtime part of the checkout's `uv.lock`, exported with `uv export` to
+   `.concorde/framework/requirements.txt` and installed with `uv pip install --require-hashes`,
+   then checked by importing each dependency the installed parts name. A
    failing step is refused with `python_dependencies_failed` and the failing command's output;
    `--without-dependencies` skips them, and the Operations that need them then refuse.
 5. **It writes the command.** `.concorde/bin/concorde`, composed from the registrations of the
@@ -442,11 +459,13 @@ project where every check passes, it goes through these steps in order:
    Code alone, since the main agent and its task sessions run on Claude Code for now; nothing is
    placed for a pi session, and a project's own `AGENTS.md` is left as it is.
 7. **It installs the workflows and the project MCP server.** Where the workflow part is installed,
-   every rendered workflow of an installed part for Claude Code becomes
+   every rendered workflow of an installed part for Claude Code, one whose every source in a
+   part's code directory, as the build manifest records it, lies in an installed part's, becomes
    `.claude/workflows/concorde-<name>.js`, which Claude Code offers as the command
    `/concorde-<name>`, and the `permissions.allow` of the project's `.claude/settings.json` gains
    the rules the workflow needs to run without a prompt per step: `Workflow(concorde-<name>)` for
-   each workflow and, for its [step agents](../glossary.json#concept.step-agent),
+   each workflow and the rules the installed parts register under `install.permissions`, the
+   workflow part's for its [step agents](../glossary.json#concept.step-agent):
    `mcp__concorde__workflow_step`, the project MCP server's tool through which they start every
    step, and `Bash(.concorde/bin/concorde workflow report:*)`. It adds only rules that are missing,
    records them in the receipt, removes on a later install the recorded rules it no longer ships,
@@ -460,7 +479,9 @@ project where every check passes, it goes through these steps in order:
    ([requirements](requirements.md#req.distribution.installer-project-mcp),
    [the rest kept](requirements.md#req.distribution.installer-mcp-kept)).
 8. **It records the install.** It adds the ignore rules each installed part contributes, such as
-   the Kernel's `.concorde/locks/`, Execution's `.concorde/unbound/` and `.concorde/lobby/`,
+   the Kernel's `.concorde/locks/`, Execution's `.concorde/unbound/`, `.concorde/lobby/` and the
+   `.claude/worktrees/` its
+   [unbound checkouts](../glossary.json#concept.unbound-checkout) go to,
    Coordination's `.concorde/tasks/` and `.concorde/history/`, the
    [workspace binding](../glossary.json#concept.workspace-binding) `.concorde/workspace.json` that
    each task worktree gets and `.claude/worktrees/`, where task worktrees go, and its own,
@@ -578,15 +599,19 @@ then fails with `pi_runtime_missing`, naming the command that installs the runti
 `concorde update` runs, in update mode, the installer of the Concorde checkout the receipt names as
 its `source` (or `--from <checkout>`); `python3 <checkout>/scripts/install-concorde.py <project>
 --update` does the same from the checkout. An update installs exactly the parts the receipt names,
-with any part the new Concorde makes one of them depend on
+every part when it names none, as a receipt written before parts were recorded does, with any part
+the new Concorde makes one of them depend on
 ([requirements](requirements.md#req.distribution.update-installed-parts)); `--parts` with an update
-adds parts to that set. It goes through three steps, the last two only where the spec part is
-installed:
+adds parts to that set, with the parts they depend on. A part the receipt names that the new
+Concorde no longer builds refuses the update with `unknown_part`. It goes through three steps, the
+last two only where the spec part is installed:
 
-1. **It installs as the first install did.** It keeps `d2` and develop mode when they were
-   installed, always places the pi runtime unless the first install left it out with
-   `--without-pi-runtime` (so an update adds it to an install made before the runtime was placed by
-   default), creates Concorde's own environment again with uv for the new checkout's Python
+1. **It installs as the first install did.** It keeps develop mode, keeps `d2` and the Python
+   dependencies left out where the install it updates had a part needing them and placed none,
+   so that they come with a part added later when the earlier install had no use for them, always
+   places the pi runtime where the worker harness part is installed unless the first install left
+   it out with `--without-pi-runtime` (so an update adds it to an install made before the runtime
+   was placed by default), creates Concorde's own environment again with uv for the new checkout's Python
    requirement, and refuses like an install when a run holds its run lock at the check; nothing
    else in the project may be started until the update ends, as
    [the busy check](#installing-into-a-project) explains.
@@ -620,6 +645,11 @@ installing -> installing: "a failure or interruption:\nrun the update again"
 unvalidated -> unvalidated: "spec-validation with\nerrors: CONCORDE-UPDATE-001"
 unvalidated -> unmarked: "spec-validation without\nother errors: CONCORDE-UPDATE-002"
 ```
+
+Where the spec part is not installed, the update ends after its install: it leaves the project
+configuration alone, writes no mark, and its
+[result](contracts.md#contract.distribution.update-result) carries `update` `null` and asks only for
+the updated files to be committed, never for a `spec-validation` the project does not have.
 
 Open tasks are a separate matter, and an
 [optional integration](../glossary.json#concept.optional-integration) with the coordination part.
@@ -658,7 +688,8 @@ something:
 | Code | Refused when | Reason | After a write |
 | --- | --- | --- | --- |
 | `invalid_project` | the project is not a directory | `input` | no |
-| `stale_build` | the build is stale, or a render the install places, such as the guidance, is missing | `input` | no |
+| `unknown_part` | `--parts`, or the receipt an update reads, names a part the package does not build, or a part depends on one | `input` | no |
+| `stale_build` | the build is stale, or a render or file the install places, such as the guidance or a file an installed part ships, is missing | `input` | no |
 | `invalid_docsite_template` | Views' inventory rule rejects the package's docsite template | `input` | no |
 | `develop_source_not_repository`, `develop_source_not_primary`, `develop_source_detached`, `develop_source_dirty` | [Dogfooding's](#uses-dogfooding) source check refuses the checkout of a develop install | `input` | no |
 | `develop_source_unreadable` | Git cannot run to check the checkout of a develop install | `environment` | no |

@@ -166,7 +166,7 @@ This illustrates [specific refusals](requirements.md#req.issues.specific-refusal
 
 ### scenario.issues.command-not-a-project — A directory that is not a Concorde project exits with status 2
 
-- GIVEN a `--root` directory without `.concorde/config.json`
+- GIVEN a `--root` directory with neither `.concorde/config.json` nor `.concorde/install.json`
 - WHEN any action of the command runs on it
 - THEN the command prints the error code `not_a_project` and a message naming the directory
 - AND exits with status 2

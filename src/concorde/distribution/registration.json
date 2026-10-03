@@ -36,7 +36,15 @@
   },
   "renders": null,
   "install": {
-    "files": [],
+    "files": [
+      "generated/parts.json",
+      "scripts/concorde.ps1",
+      "scripts/concorde.py",
+      "scripts/concorde.sh",
+      "scripts/install-concorde.py",
+      "src/concorde/__init__.py",
+      "src/concorde/__main__.py"
+    ],
     "defaults": {},
     "gitignore": [
       ".concorde/update.json",
@@ -46,6 +54,7 @@
     ],
     "permissions": [],
     "programs": [],
+    "python_dependencies": [],
     "prepare": null,
     "bind": null
   },

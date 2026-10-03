@@ -33,10 +33,12 @@
     "defaults": {},
     "gitignore": [
       ".concorde/unbound/",
-      ".concorde/lobby/"
+      ".concorde/lobby/",
+      ".claude/worktrees/"
     ],
     "permissions": [],
     "programs": [],
+    "python_dependencies": [],
     "prepare": null,
     "bind": null
   },
