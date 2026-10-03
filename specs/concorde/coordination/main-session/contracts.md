@@ -22,11 +22,11 @@ once whether the session listens to it as a channel
 ([Distribution](../../distribution/module.md)). Coordination's tools rely
 on that as follows: every call reads the [task records](../../glossary.json#concept.task-record),
 traces and locks of the primary worktree afresh; the session the host serves, from
-`CLAUDE_CODE_SESSION_ID`, is written into the holder line of every lock a tool takes; a report or
-escalation a tool records is the session's, `task-session` with its task in a task worktree bound
-as a workspace, `main-agent` otherwise; and `task_merge` and `register_wait` wake the session with a
-[channel event](#channel-events) only when the host judged it a channel, and otherwise return the
-`concorde task wait` command for its background Bash.
+`CLAUDE_CODE_SESSION_ID`, is written into the holder line of every lock a tool takes; an escalation
+`task_escalate` records without `by` is the session's, `task-session` in a task worktree bound as a
+workspace, `main-agent` otherwise, while an explicit `by` wins; and `task_merge` and
+`register_wait` wake the session with a [channel event](#channel-events) only when the host judged
+it a channel, and otherwise return the `concorde task wait` command for its background Bash.
 
 Every tool returns one text content item holding one JSON value. A refusal sets `isError: true`
 and its value is `{"error": <link>}`, a link of the
@@ -41,7 +41,7 @@ refusals, such as `call_failed` and `no_project`, are Distribution's:
 | `workspace_busy`, `merge_busy` | `environment` | `task_merge` found the lock held; the detail names the lock file and the holder's command, process, start time, session and task, and the evidence of kind `lock` carries the holder line as JSON |
 | `start_failed` | `environment` | the operating system refused to start `concorde task merge`; both locks were released |
 | `unknown_run` | `input` | `run_result` names a run no reader finds |
-| `part_missing` | `input` | `run_result` where the execution part is not installed; the detail names the part |
+| `part_missing` | `input` | `run_result`, or `register_wait` for a `run`, where the execution part is not installed; the detail names the part |
 | any Tasks or Tracing code | as there | the command the tool presents refused, such as `unknown_task`, `merge_busy` from `task_open` or `workspace_busy` from `task_close` |
 | any other code | `environment` | an unexpected error of the server, as a link built from the exception |
 
@@ -55,7 +55,7 @@ refusals, such as `call_failed` and `no_project`, are Distribution's:
 | `run_result` | `run`: a run identity; present where the execution part is installed | `{"run", "running": false, "result": <run result>}` when no runner holds the run's [run lock](../../glossary.json#concept.run-lock) and its result is saved; otherwise `{"run", "running", "result": null, "progress": <run progress file or null>}`, where `running` is `true` while its runner holds the run lock and `false` for a run whose runner ended without writing a result |
 | `locks` | none | `{"merge": <holder line or null>, "workspaces": {"<task>": <holder line or null>}}` for the merge lock and the workspace lock of every task that has not ended |
 | `task_open` | `task`, `goal`, `modules` (nonempty), optional `base` | as `concorde task open`, taking the merge lock without waiting |
-| `task_escalate` | `task`, `code`, `detail`, `reason`, `explanation`; optional `by` (`main-agent`, the default, or `task-session`), `runs`, `error_files`, `escalations`, `attempts`, `options`, `recommendation` | as `concorde task escalate` with the matching options |
+| `task_escalate` | `task`, `code`, `detail`, `reason`, `explanation`; optional `by` (`main-agent` or `task-session`; without it, the calling session's level as [Session](#session) states), `runs`, `error_files`, `escalations`, `attempts`, `options`, `recommendation` | as `concorde task escalate` with the matching options, `--by` being the given or derived level |
 | `task_rebind` | `task`, `main` | as `concorde task rebind <task> --main <main>` |
 | `task_report` | `task`, `text`; optional `escalations`, numbers ≥ 1 | as `concorde task report` with `--escalation` for each |
 | `task_answer` | `task`, `reports` (nonempty numbers ≥ 1), `text` | as `concorde task answer` with `--report` for each |
@@ -121,7 +121,8 @@ files.
 
 ### Registering a wait
 
-`register_wait` first checks whether what it waits for already happened: the task's derived state
+`register_wait` for a `run` is first refused with `part_missing` where the execution part is not
+installed, as `concorde task wait --run` is. It then checks whether what it waits for already happened: the task's derived state
 is one of `until`, the task's record names a main agent's session other than `rebound`, the run's
 runner holds no [run lock](../../glossary.json#concept.run-lock), or
 nobody holds the lock. Then it answers `{"registered": false, "already": <answer>}`, the value the

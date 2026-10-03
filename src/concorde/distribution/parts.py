@@ -29,7 +29,7 @@ INDEX = "generated/parts.json"
 # The receipt of an installed Concorde, beside its Framework copy `.concorde/framework`.
 RECEIPT = "install.json"
 
-PART_NAME = re.compile(r"^[a-z][a-z ]*[a-z]$|^[a-z]$")
+PART_NAME = re.compile(r"^[a-z][a-z ]*[a-z]$")
 COMMAND_NAME = re.compile(r"^[a-z][a-z-]*$")
 TOOL_NAME = re.compile(r"^[a-z][a-z_]*$")
 MODULE_ID = re.compile(r"^module\.[a-z][a-z0-9-]*$")

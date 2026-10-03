@@ -512,6 +512,7 @@ This illustrates [the Kernel's convention](requirements.md#req.tasks.deliver-con
 - WHEN a task session runs `concorde task deliver` in its task worktree
 - THEN it fails with `delivery_by_method`, naming `concorde delivery`
 - AND in a project without the method part it fails with `not_task_worktree` run in the primary worktree, with `workspace_busy` while a run holds the task's workspace lock past `--wait`, and with `wrong_branch` naming the branch when the worktree is on another branch, committing nothing each time
+- AND a delivery waiting for the workspace lock while the worktree is switched to another branch fails with `wrong_branch` once it holds the lock, and one waiting while a close retires the task's workspace fails with `task_closed`, taking no lock file again
 
 This illustrates [Tasks delivering only where Method does not](requirements.md#req.tasks.deliver-without-method).
 

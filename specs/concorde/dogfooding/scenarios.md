@@ -13,6 +13,14 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - AND the receipt records mode `develop`, the repository as `source` and its `HEAD` as `source_commit`
 - AND the installed skill ends with the section "Developing Concorde while using it" and the `CLAUDE.md` block with the develop paragraph
 
+### scenario.dogfooding.develop-install-without-coordination — A develop install of parts without Coordination carries no develop guidance
+
+- GIVEN a clean primary worktree of a Concorde repository and a project
+- WHEN the developer runs the repository's installer on the project with `--develop`, choosing the issues part alone, and later updates it
+- THEN the receipt records mode `develop` and the repository's `HEAD` as `source_commit`, each time
+- BUT neither the skill nor the `CLAUDE.md` block carries the develop section, which names tasks the project cannot open
+- AND choosing the coordination and issues parts gives both the develop section
+
 ### scenario.dogfooding.normal-install — A normal install carries no develop guidance
 
 - GIVEN the same Concorde repository and a project

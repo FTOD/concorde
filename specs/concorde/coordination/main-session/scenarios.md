@@ -430,6 +430,7 @@ This illustrates [every call answering with the current Concorde](../../distribu
 - GIVEN a running server
 - WHEN the session opens a task with `task_open`, escalates in it with `task_escalate` as a task session with two options, rebinds it with `task_rebind`, reports with `task_report` carrying that escalation, answers the report with `task_answer`, and closes it with `task_close` as completed with a note
 - THEN the task is opened, the escalation is recorded as number 1 with the level `task-session`, the record names the rebound session, the report is recorded as number 1 addressed to it and then answered, and the task ends closed, each as the matching `concorde task` command does
+- AND an escalation naming no `by` is recorded with the level `main-agent` from a session in the primary worktree and `task-session` from a session in the task's worktree
 
 ### scenario.main-session.project-mcp-issues — The Issue tools manage the project's Issues from any worktree
 

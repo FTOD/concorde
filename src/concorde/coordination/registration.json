@@ -113,7 +113,9 @@
       "worktree": "primary",
       "long_work": false,
       "threaded": false,
-      "requires": []
+      "requires": [
+        "issues"
+      ]
     },
     {
       "name": "task_merge",

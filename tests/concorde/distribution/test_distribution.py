@@ -32,7 +32,7 @@ from concorde.kernel.errors import ERROR_SCHEMA
 from concorde.execution.runs import Store, run_lock
 from concorde.spec.initialize import apply_project_proposal, project_proposal
 from concorde.spec.repository_base import SpecError
-from concorde.spec.schema import validate
+from concorde.spec.schema import ContractError, validate
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies
 from concorde.spec.views.docsite_template import adapter_files, template_files
@@ -617,8 +617,12 @@ class PartsTests(unittest.TestCase):
         self.assertEqual(0, listed.returncode, listed.stderr)
         names = {tool["name"] for tool in json.loads(listed.stdout)["tools"]}
         self.assertIn("task_list", names)
-        # Neither the issues part's tools nor run_result, which requires the execution part.
-        self.assertFalse({"issue_list", "issue_report", "run_result"} & names)
+        # Neither the issues part's tools nor the coordination part's run_result and
+        # task_resolve, which require the execution and issues parts.
+        self.assertFalse(
+            {"issue_list", "issue_report", "run_result", "task_resolve"} & names
+        )
+        self.assertIn("register_wait", names)
         call = {"arguments": {}, "primary": str(project), "where": str(project)}
         answered = framework_command(
             project, "project-mcp", "--call", "issue_list", stdin=json.dumps(call)
@@ -631,6 +635,17 @@ class PartsTests(unittest.TestCase):
             project, "project-mcp", "--call", "run_result", stdin=json.dumps(call)
         )
         link = json.loads(answered.stdout)["error"]
+        self.assertEqual("part_missing", link["code"])
+        self.assertIn("the execution part", link["detail"])
+        # A wait for a run is refused as `concorde task wait --run` is.
+        waited = framework_command(
+            project,
+            "project-mcp",
+            "--call",
+            "register_wait",
+            stdin=json.dumps({**call, "arguments": {"run": "r-1"}}),
+        )
+        link = json.loads(waited.stdout)["error"]
         self.assertEqual("part_missing", link["code"])
         self.assertIn("the execution part", link["detail"])
 
@@ -668,6 +683,30 @@ class PartsTests(unittest.TestCase):
         ):
             with self.subTest(path=path.parent.name):
                 validate(json.loads(path.read_text()), schema)
+
+    def test_the_build_refuses_what_the_registration_contract_refuses(self):
+        schema = contract_schema("contract.distribution.part-registration")
+        data = json.loads(
+            (REPOSITORY_ROOT / "src/concorde/issues/registration.json").read_text()
+        )
+        cases = {
+            "a one-letter part": {**data, "part": "x"},
+            "a dependency of one letter": {**data, "depends_on": ["k"]},
+            "a repeated ignore rule": {
+                **data,
+                "install": {**data["install"], "gitignore": ["a/", "a/"]},
+            },
+            "a repeated permission rule": {
+                **data,
+                "install": {**data["install"], "permissions": ["X", "X"]},
+            },
+        }
+        for case, registration in cases.items():
+            with self.subTest(case=case):
+                with self.assertRaises(ContractError):
+                    validate(registration, schema)
+                with self.assertRaises(parts.RegistrationError):
+                    parts.check(registration, "registration.json")
 
 
 class InstallTests(unittest.TestCase):
@@ -1349,6 +1388,42 @@ class InstallTests(unittest.TestCase):
             (project / ".claude/workflows/concorde-brownfield.js").exists()
         )
 
+    @verifies("scenario.distribution.install-defaults-kept")
+    def test_a_default_stays_once_no_part_or_package_declares_it(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        project.mkdir()
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+        default = ".concorde/issues/.gitignore"
+        first = install(
+            project,
+            package,
+            part_names=["issues"],
+            pi_runtime=False,
+            d2=False,
+            dependencies=False,
+        )
+        self.assertIn(default, first["files"])
+        self.assertEqual([default], first["defaults"])
+        (project / default).write_text("# the project's own\n")
+        for _ in ("a part left out", "a package that no longer declares it"):
+            receipt = install(
+                project,
+                package,
+                part_names=["coordination"],
+                pi_runtime=False,
+                d2=False,
+                dependencies=False,
+            )
+            self.assertEqual("# the project's own\n", (project / default).read_text())
+            self.assertIn(default, receipt["files"])
+            self.assertEqual([default], receipt["defaults"])
+            path = package / "src/concorde/issues/registration.json"
+            registration = json.loads(path.read_text())
+            registration["install"]["defaults"] = {}
+            path.write_text(json.dumps(registration, indent=2) + "\n")
+            write_build(package)
+
     @verifies(
         "scenario.distribution.install-project-mcp",
         "scenario.distribution.install-mcp-config-invalid",
@@ -1557,6 +1632,39 @@ class InstallTests(unittest.TestCase):
         self.assertNotIn("pi-runtime", report["receipt"]["tools"])
         self.assertIsNone(report["receipt"]["dependencies"])
         self.assertFalse((project / ".concorde/update.json").exists())
+
+    @verifies("scenario.distribution.update-installed-parts")
+    def test_an_update_places_what_an_added_part_needs(self):
+        package = package_copy(self)
+        fetch = fake_d2(self, package)
+        project = package.parent / "project"
+        project.mkdir()
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+        calls = []
+
+        def fake_uv(command, cwd, **options):
+            calls.append(command)
+            if command[1] == "export":
+                Path(command[command.index("--output-file") + 1]).write_text(
+                    "# locked\nlanggraph==1.2.12 \\\n    --hash=sha256:00\n"
+                )
+            return subprocess.CompletedProcess(command, 0, "", "")
+
+        # Coordination needs neither d2 nor a Python dependency: none is placed.
+        with which():
+            first = install(
+                project, package, part_names=["coordination"], pi_runtime=False
+            )
+        self.assertNotIn("d2", first["tools"])
+        self.assertIsNone(first["dependencies"])
+        with which():
+            updated = update(
+                project, package, part_names=["method"], fetch=fetch, run=fake_uv
+            )["receipt"]
+        self.assertIn("d2", updated["tools"])
+        self.assertEqual(1, len(fetch.urls))
+        self.assertIsNotNone(updated["dependencies"])
+        self.assertTrue(any(command[1:3] == ["pip", "install"] for command in calls))
 
     @verifies("scenario.distribution.install-unknown-part")
     def test_a_part_the_package_does_not_build_installs_nothing(self):

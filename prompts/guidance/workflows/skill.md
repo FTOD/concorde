@@ -25,7 +25,8 @@ The workflow ends with `concorde workflow report`, which saves the workflow resu
 workspace's workflow record, `.concorde/tasks/<task>/workspace/workflow/reports/<n>.json` of the
 primary worktree, with a Markdown rendering `<n>.md`. The project MCP server's `workflow_report`
 reads a saved workflow result too: give it the workspace `folder`, the absolute
-`<task folder>/workspace` of a task that `task_show` shows, and a report `number`, or none for the
+`<task folder>/workspace` of a task of the coordination part, which `task_show` shows, and a
+report `number`, or none for the
 latest. The task session copies its decisions and problems into the task's decision log and gives
 the decisions in its report; read the rendering yourself too, since in `no-ask` mode they are
 decisions taken without the developer, and treat it like an Operation result: read every problem's

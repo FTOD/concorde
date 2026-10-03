@@ -125,9 +125,16 @@ execution part, is not presented. The host's own promises are these:
   the tool's. A call whose process gives no answer is refused with the server's own `call_failed`
   link, naming the command and what it printed. The tools, how each is served and the server's
   instructions, its own followed by the sentence each installed part registers, come from
-  `concorde project-mcp --tools` of the current code. Each answer also says which tools the current
-  code has; when they differ from those the session was given, the server tells its session that
-  its tools changed, and Claude Code lists them again. Only the server's own session code, its few
+  `concorde project-mcp --tools` of the current code. The server routes a call as the last such
+  listing says how the tool is served: in which worktree its process runs, whether it hands on
+  long work and whether it is answered on a thread of its own. The call's process, the current
+  code, checks that routing against its own registration of the tool first and, when they differ,
+  answers how it serves every tool instead of running anything, and the server routes the call
+  again that way, so an update that changes only how a tool is served takes effect at the next
+  call. Each answer also says which tools the current code has; when they differ from those the
+  server last listed to the session, the server tells its session that its tools changed, and
+  Claude Code lists them again: a listing the server fetches only to learn how a tool is served is
+  not one the session was given. Only the server's own session code, its few
   protocol messages and its instructions, stays what the session started with until the next
   session.
 - **Locks handed to the work.** A tool whose registration says it starts long work, such as
@@ -147,8 +154,10 @@ execution part, is not presented. The host's own promises are these:
   Anthropic authentication and an organization that has not disabled channels; a background session
   is never woken by them. A server cannot learn from Claude Code whether it is a channel, so it reads
   it from the command line of the interactive `claude` above it, one whose standard input is a
-  terminal; when it has none, the tool returns the equivalent blocking `concorde` command for the
-  session's background Bash instead, which wakes the session when it ends.
+  terminal, unless the environment variable `CONCORDE_CHANNEL` is `1` or `0`, which then decides,
+  as the configuration a task session's server is started with sets it to `0`; when it has none,
+  the tool returns the equivalent blocking `concorde` command for the session's background Bash
+  instead, which wakes the session when it ends.
 
 The server answers calls that wait, each on a thread of its own, so the session's other calls are
 not held up meanwhile. Using it is recommended, not enforced: the `concorde` command and the server
@@ -419,7 +428,9 @@ project where every check passes, it goes through these steps in order:
    development tooling, such as `scripts/e2e/`, never reaches it. It writes the files each chosen
    part contributes, Concorde-owned defaults only where absent, and removes every file an earlier
    install owned that this one no longer places, such as the workflow of a part left out, except a
-   Concorde-owned default, which holds the project's own data. With the spec part go the Protocol
+   Concorde-owned default, which holds the project's own data: one the receipt it replaces names
+   among its `defaults` stays, and stays Concorde's while it is in place, even when the parts now
+   installed or a newer Concorde no longer declare it. With the spec part go the Protocol
    copy under
    `.concorde/protocol/` and the docsite template under `.concorde/framework/docsite/`, exactly the
    files Views' template inventory selects, `scaffold/` included, from which
@@ -510,7 +521,9 @@ checkout), the installed parts with the one version they carry
 [develop install](../glossary.json#concept.develop-install) made with `--develop`, `develop`. It
 lists under `files` every file Concorde owns in the project, including a default an earlier
 install wrote and this one found in place
-([requirements](requirements.md#req.distribution.receipt-complete)), and under `amended` the
+([requirements](requirements.md#req.distribution.receipt-complete)), under `defaults` those of
+them that are Concorde-owned defaults, so that a later install knows them without a package that
+still declares them, and under `amended` the
 project's own files it only amends: `.gitignore`, `CLAUDE.md`, `.mcp.json` and, once written,
 `.claude/settings.json` ([requirements](requirements.md#req.distribution.receipt-amended)).
 
@@ -865,8 +878,13 @@ part the skill and the block are the installed parts' sections alone and there i
 prompt, since task sessions are Coordination's. Coordination's sections live in
 [Main session](../coordination/main-session/module.md)'s `prompts/main-session/`, every other
 part's in `prompts/guidance/<part directory>/`, each bound by its part's top Module, and each
-section says what happens where a part it mentions is not installed. Dogfooding's develop section
-is no part's: the installer appends it to the composed skill and block in a develop install.
+section says what happens where a part it mentions is not installed: a paragraph that names a
+command or project MCP tool of a part the section may be composed without names that part, as in
+"where the execution part is installed"
+([requirements](requirements.md#req.distribution.guidance-absent-parts)). Dogfooding's develop section
+is no part's: the installer appends it to the composed skill and block in a develop install that
+installs the coordination and issues parts, which it relies on, and leaves it out of any other,
+which is still a develop install in its source check and receipt.
 
 <a id="realization.distribution.command"></a>
 

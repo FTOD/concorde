@@ -85,7 +85,8 @@ def toplevel(folder: Path) -> Path | None:
 
 
 def last_answer(text: str) -> dict | None:
-    """The last line of a call's output that is a JSON object with ``value`` or ``error``."""
+    """The last line of a call's output that is a JSON object with ``value``, ``error`` or
+    ``reroute``."""
     for line in reversed(text.splitlines()):
         if not line.strip():
             continue
@@ -93,10 +94,22 @@ def last_answer(text: str) -> dict | None:
             value = json.loads(line)
         except ValueError:
             return None
-        if isinstance(value, dict) and ("value" in value or "error" in value):
+        if isinstance(value, dict) and (
+            "value" in value or "error" in value or "reroute" in value
+        ):
             return value
         return None
     return None
+
+
+SERVED = ("worktree", "long_work", "threaded")
+# How a tool the listing does not name is served until the current code says otherwise.
+UNLISTED = {"worktree": "primary", "long_work": False, "threaded": False}
+
+
+class Rethread(Exception):
+    """The call, routed on the session's thread, belongs on a thread of its own, as the current
+    code's registration of the tool now says."""
 
 
 class Calls:
@@ -168,29 +181,42 @@ class Calls:
             return None
         return value
 
-    def tools(self) -> list[dict]:
-        """The tools of the current code, none when its process gives none."""
+    def refresh(self) -> dict | None:
+        """The current code's listing, from which how each tool is served and the instructions
+        are taken again; what was listed to the session stays as it was."""
         value = self.describe()
+        if value is not None:
+            self.serving = value["serving"]
+            self.instructions = value.get("instructions") or INSTRUCTIONS
+        return value
+
+    def tools(self) -> list[dict]:
+        """The tools of the current code, as they are listed to the session; none when its
+        process gives none."""
+        value = self.refresh()
         if value is None:
             self.listed = None
             return []
         self.listed = value["digest"]
-        self.serving = value["serving"]
-        self.instructions = value.get("instructions") or INSTRUCTIONS
         return value["tools"]
 
     def served(self, name: str) -> dict:
-        """How the tool ``name`` is served, as the current code's listing says."""
+        """How the tool ``name`` is served, as the current code's last listing says; each call's
+        process checks it against its own registration of the tool (``reroute``)."""
         if self.serving is None or name not in self.serving:
-            self.tools()
-        return (self.serving or {}).get(
-            name, {"worktree": "primary", "long_work": False, "threaded": False}
-        )
+            self.refresh()
+        found = (self.serving or {}).get(name, UNLISTED)
+        return {key: found.get(key, UNLISTED[key]) for key in SERVED}
 
     # --- calls ------------------------------------------------------------------------------
 
-    def call(self, name: str, arguments) -> object:
-        """The answer of the call's process, or ``Refusal`` with its link."""
+    def call(self, name: str, arguments, threaded: bool = True) -> object:
+        """The answer of the call's process, or ``Refusal`` with its link; ``Rethread`` when the
+        call, made on the session's thread (``threaded`` false), belongs on a thread of its own.
+
+        The call is routed as the last listing says; a process whose current code serves the tool
+        otherwise answers ``reroute`` with how it serves every tool, having run nothing, and the
+        call is routed again that way, once."""
         envelope = {
             "arguments": arguments,
             "primary": self.primary.as_posix(),
@@ -199,15 +225,30 @@ class Calls:
             "channel": self.channel,
         }
         served = self.served(name)
-        worktree = (
-            (toplevel(self.where) or self.primary)
-            if served["worktree"] == "session"
-            else self.primary
-        )
-        if served["long_work"]:
-            reply = self.long_work(name, envelope)
+        for _ in range(2):
+            worktree = (
+                (toplevel(self.where) or self.primary)
+                if served["worktree"] == "session"
+                else self.primary
+            )
+            routed = {**envelope, "served": served}
+            if served["long_work"]:
+                reply = self.long_work(name, routed, worktree)
+            else:
+                reply = self.run(name, routed, CALL_LIMIT, worktree)
+            if not isinstance(reply.get("reroute"), dict):
+                break
+            self.serving = reply["reroute"]
+            served = self.served(name)
+            if served["threaded"] and not threaded:
+                raise Rethread(name)
         else:
-            reply = self.run(name, envelope, CALL_LIMIT, worktree)
+            raise self.failed(
+                name,
+                ["project-mcp", "--call", name],
+                "asked twice to route the call otherwise, so the server cannot tell how the "
+                "current code serves the tool",
+            )
         if self.listed is not None and reply.get("tools") not in (None, self.listed):
             # The session was given other tools than the current code's: it lists them again.
             self.listed = reply["tools"]
@@ -279,22 +320,24 @@ class Calls:
 
     # --- long work ---------------------------------------------------------------------------
 
-    def long_work(self, name: str, envelope: dict) -> dict:
+    def long_work(self, name: str, envelope: dict, worktree: Path) -> dict:
         """The answer of a call of a ``long_work`` tool, such as ``task_merge``, whose process,
         once it answered that it started the work, is the work, as a process of its own session
-        that outlives the server."""
+        that outlives the server; run with the ``concorde`` of ``worktree``, as any call."""
         runtime = self.runtime()
         with self.lock:
             number = len(list(runtime.glob("*.log"))) + 1
             messages = runtime / f"{number}-{name}.log"
             messages.touch()
         envelope = {**envelope, "long_work": {"call": messages.as_posix()}}
-        argv, environment = self.command("project-mcp", "--call", name)
+        argv, environment = self.command(
+            "project-mcp", "--call", name, worktree=worktree
+        )
         try:
             with messages.open("wb") as err:
                 process = subprocess.Popen(
                     argv,
-                    cwd=self.primary,
+                    cwd=worktree,
                     env=environment,
                     stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE,
@@ -302,7 +345,9 @@ class Calls:
                     start_new_session=True,
                 )
         except OSError as error:
-            raise self.failed(name, argv, f"could not be started: {error}") from None
+            raise self.failed(
+                name, argv, f"could not be started: {error}", worktree
+            ) from None
         try:
             process.stdin.write(
                 json.dumps(envelope, ensure_ascii=False).encode("utf-8")
@@ -326,6 +371,7 @@ class Calls:
                     argv,
                     f"exited with status {process.returncode} and printed no answer: "
                     f"{said or '(no output)'}",
+                    worktree,
                 )
             return reply
         self.reap(process, reply.pop("work"))

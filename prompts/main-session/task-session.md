@@ -18,9 +18,10 @@ own source checkout it is `python3 scripts/concorde.py`).
 Work on a task only from inside its worktree, `.claude/worktrees/<task>` of the primary worktree
 by default (`concorde task show <task>` prints its path):
 
-- **Use the worktree's own Concorde.** Run every `concorde` command for the task
-  (`spec-validation`, `build`, `run <operation>`, `task-validation`, `delivery`) from the task
-  worktree with the worktree's own command, never the primary worktree's. That command reads the
+- **Use the worktree's own Concorde.** Run every `concorde` command for the task, such as
+  `build`, `task deliver` or, where the spec, execution and method parts are installed,
+  `spec-validation`, `run <operation>`, `task-validation` and `delivery`, from the task worktree
+  with the worktree's own command, never the primary worktree's. That command reads the
   task branch's Specs, Protocol copy and checks, which only the task worktree holds, and the
   worktree's workspace binding tells every run which task's goal, Modules and base it works on;
   which Framework code it runs, the installed one it shares with the primary worktree or the
