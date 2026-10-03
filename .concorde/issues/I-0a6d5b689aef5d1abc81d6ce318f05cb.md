@@ -49,6 +49,44 @@
         "change_id": "parts-review",
         "head": "43871f64ab7162b4b32fd566e2f81ec15aba06d2"
       }
+    },
+    {
+      "id": "sha256:5453a209efb0eb72a6a87449211b48f9c97629ea3f450a5e1a2f17d80274d819",
+      "created_at": "2026-10-03T04:35:45.471436+00:00",
+      "report": {
+        "report_key": "verify/module.checks/I-0a6d5b689aef5d1abc81d6ce318f05cb",
+        "owner_target_id": "module.checks",
+        "tier": "obvious-fix",
+        "severity": "low",
+        "type": "gap",
+        "subtype": "implementation-spec-mismatch",
+        "title": "A relative trace_directory yields a relative log path",
+        "description": "run_checks uses Path(trace_directory) as given, so a relative trace directory produces a relative log in the check result, while service.md's Check result table says log is absolute. Fix: resolve trace_directory at admission.",
+        "impact": "No problem with today's callers, which all pass absolute run or worker folders; a future caller passing a relative path would get a relative log. Corrected from medium.",
+        "basis": "src/concorde/execution/checks/checks.py:539 and 638; callers in src/concorde/method pass ctx.run_dir / 'checks' or layout.checks_folder(folder).",
+        "evidence": [
+          {
+            "path": "src/concorde/execution/checks/checks.py",
+            "description": "trace_directory not resolved"
+          },
+          {
+            "path": "specs/concorde/execution/checks/service.md",
+            "description": "Check result: log is the absolute path"
+          }
+        ],
+        "issue_id": "I-0a6d5b689aef5d1abc81d6ce318f05cb",
+        "expected_revision": "sha256:fb4baa9d29f6ef4776de41f17fa2f8f058248f5d5f7c8b233ccf9628489d0206"
+      },
+      "source": {
+        "invocation_id": "cli-e9b302df-5d27-4a5a-86c4-5b1c481caab8",
+        "agent": "main-agent",
+        "operation": "issues",
+        "phase": "report",
+        "target_id": "module.checks",
+        "context_id": "sha256:1d5cfc2a2a7ba74b163c0a7da2044601cb98d3bb39fa931e4f515946b2ee70f4",
+        "change_id": "parts-review",
+        "head": "43871f64ab7162b4b32fd566e2f81ec15aba06d2"
+      }
     }
   ],
   "dispositions": []
