@@ -37,6 +37,44 @@
         "change_id": "parts-review-specs",
         "head": "959c856c3a7732af1420829a271f59dd21ba837c"
       }
+    },
+    {
+      "id": "sha256:fe7f03fea285f72139db2c4bcc4e9af5dfb22387460e582a83b5300edafb2d5e",
+      "created_at": "2026-10-03T08:49:47.058375+00:00",
+      "report": {
+        "issue_id": "I-d8b60e4393565e3a9ce516ce1bfcedaf",
+        "expected_revision": "sha256:442f81db000958c4ffd9a0af1541ccf36dad05e4c9c6b7c15b892dbef24838ba",
+        "report_key": "module.distribution/10-verified",
+        "tier": "obvious-fix",
+        "severity": "low",
+        "title": "req.distribution.installer-fresh-guidance says 'older than its sources' and covers only guidance",
+        "description": "specs/concorde/distribution/requirements.md, req.distribution.installer-fresh-guidance: 'refuse to install main-session guidance whose rendered output is missing or older than its sources'. The installer actually refuses any stale build by the build manifest's digests (install.py verify_fresh → `stale_build`), as module.md step 1 and the refusal table say ('the build is stale, or a render or file the install places ... is missing'); no requirement states that general refusal.\n\nFix: restate it as 'The installer SHALL refuse with `stale_build`, before writing anything, a package whose build manifest records a missing or changed source or output, or that lacks a render or file the installed parts place', and retitle it; module.md's links stay valid.",
+        "impact": "A reader could implement a timestamp check limited to guidance; the code checks digests for every output, so nothing is wrong today.",
+        "basis": "Read the requirement, module.md step 1 and the refusal table, src/concorde/distribution/install.py (verify_fresh, _missing_shipped). Classification: pre-existing — identical requirement on main (git show main:specs/concorde/distribution/requirements.md). Severity lowered from medium; tier obvious-fix since the wording fix is clear.",
+        "owner_target_id": "module.distribution",
+        "type": "bug",
+        "subtype": null,
+        "evidence": [
+          {
+            "path": "specs/concorde/distribution/requirements.md",
+            "description": "req.distribution.installer-fresh-guidance"
+          },
+          {
+            "path": "src/concorde/distribution/install.py",
+            "description": "verify_fresh refuses any stale build with stale_build"
+          }
+        ]
+      },
+      "source": {
+        "invocation_id": "cli-4a2d9f95-7106-4335-a676-03c1057ec9a1",
+        "agent": "task-session",
+        "operation": "issues",
+        "phase": "report",
+        "target_id": "module.distribution",
+        "context_id": "sha256:dc5a1d8cbf5a69d2834f2ea5f6545ea6067e5caf2e4e3c78dfc4f3342c22cb32",
+        "change_id": "parts-review-specs",
+        "head": "41bda04db324df4ff913498f023597a72c419955"
+      }
     }
   ],
   "dispositions": []
