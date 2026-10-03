@@ -37,6 +37,44 @@
         "change_id": "parts-review-specs",
         "head": "959c856c3a7732af1420829a271f59dd21ba837c"
       }
+    },
+    {
+      "id": "sha256:a362e49281f841eddf5c4c34ee1ba1e515ee7c5c3a683188987a8a3825f686be",
+      "created_at": "2026-10-03T08:51:00.905509+00:00",
+      "report": {
+        "issue_id": "I-4a41cadd2a8653dda3a4167bbf0ad9da",
+        "expected_revision": "sha256:3d2fd88dd9bdee71a7579d345a1ed913fb022b97a06d93f7e82a09be02c308a7",
+        "report_key": "module.distribution/16-verified",
+        "tier": "obvious-fix",
+        "severity": "low",
+        "title": "uses-dogfooding omits the coordination-and-issues condition of develop guidance; project-mcp --name is unexplained",
+        "description": "specs/concorde/distribution/module.md: (1) uses-dogfooding says the installer, after Dogfooding's source check, 'then adds its rendered guidance to the skill and the CLAUDE.md block', while guidance-composition (and the installer, DEVELOP_GUIDANCE_NEEDS) adds it only in a develop install that installs the coordination and issues parts. (2) The command table lists `project-mcp [--name <name>]` without saying what the name is (main's Main session contract said: the server name, default `concorde`). (3) Installer options (--parts, --develop, --without-d2, --without-pi-runtime, --without-dependencies, --update) are spread over several sections.\n\nFix: in uses-dogfooding write '... then, where the coordination and issues parts are installed, adds its rendered guidance ([guidance composition](#guidance-composition)) ...'; in the command table add 'the server's name, `concorde` by default'; optionally give the full installer synopsis in 'Installing into a project'.",
+        "impact": "A reader may expect develop guidance in a partial develop install; the composition paragraph and code are right.",
+        "basis": "Read module.md uses-dogfooding, guidance-composition and the command table; src/concorde/distribution/install.py DEVELOP_GUIDANCE_NEEDS. Classification: regression — the coordination-and-issues condition came with 6b24ab1c without updating uses-dogfooding (unchanged from main), and the --name explanation was in main's Main session contracts, dropped with the move. Tier raised to obvious-fix (a real inconsistency, clear fix); severity stays low.",
+        "owner_target_id": "module.distribution",
+        "type": "bug",
+        "subtype": null,
+        "evidence": [
+          {
+            "path": "specs/concorde/distribution/module.md",
+            "description": "uses-dogfooding paragraph vs guidance-composition's develop-section condition"
+          },
+          {
+            "path": "src/concorde/distribution/install.py",
+            "description": "DEVELOP_GUIDANCE_NEEDS = coordination, issues"
+          }
+        ]
+      },
+      "source": {
+        "invocation_id": "cli-e04d7b93-364d-4cf3-90c0-9776d1b66d8e",
+        "agent": "task-session",
+        "operation": "issues",
+        "phase": "report",
+        "target_id": "module.distribution",
+        "context_id": "sha256:dc5a1d8cbf5a69d2834f2ea5f6545ea6067e5caf2e4e3c78dfc4f3342c22cb32",
+        "change_id": "parts-review-specs",
+        "head": "41bda04db324df4ff913498f023597a72c419955"
+      }
     }
   ],
   "dispositions": []
