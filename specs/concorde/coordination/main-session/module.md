@@ -553,7 +553,7 @@ events Coordination registers are in the [contracts](contracts.md).
 **Current code.** The server answers every call with a fresh process of the primary worktree's
 current Concorde and keeps in its own long-lived process only what must live as long as its
 session: the MCP session, the channel, and the wait and merge processes it watches
-([Distribution](../../distribution/module.md)). For Coordination's tools that means: the wait
+([Distribution](../../distribution/contracts.md#waits-and-long-work)). For Coordination's tools that means: the wait
 `register_wait` registers is that `concorde`'s `concorde task wait`, run as a process the server
 watches, and the merge `task_merge` starts is the very process the call ran in, which, having taken
 both locks and answered, replaces itself with `concorde task merge`.

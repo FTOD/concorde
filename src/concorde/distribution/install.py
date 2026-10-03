@@ -91,9 +91,10 @@ def ignored(registrations: dict) -> tuple[str, ...]:
 
 
 class InstallError(RuntimeError):
-    def __init__(self, code: str, message: str):
+    def __init__(self, code: str, message: str, causes: Iterable[dict] = ()):
         super().__init__(message)
         self.code = code
+        self.causes = list(causes)
 
 
 # Refusals only a different request, project or source checkout can correct; every other refusal
@@ -118,7 +119,10 @@ INPUT_CODES = frozenset(
 
 
 def refusal(
-    code: str, message: str, actor: str = "Installer (install-concorde)"
+    code: str,
+    message: str,
+    actor: str = "Installer (install-concorde)",
+    causes: Iterable[dict] = (),
 ) -> dict:
     """A refusal of the installer or of `concorde update` as its link of an error chain."""
     if code in INPUT_CODES:
@@ -133,7 +137,9 @@ def refusal(
             "the installer cannot change what it runs among: running Concorde processes, the "
             "network, npm or uv"
         )
-    return formats.link(actor, code, message, reason=reason, explanation=explanation)
+    return formats.link(
+        actor, code, message, reason=reason, explanation=explanation, causes=causes
+    )
 
 
 def _guidance(package: Path, registrations: dict) -> dict[str, str | None]:
@@ -168,14 +174,50 @@ def _source_commit(package: Path) -> str | None:
     return (found.stdout.strip() or None) if found.returncode == 0 else None
 
 
+def _asked(
+    registration, field: str, project: Path, valid: Callable[[object], bool], shape: str
+) -> list:
+    """What the part's ``field`` entry answers for ``project``: a list whose every item is
+    ``valid``. An entry that cannot be imported, raises or answers anything else is refused with
+    ``part_failed``, naming the part and the entry, the exception as its cause."""
+    entry = registration.data[field]
+    named = f"the {registration.part} part's {field} entry {entry}"
+    try:
+        answer = registration.entry(entry)(project)
+    except Exception as error:  # a part's failure is refused with its link
+        raise InstallError(
+            "part_failed",
+            f"{named} failed: {type(error).__name__}: {error}",
+            causes=[
+                formats.from_exception(
+                    f"{registration.part} part ({field})",
+                    error,
+                    explanation="the part's entry has no recovery for its own failure",
+                )
+            ],
+        ) from error
+    if not isinstance(answer, list) or not all(valid(item) for item in answer):
+        raise InstallError(
+            "part_failed",
+            f"{named} answered {answer!r}"[:1500] + f", which is not {shape}",
+        )
+    return answer
+
+
 def active_work(project: Path, registrations: dict) -> list[str]:
     """Everything the installed parts' idle checks report still running in ``project``, such as
-    the execution part's runs whose runners hold their run locks."""
+    the execution part's runs whose runners hold their run locks; ``part_failed`` for a check
+    that fails, before anything is written."""
     found = []
     for registration in parts.ordered(registrations):
-        check = registration.data["idle_check"]
-        if check is not None:
-            found += list(registration.entry(check)(project))
+        if registration.data["idle_check"] is not None:
+            found += _asked(
+                registration,
+                "idle_check",
+                project,
+                lambda item: isinstance(item, str),
+                "a list of descriptions",
+            )
     return found
 
 
@@ -825,14 +867,43 @@ def _place(
     return receipt
 
 
+def _open_task(item: object) -> bool:
+    """Whether ``item`` is one open task as the update result lists it."""
+    return (
+        isinstance(item, dict)
+        and set(item) == {"id", "branch", "worktree"}
+        and isinstance(item["id"], str)
+        and bool(item["id"])
+        and all(
+            item[key] is None or isinstance(item[key], str)
+            for key in ("branch", "worktree")
+        )
+    )
+
+
 def open_tasks(project: Path, registrations: dict) -> list[dict]:
     """What the installed parts' after-update entries report, the coordination part's open
-    tasks; none without such a part."""
+    tasks; none without such a part. An entry that fails is refused with ``part_failed``, the
+    update being installed and marked by then."""
     found: list[dict] = []
     for registration in parts.ordered(registrations):
-        entry = registration.data["after_update"]
-        if entry is not None:
-            found += list(registration.entry(entry)(project))
+        if registration.data["after_update"] is not None:
+            try:
+                found += _asked(
+                    registration,
+                    "after_update",
+                    project,
+                    _open_task,
+                    "a list of open tasks, each {id, branch, worktree}",
+                )
+            except InstallError as error:
+                raise InstallError(
+                    error.code,
+                    f"{error}. The update is installed and, where the spec part is installed, "
+                    "the project rebound and marked Concorde unvalidated; only the list of open "
+                    "tasks is lost, which `concorde task list` shows",
+                    causes=error.causes,
+                ) from error
     return found
 
 
@@ -1222,7 +1293,11 @@ def main(argv) -> int:
             )
     except InstallError as error:
         sys.stdout.write(
-            json.dumps({"error": refusal(error.code, str(error))}, indent=2) + "\n"
+            json.dumps(
+                {"error": refusal(error.code, str(error), causes=error.causes)},
+                indent=2,
+            )
+            + "\n"
         )
         return 1
     sys.stdout.write(json.dumps(receipt, indent=2) + "\n")

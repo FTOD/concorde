@@ -48,6 +48,22 @@
         "relies_on": [
           "contract.tracing.error"
         ]
+      },
+      {
+        "target": "module.execution",
+        "meaning": "#uses-execution",
+        "relies_on": [
+          "concept.run-lock",
+          "concept.run-progress-file",
+          "concept.run-store"
+        ]
+      },
+      {
+        "target": "module.tasks",
+        "meaning": "#uses-tasks",
+        "relies_on": [
+          "req.tasks.merge-update-validated"
+        ]
       }
     ],
     "includes": [

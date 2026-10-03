@@ -38,22 +38,31 @@ is missing or changed, or whose rendered asset differs from the tracked manifest
 
 ### req.distribution.one-envelope — One envelope per command
 
-Every invocation of the `concorde` command other than `spec-mcp`, `project-mcp`, `task`, `run`, `task-validation`, `delivery`, `scaffold`, `workflow`, `issues`, `trace` and `update` SHALL print exactly one JSON result envelope on standard output, except `--help` and a command of a part that is not installed.
+Every invocation of the `concorde` command that names a command registered with `output` `envelope`, or no command of the package, SHALL print exactly one JSON result envelope on standard output, except `--help` and a command of a part that is not installed.
 
-The exit status is the one Spec core's shared envelope assigns to the envelope's status, so it
-follows from this requirement rather than being a separate one: a caller that only checks the status
-and a caller that reads the envelope reach the same conclusion. `update` prints the installer's
-result or [error link](#req.distribution.installer-error-links) instead, and the other commands
-excepted print what their owners define.
+The [registration](contracts.md#contract.distribution.part-registration) of each command decides:
+today the distribution and Spec tooling commands other than `spec-mcp`, `project-mcp` and `update`
+are registered with `envelope`, and every other command, such as `task`, `run`, `workflow`,
+`issues`, `trace` and the execution commands, with `own`, printing what its owner defines. The exit
+status is the one Spec core's shared envelope assigns to the envelope's status, so it follows from
+this requirement rather than being a separate one: a caller that only checks the status and a
+caller that reads the envelope reach the same conclusion. `update` prints the installer's result
+or [error link](#req.distribution.installer-error-links) instead.
 
 ## Parts
 
 ### req.distribution.parts-installable — Any set of parts installs with its dependencies
 
-The installer SHALL install exactly the [parts](../glossary.json#concept.part) it is asked for together with every part they depend on, transitively, and no other part, refusing before any write a part name the package does not build.
+The installer SHALL install exactly the [parts](../glossary.json#concept.part) it is asked for together with every part they depend on, transitively, and no other part.
 
 Distribution itself is installed with any part. Left without a choice, the installer installs every
 part.
+
+### req.distribution.unknown-part-refused — A part the package does not build is refused first
+
+The installer SHALL refuse, before writing anything, a part name the package does not build, among the parts it is asked for and those they depend on.
+
+The refusal is `unknown_part`, naming the part and the parts the package builds.
 
 ### req.distribution.parts-recorded — The receipt names the installed parts
 
@@ -78,7 +87,7 @@ its registration names.
 
 ### req.distribution.composed-from-registrations — The command and the server offer only installed parts
 
-The installed `concorde` command SHALL offer exactly the distribution commands and the commands the installed parts register, and the [project MCP server](../glossary.json#concept.project-mcp-server) exactly the MCP tools they register.
+The installed `concorde` command SHALL offer exactly the distribution commands and the commands the installed parts register, and the [project MCP server](../glossary.json#concept.project-mcp-server) exactly the MCP tools they register whose required parts are all installed.
 
 ### req.distribution.absent-part-named — A command of an absent part names the part
 
@@ -198,7 +207,7 @@ project configuration as it is, and an update changes in it only the Protocol bi
 
 ### req.distribution.installer-keeps-installation-bound — Installed files stay bound
 
-In an initialized project, the installer SHALL, after writing the receipt, bring the Concorde
+Where the spec part is installed, in an initialized project, the installer SHALL, after writing the receipt, bring the Concorde
 installation realization in step with the receipt through Spec core, so that every file the
 receipt names outside `.concorde/`, other than the amended ones, is bound whether it was installed
 before or after initialization.
@@ -220,10 +229,17 @@ validation, is never marked.
 
 ### req.distribution.update-mark-kept — An earlier mark is kept until replaced
 
-`concorde update` of a project still marked by an earlier update SHALL write its own mark with the earlier mark's version, installed commit and Protocol binding from before, and leave the earlier mark as it was until then.
+`concorde update` of a project still marked by an earlier update SHALL write its own mark with the earlier mark's version, installed commit and Protocol binding from before.
 
 What has not been validated then reaches back to the earlier update, so a second update before a
 validation never hides it.
+
+### req.distribution.update-mark-whole — The mark is replaced whole
+
+`concorde update` SHALL replace the update mark whole, so that an earlier mark stays as it was until the update's own mark is written.
+
+An update that fails before its mark therefore leaves a project marked by an earlier update marked
+exactly as before ([a failed write](#req.distribution.failed-write-reported)).
 
 ### req.distribution.unvalidated-reported — Validation reports an unvalidated update
 
@@ -291,27 +307,27 @@ machine has none, so the interpreter that runs the installer never decides Conco
 
 ### req.distribution.installer-docsite-template — The installer ships the docsite template
 
-The installer SHALL place under `.concorde/framework/docsite/` exactly the docsite template files that [Views](../spec-tooling/views/module.md)' template inventory selects from the package, including `scaffold/`.
+Where the spec part is installed, the installer SHALL place under `.concorde/framework/docsite/` exactly the docsite template files that [Views](../spec-tooling/views/module.md)' template inventory selects from the package, including `scaffold/`.
 
 A project's `concorde docsite --propose` reads its template there, so an install without it could
 not scaffold a site.
 
 ### req.distribution.installer-docsite-template-first — An unsafe docsite template installs nothing
 
-When Views' template inventory rejects the package's docsite template as missing or unsafe, the installer SHALL refuse with `invalid_docsite_template` before it writes anything into the project.
+Where the spec part is installed and Views' template inventory rejects the package's docsite template as missing or unsafe, the installer SHALL refuse with `invalid_docsite_template` before it writes anything into the project.
 
 ## The project MCP server
 
 ### req.distribution.mcp-current-code — Every call answers with the current Concorde
 
-The project MCP server SHALL answer every call of a registered tool with a process of the Concorde that the primary worktree's `concorde` command runs when the call arrives, never with Concorde code the server loaded before that call.
+The project MCP server SHALL answer every call of a registered tool with a process of the Concorde that the `concorde` command of the worktree the tool's current registration names ([serving](#req.distribution.mcp-current-serving)) runs when the call arrives, never with Concorde code the server loaded before that call.
 
 So a merge or a `concorde update` while a session runs changes the code that answers the session's
 next call: its rules, its record formats and its refusals
-([The project MCP server](module.md#the-project-mcp-server)). The same holds for the waiting and
-long-running processes a tool starts, such as Coordination's `concorde task wait` and
-`concorde task merge`; `workflow_step` alone runs the `concorde` of the session's own worktree,
-as Workflows requires.
+([Serving a call](module.md#serving-a-call)). The same holds for the waiting and long-running
+processes a tool starts, such as Coordination's `concorde task wait` and `concorde task merge`,
+which run the primary worktree's `concorde`; `workflow_step`, registered with `worktree`
+`session`, runs the `concorde` of the session's own worktree, as Workflows requires.
 
 ### req.distribution.mcp-current-serving — A call is served as the current code registers its tool
 
@@ -322,9 +338,14 @@ takes effect at the next call, without the session listing its tools again.
 
 ### req.distribution.mcp-tools-changed — The session hears that its tools changed
 
-When the tools of the Concorde that answered a call differ from those the server last listed to its session, the server SHALL tell the session that its tools changed and list the current code's tools when asked again, a listing it fetched without giving it to the session not counting as listed.
+When the tools of the Concorde that answered a call differ from those the server last listed to its session, a listing it fetched without giving it to the session not counting as listed, the server SHALL tell the session that its tools changed.
 
-A part installed or removed by an update thereby adds or removes its tools in a running session.
+A part installed or removed by an update thereby adds or removes its tools in a running session,
+since the session then lists them again ([listed](#req.distribution.mcp-tools-listed-current)).
+
+### req.distribution.mcp-tools-listed-current — The server lists the current code's tools
+
+The project MCP server SHALL answer every `tools/list` of its session with the tools of the Concorde that the primary worktree's `concorde` command runs when the request arrives.
 
 ### req.distribution.mcp-channel-override — The environment may decide the channel
 

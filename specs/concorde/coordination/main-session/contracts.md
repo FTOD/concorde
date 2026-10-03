@@ -3,7 +3,7 @@
 The exact tools and events Coordination registers with the
 [project MCP server](../../glossary.json#concept.project-mcp-server), described in the
 [Main session](module.md#the-project-mcp-server); the server itself, its session and how it runs a
-call, is [Distribution](../../distribution/module.md)'s host. Every tool
+call, is [Distribution](../../distribution/contracts.md#project-mcp-server)'s host. Every tool
 is a presentation of a command that already exists; where a row says "as" a command, the result
 and every refusal are that command's when it waits for no lock, as
 [Tasks](../tasks/contracts.md#commands) and [Tracing](../../kernel/tracing/contracts.md) define
@@ -19,7 +19,7 @@ the [Issue](../../glossary.json#concept.issue) tools ([Issues](../../issues/inte
 Distribution's host runs every call of these tools as a fresh process of the primary worktree's
 current Concorde, finds the project, the session it serves and the session's worktree, and decides
 once whether the session listens to it as a channel
-([Distribution](../../distribution/module.md)). Coordination's tools rely
+([Distribution](../../distribution/contracts.md#session)). Coordination's tools rely
 on that as follows: every call reads the [task records](../../glossary.json#concept.task-record),
 traces and locks of the primary worktree afresh; the session the host serves, from
 `CLAUDE_CODE_SESSION_ID`, is written into the holder line of every lock a tool takes; an escalation
@@ -33,7 +33,8 @@ and its value is `{"error": <link>}`, a link of the
 [error contract](../../kernel/tracing/contracts.md#contract.tracing.error): the link of the component that
 refused, unchanged, which is `Tasks (concorde task <command>)` for a refusal of Tasks, or the
 tool's own `component` link of actor `Concorde project MCP server (<tool>)`; the host's own
-refusals, such as `call_failed` and `no_project`, are Distribution's:
+refusals, such as `call_failed` and `no_project`, are
+[Distribution's](../../distribution/contracts.md#refusals-of-the-host):
 
 | Code | Reason | When |
 | --- | --- | --- |

@@ -161,8 +161,9 @@ as `python3 scripts/concorde.py`, and one function:
   task type receives for the given Modules from that worktree's Specs.
 - `initialize(root, package, data)` first proposes the exact first files of a project and their
   digest, then applies exactly that proposal and keeps it only if the project validates; it refuses
-  `already_initialized` and `not_installed`. `concorde init` exposes it, as the spec part's install
-  contribution, which Distribution runs when it installs the spec part into a project.
+  `already_initialized` and `not_installed`. `concorde init`, a command the spec part registers,
+  exposes it; installing the spec part never runs it: the developer runs `init --propose` and then
+  `init --apply` ([Distribution](../../distribution/module.md#after-installing)).
 
 ### A worked example
 

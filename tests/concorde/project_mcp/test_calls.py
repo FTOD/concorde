@@ -196,6 +196,9 @@ class ChannelOverrideTests(unittest.TestCase):
             self.assertFalse(
                 server_module.detect_channel("concorde", {"CONCORDE_CHANNEL": "0"})
             )
+
+    @verifies("scenario.distribution.mcp-channel-forced")
+    def test_the_environment_gives_a_channel_no_claude_asked_for(self):
         with patch.object(server_module, "_ancestors", return_value=[]):
             self.assertFalse(server_module.detect_channel("concorde", {}))
             self.assertTrue(

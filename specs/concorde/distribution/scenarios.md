@@ -29,7 +29,14 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - WHEN Distribution composes their guidance
 - THEN the skill is Coordination's skill section followed by the spec part's and then Distribution's, the task-session prompt Coordination's followed by the spec part's, and the `CLAUDE.md` block Coordination's followed by the spec part's and Distribution's
 - AND none holds a section of a part not given, such as the issues part's
-- AND composed for the spec and distribution parts alone, the skill is their sections alone under a description that does not present the session as the main agent, the `CLAUDE.md` block their sections alone, and there is no task-session prompt
+
+### scenario.distribution.composed-guidance-without-coordination — Compose the guidance without the coordination part
+
+- GIVEN the registrations of the spec and distribution parts alone
+- WHEN Distribution composes their guidance
+- THEN the skill is their sections alone under a description that does not present the session as the main agent
+- AND the `CLAUDE.md` block is their sections alone
+- AND there is no task-session prompt
 
 ### scenario.distribution.guidance-absent-parts — Every guidance section names the parts it may lack
 
@@ -172,13 +179,20 @@ This illustrates [a guidance section standing without the parts it may lack](req
 - THEN the installer refuses with `unknown_part`, naming the part and the package's parts
 - AND nothing is written into the project
 
+This illustrates [refusing a part the package does not build](requirements.md#req.distribution.unknown-part-refused).
+
 ### scenario.distribution.update-installed-parts — An update keeps the installed parts and adds those asked for
 
 - GIVEN a project in which only the spec part is installed
 - WHEN the developer runs `concorde update`
 - THEN the update installs the spec and distribution parts again and no other
 - AND `concorde update --parts issues` then installs the issues part and the kernel it depends on beside them
-- AND an update adding, to an install of the coordination part alone, the spec and method parts places `d2` and the Python dependencies they need, which the earlier install, needing neither, placed none of
+
+### scenario.distribution.update-adds-programs — An update places what an added part needs
+
+- GIVEN a project in which only the coordination part is installed, so that, needing neither, it has no `d2` and no Python dependencies
+- WHEN the developer runs `concorde update --parts method`, which adds the method part and the spec part it depends on
+- THEN the update places the pinned `d2` and the Python dependencies they need
 
 ### scenario.distribution.update-without-spec — An update without the spec part waits for no validation
 
@@ -269,7 +283,15 @@ This illustrates [the session hearing that its tools changed](requirements.md#re
 
 - GIVEN a server below an interactive `claude` started with `server:concorde` as a channel
 - WHEN `CONCORDE_CHANNEL` is `0`
-- THEN the server has no channel, and with `CONCORDE_CHANNEL` `1` below no such `claude` it has one
+- THEN the server has no channel
+
+This illustrates [the environment deciding the channel](requirements.md#req.distribution.mcp-channel-override).
+
+### scenario.distribution.mcp-channel-forced — `CONCORDE_CHANNEL` gives a channel no `claude` asked for
+
+- GIVEN a server below no `claude` started with `server:concorde` as a channel
+- WHEN `CONCORDE_CHANNEL` is `1`
+- THEN the server has a channel
 
 This illustrates [the environment deciding the channel](requirements.md#req.distribution.mcp-channel-override).
 
@@ -333,6 +355,20 @@ This illustrates [the environment deciding the channel](requirements.md#req.dist
 - WHEN the developer installs Concorde again
 - THEN the install succeeds
 
+### scenario.distribution.install-idle-check-failed — An idle check that fails refuses the install unchanged
+
+- GIVEN an installed project in which an installed part's idle check raises, or answers something other than a list of descriptions
+- WHEN the developer installs Concorde again
+- THEN the install is refused with `part_failed`, whose reason is `environment` and whose detail names the part and its entry
+- BUT nothing in the project changes
+
+### scenario.distribution.update-open-tasks-failed — An open-task report that fails loses only the report
+
+- GIVEN a project installed with the spec and coordination parts, in which the coordination part's after-update entry raises
+- WHEN the developer runs `concorde update`
+- THEN the update is refused with `part_failed`, naming the coordination part and its entry
+- AND the new receipt is written and `.concorde/update.json` marks the project Concorde unvalidated
+
 ### scenario.distribution.install-refusal-link — A refused install answers with an error link
 
 - GIVEN an installer run on a directory that does not exist, or `concorde update` in a project whose receipt names no checkout
@@ -358,7 +394,7 @@ This illustrates [the environment deciding the channel](requirements.md#req.dist
 
 ### scenario.distribution.own-python — Concorde ignores the caller's Python
 
-- GIVEN a project where Concorde is installed and that has no task, open or ended
+- GIVEN a project where Concorde is installed with the coordination part and that has no task, open or ended
 - AND a caller whose `python3` on `PATH` fails and whose `PYTHONPATH` names a package called `concorde` that fails on import
 - WHEN the caller runs `.concorde/bin/concorde task list`
 - THEN it prints the project's empty task list `[]` and exits with status 0, run by the interpreter of `.concorde/framework/python/`
@@ -400,7 +436,7 @@ This illustrates [the environment deciding the channel](requirements.md#req.dist
 
 ### scenario.distribution.task-worktree-command — The command works in a task worktree
 
-- GIVEN a project where Concorde is installed and committed, that has no task, open or ended, and a linked worktree of it, which has no Framework copy of its own
+- GIVEN a project where Concorde is installed with the coordination part and committed, that has no task, open or ended, and a linked worktree of it, which has no Framework copy of its own
 - WHEN `.concorde/bin/concorde task list` of the linked worktree runs
 - THEN it runs the primary worktree's Framework copy, prints the empty task list `[]` and exits with status 0
 
