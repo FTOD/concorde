@@ -37,6 +37,40 @@
         "change_id": "parts-spec",
         "head": "5c717b606e11e429829ec27129610d7a6d21916a"
       }
+    },
+    {
+      "id": "sha256:a9c254b56cb0e9917f07066b907d668d23ef59955bff4746eaa8d2a2c9512ed1",
+      "created_at": "2026-10-03T03:20:49.845753+00:00",
+      "report": {
+        "report_key": "module.concorde/8",
+        "tier": "obvious-fix",
+        "severity": "low",
+        "type": "bug",
+        "subtype": null,
+        "title": "Part dependencies combines import and installation obligations",
+        "description": "One requirement combines a restriction on code imports with a restriction on mandatory installation dependencies.\n\nSuggested repair: Keep the import restriction under the existing identity and define a separate installation-dependency requirement, both referring to the parts table. Preserve the outstanding canonical-fingerprint-encoding repair in the earlier Issue.",
+        "impact": "Import restrictions and mandatory-installation restrictions cannot be tracked independently as stable obligations even though either can be violated alone.",
+        "basis": "spec_panel run r-20261003T031022-spec_panel-14df7875 judged specs/concorde/requirements.md at req.concorde.part-dependencies, line 11 by the obligations criterion of the Protocol's Evaluating a Spec; the Specs read: \"Every [part](glossary.json#concept.part) SHALL import code of, and require the installation of, only the parts it depends on\".\n\nThe panel's chair merged r3.2 and verified: Verified two independently decidable restrictions. Low severity for obligation organization and obvious-fix because splitting preserves both promises. The source's earlier identity is retained as instructed, but its original fingerprint-encoding defect remains independently present and must not be treated as repaired by this split.",
+        "owner_target_id": "module.concorde",
+        "evidence": [
+          {
+            "path": "specs/concorde/requirements.md",
+            "description": "req.concorde.part-dependencies, cited by the obligations finding"
+          }
+        ],
+        "issue_id": "I-28f9a76b8d3a5bdaae7aaf2719cd0f04",
+        "expected_revision": "sha256:6f6c2421c6f94ab191f9706acf5e72067813b561c12adc7a2ae83df79c4628a4"
+      },
+      "source": {
+        "invocation_id": "r-20261003T031022-spec_panel-14df7875",
+        "agent": "operation",
+        "operation": "spec_panel",
+        "phase": "report",
+        "target_id": "module.concorde",
+        "context_id": "sha256:3c577f5386c868abefc662fbbed61d8e280a4f6c3265e8687132615872deb336",
+        "change_id": null,
+        "head": "43871f64ab7162b4b32fd566e2f81ec15aba06d2"
+      }
     }
   ],
   "dispositions": []
