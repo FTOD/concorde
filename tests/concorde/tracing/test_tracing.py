@@ -16,7 +16,15 @@ from pathlib import Path
 
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
-from concorde.kernel.tracing import command, layout, locks, reader, retention, roots
+from concorde.kernel.tracing import (
+    command,
+    kinds,
+    layout,
+    locks,
+    reader,
+    retention,
+    roots,
+)
 from concorde.kernel.tracing import node as trace
 from concorde.kernel.tracing.node import NODE_SCHEMA, Node, TraceError
 
@@ -24,6 +32,12 @@ from concorde.kernel.tracing.node import NODE_SCHEMA, Node, TraceError
 # tasks and the history, the unbound runs and the lobby.
 from concorde.coordination.tasks.store import TRACE_ROOTS as TASK_ROOTS
 from concorde.execution.runs import TRACE_ROOTS as RUN_ROOTS
+
+# Concorde's node kinds, which each producing part registers when its code loads.
+import concorde.coordination.tasks.deliver  # noqa: E402,F401
+import concorde.execution.checks.checks  # noqa: E402,F401
+import concorde.worker_harness.workers  # noqa: E402,F401
+import concorde.workflows.store  # noqa: E402,F401
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 
@@ -201,6 +215,33 @@ class TracingTests(unittest.TestCase):
         with self.assertRaises(TraceError):
             trace.write(folder, record)
 
+    @verifies("scenario.tracing.kind-registered")
+    def test_a_node_is_checked_against_the_registration_of_its_kind(self):
+        from concorde.execution.checks.checks import CHECK_TRACE
+        from concorde.worker_harness.workers import WORKER_ROUND_TRACE
+
+        own = {"check": "check.a", "module": "module.a"}
+        for name, kind, metadata, content_type, code in (
+            ("unregistered", "weather", {}, None, "node_invalid"),
+            ("metadata", "check", {**own, "workspace": "w"}, None, "node_invalid"),
+            ("content", "check", own, WORKER_ROUND_TRACE, "content_invalid"),
+        ):
+            folder = self.root / name
+            with self.subTest(name), self.assertRaises(TraceError) as refused:
+                node = Node(folder, "1", kind, metadata=metadata)
+                if content_type:
+                    node.record["content"] = {
+                        "type_id": content_type,
+                        "schema_version": 1,
+                        "data": {},
+                    }
+                trace.write(folder, node.record)
+            self.assertEqual(code, refused.exception.code)
+            self.assertFalse((folder / layout.TRACE).exists())
+        self.assertEqual(CHECK_TRACE, kinds.lookup("check").content_type)
+        Node(self.root / "kept", "1", "check", metadata=own).start()
+        self.assertEqual("check", trace.read(self.root / "kept")["kind"])
+
     @verifies("scenario.tracing.created-or-found")
     def test_a_node_tells_what_it_created_from_what_it_found(self):
         commit = "4be1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9"
@@ -320,6 +361,32 @@ class TracingTests(unittest.TestCase):
         self.assertTrue(all(item["children"] == [] for item in listed))
         self.assertEqual(0.75, listed[0]["rolled_up"]["cost_usd"])
         self.assertEqual(2, len(reader.listing(self.concorde)))
+
+    def test_a_root_is_looked_for_only_in_its_registered_place(self):
+        # A linked worktree, whose .git is a file, keeps no current task: only roots of the
+        # worktree a node started in, such as the unbound runs, lie under its .concorde.
+        linked = Path(self.temporary.name) / "linked"
+        linked.mkdir()
+        (linked / ".git").write_text("gitdir: elsewhere\n")
+        concorde = linked / ".concorde"
+        TaskTrace(concorde, "stray")
+        unbound = concorde / "unbound" / "r-20260927T100300-understand-00000005"
+        ended(unbound, unbound.name, "run")
+        self.assertEqual(
+            [unbound.name],
+            [
+                item["id"]
+                for item in reader.listing(concorde, history=True, unbound=True)
+            ],
+        )
+        with self.assertRaises(reader.ReadError):
+            reader.locate("stray", [concorde])
+        self.assertEqual(unbound, reader.locate(unbound.name, [concorde])[0])
+        TaskTrace(self.concorde, "kept")
+        self.assertEqual(
+            self.concorde / "tasks" / "kept",
+            reader.locate("kept", [concorde, self.concorde])[0],
+        )
 
     @verifies("scenario.tracing.history-reads-alike")
     def test_a_task_moved_to_the_history_reads_the_same(self):

@@ -174,7 +174,7 @@ validation always covers the whole workspace, since a
 | 3 | Validate the workspace's Spec structure: errors block, warnings are kept | Spec core | — (Specs that fail to load skip steps 4–6) |
 | 4 | Require every changed path be accounted for, as the `unbound` kind lists | host, Spec core | — |
 | 5 | Derive the changed Modules via the impact indexes | Spec core | — |
-| 6 | Run the configured checks of the changed Modules, the run's Modules and every Module using one of them | Check execution | check boundary unavailable (`failed`, `checks_unavailable`); a check input changed (`failed`, `inputs_changed`) |
+| 6 | Judge every checks file and declared input of the project, then run the configured checks of the changed Modules, the run's Modules and every Module using one of them | Check execution | check boundary unavailable (`failed`, `checks_unavailable`); a check input changed (`failed`, `inputs_changed`) |
 | 7 | Remeasure inputs, compare the digest | host | digest changed (`failed`, `inputs_changed`) |
 | 8 | Save the readiness and return it | host | — |
 
@@ -187,8 +187,11 @@ registry does not register is a structural blocking finding. At step 6, Check ex
 an invalid check, is a blocking `check` finding naming the Modules whose checks could not run, and
 the other Modules' checks still run. Each of these keeps Check execution's own error link as its
 cause. Since structural validation does not read checks files, which belong to Check execution,
-step 6 is also where a checks file whose input is missing or whose check is malformed is found:
-Check execution validates the checks files of the Modules it is asked to run before it runs them. Unlike an Operation, the command diagnoses the Specs itself, so
+step 6 is also where a checks file whose input is missing or escapes the worktree, or whose check is
+malformed, is found: before any check runs, Check execution's `validate_checks` judges every checks
+file and every declared input of the project, so that such a problem blocks, as one `check`
+finding, even in a Module whose checks the run does not run; the same problem raised again by a
+Module's own checks is not reported twice. Unlike an Operation, the command diagnoses the Specs itself, so
 the runner does not load them before the steps and these diagnoses always reach the caller as
 findings rather than as a refusal. Step 7 catches changes of the workspace during a check, which can
 take minutes.

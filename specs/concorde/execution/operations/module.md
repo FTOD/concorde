@@ -120,8 +120,10 @@ Spec tooling nor the worker harness to run, and a project may register Operation
 <a id="realization.operations.catalog"></a>
 
 The **Catalog** realization (`catalog.py`) holds the catalog: the definitions registered with it,
-each with the part that registered it, and the refusal of a second definition under a registered
-name. It also gives the command catalog of [Commands](../commands/module.md) its shape. Every
+each with the providing Module its definition names and the part that registered it, and the
+refusal with `invalid_definition` of a definition that names no providing Module or of an Operation
+that declares no worker id, and with `duplicate_definition` of a second definition under a
+registered name. It also gives the command catalog of [Commands](../commands/module.md) its shape. Every
 Operation's own code, such as the prompt and brief helpers of Method's worker-backed providers
 (`src/concorde/method/prompts.py`), lives with the part that registers it, and its behaviour is
 specified by that part, for Method's by [Method](../../method/module.md#the-standard-worker-sequence)

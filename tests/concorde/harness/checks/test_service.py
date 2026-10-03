@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import subprocess
 import sys
@@ -17,6 +18,7 @@ from concorde.kernel.errors import ERROR_SCHEMA
 from concorde.execution.checks.check_executor import execute_check
 from concorde.execution.checks.checks import (
     CheckError,
+    _timeout,
     check_revision,
     configured_checks,
     environment,
@@ -555,11 +557,37 @@ class ChecksFileTests(unittest.TestCase):
                 "../outside",
             ),
             ("module.c.json", {"checks": [{"id": "check.c", "flag": 1}]}, "flag"),
+            ("module.c.json", '{"checks": [], "checks": []}', "duplicate JSON field"),
+            ("module.c.json", '{"checks": [{"id": "check.c", "x": NaN}]}', "NaN"),
         ):
             with self.subTest(name=name, value=value):
                 self.write(name, value)
                 self.assertIn(named, str(self.refused()))
                 (self.folder / name).unlink()
+        # An input reached through a directory that is a symbolic link may leave the worktree.
+        outside = Path(tempfile.mkdtemp())
+        (outside / "file.py").write_text("")
+        (self.root / "alias").symlink_to(outside)
+        self.write(
+            "module.c.json",
+            {"checks": [{"id": "check.c", "inputs": ["alias/file.py"]}]},
+        )
+        self.assertIn("symbolic link", str(self.refused()))
+        (self.folder / "module.c.json").unlink()
+
+    def test_a_nonfinite_timeout_is_an_invalid_check(self):
+        for value, number in (("NaN", math.nan), ("Infinity", math.inf)):
+            with self.subTest(value=value):
+                # The checks file cannot hold the constant, nor can a caller's entry.
+                self.write(
+                    "module.a.json",
+                    '{"checks": [{"id": "check.a", "argv": ["true"], '
+                    f'"timeout_seconds": {value}}}]}}',
+                )
+                self.refused()
+                with self.assertRaises(CheckError) as raised:
+                    _timeout({"id": "check.a", "timeout_seconds": number})
+                self.assertEqual("invalid_check", raised.exception.code)
 
     @verifies("scenario.checks.check-input-missing")
     def test_validating_the_checks_names_a_missing_input_and_runs_nothing(self):
@@ -599,7 +627,8 @@ class ChecksFileTests(unittest.TestCase):
             self.root,
             modules=["module.a"],
             trace_directory=logs,
-            measured={"module.a": ["code.py"]},
+            # A one-shot iterator is measured alike before and after the check.
+            measured={"module.a": iter(["code.py"])},
             python=sys.executable,
         )
         self.assertEqual("passed", result["status"])

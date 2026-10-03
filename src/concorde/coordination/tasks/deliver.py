@@ -23,6 +23,7 @@ from pathlib import Path
 from ...kernel import binding, delivery, errors
 from ...kernel.refusal import KernelError
 from ...kernel.schema import register
+from ...kernel.tracing.kinds import NodeKind, register as register_kinds
 from ...kernel.tracing.node import Node
 from . import checks, parts, store
 from .store import TaskError
@@ -71,6 +72,10 @@ register(
             "exit_code": {"anyOf": [{"type": "null"}, {"type": "integer"}]},
         },
     },
+)
+register_kinds(
+    NodeKind("delivery", DELIVERY_TRACE, ("task", "branch", "commit")),
+    NodeKind("delivery-check", DELIVERY_CHECK_TRACE, ()),
 )
 DELIVERIES = "deliveries"
 

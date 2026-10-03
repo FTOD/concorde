@@ -8,6 +8,8 @@ and names its execution commands' entries here.
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from ..execution.commands.catalog import COMMANDS
 from ..execution.operations.catalog import OPERATIONS
 from ..execution.runner import run_main
@@ -25,19 +27,30 @@ from .understanding.plan_review import PLAN_REVIEW
 from .validation.command import TASK_VALIDATION
 
 PART = "method"
-DEFINED_OPERATIONS = (
-    UNDERSTAND,
-    PLAN_REVIEW,
-    SPECIFY,
-    IMPLEMENT,
-    TEST,
-    SPEC_REVIEW,
-    SPEC_PANEL,
-    CODE_REVIEW,
-    SURVEY,
-    CODE_TO_SPEC,
+# Each definition with the Module of the method part that provides it.
+DEFINED_OPERATIONS = tuple(
+    replace(definition, module=module)
+    for definition, module in (
+        (UNDERSTAND, "module.understanding"),
+        (PLAN_REVIEW, "module.understanding"),
+        (SPECIFY, "module.specification"),
+        (IMPLEMENT, "module.implementation"),
+        (TEST, "module.implementation"),
+        (SPEC_REVIEW, "module.spec-review"),
+        (SPEC_PANEL, "module.spec-review"),
+        (CODE_REVIEW, "module.code-review"),
+        (SURVEY, "module.adoption"),
+        (CODE_TO_SPEC, "module.adoption"),
+    )
 )
-DEFINED_COMMANDS = (TASK_VALIDATION, DELIVERY, SCAFFOLD)
+DEFINED_COMMANDS = tuple(
+    replace(definition, module=module)
+    for definition, module in (
+        (TASK_VALIDATION, "module.validation"),
+        (DELIVERY, "module.delivery"),
+        (SCAFFOLD, "module.scaffold"),
+    )
+)
 
 for _definition in DEFINED_OPERATIONS:
     OPERATIONS.register(PART, _definition)

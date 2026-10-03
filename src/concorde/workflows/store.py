@@ -25,6 +25,7 @@ from ..kernel import binding as workspace_binding
 from ..kernel.refusal import KernelError
 from ..execution.runs import Store
 from ..kernel.schema import register
+from ..kernel.tracing.kinds import NodeKind, register as register_kinds
 from ..kernel.tracing import layout, locks
 from ..kernel.tracing import node as trace
 
@@ -109,6 +110,10 @@ register(
             "state": {"enum": ["running", "finished", "lost", "refused"]},
         },
     },
+)
+register_kinds(
+    NodeKind("workflow", WORKFLOW_TRACE, ("workspace", "workflow", "mode")),
+    NodeKind("step", STEP_TRACE, ("workspace", "workflow", "operation", "command")),
 )
 # How a report's status ends the workflow's node.
 REPORT_STATUS = {

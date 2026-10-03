@@ -33,6 +33,7 @@ from pathlib import Path
 from ..kernel import errors, locking
 from ..kernel.refusal import KernelError
 from ..kernel.schema import register
+from ..kernel.tracing.kinds import NodeKind, register as register_kinds
 from ..kernel.tracing import layout, locks, reader, roots
 
 KINDS = ("operation", "command")
@@ -80,6 +81,22 @@ RUN_TRACE_SCHEMA: dict = {
     },
 }
 register(RUN_TRACE, 1, RUN_TRACE_SCHEMA)
+register_kinds(
+    NodeKind(
+        "run",
+        RUN_TRACE,
+        (
+            "workspace",
+            "modules",
+            "operation",
+            "command",
+            "commit",
+            "base_commit",
+            "concorde_commit",
+            "protocol_version",
+        ),
+    ),
+)
 
 # The trace roots of the runs no workspace folder holds, relative to a ``.concorde``: the unbound
 # runs of the worktree they started in, and the lobby of the ``.concorde`` a bound run's binding

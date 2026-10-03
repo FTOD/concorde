@@ -23,13 +23,14 @@ entries; each entry has:
 | `argv` | The command as an argument list; an element `{python}` is replaced by the project's interpreter, and an element `{tests}` by the tests that declare they verify a scenario of the Modules being checked, which makes the check selective |
 | `env` | Optional variables of the command, names to strings, such as `{"PYTHONPATH": "src"}` |
 | `when` | Optional: `always` (the default) runs the check wherever checks run; `readiness` runs it only when readiness is decided, by `task-validation` and `delivery`, for a full suite too slow for every round |
-| `timeout_seconds` | A positive time limit |
+| `timeout_seconds` | A positive, finite time limit |
 | `inputs` | Project-relative files or directories the result depends on, beyond the Module's own implementation files |
 
 Check execution validates every checks file whenever it reads the checks: a file that is not
-valid JSON, holds another field or an entry with a field the table does not name, a file whose name
+valid JSON, which includes a repeated field and the constants `NaN` and `Infinity`, holds another field or an entry with a field the table does not name, a file whose name
 is not a Module identity, an `id` used twice in the project, an input that is not a canonical
-project-relative path or one that escapes the worktree is refused with `invalid_check`, naming the
+project-relative path or one that escapes the worktree, through a directory that is a symbolic link,
+is refused with `invalid_check`, naming the
 file and the entry; its `validate_checks(worktree)` does the same alone, for a caller that wants
 the checks files judged before any check runs, as Method's `task-validation` does. The service
 validates `argv`, `env`, `when` and `timeout_seconds` when it runs the check. An input names a
