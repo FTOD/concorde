@@ -4,7 +4,7 @@
 {
   "schema_version": 4,
   "id": "I-4a41cadd2a8653dda3a4167bbf0ad9da",
-  "status": "open",
+  "status": "closed",
   "reports": [
     {
       "id": "sha256:3fb6117b76ae29ebbdaa89d564fa0a2e0790f091c1e7bfb7d1809e4ba97a38d6",
@@ -77,6 +77,18 @@
       }
     }
   ],
-  "dispositions": []
+  "dispositions": [
+    {
+      "reason": "resolved",
+      "note": "Fixed by task parts-review-specs, merged into the primary branch at 8f6860b42000fa749564007acf84e7faea3d3a2c.",
+      "evidence": [
+        "merge commit 8f6860b42000fa749564007acf84e7faea3d3a2c",
+        "task parts-review-specs"
+      ],
+      "duplicate_of": null,
+      "actor": "main-agent",
+      "created_at": "2026-10-03T09:36:13.279357+00:00"
+    }
+  ]
 }
 ```
