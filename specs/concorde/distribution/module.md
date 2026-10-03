@@ -878,7 +878,10 @@ part the skill and the block are the installed parts' sections alone and there i
 prompt, since task sessions are Coordination's. Coordination's sections live in
 [Main session](../coordination/main-session/module.md)'s `prompts/main-session/`, every other
 part's in `prompts/guidance/<part directory>/`, each bound by its part's top Module, and each
-section says what happens where a part it mentions is not installed. Dogfooding's develop section
+section says what happens where a part it mentions is not installed: a paragraph that names a
+command or project MCP tool of a part the section may be composed without names that part, as in
+"where the execution part is installed"
+([requirements](requirements.md#req.distribution.guidance-absent-parts)). Dogfooding's develop section
 is no part's: the installer appends it to the composed skill and block in a develop install that
 installs the coordination and issues parts, which it relies on, and leaves it out of any other,
 which is still a develop install in its source check and receipt.

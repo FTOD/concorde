@@ -103,6 +103,16 @@ alone, and there is no task-session prompt.
 
 ## Installation
 
+
+### req.distribution.guidance-absent-parts — A guidance section stands without the parts it may lack
+
+Every guidance section a part registers, and Dogfooding's develop section, SHALL say what happens where a part it may be composed without is not installed, wherever it names a command or project MCP tool of that part.
+
+A section may be composed without every part that neither its own part depends on nor, for a
+task-session section, Coordination does, and the develop section without every part the
+coordination and issues parts do not depend on. A section that names such a command or tool
+plainly would send the agent to something the project lacks.
+
 ### req.distribution.glossary-import — The CLAUDE.md block imports the glossary
 
 Where the spec part is installed, the installed `CLAUDE.md` block SHALL import the glossary the project's registry declares, and nothing when none is declared.

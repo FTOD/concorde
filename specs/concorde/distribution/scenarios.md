@@ -31,6 +31,14 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - AND none holds a section of a part not given, such as the issues part's
 - AND composed for the spec and distribution parts alone, the skill is their sections alone under a description that does not present the session as the main agent, the `CLAUDE.md` block their sections alone, and there is no task-session prompt
 
+### scenario.distribution.guidance-absent-parts — Every guidance section names the parts it may lack
+
+- GIVEN every guidance section the package's parts register and Dogfooding's develop section
+- WHEN a paragraph of one names a `concorde` command or a project MCP tool of a part that the section may be composed without, or a tool that requires such a part
+- THEN that paragraph names that part as a part, as in "where the execution part is installed", saying what happens without it
+
+This illustrates [a guidance section standing without the parts it may lack](requirements.md#req.distribution.guidance-absent-parts).
+
 ### scenario.distribution.build-workflows — Render every workflow for Claude Code
 
 - GIVEN a workflow catalog whose only workflow is the [brownfield workflow](../glossary.json#concept.brownfield-workflow)
