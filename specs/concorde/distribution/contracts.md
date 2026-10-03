@@ -153,7 +153,7 @@ name are a build error, never resolved by order.
 
 The build records what every part of the package registers in the **parts index**
 `generated/parts.json`, `{"schema_version": 1, "parts": {<part>: {"module", "depends_on",
-"commands", "mcp_tools"}}}`, so that a project's `concorde` and project MCP server name the part of a
+"commands", "mcp_tools"}}}`, so that a project's `concorde` and [project MCP server](../glossary.json#concept.project-mcp-server) name the part of a
 command or tool that is not installed without reading that part's registration. The installed parts
 are, in a source checkout, every part the package builds, and in a project the parts the receipt
 names under `parts`, an object whose keys are the part names, every part when the receipt names

@@ -121,7 +121,7 @@ Concrete situations that show the [requirements](requirements.md) at work.
 ### scenario.distribution.composed-from-installed-parts — The command offers the installed parts
 
 - GIVEN a project whose receipt names the parts installed, and one whose receipt names none
-- WHEN the developer asks `concorde --help` for its commands, or the project MCP server lists its tools
+- WHEN the developer asks `concorde --help` for its commands, or the [project MCP server](../glossary.json#concept.project-mcp-server) lists its tools
 - THEN the first offers exactly the distribution commands and the commands of the parts its receipt names, and the tools they register whose required parts are installed
 - AND the second offers the commands of every part of the package
 
@@ -131,7 +131,7 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - WHEN the developer runs `concorde issues list` or `concorde run spec_review`, or a session calls the project MCP server's `issue_list`, `run_result` or `register_wait` for a run
 - THEN each is refused with `{"error": <link>}` whose code is `part_missing`, naming the part the command or tool belongs to, or the part it needs, and how to install it
 - AND the command exits with status 1
-- AND the server lists neither the Issue tools nor the coordination part's `run_result` and `task_resolve`, which need the execution and issues parts
+- AND the server lists neither the issues part's tools nor the coordination part's `run_result` and `task_resolve`, which need the execution and issues parts
 
 ## Installation
 
@@ -239,6 +239,31 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - WHEN the installer runs
 - THEN it is refused with `settings_invalid`
 - BUT nothing is written, not even a workflow the project lacks
+
+### scenario.distribution.mcp-reroute — A call is served as the current code registers its tool
+
+- GIVEN a server that listed a tool as served in the primary worktree, without long work and on the session's thread
+- WHEN the current code's registration serves it in the session's worktree, or as long work, or on a thread of its own, and the session calls it without listing its tools again
+- THEN the call's process answers how the current code serves every tool, running nothing, and the server runs the call again in the session's worktree, or hands on its long work in that worktree, or answers it on a thread of its own
+- AND a call routed twice otherwise is refused with `call_failed`
+
+This illustrates [serving a call as the current code registers its tool](requirements.md#req.distribution.mcp-current-serving).
+
+### scenario.distribution.mcp-tools-changed-after-refresh — Learning how a tool is served lists nothing to the session
+
+- GIVEN a server that listed its tools to the session
+- WHEN the session calls a tool the listing lacks, so that the server fetches the current code's listing to learn how it is served, and the answer says the current code's tools differ from those listed
+- THEN the server tells its session that its tools changed
+
+This illustrates [the session hearing that its tools changed](requirements.md#req.distribution.mcp-tools-changed).
+
+### scenario.distribution.mcp-channel-override — `CONCORDE_CHANNEL` decides the channel
+
+- GIVEN a server below an interactive `claude` started with `server:concorde` as a channel
+- WHEN `CONCORDE_CHANNEL` is `0`
+- THEN the server has no channel, and with `CONCORDE_CHANNEL` `1` below no such `claude` it has one
+
+This illustrates [the environment deciding the channel](requirements.md#req.distribution.mcp-channel-override).
 
 ### scenario.distribution.install-project-mcp — The installer registers the project MCP server
 

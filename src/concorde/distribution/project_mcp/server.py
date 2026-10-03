@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import IO
 
 from .. import formats
-from .calls import Calls
+from .calls import Calls, Rethread
 from .tools import ACTOR, INSTRUCTIONS, Refusal, describe, serve_call
 
 NAME = "concorde"
@@ -224,16 +224,14 @@ class Session:
             params = message.get("params") or {}
             name, arguments = params.get("name"), params.get("arguments")
             if self.calls is not None and self.calls.served(str(name))["threaded"]:
-                # A workflow step waits up to its bound: answer the other calls meanwhile.
-                threading.Thread(
-                    target=lambda: self.reply(
-                        identity, self.tool_result(name, arguments)
-                    ),
-                    name=f"call {identity}",
-                    daemon=True,
-                ).start()
+                self.threaded(identity, name, arguments)
             else:
-                self.reply(identity, self.tool_result(name, arguments))
+                try:
+                    result = self.tool_result(name, arguments, threaded=False)
+                except Rethread:
+                    self.threaded(identity, name, arguments)
+                else:
+                    self.reply(identity, result)
         else:
             self.send(
                 {
@@ -243,15 +241,26 @@ class Session:
                 }
             )
 
+    def threaded(self, identity, name, arguments) -> None:
+        """Answer the call on a thread of its own: a workflow step waits up to its bound, and
+        the other calls are answered meanwhile."""
+        threading.Thread(
+            target=lambda: self.reply(identity, self.tool_result(name, arguments)),
+            name=f"call {identity}",
+            daemon=True,
+        ).start()
+
     def instructions(self) -> str:
         """The server's instructions with each installed part's, as the current code gives them
         when the session starts; they stay what they were for the rest of the session."""
         if self.calls is None:
             return INSTRUCTIONS
-        self.calls.tools()
+        self.calls.refresh()
         return self.calls.instructions
 
-    def tool_result(self, name, arguments) -> dict:
+    def tool_result(self, name, arguments, threaded: bool = True) -> dict:
+        """The call's result; ``Rethread`` for a call made on the session's thread (``threaded``
+        false) that the current code serves on a thread of its own."""
         try:
             if self.calls is None:
                 raise Refusal(
@@ -268,7 +277,9 @@ class Session:
                         ],
                     )
                 )
-            value, error = self.calls.call(name, arguments), False
+            value, error = self.calls.call(name, arguments, threaded), False
+        except Rethread:
+            raise
         except Refusal as refusal:
             value, error = {"error": refusal.link}, True
         except Exception as failure:  # noqa: BLE001 -- every failure is a detailed error link
