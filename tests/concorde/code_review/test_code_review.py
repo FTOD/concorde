@@ -602,6 +602,20 @@ class CodeReviewTests(unittest.TestCase):
         self.assertEqual("open", self.issues()[gone]["status"])
         self.assertEqual("changes_required", entry["outcome"])
 
+    @verifies("scenario.code-review.blank-earlier")
+    def test_a_blank_earlier_names_no_earlier_issue(self):
+        _, envelope = self.change(
+            finding(earlier=""),
+            finding(earlier=" ", tier="suggestion"),
+        )
+        self.assertEqual("ok", envelope["status"], envelope)
+        entry = self.module_entry(envelope)
+        for item in entry["findings"]:
+            self.assertNotIn("earlier", item)
+            self.assertIsNotNone(item["issue"])
+        self.assertEqual([], entry["earlier_issues"]["ignored"])
+        self.assertEqual(2, len(self.issues()))
+
     @verifies("scenario.code-review.store-refusal")
     def test_a_refusal_of_the_issue_store_is_an_error_not_an_issue(self):
         interrupted = self.root / ".concorde/tasks/interrupted"

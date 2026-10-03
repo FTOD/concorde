@@ -92,8 +92,9 @@ REVIEWER_FINDING: dict = {
         "impact": {"type": "string", "minLength": 1},
         "evidence": {"type": "string", "minLength": 1},
         "suggestion": {"type": "string", "minLength": 1},
-        # The earlier Issue this finding is the problem of; the host checks it was offered.
-        "earlier": {"type": "string", "minLength": 1},
+        # The earlier Issue this finding is the problem of; the host checks it was offered, and
+        # an empty one names none.
+        "earlier": {"type": "string"},
     },
 }
 RESOLVED: dict = {
@@ -247,6 +248,8 @@ class ModuleReview:
     # The Module's earlier Issues as offered to its workers, and what the review did with them.
     earlier: list[dict] | None = None
     summary: dict | None = None
+    # Whether the host settled and reported the findings, with or without the issues part.
+    settled: bool = False
 
     @property
     def outcome(self) -> str:
@@ -506,7 +509,12 @@ def _normalize(ctx: RunContext, review: ModuleReview, claimed: list[dict]):
                     "task worktree",
                 )
             ]
-        finding = {**item, "path": path, "check": None, "issue": None}
+        finding = {
+            **review_issues.without_blank_earlier(item),
+            "path": path,
+            "check": None,
+            "issue": None,
+        }
         owners = repository.document_targets.get(path.removesuffix(".json"))
         if owners:
             finding["module"] = owners[0]
@@ -585,6 +593,7 @@ def report_findings(
 ) -> list[dict]:
     """Settle the earlier Issues and report the findings as Issues; returns the host evidence."""
     review.summary = reporting.settle(review.earlier or [], review.findings, resolved)
+    review.settled = True
     if review.earlier is None:
         # No earlier Issue was read, so none is carried or resolved.
         review.summary = None
@@ -710,6 +719,15 @@ def blocking_counts(modules: list[dict]) -> list[dict]:
     ]
 
 
+def unsettled(review: ModuleReview) -> list[dict]:
+    """The findings of a Module that stopped before the host settled them, without the earlier
+    Issue each claimed: a payload finding names only an offered Issue it was appended to."""
+    return [
+        {key: value for key, value in finding.items() if key != "earlier"}
+        for finding in review.findings
+    ]
+
+
 def derive_verdict(ctx: RunContext):
     """Step 7 and the verdict: counted by the host from the findings, never taken from a worker."""
     reviews = list(_state(ctx).reviews.values())
@@ -718,7 +736,7 @@ def derive_verdict(ctx: RunContext):
             "module": review.module,
             "outcome": review.outcome,
             "context_identity": review.context_identity,
-            "findings": review.findings,
+            "findings": review.findings if review.settled else unsettled(review),
             "earlier_issues": review.summary,
         }
         for review in reviews

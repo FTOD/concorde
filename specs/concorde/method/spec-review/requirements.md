@@ -56,6 +56,13 @@ A worker never writes an Issue; the Operation reports in bound and unbound runs 
 review's judgement and its verdict are the same either way, the verdict following from the blocking
 findings that stand where it would otherwise follow from the Issues they became.
 
+### req.spec-review.blank-earlier — An empty earlier names no Issue
+
+The Operation SHALL treat a worker's finding whose `earlier` is empty or blank as naming no earlier Issue, as if the field were left out, while every other `earlier` is checked against the earlier Issues it offered.
+
+A worker may write an empty `earlier` for a new finding instead of leaving the field out; refusing
+its whole result for it would lose every other finding of that worker.
+
 ### req.spec-review.never-disposes — Review closes no Issue
 
 Spec review SHALL NOT close or reopen an Issue.

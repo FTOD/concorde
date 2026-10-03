@@ -213,6 +213,15 @@ def earlier_issues(
     return found
 
 
+def without_blank_earlier(finding: dict) -> dict:
+    """``finding`` without an ``earlier`` that is empty or blank, which names no earlier Issue: a
+    worker may write one for a new finding instead of leaving the field out."""
+    name = finding.get("earlier")
+    if isinstance(name, str) and not name.strip():
+        finding = {key: value for key, value in finding.items() if key != "earlier"}
+    return finding
+
+
 def settle(
     earlier: list[dict],
     findings: list[dict],
@@ -233,7 +242,7 @@ def settle(
     ignored: list[dict] = []
     for finding in findings:
         name = finding.pop("earlier", None)
-        if name is None or skipped(finding):
+        if not (name or "").strip() or skipped(finding):
             continue
         if name not in offered:
             ignored.append({"issue": name, "reason": unoffered})
@@ -386,4 +395,5 @@ __all__ = [
     "report",
     "settle",
     "statement",
+    "without_blank_earlier",
 ]

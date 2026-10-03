@@ -386,6 +386,29 @@ class SpecReviewTests(unittest.TestCase):
         self.assertNotIn("Earlier problem fourth.", brief)
         self.assertNotIn("r-earlier", brief)
 
+    @verifies("scenario.spec-review.blank-earlier")
+    def test_a_blank_earlier_names_no_earlier_issue(self):
+        unknown = "I-" + "9" * 32
+        status, envelope = self.review(
+            {
+                "reviewer module.a": reviewer(
+                    finding("specs/a/module.md", earlier=""),
+                    finding("specs/a/module.md", "suggestion", earlier="  "),
+                    finding("specs/a/module.md", "suggestion", earlier=unknown),
+                )
+            }
+        )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        (module,) = envelope["output"]["modules"]
+        self.assertEqual(3, len(module["findings"]))
+        for item in module["findings"]:
+            self.assertNotIn("earlier", item)
+            self.assertIsNotNone(item["issue"])
+        self.assertEqual(
+            [unknown], [item["issue"] for item in module["earlier_issues"]["ignored"]]
+        )
+        self.assertEqual(3, len(self.issues()))
+
     @verifies("scenario.spec-review.without-issues")
     def test_without_the_issues_part_the_findings_stay_in_the_result(self):
         with without_issues():

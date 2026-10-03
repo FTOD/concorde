@@ -105,6 +105,12 @@ recorded as Issues.
 Issues is an [optional integration](../../glossary.json#concept.optional-integration) of the method
 part: the review's judgement, its evidence checks and its verdict are the same either way.
 
+### req.code-review.blank-earlier — An empty earlier names no Issue
+
+The code review Operation SHALL treat a reviewer's finding whose `earlier` is empty or blank as
+naming no earlier Issue, as if the field were left out, while every other `earlier` is checked
+against the earlier Issues it offered.
+
 ### req.code-review.no-closing — The review closes no Issue
 
 The code review Operation SHALL NOT close or reopen an Issue; it lists the earlier Issues the

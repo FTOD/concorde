@@ -86,6 +86,13 @@ in the [contracts](contracts.md).
 - AND lists the second under `resolved` in the report, without closing it
 - AND an earlier Issue the reviewer neither names nor resolves is listed as `carried` and, when of a blocking tier, makes the outcome `changes_required`
 
+### scenario.code-review.blank-earlier — An empty earlier names no earlier Issue
+
+- GIVEN a reviewer that returns new findings, one with `earlier` empty and one with `earlier` blank
+- WHEN the Operation reports them
+- THEN the run ends `ok` and each finding is recorded as a new Issue
+- BUT no finding names an earlier Issue and none is listed as ignored
+
 ### scenario.code-review.store-refusal — A refusal of the Issue store
 
 - GIVEN a review whose report the Issue store refuses

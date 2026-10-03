@@ -109,7 +109,8 @@ REVIEWER_FINDING: dict = {
         "locations": {"type": "array", "minItems": 1, "items": _STRING},
         "evidence": _STRING,
         "suggestion": _STRING,
-        "earlier": _STRING,
+        # The earlier Issue the finding is the problem of; an empty one names none.
+        "earlier": {"type": "string"},
     },
 }
 RESOLVED: dict = {
@@ -785,7 +786,10 @@ def _judge(
         stop_all(outcome)
         return found
     output = outcome.output or {}
-    findings = list(output.get("findings") or [])
+    findings = [
+        review_issues.without_blank_earlier(item)
+        for item in output.get("findings") or []
+    ]
     problems, defined = check_evidence(ctx, state, modules, findings)
     for finding in findings:
         finding["issue"] = None

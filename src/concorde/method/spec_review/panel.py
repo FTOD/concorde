@@ -202,6 +202,8 @@ _LABELLED: dict = copy.deepcopy(FINDING)
 _LABELLED["properties"]["path"] = {"type": "string", "format": "project-path"}
 _LABELLED["required"] = [*_LABELLED["required"], "label"]
 _LABELLED["properties"]["label"] = {"type": "string", "pattern": LABEL}
+# A worker's blank earlier names no Issue, and the host drops it before the payload.
+_LABELLED["properties"]["earlier"] = {"type": "string", "minLength": 1}
 _REPORTED: dict = copy.deepcopy(MERGED)
 _REPORTED["properties"]["path"] = {"type": "string", "format": "project-path"}
 _REPORTED["properties"]["earlier"] = review.ISSUE_ID
@@ -582,7 +584,7 @@ def _panels(ctx: RunContext) -> dict[str, PanelState]:
 def _report(ctx: RunContext, subject: review.ModuleReview, state: PanelState):
     """Step 4: settle the earlier Issues the chair's report names and report its findings."""
     report = state["report"]
-    subject.findings = _unreported(report)
+    subject.findings = _findings(report, claims=True)
     return review.report_findings(
         ctx,
         subject,
@@ -648,11 +650,18 @@ def panel_modules(ctx: RunContext):
     return Continue(evidence=found)
 
 
-def _unreported(report: dict) -> list[dict]:
-    """The chair's report as it came, for a Module that stopped before it reported an Issue."""
+def _findings(report: dict, *, claims: bool) -> list[dict]:
+    """The chair's report findings, none reported yet. With ``claims`` each keeps the earlier
+    Issue the chair named, for the host to settle; without, for a Module whose findings were never
+    settled, it names none, since a payload finding names only an offered Issue it was appended
+    to."""
     return [
         {
-            **finding,
+            **{
+                key: value
+                for key, value in finding.items()
+                if claims or key != "earlier"
+            },
             "workers": len({label.split(".")[0] for label in finding["sources"]}),
             "issue": None,
         }
@@ -680,8 +689,8 @@ def _module_payload(subject: review.ModuleReview, state: PanelState | None) -> d
             for item in _ordered(state.get("reviews", []))
         ],
         "findings": subject.findings
-        if subject.summary is not None
-        else _unreported(report),
+        if subject.settled
+        else _findings(report, claims=False),
         "rejected": report["rejected"],
         "earlier_issues": subject.summary,
     }
