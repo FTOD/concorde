@@ -28,7 +28,12 @@ from ...execution.context import (
     evidence,
 )
 from ..specs import admission, spec_cause
-from ...execution.checks.checks import CheckError, check_error, service_error
+from ...execution.checks.checks import (
+    CheckError,
+    check_error,
+    service_error,
+    validate_checks,
+)
 from ..checks import affected_modules, checked_modules, run_module_checks
 from ...spec.repository import SpecRepository
 from ...spec.repository_base import SpecError, bound_by, control_path, covers
@@ -394,6 +399,16 @@ def run_configured_checks(ctx: RunContext):
     )
     trace_directory = ctx.run_dir / "checks"
     found = []
+    # Every checks file and declared input of the project is judged first, so that a problem
+    # of a Module whose checks do not run still blocks; one a Module's checks raise again
+    # below is not reported twice.
+    judged = None
+    try:
+        validate_checks(ctx.worktree)
+    except CheckError as error:
+        judged = f"{error.code}: {error}"
+        block(state, "check", "configured checks", judged, service_error(error))
+        found.append(evidence("check", "configured checks", judged))
     # Each Module's own checks, then the selective checks once for the whole selection.
     groups = [(module, [module], "module") for module in selected]
     groups.append((", ".join(selected), selected, "selective"))
@@ -414,6 +429,8 @@ def run_configured_checks(ctx: RunContext):
                 return stop
             if error.code == "stale_evidence":
                 return inputs_changed(ctx, found, str(error), service_error(error))
+            if f"{error.code}: {error}" == judged:
+                continue
             block(state, "check", label, f"{error.code}: {error}", service_error(error))
             found.append(evidence("check", label, f"{error.code}: {error}"))
             continue
