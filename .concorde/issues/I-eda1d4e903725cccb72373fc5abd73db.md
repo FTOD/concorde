@@ -45,6 +45,44 @@
         "change_id": "parts-review",
         "head": "43871f64ab7162b4b32fd566e2f81ec15aba06d2"
       }
+    },
+    {
+      "id": "sha256:e6f7da6a90a8d37972fc65eb8f0147cbc2401a1e65383f6a918816956884aadb",
+      "created_at": "2026-10-03T05:03:16.374127+00:00",
+      "report": {
+        "issue_id": "I-eda1d4e903725cccb72373fc5abd73db",
+        "report_key": "verify/workflows/8",
+        "tier": "obvious-fix",
+        "severity": "low",
+        "type": "gap",
+        "subtype": "implementation-spec-mismatch",
+        "title": "A wrongly shaped workflow record escapes record_unreadable",
+        "description": "store.load (store.py:195-231) maps only JSON decoding and node['content']['data'] lookup to record_unreadable; a record whose data is null or lacks workflow, steps entries or report paths raises AttributeError/KeyError outside that try. The step command then ends in a traceback (run_step catches only Workflows errors) and the report answers report_failed instead of record_unreadable.",
+        "impact": "Only a trace.json that is valid JSON with a wrong shape triggers it; Concorde alone writes that file, so this needs outside corruption. The error is still visible, just not the specified one.",
+        "basis": "specs/concorde/workflows/contracts.md error table: record_unreadable when the workflow record cannot be read. Same code on main (pre-existing).",
+        "owner_target_id": "module.workflows",
+        "evidence": [
+          {
+            "path": "src/concorde/workflows/store.py",
+            "description": "load()"
+          },
+          {
+            "path": "specs/concorde/workflows/contracts.md",
+            "description": "errors section"
+          }
+        ],
+        "expected_revision": "sha256:ba042be770422dbefdd9180490cdef9f341966940ae4df0250fe5984748fe239"
+      },
+      "source": {
+        "invocation_id": "cli-18dd387e-01cb-48ce-aaa0-1175f2d517fd",
+        "agent": "main-agent",
+        "operation": "issues",
+        "phase": "report",
+        "target_id": "module.workflows",
+        "context_id": "sha256:1d5cfc2a2a7ba74b163c0a7da2044601cb98d3bb39fa931e4f515946b2ee70f4",
+        "change_id": "parts-review",
+        "head": "43871f64ab7162b4b32fd566e2f81ec15aba06d2"
+      }
     }
   ],
   "dispositions": []
