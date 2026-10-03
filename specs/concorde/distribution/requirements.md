@@ -109,7 +109,7 @@ Where the spec part is installed, the installed `CLAUDE.md` block SHALL import t
 
 ### req.distribution.receipt-complete — The receipt names every owned file
 
-The installer's receipt SHALL list under `files` every file Concorde owns in the project, whether or not this install wrote it.
+The installer's receipt SHALL list under `files` every file Concorde owns in the project, whether or not this install wrote it, and under `defaults` those of them that are Concorde-owned defaults, a default an earlier receipt named that is still in place included, which no install SHALL remove.
 
 ### req.distribution.receipt-amended — The receipt names every amended project file
 

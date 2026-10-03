@@ -1364,6 +1364,42 @@ class InstallTests(unittest.TestCase):
             (project / ".claude/workflows/concorde-brownfield.js").exists()
         )
 
+    @verifies("scenario.distribution.install-defaults-kept")
+    def test_a_default_stays_once_no_part_or_package_declares_it(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        project.mkdir()
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+        default = ".concorde/issues/.gitignore"
+        first = install(
+            project,
+            package,
+            part_names=["issues"],
+            pi_runtime=False,
+            d2=False,
+            dependencies=False,
+        )
+        self.assertIn(default, first["files"])
+        self.assertEqual([default], first["defaults"])
+        (project / default).write_text("# the project's own\n")
+        for _ in ("a part left out", "a package that no longer declares it"):
+            receipt = install(
+                project,
+                package,
+                part_names=["coordination"],
+                pi_runtime=False,
+                d2=False,
+                dependencies=False,
+            )
+            self.assertEqual("# the project's own\n", (project / default).read_text())
+            self.assertIn(default, receipt["files"])
+            self.assertEqual([default], receipt["defaults"])
+            path = package / "src/concorde/issues/registration.json"
+            registration = json.loads(path.read_text())
+            registration["install"]["defaults"] = {}
+            path.write_text(json.dumps(registration, indent=2) + "\n")
+            write_build(package)
+
     @verifies(
         "scenario.distribution.install-project-mcp",
         "scenario.distribution.install-mcp-config-invalid",

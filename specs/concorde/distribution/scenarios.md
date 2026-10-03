@@ -221,6 +221,12 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - THEN the Concorde block of `CLAUDE.md` imports no glossary
 - AND the rest of `CLAUDE.md` is kept
 
+### scenario.distribution.install-defaults-kept — A Concorde-owned default stays the project's data
+
+- GIVEN a project installed with the issues part, whose receipt names `.concorde/issues/.gitignore` under `files` and `defaults`, the developer having edited that file
+- WHEN Concorde is installed again without the issues part, and then from a Concorde that no longer declares that default
+- THEN the file stays as the developer left it each time, and each receipt still names it under `files` and `defaults`
+
 ### scenario.distribution.install-settings-kept — A developer's settings survive the installer
 
 - GIVEN a project whose `.claude/settings.json` has its own permission rules, and a receipt recording a rule the new package no longer ships

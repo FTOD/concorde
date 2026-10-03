@@ -745,18 +745,26 @@ def _place(
     )
     _register_server(project, mcp_config)
     _ignore(project, ignored(registrations))
-    owned = {*written, *defaults, COMMAND, SKILL, *placed}
-    kept = project_default_files(everything)
+    earlier = [
+        path
+        for path in previous.get("files") or []
+        if isinstance(path, str)
+        and not path.startswith("/")
+        and ".." not in Path(path).parts
+    ]
+    # A Concorde-owned default holds the project's own data: once an install wrote or found it,
+    # it stays Concorde's while it is in place, whether or not the parts now installed, or this
+    # package, still declare it. An earlier receipt names its defaults; one written before it
+    # did is read through the defaults this package declares.
+    recorded = {path for path in previous.get("defaults") or [] if path in earlier} | {
+        path for path in project_default_files(everything) if path in earlier
+    }
+    kept = set(defaults) | {path for path in recorded if (project / path).is_file()}
+    owned = {*written, *kept, COMMAND, SKILL, *placed}
     # What an earlier install owned and this one no longer ships, such as the workflows of a part
-    # it leaves out, goes; a Concorde-owned default stays, since it holds the project's own data.
-    for path in previous.get("files") or []:
-        if (
-            isinstance(path, str)
-            and path not in owned
-            and path not in kept
-            and not path.startswith("/")
-            and ".." not in Path(path).parts
-        ):
+    # it leaves out, goes; a default stays.
+    for path in earlier:
+        if path not in owned and path not in recorded:
             (project / path).unlink(missing_ok=True)
     amended = [".gitignore", CLAUDE_MD, MCP_CONFIG] + (
         [CLAUDE_SETTINGS] if (project / CLAUDE_SETTINGS).exists() else []
@@ -787,6 +795,8 @@ def _place(
         # Every file Concorde owns, whether this install wrote it or found it in place: a
         # default is written only when absent, yet stays Concorde's.
         "files": sorted(owned),
+        # Those of them that are Concorde-owned defaults, which no later install removes.
+        "defaults": sorted(kept),
         # Files of the project that the installer only amends: a delimited block, ignore
         # lines, permission rules. They stay the project's own files.
         "amended": amended,

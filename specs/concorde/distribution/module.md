@@ -419,7 +419,9 @@ project where every check passes, it goes through these steps in order:
    development tooling, such as `scripts/e2e/`, never reaches it. It writes the files each chosen
    part contributes, Concorde-owned defaults only where absent, and removes every file an earlier
    install owned that this one no longer places, such as the workflow of a part left out, except a
-   Concorde-owned default, which holds the project's own data. With the spec part go the Protocol
+   Concorde-owned default, which holds the project's own data: one the receipt it replaces names
+   among its `defaults` stays, and stays Concorde's while it is in place, even when the parts now
+   installed or a newer Concorde no longer declare it. With the spec part go the Protocol
    copy under
    `.concorde/protocol/` and the docsite template under `.concorde/framework/docsite/`, exactly the
    files Views' template inventory selects, `scaffold/` included, from which
@@ -510,7 +512,9 @@ checkout), the installed parts with the one version they carry
 [develop install](../glossary.json#concept.develop-install) made with `--develop`, `develop`. It
 lists under `files` every file Concorde owns in the project, including a default an earlier
 install wrote and this one found in place
-([requirements](requirements.md#req.distribution.receipt-complete)), and under `amended` the
+([requirements](requirements.md#req.distribution.receipt-complete)), under `defaults` those of
+them that are Concorde-owned defaults, so that a later install knows them without a package that
+still declares them, and under `amended` the
 project's own files it only amends: `.gitignore`, `CLAUDE.md`, `.mcp.json` and, once written,
 `.claude/settings.json` ([requirements](requirements.md#req.distribution.receipt-amended)).
 
