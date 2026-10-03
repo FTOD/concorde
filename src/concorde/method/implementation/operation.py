@@ -238,10 +238,12 @@ def _present(worktree: Path) -> set[str]:
 
 
 def _latest_checks(record: dict) -> list[dict]:
-    """The check results the latest validated round kept as its evidence."""
+    """The check results of the last round that ran checks; a later round whose validation
+    ran none, such as one that could not validate, hides nothing."""
     for item in reversed(record.get("rounds") or []):
-        if item.get("evidence") is not None:
-            return [check for check in item["evidence"] if "check_id" in check]
+        checks = [check for check in item.get("evidence") or [] if "check_id" in check]
+        if checks:
+            return checks
     return []
 
 

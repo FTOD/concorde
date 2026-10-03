@@ -18,6 +18,7 @@ from concorde.worker_harness.settings import denied
 from concorde.method.implementation.operation import (
     CODE_CHANGE_SCHEMA,
     TEST_REPORT_SCHEMA,
+    _latest_checks,
 )
 from concorde.method.workers import interpreter_roots
 from concorde.spec.repository import SpecRepository
@@ -465,6 +466,18 @@ class TestOperationTests(unittest.TestCase):
 
 
 class ContractTests(unittest.TestCase):
+    def test_checks_are_those_of_the_last_round_that_ran_checks(self):
+        failed = {"check_id": "check.a", "status": "failed"}
+        record = {
+            "rounds": [
+                {"round": 1, "evidence": [failed], "validation": "repair check.a"},
+                # The round validation could not run the checks of the second round.
+                {"round": 2, "evidence": [], "validation": "not run: no interpreter"},
+            ]
+        }
+        self.assertEqual([failed], _latest_checks(record))
+        self.assertEqual([], _latest_checks({"rounds": [{"round": 1}]}))
+
     def test_the_output_schemas_are_the_contracts(self):
         contracts = {
             item["id"]: item["schema"]

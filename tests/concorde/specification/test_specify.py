@@ -20,6 +20,7 @@ from tests.concorde.support.operation_project import (
     worker_error,
 )
 from tests.concorde.support.paths import REPOSITORY_ROOT
+from tests.concorde.support.spec_project import GLOSSARY, read_glossary, upsert_concepts
 
 CLAIMS = {
     "summary": "Stated a second answer.",
@@ -404,6 +405,107 @@ class SpecifyTests(unittest.TestCase):
         self.assertEqual([], envelope["output"]["deleted_documents"])
         self.assertIn("deletion-refused", self.kinds(envelope))
         self.assertTrue((worktree / "specs/b/module.md").exists())
+
+
+class GlossaryAfterRunTests(unittest.TestCase):
+    """Method audits the glossary by entry once more after the worker run, whatever its status,
+    since the round validation sees only clean rounds and runs before proposed deletions."""
+
+    def setUp(self):
+        self.project = OperationProject(self)
+        root = self.project.root
+        for module in ("a", "b"):
+            upsert_concepts(
+                root,
+                f"specs/{module}/module.md",
+                [
+                    {
+                        "id": f"concept.{module}.answer",
+                        "title": f"{module.upper()} answer",
+                        "owner": f"module.{module}",
+                        "definition": f"What {module.upper()} returns for one question.",
+                        "anchor": f"realization.{module}.code",
+                    }
+                ],
+            )
+        commit(root, "terms")
+        self.project.open_task()
+        self.worktree = self.project.worktree()
+
+    def foreign_edit(self) -> str:
+        value = read_glossary(self.worktree)
+        for entry in value["concepts"]:
+            if entry["id"] == "concept.b.answer":
+                entry["definition"] = "What B returns."
+        return json.dumps(value, indent=2) + "\n"
+
+    def assert_violation(self, envelope):
+        self.assertEqual("failed", envelope["status"])
+        error = envelope["error"]
+        self.assertEqual(
+            ("audit_violation", "permission"),
+            (error["code"], error["unhandled"]["reason"]),
+        )
+        self.assertIn(f"{GLOSSARY}#concept.b.answer", error["detail"])
+        self.assertIn(
+            "glossary-ownership", {e["kind"] for e in envelope["host_evidence"]}
+        )
+        record = read_record(
+            self.project.root / ".concorde", envelope["worker_runs"][-1]
+        )
+        self.assertEqual(1, len(record["rounds"]))
+        return error
+
+    @verifies("scenario.method.glossary-after-run")
+    def test_a_blocked_worker_that_changed_a_foreign_entry_fails(self):
+        status, envelope = self.project.run(
+            "specify",
+            "--task",
+            "t1",
+            "--intent",
+            OperationProject.plan(
+                [
+                    {
+                        "writes": {str(self.worktree / GLOSSARY): self.foreign_edit()},
+                        "result": {
+                            "status": "blocked",
+                            "summary": "needs module.b",
+                            "error": worker_error(
+                                "the intent changes module.b's term",
+                                code="foreign_term",
+                                reason="permission",
+                            ),
+                            "output": CLAIMS,
+                        },
+                    }
+                ]
+            ),
+        )
+        self.assertEqual(1, status)
+        error = self.assert_violation(envelope)
+        self.assertIn("module.b's term", link_at(error, "worker")["detail"])
+        self.assertEqual("needs module.b", envelope["worker"]["summary"])
+
+    @verifies("scenario.method.glossary-after-run")
+    def test_a_proposed_deletion_of_the_glossary_fails(self):
+        status, envelope = self.project.run(
+            "specify",
+            "--task",
+            "t1",
+            "--intent",
+            OperationProject.plan(
+                [
+                    {
+                        "result": {
+                            "output": CLAIMS,
+                            "proposed_deletions": [str(self.worktree / GLOSSARY)],
+                        }
+                    }
+                ]
+            ),
+        )
+        self.assertEqual(1, status)
+        self.assert_violation(envelope)
 
 
 class ContractTests(unittest.TestCase):

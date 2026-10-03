@@ -1286,6 +1286,50 @@ class ScriptTests(unittest.TestCase):
         self.assertEqual("concorde-brownfield", run["meta"]["name"])
         self.assertEqual("haiku", run["calls"][0]["options"]["model"])
 
+    @verifies("scenario.method.brownfield-mutual-uses")
+    def test_modules_that_use_each_other_are_described_as_a_group(self):
+        def describe(order, created):
+            outcomes = self.full()
+            outcomes["scaffold"] = self.outcome(
+                "scaffold", "scaffold", data={"created_modules": created}
+            )
+            for item in created:
+                key = "describe:" + item["id"]
+                outcomes[key] = self.outcome(key, "code_to_spec")
+            run = self.run_script(self.ARGS, outcomes)
+            described = [
+                c["key"] for c in run["calls"] if c["key"].startswith("describe:")
+            ]
+            self.assertEqual(["describe:" + m for m in order], described)
+
+        describe(
+            ["module.catalog", "module.orders", "module.billing", "module.shop"],
+            [
+                {"id": "module.orders", "uses": ["module.billing"]},
+                {"id": "module.billing", "uses": ["module.orders", "module.catalog"]},
+                {"id": "module.catalog", "uses": []},
+            ],
+        )
+        # A cycle followed by an independent Module keeps the scaffold's order.
+        describe(
+            ["module.a", "module.b", "module.c", "module.shop"],
+            [
+                {"id": "module.a", "uses": ["module.b"]},
+                {"id": "module.b", "uses": ["module.a"]},
+                {"id": "module.c", "uses": []},
+            ],
+        )
+        # A consumer listed before its provider waits for it; a later group does not.
+        describe(
+            ["module.d", "module.c", "module.a", "module.b", "module.shop"],
+            [
+                {"id": "module.c", "uses": ["module.d"]},
+                {"id": "module.a", "uses": ["module.b", "module.c"]},
+                {"id": "module.b", "uses": ["module.a"]},
+                {"id": "module.d", "uses": ["module.unknown"]},
+            ],
+        )
+
     @verifies("scenario.workflows.interactive-pause")
     def test_an_interactive_run_stops_after_the_survey(self):
         run = self.run_script({**self.ARGS, "mode": "interactive"}, self.full(points=1))
