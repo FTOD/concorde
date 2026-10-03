@@ -407,8 +407,8 @@ every level reports with. The [requirements](requirements.md) state the obligati
 
 Each kind has one producer, which writes its nodes' records and chooses their content, and one place
 below its parent. The part a producer belongs to registers its kinds with Tracing's library when its
-code loads, each with its content type and the metadata dimensions it provides, as it registers its
-typed value types; Tracing names no kind itself. Writing a node of a kind no installed part
+code loads, each with its content type and the metadata dimensions it provides, as it registers the
+types of its [typed values](../../glossary.json#concept.typed-value); Tracing names no kind itself. Writing a node of a kind no installed part
 registered, with a metadata dimension its kind does not provide or with content of another type
 than its kind's is refused with `node_invalid`, or `content_invalid` for the content, as a defect
 of its producer. The table lists the kinds of Concorde's parts, and a kind whose part is not

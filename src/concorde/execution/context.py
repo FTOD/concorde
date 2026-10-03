@@ -62,6 +62,9 @@ class Provider:
     # checkout's root before anything is linked, it returns the runtime paths, relative ones
     # linked from the worktree the run started in. None links nothing.
     runtime_paths: Callable[[Path], Sequence[str]] | None = None
+    # The identity of the Module that provides the definition, such as
+    # ``module.understanding``; the catalogs refuse a definition without one.
+    module: str | None = None
 
 
 class Refused(Exception):

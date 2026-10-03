@@ -7,7 +7,11 @@ catalog's shape (``concorde.execution.commands.catalog``).
 
 from __future__ import annotations
 
+import re
+
 from ..context import Provider
+
+MODULE_ID = re.compile(r"^module\.[a-z0-9][a-z0-9.-]*$")
 
 
 class CatalogError(Exception):
@@ -21,8 +25,8 @@ class CatalogError(Exception):
 
 
 class Catalog:
-    """The definitions of one kind (``operation`` or ``command``), one per name, each with the
-    part that registered it."""
+    """The definitions of one kind (``operation`` or ``command``), one per name, each with its
+    providing Module and the part that registered it."""
 
     def __init__(self, kind: str):
         self.kind = kind
@@ -36,6 +40,21 @@ class Catalog:
             raise CatalogError(
                 "invalid_definition",
                 f"{part} registers {definition!r} as an {self.kind}, which it is not",
+            )
+        if not isinstance(definition.module, str) or not MODULE_ID.match(
+            definition.module
+        ):
+            raise CatalogError(
+                "invalid_definition",
+                f"{part} registers the {self.kind} {definition.name} without the identity of "
+                f"its providing Module (module {definition.module!r})",
+            )
+        if self.kind == "operation" and not definition.workers:
+            raise CatalogError(
+                "invalid_definition",
+                f"{part} registers the operation {definition.name} without a worker id; an "
+                "Operation launches at least one worker, and a job that launches none is an "
+                "execution command",
             )
         name = definition.name
         existing = self.definitions.get(name)
@@ -56,6 +75,11 @@ class Catalog:
     def part(self, name: str) -> str | None:
         """The part that registered ``name``."""
         return self.parts.get(name)
+
+    def module(self, name: str) -> str | None:
+        """The identity of the Module that provides ``name``."""
+        definition = self.definitions.get(name)
+        return definition.module if definition is not None else None
 
     def __contains__(self, name) -> bool:
         return name in self.definitions

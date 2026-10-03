@@ -288,9 +288,9 @@ concorde <execution command> [--modules …] [--input …] [--detach] [--wait <s
 These are the usual forms, not the whole syntax: every run takes the common options `--modules`,
 `--input`, `--detach`, `--wait` and `--trace-at`, which a workflow step uses to place its run's
 node, even where a line above leaves them out, as [Command lines](runner.md#command-lines) gives
-them in full. Execution registers `concorde run` with Distribution's `concorde` command, and one
-command for each execution command the installed parts define, such as Method's
-`concorde task-validation`, `concorde delivery` and `concorde scaffold`. `--modules` names the
+them in full. Execution's part registration names `concorde run`, and the part that defines an
+execution command names it in its own registration, as Method's names `concorde task-validation`,
+`concorde delivery` and `concorde scaffold` ([Commands](commands/module.md#running-an-execution-command)). `--modules` names the
 Modules the run works on (default: the binding's); `--input` admits the output of an earlier `ok`
 run of the same workspace, such as a plan or a survey. `concorde workflow step|report …` also works
 on the bound workspace without naming it, but is not itself a run: it starts and awaits runs through
