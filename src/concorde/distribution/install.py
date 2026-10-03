@@ -194,6 +194,10 @@ def _prepared(package: Path, project: Path, registrations: dict) -> dict[str, by
     return files
 
 
+# The parts without which a develop install's guidance would name what is not there.
+DEVELOP_GUIDANCE_NEEDS = frozenset({"coordination", "issues"})
+
+
 def _develop(package: Path) -> dict:
     """The develop source check the package descriptor names, refused with its code."""
     import importlib
@@ -540,8 +544,11 @@ def install(
     if develop:
         checked = _develop(package)
         installed_from = checked["source"]
-        skill = skill.rstrip("\n") + "\n\n" + checked["guidance"]["skill"]
-        block = block.rstrip("\n") + "\n\n" + checked["guidance"]["claude_md"]
+        # Dogfooding's guidance has the main agent report defects as Issues through its tasks,
+        # so it is composed only where the coordination and issues parts are installed.
+        if DEVELOP_GUIDANCE_NEEDS <= set(registrations):
+            skill = skill.rstrip("\n") + "\n\n" + checked["guidance"]["skill"]
+            block = block.rstrip("\n") + "\n\n" + checked["guidance"]["claude_md"]
     previous = {}
     if (project / RECEIPT).is_file():
         try:
