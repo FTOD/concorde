@@ -57,7 +57,18 @@
         ]
       }
     ],
-    "includes": [],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.kernel.contracts",
+        "reason": "The Kernel's contracts Issues calls directly: the typed-value format and checks its shapes register with and its reports are checked by, the file transactions its records publish through, the merge lock and the library entries the store and the command import"
+      },
+      {
+        "kind": "document",
+        "target": "document.spec.contracts",
+        "reason": "Spec core's registry file `.concorde/specs.json`, which the command reads, where the spec part is installed, for the registered Modules, the root Module and a report's context digest"
+      }
+    ],
     "participates": []
   },
   "defines": [

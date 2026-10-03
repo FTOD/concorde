@@ -68,6 +68,15 @@ This illustrates [checked error chains](requirements.md#req.issues.report-error-
 - THEN the command refuses it exactly as `report` would, with the same code and a message naming the file and field
 - BUT no Issue is recorded
 
+### scenario.issues.command-report-check-origin — A defect report is checked without the spec part
+
+- GIVEN a project whose worktrees hold no registry `.concorde/specs.json`, the spec part not being installed, and a [defect report](../glossary.json#concept.defect-report) file whose owner is `null`, with an `origin` naming the project it was seen in and evidence that exists there
+- WHEN the main agent runs `report --file` with that file and `--check`
+- THEN the command answers `valid` with the file, its report key and `null` as its reporting Module
+- BUT no Issue is recorded
+
+This illustrates [registered owners](requirements.md#req.issues.report-owner-registered).
+
 ### scenario.issues.command-report-unknown-owner — A report without an owner is filed under the root Module
 
 - GIVEN a registry with one root Module and a report file whose owner is `null`
@@ -80,21 +89,56 @@ This illustrates [checked error chains](requirements.md#req.issues.report-error-
 - GIVEN a report file whose owner is a Module the primary worktree's registry does not list and whose evidence path does not exist, and a provenance file naming an [Operation](../glossary.json#concept.operation)'s run, `operation` as agent and that Module as reporting Module
 - WHEN the Operation's host runs `report --file` with that file and `--provenance` with the provenance file
 - THEN the Issue is recorded with exactly that provenance, and the command prints the receipt and revision
-- AND `report --provenance` with `--task` or `--check` is refused with `usage`, and a provenance file that breaks the provenance shape with `invalid_issue` naming its field
+
+### scenario.issues.command-report-provenance-usage — A provenance file given with --task or --check is refused
+
+- GIVEN a valid report file and a valid provenance file
+- WHEN the main agent runs `report --file` with that file and `--provenance` with the provenance file, together with `--task` or with `--check`
+- THEN the command prints the error code `usage` and a message naming `--provenance`
+- AND exits with status 2
+- BUT writes nothing
+
+### scenario.issues.command-report-provenance-invalid — A provenance file that breaks the provenance shape is refused
+
+- GIVEN a valid report file and a provenance file one of whose fields breaks the provenance shape, such as a `context_id` that is no digest
+- WHEN the Operation's host runs `report --file` with that file and `--provenance` with the provenance file
+- THEN the command prints the error code `invalid_issue` and a message naming the provenance file and the field
+- AND exits with status 1
+- BUT writes nothing
 
 ### scenario.issues.command-without-spec-part — Without the spec part a Module is a plain label
 
 - GIVEN a project whose worktrees hold no registry `.concorde/specs.json`, the spec part not being installed
-- WHEN the main agent runs `report --file` with a report naming an owner no registry lists
+- WHEN the main agent runs `report --file` with a report naming an owner no registry lists, then `check`
 - THEN the Issue is recorded with that owner as its reporting Module and the digest of no bytes as its context
-- AND a report whose owner is `null` is refused with `no_reporting_module`, saying the spec part is not installed
 - AND `check` passes, judging no owner, with one note saying the spec part is not installed
+
+### scenario.issues.command-without-spec-part-null-owner — Without the spec part a report needs an owner
+
+- GIVEN a project whose worktrees hold no registry `.concorde/specs.json`, the spec part not being installed, and a report file without an `origin` whose owner is `null`
+- WHEN the main agent runs `report --file` with that file
+- THEN the command prints the error code `no_reporting_module` and a message saying the spec part is not installed
+- AND exits with status 1
+- BUT writes nothing
+
+This illustrates [registered owners](requirements.md#req.issues.report-owner-registered).
 
 ### scenario.issues.store-without-coordination — Without the coordination part no write waits for a merge
 
-- GIVEN a primary worktree with no `.concorde/tasks/`, the coordination part not being installed, or one whose only [task record](../glossary.json#concept.task-record) does not read as JSON
+- GIVEN a primary worktree with no `.concorde/tasks/`, the coordination part not being installed
 - WHEN a session records a report
 - THEN the store commits it, no unfinished merge refusing it
+
+### scenario.issues.command-unreadable-task-record — A task record that cannot be read refuses the write
+
+- GIVEN a primary worktree whose `.concorde/tasks/` holds a [task record](../glossary.json#concept.task-record) that does not read as a JSON object, and a valid report file
+- WHEN the main agent runs `report --file` with that file
+- THEN the command prints the error code `unreadable_task_record` with the reason `environment`, naming that record
+- AND its options say to carry the error chain in the decision log, escalation or run result and never to report it as an Issue
+- AND exits with status 1
+- BUT writes nothing
+
+This illustrates [no Issue write while a merge is unfinished](requirements.md#req.issues.no-write-during-merge).
 
 ### scenario.issues.command-append — Append a later observation from a file
 
@@ -182,7 +226,7 @@ This illustrates [specific refusals](requirements.md#req.issues.specific-refusal
 
 ### scenario.issues.command-report-unregistered-owner — A report naming an unregistered owner is refused
 
-- GIVEN a report file whose `owner_target_id` is not a registered Module
+- GIVEN a project where the spec part is installed, and a report file whose `owner_target_id` is not a Module of its registry
 - WHEN the main agent runs `report --file` with that file
 - THEN the command prints the error code `unknown_owner` and a message naming the report file, the field `owner_target_id` and the owner
 - AND exits with status 1
@@ -270,7 +314,7 @@ and [the Issue system never reporting itself](requirements.md#req.issues.own-fai
 
 ### scenario.issues.command-write-raced — A record changed during the write is refused as stale
 
-- GIVEN an open Issue, a report file appending to it at its current revision, and another program that changes the record after the command read it and before it publishes
+- GIVEN an open Issue, a report file appending to it at its current revision, and another program that changes the record after the command read it and before the file transaction checks it
 - WHEN the main agent runs `report --file` with that file
 - THEN the command prints the error code `stale_issue` and a message naming the Issue
 - AND exits with status 1
@@ -324,11 +368,9 @@ This illustrates [recovering uncommitted records](requirements.md#req.issues.unc
 - WHEN the main agent runs `report --file` with that file
 - THEN the command prints the error code `recovery_failed` with the reason `environment`, saying that no read shows the uncommitted record
 - AND its options say to carry the error chain in the decision log, escalation or run result and never to report it as an Issue
-- AND `list` names no Issue
-- BUT after `recover`, a record edited by hand makes `close` of its Issue refuse with `uncommitted_change` and the reason `environment`, naming the Issue, and `recover` lists that record as `left`
+- BUT `list` names no Issue
 
-This illustrates [the Issue system never reporting itself](requirements.md#req.issues.own-failures)
-and [kept foreign changes](requirements.md#req.issues.foreign-change-kept).
+This illustrates [the Issue system never reporting itself](requirements.md#req.issues.own-failures).
 
 ## Records
 
@@ -615,7 +657,7 @@ This illustrates [durable receipts](requirements.md#req.issues.durable-receipt).
 
 ### scenario.issues.store-publication-stale — A record created or changed during publication is refused
 
-- GIVEN another program that creates or changes an Issue's record file after the store read it and before the store publishes
+- GIVEN another program that creates or changes an Issue's record file after the store read it and before the file transaction checks it
 - WHEN the store creates that Issue, appends a report to it or disposes it
 - THEN the store refuses with `stale_issue`, naming the Issue and whether its record was created or changed, and naming the record file
 - AND the file transaction's `stale_proposal` is its cause
@@ -665,7 +707,8 @@ and [kept foreign changes](requirements.md#req.issues.foreign-change-kept).
 - AND each record's revision stays, since its bytes are unchanged
 - BUT the records in their places stay, the staged change stays staged, and the second archive moves nothing and commits nothing
 
-This illustrates [archiving misplaced records](requirements.md#req.issues.archive).
+This illustrates [archiving misplaced records](requirements.md#req.issues.archive) and
+[naming what was moved](requirements.md#req.issues.archive-reported).
 
 ### scenario.issues.store-archive-left — Archive leaves what it cannot move
 
@@ -675,7 +718,8 @@ This illustrates [archiving misplaced records](requirements.md#req.issues.archiv
 - AND the archive moves the other misplaced record and lists both paths of the doubled Issue and the edited record as left
 - BUT the edited record keeps its edit
 
-This illustrates [archiving misplaced records](requirements.md#req.issues.archive).
+This illustrates [archiving misplaced records](requirements.md#req.issues.archive) and
+[naming what was left](requirements.md#req.issues.archive-reported).
 
 ### scenario.issues.command-archive — Archive from any worktree
 
@@ -728,7 +772,8 @@ This illustrates [recovering uncommitted records](requirements.md#req.issues.unc
 - AND the repeated append records at the committed revision, in a commit holding only its record
 - BUT the other staged change stays staged and the untracked file untracked
 
-This illustrates [recovering uncommitted records](requirements.md#req.issues.uncommitted-recovered).
+This illustrates [recovering uncommitted records](requirements.md#req.issues.uncommitted-recovered)
+and [removing temporaries](requirements.md#req.issues.temporaries-removed).
 
 ### scenario.issues.store-foreign-change — A record change no write made is left alone
 
@@ -755,7 +800,7 @@ This illustrates [Issue writes under the merge lock](requirements.md#req.issues.
 
 ### scenario.issues.store-check-pass — Valid records pass the store check
 
-- GIVEN a project without an Issue directory, or whose Issues are valid and owned by registered Modules
+- GIVEN a project where the spec part is installed, without an Issue directory or whose Issues are valid and owned by Modules of its registry
 - WHEN the configured store check runs
 - THEN it reports no errors and no notes
 - AND exits with status zero
@@ -769,7 +814,7 @@ This illustrates [Issue writes under the merge lock](requirements.md#req.issues.
 
 ### scenario.issues.store-check-unknown-owner — The store check reports an unknown owner
 
-- GIVEN an open Issue whose owner is not a registered Module
+- GIVEN a project where the spec part is installed, and an open Issue whose owner is not a Module of its registry
 - WHEN the configured store check runs
 - THEN it reports an error naming the Issue and the unknown owner
 - AND exits with a nonzero status
@@ -786,7 +831,7 @@ This illustrates [records in the folder of their status](requirements.md#req.iss
 
 ### scenario.issues.store-check-closed-unknown-owner — A closed Issue of a removed Module does not fail
 
-- GIVEN a closed Issue whose owner is not a registered Module, and no other problem
+- GIVEN a project where the spec part is installed, and a closed Issue whose owner is not a Module of its registry, and no other problem
 - WHEN the configured store check runs
 - THEN it reports a note naming the Issue and the unknown owner
 - BUT exits with status zero

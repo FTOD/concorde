@@ -2,8 +2,10 @@
 
 The canonical contracts, provenance, record file, store operations and bookkeeping command of
 [Issues](module.md). All shapes are closed: unknown fields are refused. Both contracts below are
-registered as [typed values](../glossary.json#concept.typed-value) with their version under the
-name given with them.
+exchanged and checked as they are, without the envelope of a
+[typed value](../glossary.json#concept.typed-value); their schemas are registered as typed-value
+types under the name and version given with them, so that another part's schema can embed a report
+or a receipt by name.
 
 ## Report
 
@@ -66,7 +68,7 @@ together with the provenance it vouches for. It is at most 64 KiB as canonical J
       "expected_revision": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
     }
   },
-  "semantics": "One observation of a concrete problem, registered as typed value concorde-issue-report. report_key is chosen by the reporter and stays the same across retries of the same observation. tier says who may handle the problem without the level above (the main agent, then the developer): suggestion, advisory, no problem today; obvious-fix, an obvious problem with an obvious fix, which the session fixing it fixes alone; preferred-fix, a simple problem whose best fix of several is clear, which the session fixing it fixes and reports; decision-needed, a problem that is unclear or whose fix is uncertain, which the level above decides; every tier but suggestion is blocking. severity says how much the problem matters while it stands, independently of the tier, most severe first: critical, wrong results, lost or corrupted data, a security exposure or a core flow broken with no workaround; high, a main flow broken or wrong although a workaround exists, or a promise that leads the work relying on it to act wrongly; medium, a secondary flow or an edge case that fails, or a gap that slows the work without misleading it; low, something cosmetic with which nothing goes wrong. description, impact, basis and evidence describe the problem completely enough for whoever the Issue is escalated to by its identity to act on it. type bug is a defect or failure, gap an implementation/Spec mismatch, a conflict between Specs or a missing necessary promise, limitation behaviour that is consistent but insufficient; subtype is required for gap and null otherwise. owner_target_id names the Module that owns the broken promise, or null when unknown. evidence may be empty; its paths are canonical project-relative POSIX paths (nonempty, no leading slash, no backslash, colon or control character, no empty, . or .. component); the report command also requires each to exist in the project, or in the origin project when origin is given. origin, optional, says the observation was made in another project than the one recording it: that project's absolute path, its Git HEAD then, the commit of the Concorde it ran, and the task, each nullable but project. error_chain, optional, is the failure's error chain as one error of the Framework's error contract, checked against it. issue_id and expected_revision are both absent to create an Issue and both present to append to that Issue at exactly that revision. Provenance is never part of a report. The report is at most 64 KiB as canonical JSON.",
+  "semantics": "One observation of a concrete problem, whose schema is registered as typed-value type concorde-issue-report. report_key is chosen by the reporter and stays the same across retries of the same observation. tier says who may handle the problem without the level above (the main agent, then the developer): suggestion, advisory, no problem today; obvious-fix, an obvious problem with an obvious fix, which the session fixing it fixes alone; preferred-fix, a simple problem whose best fix of several is clear, which the session fixing it fixes and reports; decision-needed, a problem that is unclear or whose fix is uncertain, which the level above decides; every tier but suggestion is blocking. severity says how much the problem matters while it stands, independently of the tier, most severe first: critical, wrong results, lost or corrupted data, a security exposure or a core flow broken with no workaround; high, a main flow broken or wrong although a workaround exists, or a promise that leads the work relying on it to act wrongly; medium, a secondary flow or an edge case that fails, or a gap that slows the work without misleading it; low, something cosmetic with which nothing goes wrong. description, impact, basis and evidence describe the problem completely enough for whoever the Issue is escalated to by its identity to act on it. type bug is a defect or failure, gap an implementation/Spec mismatch, a conflict between Specs or a missing necessary promise, limitation behaviour that is consistent but insufficient; subtype is required for gap and null otherwise. owner_target_id names the Module that owns the broken promise, or null when unknown. evidence may be empty; its paths are canonical project-relative POSIX paths (nonempty, no leading slash, no backslash, colon or control character, no empty, . or .. component); the report command also requires each to exist in the project, or in the origin project when origin is given. origin, optional, says the observation was made in another project than the one recording it: that project's absolute path, its Git HEAD then, the commit of the Concorde it ran, and the task, each nullable but project. error_chain, optional, is the failure's error chain as one error of the Framework's error contract, checked against it. issue_id and expected_revision are both absent to create an Issue and both present to append to that Issue at exactly that revision. Provenance is never part of a report. The report is at most 64 KiB as canonical JSON.",
   "example": {
     "report_key": "retry-count-unspecified",
     "tier": "decision-needed",
@@ -101,7 +103,7 @@ together with the provenance it vouches for. It is at most 64 KiB as canonical J
       "path": {"type": "string", "pattern": "^\\.concorde/issues/(closed/)?I-[0-9a-f]{32}\\.md$"}
     }
   },
-  "semantics": "The durable name of one accepted report, registered as typed value concorde-issue-receipt. report_id is the digest of the report together with its caller-supplied provenance, so the receipt always names that one immutable report, even after later reports or dispositions of the same Issue. path is the record file of issue_id where it lies when the receipt is returned: .concorde/issues/<issue_id>.md for an open Issue, .concorde/issues/closed/<issue_id>.md when a repeated report finds the Issue closed since; resolving a receipt accepts either path of its Issue. A receipt is returned only after the record holding the report is committed on the primary branch. The report command answers {receipt, revision}, where revision is the digest of the record file after the write and is usable as a later expected_revision.",
+  "semantics": "The durable name of one accepted report, whose schema is registered as typed-value type concorde-issue-receipt. report_id is the digest of the report together with its caller-supplied provenance, so the receipt always names that one immutable report, even after later reports or dispositions of the same Issue. path is the record file of issue_id where it lies when the receipt is returned: .concorde/issues/<issue_id>.md for an open Issue, .concorde/issues/closed/<issue_id>.md when a repeated report finds the Issue closed since; resolving a receipt accepts either path of its Issue. A receipt is returned only after the record holding the report is committed on the primary branch. The report command answers {receipt, revision}, where revision is the digest of the record file after the write and is usable as a later expected_revision.",
   "example": {
     "issue_id": "I-0123456789abcdef0123456789abcdef",
     "report_id": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
@@ -206,10 +208,13 @@ records. They fail in these ways:
 - a refusal by an Issue rule is an `IssueError` carrying one of the codes under [Errors](#errors)
   and a message that states what is wrong; a refusal that concerns one stored Issue, such as a
   read, an append, a disposition or a publication, also names that Issue; this includes a record
-  that another program created or changed between the store's read and its publication, which
-  the Kernel's [file transaction](../kernel/contracts.md#file-transactions) refuses as
-  `stale_proposal` and the store reports as `stale_issue`, naming the record file and keeping the
-  `stale_proposal` as its cause;
+  that another program created or changed after the store's read and before the file transaction
+  checks it, which the Kernel's [file transaction](../kernel/contracts.md#file-transactions)
+  refuses as `stale_proposal` and the store reports as `stale_issue`, naming the record file and
+  keeping the `stale_proposal` as its cause. The store excludes other writers by the merge lock
+  alone: a program that writes a record without holding it is caught only up to the transaction's
+  check, and one that changes the record between that check and the transaction's rename is
+  overwritten, as the Kernel's file transactions say;
 - a value that the Kernel's [typed-value](../kernel/contracts.md#typed-values) checks
   refuse, such as a report or disposition that breaks its schema or an evidence path that is not a
   canonical project-relative POSIX path, is refused by those checks with the Kernel's error and its
@@ -221,8 +226,9 @@ records. They fail in these ways:
   directory after publication or Git failing to list or read the committed records, propagates as
   the operating system's own `OSError`, after the write put back the record it had published;
 - a write that cannot hold the [merge lock](../glossary.json#concept.merge-lock) within its wait, is made while a task's merge is
-  unfinished (where the coordination part is installed), or whose commit Git refuses is an `IssueError` with `merge_busy`,
-  `merge_incomplete` or `commit_failed`;
+  unfinished or while a [task record](../glossary.json#concept.task-record) cannot be read (where the coordination part is installed), or
+  whose commit Git refuses is an `IssueError` with `merge_busy`, `merge_incomplete`,
+  `unreadable_task_record` or `commit_failed`;
 - a write that cannot put back an uncommitted record, its own after a failure or one an earlier
   write left, is an `IssueError` with `recovery_failed`, and a write of an Issue whose record holds
   a change no write left is an `IssueError` with `uncommitted_change`, naming the record file.
@@ -241,7 +247,7 @@ The bookkeeping command reports a Kernel error as `invalid_issue`, and a `system
 | `disposition_record(record, ...)` | Prepares and validates a disposed record without writing. |
 | `dispose_issue(root, id, expected_revision, reason, note, evidence, actor, duplicate_of, duplicate_revision, created_at, wait)` | Refuses a `duplicate` without `duplicate_of`, naming the Issue itself, or another reason with `duplicate_of` (`invalid_issue`). Under the lock, checks the revision (`stale_issue`), refuses closing a closed Issue (`closed_issue`) and reopening an open one (`open_issue`), and for `duplicate` that the other Issue exists (`unknown_issue`), is open (`invalid_issue`) and, when the caller gives `duplicate_revision`, the revision it read of that other Issue, still has it (`stale_issue`); appends the disposition, moves the record into the place of its new status and returns the new revision. `duplicate_of` and `duplicate_revision` default to `null`; `created_at` defaults to the time of acceptance; the bookkeeping command never gives `duplicate_revision`. |
 | `archive_issues(root, wait)` | Under the merge lock, as a write holds it, after recovery: moves every misplaced committed record into its place, its bytes unchanged so its revision stays, publishing all of them through one file transaction and committing them in one commit as a write commits, and returns `{"moved": [{issue_id, from, to}], "left": [{path, reason}]}`, sorted by identity. It leaves, with the reason, both paths of an Issue committed at both and a misplaced record whose path or place holds a change recovery left. Nothing to move commits nothing. Refuses as a write does. |
-| `recover_issues(root, wait)` | Under the merge lock, as a write holds it, runs the recovery below without writing an Issue and returns `{"recovered": [{path, action}], "left": [{path, reason}]}`: each record put back (`action` `restored` to its committed version, or `removed` when no commit holds it) or temporary file removed (`removed`), and each record change left because no write made it, with the reason. Refuses as a write does, with `not_primary`, `merge_busy`, `merge_incomplete` or `recovery_failed`. |
+| `recover_issues(root, wait)` | Under the merge lock, as a write holds it, runs the recovery below without writing an Issue and returns `{"recovered": [{path, action}], "left": [{path, reason}]}`: each record put back (`action` `restored` to its committed version, or `removed` when no commit holds it) or temporary file removed (`removed`), and each record change left because no write made it, with the reason. Refuses as a write does, with `not_primary`, `merge_busy`, `merge_incomplete`, `unreadable_task_record` or `recovery_failed`. |
 
 Every write refuses a `root` that is not the primary worktree (`not_primary`), then holds the
 primary worktree's merge lock, `.concorde/locks/merge.lock`, the one Tasks' merges, opens and closes
@@ -251,7 +257,8 @@ hands it to the `concorde issues close` it starts for each Issue the task resolv
 without waiting. Holding it, whether it took it or was handed it, a write refuses with `merge_incomplete` while a task is stored `merging`, which it
 reads in the current tasks' [task records](../coordination/tasks/contracts.md#contract.tasks.record)
 `.concorde/tasks/*/task.json` of the primary worktree, where the coordination part is installed,
-passing over a record that does not read as JSON; it then recovers as below, refuses with
+and refuses with `unreadable_task_record`, naming the record, when one of them cannot be read or
+does not read as a JSON object, since that task may be the one merging; it then recovers as below, refuses with
 `uncommitted_change` when the record it writes holds a change recovery left, reads the committed
 record and checks its revision, and publishes the record at its place through a
 [file transaction](../glossary.json#concept.file-transaction): over the committed bytes when it is
@@ -321,7 +328,7 @@ disposition's actor. `recover` and `archive` have no tool.
 | `archive` | Runs `archive_issues` on the primary worktree, waiting for the merge lock, and prints its `{"moved": [...], "left": [...]}` |
 | `report --file <report.json> [--task <task-id>]` | Records the report in the file with the provenance above and prints `{"receipt": <receipt>, "revision": <digest>}` |
 | `report --file <report.json> --provenance <provenance.json>` | Records the report in the file with the provenance in the provenance file, `{invocation_id, agent, operation, phase, target_id, context_id, change_id, head}`, which its caller vouches for, exactly as `report_issue` records it for a library caller, and prints `{"receipt": <receipt>, "revision": <digest>}` |
-| `report --file <report.json> --check` | Runs every check `report` runs on the file, records nothing and prints `{"valid": true, "file", "report_key", "reporting_module"}` |
+| `report --file <report.json> --check` | Runs every check `report` runs on the file, but resolves no reporting Module for a report with an `origin`, records nothing and prints `{"valid": true, "file", "report_key", "reporting_module"}`, `reporting_module` being `null` for a report with an `origin` |
 | `close <id> --reason resolved\|duplicate\|not-actionable --note <text> --evidence <item>... [--duplicate-of <id>]` | Closes the open Issue at its current revision, moving its record into `closed/`, and prints `{"issue_id", "status": "closed", "revision", "path"}` |
 | `reopen <id> --note <text> --evidence <item>...` | Reopens the closed Issue at its current revision, moving its record back into `.concorde/issues/`, and prints `{"issue_id", "status": "open", "revision", "path"}` |
 
@@ -335,7 +342,11 @@ path the refusal then names. A report file may lie outside
 the project, such as a report another project wrote. When the owner is `null` the registry must have
 exactly one root Module, which becomes the reporting Module; where the spec part is not installed,
 there is no registry to find one, and a `null` owner is refused with `no_reporting_module`, whose
-message says the spec part is not installed. The spec part counts as installed for a worktree
+message says the spec part is not installed. `--check` of a report with an `origin`, such as a
+[defect report](../glossary.json#concept.defect-report) checked before it is handed to the
+[Concorde repository](../glossary.json#concept.concorde-repository), resolves no reporting Module, since the project that records the report
+resolves it: its `null` owner is refused neither way, and a named owner is checked as for
+recording. The spec part counts as installed for a worktree
 exactly when its registry file `.concorde/specs.json` exists; one that exists but does not read as
 the registry is refused with `unreadable_registry`. A file with `issue_id` and
 `expected_revision` appends to that Issue; the revision is the one `show`, `report`, `close` or
@@ -378,8 +389,9 @@ write or `recover` puts back, so a refused write may be repeated. The link is a 
 the Framework's [error chain](../kernel/tracing/contracts.md#contract.tracing.error) with the actor
 `Issues (concorde issues)`: its code is the refusal code, its detail names the Issue, the report
 file and field, or the argument concerned and states what is wrong, and its reason is
-`environment` for `io_error`, `merge_busy`, `merge_incomplete`, `commit_failed`,
-`recovery_failed`, `uncommitted_change` and `not_a_repository`, and `input` for every other code. These environment refusals are failures of
+`environment` for `io_error`, `merge_busy`, `merge_incomplete`, `unreadable_task_record`,
+`commit_failed`, `recovery_failed`, `uncommitted_change` and `not_a_repository`, and `input` for
+every other code. These environment refusals are failures of
 the Issue system itself: each lists among its options that its [error chain](../glossary.json#concept.error-chain) is carried in the task's
 [decision log](../glossary.json#concept.decision-log) and escalation, or in the run's result, and never reported as an Issue. The Issue store raises `IssueError`,
 Issues' own error type with its own codes, each stating the Issue rule it breaks and its
@@ -441,12 +453,14 @@ recovery itself being `concorde issues recover`'s alone.
 | `unreadable_registry` | where the spec part is installed, the registry `.concorde/specs.json` cannot be read |
 | `io_error` | a file operation failed |
 | `usage` | the arguments do not form a request of the command |
+| `invalid_input` | an Issue tool's arguments are not an object, do not match its input schema, or, for `issue_report`, name both or neither of `report` and `file`; the tool refuses the call before running the command |
 | `not_a_project` | `--root` has neither `.concorde/config.json` nor `.concorde/install.json` |
 | `unreadable_file` | the report file cannot be read as UTF-8 text |
 | `not_a_repository` | `--root` lies in no Git repository, whose primary worktree would keep the Issues |
 | `not_primary` | a store write names a root that is not the primary worktree |
 | `merge_busy` | the merge lock stayed held for the whole wait; the message names its holder |
 | `merge_incomplete` | where the coordination part is installed, a task's merge into the primary branch is unfinished; the message is Tasks' account of it |
+| `unreadable_task_record` | where the coordination part is installed, a current task's record `.concorde/tasks/<task>/task.json` cannot be read or is no JSON object, so the write cannot tell whether that task's merge is unfinished; the message names the record |
 | `commit_failed` | the primary worktree's `HEAD` is detached or Git refused the commit of the record, which was put back |
 | `recovery_failed` | an uncommitted record, the write's own after a failure or one an earlier write left, could not be put back; it stays uncommitted and no read shows it |
 | `uncommitted_change` | the record the write would change differs from its committed version in a way no write leaves; it is left as it is |

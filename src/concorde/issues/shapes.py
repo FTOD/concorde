@@ -1,7 +1,9 @@
 """Closed shapes of Issue reports, provenance, records and the Issue typed values.
 
-Issues owns these shapes and registers its typed values with Spec tooling when this module is
-loaded; the store and the bookkeeping command use the same declarations.
+Issues owns these shapes and registers the report and receipt shapes as typed-value types with
+the Kernel when this module is loaded, so that another part's schema can embed them by name; the
+store and the bookkeeping command check reports, receipts and records as they are, without an
+envelope, against the same declarations.
 """
 
 from __future__ import annotations

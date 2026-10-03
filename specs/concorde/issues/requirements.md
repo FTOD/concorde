@@ -53,7 +53,11 @@ the command refuses the report with `no_reporting_module` when the registry has 
 label the command takes as given, and a `null` owner is refused with `no_reporting_module`, since
 no registry names a root. The registry file `.concorde/specs.json` tells which: the spec part counts
 as installed exactly where it exists. A report given with `--provenance` names the Module its caller
-vouches for, which may be one its task adds, so the command checks no owner of it.
+vouches for, which may be one its task adds, so the command checks no owner of it. A report with an
+`origin` that `report --check` only checks, such as a
+[defect report](../glossary.json#concept.defect-report) about to be handed to the
+[Concorde repository](../glossary.json#concept.concorde-repository), resolves no reporting Module, since the project that records it resolves one,
+so its `null` owner is not refused even where the spec part is not installed.
 
 ### req.issues.report-evidence-present — A report's evidence exists
 
@@ -167,11 +171,18 @@ does not match its status and an Issue recorded in both folders, each with its r
 
 The bookkeeping command's `archive` SHALL move every committed record of the primary worktree whose
 folder does not match its status into the folder its status names, unchanged, in one commit under
-the merge lock, and name each record it moved and each misplaced record it left.
+the merge lock.
 
 It leaves an Issue committed in both folders and a record holding a change no Issue write made,
 since moving either would decide what only its inspection can; with nothing to move it commits
 nothing.
+
+### req.issues.archive-reported — Archive names what it moved and left
+
+The bookkeeping command's `archive` SHALL name each record it moved, with the path it moved from and
+to, and each misplaced record it left, with the reason it left it.
+
+Whoever runs it learns which records still need inspection without reading the commit.
 
 ### req.issues.list-filtered — A listing reads only the Issues asked for
 
@@ -208,14 +219,21 @@ one that failed or was killed, sees the records as they were committed.
 
 Before it reads the record it changes, every Issue write SHALL put back to its committed version,
 or remove when no commit holds it, every record an earlier write published but did not commit,
-and remove the temporary files of an interrupted
-[file transaction](../glossary.json#concept.file-transaction) there, under the
-[merge lock](../glossary.json#concept.merge-lock) and committing nothing.
+under the [merge lock](../glossary.json#concept.merge-lock) and committing nothing.
 
 A write that left such a record gave no receipt, so putting it back loses nothing acknowledged,
 and its writer may repeat it. A write that fails after publishing its record puts it back itself
 before it refuses. A move between the folders is put back whole: the record is restored where it
 was committed and removed from the folder it was published in.
+
+### req.issues.temporaries-removed — An interrupted file transaction's temporaries are removed
+
+Before it reads the record it changes, every Issue write SHALL remove the temporary files an
+interrupted [file transaction](../glossary.json#concept.file-transaction) left in
+`.concorde/issues/` and its `closed/` folder.
+
+A killed write leaves them beside the records; they are never records, and nothing else removes
+them.
 
 ### req.issues.foreign-change-kept — A record change no write made is kept
 
@@ -245,24 +263,37 @@ Where the coordination part is installed, the Issue store SHALL refuse every wri
 
 A write so never commits between a merge commit and the checks that decide whether it stays. The
 store learns of an unfinished merge from Tasks' [task records](../glossary.json#concept.task-record), the format the coordination part
-publishes, never from its code. Without the coordination part there is no task merge, and the merge
-lock alone orders the writes.
+publishes, never from its code. A task record it cannot read may be the merging task's, so the
+store refuses the write then too, with `unreadable_task_record` naming the record, rather than
+pass over it. Without the coordination part there is no task merge, and the merge lock alone
+orders the writes.
 
 ### req.issues.tools-as-command — The Issue tools answer as the command
 
-Each Issue tool the issues part registers with the [project MCP server](../glossary.json#concept.project-mcp-server) SHALL answer and refuse exactly as the bookkeeping command's action it names, never waiting for the merge lock.
+Each Issue tool the issues part registers with the [project MCP server](../glossary.json#concept.project-mcp-server) SHALL answer and refuse exactly as the bookkeeping command's action it names.
 
 The tools are the issues part's own, registered through its
 [part registration](../glossary.json#concept.part-registration); where the issues part is not
-installed none of them exists ([MCP tools](interface.md#mcp-tools)).
+installed none of them exists ([MCP tools](interface.md#mcp-tools)). The calling session alone is
+theirs, as reporter and actor ([attribution](#req.issues.main-agent-actor)).
+
+### req.issues.tools-no-wait — The Issue tools never wait for the merge lock
+
+Each Issue tool that writes SHALL refuse with `merge_busy` at once, without waiting, while another
+process holds the merge lock.
+
+A tool call holds its session until it answers, so a busy lock is reported at once, naming its
+holder, and the session decides whether to wait for its release and repeat the call; the command's
+own writes wait instead, up to their wait.
 
 ### req.issues.own-check — Issues checks its own records
 
-The Issue store's check, `concorde issues check` and the tool `issue_check`, SHALL be the only validation of Issue records, so that no other part's validation reads them.
+Issue records SHALL be validated as a project check only by the Issue store's check, `concorde issues check` and the tool `issue_check`, which this Module's [configured check](../glossary.json#concept.configured-check) runs.
 
-The Spec tooling knows nothing of Issues; the records are still checked whenever this Module's
-[configured check](../glossary.json#concept.configured-check) runs, and a merge's checks include it
-where the project configures them.
+The Spec tooling knows nothing of Issues, so `concorde spec-validation` never reads a record; the
+records are still checked whenever this Module's configured check runs, and a merge's checks
+include it where the project configures them. The store's own reads validate every record they
+return as well, which is no project check.
 
 ### req.issues.commit-alone — An Issue commit commits its record alone
 

@@ -127,7 +127,7 @@ A **typed value** is a closed JSON object `{"type_id": ..., "schema_version": ..
 `type_id` is a nonblank name such as `concorde-run-trace`, `schema_version` a positive integer, and
 `data` the value's content, checked against the schema the type's owner registered for that version.
 Only a value its owner's contract designates as typed carries the envelope, such as a trace node's
-`content` or an [Issue report](../glossary.json#concept.issue-report); a record whose contract defines its own representation, such as the
+`content`; a record whose contract defines its own representation, such as the
 workspace binding above, a [run result](../glossary.json#concept.run-result) or a grant, is checked against that contract's schema as it
 is.
 

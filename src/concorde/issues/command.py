@@ -55,6 +55,7 @@ ENVIRONMENT = frozenset(
         "io_error",
         "merge_busy",
         "merge_incomplete",
+        "unreadable_task_record",
         "commit_failed",
         "recovery_failed",
         "uncommitted_change",
@@ -446,7 +447,8 @@ def report_action(
 
     Where the spec part is installed its owner must be a Module of the registry of the primary
     worktree, which keeps the Issue, and its context is the registry of ``root``; its evidence must
-    exist in ``root``, or in its origin project.
+    exist in ``root``, or in its origin project. With ``check_only`` a report with an origin
+    resolves no reporting Module, which the project recording it resolves.
 
     With ``provenance``, a file holding the provenance its caller vouches for, such as an
     Operation's host reporting its findings, the report is recorded with that provenance as the
@@ -488,7 +490,15 @@ def report_action(
         receipt = guarded(report_issue, primary, report, source, wait=wait)
         _, revision = guarded(read_issue, primary, receipt["issue_id"])
         return {"receipt": receipt, "revision": revision}
-    target = reporting_module(label, report, registry(primary))
+    found = registry(primary)
+    if check_only and "origin" in report:
+        # A report seen in another project is checked here and recorded by the project it is
+        # handed to, which resolves its reporting Module; a named owner is checked all the same.
+        if report["owner_target_id"] is not None:
+            reporting_module(label, report, found)
+        target = None
+    else:
+        target = reporting_module(label, report, found)
     # A report observed in another project names its evidence in that project.
     where = Path(report["origin"]["project"]) if "origin" in report else root
     for index, item in enumerate(report["evidence"]):

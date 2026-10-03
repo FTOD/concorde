@@ -53,7 +53,7 @@ A value its owner's contract designates as a typed value is a
 **[typed value](../glossary.json#concept.typed-value)** `{type_id, schema_version, data}`, whose
 `data` is checked against the schema its owner registered for that type and version: a
 [trace node](../glossary.json#concept.trace-node)'s content, such as a run's steps or a worker
-round's audit, or an [Issue report](../glossary.json#concept.issue-report). The owner registers its own types when its code loads, and a
+round's audit. The owner registers its own types when its code loads, and a
 schema of one part may embed a value of another part's type by name, so neither imports the other.
 Not every structured record is one: a workspace binding, a [run result](../glossary.json#concept.run-result),
 a grant or an Issue record file keeps the representation its own contract defines, and is checked

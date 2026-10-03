@@ -17,8 +17,9 @@ may close one — a task fixes an [Issue](../glossary.json#concept.issue) with o
 A failure of the Issue system itself is never recorded as an Issue.
 
 Issues is the issues [part](../glossary.json#concept.part), and it depends on the
-[Kernel](../kernel/module.md) alone: its records are [typed values](../glossary.json#concept.typed-value)
-written through [file transactions](../glossary.json#concept.file-transaction), every write takes
+[Kernel](../kernel/module.md) alone: its report and receipt shapes are registered as
+[typed-value](../glossary.json#concept.typed-value) types, its records are written through
+[file transactions](../glossary.json#concept.file-transaction), every write takes
 the [merge lock](../glossary.json#concept.merge-lock) and every refusal is a link of the
 [error chain](../glossary.json#concept.error-chain). Two features reach further, as
 [optional integrations](../glossary.json#concept.optional-integration): an Issue's Module is checked
@@ -147,10 +148,30 @@ issues: Issues {
   }
   command: Bookkeeping command {
     "command.py"
+    "cli.py"
+    "tools.py"
     "scripts/issues.py"
   }
   command -> store: records and reads Issues through
 }
+```
+
+The command has two faces, its command line and the Issue tools, and both run the same actions,
+which is why a tool answers and refuses exactly as the command does:
+
+```d2 illustrative
+direction: right
+shell: "concorde issues,\nscripts/issues.py"
+server: "project MCP server"
+cli: "cli.py\n(command line)"
+tools: "tools.py\n(Issue tools)"
+actions: "command.py\n(the actions)"
+store: "Issue store"
+shell -> cli
+server -> tools
+cli -> actions: runs
+tools -> actions: calls with the same arguments
+actions -> store
 ```
 
 ### Where Issues are kept
@@ -328,7 +349,8 @@ report is made in or the named origin, and any error chain; it supplies the repo
 Module, registry digest, task and Git `HEAD` itself. A successful reply gives a
 [receipt](interface.md#contract.issues.receipt) naming that immutable report and the record's
 revision. Keep it as the reference for follow-up. `report --check` checks the report without
-recording it, useful before handing a defect report to another project.
+recording it, useful before handing a defect report to another project; a report with an `origin`
+is checked without resolving its reporting Module, which the project recording it resolves.
 
 What `list` and `show` found decides what the report carries:
 
@@ -378,8 +400,8 @@ Issue with a valid owner does not by itself fail this check; readiness to delive
 decision.
 
 An unknown Issue, stale revision, action on the wrong status, unregistered owner, missing report
-evidence, busy merge lock, unfinished merge, failed commit, record that could not be put back or
-record changed by hand is refused without committing a record or leaving one a read shows.
+evidence, busy merge lock, unfinished merge, unreadable task record, failed commit, record that
+could not be put back or record changed by hand is refused without committing a record or leaving one a read shows.
 The error names the Issue, file, field or argument and gives a code and explanation so the caller
 can correct the request. The exit status is 2 for an unusable request and 1 for a refused one; exact
 shapes, actions and codes are in the [Issue interface](interface.md).
@@ -446,7 +468,9 @@ exist, which is root, and which digest names a report's context: a report's owne
 registered Module, a `null` owner falls to the root Module, and the store check fails an open Issue
 whose owner is not registered. Where it is not, a Module is a plain label: a report must name its
 owner, which nothing checks, its context digest is that of no registry, and the store check judges
-no owner and says, in a note, that the spec part is not installed.
+no owner and says, in a note, that the spec part is not installed. A report with an `origin` that
+`report --check` checks before it is handed to another project resolves no reporting Module either
+way: the project that records it resolves one, so its `null` owner is never refused here.
 
 <a id="uses-tasks"></a>
 
@@ -460,7 +484,9 @@ that a task is `merging`, and before every write the store reads the records of 
 [Tasks' account of that merge](../coordination/tasks/requirements.md#req.tasks.merge-incomplete-refused)
 built from the record's `merging`: the merging task, its process and start, its commits, where the
 primary branch is now and the `--resume` and `--abort` that finish it. A record that does not read
-as JSON cannot be told `merging` and is passed over, Tasks refusing its own commands on it. Where
+as a JSON object cannot be told not to be `merging`, and may be the very record of the merge, so
+the write is refused with `unreadable_task_record`, an environment refusal naming the record, until
+the main agent repairs it, as Tasks refuses its own commands on it. Where
 the coordination part is not installed there is no `.concorde/tasks/`, no task merge, and no write
 waits for one. The primary worktree of any worktree of the repository the store finds through Git's
 common directory itself, needing no part.
@@ -490,9 +516,11 @@ and a concurrent writer is never silently overwritten. A failure after publicati
 them, puts the record back as it was and refuses the write. Reads ask Git for the records of the
 last commit, so they need no lock and see one commit's records at once. Identities are derived from
 the reporting invocation and the reporter's key rather than counted, so no allocation state is
-shared. Report and receipt shapes are [typed values](../glossary.json#concept.typed-value)
-registered as `concorde-issue-report@3` and `concorde-issue-receipt@2`, which no other part
-knows.
+shared. The report and receipt shapes are registered as
+[typed-value](../glossary.json#concept.typed-value) types, `concorde-issue-report@3` and
+`concorde-issue-receipt@2`, so that another part's schema could embed one by name; Issues itself
+exchanges and checks reports, receipts and records as they are, without an envelope, and no other
+part knows the types.
 
 The view below follows one write and what each refusal leaves; every refusal before publication
 leaves the record as it was committed.
@@ -501,7 +529,7 @@ leaves the record as it was committed.
 direction: down
 check: "check the request\n(the report or disposition, the root)"
 lock: "take the merge lock,\nor the caller holds it"
-merge: "no task stored merging?"
+merge: "every task record read,\nnone stored merging?"
 recover: "put back what earlier\nwrites left uncommitted"
 revision: "committed record at the\nrevision the caller read?"
 publish: "publish through a file\ntransaction and sync"
@@ -519,7 +547,7 @@ publish -> commit
 commit -> done
 check -> refused: invalid_issue, not_primary
 lock -> refused: merge_busy
-merge -> refused: merge_incomplete
+merge -> refused: merge_incomplete, unreadable_task_record
 recover -> refused: uncommitted_change
 recover -> failed: a record not put back
 revision -> refused: stale_issue, closed_issue, open_issue
