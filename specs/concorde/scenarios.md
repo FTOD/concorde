@@ -38,13 +38,14 @@ problem ([Workflows](workflows/requirements.md#req.workflows.no-ask-describe-con
 
 - GIVEN a project in which Concorde has never been installed
 - WHEN the developer runs the installer with `--parts spec`
-- THEN the project's `concorde` checks, serves and publishes its Specs: `spec-validation`, `registry`, `grant` and `docsite` work
+- AND initialization proposes a first [Spec](glossary.json#concept.spec) and then applies that exact proposal
+- THEN the project's `concorde` checks, serves and publishes its Specs: `spec-validation` finds no error, `registry --check` finds the mirror current, `grant` computes a grant, the Spec MCP server `concorde spec-mcp` answers a tool call, and `docsite` proposes a site and applies that proposal
 - AND `task`, `run` and `issues` are refused with `part_missing`, each naming its part and the `--parts` that installs it
-- AND the project holds no code, guidance section, workflow or ignore rule of another part
+- AND the project holds the code, guidance sections, workflows and ignore rules of the spec part and of Distribution, the installation host, and of no other part
 
 ### scenario.concorde.coordination-without-method — A task delivered and merged without Method
 
-- GIVEN a project without Specs in which the coordination part is installed without Method, the spec part or the issues part
+- GIVEN a project without Specs in which the coordination part is installed alone, with the kernel it depends on and Distribution, the installation host, so that the spec, execution, workflow, issues and method parts are absent
 - WHEN the main agent opens a task naming its Modules by plain labels, the task session delivers it with `concorde task deliver --check "<command>"`, and the main agent merges and closes it
 - THEN the task branch carries the delivery commit and the primary branch the task's change
 - AND no step asked for `spec-validation`, a run or an [Issue](glossary.json#concept.issue), whose parts are absent

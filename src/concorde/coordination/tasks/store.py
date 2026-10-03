@@ -37,6 +37,7 @@ from ...kernel import binding as workspace_binding
 from ...kernel import delivery, locking
 from ...kernel.refusal import KernelError
 from ...kernel.schema import register
+from ...kernel.tracing.kinds import NodeKind, register as register_kinds
 from ...kernel.tracing import layout, locks, retention, roots
 from ...kernel.tracing import node as trace
 from ...kernel.tracing.node import Node, concorde_commit, protocol_version
@@ -532,7 +533,12 @@ def merge_lock_held(primary: Path) -> bool:
 
 @contextmanager
 def task_workspace_locked(
-    primary: Path, task_id: str, command: str, wait: float = MERGE_WAIT
+    primary: Path,
+    task_id: str,
+    command: str,
+    wait: float = MERGE_WAIT,
+    *,
+    retake: bool = True,
 ):
     """Hold the task's workspace lock, waiting for it up to ``wait`` seconds, or refuse with
     ``workspace_busy``; yield the seconds spent waiting.
@@ -541,6 +547,8 @@ def task_workspace_locked(
     commits on its branch or changes its worktree while the task is merged or closed, and so that
     waiting for a run of this task, such as a delivery still finishing, never holds up the merges
     of other tasks. The wait happens inside this process: a caller asks once and never polls.
+    With ``retake`` False, a lock file the close that retired the task removed while this process
+    waited is refused with ``task_closed`` instead of being taken again.
     """
     try:
         with locking.workspace_lock(
@@ -549,9 +557,16 @@ def task_workspace_locked(
             f"`concorde task {command}` of task {task_id}",
             wait=wait,
             task=task_id,
+            retake=retake,
         ) as waited:
             yield waited
     except locking.LockRefused as error:
+        if error.code == "workspace_retired":
+            raise TaskError(
+                "task_closed",
+                f"{error}; task {task_id} was closed while `concorde task {command}` waited "
+                "for its workspace lock",
+            ) from None
         raise TaskError(
             "workspace_busy",
             f"{error}; `concorde task {command}` waits up to {wait:g} s for the workspace "
@@ -871,6 +886,21 @@ register(
             "model_usage": {"anyOf": [{"type": "null"}, {"type": "object"}]},
         },
     },
+)
+register_kinds(
+    NodeKind(
+        "task",
+        TASK_TRACE,
+        (
+            "task",
+            "modules",
+            "branch",
+            "base_commit",
+            "concorde_commit",
+            "protocol_version",
+        ),
+    ),
+    NodeKind("session", SESSION_TRACE, ("task", "model")),
 )
 
 

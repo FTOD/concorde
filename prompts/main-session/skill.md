@@ -210,7 +210,7 @@ exactly the `--check` commands you name, for a project that must build first, fo
 `concorde spec-validation` while a `concorde update` is not validated yet), undoes the merge if a
 check fails, and closes the task as merged. It waits up to `--wait` seconds (300 by
 default) for the locks it needs: first for a run of the task that is still going, such as a
-`delivery` finishing, then for another session's merge. Run it in background Bash
+delivery finishing, then for another session's merge. Run it in background Bash
 (`run_in_background`) like a run, since those waits and its checks can outlast a foreground Bash
 call, and a merge killed while its checks run leaves the task `merging`. When it fails with `merge_busy`, another session's merge outlasted the wait:
 run it again. When `merge` or `close` fails with `workspace_busy`, a run of that task outlasted

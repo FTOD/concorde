@@ -425,13 +425,15 @@ no task resolves an Issue and a merge closes none.
 
 ### req.tasks.merge-own-sources — A merge runs the Concorde it started with
 
-`concorde task merge` SHALL run every step after the merge, closing the task, its Issues and its
-sessions, on the Concorde code its process started with, even when the merge changes that code in
-the primary worktree.
+`concorde task merge` SHALL run every step after the merge that it runs in its own process,
+closing the task and its sessions, on the Concorde code its process started with, even when the
+merge changes that code in the primary worktree.
 
 A merge of a task that changed Concorde itself changes the files of the running Concorde under its
 own process: a module it first needs after the merge would otherwise be the merged version, mixed
-with the modules it loaded before. Its checks are processes of their own and run the merged code.
+with the modules it loaded before. Its checks are processes of their own and run the merged code,
+and so does the Issues bookkeeping command that closes the task's Issues, which Coordination reaches
+only as a process of the primary worktree's `concorde`, the parts being independent.
 
 ### req.tasks.merge-clean-primary — A merge starts from a clean primary
 

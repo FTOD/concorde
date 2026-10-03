@@ -28,7 +28,7 @@ an installed part's registration. What each kind of entry is called with and ans
 ```concorde-contract
 {
   "id": "contract.distribution.part-registration",
-  "version": 4,
+  "version": 5,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -93,8 +93,8 @@ an installed part's registration. What each kind of entry is called with and ans
         "properties": {
           "files": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*/?$"}},
           "defaults": {"type": "object", "additionalProperties": {"type": "string"}},
-          "gitignore": {"type": "array", "items": {"type": "string", "minLength": 1}},
-          "permissions": {"type": "array", "items": {"type": "string", "minLength": 1}},
+          "gitignore": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+          "permissions": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
           "programs": {"type": "array", "uniqueItems": true, "items": {"enum": ["d2", "pi-runtime"]}},
           "python_dependencies": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
           "prepare": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/entry"}]},
@@ -153,7 +153,7 @@ name are a build error, never resolved by order.
 
 The build records what every part of the package registers in the **parts index**
 `generated/parts.json`, `{"schema_version": 1, "parts": {<part>: {"module", "depends_on",
-"commands", "mcp_tools"}}}`, so that a project's `concorde` and project MCP server name the part of a
+"commands", "mcp_tools"}}}`, so that a project's `concorde` and [project MCP server](../glossary.json#concept.project-mcp-server) name the part of a
 command or tool that is not installed without reading that part's registration. The installed parts
 are, in a source checkout, every part the package builds, and in a project the parts the receipt
 names under `parts`, an object whose keys are the part names, every part when the receipt names
@@ -168,7 +168,7 @@ refused adds `binding_error`, which the receipt file never holds.
 ```concorde-contract
 {
   "id": "contract.distribution.install-result",
-  "version": 2,
+  "version": 3,
   "schema": {
     "type": "object",
     "required": [
@@ -184,6 +184,7 @@ refused adds `binding_error`, which the receipt file never holds.
       "tools",
       "pi_runtime",
       "files",
+      "defaults",
       "amended",
       "permissions"
     ],
@@ -256,6 +257,7 @@ refused adds `binding_error`, which the receipt file never holds.
       },
       "pi_runtime": {"type": "boolean"},
       "files": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+      "defaults": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
       "amended": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
       "permissions": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
       "binding_error": {
@@ -264,7 +266,7 @@ refused adds `binding_error`, which the receipt file never holds.
       }
     }
   },
-  "semantics": "The result of a successful install, equal to the receipt .concorde/install.json it wrote except for binding_error. version is the installed package's version from concorde.json; parts names every installed part, the parts asked for with every part they depend on and Distribution, each mapped to the version it carries, which is the package's version for every part; source the absolute path of the Concorde checkout installed from, which concorde update installs from again; mode normal, or develop for a develop install; source_commit the commit installed, the develop source check's commit in a develop install and otherwise the checkout's HEAD, or null outside a Git checkout. framework and command are where the Framework runtime and the command lie. python names Concorde's own environment: its path, the Python requirement concorde.json names under runtime.python, the interpreter uv chose (base, an absolute path) and that interpreter's version. dependencies is null when the install left Concorde's Python dependencies out, and otherwise names the requirements file exported from the package's uv.lock, the SHA-256 of that lock and the number of packages installed. dependencies is also null when no installed part needs a Python dependency. tools holds d2 when the pinned d2 is placed (its release, platform key, the archive's pinned SHA-256 and the program's path), which happens only where the spec part is installed, and pi-runtime when the pi runtime is placed (the package, its locked version, the SHA-256 of the lockfile and its folder), only where the worker harness part is; a tool left out has no key. pi_runtime is false when the install was made with --without-pi-runtime, a choice concorde update keeps. files lists, sorted, every file Concorde owns in the project, a default an earlier install wrote included; amended lists the project's own files the installer only amends (.gitignore, CLAUDE.md, .mcp.json and, once written, .claude/settings.json); permissions lists the permission rules of .claude/settings.json the installer added and owns. binding_error is present only when Spec core refused to bind the installed files after the receipt was written: it is Spec core's error record (contract.spec.error) and the install has still succeeded. A behaviour or field change increments the version.",
+  "semantics": "The result of a successful install, equal to the receipt .concorde/install.json it wrote except for binding_error. version is the installed package's version from concorde.json; parts names every installed part, the parts asked for with every part they depend on and Distribution, each mapped to the version it carries, which is the package's version for every part; source the absolute path of the Concorde checkout installed from, which concorde update installs from again; mode normal, or develop for a develop install; source_commit the commit installed, the develop source check's commit in a develop install and otherwise the checkout's HEAD, or null outside a Git checkout. framework and command are where the Framework runtime and the command lie. python names Concorde's own environment: its path, the Python requirement concorde.json names under runtime.python, the interpreter uv chose (base, an absolute path) and that interpreter's version. dependencies is null when the install left Concorde's Python dependencies out, and otherwise names the requirements file exported from the package's uv.lock, the SHA-256 of that lock and the number of packages installed. dependencies is also null when no installed part needs a Python dependency. tools holds d2 when the pinned d2 is placed (its release, platform key, the archive's pinned SHA-256 and the program's path), which happens only where the spec part is installed, and pi-runtime when the pi runtime is placed (the package, its locked version, the SHA-256 of the lockfile and its folder), only where the worker harness part is; a tool left out has no key. pi_runtime is false when the install was made with --without-pi-runtime, a choice concorde update keeps. files lists, sorted, every file Concorde owns in the project, a default an earlier install wrote included; defaults lists, sorted, those of them that are Concorde-owned defaults, which hold the project's own data: the defaults of the installed parts and every default an earlier receipt recorded that is still in place, whether or not this install's parts or this package still declare it, so that no later install removes it; amended lists the project's own files the installer only amends (.gitignore, CLAUDE.md, .mcp.json and, once written, .claude/settings.json); permissions lists the permission rules of .claude/settings.json the installer added and owns. binding_error is present only when Spec core refused to bind the installed files after the receipt was written: it is Spec core's error record (contract.spec.error) and the install has still succeeded. A behaviour or field change increments the version.",
   "example": {
     "version": "9.0.0",
     "parts": {
@@ -309,7 +311,8 @@ refused adds `binding_error`, which the receipt file never holds.
       }
     },
     "pi_runtime": true,
-    "files": [".claude/skills/concorde/SKILL.md", ".claude/workflows/concorde-brownfield.js", ".concorde/bin/concorde"],
+    "files": [".claude/skills/concorde/SKILL.md", ".claude/workflows/concorde-brownfield.js", ".concorde/bin/concorde", ".concorde/issues/.gitignore"],
+    "defaults": [".concorde/issues/.gitignore"],
     "amended": [".gitignore", "CLAUDE.md", ".mcp.json", ".claude/settings.json"],
     "permissions": ["Workflow(concorde-brownfield)", "mcp__concorde__workflow_step", "Bash(.concorde/bin/concorde workflow report:*)"]
   }

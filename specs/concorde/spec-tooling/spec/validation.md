@@ -83,8 +83,15 @@ issues part's own check; whether every
 is Check execution's, in the execution part; whether Concorde's own package is consistent and
 whether tests pass are configured checks owned by the Module concerned and run by Check execution.
 Their results enter a task's evidence next to the validation result, not inside it, so
-`spec-validation` stays a pure function of the Specs and the files they bind, and the spec part
-reads no file format of another part.
+`spec-validation` stays a pure function of the Specs and the files they bind.
+
+The spec part reads no file format of another part but two of Distribution's, the installation
+host present in every installation, and reads each only when it is present: the installation record
+`.concorde/install.json`, whose installed files a Module binds by their exact paths
+(`CHK.binds.installed`), and the [build manifest](../../glossary.json#concept.build-manifest)
+`generated/build-manifest.json`, whose listed outputs are exempt from `CHK.binds.unbound`. Without
+an installation record no file counts as installed, and without a build manifest only the other
+generated outputs are exempt; neither absence is a finding.
 
 ## What success means
 

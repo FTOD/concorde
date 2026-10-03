@@ -41,9 +41,11 @@ run on by its project model name, each `{}` or with its own `reasoning` level. E
 names must be enabled, or every worker is refused with `model_not_enabled`. The file holds a `default`
 and, per Operation, a `default` and one entry per **worker id** under
 `operations.<operation>.default` and `operations.<operation>.workers.<worker-id>`: the name each
-Operation gives the workers it launches, `worker` for most Operations with one worker, `reviewer`
-for `plan_review`, `reviewer` and `checker` for `spec_review`, `reviewer1` to `reviewer5`,
-`architect1`, `architect2` and `chair` for `spec_panel`. Each entry
+Operation gives the workers it launches. Operations exist where the execution part is installed and
+the part providing them registers their worker ids; where the method part is installed, its
+Operations name theirs `worker` for most Operations with one worker, `reviewer` for `plan_review`,
+`reviewer` and `checker` for `spec_review`, `reviewer1` to `reviewer5`, `architect1`, `architect2`
+and `chair` for `spec_panel`. Each entry
 may set a `backend` (`pi` or `claude`), a `model` and a `reasoning` level, and the most specific
 entry that sets a field wins. Workers run on pi, although you run on Claude Code, unless an entry sets
 `backend: "claude"`; an entry that only chooses a backend keeps the model and level it inherits,
@@ -66,17 +68,17 @@ read besides their grant (by default `.venv` and `node_modules`):
 }
 ```
 
-Where the coordination part is installed, a task carries the file of its base commit, so a later
-change on the primary branch never reaches a task already open. Change worker models only when the developer asks, by editing the JSON
-directly and preserving unrelated entries; there is no editor. A model the developer adds for a
-worker goes into `enabled_models` too. For future tasks, edit the primary
-worktree's `.concorde/workers.json` and commit that file alone on the primary branch: a change of
-nothing but this file is one of the few changes you commit directly in the primary worktree, beside
-an approved small change and regenerated derived files, never while a
+Change worker models only when the developer asks, by editing the JSON directly and preserving
+unrelated entries; there is no editor. A model the developer adds for a worker goes into
+`enabled_models` too. For later work, edit the primary worktree's `.concorde/workers.json` and
+commit that file alone on the primary branch. Where the coordination part is installed, a task
+carries the file of its base commit, so a later change on the primary branch never reaches a task
+already open; a change of nothing but this file is one of the few changes you commit directly in
+the primary worktree, beside an approved small change and regenerated derived files, never while a
 `concorde task merge` is unfinished. A task may change its own models while it works, as any
 tracked file of its branch; the change stays with the task and reaches the primary branch when the
-task merges. An unbound run reads the committed file of the commit it examines, so commit a
-change before an unbound run is to use it.
+task merges. Where the execution part is installed, an unbound run reads the committed file of
+the commit it examines, so commit a change before an unbound run is to use it.
 
 For suggestions, run `python3 scripts/available_models.py --backend pi` or `--backend claude`,
 optionally with `--json`. In an installed project the script is under
@@ -91,6 +93,6 @@ if a requested model is already known, edit it directly without a mandatory ques
 Workers validate the whole file when a worker launches. The chosen backend must be installed then,
 but need not be installed to edit the file. A missing program causes `backend_missing`, never
 fallback, and a malformed file `config_invalid` naming the field; a file of `schema_version: 1`,
-whose models were local ids, is refused saying how to rename them and map them. An Operation whose
-worker cannot be configured ends `failed` with `worker_model_unavailable`, naming the worker, file,
-map entry or missing program.
+whose models were local ids, is refused saying how to rename them and map them. Where the method
+part is installed, an Operation whose worker cannot be configured ends `failed` with
+`worker_model_unavailable`, naming the worker, file, map entry or missing program.

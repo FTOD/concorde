@@ -233,6 +233,35 @@ class TypedValueTests(unittest.TestCase):
         with self.assertRaises(KernelError) as refused:
             schema.validate({}, {"$ref": "#/$defs/missing", "$defs": {}})
         self.assertEqual("invalid_input", refused.exception.code)
+        # A contract schema keeps $defs at its top only, and a refusal names the nested place
+        # by one pointer component per step.
+        for value, field in (
+            (
+                {"properties": {"a": {"$defs": {"b": NOTE}}}},
+                "/properties/a/$defs",
+            ),
+            (
+                {"$defs": {"a": {"anyOf": [{"type": "bogus"}]}}},
+                "/$defs/a/anyOf/0",
+            ),
+            (
+                {"properties": {"x/y": {"items": {"type": "bogus"}}}},
+                "/properties/x~1y/items",
+            ),
+        ):
+            with self.subTest(field), self.assertRaises(KernelError) as refused:
+                schema.validate({}, value)
+            self.assertEqual(
+                ("invalid_input", field),
+                (refused.exception.code, refused.exception.field),
+            )
+        deep = None
+        for _ in range(60):
+            deep = {"child": deep}
+        with self.assertRaises(KernelError) as refused:
+            schema.validate(deep, record)
+        self.assertEqual("invalid_field", refused.exception.code)
+        self.assertIn("deeper than 100 levels", str(refused.exception))
 
     @verifies("scenario.kernel.typed-embedded")
     def test_a_typed_value_is_checked_with_every_value_it_embeds(self):

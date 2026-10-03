@@ -156,6 +156,10 @@ is.
   character, no empty, `.` or `..` component. An artifact is `{id, path, digest}`, its `path`
   relative to the root its owner names and its digest `sha256:` and 64 lowercase hexadecimal digits
   of the file's bytes, and a value whose artifact's bytes changed is refused as `stale_reference`.
+  The file an artifact or a [file transaction](#file-transactions) names is reached below its root
+  only through real directories: a path any of whose components is a symbolic link is refused,
+  naming the path and the link, with `invalid_field` for an artifact and as a malformed list
+  (`invalid_proposal`) of a file transaction.
   Every other path is what its owner's schema says, an absolute location included: a task trace's
   worktree or the evidence a run result keeps are never rewritten.
 
@@ -179,7 +183,10 @@ A value is checked as JSON Schema checks it, for these keywords: an object admit
 matches anywhere in the string unless it is anchored; `const` and `enum` compare values with their
 JSON type, so `true` is not `1`; each keyword applies to the kind of value it constrains, whether the
 schema names a `type` or not; and a string whose schema sets `minLength` must not consist of
-whitespace only.
+whitespace only. Checking a value descends at most 100 levels: each field of an object, item of an
+array, `anyOf` alternative tried, `$ref` followed and `data` of an embedded typed value counts one
+level, and a value whose checking would go deeper is refused with `invalid_field` at the field
+reached.
 
 ### Contract schemas
 
@@ -188,8 +195,9 @@ A record whose own contract defines its representation, such as a workspace bind
 that owns it checks it against a **contract schema**, the schema its contract gives, as code. A
 contract schema is written in the registered dialect with one addition: an object `$defs` of named
 schemas at its top, referred to anywhere in it as `{"$ref": "#/$defs/<name>"}`, so that a recursive
-record such as an error link with its causes can be described. A local reference must name an entry
-of `$defs`; a bare type identity embeds a typed value as above. A contract schema is checked against
+record such as an error link with its causes can be described; a `$defs` anywhere else is refused,
+naming its JSON pointer. A local reference must name an entry of `$defs`; a bare type identity
+embeds a typed value as above. A contract schema is checked against
 the dialect when it is first used (`invalid_input`) and a record that breaks it is refused with
 `invalid_field`, naming the JSON pointer of the offending field. It is never registered.
 

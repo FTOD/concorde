@@ -315,6 +315,42 @@ class ValidateTests(unittest.TestCase):
         self.assertEqual(was["digest"], now["digest"])
         self.assertNotEqual(before["digest"], after["digest"])
 
+    def test_a_missing_input_of_a_module_not_checked_blocks_once(self):
+        (self.worktree / "src/a/calc.py").write_text(FIXED)
+        checks = read_checks(self.worktree)
+        write_checks(
+            self.worktree,
+            [
+                *checks,
+                {
+                    "module": "module.other",
+                    "id": "check.other",
+                    "argv": ["true"],
+                    "timeout_seconds": 60,
+                    "inputs": ["src/other/gone.py"],
+                },
+            ],
+        )
+        status, envelope = self.project.validate()
+        self.assertEqual((status, envelope["status"]), (1, "blocked"), envelope)
+        readiness = envelope["output"]
+        blocking = [item for item in readiness["blocking"] if item["kind"] == "check"]
+        self.assertEqual(["configured checks"], [item["ref"] for item in blocking])
+        self.assertIn("check_input_missing", blocking[0]["detail"])
+        self.assertIn("src/other/gone.py", blocking[0]["detail"])
+        # The run's own Modules are still checked.
+        self.assertEqual(
+            [("check.a", "passed")],
+            [(item["check"], item["status"]) for item in readiness["checks"]],
+        )
+        # A missing input of a Module the run checks is reported once, not again by its checks.
+        write_checks(self.worktree, [{**checks[0], "inputs": ["src/a/gone.py"]}])
+        readiness = self.project.validate()[1]["output"]
+        self.assertEqual(
+            ["configured checks"],
+            [item["ref"] for item in readiness["blocking"] if item["kind"] == "check"],
+        )
+
     @verifies("scenario.validation.checks-configuration")
     def test_a_changed_check_command_changes_the_configuration_digest(self):
         base = git(self.worktree, "rev-parse", "HEAD")

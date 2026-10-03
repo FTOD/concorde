@@ -23,6 +23,7 @@ from pathlib import Path
 from ...kernel import binding, delivery, errors
 from ...kernel.refusal import KernelError
 from ...kernel.schema import register
+from ...kernel.tracing.kinds import NodeKind, register as register_kinds
 from ...kernel.tracing.node import Node
 from . import checks, parts, store
 from .store import TaskError
@@ -71,6 +72,10 @@ register(
             "exit_code": {"anyOf": [{"type": "null"}, {"type": "integer"}]},
         },
     },
+)
+register_kinds(
+    NodeKind("delivery", DELIVERY_TRACE, ("task", "branch", "commit")),
+    NodeKind("delivery-check", DELIVERY_CHECK_TRACE, ()),
 )
 DELIVERIES = "deliveries"
 
@@ -152,8 +157,13 @@ def deliver_task(
             "`concorde delivery`, which validates the whole workspace before it commits; "
             "`concorde task deliver` delivers only where the method part is not installed",
         )
-    primary, worktree, record = _bound_task(here, task_id)
-    with store.task_workspace_locked(primary, task_id, "deliver", wait) as waited:
+    primary, worktree, _ = _bound_task(here, task_id)
+    with store.task_workspace_locked(
+        primary, task_id, "deliver", wait, retake=False
+    ) as waited:
+        # A close, a merge or a branch switch may have come while this process waited: admit
+        # the task again under the lock and act on the record read now.
+        primary, worktree, record = _bound_task(worktree, task_id)
         return _delivered(primary, worktree, record, commands, waited)
 
 

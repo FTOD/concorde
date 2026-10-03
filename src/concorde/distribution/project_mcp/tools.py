@@ -84,10 +84,14 @@ def listing(installed: dict | None = None) -> list[dict]:
     return found
 
 
+# The fields of a tool's registration that say how the server serves it.
+SERVED = ("worktree", "long_work", "threaded")
+
+
 def serving(installed: dict | None = None) -> dict[str, dict]:
     """How the server serves each tool, as its registration says."""
     return {
-        name: {key: tool[key] for key in ("worktree", "long_work", "threaded")}
+        name: {key: tool[key] for key in SERVED}
         for name, (_, tool) in presented(installed).items()
     }
 
@@ -176,6 +180,11 @@ def answer(name: str, envelope: dict) -> tuple[dict, dict | None]:
                 f"there is no tool {name!r}; the tools are {', '.join(tools)}",
             )
         registration, tool = found
+        served = envelope.get("served")
+        if isinstance(served, dict) and served != {key: tool[key] for key in SERVED}:
+            # The server routed the call by an earlier listing: it is to route it again, as
+            # this code serves the tool, before anything runs.
+            return {"reroute": serving(installed), "tools": listed}, None
         reply = registration.entry(tool["entry"])({**envelope, "tool": name})
     except Refusal as refusal:
         return {"error": refusal.link, "tools": listed}, None

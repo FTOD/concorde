@@ -201,6 +201,7 @@ class DevelopInstallTests(unittest.TestCase):
             SECTION, (project / ".claude/skills/concorde/SKILL.md").read_text()
         )
 
+    @verifies("scenario.dogfooding.develop-install-without-coordination")
     def test_a_develop_install_of_some_parts_keeps_them_on_update(self):
         package = repository(self)
         project = new_project(package)
@@ -214,9 +215,22 @@ class DevelopInstallTests(unittest.TestCase):
             dependencies=False,
         )
         self.assertEqual({"distribution", "issues", "kernel"}, set(first["parts"]))
+        self.assertEqual(git(package, "rev-parse", "HEAD"), first["source_commit"])
+        # Without Coordination the develop section would name tasks the project cannot open.
+        self.assertNotIn(
+            SECTION, (project / ".claude/skills/concorde/SKILL.md").read_text()
+        )
+        self.assertNotIn(
+            "This is a develop install", (project / "CLAUDE.md").read_text()
+        )
         report = update(project, package)
         self.assertEqual("develop", report["receipt"]["mode"])
         self.assertEqual(first["parts"], report["receipt"]["parts"])
+        self.assertNotIn(
+            SECTION, (project / ".claude/skills/concorde/SKILL.md").read_text()
+        )
+        both = update(project, package, part_names=["coordination"])["receipt"]
+        self.assertEqual("develop", both["mode"])
         self.assertIn(
             SECTION, (project / ".claude/skills/concorde/SKILL.md").read_text()
         )

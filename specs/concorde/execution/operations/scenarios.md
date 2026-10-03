@@ -22,3 +22,10 @@ by the [Execution scenarios](../scenarios.md).
 - THEN the catalog refuses it with `duplicate_definition`, naming both parts
 - AND the first definition stays registered
 - AND the command catalog refuses a second [execution command](../../glossary.json#concept.execution-command) of one name the same way
+
+### scenario.operations.definition-complete — A definition names its providing Module and its workers
+
+- GIVEN a part registering definitions with the catalogs
+- WHEN it registers an Operation or an execution command whose definition names no providing [Module](../../glossary.json#concept.module), or an Operation that declares no [worker id](../../glossary.json#concept.worker-id)
+- THEN the catalog refuses it with `invalid_definition` and does not list it
+- AND a complete definition is listed with its providing Module, such as `module.understanding` for Method's `understand`, and the part that registered it

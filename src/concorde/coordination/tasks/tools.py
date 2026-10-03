@@ -23,7 +23,7 @@ import shlex
 from argparse import Namespace
 from pathlib import Path
 
-from ...kernel import errors
+from ...kernel import binding, errors
 from ...kernel.refusal import KernelError
 from ...kernel.schema import validate
 from ...kernel.tracing import layout, locks, reader
@@ -374,12 +374,25 @@ def task_open(call: Call, arguments: dict):
     }
 
 
+def _level(call: Call) -> str:
+    """The session's level: ``task-session`` for a session in a task worktree bound as a
+    workspace, ``main-agent`` for any other."""
+    try:
+        root = binding.toplevel(call.where)
+        bound = binding.load(root)
+    except KernelError:
+        return "main-agent"
+    if bound is None or os.path.realpath(root) == os.path.realpath(call.primary):
+        return "main-agent"
+    return "task-session"
+
+
 def task_escalate(call: Call, arguments: dict):
     return task_cli.escalate(
         call.primary,
         Namespace(
             task_id=arguments["task"],
-            by=arguments.get("by", "main-agent"),
+            by=arguments.get("by") or _level(call),
             code=arguments["code"],
             detail=arguments["detail"],
             reason=arguments["reason"],
@@ -642,6 +655,7 @@ def register_wait(call: Call, arguments: dict):
             return {"registered": False, "already": now}
         meta = {"kind": "rebound", "task": task}
     elif run:
+        task_cli.require_execution(call.primary)
         description = f"the end of run {run}"
         words = ["--run", run]
         now = wait.run_answer(call.primary, run)

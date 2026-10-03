@@ -7,7 +7,7 @@ in concrete situations.
 
 ### req.distribution.build-owned-outputs — The build writes only where it owns
 
-The build SHALL write only inside `generated/protocol/`, `generated/workers/`, `generated/main-session/`, `generated/dogfooding/`, `generated/development/`, `generated/guidance/`, `generated/skills/` and `generated/workflows/` and to `generated/build-manifest.json`.
+The build SHALL write only inside `generated/protocol/`, `generated/workers/`, `generated/main-session/`, `generated/dogfooding/`, `generated/development/`, `generated/guidance/`, `generated/skills/` and `generated/workflows/` and to `generated/build-manifest.json` and the parts index `generated/parts.json`.
 
 Other locations under `generated/` belong to other producers, and the build never judges or removes
 them. Each new prompt root adds its own owned location in the same change.
@@ -103,13 +103,26 @@ alone, and there is no task-session prompt.
 
 ## Installation
 
+
+### req.distribution.guidance-absent-parts — A guidance section stands without the parts it may lack
+
+Every guidance section a part registers, and Dogfooding's develop section, SHALL say what happens where a part it may be composed without is not installed, wherever it names a command or project MCP tool of that part.
+
+A section may be composed without every part that neither its own part depends on nor, for a
+task-session section, Coordination does, and the develop section without every part the
+coordination and issues parts do not depend on. A section that names such a command or tool
+plainly would send the agent to something the project lacks.
+
 ### req.distribution.glossary-import — The CLAUDE.md block imports the glossary
 
 Where the spec part is installed, the installed `CLAUDE.md` block SHALL import the glossary the project's registry declares, and nothing when none is declared.
 
 ### req.distribution.receipt-complete — The receipt names every owned file
 
-The installer's receipt SHALL list under `files` every file Concorde owns in the project, whether or not this install wrote it.
+The installer's receipt SHALL list under `files` every file Concorde owns in the project, whether or not this install wrote it, and under `defaults` those of them that are Concorde-owned defaults, a default an earlier receipt named that is still in place included.
+
+No install removes a default its earlier receipt names, since a default holds the project's own
+data ([Installing into a project](module.md#installing-into-a-project)).
 
 ### req.distribution.receipt-amended — The receipt names every amended project file
 
@@ -300,11 +313,25 @@ long-running processes a tool starts, such as Coordination's `concorde task wait
 `concorde task merge`; `workflow_step` alone runs the `concorde` of the session's own worktree,
 as Workflows requires.
 
+### req.distribution.mcp-current-serving — A call is served as the current code registers its tool
+
+The project MCP server SHALL run every call of a registered tool in the worktree, with or without the hand-over of long work and on or off a thread of its own, as the registration of the Concorde that answers the call says, the session's own worktree's `concorde` for a tool registered with `worktree` `session`, long work included, even when the server's last listing of the tools said otherwise.
+
+How a tool is served is part of the current code as much as its answer: an update that changes it
+takes effect at the next call, without the session listing its tools again.
+
 ### req.distribution.mcp-tools-changed — The session hears that its tools changed
 
-When the tools of the Concorde that answered a call differ from those the server last listed to its session, the server SHALL tell the session that its tools changed and list the current code's tools when asked again.
+When the tools of the Concorde that answered a call differ from those the server last listed to its session, the server SHALL tell the session that its tools changed and list the current code's tools when asked again, a listing it fetched without giving it to the session not counting as listed.
 
 A part installed or removed by an update thereby adds or removes its tools in a running session.
+
+### req.distribution.mcp-channel-override — The environment may decide the channel
+
+The project MCP server SHALL judge its session a channel when `CONCORDE_CHANNEL` is `1` and not when it is `0`, before and instead of reading the command lines of the processes above it.
+
+A background task session's server is started with `CONCORDE_CHANNEL=0`: Claude Code never wakes a
+background session with channel events, so the waits it registers must name their commands.
 
 ### req.distribution.mcp-call-failed — A call without an answer is refused
 

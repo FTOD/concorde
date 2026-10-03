@@ -54,7 +54,7 @@ TOOLS: dict[str, dict] = {
     },
     "module": {
         "description": (
-            "One Module's entry, owned documents, relations, realizations and configured checks."
+            "One Module's entry, owned documents, relations and realizations."
         ),
         "inputSchema": {
             "type": "object",

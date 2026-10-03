@@ -36,6 +36,7 @@
         "src/concorde/kernel/tracing/__init__.py",
         "src/concorde/kernel/tracing/layout.py",
         "src/concorde/kernel/tracing/node.py",
+        "src/concorde/kernel/tracing/kinds.py",
         "src/concorde/kernel/tracing/locks.py",
         "src/concorde/kernel/tracing/reader.py",
         "src/concorde/kernel/tracing/roots.py",

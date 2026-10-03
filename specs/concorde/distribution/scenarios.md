@@ -31,6 +31,14 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - AND none holds a section of a part not given, such as the issues part's
 - AND composed for the spec and distribution parts alone, the skill is their sections alone under a description that does not present the session as the main agent, the `CLAUDE.md` block their sections alone, and there is no task-session prompt
 
+### scenario.distribution.guidance-absent-parts — Every guidance section names the parts it may lack
+
+- GIVEN every guidance section the package's parts register and Dogfooding's develop section
+- WHEN a paragraph of one names a `concorde` command or a project MCP tool of a part that the section may be composed without, or a tool that requires such a part
+- THEN that paragraph names that part as a part, as in "where the execution part is installed", saying what happens without it
+
+This illustrates [a guidance section standing without the parts it may lack](requirements.md#req.distribution.guidance-absent-parts).
+
 ### scenario.distribution.build-workflows — Render every workflow for Claude Code
 
 - GIVEN a workflow catalog whose only workflow is the [brownfield workflow](../glossary.json#concept.brownfield-workflow)
@@ -121,16 +129,17 @@ Concrete situations that show the [requirements](requirements.md) at work.
 ### scenario.distribution.composed-from-installed-parts — The command offers the installed parts
 
 - GIVEN a project whose receipt names the parts installed, and one whose receipt names none
-- WHEN the developer asks `concorde --help` for its commands, or the project MCP server lists its tools
+- WHEN the developer asks `concorde --help` for its commands, or the [project MCP server](../glossary.json#concept.project-mcp-server) lists its tools
 - THEN the first offers exactly the distribution commands and the commands of the parts its receipt names, and the tools they register whose required parts are installed
 - AND the second offers the commands of every part of the package
 
 ### scenario.distribution.part-missing — A command or tool of a part not installed names the part
 
 - GIVEN a project installed without the issues and execution parts
-- WHEN the developer runs `concorde issues list` or `concorde run spec_review`, or a session calls the project MCP server's `issue_list`
-- THEN each is refused with `{"error": <link>}` whose code is `part_missing`, naming the part the command or tool belongs to and how to install it
+- WHEN the developer runs `concorde issues list` or `concorde run spec_review`, or a session calls the project MCP server's `issue_list`, `run_result` or `register_wait` for a run
+- THEN each is refused with `{"error": <link>}` whose code is `part_missing`, naming the part the command or tool belongs to, or the part it needs, and how to install it
 - AND the command exits with status 1
+- AND the server lists neither the issues part's tools nor the coordination part's `run_result` and `task_resolve`, which need the execution and issues parts
 
 ## Installation
 
@@ -169,6 +178,7 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - WHEN the developer runs `concorde update`
 - THEN the update installs the spec and distribution parts again and no other
 - AND `concorde update --parts issues` then installs the issues part and the kernel it depends on beside them
+- AND an update adding, to an install of the coordination part alone, the spec and method parts places `d2` and the Python dependencies they need, which the earlier install, needing neither, placed none of
 
 ### scenario.distribution.update-without-spec — An update without the spec part waits for no validation
 
@@ -219,6 +229,12 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - THEN the Concorde block of `CLAUDE.md` imports no glossary
 - AND the rest of `CLAUDE.md` is kept
 
+### scenario.distribution.install-defaults-kept — A Concorde-owned default stays the project's data
+
+- GIVEN a project installed with the issues part, whose receipt names `.concorde/issues/.gitignore` under `files` and `defaults`, the developer having edited that file
+- WHEN Concorde is installed again without the issues part, and then from a Concorde that no longer declares that default
+- THEN the file stays as the developer left it each time, and each receipt still names it under `files` and `defaults`
+
 ### scenario.distribution.install-settings-kept — A developer's settings survive the installer
 
 - GIVEN a project whose `.claude/settings.json` has its own permission rules, and a receipt recording a rule the new package no longer ships
@@ -231,6 +247,31 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - WHEN the installer runs
 - THEN it is refused with `settings_invalid`
 - BUT nothing is written, not even a workflow the project lacks
+
+### scenario.distribution.mcp-reroute — A call is served as the current code registers its tool
+
+- GIVEN a server that listed a tool as served in the primary worktree, without long work and on the session's thread
+- WHEN the current code's registration serves it in the session's worktree, or as long work, or on a thread of its own, and the session calls it without listing its tools again
+- THEN the call's process answers how the current code serves every tool, running nothing, and the server runs the call again in the session's worktree, or hands on its long work in that worktree, or answers it on a thread of its own
+- AND a call routed twice otherwise is refused with `call_failed`
+
+This illustrates [serving a call as the current code registers its tool](requirements.md#req.distribution.mcp-current-serving).
+
+### scenario.distribution.mcp-tools-changed-after-refresh — Learning how a tool is served lists nothing to the session
+
+- GIVEN a server that listed its tools to the session
+- WHEN the session calls a tool the listing lacks, so that the server fetches the current code's listing to learn how it is served, and the answer says the current code's tools differ from those listed
+- THEN the server tells its session that its tools changed
+
+This illustrates [the session hearing that its tools changed](requirements.md#req.distribution.mcp-tools-changed).
+
+### scenario.distribution.mcp-channel-override — `CONCORDE_CHANNEL` decides the channel
+
+- GIVEN a server below an interactive `claude` started with `server:concorde` as a channel
+- WHEN `CONCORDE_CHANNEL` is `0`
+- THEN the server has no channel, and with `CONCORDE_CHANNEL` `1` below no such `claude` it has one
+
+This illustrates [the environment deciding the channel](requirements.md#req.distribution.mcp-channel-override).
 
 ### scenario.distribution.install-project-mcp — The installer registers the project MCP server
 

@@ -309,12 +309,10 @@ Python sources are under `src/concorde/spec/` and tests under `tests/concorde/sp
   [boundary sets](../../glossary.json#concept.boundary-set), computes the context identity and
   refuses unbound shared writes.
 - <a id="realization.spec.initializer"></a>**Project initializer** proposes and applies the first
-  Spec of a project, and keeps an installed project's files bound through the spec part's install
-  services.
-- <a id="realization.spec.commands"></a>**Command entries** are the spec part's
-  [part registration](../../glossary.json#concept.part-registration) and the `concorde` commands
-  it names, `spec-validation`, `registry`, `docsite`, `grant`, `init` and `spec-mcp`, each
-  answering Spec core's shared envelope, or running the Spec MCP server, for Distribution to print.
+  Spec of a project, and keeps an installed project's files bound. The spec part's commands and
+  install services that call it are its parent's
+  [part entries](../module.md#realization.spec-tooling.part), since they also call Views and the
+  Spec MCP server.
 - <a id="realization.spec.transactions"></a>**Transaction writer** is Spec core's own copy of
   digest-bound file transactions.
 - <a id="realization.spec.typed-values"></a>**Typed values** are Spec core's own copy of the
@@ -400,7 +398,8 @@ run. Concerns other Modules own, such as [Issue](../../glossary.json#concept.iss
 [configured checks](../../glossary.json#concept.configured-check) and their inputs, or Concorde's
 own package, are checked by the parts that own them, outside `spec-validation`, which keeps it a
 pure function of the Specs and the files they bind and keeps the spec part free of every other
-part's file formats.
+part's file formats but the two of Distribution's it reads when they are present
+([What validation leaves to other parts](validation.md#what-validation-leaves-to-other-parts)).
 
 ### A private copy of the data utilities
 

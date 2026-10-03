@@ -94,6 +94,11 @@ class PytestTimingTests(unittest.TestCase):
     def test_runner_fingerprints_and_default_cli(self):
         from tests.concorde.support import pytest_timing as runner
 
+        # The canonical encoding of development.md#req.concorde.test-fingerprints.
+        self.assertEqual(
+            "8aa528e6d583124b22694dd542edd2390a7c00000f0c58574a450be32829bbf5",
+            runner.fingerprint(["t.py::A::test_one"], self.root)["tests"],
+        )
         selected = ["checks/test_sample.py::SampleTests::test_one"]
         first = runner.fingerprint(selected, self.root)
         self.assertTrue(first["input_complete"])
@@ -205,7 +210,19 @@ class PytestTimingTests(unittest.TestCase):
     def test_unreadable_prior_is_refused_before_tests_run(self):
         (self.reports / "list.json").write_text("[1, 2]\n")
         (self.reports / "broken.json").write_text("{not json\n")
-        for prior in ("missing.json", "list.json", "broken.json"):
+        (self.reports / "no-run-id.json").write_text(
+            '{"fingerprint": {"digest": "0"}}\n'
+        )
+        (self.reports / "no-digest.json").write_text(
+            '{"run_id": "r", "fingerprint": {}}\n'
+        )
+        for prior in (
+            "missing.json",
+            "list.json",
+            "broken.json",
+            "no-run-id.json",
+            "no-digest.json",
+        ):
             with self.subTest(prior=prior):
                 report = self.reports / f"after-{prior}"
                 result = self.pytest(

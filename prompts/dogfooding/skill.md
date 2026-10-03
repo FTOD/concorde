@@ -35,6 +35,7 @@ reasoning are uncertain in the report's `basis`.
 
 ### When a boundary blocks work
 
+A boundary refuses a worker's read, write or tool; workers run where the method part is installed.
 When a read, a write or a tool is refused, decide which of four cases it is before doing anything
 else:
 
@@ -47,8 +48,8 @@ else:
 
 Whichever case it is, write down three things, in the report's `basis` and `evidence` when it goes
 to Concorde: the Spec text and Protocol rule the boundary is derived from; the grant actually
-computed (`concorde grant --modules <ids> --type <task type>` and the run's host evidence); and
-the refused action with its message. Never settle a blocked boundary by only loosening it.
+computed (`concorde grant --modules <ids> --type <task type>` of the spec part, which the method
+part always comes with, and the run's host evidence); and the refused action with its message. Never settle a blocked boundary by only loosening it.
 
 ### Report a Concorde defect
 
@@ -148,8 +149,8 @@ chain of a defect of the Issue system.
 The developer tells you when the fix is merged, or you see its Issue closed with
 `concorde issues list --root <source>`, which only reads. Then, from the primary worktree and
 while no Operation, workflow or task session is running, run `concorde update`: it refuses while an
-Operation run is still running, installs the new Concorde and leaves
-the project unvalidated until `concorde spec-validation` passes. Start nothing until the update
+Operation run is still running, installs the new Concorde and, where the spec part is installed,
+leaves the project unvalidated until `concorde spec-validation` passes. Start nothing until the update
 ends, no run, task session or other `concorde` command in any worktree of the project: its check
 does not stop what starts after it, and that may find Concorde half replaced. When the update asks
 for it, answer the session of each open task to merge the primary branch into its task branch;

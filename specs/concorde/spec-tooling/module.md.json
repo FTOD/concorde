@@ -37,6 +37,17 @@
       "entries": [
         "prompts/guidance/spec/"
       ]
+    },
+    {
+      "id": "realization.spec-tooling.part",
+      "type": "realization",
+      "title": "Part entries",
+      "meaning": "#realization.spec-tooling.part",
+      "entries": [
+        "src/concorde/spec/commands.py",
+        "src/concorde/spec/installation.py",
+        "src/concorde/spec/registration.json"
+      ]
     }
   ],
   "relations": [],

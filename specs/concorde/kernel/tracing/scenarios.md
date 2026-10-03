@@ -49,6 +49,13 @@ and the command are defined in the [contracts](contracts.md).
 - AND the later node references the same commit with `found_commit`, and not with `commit`
 - AND both nodes satisfy the node contract, which refuses a reference of any other relation
 
+### scenario.tracing.kind-registered — A node is checked against the registration of its kind
+
+- GIVEN the node kinds the installed parts registered, such as Check execution's `check` with its content type and the metadata `check` and `module`
+- WHEN a producer writes a node of a kind no installed part registered, a `check` node listing the metadata `workspace`, or a `check` node whose content is of another type
+- THEN each write is refused, the first two with `node_invalid` and the last with `content_invalid`, and no `trace.json` is written
+- AND a `check` node with its own metadata and content is written
+
 ## Removing
 
 ### scenario.tracing.prune — Retention removes only what has ended long enough ago

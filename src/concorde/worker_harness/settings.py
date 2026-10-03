@@ -131,6 +131,9 @@ def entry_problem(entry) -> str | None:
     """What makes one grant entry malformed, or None for a well-formed one."""
     if not isinstance(entry, dict):
         return f"it is a {type(entry).__name__}, not an object"
+    extra = sorted(set(entry) - {"path", "level"})
+    if extra:
+        return f"it has the field(s) {', '.join(extra)}, besides path and level"
     path, level = entry.get("path"), entry.get("level")
     if not isinstance(path, str) or not path:
         return "its path is missing or not a non-empty string"

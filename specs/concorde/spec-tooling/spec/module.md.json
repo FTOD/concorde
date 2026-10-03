@@ -98,18 +98,7 @@
       "title": "Project initializer",
       "meaning": "#realization.spec.initializer",
       "entries": [
-        "src/concorde/spec/initialize.py",
-        "src/concorde/spec/installation.py"
-      ]
-    },
-    {
-      "id": "realization.spec.commands",
-      "type": "realization",
-      "title": "Command entries",
-      "meaning": "#realization.spec.commands",
-      "entries": [
-        "src/concorde/spec/commands.py",
-        "src/concorde/spec/registration.json"
+        "src/concorde/spec/initialize.py"
       ]
     },
     {

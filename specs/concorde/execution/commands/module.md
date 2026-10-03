@@ -87,8 +87,12 @@ runner -> provider.definition: runs the steps of
 
 ## Running an execution command
 
-Every execution command is a `concorde` command of its own, which Execution registers with
-Distribution's `concorde` command for each command in the catalog:
+Every execution command is a `concorde` command of its own. Distribution composes the `concorde`
+command from the [part registrations](../../glossary.json#concept.part-registration) alone, so the
+part that provides an execution command also names it among the commands of its part registration,
+with an entry that hands the command line to the [Execution runner](../runner.md); a command the
+catalog lists that no registration names is no `concorde` command. In Concorde, Method's
+registration names `task-validation`, `delivery` and `scaffold`:
 
 ```text
 concorde <command> [--modules <id>[,<id>…]] [--input <run-id>]… [--detach] [--wait <seconds>] [command arguments]
@@ -114,8 +118,9 @@ How a task usually ends with Method's `task-validation` and `delivery` is Method
 
 The **Command table** realization, `src/concorde/execution/commands/catalog.py`, holds the
 command catalog, of the same shape as the [Operation catalog](../operations/module.md): each
-command's definition as the part that provides it registers it when its code loads, with that part.
-A second definition under a registered name is refused naming both parts, and a command no
+command's definition as the part that provides it registers it when its code loads, with the
+providing Module the definition names and that part. A definition naming no providing Module is
+refused with `invalid_definition`, a second definition under a registered name naming both parts, and a command no
 installed part registers is a command-line error that names it, and no run begins. The providers'
 own code lives with their Modules.
 

@@ -246,6 +246,14 @@ def _roots(roots: Iterable[TraceRoot] | None) -> tuple[TraceRoot, ...]:
     return registered() if roots is None else tuple(roots)
 
 
+def _placed(roots: tuple[TraceRoot, ...], concorde: Path) -> tuple[TraceRoot, ...]:
+    """The roots that lie under ``concorde`` by the place each was registered with: a root of
+    the primary worktree's ``.concorde`` never lies under a linked worktree's, whose ``.git`` is a
+    file; a root of the worktree a node started in lies under any."""
+    linked = (Path(concorde).parent / ".git").is_file()
+    return tuple(root for root in roots if not (linked and root.place == "primary"))
+
+
 def workspace_runs(workspace: Path) -> list[Path]:
     """The folders of every run of a workspace folder: started directly and by workflow steps."""
     found: list[Path] = []
@@ -334,7 +342,7 @@ def locate(
                     return joined, concorde
         else:
             for concorde in searched:
-                for root in roots:
+                for root in _placed(roots, concorde):
                     folder = root.path(concorde) / address
                     if _node_folder(folder):
                         return folder, concorde
@@ -343,7 +351,7 @@ def locate(
                 if found is not None:
                     return found, _owner(found, searched)
             for concorde in searched:
-                for root in roots:
+                for root in _placed(roots, concorde):
                     found = find_below(root.path(concorde), address)
                     if found is not None:
                         return found, concorde
@@ -390,7 +398,8 @@ def listing(
     if unbound:
         wanted.add("unbound")
     folders: list[Path] = []
-    for root in sorted(_roots(roots), key=lambda item: LISTINGS.index(item.listed)):
+    placed = _placed(_roots(roots), concorde)
+    for root in sorted(placed, key=lambda item: LISTINGS.index(item.listed)):
         if root.listed in wanted:
             folders.extend(
                 item

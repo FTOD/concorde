@@ -5,15 +5,18 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import os
 import shlex
 import subprocess
 import sys
 import unittest
+from pathlib import Path
 
+import concorde
 from concorde.coordination.tasks import cli, merge, store
 from tests.concorde.support.ignored import TRACES
 from concorde.kernel.errors import ERROR_SCHEMA
-from concorde.kernel.locking import workspace_lock
+from concorde.kernel.locking import workspace_lock, workspace_lock_path
 from concorde.kernel.tracing import node as trace
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
@@ -188,6 +191,51 @@ class DeliverTests(ProjectCase):
         self.assertEqual("wrong_branch", wrong["code"])
         self.assertIn("elsewhere", wrong["detail"])
         self.assertEqual(base, git(worktree, "rev-parse", "HEAD"))
+
+    def holding(self, then: str):
+        """A process holding t1's workspace lock that runs ``then`` (Python, with ``path`` the
+        lock file) after a second, then releases it; started once it holds the lock."""
+        path = workspace_lock_path(store.concorde(self.root), "t1")
+        code = (
+            "import sys, time\n"
+            "from pathlib import Path\n"
+            "from concorde.kernel.tracing import locks\n"
+            f"path = Path({str(path)!r})\n"
+            "with locks.hold(path, 'a run of t1'):\n"
+            "    print('held', flush=True)\n"
+            "    time.sleep(1)\n"
+            f"    {then}\n"
+        )
+        source = str(Path(concorde.__file__).resolve().parents[1])
+        holder = subprocess.Popen(
+            [sys.executable, "-c", code],
+            stdout=subprocess.PIPE,
+            text=True,
+            env={**os.environ, "PYTHONPATH": source},
+        )
+        self.addCleanup(holder.wait)
+        self.assertEqual("held", holder.stdout.readline().strip())
+        holder.stdout.close()
+        return holder
+
+    @verifies("scenario.tasks.deliver-refused")
+    def test_a_delivery_admits_the_task_again_once_it_holds_the_lock(self):
+        worktree = self.opened()
+        base = git(worktree, "rev-parse", "HEAD")
+        self.holding(
+            f"__import__('subprocess').run(['git', '-C', {str(worktree)!r}, 'switch', "
+            "'-q', '-c', 'elsewhere'], check=True)"
+        )
+        wrong = self.refusal("deliver", "t1", "--wait", "30", cwd=worktree)
+        self.assertEqual("wrong_branch", wrong["code"])
+        self.assertEqual(base, git(worktree, "rev-parse", "HEAD"))
+        git(worktree, "switch", "-q", "concorde/t1")
+        # The close that retires the workspace removes its lock file: never taken again.
+        self.holding("path.unlink()")
+        closed = self.refusal("deliver", "t1", "--wait", "30", cwd=worktree)
+        self.assertEqual("task_closed", closed["code"])
+        self.assertEqual(base, git(worktree, "rev-parse", "HEAD"))
+        self.assertFalse(workspace_lock_path(store.concorde(self.root), "t1").exists())
 
 
 class CoordinationAloneTests(ProjectCase):

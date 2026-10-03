@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import re
 from collections.abc import Iterable, Mapping
@@ -22,7 +23,8 @@ from pathlib import Path
 
 from ...kernel.errors import evidence, link
 from ...kernel.refusal import KernelError
-from ...kernel.schema import checked_path, register, safe_path
+from ...kernel.schema import checked_path, decode, register, safe_path
+from ...kernel.tracing.kinds import NodeKind, register as register_kinds
 from ...kernel.tracing import layout
 from ...kernel.tracing.layout import primary_worktree
 from ...kernel.tracing.node import Node
@@ -48,6 +50,9 @@ register(
             },
         },
     },
+)
+register_kinds(
+    NodeKind("check", CHECK_TRACE, ("check", "module")),
 )
 
 # The configured checks, one file per Module named by its identity.
@@ -224,8 +229,8 @@ def configured_checks(worktree: Path) -> list[dict]:
     result, seen = [], {}
     for path, module in checks_files(root):
         try:
-            value = json.loads((root / path).read_text(encoding="utf-8"))
-        except (OSError, UnicodeError, ValueError) as error:
+            value = decode((root / path).read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, KernelError) as error:
             raise CheckError(
                 f"{path} cannot be read as JSON: {error}",
                 path=path,
@@ -247,11 +252,13 @@ def configured_checks(worktree: Path) -> list[dict]:
                 path=path,
             )
         for position, entry in enumerate(value["checks"]):
-            result.append(_entry(path, module, position, entry, seen))
+            result.append(_entry(root, path, module, position, entry, seen))
     return result
 
 
-def _entry(path: str, module: str, position: int, entry, seen: dict) -> dict:
+def _entry(
+    root: Path, path: str, module: str, position: int, entry, seen: dict
+) -> dict:
     pointer = f"/checks/{position}"
     if not isinstance(entry, dict) or not isinstance(entry.get("id"), str):
         raise CheckError(
@@ -311,8 +318,12 @@ def _entry(path: str, module: str, position: int, entry, seen: dict) -> dict:
             path=path,
         )
     for relative in inputs:
+        # A canonical path whose directories are no symbolic links, so that it cannot leave the
+        # worktree; an input that is itself a link is refused as missing when it is measured.
         try:
             safe_path(relative, relative)
+            if "/" in relative:
+                checked_path(root, relative.rsplit("/", 1)[0], relative)
         except KernelError as error:
             raise CheckError(
                 f"input {relative!r} of configured check {key} ({module}) is not a canonical "
@@ -457,7 +468,7 @@ def _argv(check: dict, python, tests=()) -> list[str]:
 
 def _timeout(check: dict) -> float:
     value = check.get("timeout_seconds")
-    if type(value) not in (int, float) or value <= 0:
+    if type(value) not in (int, float) or not math.isfinite(value) or value <= 0:
         raise CheckError(
             f"check {check['id']} needs a positive timeout_seconds",
             "invalid_check",
@@ -536,6 +547,8 @@ def run_checks(
     checks = configured_checks(worktree)
     selected = list(dict.fromkeys(modules))
     tests = list(tests or ())
+    # Each Module's files once, since every check is measured before and after it runs.
+    measured = {module: tuple(files) for module, files in (measured or {}).items()}
     trace_directory = Path(trace_directory)
     trace_directory.mkdir(parents=True, exist_ok=True)
     results = []

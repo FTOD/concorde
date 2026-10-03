@@ -194,6 +194,10 @@ def _prepared(package: Path, project: Path, registrations: dict) -> dict[str, by
     return files
 
 
+# The parts without which a develop install's guidance would name what is not there.
+DEVELOP_GUIDANCE_NEEDS = frozenset({"coordination", "issues"})
+
+
 def _develop(package: Path) -> dict:
     """The develop source check the package descriptor names, refused with its code."""
     import importlib
@@ -540,8 +544,11 @@ def install(
     if develop:
         checked = _develop(package)
         installed_from = checked["source"]
-        skill = skill.rstrip("\n") + "\n\n" + checked["guidance"]["skill"]
-        block = block.rstrip("\n") + "\n\n" + checked["guidance"]["claude_md"]
+        # Dogfooding's guidance has the main agent report defects as Issues through its tasks,
+        # so it is composed only where the coordination and issues parts are installed.
+        if DEVELOP_GUIDANCE_NEEDS <= set(registrations):
+            skill = skill.rstrip("\n") + "\n\n" + checked["guidance"]["skill"]
+            block = block.rstrip("\n") + "\n\n" + checked["guidance"]["claude_md"]
     previous = {}
     if (project / RECEIPT).is_file():
         try:
@@ -745,18 +752,26 @@ def _place(
     )
     _register_server(project, mcp_config)
     _ignore(project, ignored(registrations))
-    owned = {*written, *defaults, COMMAND, SKILL, *placed}
-    kept = project_default_files(everything)
+    earlier = [
+        path
+        for path in previous.get("files") or []
+        if isinstance(path, str)
+        and not path.startswith("/")
+        and ".." not in Path(path).parts
+    ]
+    # A Concorde-owned default holds the project's own data: once an install wrote or found it,
+    # it stays Concorde's while it is in place, whether or not the parts now installed, or this
+    # package, still declare it. An earlier receipt names its defaults; one written before it
+    # did is read through the defaults this package declares.
+    recorded = {path for path in previous.get("defaults") or [] if path in earlier} | {
+        path for path in project_default_files(everything) if path in earlier
+    }
+    kept = set(defaults) | {path for path in recorded if (project / path).is_file()}
+    owned = {*written, *kept, COMMAND, SKILL, *placed}
     # What an earlier install owned and this one no longer ships, such as the workflows of a part
-    # it leaves out, goes; a Concorde-owned default stays, since it holds the project's own data.
-    for path in previous.get("files") or []:
-        if (
-            isinstance(path, str)
-            and path not in owned
-            and path not in kept
-            and not path.startswith("/")
-            and ".." not in Path(path).parts
-        ):
+    # it leaves out, goes; a default stays.
+    for path in earlier:
+        if path not in owned and path not in recorded:
             (project / path).unlink(missing_ok=True)
     amended = [".gitignore", CLAUDE_MD, MCP_CONFIG] + (
         [CLAUDE_SETTINGS] if (project / CLAUDE_SETTINGS).exists() else []
@@ -787,6 +802,8 @@ def _place(
         # Every file Concorde owns, whether this install wrote it or found it in place: a
         # default is written only when absent, yet stays Concorde's.
         "files": sorted(owned),
+        # Those of them that are Concorde-owned defaults, which no later install removes.
+        "defaults": sorted(kept),
         # Files of the project that the installer only amends: a delimited block, ignore
         # lines, permission rules. They stay the project's own files.
         "amended": amended,
@@ -830,15 +847,15 @@ def _update_mark(project: Path) -> dict | None:
     )
 
 
-def _left_out(previous: dict, chosen: dict) -> dict[str, bool]:
+def _left_out(previous: dict, earlier: dict) -> dict[str, bool]:
     """What an earlier install left out by the developer's choice, which an update keeps: d2 or
-    the Python dependencies only when a part it installed needed them and it placed none, the pi
-    runtime when its receipt records that choice. A choice that changed nothing is not recorded,
-    so the program or dependencies come with a part added later."""
+    the Python dependencies only when a part it installed, one of ``earlier``, needed them and it
+    placed none, the pi runtime when its receipt records that choice. A choice that changed
+    nothing is not recorded, so the program or dependencies come with a part added later."""
     return {
-        "d2": "d2" in needs(chosen, "programs")
+        "d2": "d2" in needs(earlier, "programs")
         and "d2" not in (previous.get("tools") or {}),
-        "dependencies": bool(needs(chosen, "python_dependencies"))
+        "dependencies": bool(needs(earlier, "python_dependencies"))
         and previous.get("dependencies", {}) is None,
         "pi_runtime": previous.get("pi_runtime", True) is False,
     }
@@ -877,9 +894,11 @@ def update(
         everything = parts.package_parts(package)
     except parts.RegistrationError as error:
         raise InstallError("stale_build", str(error)) from error
-    named = sorted(_previous_parts(previous, everything) | set(part_names))
-    chosen = {name: everything[name] for name in named if name in everything}
-    left_out = _left_out(previous, chosen)
+    earlier = _previous_parts(previous, everything)
+    named = sorted(earlier | set(part_names))
+    left_out = _left_out(
+        previous, {name: everything[name] for name in earlier if name in everything}
+    )
     receipt = install(
         project,
         package,

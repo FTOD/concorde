@@ -11,7 +11,7 @@ every level reports with. The [requirements](requirements.md) state the obligati
 ```concorde-contract
 {
   "id": "contract.tracing.node",
-  "version": 4,
+  "version": 5,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -39,20 +39,8 @@ every level reports with. The [requirements](requirements.md) state the obligati
         "minLength": 1
       },
       "kind": {
-        "enum": [
-          "task",
-          "session",
-          "merge",
-          "merge-check",
-          "delivery",
-          "delivery-check",
-          "workflow",
-          "step",
-          "run",
-          "check",
-          "worker-run",
-          "worker-round"
-        ]
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]*$"
       },
       "started_at": {
         "type": "string",
@@ -343,7 +331,7 @@ every level reports with. The [requirements](requirements.md) state the obligati
       }
     }
   },
-  "semantics": "The record trace.json of one trace node, in the node's folder. id identifies the node: a run or worker run identity, which is unique in the project, or a name unique among the nodes of its kind under the same parent (a task name, a session identity, a round or merge number, a step key, a check identity). kind is one of the kinds of the node kinds table. started_at and ended_at are RFC 3339 UTC times; ended_at is null while the node runs and for a node whose end its producer never observes. status is running until the final write, then ok, blocked or failed, or unknown for a node whose end its producer never observes; outcome is the producer's finer, snake_case account of the end (such as merged, completed, passed, timed_out, cancelled), null while running. usage is what the node itself consumed, never the sum of its children: tokens read (tokens_in), written (tokens_out), read from and written to the prompt cache, the cost in US dollars as the agent program reported it, the agent turns and the node's wall-clock duration; a field is null when the node consumed none of it or its producer cannot observe it. error is the node's error link, following contract.tracing.error, when the node ended blocked or failed and its producer reports that end with a link, such as a run or a worker run; it is null for every other node, and for a node whose failure its parent reports, such as a worker round whose checks failed. metadata holds only the dimensions of the metadata table that the node's kind provides and only facts Concorde observed itself, never a statement taken from a worker result. artifacts lists files of the node's folder, each by a stable id, its path relative to the folder and its digest at the final write (null while the node runs or when the file is still growing); a conversation record listed there may be missing once retention removed it from the history. references name nodes of the same level and commits: input (the identity of a run whose output this run admitted), cites (the identity of a run this node cites as the source of what it decided), commit (a Git commit this node created) and found_commit (a Git commit an earlier node created, which this node found and reports as its outcome instead of creating one). commit is only ever what the node itself created; a node that reports existing work names it with found_commit, never with commit. content is the producer's own record, a typed value of the type the node kinds table names, checked against the type its producer registered; null when the producer records nothing of its own. Children are not listed: they are the trace nodes in the folders below this one. No field by which the node refers to its files or to other nodes holds an absolute path; an error link or a worker's claim the node keeps is kept as it was reported. A behaviour or field change increments the version.",
+  "semantics": "The record trace.json of one trace node, in the node's folder. id identifies the node: a run or worker run identity, which is unique in the project, or a name unique among the nodes of its kind under the same parent (a task name, a session identity, a round or merge number, a step key, a check identity). kind is a kind an installed part registered, as the node kinds table lists them for Concorde's parts; a node of a kind no installed part registered is refused. started_at and ended_at are RFC 3339 UTC times; ended_at is null while the node runs and for a node whose end its producer never observes. status is running until the final write, then ok, blocked or failed, or unknown for a node whose end its producer never observes; outcome is the producer's finer, snake_case account of the end (such as merged, completed, passed, timed_out, cancelled), null while running. usage is what the node itself consumed, never the sum of its children: tokens read (tokens_in), written (tokens_out), read from and written to the prompt cache, the cost in US dollars as the agent program reported it, the agent turns and the node's wall-clock duration; a field is null when the node consumed none of it or its producer cannot observe it. error is the node's error link, following contract.tracing.error, when the node ended blocked or failed and its producer reports that end with a link, such as a run or a worker run; it is null for every other node, and for a node whose failure its parent reports, such as a worker round whose checks failed. metadata holds only the dimensions of the metadata table that the node's kind registered, a node listing another being refused, and only facts Concorde observed itself, never a statement taken from a worker result. artifacts lists files of the node's folder, each by a stable id, its path relative to the folder and its digest at the final write (null while the node runs or when the file is still growing); a conversation record listed there may be missing once retention removed it from the history. references name nodes of the same level and commits: input (the identity of a run whose output this run admitted), cites (the identity of a run this node cites as the source of what it decided), commit (a Git commit this node created) and found_commit (a Git commit an earlier node created, which this node found and reports as its outcome instead of creating one). commit is only ever what the node itself created; a node that reports existing work names it with found_commit, never with commit. content is the producer's own record, a typed value of the content type its kind registered, refused when it is of another type, and checked against the schema its producer registered for that type; null when the producer records nothing of its own. Children are not listed: they are the trace nodes in the folders below this one. No field by which the node refers to its files or to other nodes holds an absolute path; an error link or a worker's claim the node keeps is kept as it was reported. A behaviour or field change increments the version.",
   "example": {
     "schema_version": 1,
     "id": "r-20260927T101500-implement-3f2a9c1b",
@@ -418,9 +406,13 @@ every level reports with. The [requirements](requirements.md) state the obligati
 ### Node kinds
 
 Each kind has one producer, which writes its nodes' records and chooses their content, and one place
-below its parent. The part a producer belongs to registers its kinds, with their content types, when
-its code loads; the table lists the kinds of Concorde's parts, and a kind whose part is not installed
-simply never occurs. The folders are relative to the parent node's folder, or to the `.concorde`
+below its parent. The part a producer belongs to registers its kinds with Tracing's library when its
+code loads, each with its content type and the metadata dimensions it provides, as it registers the
+types of its [typed values](../../glossary.json#concept.typed-value); Tracing names no kind itself. Writing a node of a kind no installed part
+registered, with a metadata dimension its kind does not provide or with content of another type
+than its kind's is refused with `node_invalid`, or `content_invalid` for the content, as a defect
+of its producer. The table lists the kinds of Concorde's parts, and a kind whose part is not
+installed simply never occurs. The folders are relative to the parent node's folder, or to the `.concorde`
 directory for the top nodes of a [trace root](#trace-roots).
 
 | Kind | Producer | Folder | Identity | Metadata it provides | Content type |
@@ -698,14 +690,17 @@ concorde trace prune [--dry-run]
   node's folder, absolute or relative to a `.concorde` directory. Without it, `show` shows the task
   whose [workspace binding](../../glossary.json#concept.workspace-binding) the current worktree holds. The command looks in the `.concorde` of the
   worktree it runs in, the `.concorde` its workspace binding names and the `.concorde` of the
-  primary worktree, in that order, and in each among the registered roots: in Concorde the current
+  primary worktree, in that order, and in each among the registered roots by the place each was
+  registered with: a root of the primary worktree's `.concorde` is never looked for under a linked
+  worktree's, a root of the worktree a node started in under any. In Concorde these are the current
   tasks, the history, the unbound runs and the lobby. A node it cannot find is refused with
   `unknown_node`, naming what it searched.
 - `--depth` limits how many levels below the node are shown (default: all); the roll-up always
   covers the whole subtree.
 - `list` lists the top nodes of the registered roots each root's registration lists always, with
   `--history` also those it lists with that option and with `--unbound` also those it lists with
-  that one, in that order, each as a node without its children; in Concorde these are the current
+  that one, in that order, each as a node without its children, under the same `.concorde`
+  directories and by the same places as `show`; in Concorde these are the current
   tasks, the history and the unbound runs. An option whose roots no installed part registers lists
   nothing.
 - `prune` removes what the retention allows and prints the paths it removed, folders and
