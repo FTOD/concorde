@@ -4,7 +4,7 @@
 {
   "schema_version": 4,
   "id": "I-f7f9877ddf8f59cb8b8f7ec9547eb7fb",
-  "status": "open",
+  "status": "closed",
   "reports": [
     {
       "id": "sha256:9ebfe7ffff607cdb9624eb9a0e5602d9e00fe4a2ffaa6e8f2c73f978bf3a017f",
@@ -51,6 +51,19 @@
       }
     }
   ],
-  "dispositions": []
+  "dispositions": [
+    {
+      "reason": "duplicate",
+      "note": "Same problem as I-3f709b3041765ee5989f5e26235f4356: the command catalog is an instance of the same Catalog class (src/concorde/execution/commands/catalog.py:10-12 builds Catalog('command') from src/concorde/execution/operations/catalog.py), which keeps the registering part and no providing Module; one decision and one fix cover both catalogs, and I-3f70's corrected report names the commands Spec too.",
+      "evidence": [
+        "src/concorde/execution/commands/catalog.py",
+        "src/concorde/execution/operations/catalog.py",
+        "specs/concorde/execution/commands/module.md"
+      ],
+      "duplicate_of": "I-3f709b3041765ee5989f5e26235f4356",
+      "actor": "main-agent",
+      "created_at": "2026-10-03T04:36:46.989408+00:00"
+    }
+  ]
 }
 ```
