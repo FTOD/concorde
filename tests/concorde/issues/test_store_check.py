@@ -86,6 +86,22 @@ class StoreCheckTests(unittest.TestCase):
             self.assertIn(name, text)
         self.assertEqual(3, len(value["errors"]), value)
 
+    @verifies("scenario.issues.store-check-invalid")
+    def test_a_symbolically_linked_record_is_named(self):
+        receipt = report_issue(
+            self.root,
+            report(owner_target_id="service.transfer", evidence=[]),
+            source(target_id="service.transfer"),
+        )
+        target = self.root / "elsewhere.md"
+        target.write_text((self.root / receipt["path"]).read_text())
+        linked = self.root / ".concorde/issues" / ("I-" + "1" * 32 + ".md")
+        linked.symlink_to(target)
+        status, value = self.run_check()
+        self.assertEqual(1, status)
+        self.assertEqual(1, len(value["errors"]), value)
+        self.assertIn(linked.name, value["errors"][0])
+
     @verifies("scenario.issues.store-check-unknown-owner")
     def test_an_open_issue_of_an_unregistered_owner_fails(self):
         receipt = self.orphan()

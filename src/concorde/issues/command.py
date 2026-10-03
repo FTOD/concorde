@@ -82,7 +82,7 @@ class Refusal(Exception):
 
 def refusal_link(code: str, message: str, cause=None) -> dict:
     """The refusal as an error link; an ``IssueError`` cause adds its location, the rule it
-    breaks and its remediation."""
+    breaks, its remediation and, as links below it, the refusals that caused it."""
     environment = code in ENVIRONMENT
     where = cause.where() if isinstance(cause, IssueError) else ""
     options = [cause.remediation] if isinstance(cause, IssueError) else []
@@ -103,7 +103,37 @@ def refusal_link(code: str, message: str, cause=None) -> dict:
             "the caller can correct it"
         ),
         options=options,
+        causes=[cause_link(item) for item in getattr(cause, "causes", ())],
     )
+
+
+def cause_link(error: BaseException) -> dict:
+    """A refusal below an Issue refusal as a link of its own, with its own causes below it."""
+    if isinstance(error, IssueError):
+        code = "io_error" if error.code == "system_error" else error.code
+        return refusal_link(code, error.message, error)
+    if isinstance(error, KernelError):
+        system = error.code == "system_error"
+        return link(
+            "component",
+            "Kernel (file transaction)",
+            error.code,
+            str(error) + (f" (at {error.field})" if error.field else ""),
+            reason="environment" if system else "input",
+            explanation="the operating system refused a file operation the transaction needs"
+            if system
+            else "a file transaction writes a file only over the bytes it was bound to",
+            causes=[cause_link(item) for item in error.causes],
+        )
+    if isinstance(error, OSError):
+        return from_exception(
+            "Kernel (file transaction)",
+            error,
+            code="system_error",
+            reason="environment",
+            explanation="the operating system refused the file operation",
+        )
+    return from_exception(ACTOR, error)
 
 
 def guarded(action, *arguments, **keywords):
@@ -248,7 +278,11 @@ def check(root: Path) -> tuple[dict, int]:
             relative = f"{folder}/{path.name}"
             if relative == CLOSED:
                 continue  # The folder of closed records, checked in its turn.
-            if not RECORD_NAME.fullmatch(path.name) or not path.is_file():
+            if (
+                not RECORD_NAME.fullmatch(path.name)
+                or path.is_symlink()
+                or not path.is_file()
+            ):
                 problems.append(
                     f"{relative} is not a record named I-<32 hex digits>.md"
                 )
@@ -256,7 +290,7 @@ def check(root: Path) -> tuple[dict, int]:
             places.setdefault(path.stem, []).append(relative)
             try:
                 record, _ = read_record_file(root, relative)
-            except (ValueError, OSError) as error:
+            except (ValueError, OSError, KernelError) as error:
                 problems.append(f"{relative} is invalid: {error}")
                 continue
             expected = issue_path(record["id"], record["status"])

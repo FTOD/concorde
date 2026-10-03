@@ -28,7 +28,7 @@ from concorde.kernel.tracing import locks
 from concorde.kernel.tracing import node as trace
 from concorde.method import brownfield  # noqa: F401 -- registers the brownfield workflow
 from concorde.workflows import catalog, store
-from concorde.workflows.output import step_output
+from concorde.workflows.output import StepOutputError, step_output
 from concorde.workflows import step as steps
 from concorde.workflows.cli import refused
 from concorde.workflows.report import RESULT_SCHEMA, report
@@ -619,6 +619,21 @@ class StepTests(unittest.TestCase):
             ["describe:module.checkout", "validate", "delivery"],
             [s["key"] for s in result["superseded"]],
         )
+
+    @verifies("scenario.workflows.superseded")
+    def test_a_superseded_step_breaking_the_convention_still_reports(self):
+        # The step is recorded before its outcome refuses the object, as the step command does.
+        with (
+            self.starter(output={"workflow": {"decision_points": []}}),
+            self.assertRaises(StepOutputError),
+        ):
+            run_step(self.space, self.request())
+        # The run ended ok, so only a restart label runs the step again and supersedes it.
+        with self.starter(output=SURVEY_OUTPUT):
+            run_step(self.space, self.request(restart="2"))
+        result = report(self.space)
+        self.assertEqual(["survey"], [s["key"] for s in result["superseded"]])
+        self.assertEqual(["d.db-helper"], [d["id"] for d in result["decisions"]])
 
     @verifies("scenario.workflows.interactive-resume")
     def test_answers_make_a_new_step_that_admits_the_asking_run(self):

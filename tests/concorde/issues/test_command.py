@@ -13,6 +13,7 @@ import unittest
 from contextlib import redirect_stdout
 from functools import cache
 from pathlib import Path
+from unittest.mock import patch
 
 from concorde.kernel.errors import link
 from concorde.issues.command import NOT_AN_ISSUE
@@ -669,6 +670,45 @@ class IssueCommandTests(unittest.TestCase):
             )
         self.assertEqual("environment", value["error"]["unhandled"]["reason"])
         self.assertEqual(1, len(list_issues(self.root)))
+        # The operating system's refusal stays below the Issues link.
+        [kernel] = value["error"]["causes"]
+        self.assertEqual("system_error", kernel["code"])
+        self.assertEqual("system_error", kernel["causes"][0]["code"])
+
+    @verifies("scenario.issues.command-restore-refused")
+    def test_a_write_whose_record_could_not_be_restored_is_recovery_failed(self):
+        from concorde.issues import store
+        from concorde.kernel.refusal import KernelError
+
+        self.recorded()
+
+        def refused_restoration(root, changes, allowed, **kwargs):
+            # A file transaction that published the record, failed, and could not restore it.
+            [change] = changes
+            (Path(root) / change["path"]).write_text(change["content"])
+            raise KernelError(
+                "system_error",
+                "a file transaction failed and the operating system refused to restore "
+                f"{change['path']}",
+                field=change["path"],
+                causes=[OSError(5, "write failed"), OSError(30, "restore refused")],
+            )
+
+        with patch.object(store, "apply_files", side_effect=refused_restoration):
+            status, value = self.run_in_process(
+                "report", "--file", self.report_file("next.json", report_key="next")
+            )
+        self.assertEqual((1, "recovery_failed"), (status, value["error"]["code"]))
+        self.assertEqual("environment", value["error"]["unhandled"]["reason"])
+        [refusal] = value["error"]["causes"]
+        self.assertEqual("io_error", refusal["code"])
+        [kernel] = refusal["causes"]
+        self.assertEqual("Kernel (file transaction)", kernel["actor"])
+        self.assertEqual(2, len(kernel["causes"]))
+        self.assertEqual(1, len(list_issues(self.root)))
+        status, value = self.run_command("recover")
+        self.assertEqual(0, status, value)
+        self.assertEqual(["removed"], [item["action"] for item in value["recovered"]])
 
     @verifies("scenario.issues.command-write-raced")
     def test_a_record_changed_during_the_write_is_stale(self):

@@ -112,7 +112,9 @@ def now() -> str:
 class Row:
     """One recorded step with what its saved result says."""
 
-    def __init__(self, space: Workspace, step: dict, workflow: str):
+    def __init__(
+        self, space: Workspace, step: dict, workflow: str, superseded: bool = False
+    ):
         self.step = step
         self.key = step["key"]
         self.name = step["name"]
@@ -126,8 +128,11 @@ class Row:
         if state == "finished" and self.result is None:
             state = "running"
         self.status = self.result["status"] if self.result is not None else state
-        # What the run declared under the step output convention; nothing until it finished.
-        self.declared = declared((self.result or {}).get("output"))
+        # What the run declared under the step output convention; nothing until it finished, and
+        # never read for a superseded step, which contributes nothing but its summary row.
+        self.declared = (
+            None if superseded else declared((self.result or {}).get("output"))
+        )
         self.error = (self.result or {}).get("error") or step.get("error")
         if self.status == "lost":
             self.error = lost_link(space, workflow, self.key, self.name, self.run_id)
@@ -192,7 +197,9 @@ def build(space: Workspace, lost: list[str] = ()) -> dict:
     mode = steps[-1]["mode"] if steps else "no-ask"
     rows = [Row(space, step, workflow) for step in steps if not step["superseded"]]
     superseded = [
-        Row(space, step, workflow).value() for step in steps if step["superseded"]
+        Row(space, step, workflow, superseded=True).value()
+        for step in steps
+        if step["superseded"]
     ]
     keys = {row.key for row in rows}
     extra = [
