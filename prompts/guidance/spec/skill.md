@@ -14,8 +14,9 @@ only when it is not common sense (its meaning here is narrower than or different
 usage) and a Module other than its owner uses it; the root Module's own terms are exempt from the
 second condition. Explain any other word in its owner's document where it is first used. When you
 need a word that meets this and the glossary lacks it, or a definition no longer fits how the
-project works, say so to the developer and change the glossary in a task, by the owner of the
-term. When the developer uses a term in another sense, point out the difference before acting on
+project works, say so to the developer and change the glossary, by the owner of the term: in a
+task where the coordination part is installed, and otherwise as the project changes any other file
+once the developer agreed. When the developer uses a term in another sense, point out the difference before acting on
 it.
 
 ## Specs
@@ -33,9 +34,11 @@ from the worktree it is rooted in. Workers never receive it.
 
 Spec tooling's commands, such as `spec-validation`, `registry`, `grant` and `build`, and the Spec
 MCP server refuse with Spec tooling's own error record (`code`, `message`, `reason`,
-`location`, `remediation`, `causes`), which is no link of an error chain: where the coordination
-part is installed, `concorde task escalate` refuses it as `--error-file` with `invalid_error`. To
-escalate one, translate it into a `component` link
+`location`, `remediation`, `causes`), which is no link of an error chain. Without the coordination
+part there are no tasks to escalate it in: when you cannot correct its cause yourself, give the
+developer the record whole, as it stands, with what you tried. Where the coordination part is
+installed, `concorde task escalate` refuses it as `--error-file` with `invalid_error`. To
+escalate one there, translate it into a `component` link
 and save that in a JSON file: `level` `component`, `actor` `Spec tooling (concorde <command>)`, the
 record's `code`, a `detail` holding its message, reason, location and remediation, `evidence`,
 `attempts` and `options` empty or what you know, a `recommendation`, `unhandled` with the reason

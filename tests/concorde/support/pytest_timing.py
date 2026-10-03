@@ -8,8 +8,9 @@ plugin keeps the evidence the retired subprocess runner recorded:
   and what it repeats; legacy callers pass none of them and get ``manual``/``unspecified``;
 - ``--json=PATH`` writes one summary with whitelisted input/test/runtime/lock/environment
   fingerprints, per-unit queue/execution intervals, discovery/total intervals and layer "C" spans;
-- ``--prior=PATH`` names an earlier summary: the report records its ``run_id`` and whether the
-  declared inputs are the same; a summary that cannot be read is a usage error before any test runs;
+- ``--prior=PATH`` names an earlier ``--json`` report: the report records its ``run_id`` and whether
+  the declared inputs are the same; a report that cannot be read, or lacks its ``run_id`` or
+  fingerprint ``digest``, is a usage error before any test runs;
 - every process that executes tests gets its own ``CONCORDE_DIAGNOSTIC_TIMING_DIR`` and each unit
   its own subdirectory, so runtime spans written by ``concorde.execution.checks.timing.timed`` fixtures are
   nested under the unit that produced them and the controller aggregates them from the workers.
@@ -406,7 +407,7 @@ class ConcordeTiming:
         prior = self.prior
         inputs = fingerprint(self.collected, self.config.rootpath)
         same_input = (
-            prior.get("fingerprint", {}).get("digest") == inputs["digest"]
+            prior["fingerprint"]["digest"] == inputs["digest"]
             if prior
             and inputs["input_complete"]
             and inputs["runtime_facts"] is not None
@@ -475,7 +476,7 @@ class ConcordeTiming:
             "scope": option.scope,
             "phase": option.phase,
             "attempt": option.attempt,
-            "prior_run_id": prior.get("run_id") if prior else None,
+            "prior_run_id": prior["run_id"] if prior else None,
             "same_declared_inputs": same_input,
             "fingerprint": inputs,
             "started_at": self.started_at,
@@ -504,11 +505,15 @@ def read_prior(path: str) -> dict:
         raise pytest.UsageError(
             f"--prior={path} must name a readable JSON summary: {error}"
         ) from error
-    if not isinstance(prior, dict) or not isinstance(
-        prior.get("fingerprint", {}), dict
+    if not (
+        isinstance(prior, dict)
+        and isinstance(prior.get("run_id"), str)
+        and isinstance(prior.get("fingerprint"), dict)
+        and isinstance(prior["fingerprint"].get("digest"), str)
     ):
         raise pytest.UsageError(
-            f"--prior={path} must name a JSON summary object written by --json"
+            f"--prior={path} must name a JSON report written by --json, an object with a "
+            "string run_id and a fingerprint object holding a string digest"
         )
     return prior
 

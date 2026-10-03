@@ -6,18 +6,31 @@ together.
 
 ## Parts
 
-### req.concorde.part-dependencies — A part relies only on the parts it depends on
+### req.concorde.part-dependencies — A part imports only the parts it depends on
 
-Every [part](glossary.json#concept.part) SHALL import code of, and require the installation of, only the parts it depends on, in the directions the root's [parts table](module.md#the-parts) lists.
+Every [part](glossary.json#concept.part) SHALL import code only of itself and of the parts it depends on, in the directions the root's [parts table](module.md#the-parts) lists.
 
-A Module's `uses` of a Module in a part its own part does not depend on is therefore one of two
-things, and its explanation says which. Either it relies on a format or convention that part
-defines, which the relying part implements or meets itself without importing it, as the Spec
-tooling keeps its own copy of the Kernel's [typed values](glossary.json#concept.typed-value) and every part meets the host promises of
-Distribution, the installation host present in every installation; or it is an
-[optional integration](glossary.json#concept.optional-integration), whose explanation says what the
-feature does with that part and without it. No part imports Distribution, which reaches the parts
-only through their [registrations](glossary.json#concept.part-registration).
+There is no exception: an [optional integration](glossary.json#concept.optional-integration)
+imports no code of the part it uses, not even guarded against that part's absence, and reaches it
+only through that part's `concorde` command or a file format its Spec defines. A Module's `uses` of
+a Module in a part its own part does not depend on is therefore one of two things, and its
+explanation says which. Either it relies on a format or convention that part defines, which the
+relying part implements or meets itself, as the Spec tooling keeps its own copy of the Kernel's
+[typed values](glossary.json#concept.typed-value) and every part meets the host promises of
+Distribution, the installation host present in every installation; or it is an optional
+integration, whose explanation says what the feature does with that part and without it. No part
+imports Distribution, which reaches the parts only through their
+[registrations](glossary.json#concept.part-registration).
+
+### req.concorde.part-installation — A part requires only the parts it depends on
+
+Installing a part SHALL require the installation of only the parts it depends on, in the directions the root's parts table lists, besides Distribution.
+
+Each part's registration names exactly those parts, and the installer adds them, transitively, to a
+selection that lacks them
+([req.distribution.parts-installable](distribution/requirements.md#req.distribution.parts-installable)).
+Distribution, the installation host, is installed beside every selection and is no part's
+dependency.
 
 ### req.concorde.part-alone — A part works with its dependencies alone
 
@@ -84,19 +97,21 @@ A worktree's worker configuration SHALL change only by an explicit request of th
 
 ## The two halves
 
-### req.concorde.halves-apart — The execution core knows no task
+### req.concorde.halves-apart — The lower half knows no task
 
-No [Operation](glossary.json#concept.operation), [execution command](glossary.json#concept.execution-command), workflow or worker SHALL read or write a [task record](glossary.json#concept.task-record), a [decision log](glossary.json#concept.decision-log) or any other state of the task store.
+No [Operation](glossary.json#concept.operation), [execution command](glossary.json#concept.execution-command), workflow or worker SHALL read or write a [task record](glossary.json#concept.task-record), a [decision log](glossary.json#concept.decision-log) or any other record Coordination keeps of a task.
 
-The upper half hands a task to the execution core only by writing its worktree's
+The halves are those of the root's [Two halves, one seam](module.md#two-halves-one-seam): the upper
+half is Coordination, and the lower half the parts that do the work in a workspace, Execution,
+Workflows, Method and the worker harness. The upper half hands a task to the lower half only by
+writing its worktree's
 [workspace binding](glossary.json#concept.workspace-binding), and learns the outcome of the work
 done there only from the [run store](glossary.json#concept.run-store) and the
 [delivery commits](glossary.json#concept.delivery-commit), beside what Git shows of the task branch
 and its worktree.
 
-The upper half, [Coordination](coordination/module.md), organizes the work; the lower half,
-[Execution](execution/module.md), does it. Keeping every piece of shared state on one side lets
-either half change without the other.
+The upper half, [Coordination](coordination/module.md), organizes the work; the lower half does
+it. Keeping every piece of shared state on one side lets either half change without the other.
 
 ### req.concorde.operations-are-ai — An Operation involves a model
 

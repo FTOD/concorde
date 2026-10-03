@@ -220,7 +220,8 @@
             "req.main-session.task-session-decides",
             "req.main-session.task-session-escalates",
             "req.main-session.escalation-policy",
-            "req.main-session.small-change"
+            "req.main-session.small-change",
+            "req.main-session.tasks-own-changes"
           ]
         }
       ],

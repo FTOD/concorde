@@ -34,24 +34,45 @@ The pytest evidence plugin SHALL record in the report's `fingerprint` a digest o
 The examined inputs are the files below pytest's root directory that Git tracks or would track
 under `src/`, `scripts/`, `tests/`, `prompts/`, `protocol/`, `specs/` and `.concorde/protocol/`,
 and the files `CLAUDE.md`, `concorde.json`, `pyproject.toml`, `uv.lock`, `.concorde/config.json`
-and `.concorde/specs.json`. `input` digests each such file's path with the SHA-256 of its bytes, and
-`lock` the same for those whose path ends in `lock` or `lock.json`. `tests` digests the sorted node
-identities of the collected tests; `runtime` the Python version and implementation and the pytest
-version, which `runtime_facts` shows; `environment` the operating system, the machine and whether
-bytecode writing is disabled, which `environment_facts` shows. Every digest is the SHA-256 of the
-JSON of what it covers, with sorted keys. No other file and no environment variable is an input, so
-`environment_complete` is always `false`. When Git cannot list the files or one of them cannot be
-read, `input_complete` is `false` and `input` is `null`.
+and `.concorde/specs.json`, each a regular file and not a symbolic link. No other file and no
+environment variable is an input, so `environment_complete` is always `false`. When Git cannot list
+the files or one of them cannot be read, `input_complete` is `false` and `input` is `null`.
 
-### req.concorde.test-prior — A prior run is compared by its fingerprint
+Each digest of the fingerprint is the lowercase hexadecimal SHA-256 of the UTF-8 bytes of one JSON value, written with
+its object keys sorted, `", "` between items, `": "` between a key and its value, and every
+character outside ASCII escaped as `\uXXXX`, as Python's `json.dumps(value, sort_keys=True)` writes
+it. Sorting the keys makes the order in which files are listed or read irrelevant. The value each
+digest covers is:
 
-When `--prior=PATH` names the summary of an earlier run, the pytest evidence plugin SHALL record that run's `run_id` as `prior_run_id` and, as `same_declared_inputs`, whether the two fingerprints' `digest` values are equal.
+| Digest | JSON value |
+| --- | --- |
+| `input` | an object mapping each examined input's path, relative to the root with `/` between its names as Git lists it, to the lowercase hexadecimal SHA-256 of its bytes |
+| `lock` | the same object, restricted to the paths that end in `lock` or `lock.json` |
+| `tests` | the array of the collected tests' node identities, sorted |
+| `runtime` | `{"implementation", "pytest", "python"}`: the Python implementation, the pytest version and the Python version, which `runtime_facts` shows; `null` when they are unknown |
+| `environment` | `{"bytecode_disabled", "machine", "platform"}`: whether bytecode writing is disabled, the machine and the operating system, which `environment_facts` shows |
+| `digest` | `{"environment", "input", "lock", "runtime", "tests"}`: the five digests above, `input` being `null` when the input is incomplete |
+
+For example, the `tests` digest of a run that collected only `t.py::A::test_one` is the SHA-256 of
+`["t.py::A::test_one"]`, `8aa528e6d583124b22694dd542edd2390a7c00000f0c58574a450be32829bbf5`.
+
+### req.concorde.test-prior — A prior run is named by its report
+
+When `--prior=PATH` names the JSON report of an earlier run, the pytest evidence plugin SHALL record that report's `run_id` as `prior_run_id`.
+
+The report `--prior` names is one this plugin wrote with `--json`. A `--prior` whose file cannot be
+read, is not JSON, holds no JSON object, or holds one without a string `run_id` or without a
+`fingerprint` object holding a string `digest`, is a usage error, pytest's exit status 4, before any
+test runs. Without `--prior`, `prior_run_id` is `null`. `--json=PATH` replaces whatever the file
+held.
+
+### req.concorde.test-prior-compare — A prior run is compared by its fingerprint
+
+When `--prior=PATH` names the JSON report of an earlier run, the pytest evidence plugin SHALL record as `same_declared_inputs` whether that report's fingerprint `digest` equals this run's.
 
 `same_declared_inputs` is `null` without `--prior`, and also when this run's input is incomplete or
 its runtime facts are unknown, since equal digests would then prove nothing; when it is `true`, the
-terminal says so and that the environment is covered only in part. A `--prior` that names no
-readable JSON summary object is a usage error, pytest's exit status 4, before any test runs.
-`--json=PATH` replaces whatever the file held.
+terminal says so and that the environment is covered only in part.
 
 ### req.concorde.test-counting — The totals count collected tests
 
@@ -63,22 +84,24 @@ may differ from the totals; the report's `counting_note` says so.
 
 ### scenario.concorde.test-prior-unchanged — A rerun on unchanged inputs is recognized
 
-- GIVEN the summary of a run of some tests
-- WHEN the same tests run again with `--prior` naming that summary and no examined input changed
+- GIVEN the report of a run of some tests whose input was complete and whose runtime facts were known
+- WHEN the same tests run again with `--prior` naming that report, on the same Python, pytest, operating system and machine, with bytecode writing disabled or not as before
+- AND no examined input changed and every one could be read
 - THEN the new report's `prior_run_id` is the earlier run's `run_id`
 - AND its fingerprint `digest` equals the earlier one and `same_declared_inputs` is `true`
 
 ### scenario.concorde.test-prior-changed — A rerun on a changed input is told apart
 
-- GIVEN the summary of a run of some tests
-- WHEN one examined input file changes and the same tests run again with `--prior` naming that summary
+- GIVEN the report of a run of some tests whose input was complete and whose runtime facts were known
+- WHEN one examined input file changes and the same tests run again with `--prior` naming that report, on the same Python, pytest, operating system and machine
+- AND every examined input could be read
 - THEN the new report's `prior_run_id` is the earlier run's `run_id`
 - AND its `input` fingerprint differs from the earlier one while its `tests` fingerprint does not
 - AND `same_declared_inputs` is `false`
 
-### scenario.concorde.test-prior-unreadable — An unreadable prior summary stops the run
+### scenario.concorde.test-prior-unreadable — An unusable prior report stops the run
 
-- GIVEN a `--prior` path that does not exist, is not JSON or holds no JSON object
+- GIVEN a `--prior` path that does not exist, is not JSON, holds no JSON object, or holds an object without a `run_id` or without a fingerprint `digest`
 - WHEN pytest runs with it and `--json`
 - THEN pytest ends with exit status 4 and an error naming the `--prior` value
 - AND no test runs and no report is written
@@ -187,9 +210,13 @@ every page it could not fetch, or the write that failed.
 A session in this checkout, [main agent](glossary.json#concept.main-agent) or
 [task session](glossary.json#concept.task-session), works as in any Concorde project, plus the
 rules for developing Concorde itself. Both come as skills the build renders: `concorde`, the
-[main-session guidance](glossary.json#concept.main-session-guidance) the installer places in every
-project, and `concorde-development`, rendered from `prompts/development/skill.md`, which includes
-Dogfooding's rule for observing runs. Skills load on demand, so `CLAUDE.md` keeps a short part that
+project skill composed of the installed parts' sections
+([req.distribution.composed-guidance](distribution/requirements.md#req.distribution.composed-guidance)),
+which with every part installed, as in this checkout, holds the
+[main-session guidance](glossary.json#concept.main-session-guidance), and `concorde-development`,
+rendered from `prompts/development/skill.md`, which includes Dogfooding's rule for observing runs
+([req.dogfooding.one-observation-rule](dogfooding/requirements.md#req.dogfooding.one-observation-rule)).
+Skills load on demand, so `CLAUDE.md` keeps a short part that
 is always in context: the instruction to load both skills before any work, the core rules of the
 main agent and of a task session, and the import of the glossary. The main agent and its task
 sessions are Claude Code sessions, which find the skills through `.claude/skills/<name>`, links
@@ -202,7 +229,7 @@ read the rendered files directly.
 - WHEN a Claude Code session starts there
 - THEN `CLAUDE.md` tells it to load the `concorde` and `concorde-development` skills before any work
 - AND `.claude/skills/concorde` and `.claude/skills/concorde-development` link to the folders of `generated/skills/` that hold the rendered skills
-- AND `concorde-development` states Dogfooding's rule for observing runs word for word
+- AND `concorde-development` states Dogfooding's rule for observing runs word for word ([req.dogfooding.one-observation-rule](dogfooding/requirements.md#req.dogfooding.one-observation-rule))
 
 ## Docsite type check
 
@@ -218,12 +245,17 @@ read the rendered files directly.
 
 Each [part](glossary.json#concept.part)'s code is one directory of `src/concorde/`: `spec/`,
 `kernel/`, `worker_harness/`, `execution/`, `workflows/`, `issues/`, `coordination/`, `method/`
-and `distribution/`, with `__main__.py` counted as Distribution's and `dogfooding/` as no part.
+and `distribution/`, with `__main__.py` counted as Distribution's and `dogfooding/` as no part,
+together with the Python files outside that tree that its registration ships under
+`install.files`, such as `scripts/issues.py` of the issues part.
 `tests/concorde/development/test_part_dependencies.py` checks
 [req.concorde.part-dependencies](requirements.md#req.concorde.part-dependencies) on that code: it
 reads the allowed directions from the root's [parts table](module.md#the-parts) and fails on any
 `concorde.*` import, at module or function level and including the `"module:attribute"` strings a
-catalog imports by name, that crosses to a part its own part does not depend on and is no listed
-[optional integration](glossary.json#concept.optional-integration). The reliances that code still has are listed in the test as known exceptions,
-each with the code task expected to remove it; a listed exception that no longer occurs also fails
-the check, so the list only shrinks.
+catalog imports by name, that crosses to a part its own part does not depend on, with no exception:
+an [optional integration](glossary.json#concept.optional-integration) imports no code of the part
+it uses. Dogfooding's code imports no part and no part imports it; the one entry Distribution
+reaches it through, by name, is the package descriptor's `develop.check`, which the check requires
+to name Dogfooding's code, the reliance Distribution's `uses` of Dogfooding declares. It also checks
+[req.concorde.part-installation](requirements.md#req.concorde.part-installation) on the
+registrations: each names its part and exactly the dependencies the parts table gives it.

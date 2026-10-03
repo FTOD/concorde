@@ -51,8 +51,9 @@ The developer sets the project's direction with the
 **[main agent](glossary.json#concept.main-agent)**, the Claude Code session in the primary
 worktree. Its project-wide view lets it judge which responsibilities a change affects and which
 questions need the developer. It hands every task to a task session, so that it remains free to talk
-with the developer and to answer every session; only a small change the developer approved does it
-make itself. It alone merges a task into the primary branch.
+with the developer and to answer every session; of the changes of Spec meaning or code behaviour,
+only a small change the developer approved does it make itself. It alone merges a task into the
+primary branch.
 [Main session](coordination/main-session/module.md) explains its working method and decision
 policy.
 
@@ -66,8 +67,12 @@ a task session escalates every other question to the main agent
 ([req.main-session.task-session-escalates](coordination/main-session/requirements.md#req.main-session.task-session-escalates)),
 which asks the developer before acting on a decision of major impact
 ([req.main-session.escalation-policy](coordination/main-session/requirements.md#req.main-session.escalation-policy)); and the
-main agent changes the primary worktree itself only for a small change the developer approved
-([req.main-session.small-change](coordination/main-session/requirements.md#req.main-session.small-change)). This Module states no
+main agent makes every change of Spec meaning or code behaviour in a task, except a small change the
+developer approved
+([req.main-session.small-change](coordination/main-session/requirements.md#req.main-session.small-change)),
+which with the housekeeping that regenerates derived files and the commit of the worker
+configuration alone is all it changes in the primary worktree itself
+([req.main-session.tasks-own-changes](coordination/main-session/requirements.md#req.main-session.tasks-own-changes)). This Module states no
 decision policy of its own: a question that policy does not let a level settle goes up, with its
 error chain, until it reaches the developer. Where the coordination part is not installed, there is
 no main agent or task session of Concorde's, and whoever drives the other parts settles every
@@ -419,7 +424,9 @@ depends on nothing, not even the kernel: it keeps its own copy of the few data u
 with the kernel, accepting the duplication, so that a project can check and publish its Specs with
 nothing else installed. The kernel holds only what two parts must agree on without importing each
 other, such as the [workspace binding](glossary.json#concept.workspace-binding) one part writes
-and another reads; it has no behaviour of its own that a part could depend on by accident. The
+and another reads, with the small mechanisms that keep those contracts, such as file transactions,
+locks and traces; it holds no work of its own, such as running, delegating or reviewing, that a part
+could come to depend on by accident. The
 worker harness receives its grant as data and its round validation as a callback, so it bounds and
 records a worker without reading a Spec; Method is the part that takes the grant from the Spec
 tooling and hands it over. Execution runs what definitions tell it, launches no worker itself and
@@ -446,7 +453,9 @@ where the other part is installed.
 Project management and the work done in a workspace change for different reasons. How tasks are
 opened, parallelized, delegated and merged follows how the developer wants to work; how a worker is
 bounded by the Specs, launched, audited and checked follows the Protocol and is Concorde's core. So
-they are two halves with one narrow seam: the upper half, Coordination, reaches the lower one only
+they are two halves with one narrow seam. The upper half is Coordination; the lower half is the
+parts that do the work in a workspace: Execution, Workflows, Method and the worker harness Method
+launches its workers through. The upper half reaches the lower one only
 through a [workspace binding](glossary.json#concept.workspace-binding), the commands of the parts
 that work in a workspace, and what those parts recorded. It writes the binding into each task
 worktree, runs those commands inside that worktree and reads what the lower half recorded: its runs
@@ -473,7 +482,7 @@ kernel: Kernel {
   binding: Workspace binding
   commit: Delivery commit
 }
-lower: "Execution, Workflows, Method" {
+lower: "Lower half: Execution, Workflows,\nMethod, worker harness" {
   runs: "Runs: Operations and\nexecution commands"
   store: Run store
 }
@@ -493,10 +502,11 @@ coordination.tasks -> kernel.commit: reads
 A model is needed in two places, for opposite reasons. At the top, someone must understand the
 developer, see the whole project and judge what to do next; the main agent has the global view and
 the developer's trust, so Concorde does not restrict it, but it hands every task to a task session
-and never works inside a task worktree itself; in the primary worktree it makes only a small change
-the developer approved. At the bottom, someone must read and write code and Specs; a worker has one
-bounded job, no human to ask, and a boundary derived from the Specs. Keeping the two apart lets a
-large change be split into small, checkable steps without the developer supervising each one.
+and never works inside a task worktree itself; of the changes of Spec meaning or code behaviour, it
+makes in the primary worktree only a small change the developer approved. At the bottom, someone
+must read and write code and Specs; a worker has one bounded job, no human to ask, and a boundary
+derived from the Specs. Keeping the two apart lets a large change be split into small, checkable
+steps without the developer supervising each one.
 
 The levels between them are programs on purpose. What happens to a worker's answer decides what the
 next level sees, so it must be reproducible and checkable rather than another model's opinion: an
@@ -517,8 +527,12 @@ delegates each task to a task session whose writes are confined to that task, wh
 project-wide view, the conversation with the developer and sole responsibility for merging. The
 [error chain](#errors-as-a-chain) preserves failures across that extra session. Where a task's
 commands run with the branch's own copy of the Framework, as in Concorde's own source checkout,
-their success is self-validation, which is why a merge there runs the build and `spec-validation`
-once more on the primary branch; in an installed project a task worktree ordinarily runs the primary
+their success is self-validation, which is why the main agent there merges with the build and
+`spec-validation` as the merge's checks, as that checkout's development guidance requires, so that
+both run once more on the primary branch: a merge runs exactly the checks its caller gives it, and
+given none only `spec-validation`
+([req.tasks.merge-default-check](coordination/tasks/requirements.md#req.tasks.merge-default-check));
+in an installed project a task worktree ordinarily runs the primary
 worktree's copy ([Distribution](distribution/module.md)).
 
 Calls go only downward, and a level may be skipped: the task level runs an Operation or a command
@@ -613,8 +627,9 @@ here by the part they play.
 
 **Spec tooling**, the spec part, maintains and serves Specs — loading, checking, computing
 [boundary sets](glossary.json#concept.boundary-set) and grants, answering agents over MCP and
-publishing them. Every Module that reads Specs relies on it to refuse an untrustworthy structure; it
-uses no other Module and depends on no other part.
+publishing them. Every Module that reads Specs relies on it to refuse an untrustworthy structure. It
+depends on no other part and imports no other part's code; the Kernel's formats it follows, such as
+typed values and file transactions, it implements in its own copy.
 
 <a id="contains-kernel"></a>
 
