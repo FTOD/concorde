@@ -28,7 +28,7 @@ an installed part's registration. What each kind of entry is called with and ans
 ```concorde-contract
 {
   "id": "contract.distribution.part-registration",
-  "version": 4,
+  "version": 5,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -93,8 +93,8 @@ an installed part's registration. What each kind of entry is called with and ans
         "properties": {
           "files": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*/?$"}},
           "defaults": {"type": "object", "additionalProperties": {"type": "string"}},
-          "gitignore": {"type": "array", "items": {"type": "string", "minLength": 1}},
-          "permissions": {"type": "array", "items": {"type": "string", "minLength": 1}},
+          "gitignore": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+          "permissions": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
           "programs": {"type": "array", "uniqueItems": true, "items": {"enum": ["d2", "pi-runtime"]}},
           "python_dependencies": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
           "prepare": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/entry"}]},

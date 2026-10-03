@@ -32,7 +32,7 @@ from concorde.kernel.errors import ERROR_SCHEMA
 from concorde.execution.runs import Store, run_lock
 from concorde.spec.initialize import apply_project_proposal, project_proposal
 from concorde.spec.repository_base import SpecError
-from concorde.spec.schema import validate
+from concorde.spec.schema import ContractError, validate
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies
 from concorde.spec.views.docsite_template import adapter_files, template_files
@@ -683,6 +683,30 @@ class PartsTests(unittest.TestCase):
         ):
             with self.subTest(path=path.parent.name):
                 validate(json.loads(path.read_text()), schema)
+
+    def test_the_build_refuses_what_the_registration_contract_refuses(self):
+        schema = contract_schema("contract.distribution.part-registration")
+        data = json.loads(
+            (REPOSITORY_ROOT / "src/concorde/issues/registration.json").read_text()
+        )
+        cases = {
+            "a one-letter part": {**data, "part": "x"},
+            "a dependency of one letter": {**data, "depends_on": ["k"]},
+            "a repeated ignore rule": {
+                **data,
+                "install": {**data["install"], "gitignore": ["a/", "a/"]},
+            },
+            "a repeated permission rule": {
+                **data,
+                "install": {**data["install"], "permissions": ["X", "X"]},
+            },
+        }
+        for case, registration in cases.items():
+            with self.subTest(case=case):
+                with self.assertRaises(ContractError):
+                    validate(registration, schema)
+                with self.assertRaises(parts.RegistrationError):
+                    parts.check(registration, "registration.json")
 
 
 class InstallTests(unittest.TestCase):

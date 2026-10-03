@@ -7,7 +7,7 @@ in concrete situations.
 
 ### req.distribution.build-owned-outputs — The build writes only where it owns
 
-The build SHALL write only inside `generated/protocol/`, `generated/workers/`, `generated/main-session/`, `generated/dogfooding/`, `generated/development/`, `generated/guidance/`, `generated/skills/` and `generated/workflows/` and to `generated/build-manifest.json`.
+The build SHALL write only inside `generated/protocol/`, `generated/workers/`, `generated/main-session/`, `generated/dogfooding/`, `generated/development/`, `generated/guidance/`, `generated/skills/` and `generated/workflows/` and to `generated/build-manifest.json` and the parts index `generated/parts.json`.
 
 Other locations under `generated/` belong to other producers, and the build never judges or removes
 them. Each new prompt root adds its own owned location in the same change.
