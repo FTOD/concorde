@@ -1043,7 +1043,9 @@ class TaskStoreTests(unittest.TestCase):
     @verifies("scenario.tasks.busy")
     def test_a_second_concurrent_run_is_refused(self):
         self.project.open_task("t1")
-        with workspace_lock(store.concorde(self.root), "t1", "implement run r-held"):
+        with workspace_lock(
+            store.concorde(self.root), "t1", "implement run r-held"
+        ):
             self.assertIn(
                 "implement run r-held", store.show_task(self.root, "t1")["busy"]
             )
