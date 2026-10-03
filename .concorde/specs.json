@@ -1818,7 +1818,17 @@
           "meaning": "#contains-workers"
         }
       ],
-      "uses": [],
+      "uses": [
+        {
+          "target": "module.distribution",
+          "meaning": "#uses-distribution",
+          "relies_on": [
+            "concept.part-registration",
+            "contract.distribution.part-registration",
+            "req.distribution.composed-guidance"
+          ]
+        }
+      ],
       "includes": [],
       "participates": []
     },
