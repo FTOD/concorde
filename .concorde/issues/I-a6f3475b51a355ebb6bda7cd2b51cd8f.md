@@ -37,6 +37,40 @@
         "change_id": "parts-review-specs",
         "head": "959c856c3a7732af1420829a271f59dd21ba837c"
       }
+    },
+    {
+      "id": "sha256:8f046f6defc2a3c51d72ad896b49c0c5f8f57ab738e55af357fe688141a836c0",
+      "created_at": "2026-10-03T08:48:46.989503+00:00",
+      "report": {
+        "issue_id": "I-a6f3475b51a355ebb6bda7cd2b51cd8f",
+        "expected_revision": "sha256:71538fcebfb6e4dbc497a8904ca84ca1ba6da422afb1a51f91275217a6f41e92",
+        "report_key": "module.execution/7-verified",
+        "tier": "obvious-fix",
+        "severity": "low",
+        "title": "req.execution.trace-node's statement omits the lobby its own explanation names",
+        "description": "req.execution.trace-node (specs/concorde/execution/requirements.md) SHALL records every run in the binding's workspace folder, or in .concorde/unbound/ for an unbound run or a refused binding; its explanation and req.execution.lobby say a bound run refused or cancelled before it holds the workspace lock stays for good in lobby/<run-id>/ of the binding's .concorde. Fix: make the statement name the three places: 'in the binding's workspace folder once the run entered its workspace, in the lobby of the binding's .concorde when it never did, or in .concorde/unbound/ of the worktree it started in for an unbound run or a run whose binding it refused.'",
+        "impact": "Wording inconsistency inside one requirement; the explanation directly below and req.execution.lobby are explicit, and the code keeps such runs in the lobby.",
+        "basis": "Read req.execution.trace-node, its explanation, req.execution.lobby and runner.md 'The lobby'. Severity lowered from medium: the explanation under the same heading states the lobby case, so no implementer is misled. Classification: pre-existing - identical statement and explanation on main (git show main:specs/concorde/execution/requirements.md, lines 166-174).",
+        "owner_target_id": "module.execution",
+        "type": "bug",
+        "subtype": null,
+        "evidence": [
+          {
+            "path": "specs/concorde/execution/requirements.md",
+            "description": "req.execution.trace-node and req.execution.lobby"
+          }
+        ]
+      },
+      "source": {
+        "invocation_id": "cli-8778bfaf-6ea8-4001-8343-8c20eed1b2ba",
+        "agent": "task-session",
+        "operation": "issues",
+        "phase": "report",
+        "target_id": "module.execution",
+        "context_id": "sha256:dc5a1d8cbf5a69d2834f2ea5f6545ea6067e5caf2e4e3c78dfc4f3342c22cb32",
+        "change_id": "parts-review-specs",
+        "head": "41bda04db324df4ff913498f023597a72c419955"
+      }
     }
   ],
   "dispositions": []
