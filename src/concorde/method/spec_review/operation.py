@@ -564,6 +564,21 @@ def _normalize(ctx: RunContext, review: ModuleReview, claimed: list[dict]):
     return findings, corrections, rejected
 
 
+def path_repair(ctx: RunContext, result: dict) -> str | None:
+    """The repair that resumes a reviewing worker once with every finding whose path is not one
+    of the task worktree, or None when every path holds."""
+    return review_issues.citation_repair(
+        [
+            f"finding {position} (titled {item.get('title')!r}) names {item['path']!r}, which is "
+            "not a path in the task worktree"
+            for position, item in enumerate(
+                (result.get("output") or {}).get("findings") or [], 1
+            )
+            if _project_path(ctx, item["path"]) is None
+        ]
+    )
+
+
 def _checker_material(findings: list[dict]) -> str:
     lines = ["## Findings to check\n"]
     for position, item in enumerate(findings, 1):
@@ -651,9 +666,10 @@ def _review(ctx: RunContext, review: ModuleReview, prompt: str) -> list[dict]:
         + criteria(ctx.worktree),
         task_type=TASK_TYPE,
         output_schema=REVIEWER_OUTPUT,
-        rounds=0,
+        rounds=review_issues.CITATION_ROUNDS,
         modules=[review.module],
         worker="reviewer",
+        validate=lambda result: path_repair(ctx, result),
     )
     found.extend(_labelled(outcome.evidence, f"{review.module} reviewer"))
     if len(ctx.worker_runs) > launched:

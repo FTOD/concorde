@@ -313,14 +313,17 @@ class Panel:
         """The worker ``worker``, one of the panel's worker ids, so that the worker
         configuration may give each worker its own backend, model and thinking level; returns
         (output or None, host evidence, context identity, stop or None)."""
+        # Every panel worker returns findings with paths, and is resumed once with those that do
+        # not hold.
         result = run_worker(
             self.ctx,
             instructions,
             task_type=task_type,
             output_schema=schema,
-            rounds=0,
+            rounds=review_issues.CITATION_ROUNDS,
             modules=[self.subject.module],
             worker=worker,
+            validate=lambda value: review.path_repair(self.ctx, value),
         )
         found = review._labelled(result.evidence, f"{self.subject.module} {label}")
         identity = review._identity(result.evidence)

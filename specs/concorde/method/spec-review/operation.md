@@ -31,7 +31,7 @@ another. Step 1 validates the worktree once for all Modules.
 | 1 | Load the workspace's Specs and validate the Module | Operation (Spec core) | loading error: the Operation fails; structural error in the Module's own documents or about the Module or a node it defines: the Module is `incomplete`, with the findings as host evidence |
 | 2 | Compute the `review-spec` grant for the Module with the workspace as root and freeze it with its [context identity](../../glossary.json#concept.context-identity) | Operation (Spec core) | the Module is `incomplete` |
 | 3 | Read the Module's [earlier Issues](#earlier-issues) from the project's Issues, then generate the reviewer's settings, tool list and brief from the grant, the Reviewer brief and those Issues | Operation (Issues, Workers) | Issues that cannot be read: the Module is `incomplete` (`issues_unreadable`); otherwise the Operation fails |
-| 4 | Launch the reviewer and wait for its [worker result](../../glossary.json#concept.worker-result) with findings; there is one round and no resume | Operation (Workers) | `blocked`, `failed`, timeout or an invalid result: the Module is `incomplete` |
+| 4 | Launch the reviewer and wait for its [worker result](../../glossary.json#concept.worker-result) with findings; when a finding's path is not one of the workspace, the reviewer is resumed once with those paths to correct, and its last result counts | Operation (Workers) | `blocked`, `failed`, timeout or an invalid result: the Module is `incomplete` |
 | 5 | Audit that the worktree has no change | Operation (Workers) | any change: the Module is `incomplete`, with the audit violations as host evidence |
 | 6 | With `--check-findings` and at least one finding, launch the checker under the same grant with the reviewer's numbered findings as task material, then audit again | Operation (Workers) | as steps 4 and 5; the reviewer's findings stay unchecked |
 | 7 | Normalize the findings and settle which earlier Issue each names and which it resolves | Operation | none: a finding whose path is not in the workspace is rejected alone, listed under the Module's `rejected` with the reason and as `invalid-output` evidence, and the other findings go on |
@@ -40,8 +40,9 @@ another. Step 1 validates the worktree once for all Modules.
 | 10 | Write a [run record](../../glossary.json#concept.run-record) per worker | Operation (Workers) | the Operation fails |
 
 After every Module is done, the Operation derives the verdict and returns the run's output. No step
-runs [configured checks](../../glossary.json#concept.configured-check) and no step resumes a worker,
-because no reviewer or checker changes a file. A Module whose review stopped before step 8 reports
+runs [configured checks](../../glossary.json#concept.configured-check), because no reviewer or checker
+changes a file, and the only [resume round](../../glossary.json#concept.resume-round) is the one that asks a reviewer to correct the paths of its
+findings. A Module whose review stopped before step 8 reports
 no Issue.
 
 Normalizing a finding means: an absolute path inside the workspace becomes relative to it;

@@ -70,9 +70,16 @@ Spec panel in its [definition](panel.md).
 - THEN the run ends `ok` and each finding is recorded as a new Issue, none naming an earlier Issue
 - AND only the Issue the third named is listed as ignored
 
+### scenario.spec-review.citation-resume — A reviewer corrects a path once
+
+- GIVEN a reviewer whose finding names a path outside the workspace
+- WHEN the Operation checks the reviewer's result
+- THEN it resumes the reviewer once, its repair naming that path
+- AND when the resumed reviewer returns the finding with a path of the workspace, it is reported and nothing is rejected
+
 ### scenario.spec-review.finding-path — A finding whose path does not hold is rejected alone
 
-- GIVEN a reviewer that returns a finding naming a path outside the workspace and a finding that holds
+- GIVEN a reviewer that returns, also after its one [resume round](../../glossary.json#concept.resume-round), a finding naming a path outside the workspace and a finding that holds
 - WHEN the Operation reports the findings
 - THEN the first is listed under the Module's `rejected` with the reason and as `invalid-output` evidence, and is reported as no Issue
 - AND the second is reported as an Issue, the Module is `changes_required` and the run ends `ok`

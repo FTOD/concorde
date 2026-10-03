@@ -430,6 +430,22 @@ class SpecReviewTests(unittest.TestCase):
         self.assertEqual([reported["issue"]], list(self.issues()))
         self.assertEqual("changes_required", module["outcome"])
 
+    @verifies("scenario.spec-review.citation-resume")
+    def test_a_reviewer_is_resumed_once_to_correct_a_path(self):
+        status, envelope = self.review(
+            {
+                "reviewer module.a": reviewer(finding("../elsewhere/module.md"))
+                + reviewer(finding("specs/a/module.md"))
+            }
+        )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        (module,) = envelope["output"]["modules"]
+        self.assertEqual([], module["rejected"])
+        self.assertEqual(["specs/a/module.md"], [f["path"] for f in module["findings"]])
+        record = self.record(envelope["worker_runs"][0])
+        self.assertEqual(["initial", "repair"], [r["prompt"] for r in record["rounds"]])
+        self.assertIn("'../elsewhere/module.md'", record["rounds"][0]["validation"])
+
     @verifies("scenario.spec-review.without-issues")
     def test_without_the_issues_part_the_findings_stay_in_the_result(self):
         with without_issues():

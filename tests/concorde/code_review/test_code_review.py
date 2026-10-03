@@ -382,6 +382,35 @@ class CodeReviewTests(unittest.TestCase):
         self.assertEqual([reported["issue"]], list(self.issues()))
         self.assertEqual("changes_required", entry["outcome"])
 
+    @verifies("scenario.code-review.citation-resume")
+    def test_a_reviewer_is_resumed_once_to_correct_its_citations(self):
+        wrong = finding(locations=["src/a/calc.py:40"])
+        held = finding(tier="suggestion", title="kept")
+        right = finding(locations=["src/a/calc.py:2"])
+        plan = reviewer(wrong, held) + reviewer(right, held)
+        _, envelope = self.review({"module.a": plan}, modules=("module.a",))
+        self.assertEqual("ok", envelope["status"], envelope)
+        entry = self.module_entry(envelope)
+        self.assertEqual([], entry["rejected"])
+        self.assertEqual(
+            [["src/a/calc.py:2"], ["src/a/calc.py:2"]],
+            [item["locations"] for item in entry["findings"]],
+        )
+        record, _ = self.worker(envelope)
+        self.assertEqual(["initial", "repair"], [r["prompt"] for r in record["rounds"]])
+        repair = record["rounds"][0]["validation"]
+        self.assertIn("'src/a/calc.py:40' gives lines beyond the file's end", repair)
+        self.assertIn("add subtracts", repair)
+        self.assertEqual(2, len(self.issues()))
+
+    def test_a_citation_still_wrong_after_the_resume_is_rejected(self):
+        wrong = finding(locations=["src/a/calc.py:40"])
+        _, envelope = self.change(wrong)
+        record, _ = self.worker(envelope)
+        self.assertEqual(2, len(record["rounds"]))
+        [rejected] = self.module_entry(envelope)["rejected"]
+        self.assertEqual(["src/a/calc.py:40"], rejected["finding"]["locations"])
+
     def test_a_document_outside_the_context_does_not_resolve(self):
         _, envelope = self.change(finding("specs/elsewhere.md#x"))
         self.unresolved(envelope)

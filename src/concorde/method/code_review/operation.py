@@ -21,6 +21,7 @@ evidence.
 
 from __future__ import annotations
 
+import copy
 import os
 import subprocess
 from dataclasses import dataclass, field
@@ -786,15 +787,32 @@ def _judge(
         results = [item for item in state.results if item["module"] in own]
     else:
         results = state.results
+
+    def citations(result: dict) -> str | None:
+        # The reviewer is resumed once with every citation that does not hold.
+        claimed = [
+            copy.deepcopy(review_issues.without_blank_earlier(item))
+            for item in (result.get("output") or {}).get("findings") or []
+        ]
+        unresolved, _ = check_evidence(ctx, state, modules, claimed)
+        return review_issues.citation_repair(
+            [
+                f"{item['detail']} (finding titled {claimed[index]['title']!r})"
+                for index, problems in unresolved.items()
+                for item in problems
+            ]
+        )
+
     launched = len(ctx.worker_runs)
     outcome = run_worker(
         ctx,
         instructions(ctx, state, reviews, results),
         task_type=TASK_TYPE,
         output_schema=REVIEWER_OUTPUT,
-        rounds=0,
+        rounds=review_issues.CITATION_ROUNDS,
         modules=modules,
         readable=(ctx.run_dir / "checks",),
+        validate=citations,
     )
     found.extend(_labelled(outcome.evidence, label))
     if len(ctx.worker_runs) > launched:

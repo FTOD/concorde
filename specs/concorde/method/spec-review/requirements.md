@@ -65,10 +65,10 @@ its whole result for it would lose every other finding of that worker.
 
 ### req.spec-review.finding-path — A finding whose path does not hold is rejected alone
 
-The Operation SHALL report no worker finding whose path is not one of the workspace, listing it as rejected with the reason and still reporting every other finding of that worker.
+The Operation SHALL resume a worker whose findings name a path that is not one of the workspace once, with those paths to correct, and then report no finding whose path still does not hold, listing it as rejected with the reason and still reporting every other finding of that worker.
 
-A path that does not hold is a slip of one finding, so it costs only that finding; the Module is not
-made `incomplete` for it.
+A path that does not hold is a slip of one finding: the worker gets one chance to correct it, and
+afterwards it costs only that finding; the Module is not made `incomplete` for it.
 
 ### req.spec-review.never-disposes — Review closes no Issue
 

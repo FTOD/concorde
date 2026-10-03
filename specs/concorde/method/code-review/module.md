@@ -91,9 +91,11 @@ location exists and which verdict follows, and otherwise keeps findings as the r
 
 ### One pass
 
-There is no [resume round](../../glossary.json#concept.resume-round): a reviewer reports every
-blocking finding in one pass, since another round re-reads everything and lets one fix hide the
-next — also why a review is not repeated automatically after `implement`.
+A reviewer reports every blocking finding in one pass, since another round of judging re-reads
+everything and lets one fix hide the next — also why a review is not repeated automatically after
+`implement`. The one [resume round](../../glossary.json#concept.resume-round) a reviewer may get
+judges nothing anew: when a finding's Module, basis or location does not hold, the reviewer is
+resumed once with those citations to correct, and returns its whole result again.
 
 ## Overview
 
@@ -190,9 +192,9 @@ the grant of its Module alone.
 | 1 | Change review: freeze the bound Modules' `review-code` [grant](../../glossary.json#concept.grant), resolve the base, diff base→worktree, untracked included, keeping readable paths' contents and listing the rest by name | Operation, Spec core | grant unavailable, no or unresolved base (`failed`) |
 | 2 | Run the [configured checks](../../glossary.json#concept.configured-check) outside the worker: in a change review those of the bound Modules and of every Module that uses one of them, in a Module review those of each reviewed Module | Operation, Check execution | a check won't start (`failed`); a check that fails goes on to the reviewer |
 | 3 | Per reviewer: read its Modules' [earlier Issues](#earlier-issues), then build [worker settings](../../glossary.json#concept.worker-settings), tools and [brief](../../glossary.json#concept.brief): scope, focus, the reviewed Module's documents and code files (Module review) or the diff and named-only paths (change review), its [check results](../../glossary.json#concept.check-result) with every log's path and the last part of every log that did not pass, the earlier Issues; the run's check logs stay readable to the reviewer besides its grant | Operation (Issues), Workers | Issues unreadable: its Modules `incomplete` |
-| 4 | Launch the reviewer, await its [worker result](../../glossary.json#concept.worker-result) | Workers, worker | launch error, timeout, `blocked` or `failed`: its Modules `incomplete` |
+| 4 | Launch the reviewer, await its [worker result](../../glossary.json#concept.worker-result); when a finding's Module, basis or location does not hold (step 6's check), resume it once with those citations to correct, its last result counting | Workers, worker | launch error, timeout, `blocked` or `failed`: its Modules `incomplete` |
 | 5 | [Audit](../../glossary.json#concept.write-audit) the worktree (no writable path, so any change is a violation); write the [run record](../../glossary.json#concept.run-record) | Workers | any change: its Modules `incomplete` |
-| 6 | Check every finding's Module, basis and locations | Operation, Spec core | — (a finding that does not hold is rejected alone, with the reason) |
+| 6 | Check every finding's Module, basis and locations in the last result | Operation, Spec core | — (a finding that still does not hold is rejected alone, with the reason) |
 | 7 | Settle the earlier Issues; report every finding as an Issue, Module by Module | Operation (Issues) | a store refusal: that Module `incomplete`, its later findings unreported |
 | 8 | Derive each Module's outcome and the verdict, and return the run's output | Operation, Execution runner | — |
 
