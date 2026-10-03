@@ -37,6 +37,44 @@
         "change_id": "parts-review-specs",
         "head": "959c856c3a7732af1420829a271f59dd21ba837c"
       }
+    },
+    {
+      "id": "sha256:26494c13249c81f661d23dfca32c690e3db3ebf9cec352c8f069f80db18d2f27",
+      "created_at": "2026-10-03T08:49:46.766910+00:00",
+      "report": {
+        "issue_id": "I-fde7a6ca2fa45c0eae2c6352d480b6fc",
+        "expected_revision": "sha256:c972182c5c72c9847a4f4d7ada223aae6fa2881e76e35cfd7f9526810532eb80",
+        "report_key": "module.distribution/9-verified",
+        "tier": "preferred-fix",
+        "severity": "low",
+        "title": "protocol-manifest's precondition and write table live only in module reading",
+        "description": "specs/concorde/distribution/module.md, reconciling-the-protocol-manifest, states the fresh-build/readable-manifest precondition (refusal `invalid` with CONCORDE-PROTOCOL-MANIFEST-001, nothing written whatever the flags) and the flag-by-flag write table; requirements.md has no requirement for protocol-manifest and scenarios.md covers the changed-manifest cases but not the stale-build refusal or an unchanged `--write`.\n\nFix (preferred): add to requirements.md a requirement 'protocol-manifest SHALL write nothing and report invalid with CONCORDE-PROTOCOL-MANIFEST-001 when the build is stale or the tracked manifest is unreadable or names an asset the build lacks', and a scenario for that refusal, linking the module table to it; the table itself may stay explanatory.",
+        "impact": "Minor: the behaviour is precise in the entry and the code follows it; an implementer reading only implementation documents misses the precondition.",
+        "basis": "Read module.md and the protocol-manifest scenarios. Classification: pre-existing — the same paragraph and table are on main (git show main:specs/concorde/distribution/module.md, lines ~176-190) with no requirement either. Severity lowered from medium: nothing goes wrong; the precise text exists, only in the module role.",
+        "owner_target_id": "module.distribution",
+        "type": "bug",
+        "subtype": null,
+        "evidence": [
+          {
+            "path": "specs/concorde/distribution/module.md",
+            "description": "reconciling-the-protocol-manifest precondition and flag table"
+          },
+          {
+            "path": "specs/concorde/distribution/scenarios.md",
+            "description": "protocol-manifest scenarios cover only a changed Protocol with a fresh build"
+          }
+        ]
+      },
+      "source": {
+        "invocation_id": "cli-560faa6d-6051-4f12-aebc-33f78dcbff18",
+        "agent": "task-session",
+        "operation": "issues",
+        "phase": "report",
+        "target_id": "module.distribution",
+        "context_id": "sha256:dc5a1d8cbf5a69d2834f2ea5f6545ea6067e5caf2e4e3c78dfc4f3342c22cb32",
+        "change_id": "parts-review-specs",
+        "head": "41bda04db324df4ff913498f023597a72c419955"
+      }
     }
   ],
   "dispositions": []
