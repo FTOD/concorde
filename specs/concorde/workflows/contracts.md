@@ -3,7 +3,8 @@
 The exact shapes of [Workflows](module.md): what one step prints, the step request a
 [step agent](../glossary.json#concept.step-agent) passes with `--json`, the step output
 convention through which a run's output declares what a workflow must know, the
-[workflow result](../glossary.json#concept.workflow-result), the MCP tools the workflow part
+[workflow result](../glossary.json#concept.workflow-result), how a part contributes a workflow and
+what its script calls and returns, the MCP tools the workflow part
 registers, the error codes of the workflow's own links, and the content of the workflow's and each
 step's trace node. Error links
 follow the Framework's
@@ -657,7 +658,7 @@ command's own [Spec](../glossary.json#concept.spec) says which of its items it d
       }
     }
   },
-  "semantics": "The workflow object, the top-level field workflow of a run's output, through which any Operation or execution command tells a workflow what it must know about the run without Workflows knowing that Operation or command; an output without it declares nothing and hands the script nothing. decision_points are the items the run leaves to be settled above the task before an interactive workflow goes on, each with an identity unique within the run, kind decision for a choice the run took or proposes and question for an open question it could not settle, the question, the options, the run's recommendation and optionally the Module it concerns; which of its items are decision points is the producing Operation's or command's decision, which its own Spec states. decisions are every decision the run took or followed, each with decided_by worker when the run took it itself and main-agent or developer when it follows an answer that one gave; a decision a workflow must stop for is listed both here and, with the same identity, among the decision points. deviations are the places where the run found its subject departing from what was intended, each optionally naming the decision point it concerns. notes are items for whoever reads the workflow result, which the report lists unchanged with their step and run, such as a review's verdict and findings or proposed checks, each with a kind the producing Operation or command names and a data object of its own. blocking, when not null, says that the procedure cannot go on from this run whatever its status, such as a task validation that found its workspace not ready; the report counts a last step that declared it blocked. data is handed unchanged to the workflow script in the step outcome, for the script to read the fields its procedure needs, such as the Modules a scaffold created. Answers a workflow passes to a run with --answers are a JSON object whose field answers is the list of $defs.answer, each naming by id the decision point it settles; a run that declares decision points takes them and lists the decisions that follow them with decided_by the answer's answered_by. A behaviour or field change increments the version.",
+  "semantics": "The workflow object, the top-level field workflow of a run's output, through which any Operation or execution command tells a workflow what it must know about the run without Workflows knowing that Operation or command; an output without it declares nothing and hands the script nothing. decision_points are the items the run leaves to be settled above the task before an interactive workflow goes on, each with an identity unique within the run, kind decision for a choice the run took or proposes and question for an open question it could not settle, the question, the options, the run's recommendation and optionally the Module it concerns; which of its items are decision points is the producing Operation's or command's decision, which its own Spec states. decisions are every decision the run took or followed, each with decided_by worker when the run took it itself and main-agent or developer when it follows an answer that one gave; a decision a workflow must stop for is listed both here and, with the same identity, among the decision points. deviations are the places where the run found its subject departing from what was intended, each optionally naming the decision point it concerns. notes are items for whoever reads the workflow result, which the report lists unchanged with their step and run, such as a review's verdict with each Module's count of blocking findings, or proposed checks, each with a kind the producing Operation or command names and a data object of its own. blocking, when not null, says that the procedure cannot go on from this run whatever its status, such as a task validation that found its workspace not ready; the report counts a last step that declared it blocked. data is handed unchanged to the workflow script in the step outcome, for the script to read the fields its procedure needs, such as the Modules a scaffold created. Answers a workflow passes to a run with --answers are a JSON object whose field answers is the list of $defs.answer, each naming by id the decision point it settles; a run that declares decision points takes them and lists the decisions that follow them with decided_by the answer's answered_by. A behaviour or field change increments the version.",
   "example": {
     "decision_points": [
       {
@@ -1570,6 +1571,81 @@ Printed by `concorde workflow report` and saved in the workflow's trace node, at
   }
 }
 ```
+
+## Contributing a workflow
+
+A part that owns a procedure contributes it as a workflow in two pieces: a
+[workflow script](../glossary.json#concept.workflow-script) in its own package, and a registration
+of that script with Workflows' catalog, `catalog.register(catalog.Workflow(...))` in
+`src/concorde/workflows/catalog.py`, made when the part's registering module loads, which
+Distribution does for every installed part before a step, a report or the build reads the catalog.
+Method's [brownfield workflow](../glossary.json#concept.brownfield-workflow) is contributed this way.
+
+### The registration
+
+| Field | Meaning |
+| --- | --- |
+| `name` | the workflow's name: Claude Code offers it as `/concorde-<name>`, every step request names it and the workflow record keeps it |
+| `description` | what the workflow does, the `description` of the rendered `meta` block |
+| `when` | when to start it, the `meta` block's `whenToUse` |
+| `phases` | the titles of the procedure's phases in order, the `meta` block's `phases` |
+| `script` | the path of the procedure's JavaScript, relative to the package root |
+| `last_step` | the base key of the step whose `ok` makes the [workflow result](#contract.workflows.result) `ok` |
+| `registered_in` | the path of the module that registers it, relative to the package root, which the build counts among the render's sources |
+
+Registering the same definition again changes nothing; registering a different definition under a
+name already registered is refused, naming the module that registered the name first. A
+registration whose script is missing makes the build refuse the render with `invalid_workflow`.
+
+### What the script is given
+
+The build renders the workflow as one Claude Code workflow: a `meta` block named
+`concorde-<name>`, the constants `WORKFLOW`, the workflow's name, and `LAST_STEP`, its registered
+last step, then Workflows' step adapter `src/concorde/workflows/scripts/claude.js`, then the
+procedure. The procedure is plain JavaScript at the top level, which may `await`, with no
+asynchronous helper functions of its own. Claude Code hands it `args`, the JSON object the workflow
+was started with:
+
+| Argument | Meaning |
+| --- | --- |
+| `mode` | `interactive` or `no-ask`; the adapter refuses to start without it |
+| `answers` | optional, a step's base key mapped to the list of every answer given for that step so far, each in the shape of `$defs.answer` of the [step output convention](#contract.workflows.step-output) |
+| `retry` | optional, the list of base keys to run again after a failure |
+| `restart` | optional, a base key mapped to a generation label |
+| `concorde` | optional, the `concorde` the report command runs, `.concorde/bin/concorde` by default |
+| any other | the procedure's own arguments, such as the brownfield workflow's `module`, which the procedure checks itself |
+
+The adapter defines three functions for the procedure:
+
+- `step(key, argv)` asks for one [workflow step](../glossary.json#concept.workflow-step): `key` is
+  its base key, as the [step request](#contract.workflows.step-request) restricts it, and `argv`
+  the name of an Operation or execution command followed by its arguments. The adapter adds the
+  step's `answers`, `retry` and `restart` from `args` and relays the request until the run has
+  finished, so the promise it returns resolves to a [step outcome](#contract.workflows.step) whose
+  state is `finished`, `lost` or `refused`, or `running` only when 200 calls for the step ended
+  without its end; it resolves to `null` when three relays in a row brought no outcome that names
+  the step and a well-formed run identity or none. Asking again for the same key never starts a
+  second run.
+- `report(lost)` runs `concorde workflow report`, with `--lost <key>` when `lost` names a key, and
+  returns a promise of the script's result.
+- `note(text)` shows progress and records nothing.
+
+### The script's result
+
+Every path of the procedure ends by returning what `report` resolved to, which is:
+
+| Field | Meaning |
+| --- | --- |
+| `workflow` | the workflow's name |
+| `reported` | `{status, summary}` of the saved workflow result, as the report's relay returned them |
+| `relayed` | present only when `report` was given a key whose last relays brought no answer: `{key, attempts, outcome}`, that key, the number of relays in a row that were no answer and the last thing they relayed, unverified, so that a refusal of the step command, such as a mistyped request, stays in sight |
+| `rejected` | added by the procedure, as below |
+
+The workflow result itself is the saved report, which the script's result only points at. A procedure
+stops at a step whose outcome is `null` and reports that step's key as lost. A step whose outcome
+carries a `step_rejected`, `step_unrecorded` or `workspace_retired` link is in no workflow record,
+so the report cannot see it: the procedure stops there, reports its key as lost and returns that
+outcome, unchanged, as `rejected` beside the fields above, as Method's brownfield workflow does.
 
 ## MCP tools
 

@@ -59,7 +59,8 @@
         "relies_on": [
           "concept.grant",
           "concept.context-identity",
-          "concept.registry"
+          "concept.registry",
+          "contract.spec.error"
         ]
       },
       {
@@ -90,7 +91,9 @@
         "target": "module.issues",
         "meaning": "#uses-issues",
         "relies_on": [
-          "concept.issue"
+          "concept.issue",
+          "contract.issues.report",
+          "contract.issues.receipt"
         ]
       },
       {
@@ -102,7 +105,13 @@
         ]
       }
     ],
-    "includes": [],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.spec.contracts",
+        "reason": "Spec core's repository interface, grants and validation result, which Method's steps call to load the Specs, compute and freeze each worker's grant and judge readiness; the document defines no contract node a relies_on could select"
+      }
+    ],
     "participates": []
   },
   "defines": [

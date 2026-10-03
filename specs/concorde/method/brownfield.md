@@ -62,8 +62,10 @@ step's run and stopping rule.
 
 ## Running the brownfield workflow
 
-For the [brownfield workflow](../glossary.json#concept.brownfield-workflow), the [main agent](../glossary.json#concept.main-agent) opens
-a task from the primary worktree and starts its [task session](../glossary.json#concept.task-session):
+For the [brownfield workflow](../glossary.json#concept.brownfield-workflow), where the coordination
+part is installed, the [main agent](../glossary.json#concept.main-agent) opens a task from the
+primary worktree and starts its [task session](../glossary.json#concept.task-session); without it,
+whoever prepares a bound workspace runs the workflow there the same way:
 
 ```text
 concorde task open adopt --goal "describe the existing code in Specs" --modules module.shop
@@ -89,7 +91,7 @@ step with its own key, `survey`, `scaffold`, `describe:module.inventory`, `descr
 [workflow record](../glossary.json#concept.workflow-record), each a node `steps/<n>-<key>/` of the workflow's node with its run's node inside it. The
 workflow ends with its report, saved beside that record as `reports/1.json` with the
 Markdown rendering `reports/1.md`: status `ok`, every decision and [open question](../glossary.json#concept.open-question) the runs
-reported, the review's verdict and findings, the proposed checks and every step that
+reported, the review's verdict with each Module's count of blocking findings, the proposed checks and every step that
 did not end `ok` with its [error chain](../glossary.json#concept.error-chain). The task level copies the decisions into the task's
 [decision log](../glossary.json#concept.decision-log); merging the task stays its own step.
 

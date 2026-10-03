@@ -41,6 +41,14 @@
       {
         "target": "module.spec",
         "meaning": "#uses-spec"
+      },
+      {
+        "target": "module.workflows",
+        "meaning": "#uses-workflows",
+        "relies_on": [
+          "contract.workflows.step-output",
+          "concept.decision-point"
+        ]
       }
     ],
     "includes": [

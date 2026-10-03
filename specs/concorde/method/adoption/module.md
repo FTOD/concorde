@@ -63,8 +63,9 @@ lists them again under the
 [step output convention](../../workflows/contracts.md#contract.workflows.step-output) that
 [Workflows](../../workflows/module.md) reads. A survey declares every decision its worker took itself
 and every open question as a [decision point](../../glossary.json#concept.decision-point), since how
-a project splits into Modules shapes all later work, and its proposed checks as `notes` for the
-developer; a code_to_spec run declares its open questions as decision points of kind `question` and
+a project splits into Modules shapes all later work, lists every decision it reports among
+`decisions` as well, a decision point of kind `decision` keeping the same identity, and declares its
+proposed checks as `notes` for the developer; a code_to_spec run declares its open questions as decision points of kind `question` and
 its decisions, which are ordinary, as `decisions` the workflow only reports; both list their
 deviations as `deviations`
 ([req.adoption.step-output](requirements.md#req.adoption.step-output)).
@@ -353,3 +354,14 @@ Module's bound files, runs the [structural checks](../../glossary.json#concept.s
 and regenerates the [registry](../../glossary.json#concept.registry) mirror, always on the
 workspace. Adoption relies on its checks as the definition of a valid Spec and adds none of its own;
 a Spec that cannot be loaded ends the run `failed`.
+
+<a id="uses-workflows"></a>
+
+**Workflows** defines the
+[step output convention](../../workflows/contracts.md#contract.workflows.step-output), the
+`workflow` object of a run's output, in which every `ok` survey and code_to_spec run declares its
+[decision points](../../glossary.json#concept.decision-point), its decisions, its deviations and,
+for a survey, its proposed checks as notes, as [Decisions and open
+questions](#decisions-and-open-questions) says. Adoption builds that object with Workflows'
+`step_output` helper, which checks it against the convention, and knows no workflow: which of its
+items are decision points is Adoption's rule, and what a workflow does with them is the workflow's.

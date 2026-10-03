@@ -211,9 +211,9 @@ step.grant -> failed: Specs not loaded, Module unknown {style.stroke-dash: 3}
 workers.prepare -> failed: configuration invalid, backend missing {style.stroke-dash: 3}
 workers.record -> ownership
 ownership -> failed: "an entry outside the grant changed" {style.stroke-dash: 3}
-workers.record -> ok: "worker ok, audit clean, no check failing"
-workers.record -> blocked: worker blocked {style.stroke-dash: 3}
-workers.record -> failed: "checks still failing, audit violation, launch error, timeout,\nlimit reached, invalid result, worker failed" {style.stroke-dash: 3}
+ownership -> ok: "worker ok, audit clean, no check failing"
+ownership -> blocked: worker blocked {style.stroke-dash: 3}
+ownership -> failed: "checks still failing, audit violation, launch error, timeout,\nlimit reached, invalid result, worker failed" {style.stroke-dash: 3}
 ```
 
 A provider may withhold every writable level of a task type's grant, as the Protocol lets a harness
@@ -252,3 +252,13 @@ sequence adds these codes.
 For a worker run the Operation's options are the worker's own options, when it gave any, followed by
 the Operation's; each provider's [Spec](../glossary.json#concept.spec) lists the links its own
 steps add.
+
+Spec tooling reports with [its own error record](../spec-tooling/spec/errors.md#contract.spec.error),
+never with a link. When a Spec tooling error causes a run's error, the Method step that read the
+Specs, such as step 1 of the worker sequence or a step of `task-validation` or `scaffold`,
+translates it into a `component` link of the actor `Spec core`, or one naming what it asked, such as
+`Spec core (grant)`: the record's message and location become the detail, its reason becomes the
+explanation of why Spec core could not handle it (reason `environment` for a `system_error`,
+`capability` for an `unexpected_error`, `input` otherwise), its remediation becomes the option and
+recommendation, and each of its causes becomes a nested link the same way. That link is the cause
+the step keeps under the run's own link.

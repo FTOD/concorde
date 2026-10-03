@@ -201,3 +201,14 @@ regenerates the [registry](../../glossary.json#concept.registry) mirror and appl
 Scaffold relies on its checks as the definition of a valid
 [Spec](../../glossary.json#concept.spec) and adds none of its own; a Spec that cannot be loaded
 ends the run `failed`.
+
+<a id="uses-workflows"></a>
+
+**Workflows** defines the
+[step output convention](../../workflows/contracts.md#contract.workflows.step-output), the
+`workflow` object of a run's output, through which every `ok` scaffold run hands a
+[workflow script](../../glossary.json#concept.workflow-script) the Modules it created as
+`data.created_modules` ([req.scaffold.step-output](requirements.md#req.scaffold.step-output)); it
+declares no [decision point](../../glossary.json#concept.decision-point), decision, deviation or note there. Scaffold builds that object with Workflows' `step_output`
+helper, which checks it against the convention, and knows no workflow: what `created_modules` holds
+is Scaffold's, the envelope around it Workflows'.

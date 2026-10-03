@@ -165,7 +165,9 @@ Anyone can run the report command in the workspace again at any time.
 A **[workflow script](../glossary.json#concept.workflow-script)** holds a workflow's procedure
 once, in plain JavaScript without asynchronous helper functions, kept apart from the step adapter.
 The part that owns a procedure contributes its script, registering the workflow's name, description
-and last step with Workflows' catalog; the script reads from each step outcome the `data` its runs
+and last step with Workflows' catalog, as [Contributing a
+workflow](contracts.md#contributing-a-workflow) defines with the functions the script calls and the
+result it returns; the script reads from each step outcome the `data` its runs
 handed it, such as the Modules a scaffold created, and Workflows never reads those values. The build
 wraps it with a `meta` block, the constants `WORKFLOW`, its name, and `LAST_STEP`, the last step
 its owner registered, and the Claude Code step adapter, Workflows' own,
@@ -328,6 +330,20 @@ commands.report -> task.receive: "via the script" {style.stroke-dash: 3}
 
 ## Using a workflow
 
+The build renders each registered workflow as a Claude Code workflow, which
+[Distribution](../distribution/module.md) installs in a project as
+`.claude/workflows/concorde-<name>.js` and Claude Code offers as the command `/concorde-<name>`.
+Whoever works a workspace starts it inside the bound worktree, in Concorde the task session in its
+task worktree, with the workflow's arguments as one JSON object, such as
+`{"module": "module.shop", "mode": "no-ask"}` for `/concorde-brownfield`; the arguments name no
+workspace, since every step runs in the workspace the worktree's binding names. The workflow then
+runs its steps one after another and ends with its report: the
+[workflow result](../glossary.json#concept.workflow-result), saved in the workflow's node as
+`workflow/reports/<n>.json` of the workspace folder, whose status and summary the workflow returns
+and which the `workflow_report` tool reads again at any time. [Running the brownfield
+workflow](../method/brownfield.md#running-the-brownfield-workflow) follows one such workflow through
+a project.
+
 ### A workflow's arguments
 
 Every workflow takes `mode`, `answers`, `retry` and `restart`, plus its own arguments such
@@ -385,7 +401,8 @@ the detached runner did not start: the step is then recorded without a run and w
 step for another workflow than the workspace's, or a key recorded for another Operation or command,
 is refused by the workflow record before anything is recorded or started, with a `step_rejected`
 link over that refusal; if the record refuses a run already started, the link is `step_unrecorded`
-and names the run. Such a step is in no record, so the script returns its outcome with the report.
+and names the run. Such a step is in no record, so the script returns its outcome with the report,
+as [the script's result](contracts.md#contributing-a-workflow) requires.
 
 <a id="retired-workspace"></a>
 
@@ -572,8 +589,12 @@ Tracing nests a run below its step. Workflows relies on the
 <a id="uses-execution"></a>
 
 **Execution** runs every step. The step command starts the runner detached with the workspace's own
-`concorde`, reads the announced run identity and waits for the saved
-[run result](../glossary.json#concept.run-result), which is the step's outcome. Workflows relies
+`concorde`, with `--trace-at` placing the run's node inside the step's, where the runner
+[records it](../execution/requirements.md#req.execution.trace-node) once the run enters its
+workspace; it reads the run identity the command
+[announces only once the run exists](../execution/requirements.md#req.execution.detached-announced)
+and waits for the saved [run result](../glossary.json#concept.run-result), which is the step's
+outcome. Workflows relies
 on each run reading the same [workspace binding](../glossary.json#concept.workspace-binding) as
 the workflow, holding the [workspace lock](../glossary.json#concept.workspace-lock) for its whole
 life, writing exactly one result before releasing it and starting no other run, so the order of the
@@ -587,8 +608,12 @@ Workflows reads results and never changes them. It relies on whoever retires a w
 does when it closes a task, holding the workflow lock while it removes the binding, moves the
 workspace folder and removes the lock file, as [A retired workspace](#retired-workspace) describes. A command line the runner rejects, such as an
 unknown argument, and a detached runner that did not start make the step refused, with the runner's
-message or `detach_failed` link as the cause; a run with no result and no living runner makes it
-lost, with the end of the runner's output; a run that the runner refused, such as one for a
+message or `detach_failed` link as the cause; a `detach_failed` runner
+[has been ended](../execution/requirements.md#req.execution.detach-failed-ends-runner) and
+[left nothing behind](../execution/requirements.md#req.execution.detach-failed-leaves-nothing), so
+no run of a refused step starts later and a retry starts afresh. A run with no result and no living
+runner, which its [run lock](../glossary.json#concept.run-lock) tells once nobody
+[holds it](../execution/requirements.md#req.execution.run-lock-held), makes the step lost, with the end of the runner's output; a run that the runner refused, such as one for a
 workspace that was busy after all, is an ordinary finished run whose result carries that refusal.
 
 <a id="uses-kernel"></a>
@@ -621,7 +646,10 @@ answer means is the run's.
 **Distribution** composes the [project MCP server](../glossary.json#concept.project-mcp-server)
 from the [part registrations](../glossary.json#concept.part-registration) of the installed parts,
 and the workflow part registers its tools `workflow_step` and `workflow_report` there, and its
-`workflow` commands with the `concorde` command. Workflows relies on the server running each call of
+`workflow` commands with the `concorde` command. Its `registration.json` follows Distribution's
+[part registration contract](../distribution/contracts.md#contract.distribution.part-registration),
+whose `renders` entry has the build render every registered workflow and whose `install`
+permissions let the workflows' step agents run without a prompt per step. Workflows relies on the server running each call of
 its tools as a process of its own of the current Concorde, outside the calling session's Bash, so
 that the run a step starts outlives the relay, and returning the tool's answer or refusal
 unchanged; it relies on nothing else of the server. The tools' exact shapes are in the

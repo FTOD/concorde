@@ -241,3 +241,12 @@ bound-workspace fixture Delivery's tests share.
   digest as `measured_digest` and its log path relative to the run's trace node,
   `checks/<check>/output.log`; a timeout's exit code becomes null and the log digest is dropped. A boundary
   it cannot establish fails the run.
+- <a id="uses-workflows"></a>**Workflows** defines the
+  [step output convention](../../workflows/contracts.md#contract.workflows.step-output), the
+  `workflow` object of a run's output, in which every task-validation run that decided a readiness
+  declares its `ready` as `data.ready` and, when the workspace is not ready, a `blocking` item
+  naming the blocking findings ([req.validation.step-output](requirements.md#req.validation.step-output)),
+  so that a workflow stops there without reading the readiness. Validation builds that object with
+  Workflows' `step_output` helper, which checks it against the convention, and knows no workflow:
+  what makes a workspace ready is Validation's, the envelope and what a blocking item does to a
+  workflow's report Workflows'.

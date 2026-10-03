@@ -961,8 +961,18 @@ class ReportTests(unittest.TestCase):
                     notes=[
                         {
                             "kind": "review",
-                            "text": "spec_review verdict changes_required",
-                            "data": {"verdict": "changes_required"},
+                            "text": "spec_review verdict changes_required: "
+                            "module.checkout changes_required",
+                            "data": {
+                                "verdict": "changes_required",
+                                "modules": [
+                                    {
+                                        "module": "module.checkout",
+                                        "outcome": "changes_required",
+                                        "blocking": 2,
+                                    }
+                                ],
+                            },
                         }
                     ],
                     deviations=[
@@ -1007,7 +1017,15 @@ class ReportTests(unittest.TestCase):
             [("survey", "proposed-check"), ("spec_review", "review")],
             [(n["step"], n["kind"]) for n in result["notes"]],
         )
-        self.assertEqual("changes_required", result["notes"][1]["data"]["verdict"])
+        # The review note is listed unchanged, with its step and run.
+        review = result["notes"][1]
+        self.assertEqual(
+            "spec_review verdict changes_required: module.checkout changes_required",
+            review["text"],
+        )
+        self.assertEqual(2, review["data"]["modules"][0]["blocking"])
+        self.assertEqual("changes_required", review["data"]["verdict"])
+        self.assertIn("run_id", review)
         self.assertEqual(["q.retry"], [d["point"] for d in result["deviations"]])
         # No interactive stop: a no-ask run reports its points without pending any.
         self.assertEqual([], result["pending"])

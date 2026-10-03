@@ -163,9 +163,9 @@ shapes are in the [contracts](contracts.md).
 
 ### scenario.workflows.reviews-reported — The notes of the runs reach the result
 
-- GIVEN a no-ask brownfield workflow whose `spec_review` step ends `ok` and declares in its output a note with the verdict `changes_required` and two blocking findings, and whose survey declared a note for each check it proposes
+- GIVEN a no-ask brownfield workflow whose `spec_review` step ends `ok` and declares in its output a review note with the verdict `changes_required` and one Module's outcome with a count of two blocking findings, and whose survey declared a note for each check it proposes
 - WHEN the workflow reports
-- THEN the workflow result lists the review's note, with that verdict and both findings, with its step and run
+- THEN the workflow result lists that review note unchanged, with its step and run
 - AND lists the survey's notes with the proposed checks, for the developer to configure
 
 ### scenario.workflows.report-ignores-relay — The report reads the recorded results
