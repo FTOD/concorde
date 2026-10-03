@@ -19,12 +19,26 @@ No part of Execution SHALL read or write a [task record](../glossary.json#concep
 everything a run knows about its workspace comes from the workspace binding of the worktree it
 starts in.
 
-### req.execution.definitions-bring-specs — Execution reads no Spec and launches no worker
+### req.execution.reads-no-spec — Execution reads no Spec
 
-No part of Execution SHALL read a [Spec](../glossary.json#concept.spec), compute a grant or launch a [worker](../glossary.json#concept.worker) itself; whatever a run needs of the Specs or of a worker is done by its definition's steps.
+No part of Execution SHALL read a [Spec](../glossary.json#concept.spec).
 
 So the runner treats the Modules a run names as names, and a definition that reads the Specs admits
 them itself, as Method's do; Execution installs and runs with the kernel part alone.
+
+### req.execution.computes-no-grant — Execution computes no grant
+
+No part of Execution SHALL compute a [grant](../glossary.json#concept.grant).
+
+A definition whose steps launch workers computes their grants itself, as Method's
+[standard worker sequence](../glossary.json#concept.standard-worker-sequence) does.
+
+### req.execution.launches-no-worker — Execution launches no worker
+
+No part of Execution SHALL launch a [worker](../glossary.json#concept.worker) itself.
+
+Whatever a run needs of a worker is done by its definition's steps, through the parts they depend
+on; the runner only tells the run context which worker runs those steps started.
 
 ### req.execution.binding-trusted — Only a sound binding binds
 
@@ -57,14 +71,19 @@ that lock ([Run progress file](runner.md#run-progress-file)).
 ### req.execution.unrecorded-runs-nothing — A run that cannot be recorded runs no step
 
 The runner SHALL run no step of a run whose folder, run lock, first `trace.json` or first
-[run progress file](../glossary.json#concept.run-progress-file) it could not create, exiting
-instead with status 1 and its `run_unrecorded` link on standard error.
+[run progress file](../glossary.json#concept.run-progress-file) it could not create.
+
+It exits instead with status 1 and its `run_unrecorded` link on standard error, as
+[When records cannot be written](runner.md#when-records-cannot-be-written) describes.
 
 ### req.execution.unsaved-printed — A result that cannot be saved is still printed
 
 When publishing a run's result or writing its final `trace.json` fails, the runner SHALL print the
-result it composed on standard output, write its `result_unsaved` link to standard error, release
-the run's locks and exit with status 1.
+result it composed on standard output.
+
+The run then counts as lost; the runner writes its `result_unsaved` link to standard error,
+releases the run's locks and exits with status 1, as
+[When records cannot be written](runner.md#when-records-cannot-be-written) describes.
 
 ### req.execution.result-atomic — A result is published whole
 
@@ -84,8 +103,12 @@ The runner and every step SHALL NOT place any statement taken from a
 
 ### req.execution.error-when-not-ok — Every problem carries its error chain
 
-A run result SHALL carry an error exactly when its status is not `ok`, whose top link is the run's
-own, with the errors of the worker runs, checks or components the run called as its causes.
+A run result SHALL carry an error exactly when its status is not `ok`.
+
+### req.execution.error-chain — The run's own link is on top of what it received
+
+The top link of a run result's error SHALL be the run's own link, with the errors of the worker
+runs, checks or components the run called as its causes.
 
 ### req.execution.reasons — The run says why it cannot handle the error
 
@@ -240,22 +263,37 @@ the runner has ended by then. When none exists by the time the runner ends or th
 wait runs out, the command reports `detach_failed` instead, as
 [How a run is executed](runner.md#detached-runs) describes.
 
+### req.execution.detach-failed-ends-runner — An unannounced runner is ended
+
+A command started with `--detach` SHALL end the runner before it reports `detach_failed`.
+
+So an unannounced runner never starts its run later, and running the command again starts a new
+run with nothing to repeat.
+
 ### req.execution.detach-failed-leaves-nothing — An unannounced run leaves nothing behind
 
-A command started with `--detach` that reports `detach_failed` SHALL first end the runner and
-remove the run's folder and the run lock file the runner left.
+A command started with `--detach` that reports `detach_failed` SHALL leave no folder and no run lock
+file of the run behind.
 
 ### req.execution.fixed-order — Steps run in their declared order
 
 The runner SHALL execute each of a definition's steps at most once, in their declared order, up to
 and including the first step that stops the run.
 
-### req.execution.runs-reported — The runs of a workspace are told to whoever prepared it
+### req.execution.run-lock-held — A run's lock is held exactly while its runner lives
 
-Execution's integration for the parts that prepare workspaces SHALL report every run of a workspace, from its workspace folder and the [lobby](runner.md#the-lobby), as running, ended or lost by its [run lock](../glossary.json#concept.run-lock), and stop on request every run of the workspace that still runs, the runs waiting in the lobby included.
+The runner SHALL hold a run's [run lock](../glossary.json#concept.run-lock) from before it writes
+the run's first [run progress file](../glossary.json#concept.run-progress-file) until after it has
+written the run's result, its finished run progress file and its final `trace.json`.
 
-Coordination uses it, where the execution part is installed, to derive whether a task is active and
-to stop a task's runs before it closes the task; it reads no other record of Execution's.
+The operating system releases the lock however the runner ends, so a run is running exactly while
+its run lock is held, and a run without a result whose lock nobody holds is lost
+([Run progress file](runner.md#run-progress-file)). Whoever prepared a workspace reads its runs
+through this lock and the records the [run store](../glossary.json#concept.run-store) keeps in the
+workspace folder and the [lobby](runner.md#the-lobby), and stops a run that still runs by sending its
+runner `SIGTERM`; Execution registers no call for either. Coordination does both, where the
+execution part is installed, to derive whether a task is active and to stop a task's runs before it
+closes the task.
 
 ### req.execution.no-chaining — Runs do not start runs
 
