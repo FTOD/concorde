@@ -4,7 +4,7 @@
 {
   "schema_version": 4,
   "id": "I-eddf3858f30e5744af1ddd01b1b8c7ec",
-  "status": "open",
+  "status": "closed",
   "reports": [
     {
       "id": "sha256:58014e411a0bc3637dc39652709871cba8a57e3168dd4b457bbf83b6f0b6623d",
@@ -39,6 +39,19 @@
       }
     }
   ],
-  "dispositions": []
+  "dispositions": [
+    {
+      "reason": "duplicate",
+      "note": "Same problem as I-c9732ed8: req.workflows.bounded-wait promises a return within --wait, but the detached launch (Execution's announcement wait, up to 60 s, runner.md) runs under the deadline unbounded, and contracts.md 'Starting a workflow step' already allows wait + 60 s (process) and wait + 120 s (call). The fix of I-c9732ed8 must choose between bounding the launch and narrowing the requirement to '--wait plus the launch handshake', matching the MCP tool's grace. Pre-existing: requirement identical on main.",
+      "evidence": [
+        "specs/concorde/workflows/requirements.md",
+        "specs/concorde/workflows/contracts.md",
+        "specs/concorde/execution/runner.md"
+      ],
+      "duplicate_of": "I-c9732ed8ffd459b5b2346bd87996eed6",
+      "actor": "task-session",
+      "created_at": "2026-10-03T08:49:11.384205+00:00"
+    }
+  ]
 }
 ```
