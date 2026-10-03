@@ -78,6 +78,41 @@ class PartialInstall(unittest.TestCase):
         self.assertEqual(0, done.returncode, done.stdout + done.stderr)
         return json.loads(done.stdout)
 
+    def spec_mcp(self, root: Path, tool: str, **arguments) -> dict:
+        """One call of the installed ``concorde spec-mcp`` server, rooted at ``root``."""
+        messages = [
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2025-06-18",
+                    "capabilities": {},
+                    "clientInfo": {"name": "test", "version": "0"},
+                },
+            },
+            {"jsonrpc": "2.0", "method": "notifications/initialized"},
+            {
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "tools/call",
+                "params": {"name": tool, "arguments": arguments},
+            },
+        ]
+        done = subprocess.run(
+            [str(root / ".concorde/bin/concorde"), "spec-mcp"],
+            cwd=root,
+            input="".join(json.dumps(message) + "\n" for message in messages),
+            capture_output=True,
+            text=True,
+            env={**os.environ, "CLAUDE_PROJECT_DIR": str(root)},
+            timeout=120,
+        )
+        replies = [json.loads(line) for line in done.stdout.splitlines() if line]
+        answer = [reply for reply in replies if reply.get("id") == 2]
+        self.assertEqual(1, len(answer), done.stdout + done.stderr)
+        return answer[0]["result"]
+
     def assert_missing(self, root: Path, argv: tuple[str, ...], part: str) -> None:
         refused = self.concorde(root, *argv)
         self.assertEqual(1, refused.returncode, refused.stdout + refused.stderr)
@@ -153,8 +188,26 @@ class SpecAloneTests(PartialInstall):
             root, "grant", "--modules", "module.project", "--type", "specify"
         )
         self.assertEqual("success", granted["status"], granted)
+        # It serves them: the installed copy's Spec MCP server answers from the project.
+        served = self.spec_mcp(root, "modules")
+        self.assertFalse(served["isError"], served)
+        self.assertIn(
+            "module.project",
+            {
+                item["id"]
+                for item in json.loads(served["content"][0]["text"])["modules"]
+            },
+        )
+        # It publishes them: the site the installed template scaffolds is applied.
         docsite = self.answer(root, "docsite", "--propose")
         self.assertEqual("proposal", docsite["status"], docsite)
+        (root / "site-proposal.json").write_text(json.dumps(docsite["result"]))
+        applied = self.answer(
+            root, "docsite", "--apply", "--proposal", "site-proposal.json"
+        )
+        self.assertEqual("success", applied["status"], applied)
+        self.assertTrue((root / "docsite/site.json").is_file())
+        (root / "site-proposal.json").unlink()
         for argv, part in (
             (("task", "list"), "coordination"),
             (("run", "spec_review"), "execution"),

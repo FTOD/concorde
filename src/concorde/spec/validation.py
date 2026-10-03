@@ -1,8 +1,7 @@
 """Every decidable check of Spec Protocol 16 (``protocol/checks.md``), reported as findings.
 
 A finding's ``rule_id`` is the check identity (``CHK.*``). A few tool findings keep a
-``CONCORDE-*`` identity: link fragments, scenario coverage, configured check inputs, Issue records
-and package validation. Passing these checks establishes structural conformance only; it never
+``CONCORDE-*`` identity: link fragments, scenario coverage and unreadable sources. Passing these checks establishes structural conformance only; it never
 establishes that the Spec is sufficient or that the implementation conforms.
 """
 
@@ -1508,7 +1507,6 @@ def validate_repository(
             "claims": [
                 "Protocol 16 structural checks (protocol/checks.md)",
                 "registry mirror of the entries' module blocks",
-                "configured check input availability and path safety",
                 "stable-identity link fragments",
                 "scenario verification declarations and coverage",
             ],

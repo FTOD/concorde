@@ -1,10 +1,13 @@
 """Every part imports only the parts it depends on (req.concorde.part-dependencies), and
 reaches Distribution only through its registration (req.distribution.registration-only).
 
-Each part's code is one directory of ``src/concorde/``. The allowed directions are read from the
-root's parts table; every ``concorde.*`` import of ``src/concorde/`` (module-level and
-function-level, absolute and relative, and the ``"module:attribute"`` strings a catalog imports
-by name) is checked against them, with no exception. Each part's registration names the part and
+Each part's code is one directory of ``src/concorde/``, together with the Python files outside it
+that its registration ships under ``install.files``. The allowed directions are read from the
+root's parts table; every ``concorde.*`` import of that code (module-level and function-level,
+absolute and relative, and the ``"module:attribute"`` strings a catalog imports by name) is checked
+against them, with no exception. The one entry Distribution imports by a name it does not
+register, the package descriptor's ``develop.check``, must be Dogfooding's, the reliance
+Distribution's ``uses`` declares. Each part's registration names the part and
 the dependencies the table gives it, and every entry it names lies in the part's own directory, so
 that Distribution, which imports a part's code only through those entries, never reaches one part's
 code through another's registration.
@@ -23,6 +26,8 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 SOURCE = REPOSITORY_ROOT / "src"
 PACKAGE = SOURCE / "concorde"
 PARTS_TABLE = REPOSITORY_ROOT / "specs/concorde/module.md"
+DESCRIPTOR = REPOSITORY_ROOT / "concorde.json"
+DISTRIBUTION_SPEC = REPOSITORY_ROOT / "specs/concorde/distribution/module.md.json"
 
 # Part (as the root's parts table names it) -> its directory under src/concorde/.
 PART_DIRECTORIES = {
@@ -36,15 +41,13 @@ PART_DIRECTORIES = {
     "method": "method",
     "distribution": "distribution",
 }
-# Code under src/concorde/ that is no part: it depends on no part and no part depends on it.
-NOT_PARTS = {"dogfooding": "Dogfooding, a developer Module"}
+# Code under src/concorde/ that is no part, with its Module: it imports no part and no part
+# imports it. Only Distribution reaches Dogfooding, through the entry the package descriptor names
+# under develop.check, as its `uses` of Dogfooding declares.
+NOT_PARTS = {"dogfooding": "module.dogfooding"}
 # Files at the package root: `python -m concorde` is Distribution's command; the package marker
 # belongs to no part.
 ROOT_FILES = {"__main__.py": "distribution", "__init__.py": None}
-# Reliances outside the table that are optional integrations: none imports code, each reaches the
-# other part only through its command or a file format its Spec defines.
-OPTIONAL_INTEGRATIONS: set[tuple[str, str]] = set()
-
 CATALOG_ENTRY = re.compile(r"concorde(?:\.\w+)+(?::\w+)?")
 
 
@@ -91,10 +94,30 @@ def module_file(name: str):
     return None
 
 
+def shipped_files() -> dict:
+    """Each Python file a part ships from outside ``src/concorde/`` under its registration's
+    ``install.files``, with that part."""
+    found = {}
+    for part, directory in PART_DIRECTORIES.items():
+        registration = json.loads(
+            (PACKAGE / directory / "registration.json").read_text(encoding="utf-8")
+        )
+        for entry in registration["install"]["files"]:
+            path = REPOSITORY_ROOT / entry
+            files = path.rglob("*.py") if path.is_dir() else [path]
+            for file in files:
+                if file.suffix == ".py" and not file.is_relative_to(PACKAGE):
+                    found[file] = part
+    return found
+
+
 def imported_modules(path):
     """Every ``concorde.*`` module the file imports, each with the line of its import."""
-    relative = path.relative_to(SOURCE).with_suffix("").parts
-    package = relative[:-1]
+    package = (
+        path.relative_to(SOURCE).with_suffix("").parts[:-1]
+        if path.is_relative_to(SOURCE)
+        else ()
+    )
     found = []
     for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
         if isinstance(node, ast.ImportFrom):
@@ -133,9 +156,9 @@ def imported_modules(path):
 def violations() -> dict[tuple[str, str], list[str]]:
     """Each import of a part that its part may not rely on, with where it occurs."""
     allowed = parts_table()
+    files = {path: owner(path) for path in PACKAGE.rglob("*.py")} | shipped_files()
     found: dict[tuple[str, str], list[str]] = {}
-    for path in sorted(PACKAGE.rglob("*.py")):
-        source = owner(path)
+    for path, source in sorted(files.items()):
         for name, line in imported_modules(path):
             target = module_file(name)
             if target is None:
@@ -145,14 +168,14 @@ def violations() -> dict[tuple[str, str], list[str]]:
             imported = owner(target)
             if imported == source:
                 continue
-            if source in allowed and (
-                imported in allowed[source]
-                or (source, imported) in OPTIONAL_INTEGRATIONS
-            ):
+            if source in allowed and imported in allowed[source]:
                 continue
-            key = (path.relative_to(PACKAGE).as_posix(), name.removeprefix("concorde."))
+            key = (
+                path.relative_to(REPOSITORY_ROOT).as_posix(),
+                name.removeprefix("concorde."),
+            )
             found.setdefault(key, []).append(
-                f"src/concorde/{key[0]}:{line} ({source} -> {imported})"
+                f"{key[0]}:{line} ({source} -> {imported})"
             )
     return found
 
@@ -171,8 +194,30 @@ class PartDependencyTests(unittest.TestCase):
             [],
             sorted(where for places in found.values() for where in places),
             "imports a part may not rely on: depend only on the parts the root's parts table "
-            "lists, or reach another part through an optional integration",
+            "lists, and reach any other part only through its command or a file format its "
+            "Spec defines",
         )
+
+    def test_every_shipped_script_is_checked(self):
+        shipped = {
+            path.relative_to(REPOSITORY_ROOT).as_posix(): part
+            for path, part in shipped_files().items()
+        }
+        self.assertEqual("issues", shipped.get("scripts/issues.py"))
+        self.assertEqual("distribution", shipped.get("scripts/concorde.py"))
+
+    def test_the_develop_check_is_the_declared_reliance_on_dogfooding(self):
+        descriptor = json.loads(DESCRIPTOR.read_text(encoding="utf-8"))
+        module, attribute = descriptor["develop"]["check"].split(":", 1)
+        target = module_file(module)
+        self.assertIsNotNone(target, f"{module} does not exist")
+        reached = owner(target)
+        self.assertIn(reached, NOT_PARTS, "develop.check names no Dogfooding code")
+        uses = json.loads(DISTRIBUTION_SPEC.read_text(encoding="utf-8"))["module"][
+            "uses"
+        ]
+        self.assertIn(NOT_PARTS[reached], {use["target"] for use in uses})
+        self.assertTrue(hasattr(importlib.import_module(module), attribute))
 
     def test_every_part_registers_itself_with_its_dependencies(self):
         table = parts_table()

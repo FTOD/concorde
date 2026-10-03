@@ -19,8 +19,8 @@ Operations, not this part's.
 
 ## Overview
 
-Spec tooling binds no files of its own; its three children fulfil it, and the other two rely on
-Spec core, which loads, checks and computes everything they present:
+Spec tooling binds only the part's guidance and its part entries; its three children fulfil it,
+and the other two rely on Spec core, which loads, checks and computes everything they present:
 
 ```d2
 tooling: Spec tooling {
@@ -121,6 +121,21 @@ keeps a promise.
 A failure never becomes a silently narrower answer. Spec core refuses with its error record instead
 of returning part of a result; the Spec MCP server turns every refusal into a tool error, never a
 partial answer; and a failed Views build deletes its candidate and keeps the published site.
+
+### Part entries
+
+<a id="realization.spec-tooling.part"></a>
+
+The **Part entries** are the spec part's
+[part registration](../glossary.json#concept.part-registration) and the code it names for
+Distribution: the `concorde` commands `spec-validation`, `registry`, `grant` and `init`, which call
+Spec core, `docsite`, which calls Views' scaffold, and `spec-mcp`, which runs the Spec MCP server,
+each answering Spec core's shared envelope for Distribution to print except `spec-mcp`, which owns
+standard input and output; and the install services, which place the docsite template Views'
+inventory rule selects and keep an installed project's files bound through Spec core's
+initializer. They belong to the part rather than to one child because they call all three, so
+that Spec core imports neither Views nor the Spec MCP server
+([req.spec.no-owner-imports](spec/requirements.md#req.spec.no-owner-imports)).
 
 ### Guidance
 
