@@ -4,7 +4,7 @@
 {
   "schema_version": 4,
   "id": "I-01f7fdc11e8d58e6b5a447d8de1ce4bc",
-  "status": "open",
+  "status": "closed",
   "reports": [
     {
       "id": "sha256:142b5053419f4a3b4d5848e3c5e1a151be01023e1fac4274838903bb3fe09cf7",
@@ -39,6 +39,19 @@
       }
     }
   ],
-  "dispositions": []
+  "dispositions": [
+    {
+      "reason": "duplicate",
+      "note": "Same root cause as I-2f6e: the invalid_result replacement keeps parts of the rejected result (here the earlier error as cause; there host_evidence and worker) and is not revalidated. runner.md 'Composing the result' ('its earlier error as the cause') and the Errors table row are identical on main, so pre-existing; the code (runner.py _envelope) keeps the earlier error only when it is a dict with 'level', so a malformed link with a level would survive. The repair of I-2f6e (build and validate a fresh failed envelope, keep invalid data only as diagnostic text) must also reword runner.md to keep the earlier error as cause only when it satisfies contract.tracing.error. Edge case reachable only through a step bug: medium at most, low in practice.",
+      "evidence": [
+        "specs/concorde/execution/runner.md#composing-the-result",
+        "src/concorde/execution/runner.py",
+        ".concorde/issues/I-2f6e27e808e5528ab8088fd1b667b3d9.md"
+      ],
+      "duplicate_of": "I-2f6e27e808e5528ab8088fd1b667b3d9",
+      "actor": "task-session",
+      "created_at": "2026-10-03T08:47:53.526186+00:00"
+    }
+  ]
 }
 ```
