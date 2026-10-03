@@ -41,6 +41,44 @@
         "change_id": "parts-review",
         "head": "43871f64ab7162b4b32fd566e2f81ec15aba06d2"
       }
+    },
+    {
+      "id": "sha256:6f756f6de7671e4170c70cd6a7d75ad9bce15bb887bd64dcbe5edb7cb1431dcd",
+      "created_at": "2026-10-03T04:19:30.594712+00:00",
+      "report": {
+        "type": "gap",
+        "subtype": "implementation-spec-mismatch",
+        "title": "Timeout and process failures discard an already-returned worker result",
+        "owner_target_id": "module.workers",
+        "evidence": [
+          {
+            "path": "src/concorde/worker_harness/workers.py",
+            "description": "lines 769-819, shown by the violation finding"
+          },
+          {
+            "path": "specs/concorde/worker-harness/workers/launch.md",
+            "description": "defines req.workers.claims-apart, the finding's basis"
+          }
+        ],
+        "issue_id": "I-0dd198f0bda65d7a8c27efd2c9cd8c2b",
+        "expected_revision": "sha256:1ba7797103b8800472afbf61dd046d009c0a3b133579db05d8d43f82f7fec9c1",
+        "report_key": "verify/module.workers/13",
+        "tier": "obvious-fix",
+        "severity": "low",
+        "description": "On a timed-out round or a process failure, run_worker returns before validating concluded.result, so a valid worker result the stream already held is not kept as worker_result.",
+        "impact": "Only when the worker produced its result and the process then timed out or failed; the run fails either way and only the claim is missing from the record. Low.",
+        "basis": "Verified against src/concorde/worker_harness/workers.py:770-819 and the worker_result semantics of contract.workers.worker-run-trace."
+      },
+      "source": {
+        "invocation_id": "cli-7549aff4-1d32-4e97-9daf-1b0effd368df",
+        "agent": "main-agent",
+        "operation": "issues",
+        "phase": "report",
+        "target_id": "module.workers",
+        "context_id": "sha256:1d5cfc2a2a7ba74b163c0a7da2044601cb98d3bb39fa931e4f515946b2ee70f4",
+        "change_id": "parts-review",
+        "head": "43871f64ab7162b4b32fd566e2f81ec15aba06d2"
+      }
     }
   ],
   "dispositions": []
