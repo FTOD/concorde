@@ -245,6 +245,12 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - AND the next round continues from the new session identifier the resume returned
 - AND when the checks then pass the run ends `ok` with two rounds recorded
 
+### scenario.workers.validation-reads-result — The round validation receives the round's result
+
+- GIVEN a worker that ended `ok` with a clean audit and a round validation
+- WHEN the host calls the round validation
+- THEN it passes the worktree, the round's node folder and the round's worker result as the worker returned it
+
 ### scenario.workers.rounds-exhausted — Checks that keep failing end the run
 
 - GIVEN a round validation that runs a configured check, as Concorde's does, which fails after every round, and that asks a run whose checks still fail to end with `checks_failed`

@@ -306,7 +306,7 @@ def describe(ctx: RunContext):
         output_schema=DESCRIBE_WORKER_SCHEMA,
         checks=False,
         rounds=REPAIR_ROUNDS,
-        validate=lambda: validation_repair(ctx),
+        validate=lambda _result: validation_repair(ctx),
     )
     if isinstance(outcome, Stop):
         ctx.state["stop"] = outcome

@@ -26,6 +26,7 @@ from concorde.worker_harness.settings import (
 )
 from concorde.worker_harness.workers import (
     WORKER_RESULT_SCHEMA,
+    RoundValidation,
     WorkerRequest,
     run_worker,
 )
@@ -982,6 +983,22 @@ class WorkerRunTests(unittest.TestCase):
         self.assertEqual(frozen, kept)
         self.assertEqual(frozen["context_identity"], record["context_identity"])
 
+    @verifies("scenario.workers.validation-reads-result")
+    def test_the_round_validation_receives_the_rounds_result(self):
+        seen = []
+
+        def validation(worktree, folder, result):
+            seen.append((worktree, folder.name, result["status"], result["summary"]))
+            return RoundValidation()
+
+        record = self.project.run(
+            [{"result": {"summary": "judged"}}],
+            check_modules=None,
+            round_validation=validation,
+        )
+        self.assertEqual("ok", record["status"], record["error"])
+        self.assertEqual([(self.root, "1", "ok", "judged")], seen)
+
     @verifies("scenario.workers.check-failure-resume")
     def test_a_failing_check_resumes_the_same_worker(self):
         record = self.project.run(
@@ -1023,7 +1040,7 @@ class WorkerRunTests(unittest.TestCase):
         }
         seen = []
 
-        def validation():
+        def validation(_result):
             # Round 2's checks passed; the run's node is still running.
             [folder] = (self.project.trace / "workers").iterdir()
             seen.append(json.loads((folder / "trace.json").read_text())["status"])
@@ -1193,7 +1210,7 @@ class WorkerRunTests(unittest.TestCase):
             self.project.run(
                 [{}],
                 check_modules=None,
-                round_validation=lambda _worktree, _folder: interrupt(),
+                round_validation=lambda _worktree, _folder, _result: interrupt(),
                 started=started.append,
             )
         [run_id] = started

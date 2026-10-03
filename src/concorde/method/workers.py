@@ -412,16 +412,16 @@ def round_validation(
     before: bytes | None,
     modules: list[str],
     check_modules: list[str] | None,
-    validate: Callable[[], str | None] | None,
+    validate: Callable[[dict], str | None] | None,
 ):
     """Method's round validation: glossary ownership, then the configured checks of
-    ``check_modules`` when given, then the step's own ``validate`` once every check passed or
-    none ran."""
+    ``check_modules`` when given, then the step's own ``validate`` of the round's worker result
+    once every check passed or none ran."""
     from ..execution.checks.checks import CheckError, check_error, service_error
     from ..spec.errors import SpecError
     from .checks import run_module_checks
 
-    def validation(worktree: Path, folder: Path) -> RoundValidation:
+    def validation(worktree: Path, folder: Path, result: dict) -> RoundValidation:
         if glossary is not None:
             foreign = glossary_violations(worktree, glossary, before, modules)
             if foreign:
@@ -463,7 +463,7 @@ def round_validation(
                         tuple(check_error(item) for item in failures),
                     ),
                 )
-        repair = validate() if validate is not None else None
+        repair = validate(result) if validate is not None else None
         return RoundValidation(evidence=tuple(checks), repair=repair or None)
 
     return validation
@@ -561,14 +561,15 @@ def run_worker(
     worker: str | None = None,
     read_only: bool = False,
     readable: tuple[Path, ...] = (),
-    validate: Callable[[], str | None] | None = None,
+    validate: Callable[[dict], str | None] | None = None,
 ):
     """The standard worker sequence of one worker-backed step; returns ``Continue`` or ``Stop``.
 
     ``worker`` is the id of the worker to launch, one the provider declares; the worker
     configuration chooses its backend, model and level. ``checks`` asks the round validation to
     run the configured checks of the bound Modules and every Module that uses one of them;
-    ``validate`` is the step's own validation after them, answering the text to repair or None.
+    ``validate`` is the step's own validation of the round's worker result after them, answering
+    the text to repair or None.
 
     ``read_only`` withholds every writable level of the task type's grant, turning it into read
     access, as the Protocol lets a harness give less than a type assigns. ``readable`` names host
