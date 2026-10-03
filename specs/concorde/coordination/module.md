@@ -256,8 +256,9 @@ binding, and recording every run of a bound workspace as a
 relies on nothing inside Execution beyond those records and the commands' results. A run whose
 runner ended without a result is taken as lost rather than trusted as running, and a run of another
 workspace named to Tasks is refused with `unknown_run`; [Tasks](tasks/module.md) gives the details.
-Where the execution part is not installed, no run exists: a task is never `active`, a close has no
-run to stop, and `concorde task wait --run` is refused naming the missing part.
+Where the execution part is not installed, no run exists: a task's activity follows from its branch
+and worktree alone, a close has no run to stop, and `concorde task wait --run` is refused naming the
+missing part.
 
 ## The children
 
@@ -286,7 +287,7 @@ happens without the part:
 
 | Part | What Coordination does with it | Without it |
 | --- | --- | --- |
-| execution | counts a workspace's runs as the task's activity, stops them and those in the lobby when a task closes, waits for a run, lists [run locks](../glossary.json#concept.run-lock) ([Tasks](tasks/module.md)) | no run exists; a task goes from open to delivered; waiting for a run is refused naming the part |
+| execution | counts a workspace's runs as the task's activity, stops them and those in the lobby when a task closes, waits for a run, lists [run locks](../glossary.json#concept.run-lock) ([Tasks](tasks/module.md)) | no run exists; a task's activity follows from its branch and worktree alone; waiting for a run is refused naming the part |
 | issues | names the Issues a task resolves, closes them when it merges, puts back what a killed Issue write left before the merge audits the primary worktree, gives task sessions the Issue tools ([Tasks](tasks/module.md), [Main session](main-session/module.md)) | `--resolves` is refused naming the part; a merge closes nothing and its audit has no Issue records to put back |
 | spec | runs `concorde spec-validation` as a merge's default check, checks a task's Modules against the registry ([Tasks](tasks/module.md)) | a merge runs only the `--check` commands it is given; Modules are plain labels |
 | method | a task is validated with `task-validation` and delivered with `delivery` ([Task sessions](task-session/module.md)) | the task session delivers with `concorde task deliver`, which runs the checks it is given and makes the delivery commit ([Tasks](tasks/module.md)) |

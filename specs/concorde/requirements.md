@@ -8,9 +8,28 @@ together.
 
 ### req.concorde.part-dependencies — A part imports only the parts it depends on
 
-Every [part](glossary.json#concept.part) SHALL import code only of itself and of the parts it depends on, in the directions the root's [parts table](module.md#the-parts) lists.
+Every [part](glossary.json#concept.part) other than Distribution SHALL import code only of itself and of the parts it depends on, as the table below gives them.
 
-There is no exception: an [optional integration](glossary.json#concept.optional-integration)
+| Part | Depends on |
+| --- | --- |
+| spec | nothing |
+| kernel | nothing |
+| worker harness | kernel |
+| execution | kernel |
+| workflow | execution, kernel |
+| issues | kernel |
+| coordination | kernel |
+| method | spec, worker harness, execution, workflow, kernel |
+| distribution | nothing |
+
+The root's [parts](module.md#the-parts) explains what each part holds and why the directions are
+these. Distribution, the installation host, depends on no part and is the one part that reaches the
+others' code: it imports a part's code only through the entries and `loads` modules of that part's
+[registration](glossary.json#concept.part-registration), and Dogfooding's code, which is no part,
+only through the entry the package descriptor names under `develop.check`, as its `uses` of
+Dogfooding declares.
+
+There is no exception for an [optional integration](glossary.json#concept.optional-integration): it
 imports no code of the part it uses, not even guarded against that part's absence, and reaches it
 only through that part's `concorde` command or a file format its Spec defines. A Module's `uses` of
 a Module in a part its own part does not depend on is therefore one of two things, and its
@@ -24,7 +43,7 @@ imports Distribution, which reaches the parts only through their
 
 ### req.concorde.part-installation — A part requires only the parts it depends on
 
-Installing a part SHALL require the installation of only the parts it depends on, in the directions the root's parts table lists, besides Distribution.
+Installing a part SHALL require the installation of only the parts it depends on, as [req.concorde.part-dependencies](#req.concorde.part-dependencies) gives them, besides Distribution.
 
 Each part's registration names exactly those parts, and the installer adds them, transitively, to a
 selection that lacks them

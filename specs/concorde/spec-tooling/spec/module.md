@@ -393,6 +393,8 @@ shared -> refused: yes
 
 ### Validation
 
+<a id="uses-distribution"></a>
+
 The validator runs nothing: it parses verification declarations and reads nothing a check would
 run. Concerns other Modules own, such as [Issue](../../glossary.json#concept.issue) records,
 [configured checks](../../glossary.json#concept.configured-check) and their inputs, or Concorde's
@@ -402,6 +404,8 @@ part's file formats but the two of Distribution's it reads when they are present
 ([What validation leaves to other parts](validation.md#what-validation-leaves-to-other-parts)).
 
 ### A private copy of the data utilities
+
+<a id="uses-kernel"></a>
 
 Typed values and file transactions are the Kernel's formats, which the other parts share through the
 Kernel's code. Spec core keeps a copy of its own instead, because the spec part must install and
@@ -463,8 +467,12 @@ Protocol is being written.
 
 ### Its place among the Modules
 
-Spec core uses no Module, so nothing it relies on can make its own answers wrong; every Module that
-reads Specs relies on it instead: the Spec MCP server and Views in its own part, Method, whose
+Spec core imports no other Module's code and needs no other part installed, so no other part's
+code can make its own answers wrong. Its two `uses` are reliances on formats alone: on the Kernel's
+[typed values](../../glossary.json#concept.typed-value) and
+[file transactions](../../glossary.json#concept.file-transaction), which its own copy follows, and
+on the two records of Distribution it reads when they are present. Every Module that reads Specs
+relies on it instead: the Spec MCP server and Views in its own part, Method, whose
 Operations and commands compute their grants and readiness through it, and the [optional integrations](../../glossary.json#concept.optional-integration)
 of Coordination and Issues, which check a Module identity against the registry only where the spec
 part is installed. Each consumer declares its own `uses` with the promises it relies on, and none of

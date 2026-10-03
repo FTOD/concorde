@@ -398,8 +398,8 @@ No program but the store writes a record, and nobody edits one by hand. Main ses
 [guidance](../coordination/main-session/module.md) says when sessions record, fix and close Issues,
 where the issues part contributes its section of that guidance, and the issues part registers the
 command's actions as tools with the project MCP server, Distribution's host. Tasks relies on Issues to check
-the Issues a task names as resolving and to close them when the task merges, which it does through
-the command's library entry `dispose`, holding the merge lock itself, as the
+the Issues a task names as resolving and to close them when the task merges, which it does by
+running `concorde issues close` for each, handing that process the merge lock it holds, as the
 [interface](interface.md#disposing-under-a-held-lock) states.
 
 For provenance the command asks Git for the reporting worktree's `HEAD` and records `null` when Git

@@ -341,23 +341,24 @@ by [Main session](coordination/main-session/module.md), [Tasks](coordination/tas
 
 The levels are levels of work, not of Modules. Nine parts carry them, each a child of this root:
 
-| Part | Module | Holds | Depends on |
-| --- | --- | --- | --- |
-| spec | [Spec tooling](spec-tooling/module.md) | loading, checking and serving Specs: Spec core, the Spec MCP server, Views | nothing |
-| kernel | [Kernel](kernel/module.md) | the contracts the other parts cooperate through: error chain, trace node, typed values, file transactions, locks, the workspace binding and the delivery commit | nothing |
-| worker harness | [Worker harness](worker-harness/module.md) | launching, bounding, auditing and recording one worker under a grant it receives as data; the [worker configuration](glossary.json#concept.worker-configuration) and the [model map](glossary.json#concept.model-map) | kernel |
-| execution | [Execution](execution/module.md) | runs: the runner, the run store, the Operation and execution-command frameworks, Check execution | kernel |
-| workflow | [Workflows](workflows/module.md) | ordering a workspace's runs for a known procedure, decision points and the workflow result | execution, kernel |
-| issues | [Issues](issues/module.md) | the project's durable problem records | kernel |
-| coordination | [Coordination](coordination/module.md) | the main session, tasks, task sessions and their merges | kernel |
-| method | [Method](method/module.md) | Concorde's Spec-driven development work: the Operations, the execution commands `task-validation`, `delivery` and `scaffold`, the [brownfield workflow](glossary.json#concept.brownfield-workflow) and the standard worker sequence | spec, worker harness, execution, workflow, kernel |
-| distribution | [Distribution](distribution/module.md) | the build, the installer, `concorde update`, the `concorde` command and the project MCP server that compose the installed parts | nothing: installed with every selection as its host, it reads only the [part registrations](glossary.json#concept.part-registration) of the parts installed beside it |
+| Part | Module | Holds |
+| --- | --- | --- |
+| spec | [Spec tooling](spec-tooling/module.md) | loading, checking and serving Specs: Spec core, the Spec MCP server, Views |
+| kernel | [Kernel](kernel/module.md) | the contracts the other parts cooperate through: error chain, trace node, typed values, file transactions, locks, the workspace binding and the delivery commit |
+| worker harness | [Worker harness](worker-harness/module.md) | launching, bounding, auditing and recording one worker under a grant it receives as data; the [worker configuration](glossary.json#concept.worker-configuration) and the [model map](glossary.json#concept.model-map) |
+| execution | [Execution](execution/module.md) | runs: the runner, the run store, the Operation and execution-command frameworks, Check execution |
+| workflow | [Workflows](workflows/module.md) | ordering a workspace's runs for a known procedure, decision points and the workflow result |
+| issues | [Issues](issues/module.md) | the project's durable problem records |
+| coordination | [Coordination](coordination/module.md) | the main session, tasks, task sessions and their merges |
+| method | [Method](method/module.md) | Concorde's Spec-driven development work: the Operations, the execution commands `task-validation`, `delivery` and `scaffold`, the [brownfield workflow](glossary.json#concept.brownfield-workflow) and the standard worker sequence |
+| distribution | [Distribution](distribution/module.md) | the build, the installer, `concorde update`, the `concorde` command and the project MCP server that compose the installed parts |
 
-Each arrow below is a dependency between parts, the only directions in which one part may rely on
-another; every other reliance is an optional integration, drawn dashed for the ones that matter
-most. Distribution, the installation host installed beside whatever parts a project selects, is
-left out: it depends on no part, no part imports it, and it reaches only the parts installed beside
-it, through what they register. "Installed alone" below always means with that host.
+Each arrow below is a dependency between parts, as
+[req.concorde.part-dependencies](requirements.md#req.concorde.part-dependencies) gives them, the
+only directions in which one part may rely on another; every other reliance is an optional
+integration, drawn dashed for the ones that matter most. Distribution, the installation host
+installed beside whatever parts a project selects, is left out: it depends on no part, no part
+imports it, and it reaches only the parts installed beside it, through what they register. "Installed alone" below always means with that host.
 
 ```d2 illustrative
 spec: spec
@@ -517,8 +518,10 @@ without a program having checked it. The two agents of Coordination exchange the
 directly instead: a task session reports its decisions and escalations to the main agent, which
 answers them or asks the developer, and no program judges either side; the decision log records them
 for the main agent and the developer to read. What a task session changes, itself or through runs,
-is checked by programs before it counts: `delivery` delivers the workspace only when it validates
-whole, and a merge can run checks on the primary branch once more. An Operation exists only where a
+is checked by programs before it counts: where the method part is installed, `delivery` delivers
+the workspace only when it validates whole, while Coordination's `task deliver`, which delivers in
+its place without Method, certifies only the checks its caller gives it; and a merge can run checks
+on the primary branch once more. An Operation exists only where a
 model works: deterministic steps, such as deciding readiness and delivering, are execution commands,
 which the same runner records without any worker machinery.
 
@@ -529,9 +532,11 @@ project-wide view, the conversation with the developer and sole responsibility f
 commands run with the branch's own copy of the Framework, as in Concorde's own source checkout,
 their success is self-validation, which is why the main agent there merges with the build and
 `spec-validation` as the merge's checks, as that checkout's development guidance requires, so that
-both run once more on the primary branch: a merge runs exactly the checks its caller gives it, and
-given none only `spec-validation`
-([req.tasks.merge-default-check](coordination/tasks/requirements.md#req.tasks.merge-default-check));
+both run once more on the primary branch: a merge runs the checks its caller gives it, and given
+none `spec-validation` where the spec part is installed
+([req.tasks.merge-default-check](coordination/tasks/requirements.md#req.tasks.merge-default-check)),
+adding `spec-validation` after them while a `concorde update` is not validated yet
+([req.tasks.merge-update-validated](coordination/tasks/requirements.md#req.tasks.merge-update-validated));
 in an installed project a task worktree ordinarily runs the primary
 worktree's copy ([Distribution](distribution/module.md)).
 
@@ -570,8 +575,8 @@ leave out. A task session's boundary is Coordination's own, applied by
 
 Every Module that reads Specs relies on the [Spec tooling](spec-tooling/module.md): its Spec core
 loads and checks the Specs and computes the grants, and a Module refuses to act on a structure it
-reports untrustworthy. It uses no other Module, so the Specs can be checked, served and published
-without any agent.
+reports untrustworthy. It depends on and imports no other part, meeting the Kernel's formats with
+its own copy, so the Specs can be checked, served and published without any agent.
 
 ### Errors as a chain
 
