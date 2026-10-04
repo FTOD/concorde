@@ -189,7 +189,11 @@ Every page is fetched before anything is written; the snapshot is written into a
 directory beside `references/claude-code/` and swapped in only once complete, and the temporary
 directories are removed either way. A file of the previous snapshot that the index no longer lists
 is therefore gone after a refresh. A refused refresh exits with status 1 and names on standard error
-every page it could not fetch, or the write that failed.
+every page it could not fetch, whether the request failed or its body was cut short, or the write
+that failed. An index listing a page whose name would lead outside the snapshot, an absolute name
+or one with a `..` component, is refused before any page is fetched. Only when the swap fails and
+moving the previous snapshot back fails as well is the directory left changed: the refusal then says
+so and names where the previous snapshot is kept, which is not removed.
 
 ### scenario.concorde.docs-refresh-replaces — A refresh replaces the snapshot whole
 
