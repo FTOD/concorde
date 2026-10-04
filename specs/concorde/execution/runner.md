@@ -174,7 +174,7 @@ The result lists the worker runs' identities. It names the run's own node as `tr
 <a id="the-lobby"></a>
 
 **The lobby.** Before it holds the workspace lock, a bound run writes nothing into its workspace
-folder. Whoever retires the workspace, as closing a task does, holds that lock while it moves the
+folder, because whoever retires the workspace, as closing a task does, holds that lock while it moves the
 folder. Until then, the run's node lies in the lobby, `lobby/<run-id>/` of the binding's `concorde`.
 The lobby is next to its run lock and outside every workspace folder. The lobby holds these files:
 
@@ -391,8 +391,8 @@ begins, that signal cancels the run, no step running. Once the execution ended, 
 changes nothing while the checkout is removed or the result composed and written. The run
 finishes as composed.
 
-The run's `cancelled` link names every worker run the run's steps started. Evidence of kind
-`worker-run` points at each worker run's node, with its
+The run's `cancelled` link names every worker run the run's steps started. The link's evidence of
+kind `worker-run` points at each worker run's node, with its
 [progress file](../glossary.json#concept.progress-file). `worker_runs` lists those worker runs.
 When a worker run starts, the step tells the run context that worker run's identity, as the worker
 harness tells it. The step does not wait until the worker run returns to tell the run context.
@@ -547,7 +547,7 @@ That starting worktree is here called its origin. The runner follows these steps
   `git worktree add --detach` of that commit from the submodule's repository. When the origin's
   checkout is sparse, the runner uses the origin's sparse-checkout patterns. It uses each pattern
   as Git lists it, spaces included, read back in the origin's own mode, cone or not. `submodule`
-  evidence names each submodule. When the origin did not check out a submodule or Git cannot check
+  evidence names each submodule so checked out. When the origin did not check out a submodule or Git cannot check
   it out or populate it, the submodule stays empty, as in a fresh clone. `submodule-absent` evidence
   names why. Before any step runs, the runner removes a checkout Git began and could not finish.
   `checkout-not-removed` evidence names whatever of it could not be removed.
