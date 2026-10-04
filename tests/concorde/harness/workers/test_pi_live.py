@@ -51,7 +51,9 @@ class LivePiWorkerTests(unittest.TestCase):
             "instructions": instructions,
             "backend": "pi",
             "claude": None,
-            "model": MODEL,
+            # The model's pi id, passed with --model; the project model name is recorded only.
+            "model": "live-pi",
+            "local_model": MODEL,
             "reasoning": "low",
             "check_modules": None,
             "timeout": 600,

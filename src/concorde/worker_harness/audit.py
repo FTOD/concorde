@@ -1,7 +1,8 @@
 """The write audit: what changed in a task worktree since a snapshot, judged against a grant.
 
-The host runs read-only Git outside the worker. A snapshot records ``HEAD``, the index digest and
-the digest of every tracked change and untracked file; after a round the same measurement is taken
+The host runs read-only Git outside the worker. A snapshot records ``HEAD`` with the branch it
+names, the index digest and the digest, content and executable bit, of every tracked change and
+untracked file; after a round the same measurement is taken
 again and every difference is judged: a changed or new file in the grant's ``rw`` list is allowed,
 anything else, including a deletion or a changed ``HEAD`` or index, is a violation. Paths Git
 ignores are not observed. A violation is one string: ``HEAD`` or ``index``, the path of a file
@@ -31,11 +32,13 @@ def _git(worktree: Path, *arguments: str) -> bytes:
 
 
 def _digest(path: Path) -> str | None:
+    """A file's content and, as Git sees it, its executable bit; None when it is absent."""
     if path.is_symlink():
         return "link:" + str(path.readlink())
     if not path.is_file():
         return None
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    mode = "755" if os.stat(path).st_mode & 0o111 else "644"
+    return f"{mode}:{hashlib.sha256(path.read_bytes()).hexdigest()}"
 
 
 def _changed_paths(worktree: Path) -> set[str]:
@@ -72,8 +75,14 @@ class Snapshot:
 
 
 def snapshot(worktree: Path) -> Snapshot:
-    """The worktree's state: ``HEAD``, the index digest and every changed file's digest."""
-    head = _git(worktree, "rev-parse", "HEAD").decode().strip()
+    """The worktree's state: ``HEAD`` with the branch it names, the index digest and every changed
+    file's digest."""
+    # The branch HEAD names (``HEAD`` itself when detached) and its commit: switching to another
+    # branch at the same commit changes it too.
+    branch = (
+        _git(worktree, "rev-parse", "--symbolic-full-name", "HEAD").decode().strip()
+    )
+    head = f"{branch} {_git(worktree, 'rev-parse', 'HEAD').decode().strip()}"
     index_path = Path(
         _git(worktree, "rev-parse", "--git-path", "index").decode().strip()
     )
@@ -117,8 +126,10 @@ def audit(worktree: Path, before: Snapshot, rw: list[str]) -> AuditResult:
         violations.append("index")
     changed: list[str] = []
     for path in sorted(set(before.files) | set(after.files)):
-        # A path Git no longer reports is equal to HEAD again.
-        old, new = before.files.get(path, "HEAD"), after.files.get(path, "HEAD")
+        # A path Git did not report before was equal to HEAD. One it no longer reports is either
+        # equal to HEAD again or, untracked before, gone: its entry now tells which.
+        old = before.files.get(path, "HEAD")
+        new = after.files[path] if path in after.files else _digest(worktree / path)
         if old == new:
             continue
         changed.append(path)

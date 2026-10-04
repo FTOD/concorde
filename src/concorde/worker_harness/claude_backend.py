@@ -199,13 +199,22 @@ def proxy_environment(host: dict[str, str] | None = None) -> dict[str, str]:
 class ClaudeStream:
     """Reads one round's ``stream-json`` output."""
 
+    def __init__(self):
+        # The session the output named so far, such as in its first ``system`` record, before
+        # the round's envelope confirms it.
+        self.session: str | None = None
+
     def feed(self, line: str) -> list[tuple[str, dict]]:
         """The tool uses this line reports, as ``(tool, input)`` pairs."""
         try:
             record = json.loads(line)
         except ValueError:
             return []
-        if not isinstance(record, dict) or record.get("type") != "assistant":
+        if not isinstance(record, dict):
+            return []
+        if isinstance(record.get("session_id"), str) and record["session_id"]:
+            self.session = record["session_id"]
+        if record.get("type") != "assistant":
             return []
         content = (record.get("message") or {}).get("content")
         if not isinstance(content, list):

@@ -44,7 +44,8 @@ caller admits for one run, which Workers passes with the run exactly as the call
 ([Reading beside the grant](../workers/launch.md#reading-beside-the-grant)) and the
 Harness only receives.
 The **[write hook](../../glossary.json#concept.write-hook)** makes `rw` the exact write allowlist,
-denying any other Edit or Write with a reason naming the path's level; for a path outside the
+judging a write by the file it would change, through any symbolic link, and denying any other Edit
+or Write with a reason naming the path's level; for a path outside the
 grant the reason says both that a file no Module declares needs a `specify` task first and that a
 file another Module declares needs that Module bound. It says nothing about `rw` and never governs
 reads. The Bash sandbox denies reading the worktree, `$HOME`, the primary worktree and every Git
@@ -197,8 +198,9 @@ each of them, and the primary worktree as it hides the user's home, wherever the
 it never looks for Git paths itself beyond the `.git` entries it meets in the task worktree. The Harness relies on the grant listing every path's level (`rw`, `ro`,
 `names`, ungranted omitted); it never computes or widens a grant, only receives it frozen from
 Workers. It generates nothing from a malformed grant: one that has no `entries` list, or an entry
-that is not an object with a non-empty path relative to the task worktree, never absolute and never
-leaving it through `..`, and a level of `rw`, `ro` or `names`. Settings generation then raises a
+that is not an object with a non-empty path relative to the task worktree, never absolute, never
+leaving it through `..` and in canonical form, with no empty or `.` segment, and a level that is one
+of the strings `rw`, `ro` and `names`. Settings generation then raises a
 `SettingsError` with the code `grant_malformed` naming the first such entry and what is wrong with
 it, which Workers reports as its [refusal to launch](../workers/launch.md#errors).
 

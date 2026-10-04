@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -139,9 +140,16 @@ def entry_problem(entry) -> str | None:
         return "its path is missing or not a non-empty string"
     if path.startswith("/"):
         return f"its path {path!r} is absolute, not relative to the task worktree"
-    if ".." in path.rstrip("/").split("/"):
+    segments = path.removesuffix("/").split("/")
+    if ".." in segments:
         return f"its path {path!r} leaves the task worktree through '..'"
-    if level not in RANK:
+    if "" in segments or "." in segments:
+        return (
+            f"its path {path!r} is not in canonical form: it has an empty or '.' segment, "
+            "where a path names each directory once, separated by single slashes"
+        )
+    # A level that is not a string, such as a list, is never looked up: it cannot be hashed.
+    if not isinstance(level, str) or level not in RANK:
         return f"its level {level!r} is none of {', '.join(sorted(RANK))}"
     return None
 
@@ -261,7 +269,7 @@ def worktree_rules(
                     continue
                 if covering == "ro" and not any(
                     level == "rw" and path.startswith(below)
-                    for path, level in view.exact.items()
+                    for path, level in [*view.exact.items(), *view.directories]
                 ):
                     rules.append(_rule("Edit", child, True))
                     continue
@@ -463,7 +471,9 @@ def worker_settings(
                     "hooks": [
                         {
                             "type": "command",
-                            "command": f"{python} {(run.control / 'write_hook.py').as_posix()}",
+                            "command": shlex.join(
+                                [python, (run.control / "write_hook.py").as_posix()]
+                            ),
                         }
                     ],
                 }

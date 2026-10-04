@@ -273,7 +273,8 @@ transcript. The runtime directory holds the host-only `control/` (settings, hook
 the worker's `config/` (`CLAUDE_CONFIG_DIR` or pi's configuration, with the credential copies and
 the session), `home/` (`HOME`), `tmp/` (`TMPDIR`) and `work/` (its working directory). The
 transcript is moved from `config/` into the run directory before the runtime directory is removed,
-so no credential copy is ever retained.
+so no credential copy is ever retained; a transcript that cannot be kept or a runtime directory that
+cannot be removed fails the run with `cleanup_failed`, never silently.
 
 The progress file also names the process identifier of the process the run runs in and the identity
 of the run that launched it, which the caller gives, by which an observer pairs it with that run's
@@ -517,7 +518,8 @@ and its causes — the worker's own error, a Claude Code error such as a used-up
 links the round validation names, in Concorde every still-failing check with its log's end. Host
 failures use the same shape with status `failed`: a missing/unreadable grant, a runtime directory a
 deny rule would cover, a launch error, a timeout (the process group is killed), a Claude Code error,
-a missing/invalid worker result, an audit violation, or a round validation that could not validate. Every call starts a fresh run; a failed one is never resumed later. Exact
+a missing/invalid worker result, an audit violation, a round validation that could not validate, a
+proposed deletion that failed, or a cleanup that failed. Every call starts a fresh run; a failed one is never resumed later. Exact
 codes/layout: [the run mechanics](launch.md); testable behaviour: [the scenarios](scenarios.md).
 
 ### Inside
@@ -587,7 +589,8 @@ refuses to launch.
 A worker creates a new file only below a `rw` directory: every exact `rw` path already exists,
 since a realization binds only files that exist and the task level creates and binds any other new
 file before the run. The host creates no file for the worker. A worker cannot delete either — it
-only proposes deletions, performed by the host inside `rw` after a clean audit.
+only proposes deletions, performed by the host inside `rw` after a clean last round, judged with
+their directories' symbolic links resolved.
 
 Resume rounds reuse the worker's context — the spike confirmed this fixes a failing check — and
 on Claude Code each resume returns a session id the host continues from. Rounds are only for what

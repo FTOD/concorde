@@ -37,6 +37,9 @@ absolute, `<runtime>` being the runtime directory:
 }
 ```
 
+The hook's command names the Python interpreter and the hook's path, each quoted for the shell, so
+that a path holding a space or a quote stays one word.
+
 ### Deny rules
 
 Claude Code applies `Read` deny rules to its file tools and also to the Bash sandbox: a path a rule
@@ -72,8 +75,13 @@ such a file itself, since it writes only `rw` paths.
 The hook is `write_hook.py` copied into the runtime directory's `control/` with the task worktree and the grant's
 `rw`, `ro` and `names` lists embedded, generated from the same grant as the deny rules. It receives
 Claude Code's PreToolUse JSON on standard input and resolves `tool_input.file_path` to an absolute
-path without following a final symbolic link. The rows are tried from the top and the first that
-matches decides. The hook sees only the grant, not which Module declares an ungranted path, so its
+path with every symbolic link resolved, the final one included, and also a final link whose target
+does not exist yet: a write is judged by the file it would change, never by a link's own name, so a
+link at a `rw` path lets a write through only when its target is `rw` too, and a link elsewhere lets
+one through when its target is `rw`. The rows are tried from the top and the first that matches
+decides; a denial reached through a final link names the file judged followed by
+`(the target of the symbolic link <path>)`, and one outside the task worktree says the path is a
+symbolic link to that target. The hook sees only the grant, not which Module declares an ungranted path, so its
 reason for one covers both cases: an undeclared file and a file of a Module the task is not bound
 to.
 

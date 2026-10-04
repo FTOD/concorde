@@ -17,7 +17,11 @@ Operations, through the
 can hand over a grant and its instructions may use it alone. It decides nothing about the job: it
 computes no grant, reads no [Spec](../glossary.json#concept.spec), knows no
 [Operation](../glossary.json#concept.operation) catalog and runs no check of its own. It depends on
-the [kernel](../kernel/module.md) part alone.
+the [kernel](../kernel/module.md) part alone, for one collaboration:
+[Workers](workers/module.md#uses-tracing) writes each worker run and each of its rounds as a trace
+node through the library of Kernel's [Tracing](../kernel/tracing/module.md), and reports its
+failures as links of Tracing's [error chain](../glossary.json#concept.error-chain), relying on the
+node and error contracts Tracing states.
 
 What it enforces guards against a worker's scope drift and mistakes, not against a malicious agent,
 and it is no complete isolation of the host. The deny rules cover the worktree, the primary
@@ -64,11 +68,14 @@ back:
   repository's primary worktree ([Placement](workers/launch.md#placement)), the runtime paths it may
   read beside the grant, and the trace node folder in which its run directory is made; a grant
   with no `rw` path makes a worker that changes nothing;
-- **the round validation**: a callback the worker harness calls after each round that ended with a
-  valid `ok` [worker result](../glossary.json#concept.worker-result) and a clean audit. It returns
-  the evidence to keep with the round, such as [check results](../glossary.json#concept.check-result),
-  and what to repair, or a violation that ends the run at once; while there is something to repair
-  and rounds remain, the worker harness resumes the same worker session with it
+- **the round validation**, optionally: a callback the worker harness calls after each round that
+  ended with a valid `ok` [worker result](../glossary.json#concept.worker-result) and a clean audit;
+  without one, such a round ends the run `ok`. It returns the evidence to keep with the round, such
+  as [check results](../glossary.json#concept.check-result), and what to repair, or a violation that
+  ends the run at once, or that it could not validate, which fails the run; while there is
+  something to repair and rounds remain, the worker harness resumes the same worker session with
+  it, and the caller chooses whether a repair still left after the last round fails the run or
+  leaves its result for the caller to judge
   ([Round validation](workers/launch.md#round-validation)).
 
 So everything that depends on the Specs or on the job — which paths, which instructions, which

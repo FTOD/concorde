@@ -21,7 +21,7 @@ these tools, replacing pi's built-ins of the same name:
 
 | Tool | Behaviour |
 | --- | --- |
-| `read` | Checks the path with the read table below, then runs pi's own `read` |
+| `read` | Checks the path with the read table below, then runs pi's own `read`, whose file operations check again the exact path it opens |
 | `write`, `edit` | Check the path with the write table below, then run pi's own tool |
 | `grep` | Runs `rg` inside the sandbox; files the sandbox hides do not exist for it |
 | `find` | Runs `fd` inside the sandbox |
@@ -31,9 +31,12 @@ these tools, replacing pi's built-ins of the same name:
 
 A path argument is resolved the way pi resolves it: Unicode spaces become plain spaces, one leading
 `@` is removed, a leading `~` becomes the worker's `HOME`, a `file://` URL becomes its path, and the
-result is resolved against the working directory. Every failure inside a check denies the call with
-the reason `Concorde grant: the extension could not decide: <message>`; pi itself also blocks a
-tool whose handler throws.
+result is resolved against the working directory. pi's `read` may then open another spelling of a
+name that does not exist, such as its NFD form, a narrow no-break space before `AM` or `PM` or a
+curly apostrophe; the extension therefore gives pi's `read` file operations of its own, which check
+the path pi chose with the read table before they open it. Every failure inside a check denies the
+call with the reason `Concorde grant: the extension could not decide: <message>`; pi itself also
+blocks a tool whose handler throws.
 
 pi validates the argument of `concorde_result` against the embedded schema before the tool runs:
 an invalid one comes back to the worker as an error result and the session goes on, so the worker
@@ -50,23 +53,26 @@ path decides it:
 | Path | Decision | Reason given to the worker |
 | --- | --- | --- |
 | a Git administrative path or below one, or a `.git` entry of the task worktree at any depth or below one | deny | Git metadata is not available to workers |
+| a runtime path or below one, inside the task worktree or outside it | allow | — |
 | a `rw` or `ro` path of the task worktree | allow | — |
 | a `names` path | deny | only the path's name is visible to this task |
 | another path in the task worktree | deny | the path is not in this task's grant |
 | `control/` or `config/` of the runtime directory | deny | the path belongs to the host |
-| the runtime directory's `work/`, `home/` or `tmp/`, or a runtime path | allow | — |
+| the runtime directory's `work/`, `home/` or `tmp/` | allow | — |
 | another path inside the user's home or the primary worktree | deny | the path is outside this task's boundary |
 | any other path | allow | — |
 
-The last row keeps system directories readable, as on the Claude Code backend.
+The last row keeps system directories readable, as on the Claude Code backend. A runtime path inside
+the task worktree, such as `.venv` or `node_modules`, is readable to `read` as to the sandbox, which
+lists it in `allowRead`; a search rooted at it, or at a directory holding one, is allowed too.
 
 ### Write table
 
-A write or edit is judged on the resolved path with its directories' symbolic links resolved and a
-final symbolic link judged by its own name, exactly as
+A write or edit is judged on the resolved path with every symbolic link resolved, the final one
+included, so by the file it would change, exactly as
 [the write hook](claude-code.md#write-hook) judges it, with
-the same rows, decisions and reasons, including the `.git` row, and also denies a Git
-administrative path with the `.git` row's reason.
+the same rows, decisions and reasons, including the `.git` row and the naming of a link's target,
+and also denies a Git administrative path with the `.git` row's reason.
 
 ### Sandbox
 

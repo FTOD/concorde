@@ -195,7 +195,7 @@ neither part imports the other.
 ```concorde-contract
 {
   "id": "contract.workers.grant-input",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -229,7 +229,8 @@ neither part imports the other.
           "properties": {
             "path": {
               "type": "string",
-              "minLength": 1
+              "minLength": 1,
+              "pattern": "^(?!\\.\\.?(/|$))(?!.*/\\.\\.?(/|$))[^/]+(/[^/]+)*/?$"
             },
             "level": {
               "enum": [
@@ -247,7 +248,7 @@ neither part imports the other.
       }
     }
   },
-  "semantics": "The grant of one worker run, handed over by its caller as data and frozen for the whole run. task_type is the Protocol task type of the worker's job, which selects its tool set. entries lists every path the worker may reach with its level: rw writable, ro readable, names known by name only; a path is relative to the worktree the worker works in, never absolute and never leaving it through .., a directory ending in /, and a path no entry names is hidden. context_identity identifies what selected the entries, as the caller computed it; the worker harness records it and the digest of the grant, and never interprets either. A grant whose entries break this shape is refused before anything is generated, with grant_malformed naming the first such entry; one without a task type, entries or context identity with grant_unavailable. A behaviour or field change increments the version.",
+  "semantics": "The grant of one worker run, handed over by its caller as data and frozen for the whole run. task_type is the Protocol task type of the worker's job, which selects its tool set. entries lists every path the worker may reach with its level: rw writable, ro readable, names known by name only; a path is relative to the worktree the worker works in, never absolute, never leaving it through .. and in canonical form, each directory named once between single slashes with no empty or . segment, a directory ending in /, and a path no entry names is hidden. context_identity identifies what selected the entries, as the caller computed it; the worker harness records it and the digest of the grant, and never interprets either. A grant whose entries break this shape is refused before anything is generated, with grant_malformed naming the first such entry; one without a task type, entries or context identity with grant_unavailable. A behaviour or field change increments the version.",
   "example": {
     "task_type": "implement",
     "entries": [
@@ -575,7 +576,7 @@ defines them; their contents are these values.
 ```concorde-contract
 {
   "id": "contract.workers.worker-run-trace",
-  "version": 4,
+  "version": 5,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -701,7 +702,7 @@ defines them; their contents are these values.
       }
     }
   },
-  "semantics": "The data of the typed value concorde-worker-run-trace, the content of a worker run's trace node, which is its run record. task_type is the worker's task type; backend_source says what chose the backend: the worker configuration entry that set it, such as operations.implement.default or the configuration's own default entry, the text Concorde's default worker backend when no entry sets one and pi applies, or null when the request was made without resolving the worker's backend; local_model is the id the model map gave the worker's project model name on its backend, passed with --model, and model_map the path of that map, both null when the request named no local id; tools is the tool set the worker was given, or null when the run was refused before a backend was prepared. transcript is the path, relative to the node's folder, of the transcript the host moved there from the runtime directory once the worker ended (transcript.jsonl), null when no session existed. worker_result is the last worker result verbatim, a claim, or null. deleted lists the proposed deletions the host performed, deletions_refused those it refused as the worker gave them, deletions_absent those in the rw list it found already absent and deletions_failed those whose deletion failed, each but the refused relative to the worktree (launch.md#proposed-deletions). rounds is how many rounds began; each is a worker-round node below this one. The worker run's identity, times, status, outcome, error (Workers' link), its metadata (the Modules, the Operation and worker id it was launched for, task type, backend, project model name and reasoning level as configured, context identity and the grant, brief and settings digests) and its files (status.json, grant.json, brief.md, transcript.jsonl) are the uniform fields of its trace node. A behaviour or field change increments the version.",
+  "semantics": "The data of the typed value concorde-worker-run-trace, the content of a worker run's trace node, which is its run record. task_type is the worker's task type; backend_source says what chose the backend: the worker configuration entry that set it, such as operations.implement.default or the configuration's own default entry, the text Concorde's default worker backend when no entry sets one and pi applies, or null when the request was made without resolving the worker's backend; local_model is the id the model map gave the worker's project model name on its backend, passed with --model, and model_map the path of that map, both null when the request named no local id; tools is the tool set the worker was given, or null when the run was refused before a backend was prepared. transcript is the path, relative to the node's folder, of the transcript of the session the worker's output named last, which the host moved there from the runtime directory once the run ended, also an interrupted one (transcript.jsonl), null when no session existed or when the host could not keep it, which then fails the run with cleanup_failed. worker_result is the last valid worker result verbatim, a claim, kept whatever else ended its round, such as a timeout, or null. deleted lists the proposed deletions the host performed, deletions_refused those it refused as the worker gave them, deletions_absent those in the rw list it found already absent and deletions_failed those whose deletion failed, each but the refused relative to the worktree (launch.md#proposed-deletions). rounds is how many rounds began; each is a worker-round node below this one. The worker run's identity, times, status, outcome, error (Workers' link), its metadata (the Modules, the Operation and worker id it was launched for, task type, backend, project model name and reasoning level as configured, context identity and the grant, brief and settings digests) and its files (status.json, grant.json, brief.md, transcript.jsonl) are the uniform fields of its trace node. A behaviour or field change increments the version.",
   "example": {
     "task_type": "implement",
     "backend_source": "operations.implement.default",
@@ -908,7 +909,7 @@ not stored; the run's trace node and its rounds' nodes are the record that is ke
 ```concorde-contract
 {
   "id": "contract.workers.worker-run-record",
-  "version": 2,
+  "version": 3,
   "schema": {
     "type": "object",
     "additionalProperties": false,

@@ -21,11 +21,15 @@ def decide(data: dict, grant: dict) -> str | None:
         return "the hook could not decide: the tool call names no file"
     base = data.get("cwd") or os.getcwd()
     absolute = os.path.normpath(os.path.join(base, target))
-    # Resolve every directory, but not a final symbolic link: a link is judged by its own name.
-    parent = os.path.realpath(os.path.dirname(absolute))
-    resolved = os.path.join(parent, os.path.basename(absolute))
+    # Resolve every symbolic link, the final one included, even when its target does not exist
+    # yet: a write is judged by the file it would change, never by a link's own name.
+    resolved = os.path.realpath(absolute)
     worktree = grant["worktree"]
     if resolved != worktree and not resolved.startswith(worktree + "/"):
+        if os.path.islink(absolute):
+            return (
+                f"{target} is a symbolic link to {resolved}, outside the task worktree"
+            )
         return f"{target} is outside the task worktree"
     relative = resolved[len(worktree) + 1 :]
     # The worktree's own .git and every submodule's, at any depth.
@@ -40,12 +44,18 @@ def decide(data: dict, grant: dict) -> str | None:
 
     if listed("rw"):
         return None
+    # A denial through a final link names the file judged and the link it was reached by.
+    named = (
+        f"{relative} (the target of the symbolic link {target})"
+        if os.path.islink(absolute)
+        else relative
+    )
     if listed("ro"):
-        return f"{relative} is read-only for this task"
+        return f"{named} is read-only for this task"
     if listed("names"):
-        return f"only the name of {relative} is visible to this task"
+        return f"only the name of {named} is visible to this task"
     return (
-        f"{relative} is not in this task's grant; a new file outside the bound directories is "
+        f"{named} is not in this task's grant; a new file outside the bound directories is "
         "created and bound to a Module by the task level before a worker fills it, and a "
         "file another Module binds needs that Module bound to the task"
     )

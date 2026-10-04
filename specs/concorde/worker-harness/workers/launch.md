@@ -121,14 +121,17 @@ trace node folder its caller gave, so a worker run lies inside the run that laun
 | `status.json` | The progress file | none |
 | `grant.json` | The frozen grant and its context identity | none |
 | `brief.md` | The brief as sent | none |
-| `transcript.jsonl` | The latest session's transcript, moved here from `config/` when the worker ended | none |
+| `transcript.jsonl` | The latest session's transcript, of the session the worker's output named last, even in a round interrupted before it returned, moved here from `config/` when the run ended | none |
 | `rounds/<n>/` | Each round's node: `trace.json` ([worker round trace](contracts.md#contract.workers.worker-round-trace)), the round's standard error `stderr.log` and the nodes its round validation placed, such as Concorde's check nodes `checks/<check-id>/` | none |
 
 Its **[runtime directory](../../glossary.json#concept.runtime-directory)** is a private directory
 `/tmp/concorde-<suffix>-<random>/` created for the run, or under the system temporary directory where
 `/tmp` is not writable, as inside a check boundary; the host removes it when the run ends, however it
-ends, after moving the transcript into the run directory. Credentials therefore never outlive the
-run, unless the host process itself is killed outside its control, by `SIGKILL`, which leaves the
+ends, after moving the transcript into the run directory: the credential copies in `config/`
+first, then the rest, opening up any directory the worker's own tools left unwritable or
+unreadable, and it checks that the directory is gone. A transcript it could not keep, or a runtime
+directory it could not remove, ends the run `failed` with `cleanup_failed` naming what remains and
+why. Credentials therefore never outlive the run unnoticed, unless the host process itself is killed outside its control, by `SIGKILL`, which leaves the
 directory to the system's temporary-file cleaning, as [the entry](module.md#where-a-runs-files-live)
 explains. It holds:
 
@@ -267,10 +270,12 @@ Concorde the [workspace lock](../../glossary.json#concept.workspace-lock) the la
 this.
 
 Before the first round the host records a snapshot of the
-worktree: `HEAD`, the index digest, and the digest of every tracked change and untracked file
-that already exists. After each round it runs read-only Git
+worktree: `HEAD`, as the branch it names and its commit, the index digest, and the digest of every
+tracked change and untracked file that already exists, its content and, as Git sees it, its
+executable bit. After each round it runs read-only Git
 (`git status --porcelain=v2 -z --untracked-files=all` and the digests of the listed files) and
-compares.
+compares. A file of the snapshot that Git no longer lists is measured where it lies: equal to `HEAD`
+again, it changed, and gone, as an untracked file deleted is, it was deleted.
 
 | Observation since the snapshot | Verdict |
 | --- | --- |
@@ -286,7 +291,7 @@ Each round records its audit as an object with:
 | --- | --- |
 | `verdict` | `clean` when nothing is a violation, otherwise `violation` |
 | `changed` | every path, relative to the worktree and in path order, whose file was created, changed or deleted since the snapshot |
-| `violations` | each violation as one string, in path order after any Git state: `HEAD` or `index` for a changed `HEAD` or index; the path of a file created or changed outside `rw`; and the path followed by ` (deleted)` for a deleted file |
+| `violations` | each violation as one string, in path order after any Git state: `HEAD` for a `HEAD` that names another branch or commit and `index` for a changed index; the path of a file created or changed outside `rw`; and the path followed by ` (deleted)` for a deleted file |
 
 A round whose audit did not run, such as one whose command could not be started, has `audit` null
 in its node. The [returned run record](contracts.md#contract.workers.worker-run-record)'s example shows an
@@ -294,11 +299,18 @@ audit with violations.
 
 ### Proposed deletions
 
-After the last round, and only when its audit was clean, the host performs the worker's
-`proposed_deletions`. The worker writes each relative to the worktree, as the brief asks of every
+After the last round, when that round's audit was clean and its worker returned a valid
+[worker result](../../glossary.json#concept.worker-result), the host performs the worker's
+`proposed_deletions`, whatever the run's outcome otherwise: an `ok` run, a `blocked` or `failed`
+worker, a round that timed out or whose agent process failed after the result, and a round
+validation that failed the run or could not validate alike. It performs none when the round
+validation answered a violation, since the caller does not allow the round at all, nor when the run
+was interrupted, which leaves the worktree as the interruption found it. The worker writes each relative to the worktree, as the brief asks of every
 path in its result; the host also accepts an absolute path, which it reads as the same path in the
-worktree once normalized, and refuses one that normalizes to a path outside the worktree. An entry
-naming a path an earlier entry already named is dropped. The host then takes each remaining entry
+worktree once normalized, and refuses one that normalizes to a path outside the worktree. It judges
+each path with its directories' symbolic links resolved, so that a directory link below a `rw`
+directory never lets it delete a file elsewhere, and removes a final symbolic link itself, never its
+target. An entry naming a path an earlier entry already named is dropped. The host then takes each remaining entry
 in order:
 
 | The proposed path | Outcome | Recorded in |
@@ -309,8 +321,8 @@ in order:
 | an existing file in the `rw` list whose deletion fails | left in place; the host goes on with the next | `deletions_failed`, relative to the worktree |
 
 When a deletion failed, the run ends `failed` with `deletion_failed` whatever status it would
-otherwise have had, its error listing what was deleted and what was not; the deletions that
-succeeded stay done. This happens after the last round's validation, so the evidence it recorded
+otherwise have had, its error listing what was deleted and what was not, with the link the run
+would otherwise have ended with as its cause; the deletions that succeeded stay done. This happens after the last round's validation, so the evidence it recorded
 describes the worktree before these deletions.
 
 ## Rounds
@@ -330,7 +342,9 @@ describes the worktree before these deletions.
 | `ok`, audit clean | a repair that fails the run, no rounds left | end `failed` with the code and causes it names, reason `exhausted` |
 | `ok`, audit clean | a repair that does not fail the run, no rounds left | end `ok`; the caller judges the result |
 
-The rows are tried in this order. The resume prompt is the round validation's repair text.
+The rows are tried in this order. The resume prompt is the round validation's repair text. A valid
+worker result is kept as the run's `worker_result` whatever ends its round, a timeout or a failed
+agent process included, since the worker's claim is evidence even when the run fails.
 
 ## Run record
 
@@ -390,7 +404,8 @@ by every code whose round had one, even when the round also timed out or failed 
 | the code the round validation names when it cannot validate, in Concorde `checks_unavailable` | the round and what the round validation reported | `environment` | the links the round validation names, in Concorde Check execution's |
 | `validation_unavailable` | the round and the error the round validation raised instead of answering | `capability` | none |
 | the code the round validation names for a repair that fails the run, in Concorde `checks_failed` | what still needs repair and the rounds used; `attempts` lists each round's repair | `exhausted` | the links the round validation names, in Concorde one per failing check, from Check execution |
-| `deletion_failed` | every proposed deletion the host performed, every one that failed with the operating system's error, and those it refused or found already absent | `environment` | the worker's link, when its result carries an `error` |
+| `deletion_failed` | every proposed deletion the host performed, every one that failed with the operating system's error, and those it refused or found already absent | `environment` | the link the run would otherwise have ended with, if any |
+| `cleanup_failed` | the transcript the host could not keep and the runtime directory it could not remove, each with the operating system's error | `environment` | the link the run would otherwise have ended with, if any |
 | `interrupted` | what ended the run from outside before it finished, such as a signal or the cancellation of the run that launched it | `environment` | none |
 
 The **Claude Code process's link** has the level `component` and states the envelope's subtype,
@@ -467,7 +482,11 @@ The host SHALL keep a run's settings, write hook, tool set and brief unchanged f
 
 ### req.workers.write-allowlist — Only `rw` paths are writable by file tools
 
-On the Claude Code backend the write hook SHALL deny every Edit or Write whose target is not in the grant's `rw` list.
+On the Claude Code backend the write hook SHALL deny every Edit or Write whose target, with every symbolic link resolved, the final one included, is not in the grant's `rw` list.
+
+A write is judged by the file it would change: a symbolic link at a `rw` path lets a write through
+only when its target is `rw` too. The judgement is tighter than a link's own name, and it is the
+one the [pi write table](../harness/pi.md#write-table) makes as well.
 
 ### req.workers.read-denials — File tools cannot read what the grant withheld when the rules were generated
 
@@ -611,7 +630,11 @@ Every run that does not end `ok` SHALL carry Workers' error link with the worker
 
 ### req.workers.host-deletes — Only the host deletes
 
-The host SHALL delete a file only when the worker proposed it, the file is in the `rw` list and the audit was clean.
+The host SHALL delete a file only when the worker proposed it, the file, its directories' symbolic links resolved, is in the `rw` list and the last round's audit was clean.
+
+### req.workers.deletions-whatever-outcome — Proposed deletions follow every clean last round
+
+After a last round whose audit was clean and whose worker returned a valid result, the host SHALL perform the worker's proposed deletions whatever the run's outcome, unless the round validation answered a violation or the run was interrupted.
 
 ### req.workers.deletion-once — A repeated deletion is performed once
 
@@ -643,11 +666,15 @@ The host SHALL write the run record of every run it was asked to start before it
 
 ### req.workers.always-recorded — Every run leaves a final record
 
-The host SHALL write the final run record of every run it was asked to start when the run ends, including one refused before launch.
+The host SHALL write the final run record of every run it was asked to start when the run ends, including one refused before launch, once the run's node exists; a run whose node could not be written still has its runtime directory removed.
 
 ### req.workers.transcript-kept — The transcript is kept before the runtime directory goes
 
-The host SHALL move the latest session's transcript into the run directory before it removes the run's runtime directory.
+The host SHALL move the latest session's transcript into the run directory before it removes the run's runtime directory, also when the run was interrupted while its last round ran.
+
+### req.workers.cleanup-reported — A cleanup that failed fails the run
+
+When the host cannot keep the transcript or remove the runtime directory, the run SHALL end `failed` with `cleanup_failed`, naming what remains and the operating system's error, with the link the run would otherwise have ended with as its cause.
 
 ### req.workers.runtime-removed — Nothing but the trace outlives a worker
 

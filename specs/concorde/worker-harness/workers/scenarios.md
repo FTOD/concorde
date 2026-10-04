@@ -82,6 +82,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - GIVEN a request whose runtime paths list a folder of check logs outside the worktree and a `.venv` inside it
 - WHEN the host prepares the worker on the Claude Code backend
 - THEN the Bash sandbox may read both and write neither, and no deny rule covers either
+- AND on the pi backend the permission extension lets `read` and a search open the `.venv` inside the worktree and refuses a write to it
 - AND the grant the run record keeps is the request's grant, with the same context identity
 
 ## The boundary
@@ -92,6 +93,13 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - WHEN it uses Write on a path in the worktree that is in no grant list
 - THEN the [write hook](../../glossary.json#concept.write-hook) denies it with a reason saying the path is not in this task's grant, that a new file outside the bound directories is created and bound to a Module by the task level before a worker fills it and that a file another Module binds needs that Module bound
 - AND the file does not appear in the worktree
+
+### scenario.workers.write-through-link — A write through a symbolic link is judged by its target
+
+- GIVEN a worker whose worktree holds, in a `rw` directory, a symbolic link to a `ro` Spec, one to a file outside the worktree and one to an ungranted file, and outside `rw` a link to a `rw` file
+- WHEN it writes through each link, with the write hook on the Claude Code backend or the permission extension on pi
+- THEN the writes through the three links in the `rw` directory are denied, each reason naming the target judged and the link, the one outside the worktree saying the link leads outside it
+- AND the write through the link to the `rw` file is allowed
 
 ### scenario.workers.ro-edit-denied — A read-only file cannot be edited
 
@@ -180,7 +188,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ### scenario.workers.audit-deleted — A deleted file is a violation named as deleted
 
-- GIVEN a worker round that ends with a valid result after a tracked file in the grant's `rw` list was deleted from the worktree
+- GIVEN a worker round that ends with a valid result after a file in the grant's `rw` list, tracked or untracked before the run, was deleted from the worktree
 - WHEN the host audits the worktree
 - THEN the round's audit lists the path in `changed` and the path followed by ` (deleted)` in `violations`, with the verdict `violation`
 - AND the run ends `failed` with `audit_violation`
@@ -235,6 +243,20 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - AND the run ends `failed` with `deletion_failed` and the reason `environment`, its detail naming the file it could not delete with the error and the file it deleted
 - BUT the deleted file is not restored
 
+### scenario.workers.deletion-through-link-refused — A deletion through a directory link is refused
+
+- GIVEN a clean audit, a `rw` directory holding a symbolic link to a `ro` Spec directory, one to a directory outside the worktree and one to a `rw` file, and a worker result whose `proposed_deletions` names a file below each directory link and the file link itself
+- WHEN the run ends
+- THEN the host refuses both files reached through a directory link and records them in `deletions_refused`, and both files still exist
+- AND it removes the file link itself, never its target
+
+### scenario.workers.deletions-whatever-the-outcome — Proposed deletions follow a clean last round whatever its outcome
+
+- GIVEN a worker whose last round ends with a valid result proposing a `rw` file's deletion and a clean audit
+- WHEN its round validation fails the run with a repair left after the last round, or answers a violation instead
+- THEN the host deletes the file when the validation failed the run, which ends `failed` with the code the validation named
+- BUT it deletes nothing when the validation answered a violation
+
 ## Rounds
 
 ### scenario.workers.check-failure-resume — A failing check resumes the same worker
@@ -283,6 +305,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - THEN its run record ends `failed` with the error `interrupted`, of reason `environment`, naming the interruption
 - AND its [progress file](../../glossary.json#concept.progress-file) is `finished` with status `failed`
 - AND the interruption travels on to the launcher
+- AND when the interruption comes while the worker of a round still runs, after its output named the session, the [run directory](../../glossary.json#concept.run-directory) keeps that session's transcript
 
 ### scenario.workers.invalid-result — A worker without a valid result has failed
 
@@ -310,7 +333,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 ### scenario.workers.pi-file-tools-denied — pi file tools explain every denial
 
 - GIVEN a running pi worker
-- WHEN it reads a `names` file, an ungranted file, the task worktree's `.git`, a submodule's `.git`, a file of the common Git directory, a source file of the primary worktree outside the task worktree, with that primary worktree outside the user's home, or a file of its runtime directory's `config/`, or writes a `ro` file, an undeclared file or a submodule's `.git`
+- WHEN it reads a `names` file, an ungranted file, the task worktree's `.git`, a submodule's `.git`, a file of the common Git directory, a source file of the primary worktree outside the task worktree, with that primary worktree outside the user's home, a file of its runtime directory's `config/`, or a granted name that does not exist whose other spelling, such as its NFD form, is an ungranted file pi's `read` would open instead, or writes a `ro` file, an undeclared file or a submodule's `.git`
 - THEN each call is denied with the reason the Harness's read or write table gives, prefixed `Concorde grant:`
 - AND no file changes
 
@@ -337,6 +360,21 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - THEN its generated pi settings hold only `defaultProjectTrust` `never`, and the run is not refused
 - AND the worker is launched with the local id the [model map](../../glossary.json#concept.model-map) gives the configured model and with the configured level, as `--model` and `--thinking`
 - AND its pi configuration directory holds copies of the user's `auth.json` and `models.json`
+
+### scenario.workers.pi-invalid-result-retried — pi refuses an invalid result and accepts a valid one
+
+- GIVEN the permission extension of a pi worker, loaded with pi's own tool definitions
+- WHEN pi validates a `concorde_result` call whose argument breaks the worker result schema, and then one whose argument satisfies it
+- THEN the first is refused before the tool runs, naming the field at fault, so the session can go on
+- AND the second passes, and the tool asks pi to end the run
+
+### scenario.workers.pi-budget-limit — A pi run over its budget stops
+
+- GIVEN the permission extension of a pi worker whose `max_budget_usd` is set
+- WHEN the costs its assistant messages report add up to more than that budget
+- THEN it appends a `concorde-limit` entry naming the budget, the cost reached and the maximum, and aborts the run once
+- AND it blocks every later tool call, naming the budget limit
+- BUT the cost of a message that is not the assistant's is not counted
 
 ### scenario.workers.pi-limit — A pi run over its turn limit stops
 
@@ -566,6 +604,14 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - AND no worker configuration depends on that error, since validation never runs discovery
 
 ## What a run leaves
+
+### scenario.workers.cleanup-failed — A cleanup that failed fails the run
+
+- GIVEN a worker run whose worker ends `ok`, or `blocked`
+- WHEN the host cannot remove its runtime directory, or cannot keep its transcript
+- THEN the run ends `failed` with `cleanup_failed` and the reason `environment`, naming what remains and the operating system's error
+- AND for the `blocked` worker the error's cause is the link the run would otherwise have ended with, `worker_blocked`
+- AND a transcript that could not be kept is named by no record
 
 ### scenario.workers.trace-left — A worker run leaves its trace and no credentials
 

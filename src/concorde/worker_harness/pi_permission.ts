@@ -11,7 +11,8 @@
  */
 
 import { spawn } from "node:child_process";
-import { stat } from "node:fs/promises";
+import { constants } from "node:fs";
+import { access, readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { relative } from "node:path";
 import { SandboxManager } from "@concorde/sandbox-runtime";
@@ -25,7 +26,9 @@ import {
   createLsToolDefinition,
   createReadToolDefinition,
   createWriteToolDefinition,
+  detectSupportedImageMimeTypeFromFile,
   type ExtensionAPI,
+  type ReadOperations,
 } from "@earendil-works/pi-coding-agent";
 import {
   type Policy,
@@ -160,7 +163,23 @@ export default function (pi: ExtensionAPI) {
   let cost = 0;
   let stopped: string | null = null;
 
-  const read = createReadToolDefinition(cwd);
+  // pi's read may open another spelling of the name it was given, such as the NFD form of a name
+  // that does not exist: the check also runs on the exact path pi's read opens.
+  const checkedRead: ReadOperations = {
+    async access(path) {
+      check(() => readDecision(POLICY, path));
+      await access(path, constants.R_OK);
+    },
+    async readFile(path) {
+      check(() => readDecision(POLICY, path));
+      return readFile(path);
+    },
+    async detectImageMimeType(path) {
+      check(() => readDecision(POLICY, path));
+      return detectSupportedImageMimeTypeFromFile(path);
+    },
+  };
+  const read = createReadToolDefinition(cwd, { operations: checkedRead });
   pi.registerTool({
     ...read,
     async execute(id, params, signal, onUpdate, ctx) {

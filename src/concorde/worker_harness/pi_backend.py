@@ -50,15 +50,18 @@ def _tail(data: bytes, size: int = 4000) -> str:
     return data[-size:].decode("utf-8", "replace").strip()
 
 
-def sandbox_runtime(request, worktree: Path) -> Path:
-    """Where the sandbox-runtime package is expected for this run."""
+def sandbox_runtime(request, worktree: Path, primary: Path | None = None) -> Path:
+    """Where the sandbox-runtime package is expected for this run: below the primary worktree,
+    the first worktree Git lists, which the placement found."""
     if request.sandbox_runtime is not None:
         return Path(request.sandbox_runtime)
     if os.environ.get("CONCORDE_SANDBOX_RUNTIME"):
         return Path(os.environ["CONCORDE_SANDBOX_RUNTIME"])
-    from .runs import primary_root
+    if primary is None:
+        from .placement import primary_worktree
 
-    return primary_root(worktree) / ".concorde/tools/pi-runtime" / RUNTIME_PACKAGE
+        primary = primary_worktree(worktree)
+    return primary / ".concorde/tools/pi-runtime" / RUNTIME_PACKAGE
 
 
 def which(name: str) -> str | None:
@@ -73,7 +76,9 @@ def _program(name: str, *alternatives: str) -> str | None:
     return None
 
 
-def prerequisites(request, worktree: Path) -> tuple[dict, list[str]]:
+def prerequisites(
+    request, worktree: Path, primary: Path | None = None
+) -> tuple[dict, list[str]]:
     """The programs a pi run needs, and a description of each one that is missing."""
     missing = []
     pi = request.pi or os.environ.get("CONCORDE_PI") or "pi"
@@ -103,7 +108,7 @@ def prerequisites(request, worktree: Path) -> tuple[dict, list[str]]:
                     f"{name} is not on PATH; the sandbox needs it on Linux; install it with "
                     "your package manager"
                 )
-    package = sandbox_runtime(request, worktree)
+    package = sandbox_runtime(request, worktree, primary)
     entry = package / "dist/index.js"
     if not entry.is_file():
         prefix = package.parent.parent.parent
@@ -331,7 +336,9 @@ class PiBackend:
     def prepare(
         self, request, worktree: Path, paths, schema: dict, placement=None
     ) -> Path:
-        programs, missing = prerequisites(request, worktree)
+        programs, missing = prerequisites(
+            request, worktree, placement.primary if placement else None
+        )
         if missing:
             raise BackendRefusal(
                 "pi_runtime_missing",
