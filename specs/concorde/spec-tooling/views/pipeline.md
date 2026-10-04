@@ -1,235 +1,405 @@
 # Publication pipeline
 
-How the [Views](module.md) publisher turns registered Specs into a checked site: loading and
-admission, routes, staging, navigation, the Docusaurus build hooks, validation and promotion. The
-code lives in `docsite/plugins/scoped-content/` and `docsite/scripts/`.
+The [Views](module.md) publisher turns registered Specs into a checked site through these stages:
+
+- Loading and admission.
+- Routes.
+- Staging.
+- Navigation.
+- The Docusaurus build hooks.
+- Validation.
+- Promotion.
+
+The code lives in `docsite/plugins/scoped-content/` and `docsite/scripts/`.
 
 ## Loading and admission {#loading-and-admission}
 
-`requireScoped(root)` only checks that `.concorde/config.json` is readable as a JSON object;
-without it every command fails with a message asking to initialize the project first.
+`requireScoped(root)` only checks that `.concorde/config.json` is readable as a JSON object.
+Without it, every command fails with a message asking to initialize the project first.
 
-`loadScopedRegistry(root)` reads the configuration, the registry `.concorde/specs.json` and, for
-every [Module](../../glossary.json#concept.module), the documents the registry record lists in `owns`:
-both the reading file and its `.md.json` metadata. The registry must be
-`{"schema_version": 3, "modules": [...]}` with a nonempty list of records having exactly `id`,
-`title`, `entry`, `owns`, `contains`, `uses`, `includes` and `participates`. The publisher reads the
-Module relations from these records; it does not compare them with the entries' `module` blocks,
-which is the [Spec](../../glossary.json#concept.spec) validator's mirror check.
+`loadScopedRegistry(root)` reads these sources:
 
-Paths must be safe relative POSIX paths; every path component is checked for symbolic links, and
-two members that are the same physical file are rejected. Files are decoded as strict UTF-8, JSON
-is parsed with duplicate keys rejected, and Markdown front matter is removed from the reading.
+- The configuration.
+- The registry `.concorde/specs.json`.
+- For every [Module](../../glossary.json#concept.module), the documents the registry record lists in
+  `owns`: both the reading file and its `.md.json` metadata.
 
-Loading fails with an `Error` naming the source when:
+The registry must be `{"schema_version": 3, "modules": [...]}` with a nonempty list of records.
+Each record must have exactly `id`, `title`, `entry`, `owns`, `contains`, `uses`, `includes` and
+`participates`. The publisher reads the Module relations from these records.
+It does not compare them with the entries' `module` blocks.
+That comparison is the [Spec](../../glossary.json#concept.spec) validator's mirror check.
 
-- the configuration or registry cannot be read, the registry is not schema 3, or a record is
-  malformed, repeats a Module identity or title, or has an entry that is not an owned `module.md`;
-- a document is owned twice, an identity is invalid or defined twice, a contained Module is
-  unknown or the Module itself, a Module has two parents, composition has a cycle, or no Module is
-  uncontained;
-- metadata is not schema 3, has unknown fields, names another owner, or has a `role` other than
-  `module` or `implementation`;
-- an entry's metadata lacks the `module` block, or any other document's metadata has one;
-- an entry has role `implementation` (`requireReading` in
-  `docsite/plugins/scoped-content/reading-format.ts`); how an entry is organized is never checked,
-  since the Protocol requires no section of it;
-- a `module`-role document contains a requirement or scenario heading or a `concorde-contract`
-  fence, or any document's metadata holds a concept record;
-- a document contains a Mermaid block: diagrams in reading are D2;
-- a realization `meaning` anchor, or a concept's explanation anchor, has no readable prose;
-- the glossary is malformed, not sorted by identity, declared by more than one Module or by a
-  contained one, or has an entry whose identity or title repeats, whose owner is no registered
-  Module, whose explanation is not in a `module` document of its owner, or whose definition links
-  an undeclared concept;
-- a `concorde-contract` fence has no valid identity or no positive integer version (the publisher
-  does not check the schema or example; the Spec validator does);
-- a term link names a concept the glossary does not declare;
-- a `relies_on` identity names no node defined by the relation's target, or an inclusion names an
-  unknown Module or document;
-- two documents would share a route.
+Paths must be safe relative POSIX paths. Every path component is checked for symbolic links.
+Two members that are the same physical file are rejected. Files are decoded as strict UTF-8.
+JSON is parsed with duplicate keys rejected. Markdown front matter is removed from the reading.
 
-These are the checks the publisher needs to produce correct pages. Checked diagrams, realization
-bindings, the registry mirror and contract examples are left to Spec core's validator.
-Loading never fetches anything and never reads implementation files.
+When any of these conditions holds, loading fails with an `Error` naming the source:
 
-The **root Module** is the first Module in registry order that no Module contains. The loaded model
-holds the Module records, the defined concepts and realizations with their owner, document and
-definition, and one page per document with: source and metadata paths, route, staged path, title,
-reading content, reading and metadata digests, document identity, owner,
-reading collection (the role), whether it is its
-Module's entry, and the selecting Modules.
+- The configuration or registry cannot be read.
+- The registry is not schema 3.
+- A record is malformed.
+- A record repeats a Module identity or title.
+- A record has an entry that is not an owned `module.md`.
+- A document is owned twice.
+- An identity is invalid or defined twice.
+- A contained Module is unknown or the Module itself.
+- A Module has two parents.
+- Composition has a cycle.
+- No Module is uncontained.
+- Metadata is not schema 3.
+- Metadata has unknown fields.
+- Metadata names another owner.
+- Metadata has a `role` other than `module` or `implementation`.
+- An entry's metadata lacks the `module` block, or any other document's metadata has one.
+- An entry has role `implementation` (`requireReading` in
+  `docsite/plugins/scoped-content/reading-format.ts`). How an entry is organized is never checked,
+  since the Protocol requires no section of it.
+- A `module`-role document contains any of these:
+  - A requirement heading.
+  - A scenario heading.
+  - A `concorde-contract` fence.
+- Any document's metadata holds a concept record.
+- A document contains a Mermaid block. Diagrams in reading are D2.
+- A realization `meaning` anchor, or a concept's explanation anchor, has no readable prose.
+- The glossary is malformed.
+- The glossary is not sorted by identity.
+- The glossary is declared by more than one Module or by a contained one.
+- The glossary has an entry whose identity or title repeats.
+- The glossary has an entry whose owner is no registered Module.
+- The glossary has an entry whose explanation is not in a `module` document of its owner.
+- The glossary has an entry whose definition links an undeclared concept.
+- A `concorde-contract` fence has no valid identity or no positive integer version.
+  The publisher does not check the schema or example. The Spec validator does.
+- A term link names a concept the glossary does not declare.
+- A `relies_on` identity names no node defined by the relation's target.
+- An inclusion names an unknown Module or document.
+- Two documents would share a route.
 
-**Selecting Modules.** For each Module the publisher computes its one-level
-[Spec context](../../glossary.json#concept.spec-context): its own documents (`owns`), and for every
-`contains` and `uses` the target's documents, or only the target's entry and the documents defining
-the `relies_on` identities when that list is present, and the documents of every `module` or
-`document` inclusion. This is the Protocol's context selection, and the resulting per-document list
-must equal Spec core's `selected-by` index for the same registry and documents. A page lists every
-Module whose context holds it, in registry order, each with its reasons. A reason is
-`{relation, id}`, where `relation` is `owns`, `contains` or `uses` and `id` is the owning or target
-Module; an inclusion reason is `{relation: "includes", kind, id}`, where `kind` is `module` or
-`document` and `id` is the included Module or document. Reasons are sorted by `relation`, then
-`kind`, then `id`.
+These are the checks the publisher needs to produce correct pages.
+Spec core's validator handles these checks:
+
+- Checked diagrams.
+- Realization bindings.
+- The registry mirror.
+- Contract examples.
+
+Loading never fetches anything. Loading never reads implementation files.
+
+The **root Module** is the first Module in registry order that no Module contains.
+The loaded model holds:
+
+- The Module records.
+- The defined concepts and realizations with their owner, document and definition.
+- One page per document.
+
+Each page holds:
+
+- Source and metadata paths.
+- Route.
+- Staged path.
+- Title.
+- Reading content.
+- Reading and metadata digests.
+- Document identity.
+- Owner.
+- Reading collection (the role).
+- Whether it is its Module's entry.
+- The selecting Modules.
+
+**Selecting Modules.** For each Module, the publisher computes its one-level
+[Spec context](../../glossary.json#concept.spec-context) from:
+
+- The publisher selects the Module's own documents (`owns`).
+- For every `contains` and `uses`, when the `relies_on` list is present, the publisher selects only
+  the target's entry and the documents defining those identities.
+  Otherwise, the publisher selects the target's documents.
+- The publisher selects the documents of every `module` or `document` inclusion.
+
+This is the Protocol's context selection.
+For the same registry and documents, the resulting per-document list must equal Spec core's
+`selected-by` index. A page lists every Module whose context holds it, in registry order, each
+with its reasons. A reason is `{relation, id}`.
+Its `relation` is `owns`, `contains` or `uses`. Its `id` is the owning or target Module.
+An inclusion reason is `{relation: "includes", kind, id}`.
+Its `kind` is `module` or `document`. Its `id` is the included Module or document.
+Reasons are sorted by `relation`, then `kind`, then `id`.
 
 ## Source digest {#source-digest}
 
-`hash(value)` is `sha256:` followed by the lowercase hex SHA-256 of the bytes. The source digest is
-`hash` of the JSON serialization of the ordered list of `[path, hash(bytes)]` pairs for the
-configuration, the registry, both members of every document in registry order, the glossary when
-the root Module declares one and, last, the site identity
-`docsite/site.json` when it exists, since it shapes every page. Any byte change in any of them,
-including a metadata-only edit, changes it. It identifies inputs; it is not a claim about meaning.
+`hash(value)` is `sha256:` followed by the lowercase hex SHA-256 of the bytes.
+The source digest is `hash` of the JSON serialization of the ordered list of `[path, hash(bytes)]`
+pairs. The pairs cover these sources in order:
+
+- The configuration.
+- The registry.
+- Both members of every document in registry order.
+- When the root Module declares one, the glossary.
+- Last, when it exists, the site identity `docsite/site.json`.
+
+The site identity shapes every page.
+Any byte change in any of them, including a metadata-only edit, changes it.
+It identifies inputs. It is not a claim about meaning.
 
 ## Routes {#routes}
 
-A page's staged path is its source path, with a leading `specs/` removed when every registered
-document lies under `specs/`. Its route is `/specs/` followed by the staged path without `.md`.
-A page has no other route. Its model title, which the provenance bar and the entry's list of
-implementation documents use when they link an entry and its implementation pages, is the
-document's first level-1 heading, falling back to the owner's title.
+When every registered document lies under `specs/`, a page's staged path is its source path with a
+leading `specs/` removed. Otherwise, its staged path is its source path.
+Its route is `/specs/` followed by the staged path without `.md`.
+A page has no other route.
+Its model title is the document's first level-1 heading, falling back to the owner's title.
+When they link an entry and its implementation pages, the provenance bar and the entry's list of
+implementation documents use the model title.
 
 ## Staging
 
 `materializeScoped(model)` writes under `docsite/.generated/`:
 
 1. It deletes the staging identity record, then the previous `content/` and `static/` directories.
-2. For every page it writes `content/specs/<staged path>` with front matter giving the slug, the
-   title and navigation label (the Module's title for an entry, otherwise the file name without
-   `.md`; the page body still shows the document's own level-1 heading), the Module documents
-   sidebar, which an implementation page shows for orientation without being listed in it, and a
-   table of contents of level-2 and level-3 headings. The body is
-   the reading with these rewrites, applied outside fenced code only:
-   - **links**: a relative Markdown link `[label](path)` or image `![label](path)` whose target
-     path resolves, relative to the source file, to a registered document is replaced by that
-     page's route; the query and fragment are kept in order. A link whose target is the
-     glossary is replaced by the glossary page's route, with the concept's anchor when it has a
-     fragment; a fragment naming no declared concept fails staging. A path that resolves to no
-     registered document fails staging. A link's text may wrap onto the next line. URLs with a
-     scheme or starting with `/`, bare `#fragment` links and links inside inline code spans are
-     left unchanged;
-   - **realization anchors**: a node whose identity the reading does not carry gets an anchor at
-     its `meaning` anchor;
+2. For every page, it writes `content/specs/<staged path>` with front matter giving:
+   - The slug.
+   - The title and navigation label.
+   - The Module documents sidebar.
+   - A table of contents of level-2 and level-3 headings.
+
+   For an entry, the title and navigation label are the Module's title.
+   Otherwise, they are the file name without `.md`.
+   The page body still shows the document's own level-1 heading.
+   An implementation page shows the Module documents sidebar for orientation without being listed
+   in it. The body is the reading with these rewrites, applied outside fenced code only:
+   - **links**: when their target path resolves relative to the source file to a registered
+     document, a relative Markdown link `[label](path)` or image `![label](path)` uses that page's
+     route.
+     The query and fragment are kept in order.
+     When a link's target is the glossary, the link uses the glossary page's route, with the
+     concept's anchor when it has a fragment.
+     On such a link, a fragment naming no declared concept fails staging.
+     A path that resolves to no registered document fails staging.
+     A link's text may wrap onto the next line. These links are left unchanged:
+     - URLs with a scheme or starting with `/`.
+     - Bare `#fragment` links.
+     - Links inside inline code spans.
+   - **realization anchors**: when the reading does not carry a node's identity, the node gets an
+     anchor at its `meaning` anchor.
    - **owned terms**: the entry page of a Module that owns concepts ends with a Terms list linking
-     each to the glossary page;
+     each to the glossary page.
    - **definition headings**: a level-2 to level-5 heading `req.<id> — Title` or
-     `scenario.<id> — Title` (em dash, en dash or hyphen) becomes `Title {#<id>}`;
+     `scenario.<id> — Title` (em dash, en dash or hyphen) becomes `Title {#<id>}`.
    - **contract anchors**: an HTML anchor whose id is the contract identity is inserted before
-     each `concorde-contract` fence;
-   - **diagrams**: each `d2` block is rendered by the `d2` program to an SVG staged beside the page
-     and replaced by an image of it. A checked block is first parsed in the semantic subset, whose
-     violation fails the build with the document and the line of its source file; each shape then
-     receives a class of the house style from what its label resolves to (the page's Module, a
-     descendant, another Module, a concept, a realization, a realization with file rows, a qualified
-     node) and each edge the class
-     `uses` when it joins two Modules without a label, and `relates` otherwise. A container of five
-     or more children that no edge touches is laid out as a near-square grid instead of one long
-     row. A qualified shape that names one of the page's own nodes shows only the node's title,
-     since the enclosing Module already shows the owner. A `d2 illustrative` block is rendered as
-     written and preceded by the label "Illustrative, non-normative. This diagram explains; it
-     declares no relationship.";
-   - **page anchors**: the Module identity (on its entry) and the document identity are inserted
-     as anchors after the level-1 title, unless the reading already carries them.
+     each `concorde-contract` fence.
+   - **diagrams**: each `d2` block is rendered by the `d2` program to an SVG staged beside the page.
+     The block is replaced by an image of it. A checked block is first parsed in the semantic
+     subset. A violation of that subset fails the build with the document and the line of its
+     source file. Each shape of the checked block then receives a class of the house style from what its label
+     resolves to:
+     - The page's Module.
+     - A descendant.
+     - Another Module.
+     - A concept.
+     - A realization.
+     - A realization with file rows.
+     - A qualified node.
+
+     When an edge of the checked block joins two Modules without a label, it receives the class
+     `uses`.
+     Otherwise, it receives the class `relates`.
+     When no edge touches a container of five or more children, it uses a near-square grid instead
+     of one long row.
+     When a qualified shape names one of the page's own nodes, the shape shows only the node's
+     title.
+     The enclosing Module already shows the owner.
+
+     A `d2 illustrative` block is rendered as written.
+     It is preceded by the label
+     `Illustrative, non-normative. This diagram explains; it declares no relationship.`
+   - **page anchors**: unless the reading already carries them, anchors are inserted after the
+     level-1 title for the Module identity (on its entry) and the document identity.
 3. When the root Module declares a glossary, it writes the Glossary page at the route of the
    glossary's path without `.json` (`/specs/concorde/glossary` here). An index comes first: every
-   term by initial letter, each linking to its entry. Level-2 group headings follow, anchored
-   `terms.<module id>`: "Core terms" for the concepts the root Module owns, then one group per
-   Module the root contains, in `contains` order, holding every concept whose owner is that Module
-   or lies below it (an owner outside the root's tree gets the group of its own topmost Module).
-   Within a group the concepts are sorted by title, letter case ignored, each a level-3 heading
-   anchored by its identity, with its definition (term links inside it pointing to anchors on the
-   same page), its owning Module's entry and a link to its explanation, and any retirement or
-   external-conflict note. The page's table of contents lists the groups only.
+   term by initial letter, each linking to its entry.
+   Level-2 group headings follow, anchored `terms.<module id>`.
+   "Core terms" for the concepts the root Module owns comes first.
+   One group per Module the root contains follows, in `contains` order.
+
+   Each contained Module's group holds every concept whose owner is that Module or lies below it.
+   An owner outside the root's tree gets the group of its own topmost Module.
+   Within a group, the concepts are sorted by title, letter case ignored.
+   Each concept has a level-3 heading anchored by its identity, with:
+   - Its definition, with term links inside it pointing to anchors on the same page.
+   - Its owning Module's entry and a link to its explanation.
+   - Any retirement or external-conflict note.
+
+   The page's table of contents lists the groups only.
 4. It writes `specs-sidebar.json` with `moduleDocumentsSidebar` alone. The Glossary page is the
    last item of the declaring Module's category.
 5. Last, it writes the staging identity record `scoped-materialization.json`:
    `{"schema_version": 2, "sourceDigest": "<source digest>"}`.
 
-A failure leaves no identity record; the build hooks then refuse the partial staging.
-`npm run validate` performs step 2 in memory for every page, so it reports the same link and
-rendering failures without writing.
+A failure leaves no identity record. The build hooks then refuse the partial staging.
+`npm run validate` performs step 2 in memory for every page.
+It reports the same link and rendering failures without writing.
 
-`preparePublication(root, {mode})` checks the configuration, loads, stages, and clears the
-Docusaurus generated directory of the mode: `.docusaurus` for `preview` (the default) or
-`.generated/docusaurus-production` for `build`. The webpack filesystem cache lives inside that
-directory, so each launch compiles from scratch and the two modes never share or clear each
-other's files.
+`preparePublication(root, {mode})` performs these steps:
+
+- It checks the configuration.
+- It loads.
+- It stages.
+- It clears the Docusaurus generated directory of the mode.
+
+For `preview` (the default), that directory is `.docusaurus`.
+For `build`, it is `.generated/docusaurus-production`.
+The webpack filesystem cache lives inside that directory.
+Each launch therefore compiles from scratch.
+The two modes never share or clear each other's files.
 
 ## Navigation
 
-The Module documents sidebar follows the `contains` tree, starting from the uncontained Modules in
-registry order; children follow the parent's `contains` order. A Module with `module`-role topics
-or children is a category whose label is the Module title and whose link opens its entry; its
-items are its `module`-role topics in `owns` order, then its children. A Module with neither is a
-single link to its entry. The entry is never listed twice, and categories below the top level start
-collapsed. Document labels are file names without `.md`. A document appears only under its owner.
+The Module documents sidebar follows the `contains` tree, starting from the uncontained Modules
+in registry order. Children follow the parent's `contains` order.
+A Module with `module`-role topics or children is a category.
+Its label is the Module title. Its link opens its entry.
+Its items are its `module`-role topics in `owns` order, then its children.
+A Module with neither is a single link to its entry. The entry is never listed twice.
+Categories below the top level start collapsed. Document labels are file names without `.md`.
+A document appears only under its owner.
 
-No sidebar or tab lists an `implementation`-role document. Readers reach one from its Module's
-entry, which ends with a folded list of them, from links and term links in other documents, from
-search and by its route.
+No sidebar or tab lists an `implementation`-role document. Readers reach one from:
+
+- Its Module's entry, which ends with a folded list of them.
+- Links and term links in other documents.
+- Search.
+- Its route.
 
 ## Provenance
 
 The content plugin publishes Docusaurus global data with `schema_version`, `rootModule`, `pages`
-(every page without its reading body) and `siteIdentity`. A layout wrapper finds the current page by
-route and renders the provenance bar: the collection label, on an implementation page a link to its
-owner's entry, the source path, and a "Spec metadata" disclosure with the document identity, the
-owner, the selecting Modules with their reasons, the metadata path and both digests. A footer
-wrapper ends a Module's entry page with a folded "Implementation documents (<count>)" list linking,
-in `owns` order, to each of the owner's implementation pages; it shows nothing when the Module owns
-none. Without user documents, the site root uses `rootModule` to
-redirect to the root Module's entry.
+and `siteIdentity`. `pages` holds every page without its reading body.
+A layout wrapper finds the current page by route. It renders the provenance bar with:
+
+- The collection label.
+- On an implementation page, a link to its owner's entry.
+- The source path.
+- A "Spec metadata" disclosure.
+
+The disclosure holds:
+
+- The document identity.
+- The owner.
+- The selecting Modules with their reasons.
+- The metadata path.
+- Both digests.
+
+A footer wrapper ends a Module's entry page with a folded "Implementation documents (<count>)"
+list. In `owns` order, the list links to each of the owner's implementation pages.
+When the Module owns none, the footer wrapper shows nothing.
+Without user documents, the site root uses `rootModule` to redirect to the root Module's entry.
 
 ## Build hooks
 
-The Docusaurus configuration loads the site identity
-and the model at start-up. The Spec docs instance reads `.generated/content/specs` at route base
-`/specs`; user documents are a separate instance at route base `/` with a generated sidebar, and the
-root redirect page is then left out; each custom docs
-collection is a separate instance; local search indexes all of them. The navigation lists user
-documents, then Module documents, then custom docs. Broken links,
-anchors and duplicate routes are build errors.
+The Docusaurus configuration loads the site identity and the model at start-up.
+The Spec docs instance reads `.generated/content/specs` at route base `/specs`.
+User documents are a separate instance at route base `/` with a generated sidebar.
+With user documents, the root redirect page is left out.
+Each custom docs collection is a separate instance. Local search indexes all of them.
+The navigation lists these in order:
+
+- User documents.
+- Module documents.
+- Custom docs.
+
+These are build errors:
+
+- Broken links.
+- Broken anchors.
+- Duplicate routes.
 
 The content plugin:
 
-- on load, reloads the model and requires the staging identity record to have `schema_version` 2
-  and the current source digest;
-- after the build, reloads the model and fails if the source digest changed, if the staging record
-  no longer matches, or if any registered page route is missing from the rendered routes; then
-  writes `build-manifest.json`.
+- On load, reloads the model. It requires the staging identity record to have `schema_version` 2
+  and the current source digest.
+- After the build, reloads the model. It fails if any of these conditions holds:
+  - The source digest changed.
+  - The staging record no longer matches.
+  - Any registered page route is missing from the rendered routes.
 
-User documents admission, done while configuring the site, fails when the directory is missing,
-has no root page, contains a registered document, or has a top-level document or folder that would
-publish under `/specs`, `/search` or a custom docs route. Custom docs admission fails when a
-collection directory or sidebar file is missing, when a collection directory contains a registered
-document, or when `custom-docs/index.ts` does not export an object, or exports `plugins` or
-`navbarItems` that is not an array; an omitted property adds nothing.
+  It then writes `build-manifest.json`.
+
+When any of these conditions holds during site configuration, user documents admission fails:
+
+- The directory is missing.
+- The directory has no root page.
+- The directory contains a registered document.
+- A top-level document or folder would publish under `/specs`, `/search` or a custom docs route.
+
+When any of these conditions holds, custom docs admission fails:
+
+- A collection directory or sidebar file is missing.
+- A collection directory contains a registered document.
+- `custom-docs/index.ts` does not export an object.
+- `custom-docs/index.ts` exports `plugins` or `navbarItems` that is not an array.
+
+An omitted property adds nothing.
 
 ## Preview {#preview}
 
-A running Docusaurus cannot show a changed Spec: the content plugin refuses staged pages whose
-source digest differs from the sources, and the pages, sidebars and navigation are fixed when
-staging runs. `npm run start` therefore supervises the preview instead of relying on Docusaurus's
-own watching, and the content plugin watches nothing.
+A running Docusaurus cannot show a changed Spec.
+The content plugin refuses staged pages whose source digest differs from the sources.
+When staging runs, these are fixed:
 
-The supervisor stages with `preparePublication(root)` and starts `docusaurus start` with the
-command's arguments. Its inputs are `docsite/site.json`, the configuration, the registry, both
-members of every registered document and the glossary the root Module declares. It watches their
-directories, not the files, so an editor that saves by replacing a file is still seen. Changes
-within 300 ms form one restart: it stops Docusaurus (`SIGTERM`, then `SIGKILL` after ten seconds),
-stages again, recomputes the inputs and their watched directories, and starts Docusaurus again with
-`--no-open` added so that no further browser window opens. A change that arrives during a restart
-causes one more restart after it.
+- The pages.
+- The sidebars.
+- The navigation.
 
-When staging fails, no preview runs. The supervisor reports the error in full, keeps its last
-watched directories, and retries on the next change to an input or to any `.md` or `.md.json` file
-in them, since the model that failed may list a document not yet written. When the first staging
-fails there is nothing to watch, and the command exits nonzero. When Docusaurus exits on its own
-the supervisor reports the status and starts it again on the next change. Interrupting the command
-stops Docusaurus and the watchers and exits.
+`npm run start` therefore supervises the preview instead of relying on Docusaurus's own watching.
+The content plugin watches nothing.
 
-The supervisor's states and what moves it between them; an interrupt, in any state, stops
-Docusaurus and the watchers and exits:
+The supervisor stages with `preparePublication(root)`.
+It starts `docusaurus start` with the command's arguments. Its inputs are:
+
+- `docsite/site.json`.
+- The configuration.
+- The registry.
+- Both members of every registered document.
+- The glossary the root Module declares.
+
+It watches their directories, not the files, so an editor that saves by replacing a file is still
+seen. Changes within 300 ms form one restart, with these steps:
+
+- The supervisor stops Docusaurus (`SIGTERM`, then `SIGKILL` after ten seconds).
+- The supervisor stages again.
+- The supervisor recomputes the inputs and their watched directories.
+- The supervisor starts Docusaurus again with `--no-open` added so that no further browser window
+  opens.
+
+A change that arrives during a restart causes one more restart after it.
+
+When staging fails:
+
+- No preview runs.
+- The supervisor reports the error in full.
+- The supervisor keeps its last watched directories.
+- The supervisor retries on the next change to an input or to any `.md` or `.md.json` file in them.
+
+The model that failed may list a document not yet written.
+When the first staging fails, there is nothing to watch.
+The first staging failure also makes the command exit nonzero.
+
+When Docusaurus exits on its own, the supervisor reports the status and starts it again on the
+next change.
+
+Interrupting the command has these effects:
+
+- The command stops Docusaurus.
+- The command stops the watchers.
+- The command exits.
+
+In any state, an interrupt has these effects:
+
+- The command stops Docusaurus.
+- The command stops the watchers.
+- The command exits.
+
+The diagram shows the supervisor's states and what moves it between them:
 
 ```d2 illustrative
 direction: down
@@ -256,34 +426,55 @@ A change that arrives during a restart is kept and makes one more restart once i
 
 ## Validation
 
-`validateScopedBuild(root, directory)` reloads the model from the current sources and fails unless:
+`validateScopedBuild(root, directory)` reloads the model from the current sources.
+It fails unless all of these conditions hold:
 
-- the candidate's `build-manifest.json` has the
-  site manifest's `schema_version` (23,
-  see the [contracts](contracts.md)) and the current source digest, and its `pages` equal the
-  expected entries exactly and in order;
-- every internal link resolves.
+- The candidate's `build-manifest.json` has the site manifest's `schema_version` (23, see the
+  [contracts](contracts.md)).
+- The candidate's manifest has the current source digest.
+- Its `pages` equal the expected entries exactly and in order.
+- Every internal link resolves.
 
-For links it parses every HTML file of the candidate and collects `id` and `a name` anchors, the
-`href` of `a` and `area` elements, `base` elements and meta-refresh redirects. A URL is internal
-when it has the site's origin and its path lies under the base URL. Each internal URL must reach a
-file (`path`, `path.html` or `path/index.html`); redirect pages are followed, keeping the fragment,
-and a redirect cycle fails; a nonempty fragment must name an anchor on the final page.
+For links, it parses every HTML file of the candidate and collects:
+
+- `id` and `a name` anchors.
+- The `href` of `a` and `area` elements.
+- `base` elements.
+- Meta-refresh redirects.
+
+When a URL has the site's origin and its path lies under the base URL, it is internal.
+Each internal URL must reach a file (`path`, `path.html` or `path/index.html`).
+Redirect pages are followed, keeping the fragment. A redirect cycle fails.
+A nonempty fragment must name an anchor on the final page.
 Percent-escapes of unreserved characters are compared decoded. Every registered route is checked as
 well. A failure names the referring file and the destination. External URLs are never fetched.
 Validation repairs nothing.
 
 ## Promotion
 
-`buildSite()` checks the configuration, deletes `docsite/.generated/candidate`, runs
-`preparePublication` in `build` mode, runs `docusaurus build --out-dir` into the candidate with the
-production generated directory, validates the candidate and calls `promoteCandidate`. On any
-failure it deletes the candidate and rethrows.
+`buildSite()` performs these steps:
 
-`promoteCandidate(candidate, destination, backup)` deletes the backup, renames the existing
-destination to the backup, renames the candidate to the destination and deletes the backup. If a
-rename fails, it removes a partially moved destination and renames the backup back. A failure of the
-filesystem during this rollback fails the build with that error and leaves the previous site in the
-backup directory, `docsite/.generated/previous-build/`, for manual recovery. The function checks
-nothing itself; only `buildSite` calls it, after validation. The caller must own the candidate,
-build and backup directories exclusively for the whole build.
+- It checks the configuration.
+- It deletes `docsite/.generated/candidate`.
+- It runs `preparePublication` in `build` mode.
+- It runs `docusaurus build --out-dir` into the candidate with the production generated directory.
+- It validates the candidate.
+- It calls `promoteCandidate`.
+
+On any failure, `buildSite()` deletes the candidate and rethrows.
+
+`promoteCandidate(candidate, destination, backup)` performs these steps:
+
+- It deletes the backup.
+- It renames the existing destination to the backup.
+- It renames the candidate to the destination.
+- It deletes the backup.
+
+If a rename fails, it removes a partially moved destination and renames the backup back.
+
+If the filesystem fails during this rollback, the build fails with that error.
+This rollback failure leaves the previous site in the backup directory,
+`docsite/.generated/previous-build/`, for manual recovery.
+
+The function checks nothing itself. Only `buildSite` calls it, after validation.
+The caller must own the candidate, build and backup directories exclusively for the whole build.

@@ -3,48 +3,68 @@
 Use these guidelines to write and evaluate a Module's Specs. They have four separately maintained
 parts, used together:
 
-- **[Required format](format.md)** defines the machine-checkable structure and syntax: document
-  pairs, declarations, metadata, identities, anchors and precise obligations.
+- **[Required format](format.md)** defines the machine-checkable structure and syntax:
+  - Document pairs.
+  - Declarations.
+  - Metadata.
+  - Identities.
+  - Anchors.
+  - Precise obligations.
 - **[Writing guidance](module.md)** explains what the content must communicate to its intended
-  reader, in a recommended reading order: purpose, core concepts, overview diagrams, then details
-  of correct use, design and collaborations. Applying it requires reader and editor judgment.
-- **[Sentence style](style.md)** states how each sentence is written: one fact in each sentence,
-  short sentences, lists instead of long runs of clauses, the actor named and no semicolons. Its
-  rules are inspired by the structural rules of ASD-STE100 Simplified Technical English.
-- **[Evaluating a Spec](evaluation.md)** states how a Spec is judged good: the quality of one
-  Module's Specs for its reader, the quality of the architecture between Modules, and when a
-  problem is blocking or advisory. It is a judgment and not deterministic.
+  reader. It recommends this reading order:
+  - Purpose.
+  - Core concepts.
+  - Overview diagrams.
+  - Details of correct use, design and collaborations.
 
-All four parts serve the Protocol's purposes of understanding and boundaries. Semantic writing
-requirements still apply when structural checks pass. Mandatory terms retain their force in every
-part: **MUST** and **MUST NOT** state requirements and prohibitions, **SHOULD** allows departure
-for an explained reason, and **MAY** permits a choice. The chapter titles do not change these
+  Applying it requires reader and editor judgment.
+- **[Sentence style](style.md)** states how each sentence is written:
+  - One fact in each sentence.
+  - Short sentences.
+  - Lists instead of long runs of clauses.
+  - The actor named.
+  - No semicolons.
+
+  Its rules are inspired by the structural rules of ASD-STE100 Simplified Technical English.
+- **[Evaluating a Spec](evaluation.md)** states how a Spec is judged good:
+  - The quality of one Module's Specs for its reader.
+  - The quality of the architecture between Modules.
+  - When a problem is blocking or advisory.
+
+  It is a judgment and not deterministic.
+
+All four parts serve the Protocol's purposes of understanding and boundaries. When structural
+checks pass, semantic writing requirements still apply. Mandatory terms retain their force in every
+part. **MUST** states requirements. **MUST NOT** states prohibitions. **SHOULD** allows departure
+for an explained reason. **MAY** permits a choice. The chapter titles do not change these
 meanings or introduce new conformance checks.
 
 Start with the reader's problem and the Module's responsibility, use Required format to express
-its declarations, and use Writing guidance to explain their meaning. The
-[Module entry template](templates/module.md) and [Scenario fragment](templates/scenario.md) are
-starting points. Keep diagrams next to the prose they clarify, choosing a workflow diagram for
-any process, including one among several participants, or another view suited to the reader's
-question; see [Writing guidance on diagrams](module.md#diagrams).
+its declarations, and use Writing guidance to explain their meaning.
+
+The [Module entry template](templates/module.md) and [Scenario fragment](templates/scenario.md) are
+starting points. Keep diagrams next to the prose they clarify. Choose a workflow diagram for any
+process, including one among several participants, or another view suited to the reader's question.
+See [Writing guidance on diagrams](module.md#diagrams).
 
 [Checks](checks.md) establish structural conformance only. Evaluate the content for semantic
-sufficiency as well, as [Evaluating a Spec](evaluation.md) states; evidence from the implementation
-establishes implementation conformance. None of these substitutes for another; see
-[Conformance](principles.md#conformance).
+sufficiency as well, as [Evaluating a Spec](evaluation.md) states. Evidence from the implementation
+establishes implementation conformance. None of these substitutes for another.
+See [Conformance](principles.md#conformance).
 
 # Required format
 
 This is the structure and syntax part of [Spec writing guidelines](writing.md), covering the
 machine-checkable rules. Read it with [Writing guidance](module.md), which explains the content
-readers need and the judgments authors and reviewers must make. Semantic requirements still apply
-where they accompany a format rule; the [Checks](checks.md) chapter states what tools establish.
+readers need and the judgments authors and reviewers must make. Where semantic requirements
+accompany a format rule, they still apply.
+The [Checks](checks.md) chapter states what tools establish.
 
 This chapter defines how the [node types](model.md) and [relations](relations.md) are written.
 The fixed declaration syntax serves boundaries: a tool computes every set without interpreting
-prose. The reading itself has no fixed section structure: how an entry is organized is a writing
+prose. The reading itself has no fixed section structure. How an entry is organized is a writing
 judgment, which [Writing guidance](module.md#the-entry) explains. Satisfying the syntax establishes
-structural conformance only; it proves nothing about meaning.
+structural conformance only. It proves nothing about meaning.
 
 ## Documents
 
@@ -52,20 +72,35 @@ A registered document is a pair: an explicit project-relative Markdown reading p
 path with `.json` appended. `checkout/module.md` and `checkout/module.md.json` are **one** document.
 
 Reading files are nonempty UTF-8 Markdown. Metadata files are UTF-8 JSON with unique keys and no
-non-JSON numeric constants. Paths use canonical project-relative POSIX spelling: no absolute paths,
-backslashes, empty, dot or traversal components, control characters or symlink aliases.
+non-JSON numeric constants. Paths use canonical project-relative POSIX spelling, with none of the
+following:
 
-Both members always travel together: same owner, same identity, same selection provenance, both in
-context, both in source digests. Registering a reading path
-registers its exact companion. Tools MUST NOT discover documents from the filesystem or by
-following Markdown links; this is what lets every boundary set be enumerated from declarations
-alone.
+- Absolute paths.
+- Backslash characters.
+- Empty components.
+- Dot components.
+- Traversal components.
+- Control characters.
+- Symlink aliases.
+
+Both members always travel together:
+
+- They have the same owner.
+- They have the same identity.
+- They have the same selection provenance.
+- Both are in context.
+- Both are in source digests.
+
+Registering a reading path registers its exact companion. Tools MUST NOT discover documents from
+the filesystem or by following Markdown links. This lets every boundary set be enumerated from
+declarations alone.
 
 ## Module declaration
 
 A Module declares itself and its Module-level relations in a `module` block of its **entry's**
-metadata. This is the one declaration site of those relations: a task bound to the Module reads and
-writes it as part of its own documents, and learns who it relates to without any global file.
+metadata. This is the one declaration site of those relations. A task bound to the Module
+reads and writes it as part of its own documents. The task learns who it relates to without any
+global file.
 
 ```json
 {
@@ -97,26 +132,37 @@ writes it as part of its own documents, and learns who it relates to without any
 - The `module` block appears in the entry's metadata and in no other document. The Module's
   identity is the entry's `document.owner`.
 - `title` is required. Module titles are unique in the project.
-- `owns` lists reading paths, is nonempty and includes the entry itself.
-- `contains` and `uses` entries have `target` and `meaning`, and optionally a nonempty `relies_on`
-  list of identities of requirements, scenarios, contracts and concepts the target owns. Without
-  `relies_on` the whole target is selected.
-- `includes` entries have `kind` (`module`, `document` or `external`), `target` (a Module identity,
-  a document identity, or a project-relative path; a directory ends in `/`) and a nonempty `reason`.
+- `owns` lists reading paths. The list is nonempty. The list includes the entry itself.
+- `contains` and `uses` entries have `target` and `meaning`. They optionally have a nonempty
+  `relies_on` list of identities the target owns:
+  - Requirement identities.
+  - Scenario identities.
+  - Contract identities.
+  - Concept identities.
+
+  Without `relies_on` the whole target is selected.
+- `includes` entries have `kind`, `target` and a nonempty `reason`.
+  `kind` is `module`, `document` or `external`. The `target` is one of these:
+  - A Module identity.
+  - A document identity.
+  - A project-relative path.
+
+  For a directory, the path ends in `/`.
 - `participates` entries have `contract`, `version`, `role` (`provided` or `required`), `peer` (a
   Module identity or `external`) and `meaning`.
-- `glossary` is optional and appears only in the block of a Module without a parent: the
-  project-relative path of the project's [glossary](#glossary), a `.json` file. At most one Module
-  declares it.
-- `contains`, `uses`, `includes` and `participates` are explicit arrays and MAY be empty.
+- `glossary` is optional. It appears only in the block of a Module without a parent.
+  Its value is the project-relative path of the project's [glossary](#glossary), a `.json` file.
+  At most one Module declares it.
+- `contains`, `uses`, `includes` and `participates` are explicit arrays.
+  These arrays MAY be empty.
 - A relation `meaning` is a local `#anchor` into the entry, or a qualified `<reading path>#<anchor>`
   into another document the Module owns.
 
 ## Project registry
 
 The project registry is the index of all Modules and a **mirror** of their declarations. It gives
-a project-wide view, such as the one a coordinating session uses to plan work and set each task's
-boundary, without opening every Module. It is not a declaration site.
+a project-wide view without opening every Module. For example, a coordinating session uses this
+view to plan work and set each task's boundary. It is not a declaration site.
 
 ```json
 {
@@ -131,13 +177,13 @@ boundary, without opening every Module. It is not a declaration site.
 }
 ```
 
-- Every Module has exactly one registry record: `id`, `title`, `entry` (the entry's reading path)
-  and every field of its `module` block, equal to that block; `glossary` appears in the record
-  exactly when it appears in the block.
+- Every Module has exactly one registry record. The record contains `id`, `title`, `entry`
+  (the entry's reading path) and every field of its `module` block, equal to that block.
+  Exactly when `glossary` appears in the block, it appears in the record.
 - The registry lists which Modules exist. A tool MAY regenerate the mirrored fields from the
-  entries; adding or removing a Module is a deliberate registry change.
+  entries. Adding or removing a Module is a deliberate registry change.
 - A disagreement between the registry and an entry is a structural error
-  (`CHK.registry.mirror`). Neither side silently wins; the change that caused it is reconciled.
+  (`CHK.registry.mirror`). Neither side silently wins. The change that caused it is reconciled.
 
 The Protocol fixes the registry's content. Its serialization and location are a tool agreement.
 
@@ -161,69 +207,111 @@ The Protocol fixes the registry's content. Its serialization and location are a 
 
 - `schema_version` is the integer `3`.
 - `document` has exactly `id`, `owner` and `role`, agreeing with the owner's `owns`. `role` is
-  exactly `module` or `implementation` with no default; the entry `module.md` has role `module`.
-- `module` is present exactly in the entry; see [Module declaration](#module-declaration).
-- `defines` lists only `realization` records. Concepts are glossary entries, and requirements,
-  scenarios and contracts are located by their reading syntax below.
+  exactly `module` or `implementation` with no default. The entry `module.md` has role `module`.
+- `module` is present exactly in the entry. See [Module declaration](#module-declaration).
+- `defines` lists only `realization` records. Concepts are glossary entries. The reading syntax
+  below locates these nodes:
+  - Requirement nodes.
+  - Scenario nodes.
+  - Contract nodes.
 - `relations` lists only `relates`, each naming as `source` a realization this document defines
-  or the owning Module itself. A concept's relations are in its glossary entry; `mentions` is
-  declared by term links.
-- `defines` and `relations` are explicit arrays and MAY be empty.
-- `extensions`, if present, is an object keyed by stable names holding tool data. A tool MUST define
-  and validate the extension vocabulary it uses. An extension MUST NOT create a relation, change
-  ownership or selection, or hide essential meaning.
+  or the owning Module itself. A concept's relations are in its glossary entry.
+  Term links declare `mentions`.
+- `defines` and `relations` are explicit arrays. These arrays MAY be empty.
+- If present, `extensions` is an object keyed by stable names holding tool data.
+  A tool MUST define and validate the extension vocabulary it uses.
+  An extension MUST NOT do any of the following:
+  - Create a relation.
+  - Change ownership or selection.
+  - Hide essential meaning.
 
 ## Identities and anchors
 
-Module, document, concept, realization, requirement, scenario and contract identities are
-project-wide unique and match:
+The following identities are project-wide unique:
+
+- Module identities.
+- Document identities.
+- Concept identities.
+- Realization identities.
+- Requirement identities.
+- Scenario identities.
+- Contract identities.
+
+Each of these identities matches this pattern:
 
 ```text
 ^[a-z][a-z0-9]*(?:[.-][a-z0-9-]+)*$
 ```
 
-Requirement identities begin `req.`; scenario identities begin `scenario.`; concept identities begin
-`concept.`. Prefixes do not establish ownership. Stable identities let links survive renames and
-moves, and let boundaries, reviews and tests name exactly one thing.
+Requirement identities begin `req.`. Scenario identities begin `scenario.`.
+Concept identities begin `concept.`. Prefixes do not establish ownership.
+Stable identities let links survive renames and moves.
+They let boundaries, reviews and tests name exactly one thing.
 
 A readable anchor is one of three forms:
 
-- a **standalone** line of one or more `<a id="identity"></a>` before its explanation, which
-  extends to the next heading;
-- an **opening** group of one or more `<a id="identity"></a>` at the very start of a paragraph or of
-  a list item's text, which explains exactly that paragraph or list item: the paragraph ends at the
-  next blank line, heading or fence, and the list item also at the next list item that is not
-  indented deeper;
-- an ATX heading carrying a trailing `{#identity}`, which extends to the next heading of the same or
-  higher level. Requirement and scenario headings supply their identity directly.
+- A **standalone** line of one or more `<a id="identity"></a>` before its explanation.
+  The explanation extends to the next heading.
+- An **opening** group of one or more `<a id="identity"></a>` appears at the very start of a
+  paragraph or a list item's text. The group explains exactly that paragraph or list item.
+  The paragraph ends at whichever of these comes next:
+  - A blank line.
+  - A heading.
+  - A fence.
+
+  The list item also ends at the next list item that is not indented deeper.
+- An ATX heading carrying a trailing `{#identity}`.
+  Its explanation extends to the next heading of the same or higher level.
+  Requirement and scenario headings supply their identity directly.
 
 A standalone or heading anchor also ends at the next anchor group. Anchors are unique within their
-document and outside fences, and an anchor anywhere else, such as inside a sentence or a table, is
+document and outside fences. An anchor anywhere else, such as inside a sentence or a table, is
 not a readable anchor.
 
-Several anchors in one group identify several nodes explained together by the same prose, and that
-prose MUST explain all of them. The region of an anchor is the text a tool attributes to its nodes,
-for instance when it compares definitions between revisions, so an opening group is the precise
-choice for an item in a list of short explanations.
+Several anchors in one group identify several nodes explained together by the same prose.
+That prose MUST explain all of them. The region of an anchor is the text a tool attributes to its
+nodes, for instance when it compares definitions between revisions. For an item in a list of short
+explanations, an opening group is therefore the precise choice.
 
 ## Reading structure
 
-An entry `module.md` has no required sections: the Protocol checks no heading of an entry, and its
-level-2 sections, their titles and their order are the writer's choice. [Writing
+An entry `module.md` has no required sections. The Protocol checks no heading of an entry.
+The writer chooses the following for the entry:
+
+- Its level-2 sections.
+- Their titles.
+- Their order.
+
+[Writing
 guidance](module.md#the-entry) recommends an order, starting with the Module's purpose. Honest
 unknowns are stated explicitly.
 
 A `module`-role topic begins with a short orienting introduction. A document holds no table of
-term definitions: definitions live in the glossary, and a document links the terms it uses.
+term definitions. Definitions live in the glossary. A document links the terms it uses.
 
-`module` documents MUST NOT contain requirement or scenario definitions or canonical contract
-fences. `implementation` documents contain those definitions and MAY group them under headings
-that carry no identity. Both roles are reading content; role never filters context.
+`module` documents MUST NOT contain any of the following:
 
-Exact private APIs, wire fields, serialization rules, internal limits and executable topology belong
-in `implementation` reading regardless of the syntax used to write them. Conceptual design and
-safe-use explanation stay in `module` reading. A `module` document MUST NOT hide destructive
-defaults, security limits or known unfulfilled guarantees behind a link.
+- Requirement definitions.
+- Scenario definitions.
+- Canonical contract fences.
+
+`implementation` documents contain those definitions. These documents MAY group them under
+headings that carry no identity. Both roles are reading content. Role never filters context.
+
+Regardless of the syntax used to write them, the following belong in `implementation` reading:
+
+- Exact private APIs.
+- Wire fields.
+- Serialization rules.
+- Internal limits.
+- Executable topology.
+
+Conceptual design and safe-use explanation stay in `module` reading.
+A `module` document MUST NOT hide any of the following behind a link:
+
+- Destructive defaults.
+- Security limits.
+- Known unfulfilled guarantees.
 
 ## Glossary
 
@@ -247,16 +335,16 @@ field declares:
 }
 ```
 
-- `schema_version` is the integer `1`; `concepts` is an array of entries sorted by `id`.
+- `schema_version` is the integer `1`. `concepts` is an array of entries sorted by `id`.
 - An entry has exactly `id`, `title`, `owner`, `definition` and `explanation`, and optionally
   `retired`, `external_conflict`, `narrows`, `supersedes`, `contrasts` and `relates`.
-- `owner` is a registered Module identity. `definition` is one sentence; a term link inside it
+- `owner` is a registered Module identity. `definition` is one sentence. A term link inside it
   addresses another entry by fragment alone, `#concept.<identity>`.
 - `explanation` is `<reading path>#<anchor>`, naming a `module` document the owner owns and an
   anchor in it that resolves to nonempty prose.
-- `narrows` is an array of concept identities; `supersedes` is one concept identity; `contrasts`
-  is an array of `{target, reason}` with a concept or Module target; `relates` is an array of
-  `{verb, target}` with a concept, realization or Module target.
+- `narrows` is an array of concept identities. `supersedes` is one concept identity.
+  `contrasts` is an array of `{target, reason}` with a concept or Module target.
+  `relates` is an array of `{verb, target}` with a concept, realization or Module target.
 
 ## Term links
 
@@ -267,10 +355,15 @@ addresses the glossary file, relative to the document like any other link:
 A [hold](../glossary.json#concept.hold) expires unless the submission succeeds.
 ```
 
-A term link declares `mentions` of that concept. Its text is free: a plural, an inflection or a
-different letter case links the same term. A publisher sends every term link to the rendered
-glossary page. A document SHOULD link a term where it first uses it, so that a reader meets the
-definition before relying on it.
+A term link declares `mentions` of that concept. Its text is free. The following link the same term:
+
+- A plural.
+- An inflection.
+- A different letter case.
+
+A publisher sends every term link to the rendered glossary page.
+Where a document first uses a term, the document SHOULD link it.
+This lets a reader meet the definition before relying on it.
 
 ## Requirements
 
@@ -284,9 +377,9 @@ Checkout SHALL create at most one order for a successfully admitted request.
 ```
 
 The first paragraph is one sentence containing uppercase `SHALL` or `SHALL NOT` exactly once. The
-section ends at the next heading of any level and contains no nested heading. Later paragraphs,
-lists and fences explain the statement; a list item beginning with a requirement identity is
-invalid.
+section ends at the next heading of any level. It contains no nested heading.
+Later paragraphs, lists and fences explain the statement.
+A list item beginning with a requirement identity is invalid.
 
 ## Scenarios
 
@@ -304,48 +397,59 @@ In an `implementation` document, a scenario is a level-2 to level-5 ATX heading
 ```
 
 Every list item in the section is a step beginning with `GIVEN`, `WHEN`, `THEN`, `AND` or `BUT` and
-a space. The first step is `GIVEN` or `WHEN`; at least one `WHEN` and one `THEN` are required.
-`AND` and `BUT` continue the preceding kind, and the sequence never returns to an earlier kind. The
-section ends at the next heading of any level and has no nested heading. Prose may explain the
+a space. The first step is `GIVEN` or `WHEN`. At least one `WHEN` and one `THEN` are required.
+`AND` and `BUT` continue the preceding kind. The sequence never returns to an earlier kind.
+The section ends at the next heading of any level. It has no nested heading. Prose may explain the
 situation.
 
 ## Canonical contracts
 
 In an `implementation` document, a `concorde-contract` JSON fence defines exactly `id`, `version`,
-`schema`, `semantics`, `example`. The version is a positive integer, `semantics` is nonempty, and
-the example satisfies the schema. Schema references MUST NOT load Spec documents or remote
+`schema`, `semantics`, `example`. The version is a positive integer. `semantics` is nonempty.
+The example satisfies the schema. Schema references MUST NOT load Spec documents or remote
 resources. Publishers expose the contract identity as an anchor at the fence.
 
-A schema is checked offline and uses only these JSON Schema keywords: `$schema`, `$id`, `$defs`,
-`$ref` (only `#/$defs/<name>`), `title`, `description`, `examples`, `default`, `type`, `properties`,
-`required`, `additionalProperties`, `items`, `minItems`, `maxItems`, `uniqueItems`, `minLength`,
-`maxLength`, `pattern`, `minimum`, `maximum`, `enum`, `const`, `anyOf`, `oneOf`, `allOf` and
-`format`. Any other keyword, such as `propertyNames` or `patternProperties`, is an error; what it
-would express goes into `semantics`.
+A schema is checked offline. It uses only these JSON Schema keywords:
 
-No role or peer appears in a definition; those belong to `participates`. A behaviour or schema
-change increments the version, and every participant is reconciled in the same change. Editorial
-changes need no version increment.
+`$schema`, `$id`, `$defs`, `$ref` (only `#/$defs/<name>`), `title`, `description`, `examples`,
+`default`, `type`, `properties`, `required`, `additionalProperties`, `items`, `minItems`, `maxItems`, `uniqueItems`, `minLength`,
+`maxLength`, `pattern`, `minimum`, `maximum`, `enum`, `const`, `anyOf`, `oneOf`, `allOf` and
+`format`.
+
+Any other keyword, such as `propertyNames` or `patternProperties`, is an error.
+What it would express goes into `semantics`.
+
+No role or peer appears in a definition. Those belong to `participates`.
+When a behaviour or schema changes, the change increments the version.
+Every participant is reconciled in the same change.
+
+Editorial changes need no version increment.
 
 ## Diagrams
 
 Diagrams in reading are D2 blocks. A `d2` block is either a **checked diagram**, written in the
-semantic subset and allowed only in `module` reading, or marked `d2 illustrative`. A block in any
-other diagram language, such as Mermaid, is an error. The rules are in [Views](views.md).
+semantic subset and allowed only in `module` reading, or marked `d2 illustrative`.
+
+A block in any other diagram language, such as Mermaid, is an error. The rules are in
+[Views](views.md).
 
 ## Links
 
 Ordinary Markdown links navigate to readable definitions. A stable-identity fragment MUST name an
-actual definition in the addressed reading document; a concept fragment MUST address the glossary,
-as a [term link](#term-links). Other fragments use the renderer's slug rules. A link never adds a
-document to context; a term link adds the term's definition.
+actual definition in the addressed reading document.
+A concept fragment MUST address the glossary, as a [term link](#term-links).
+Other fragments use the renderer's slug rules. A link never adds a document to context.
+A term link adds the term's definition.
 
 ## Evidence declarations
 
 A test declares the scenario identities it verifies in the test source, in a syntax documented by
-the development tool. Tools read these declarations without executing tests and reject unknown
-identities. Reading content MUST NOT contain that syntax outside fences, list test locations or
-prescribe coverage declarations.
+the development tool. Tools read these declarations without executing tests.
+Tools reject unknown identities. Reading content MUST NOT do any of the following:
+
+- Contain that syntax outside fences.
+- List test locations.
+- Prescribe coverage declarations.
 
 # Writing guidance
 
@@ -353,7 +457,7 @@ prescribe coverage declarations.
 
 This is the content part of [Spec writing guidelines](writing.md). Its companion,
 [Required format](format.md), defines the machine-checkable structure and syntax. This chapter
-explains what the **reading content** must communicate; applying it requires reader and editor
+explains what the **reading content** must communicate. Applying it requires reader and editor
 judgment. Its semantic requirements remain in force even when structural checks pass.
 
 [Node types](model.md) and [Relations](relations.md) define what a specification declares.
@@ -362,139 +466,252 @@ No declaration alone establishes understanding.
 This chapter serves understanding above all: it is what makes a structurally valid specification
 worth reading.
 
-A Module specifies one responsibility for consumers and implementers. It need not correspond to a
-package, directory, service or process. Its purpose, behaviour, concepts and collaborations
-establish its boundary; realization bindings locate its code and establish nothing about scope.
+A Module specifies one responsibility for consumers and implementers. It need not correspond to any
+of these:
+
+- A package.
+- A directory.
+- A service.
+- A process.
+
+These establish its boundary:
+
+- Its purpose.
+- Its behaviour.
+- Its concepts.
+- Its collaborations.
+
+Realization bindings locate its code. They establish nothing about scope.
 
 ## Choosing Module boundaries
 
-Draw Modules around responsibilities and axes of change: a capability, a use case, a boundary with
-one collaborator. Things that change together SHOULD belong to one Module, and a Module SHOULD NOT
-collect things only because they are the same kind of artifact, such as all scripts, all prompts or
-all configuration.
+Draw Modules around responsibilities and axes of change:
+
+- A capability.
+- A use case.
+- A boundary with one collaborator.
+
+Things that change together SHOULD belong to one Module. A Module SHOULD NOT collect things only
+because they are the same kind of artifact, such as:
+
+- All scripts.
+- All prompts.
+- All configuration.
 
 This choice serves both purposes at once. A reader understands a responsibility, not a file type.
-And because a task's boundary is built from Modules, a Module that matches how the project actually
-changes yields boundaries that fit real tasks: a typical change needs one Module's write sets, not
+A task's boundary is built from Modules. Therefore, a Module that matches how the project actually
+changes yields boundaries that fit real tasks. A typical change needs one Module's write sets, not
 slices of five.
 
-A Module MAY be purely compositional, explaining how its children together fulfil a responsibility,
-and MAY bind files of its own.
+A Module MAY be purely compositional, explaining how its children together fulfil a responsibility.
+A Module MAY bind files of its own.
 
 ## The intended reader
 
-Assume a reader with general software knowledge who does **not** know this project's implementation,
-internal type names, execution library or history.
+Assume a reader with general software knowledge who does **not** know any of these:
 
-That reader must be able to explain, from the reading content alone: the problem the Module solves,
-when to use it, a normal interaction and its result, the important stopping conditions, and why the
-design supports the guarantees. If reaching that state requires reading source code, an unselected
-document or a maintainer, the specification is incomplete regardless of how many checks pass.
+- This project's implementation.
+- This project's internal type names.
+- This project's execution library.
+- This project's history.
+
+From the reading content alone, that reader must be able to explain:
+
+- The problem the Module solves.
+- When to use it.
+- A normal interaction and its result.
+- The important stopping conditions.
+- Why the design supports the guarantees.
+
+If reaching that state requires any of the following, the specification is incomplete regardless
+of how many checks pass:
+
+- Reading source code.
+- Reading an unselected document.
+- Reading a maintainer.
 
 This reader is the measure of the Protocol's first purpose: a human understands the project from
 its specification without reading its code.
 
 ## Document roles
 
-One Module specification has two roles of document, both reading content, both owned directly by
-the Module.
+One Module specification has two roles of document. Both are reading content. Both are owned
+directly by the Module.
 
-- **Module documents** (`role: module`) — the `module.md` entry and explanatory topics. They explain
-  the responsibility, correct use, design and collaborations. They MUST NOT become link indexes or
-  independently maintained summaries with weaker promises.
-- **Implementation documents** (`role: implementation`) — the precise requirements, scenarios and
-  canonical contracts. They are specifications, not source code, plans or descriptions of incidental
-  implementation.
+- **Module documents** (`role: module`) — the `module.md` entry and explanatory topics. They explain:
+  - The responsibility.
+  - Correct use.
+  - Design.
+  - Collaborations.
 
-Role separation is about meaning, not heading syntax. Exact private APIs, wire fields, byte
-algorithms, persistence layouts, internal limits and executable topology belong to
-`implementation` reading even when written as ordinary prose. Architecture, design reasons, actual
-public entry points and any limit or hazard a consumer needs for correct use belong to `module`
-reading. A topic is an explanation, never a second owner or a nested requirements container.
+  Module documents MUST NOT become link indexes or independently maintained summaries with weaker
+  promises.
+- **Implementation documents** (`role: implementation`) specify:
+  - The precise requirements.
+  - The scenarios.
+  - The canonical contracts.
 
-A Module's design is its entry: no part of it moves to a topic, so a reader never has to leave the
-entry to learn what the Module is and why it is built the way it is. The concepts a Module owns
-SHOULD be explained in its entry too, at the anchors their glossary entries name, not in a separate
-topic collecting them. A topic explains something else, such as what a result means for its reader
-or how to proceed in one situation; when it needs a design reason, it links to the entry.
+  They are specifications, not any of these:
+  - Source code.
+  - Plans.
+  - Descriptions of incidental implementation.
+
+Role separation is about meaning, not heading syntax. Even when written as ordinary prose, the
+following belong to `implementation` reading:
+
+- Exact private APIs.
+- Wire fields.
+- Byte algorithms.
+- Persistence layouts.
+- Internal limits.
+- Executable topology.
+
+The following belong to `module` reading:
+
+- Architecture.
+- Design reasons.
+- Actual public entry points.
+- Any limit or hazard a consumer needs for correct use.
+
+A topic is an explanation, never a second owner or a nested requirements container.
+
+A Module's design is its entry. No part of it moves to a topic. Thus, a reader never has to leave
+the entry to learn what the Module is and why it is built the way it is.
+The concepts a Module owns SHOULD be explained in its entry too, at the anchors their glossary
+entries name, not in a separate topic collecting them.
+
+A topic explains something else, such as what a result means for its reader or how to proceed in
+one situation. When a topic needs a design reason, it links to the entry.
 
 ## The entry
 
-The entry is where a reader meets the Module, and the whole entry is its design: what the Module is
-for, the ideas it rests on, how its parts and the Modules around it work together, and why it is
-built that way. The Protocol imposes no section structure on it. No section is required, and its
-headings, their titles and their order are chosen for its reader.
+The entry is where a reader meets the Module. The whole entry is its design:
 
-A writer SHOULD follow this reading order, because it serves a developer who wants to understand
-the Module quickly: the picture first, and the details once the picture is clear.
+- What the Module is for.
+- The ideas it rests on.
+- How its parts and the Modules around it work together.
+- Why it is built that way.
+
+The Protocol imposes no section structure on it. No section is required. These are chosen for its
+reader:
+
+- Its headings.
+- Their titles.
+- Their order.
+
+This reading order serves a developer who wants to understand the Module quickly.
+A writer SHOULD follow this reading order: the picture first, and the details once the picture is
+clear.
 
 1. **Purpose.** What the Module is for, who relies on it and where its promises stop, including
-   relevant non-goals, in short plain prose. A directory or package name establishes no
-   responsibility.
-2. **Core concepts.** The ideas a reader needs before the rest makes sense: the Module's own terms,
-   each explained at the anchor its glossary entry names, and the terms of other Modules it builds
-   on, linked.
-3. **Overview.** Diagrams of the Module's main structure, functions and flows, each with short
-   prose saying what it shows: how the parts are arranged, what the Module does with its input, how
-   a typical piece of work progresses. See [Diagrams](#diagrams).
-4. **Details.** Everything else the reader needs, in the order that suits the Module: its parts and
-   how each carries the function, its collaborations with its children and providers, its actual
-   entry points, errors and limits, and the reasons for its significant choices.
+   relevant non-goals, in short plain prose. A directory or package name establishes no responsibility.
+2. **Core concepts.** The ideas a reader needs before the rest makes sense. These are the Module's
+   own terms, each explained at the anchor its glossary entry names, and the terms of other Modules
+   it builds on, linked.
+3. **Overview.** Diagrams of the Module's main structure, functions and flows.
+
+   Each diagram has short prose saying what it shows:
+   - How the parts are arranged.
+   - What the Module does with its input.
+   - How a typical piece of work progresses.
+
+   See [Diagrams](#diagrams).
+4. **Details.** Everything else the reader needs, in the order that suits the Module:
+   - Its parts and how each carries the function.
+   - Its collaborations with its children and providers.
+   - Its actual entry points.
+   - Its errors and limits.
+   - The reasons for its significant choices.
 
 Keep operational detail with the Module that owns it. A parent or the root shows a process its
-children carry out at the level of its own concepts and links to the child whose Spec walks through
-the commands; it does not repeat that walk-through. How a Module fits with the rest is part of its
-explanation, so a separate list of relationships that only repeats it adds nothing.
+children carry out at the level of its own concepts. The parent or root links to the child whose
+Spec walks through the commands. The parent or root does not repeat that walk-through. How a Module
+fits with the rest is part of its explanation. Thus, a separate list of relationships that only
+repeats it adds nothing.
 
 Whatever its structure, the entry satisfies [the intended reader](#the-intended-reader). The
 following explains what its content must communicate.
 
 ### How the Module is used
 
-Explain the audience, use conditions and prerequisites, and the actual entry points. Where the
-Module has entry points, follow a representative input through its result and effects on a coherent
-normal path before turning to errors, repeat invocation, cancellation and compatibility.
+Explain these:
 
-A reader MUST NOT have to assemble instructions from formal statements. Include a concrete
-illustration wherever abstraction would otherwise hide a decision the user has to make. An
-unsupported behaviour is identified as unsupported, never invented to fill a template. A logical
-responsibility may participate in a collaboration without having any callable entry point, and MUST
-NOT invent one.
+- The audience.
+- The use conditions and prerequisites.
+- The actual entry points.
+
+Where the Module has entry points, follow a representative input through its result and effects on
+a coherent normal path before turning to:
+
+- Errors.
+- Repeat invocation.
+- Cancellation.
+- Compatibility.
+
+A reader MUST NOT have to assemble instructions from formal statements. Wherever abstraction would
+otherwise hide a decision the user has to make, include a concrete illustration.
+An unsupported behaviour is identified as unsupported, never invented to fill a template.
+A logical responsibility may participate in a collaboration without having any callable entry point.
+A logical responsibility MUST NOT invent one.
 
 The entry's prose is canonical explanation, not a second summary with weaker promises. Link to
 precise definitions rather than restating them.
 
 ### Why it is built this way
 
-The design has an inside and an outside. Inside, the entry explains how the Module is built: its
-children, the realizations that carry its function and the files they bind, and how these work
-together. Outside, it explains how the Module works with the Modules around it: the providers it
-relies on and, where a reader needs them, the Modules that rely on it, including which of its parts
-meets which of theirs.
+The design has an inside and an outside. Inside, the entry explains how the Module is built:
 
-Explain why the decomposition, state, control and data flow, collaboration and failure containment
-fulfil the guarantees. Connect each significant choice to a problem it prevents. A list of class or
-function names in call order is not an explanation, and intended design is not evidence that code
-conforms.
+- Its children.
+- The realizations that carry its function and the files they bind.
+- How these work together.
 
-For every child and every provider, state its responsibility, when the collaboration applies, the
-canonical promises relied upon, and this Module's own duties and failure reactions. These
-explanations are what the `contains` and `uses` `meaning` anchors point to. A declared relation with
-a link and no explanation does not satisfy this.
+Outside, the entry explains how the Module works with the Modules around it:
 
-Record significant choices and required internal constraints, and distinguish them from incidental
+- The providers it relies on, including which of its parts meets which of theirs.
+- Where a reader needs them, the Modules that rely on it, including which of its parts meets which
+  of theirs.
+
+Explain why these fulfil the guarantees:
+
+- The decomposition.
+- The state.
+- The control and data flow.
+- The collaboration.
+- The failure containment.
+
+Connect each significant choice to a problem it prevents. A list of class or function names in call
+order is not an explanation. Intended design is not evidence that code conforms.
+
+For every child and every provider, state:
+
+- Its responsibility.
+- When the collaboration applies.
+- The canonical promises relied upon.
+- This Module's own duties and failure reactions.
+
+These explanations are what the `contains` and `uses` `meaning` anchors point to. A declared
+relation with a link and no explanation does not satisfy this.
+
+Record significant choices and required internal constraints. Distinguish them from incidental
 current implementation and unresolved questions. Prefer linking to a guarantee over restating it as
 a new obligation.
 
-Identity and bindings stay in metadata. Several nodes may share one coherent explanation with
-distinct anchors, provided the prose explains all of them.
+Identity and bindings stay in metadata. Provided the prose explains all of them, several nodes may
+share one coherent explanation with distinct anchors.
 
 ### Diagrams
 
-Use diagrams wherever they make relationships, order, branching, state or data clearer. Choose the
-view by the reader's question, not by a quota or a fixed set of pictures. Each diagram answers one
-clear question and stands next to the prose that explains it: overview diagrams near the top of the
-entry, the others beside the details they clarify.
+Use diagrams wherever they make any of these clearer:
+
+- Relationships.
+- Order.
+- Branching.
+- State.
+- Data.
+
+Choose the view by the reader's question, not by a quota or a fixed set of pictures. Each diagram
+answers one clear question. Each diagram stands next to the prose that explains it.
+Overview diagrams stand near the top of the entry. The others stand beside the details they clarify.
 
 | Reader's question | Useful view |
 | --- | --- |
@@ -507,46 +724,79 @@ entry, the others beside the details they clarify.
 | How do records relate, or how is data transformed and passed between parts? | Data-model or data-flow view |
 
 A process is a workflow diagram by default, including an interaction among several Modules or
-agents: start with step nodes and directed edges, make the main path easy to follow, and separate
-branches, recovery and evidence where these matter. Give each participant a lane when who does a
-step matters, so that an edge between lanes shows a hand-off. A sequence diagram is heavier to
-read, since the reader must follow lifelines and messages to find the steps; use one only when the
-interleaving of messages is itself the point.
+agents. Follow these steps:
 
-All these views use D2. A checked `d2` diagram uses only the semantic subset and asserts only
-declared static relations: nesting for containment, ownership and bindings, unlabelled edges
-between Modules for `uses`, and labelled edges for `relates` with their declared verbs. Mark every
-other view `d2 illustrative`, including workflow, sequence, state and deployment views that show
-behaviour or runtime facts beyond those relations. A component, context or data-model view is
-checked only when it fits those same rules. See [Views](views.md).
+- Start with step nodes and directed edges.
+- Make the main path easy to follow.
+- Where these matter, separate branches, recovery and evidence.
+
+When who does a step matters, give each participant a lane so that an edge between lanes shows a
+hand-off. A sequence diagram is heavier to read. The reader must follow lifelines and messages to
+find the steps. Use one only when the interleaving of messages is itself the point.
+
+All these views use D2. A checked `d2` diagram uses only the semantic subset. It asserts only
+declared static relations:
+
+- Nesting for containment, ownership and bindings.
+- Unlabelled edges between Modules for `uses`.
+- Labelled edges for `relates` with their declared verbs.
+
+Mark every other view `d2 illustrative`. This includes the following views that show behaviour or
+runtime facts beyond those relations:
+
+- Workflow views.
+- Sequence views.
+- State views.
+- Deployment views.
+
+Only when a component, context or data-model view fits those same rules is it checked.
+See [Views](views.md).
 
 Keep names and meanings consistent with the surrounding Spec. A diagram complements explanatory
-prose: explain the conditions, invariants, effects and failure reactions it cannot carry, and do
-not invent a promise or a relation to fill a picture. An illustrative view grants no authority and
-never replaces the declaration and prose of a load-bearing collaboration.
+prose. Where a diagram cannot carry them, explain the following:
+
+- The conditions.
+- The invariants.
+- The effects.
+- The failure reactions.
+
+Do not invent a promise or a relation to fill a picture. An illustrative view grants no authority.
+It never replaces the declaration and prose of a load-bearing collaboration.
 
 Draw the relationships that matter to the question. An inventory of disconnected boxes or files
-usually adds nothing to a list; leave realizations that only keep the repository running, such as
-project configuration, development tooling or test suites, to prose. A small Module may need no
-diagram, while a Module with little static structure may still benefit from a workflow or state
-view. Use as many diagrams as help understanding, with none drawn only to have one.
+usually adds nothing to a list. Leave realizations that only keep the repository running to prose.
+Examples include:
+
+- Project configuration.
+- Development tooling.
+- Test suites.
+
+A small Module may need no diagram. A Module with little static structure may still benefit from a
+workflow or state view. Use as many diagrams as help understanding, with none drawn only to have one.
 
 ## Terms
 
-The words of the whole project live in one glossary, so a word means one thing everywhere and a
-reader looks it up in one place. Link a term where a document first uses it, with a
-[term link](format.md#term-links) to its glossary entry, and link it again wherever a reader
-arriving mid-document would need it. A reader receives the definition of every term its documents
-link, and only those, so an unlinked term is a word the reader may not know.
+The words of the whole project live in one glossary. Thus, a word means one thing everywhere.
+A reader looks it up in one place. Where a document first uses a term, link it with a
+[term link](format.md#term-links) to its glossary entry. Wherever a reader arriving mid-document
+would need it, link it again. A reader receives the definition of every term its documents link,
+and only those. Thus, an unlinked term is a word the reader may not know.
 
 Deciding which concepts exist is substantive. Declare a concept for a domain word, a record, a
-boundary actor or an external standard a reader must understand; not for a file, an identity or an
-internal class. Before adding one, look for an existing term with that meaning and link it
-instead. Decide who owns each word by who is entitled to change its meaning; see
-[Node types](model.md#concept). Write the definition as one sentence a newcomer understands
-without the owner's documents, and the extended explanation in the owner's document at the anchor
-the entry names. When a word could be confused with another term or with a Module's name, declare
-`contrasts`; when it conflicts with common usage outside the project, state `external_conflict`.
+boundary actor or an external standard a reader must understand.
+
+Do not declare a concept for any of these:
+
+- A file.
+- An identity.
+- An internal class.
+
+Before adding one, look for an existing term with that meaning and link it instead.
+Decide who owns each word by who is entitled to change its meaning. See
+[Node types](model.md#concept). Write the definition as one sentence a newcomer understands without
+the owner's documents. Write the extended explanation in the owner's document at the anchor the
+entry names. When a word could be confused with another term or with a Module's name, declare
+`contrasts`. When a word conflicts with common usage outside the project, state `external_conflict`.
 
 Titles are unique in the project. Two meanings of one word are two terms with distinct titles, such
 as `Session round` and `Headless round`, not one title defined twice.
@@ -554,52 +804,82 @@ as `Session round` and `Headless round`, not one title defined twice.
 ## Precise obligations
 
 Define these only in `implementation` documents owned by the Module. Group headings may organize
-definitions but never own them. Module documents explain the important guarantees and link to the
-canonical definitions; a reader should not need to read every acceptance case to understand the
-Module.
+definitions but never own them. Module documents explain the important guarantees.
+Module documents link to the canonical definitions. A reader should not need to read every
+acceptance case to understand the Module.
 
 A **requirement** is one decidable Module-wide `SHALL` statement with a stable identity. A
 **scenario** is one testable situation in `GIVEN`/`WHEN`/`THEN` steps. A situation-specific
 guarantee belongs in that scenario's steps or explanation, not in a second requirement. Define each
-obligation once and link to it; editorial organization MUST NOT weaken, duplicate or contradict it.
+obligation once. Link to it. Editorial organization MUST NOT do any of the following to it:
+
+- Weaken it.
+- Duplicate it.
+- Contradict it.
 
 An **interface** is specified by a canonical contract plus readable behaviour and scenarios, not by
-a schema alone. Inputs, outputs, effects, failures, compatibility and repeat behaviour MUST be
-explained in selected readable context, never inferred from shape.
+a schema alone. In selected readable context, these MUST be explained, never inferred from shape:
+
+- Inputs.
+- Outputs.
+- Effects.
+- Failures.
+- Compatibility.
+- Repeat behaviour.
 
 ## Composition, dependency and inclusion
 
 - `contains` states structural accountability. A parent explains how its children fulfil the
-  responsibility it holds, and receives their Specs to do so. A Module has at most one parent and
-  composition is acyclic.
-- `uses` states reliance on a provider's promises, and gives the consumer the provider's Specs. It
-  implies no ownership, deployment, directory nesting or shared source. Dependencies may cross
-  hierarchy levels, and two Modules may use each other.
+  responsibility it holds. The parent receives their Specs to do so. A Module has at most one
+  parent. Composition is acyclic.
+- `uses` states reliance on a provider's promises. It gives the consumer the provider's Specs.
+  It implies none of these:
+  - Ownership.
+  - Deployment.
+  - Directory nesting.
+  - Shared source.
+
+  Dependencies may cross hierarchy levels. Two Modules may use each other.
 - `includes` states what else this Module reads, with a reason. It implies no ownership and no
   dependency.
 
 When a Module relies on a few promises of a large provider, list them in the relation's
-`relies_on` and link them from the explanation of the collaboration. The reader then receives the
-provider's entry and exactly the documents defining those promises.
+`relies_on` and link them from the explanation of the collaboration.
+
+The reader then receives the provider's entry and exactly the documents defining those promises.
 
 ## Realization
 
-A `realization` binds exact files or directory prefixes; see [Node types](model.md). Tests are
-ordinary implementation files. A test declares the scenarios it verifies **in the test**; reading
-content MUST NOT list verifying tests or prescribe coverage declarations. Missing coverage does not
-cancel a promise, and a declared test is not proof of fulfilment.
+A `realization` binds exact files or directory prefixes. See [Node types](model.md). Tests are
+ordinary implementation files. A test declares the scenarios it verifies **in the test**.
+Reading content MUST NOT list verifying tests. Reading content MUST NOT prescribe coverage
+declarations. Missing coverage does not cancel a promise. A declared test is not proof of
+fulfilment.
 
 ## Completeness
 
 The selected context makes every owned and selected document available with both members intact.
 Its readable subset must supply the meaning the task needs.
 
-A schema, a heading, a rendered table, a checked diagram or a correctly registered file set is not
-proof of sufficient meaning. Honest drafts name their unknowns. Missing necessary meaning remains a
-gap until an explicit change to the specification repairs it: source code, another Module's own
-selections and publisher summaries cannot silently supply a missing contract. The one explicit route
-from code to specification is a `code-to-spec` task (see [Boundaries](boundaries.md#task-types)),
-whose changes are ordinary specification changes and leave every doubtful intent a reported gap.
+None of the following is proof of sufficient meaning:
+
+- A schema.
+- A heading.
+- A rendered table.
+- A checked diagram.
+- A correctly registered file set.
+
+Honest drafts name their unknowns. Until an explicit change to the specification repairs it,
+missing necessary meaning remains a gap. None of the following can silently supply a missing
+contract:
+
+- Source code.
+- Another Module's own selections.
+- Publisher summaries.
+
+The one explicit route from code to specification is a `code-to-spec` task
+(see [Boundaries](boundaries.md#task-types)). Its changes are ordinary specification changes.
+Its changes leave every doubtful intent a reported gap.
 
 # Sentence style
 
@@ -705,24 +985,34 @@ break a rule. A sentence of 30 words passes the check and is still longer than t
 # Evaluating a Spec
 
 This is the evaluation part of [Spec writing guidelines](writing.md). [Required format](format.md)
-defines the structure a Spec must have and [Writing guidance](module.md) what its content must
-communicate; this chapter states how a Spec is judged good. It serves understanding: a Spec that
-passes every structural check can still leave its reader unable to rely on it, and only a judgment
-of its content finds that.
+defines the structure a Spec must have. [Writing guidance](module.md) defines what its content must
+communicate. This chapter states how a Spec is judged good. It serves understanding. A Spec that
+passes every structural check can still leave its reader unable to rely on it. Only a judgment of
+its content finds that.
 
 ## A judgment, not a check
 
-Evaluation is a judgment of meaning, and it is **not deterministic**. Two careful evaluations of
-the same Specs may notice different problems, weigh them differently and word them differently.
-The criteria below make evaluations comparable in what they look for; they do not make them
-decidable, and no criterion is a [structural check](checks.md) or can become one. A result of
-evaluation is never structural conformance, and never implementation conformance either: it is
+Evaluation is a judgment of meaning. It is **not deterministic**. Two careful evaluations of the
+same Specs may differ in these ways:
+
+- They may notice different problems.
+- They may weigh them differently.
+- They may word them differently.
+
+The criteria below make evaluations comparable in what they look for. They do not make them
+decidable. No criterion is a [structural check](checks.md) or can become one. A result of
+evaluation is never structural conformance, and never implementation conformance either. It is
 evidence about [semantic sufficiency](principles.md#conformance) only, bound to the exact Specs it
 read. An evaluation that found no problem shows that it found none, not that none exists.
 
-A problem is established by the text of the Specs that shows it: the passage, the declaration or
-the absence the evaluation can point to. An impression that cannot be tied to the Specs is not a
-problem.
+A problem is established by the text of the Specs that shows it. The evaluation can point to any
+of the following:
+
+- The passage.
+- The declaration.
+- The absence.
+
+An impression that cannot be tied to the Specs is not a problem.
 
 Evaluation happens at two levels, each read from its own boundary:
 
@@ -732,7 +1022,7 @@ Evaluation happens at two levels, each read from its own boundary:
 | [Architecture quality](#architecture-quality) | how the project is divided into Modules and how they rely on each other | every Module's Specs, `ProjectSpecification`, as a `review-architecture` task receives them |
 
 Neither level reads code contents (see [Task types](boundaries.md#task-types)). A Spec is judged by
-what it tells its reader; whether the code does what the Spec says is implementation conformance,
+what it tells its reader. Whether the code does what the Spec says is implementation conformance,
 established by evidence. Code never repairs a Spec's missing meaning.
 
 ## Blocking and advisory problems
@@ -740,196 +1030,288 @@ established by evidence. Code never repairs a Spec's missing meaning.
 Every problem is **blocking** or **advisory**:
 
 - **Blocking**: a reader of the Module, or a task bound to it, could not rely on the Spec as
-  written. The Spec leaves them unable to act, or leads them to act wrongly: a requirement that
-  joins two obligations, a scenario whose outcome cannot be observed, an entry that never shows
-  how a normal interaction goes, two documents or two Modules that contradict each other, a term
-  used in two meanings, a responsibility two Modules both claim or none owns, a dependency that is
-  relied upon but not declared.
-- **Advisory**: the Spec can be relied upon, but could serve its reader better: wording that could
-  be clearer without changing what a reader would do, an order that makes the reader wait for the
-  idea they need, a diagram that would make a relationship easier to follow, a boundary that could
-  be drawn more cleanly without any task being misled today.
+  written. The Spec leaves them unable to act, or leads them to act wrongly:
+  - A requirement that joins two obligations.
+  - A scenario whose outcome cannot be observed.
+  - An entry that never shows how a normal interaction goes.
+  - Two documents or two Modules that contradict each other.
+  - A term used in two meanings.
+  - A responsibility two Modules both claim or none owns.
+  - A dependency that is relied upon but not declared.
+- **Advisory**: the Spec can be relied upon, but could serve its reader better:
+  - Wording that could be clearer without changing what a reader would do.
+  - An order that makes the reader wait for the idea they need.
+  - A diagram that would make a relationship easier to follow.
+  - A boundary that could be drawn more cleanly without any task being misled today.
 
 Whether a problem is blocking depends on its effect on a reader and a task, not on the size or
-difficulty of the repair. A missing diagram alone is advisory; when the meaning a picture would
-show is itself missing or contradictory, the missing meaning is the problem, and a picture alone
-cannot supply it. The Protocol defines no further grading: what is done with a problem once found, who repairs it and
-whether it must be decided by someone else, belongs to the tools and the project's own process.
+difficulty of the repair. A missing diagram alone is advisory. When the meaning a picture would
+show is itself missing or contradictory, a picture alone cannot supply the missing meaning that
+is the problem.
+
+The Protocol defines no further grading. The following belong to the tools and the project's own
+process:
+
+- What is done with a problem once found.
+- Who repairs it.
+- Whether it must be decided by someone else.
 
 ## Module quality
 
-Module quality is judged for the [intended reader](module.md#the-intended-reader): someone with
-general software knowledge who does not know the project's code or history, and who must be able to
-explain, from the Module's Specs alone, what it is for, when and how to use it, a normal
-interaction and its result, the important stopping conditions, and why its design supports its
-guarantees. Only the Module's own documents are judged; a problem seen in a provider's or an
-included document concerns that other Module, and its own evaluation judges it. The criteria fall
-into six dimensions.
+Module quality is judged for the [intended reader](module.md#the-intended-reader). This reader has
+general software knowledge and does not know the project's code or history. From the Module's
+Specs alone, the reader must be able to explain:
+
+- What it is for.
+- When and how to use it.
+- A normal interaction and its result.
+- The important stopping conditions.
+- Why its design supports its guarantees.
+
+Only the Module's own documents are judged. A problem seen in a provider's or an included document
+concerns that other Module. Its own evaluation judges it. The criteria fall into six dimensions.
 
 ### Readability
 
 - The entry lets a reader understand the Module quickly, in the
-  [reading order](module.md#the-entry) the guidance recommends: first what the Module is for, who
-  relies on it and where its promises stop, in short plain prose; then the core concepts; then
-  overview diagrams of its main structure, functions and flows; then the details. The Protocol
-  requires no section, so the order is judged, not the headings.
+  [reading order](module.md#the-entry) the guidance recommends:
+  - First, short plain prose about:
+    - What the Module is for.
+    - Who relies on it.
+    - Where its promises stop.
+  - Then, the core concepts.
+  - Then, overview diagrams of its main structure, functions and flows.
+  - Then, the details.
+
+  The Protocol requires no section, so the order is judged, not the headings.
 - Where the Module has entry points, a reader can follow a coherent normal path from an input to
-  its result before errors, repetition and cancellation, with a concrete illustration wherever an
-  abstraction would hide a decision the reader has to make. A reader never has to assemble
-  instructions from formal statements.
-- Operational detail stays with the Module that owns it: a parent shows its children's process at
-  the level of its own concepts and leaves their commands to them.
+  its result. The reader meets this path before errors, repetition and cancellation. On the path,
+  a concrete illustration stands wherever an abstraction would hide a decision the reader has to
+  make.
+
+  A reader never has to assemble instructions from formal statements.
+- Operational detail stays with the Module that owns it. A parent shows its children's process at
+  the level of its own concepts. The parent leaves their commands to them.
 - Unknowns and unsupported behaviour are stated honestly, never invented to fill a structure.
-- The sentences follow [Sentence style](style.md). The style checks report long sentences,
-  semicolons and sentences with more than one requirement keyword, so an evaluation does not
-  report them again. It judges the rules that no program decides:
+- The sentences follow [Sentence style](style.md). The style checks report:
+  - Sentences that are long.
+  - Semicolons.
+  - Sentences with more than one requirement keyword.
+
+  An evaluation does not report them again. It judges the rules that no program decides:
   - A requirement and every statement of behaviour name the actor and use the active voice.
   - Each sentence carries one fact, even when it is short.
   - Three or more conditions, cases or items stand in a list, not in a run of clauses.
   - A condition comes before the statement it limits.
   - Simple tenses say what is true and what happens.
-- A sentence that breaks the style is advisory while a reader still understands it correctly. It
-  is blocking when the reader cannot tell who must act or what is required. A requirement that
+- While a reader still understands it correctly, a sentence that breaks the style is advisory.
+  When the reader cannot tell who must act or what is required, it is blocking. A requirement that
   hides its actor in the passive voice is an example.
 
 ### Obligations
 
 - Each requirement is one decidable Module-wide obligation, with exactly one `SHALL` or
-  `SHALL NOT`: not two obligations joined in one sentence, and not a guarantee that holds only in
-  one situation, which belongs in a scenario.
+  `SHALL NOT`. It is not two obligations joined in one sentence. A guarantee that holds only in
+  one situation belongs in a scenario, not a requirement.
 - Each scenario is one testable situation whose `THEN` steps state observable outcomes.
-- Each obligation is defined once. Module-role prose explains the important guarantees and links
-  to them, and never weakens, duplicates or contradicts one.
-- An interface is specified by behaviour: its inputs, outputs, effects, failures, compatibility and
-  repeat behaviour are explained in readable text, not left to be inferred from a schema's shape.
+- Each obligation is defined once. Module-role prose explains the important guarantees. It links
+  to them. Module-role prose never does any of the following:
+  - Weaken an obligation.
+  - Duplicate an obligation.
+  - Contradict an obligation.
+- An interface is specified by behaviour. Readable text explains its inputs, outputs, effects,
+  failures, compatibility and repeat behaviour.
+  These are not left to be inferred from a schema's shape.
 
 ### Design
 
-- The entry explains why the decomposition, state, control and data flow, collaboration and
-  failure containment fulfil the guarantees, connecting each significant choice to a problem it
-  prevents. A list of names in call order is not an explanation.
-- Every child and every provider has an explanation of its responsibility, when the collaboration
-  applies, the promises relied upon, and the Module's own duties and failure reactions. A declared
-  relation with a link and no explanation does not meet this.
+- The entry explains why the following fulfil the guarantees, connecting each significant choice
+  to a problem it prevents:
+  - The decomposition.
+  - The state.
+  - The control and data flow.
+  - The collaboration.
+  - The failure containment.
+
+  A list of names in call order is not an explanation.
+- Every child and every provider has an explanation of:
+  - What its responsibility is.
+  - When the collaboration applies.
+  - Which promises are relied upon.
+  - What the Module's own duties and failure reactions are.
+
+  A declared relation with a link and no explanation does not meet this.
 - Significant choices are told apart from incidental current implementation and from open
   questions.
 
 ### Views
 
-- A diagram answers one clear question, stands next to the prose it complements and uses the same
-  terms. The kind of view suits the question: a process is a workflow by default, and a sequence
-  diagram is used only when the interleaving of messages is the point.
-- A checked diagram asserts only declared relations; any other view is marked illustrative and
+- A diagram answers one clear question. It stands next to the prose it complements. The diagram
+  uses the same terms. The kind of view suits the question. A process is a workflow by default.
+  Only when the interleaving of messages is the point is a sequence diagram used.
+- A checked diagram asserts only declared relations. Any other view is marked illustrative. It
   claims no authority beyond its prose. A load-bearing collaboration is never described only in an
   illustrative diagram.
 - A place where a diagram would make relationships, order, branching, state or data clearer is a
-  problem of readability; no count or kind of diagram is required.
+  problem of readability.
+  No count or kind of diagram is required.
 
 ### Terminology
 
-- Every term the Module owns has one clear one-sentence definition and an explanation, is used with
-  that meaning throughout, and says so where it could be confused with another term or with common
-  usage.
+- Every term the Module owns has one clear one-sentence definition and an explanation. The term
+  is used with that meaning throughout. Where it could be confused with another term or with
+  common usage, it says so.
 - Every term a reader needs is linked where a document first uses it, before the rest relies on
   it.
-- A concept is declared only for a word whose meaning in the project is narrower than or different
-  from its ordinary sense and that another Module uses; any other word is explained in its owner's
-  own document. Deciding which concepts exist is part of the Module's quality, not a formality.
+- Only when a word's meaning in the project is narrower than or different from its ordinary sense
+  and another Module uses it is a concept declared.
+
+  Any other word is explained in its owner's own document. Deciding which concepts exist is part
+  of the Module's quality, not a formality.
 
 ### Context
 
-- The Module's context holds every document and definition its Specs rely on. A promise the Module
-  relies on whose defining document its declarations do not select is a gap of the Module, repaired
-  by an explicit selection, never by reading outside the boundary.
-- An evaluation that needed a document it was not given names that document and why it needed it,
-  instead of guessing its content.
+- The Module's context holds every document and definition its Specs rely on. If the Module relies
+  on a promise whose defining document its declarations do not select, the Module has a gap. An
+  explicit selection repairs the gap. Reading outside the boundary never repairs it.
+- When an evaluation needed a document it was not given, it names that document and why it needed
+  it, instead of guessing its content.
 
 ## Architecture quality
 
-Architecture quality is judged between Modules, from every Module's Specs read together. It asks
-whether the division of the project into Modules serves both of the Protocol's purposes: whether a
-reader understands the project as a set of responsibilities that fit together, and whether the
-boundaries built from those Modules fit the tasks the project actually needs. Each problem names
-every Module it concerns; a problem between two Modules concerns both. The criteria fall into six
-dimensions.
+Architecture quality is judged between Modules, from every Module's Specs read together.
+It asks whether the division of the project into Modules serves both of the Protocol's purposes.
+The first purpose is that a reader understands the project as a set of responsibilities that fit
+together. The second purpose is that the boundaries built from those Modules fit the tasks the
+project actually needs.
+
+Each problem names every Module it concerns. A problem between two Modules concerns both. The
+criteria fall into six dimensions.
 
 ### Responsibilities
 
 - Each Module is drawn around one responsibility and one axis of change, as
-  [Choosing Module boundaries](module.md#choosing-module-boundaries) explains: a capability, a use
-  case, a boundary with one collaborator. Things that change together are in one Module, and a
-  Module does not collect things only because they are the same kind of artifact.
-- Each Module is cohesive: its purpose can be said in one plain sentence, and every part of it
+  [Choosing Module boundaries](module.md#choosing-module-boundaries) explains:
+  - A capability.
+  - A use case.
+  - A boundary with one collaborator.
+
+  Things that change together are in one Module. A Module does not collect things only because
+  they are the same kind of artifact.
+- Each Module is cohesive. Its purpose can be said in one plain sentence. Every part of it
   serves that purpose. A Module whose parts change for unrelated reasons is two Modules.
 - A typical change of the project needs the write sets of one Module, or of a few whose
   collaboration it changes, not slices of many.
-- Siblings are drawn at comparable levels of abstraction, and each Module's Specs stay at one
-  level: a Module that orchestrates others relies on their promises and does not restate their
-  internal steps.
+- Siblings are drawn at comparable levels of abstraction. Each Module's Specs stay at one level.
+  A Module that orchestrates others relies on their promises. It does not restate their internal
+  steps.
 
 ### Ownership
 
-- Every concept, promise and responsibility the project relies on has exactly one owner. Two
-  Modules that promise the same thing, or both describe themselves as responsible for the same
-  decision, overlap; one of them owns it and the other relies on it.
-- Nothing the project relies on is left unowned: every step of a main flow, every record several
-  Modules share and every rule a guarantee depends on is promised by some Module. A responsibility
-  that every Module assumes another carries is a gap.
-- A boundary between two Modules is clear: from their Specs alone a reader can tell, for any piece
-  of behaviour in the project, which Module promises it.
+- The following each have exactly one owner:
+  - Every concept the project relies on.
+  - Every promise the project relies on.
+  - Every responsibility the project relies on.
+
+  If two Modules promise the same thing or both describe themselves as responsible for the same
+  decision, they overlap. One of them owns it and the other relies on it.
+- Nothing the project relies on is left unowned. Each of the following is promised by some Module:
+  - Every step of a main flow.
+  - Every record several Modules share.
+  - Every rule a guarantee depends on.
+
+  A responsibility that every Module assumes another carries is a gap.
+- A boundary between two Modules is clear. From their Specs alone, a reader can tell which Module
+  promises any piece of behaviour in the project.
 
 ### Interfaces
 
-- Modules are decoupled: a consumer relies on a few, stable promises of its provider, named where
-  it can with `relies_on`, and not on the provider's internal structure, records or order of steps.
-- An interface between Modules is narrow and defined by behaviour, through a contract where it is
-  shared and through readable promises in every case. A consumer that could only work by knowing
+- Modules are decoupled. A consumer relies on a few, stable promises of its provider, named where
+  it can with `relies_on`. The consumer does not rely on any of the following of the provider:
+  - Its internal structure.
+  - Its records.
+  - Its order of steps.
+- An interface between Modules is narrow and defined by behaviour. Where it is shared, a contract
+  defines it. Readable promises define it in every case. A consumer that could only work by knowing
   how its provider is built has an interface that is too wide.
 - A consumer's account of what it relies on agrees with what the provider actually promises.
 
 ### Dependencies
 
-- Every reliance is declared. A Module whose Specs rely on another Module's promises declares `uses`
-  of it; a dependency stated only in prose, or only visible in the code, is undeclared, and its
+- Every reliance is declared. A Module whose Specs rely on another Module's promises declares
+  `uses` of it. A dependency stated only in prose, or only visible in the code, is undeclared. Its
   impact on the consumer cannot be derived from declarations.
 - The direction of each dependency is sensible: it follows who relies on whom. A general Module
-  does not depend on a specific consumer in order to serve it, and a provider does not gain a
-  relation to a consumer only so that its own Specs can describe that consumer's use.
+  does not depend on a specific consumer in order to serve it. A provider does not gain a relation
+  to a consumer only so that its own Specs can describe that consumer's use.
 - Mutual `uses` between two Modules are acceptable, because two Modules may rely on each other's
-  promises: a cycle of `uses` alone is not a problem. What is judged is whether each reliance is
-  real, declared and explained.
+  promises. A cycle of `uses` alone is not a problem. Each reliance is judged on whether:
+  - The reliance is real.
+  - The reliance is declared.
+  - The reliance is explained.
 
 ### Failure containment
 
-- Each Module states how it reacts when a collaborator it relies on fails, refuses or is
-  unavailable, and what its own consumers then observe. A failure crosses a boundary between
-  Modules as a stated outcome, never as undefined behaviour of the consumer.
-- A Module's failure cannot silently corrupt another Module's state or promises: where a failure
+- For each of these cases, each Module states how it reacts and what its own consumers then
+  observe:
+  - A collaborator it relies on fails.
+  - A collaborator it relies on refuses.
+  - A collaborator it relies on is unavailable.
+
+  A failure crosses a boundary between Modules as a stated outcome, never as undefined behaviour
+  of the consumer.
+- A Module's failure cannot silently corrupt another Module's state or promises. Where a failure
   leaves work half done, the Spec says which Module detects it and how it is recovered.
 
 ### Consistency
 
-- Promises that several Modules make about the same thing agree: the same record, limit, state,
-  flow or term is described the same way wherever it appears, and a statement in one Module never
-  contradicts its owner's.
-- The same kind of problem is solved the same way across Modules unless a Spec explains the
-  difference: errors are reported, identities formed and repeated invocations handled alike.
-- A parent explains how its children together fulfil its responsibility, and what it says of each
+- Promises that several Modules make about the same thing agree. Wherever it appears, each of the
+  following is described the same way:
+  - The same record.
+  - The same limit.
+  - The same state.
+  - The same flow.
+  - The same term.
+
+  A statement in one Module never contradicts its owner's.
+- Unless a Spec explains the difference, the same kind of problem is solved the same way across
+  Modules:
+  - Errors are reported alike.
+  - Identities are formed alike.
+  - Repeated invocations are handled alike.
+- A parent explains how its children together fulfil its responsibility. What it says of each
   child agrees with that child's own Specs.
 
 # Module entry template
 
-A starter for `module.md`. Begin with [Spec writing guidelines](../writing.md) and use both parts:
+A starter for `module.md`. Begin with [Spec writing guidelines](../writing.md). Use both parts:
 [Required format](../format.md) for structure and syntax, and [Writing guidance](../module.md) for
 what the entry must explain. Satisfying this shape establishes nothing about meaning.
 
 The Protocol requires no section of an entry. The headings below follow the recommended reading
-order, purpose, core concepts, overview, then details; rename, merge or split them as the Module's
-reader needs, and give the details whatever headings suit the Module.
+order:
 
-Register the entry in the project registry and write its paired `.md.json` with
-`schema_version: 3`, `document.role: module`, the `module` block and explicit `defines` and
-`relations` arrays. Declare the Module's concepts as entries of the project glossary. The
+- Purpose.
+- Core concepts.
+- Overview.
+- Details.
+
+As the Module's reader needs, adapt the headings in any of these ways:
+
+- Rename them.
+- Merge them.
+- Split them.
+
+Give the details whatever headings suit the Module.
+
+Register the entry in the project registry. Write its paired `.md.json` with:
+
+- `schema_version: 3`.
+- `document.role: module`.
+- The `module` block.
+- Explicit `defines` and `relations` arrays.
+
+Declare the Module's concepts as entries of the project glossary. The
 [required format](../format.md) applies.
 
 ````markdown
@@ -1003,24 +1385,30 @@ diagrams; invent no promises to fill them.]
 ````
 
 The two term links declare that this document mentions `concept.example-record`, which Example
-owns, and `concept.thing`, which the provider owns: a reader of Example receives both definitions.
+owns, and `concept.thing`, which the provider owns. A reader of Example receives both definitions.
 The anchor `concept.example-record` holds the extended explanation the glossary entry names, in the
 entry of its owner rather than in a separate topic.
 
-The overview diagram is checked and answers one question: how Example is built and how it meets
-its provider. `Example` and `Provider` resolve to Module titles, `Example service` and `Example
-record` to this Module's nodes, and `src/example/` to the entry the service binds. Nesting asserts
-that Example owns both nodes and that the service binds its entry; the labelled edges match the
-`relates` declarations below and the unlabelled edge between the two Modules matches the `uses`. A
-Module with more structure may draw its inside and its outside in two diagrams. Checked diagrams
-use only the D2 semantic subset and declared static relations; the look is the publisher's.
+The overview diagram is checked. It answers one question: how Example is built and how it meets
+its provider. The labels resolve as follows:
 
-The workflow is `d2 illustrative`: its steps and progression explain behaviour, not declared
-static relations. Its lanes show who does each step, and an edge between lanes is a hand-off, which
+- `Example` and `Provider` resolve to Module titles.
+- `Example service` and `Example
+record` resolve to this Module's nodes.
+- `src/example/` resolves to the entry the service binds.
+
+Nesting asserts that Example owns both nodes. Nesting also asserts that the service binds its
+entry. The labelled edges match the `relates` declarations below. The unlabelled edge between the
+two Modules matches the `uses`. A Module with more structure may draw its inside and its outside
+in two diagrams. Checked diagrams use only the D2 semantic subset and declared static relations.
+The look is the publisher's.
+
+The workflow is `d2 illustrative`. Its steps and progression explain behaviour, not declared
+static relations. Its lanes show who does each step. An edge between lanes is a hand-off, which
 is why a process among several participants needs no sequence lifelines. Illustrative views carry
-no authority beyond the surrounding prose and never substitute for declaring load-bearing
-collaborations. How the Module fits with the rest is part of its explanation, not a separate list
-of relationships.
+no authority beyond the surrounding prose. Illustrative views never substitute for declaring
+load-bearing collaborations. How the Module fits with the rest is part of its explanation, not a
+separate list of relationships.
 
 ## Paired metadata
 
@@ -1061,14 +1449,14 @@ of relationships.
 }
 ````
 
-The `uses` entry selects the provider's entry and the document explaining `concept.thing`, which
-satisfies the context requirement of relating to `module.provider`. The `Provider` label in the
-diagram resolves because the provider Module's title is `Provider`.
+The `uses` entry selects the provider's entry and the document explaining `concept.thing`.
+This selection satisfies the context requirement of relating to `module.provider`. Because the
+provider Module's title is `Provider`, the `Provider` label in the diagram resolves.
 
 ## Glossary entry
 
-Example's concept is an entry of the project glossary, which names Example as its owner and the
-anchor above as its explanation:
+Example's concept is an entry of the project glossary. The glossary entry names Example as its
+owner and the anchor above as its explanation:
 
 ````json
 {
@@ -1107,10 +1495,14 @@ Use both parts of [Spec writing guidelines](../writing.md):
 [Writing guidance](../module.md#precise-obligations) for choosing and explaining the situation.
 
 A scenario belongs to the Module owning its defining document. It may describe boundary use or an
-internal verification situation. It is not a separate Spec kind, document owner or context filter.
+internal verification situation. It is not any of these:
+
+- A separate Spec kind.
+- A document owner.
+- A context filter.
 
 Define it only in an `implementation` document, never in `module.md` or a `module`-role topic.
-Register the reading path and write its paired metadata with `schema_version: 3`, the owner's
+Register the reading path. Write its paired metadata with `schema_version: 3`, the owner's
 identity and `document.role: implementation`. The [required format](../format.md) applies.
 
 ````markdown
@@ -1126,14 +1518,20 @@ identity and `document.role: implementation`. The [required format](../format.md
 [Explain relevant limits, the triggering interface or unresolved facts in ordinary prose.]
 ````
 
-Write separate scenarios for situations whose successful, failed, repeated or concurrent outcomes
-differ. Put a situation's guarantees in its own steps or explanation; define a Module-wide
-obligation once as a requirement and link to it.
+When situations differ in any of these outcomes, write separate scenarios:
+
+- Successful outcomes.
+- Failed outcomes.
+- Repeated outcomes.
+- Concurrent outcomes.
+
+Put a situation's guarantees in its own steps or explanation. Define a Module-wide obligation once
+as a requirement and link to it.
 
 Identities stay stable across title and path changes. A test names the scenario identity **in the
-test source**; reading content never lists verifying tests. Publication exposes the identity as an
+test source**. Reading content never lists verifying tests. Publication exposes the identity as an
 anchor.
 
 Querying a scenario selects its owner's entire context, including both members of every owned and
-selected document. It never trims to this fragment, and never selects the consumer that happened to
+selected document. It never trims to this fragment. It never selects the consumer that happened to
 read it.

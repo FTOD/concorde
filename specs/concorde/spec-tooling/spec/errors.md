@@ -1,20 +1,26 @@
 # Spec tooling errors
 
 [Spec tooling](../module.md) reports every error with its own type, independent of the rest of
-the [Concorde Framework](../../module.md): the Framework's
+the [Concorde Framework](../../module.md). The Framework's
 [error chain](../../glossary.json#concept.error-chain) is built on top of Spec tooling, never
-inside it. This document defines that type exactly, as the [Spec core](module.md) implements
-it in `concorde.spec.errors` and as every command of Spec tooling and the
-[Spec MCP server](../spec-mcp/module.md) return it.
+inside it. This document defines that type exactly. The [Spec core](module.md) implements
+it in `concorde.spec.errors`. Every command of Spec tooling and the
+[Spec MCP server](../spec-mcp/module.md) return that type.
 
 ## The error record
 
 Every failure raises a `SpecError` or one of its subclasses (`TypedDataError`, `ContractError`,
 `FrontMatterError`, `DeclarationError`, `DiagramError`, `DocsiteTemplateError` and the
 [Spec](../../glossary.json#concept.spec) MCP server's `ToolError`). Besides a stable code and a
-concrete message, each carries where the error is, why it is an error, how to fix it and what caused
-it, so that its caller can reason about it without reading Spec tooling's code. Its `record()` is
-the data form below.
+concrete message, each carries these details:
+
+- Where the error is.
+- Why it is an error.
+- How to fix it.
+- What caused it.
+
+These details let its caller reason about it without reading Spec tooling's code.
+Its `record()` is the data form below.
 
 ```concorde-contract
 {
@@ -153,22 +159,30 @@ Where the record appears:
 | `result.load_error` of `spec-validation` | why the configuration, registry or [Protocol binding](../../glossary.json#concept.protocol-binding) could not be loaded; the `CONCORDE-SOURCE-008` finding repeats its message, reason and remediation |
 | the exception a caller of the Python interface catches | the same fields as attributes, `record()` and `describe()`, a one-paragraph rendering |
 
-A failure the Spec tooling does not anticipate still becomes a record, with the code
-`unexpected_error`, the exception's type and message, and the source location where it was raised.
+A failure the Spec tooling does not anticipate still becomes a record with these details:
+
+- The code `unexpected_error`.
+- The exception's type and message.
+- The source location where it was raised.
+
 An operating-system error becomes a `system_error` cause with the path concerned.
 
-Findings are not errors. A finding is a diagnostic of the Specs that `spec-validation` reports while
-it succeeds in diagnosing; an error is a call or command that could not do its work. A refused load
-turns the fatal findings into causes, each with its check's statement as its reason.
+Findings are not errors. A finding is a diagnostic of the Specs that
+`spec-validation` reports while it succeeds in diagnosing. An error is a call or command that could not do its
+work. A refused load turns the fatal findings into causes. Each of these causes has its check's
+statement as its reason.
 
 ## Codes
 
-The error type belongs to the spec part alone: no [Module](../../glossary.json#concept.module) of another part subclasses it or registers
-codes with it, since a part that depends on nothing cannot be extended by parts that depend on
-others. A Module of another part that receives a Spec tooling error, such as a Method step whose
-grant computation refused, translates it into an [error chain](../../glossary.json#concept.error-chain)
-link. The reason and remediation below are the defaults; a call site gives more specific ones when
-it knows more.
+The error type belongs to the spec part alone. No [Module](../../glossary.json#concept.module) of
+another part subclasses it. No Module of another part registers codes with it.
+These limits follow because a part that depends on nothing cannot be extended by parts that
+depend on others.
+When a Module of another part receives a Spec tooling error, it translates the error into an
+[error chain](../../glossary.json#concept.error-chain) link.
+An example is a Method step whose grant computation refused.
+The reason and remediation below are the defaults. When a call site knows more, it gives more
+specific ones.
 
 | Code | Reason | Remediation |
 | --- | --- | --- |
@@ -213,17 +227,25 @@ it knows more.
 
 ### req.spec.error-detail — Every error explains itself
 
-Every error Spec tooling raises SHALL carry a registered code, a concrete message naming the values concerned, its location when one applies, the reason it is an error and a remediation.
+Every error Spec tooling raises SHALL carry these details:
+
+- A registered code.
+- A concrete message naming the values concerned.
+- When a location applies, the error's location.
+- The reason it is an error.
+- A remediation.
 
 ### req.spec.error-causes — No cause is dropped
 
-An error that results from other errors, such as a refused load with several fatal problems or an unreadable file, SHALL carry each of them as a cause.
+When an error results from other errors, such as a refused load with several fatal problems or an
+unreadable file, that error SHALL carry each of them as a cause.
 
 ### req.spec.error-independent — Spec tooling has its own error type
 
 Spec tooling SHALL NOT depend on any other Module of Concorde to report its errors.
 
-Other Modules translate Spec tooling's record into their own error types; the Operations turn it into a link of the Framework's error chain.
+Other Modules translate Spec tooling's record into their own error types. The Operations turn it
+into a link of the Framework's error chain.
 
 ## Scenarios
 
@@ -243,11 +265,14 @@ Other Modules translate Spec tooling's record into their own error types; the Op
 
 - GIVEN the error record schema and the code table of `concorde.spec.errors`
 - WHEN they are compared with this document
-- THEN the schema equals the contract's schema and the code table equals the table above
+- THEN the schema equals the contract's schema
+- AND the code table equals the table above
 
 ### scenario.spec.error-every-cause — A refused load names every fatal problem
 
 - GIVEN a registry whose two Modules name entries that do not exist
 - WHEN a repository is opened
-- THEN the error says how many fatal problems there are and carries each as a cause
-- AND each cause names its path and quotes the statement of the Protocol check it fails
+- THEN the error says how many fatal problems there are
+- AND the error carries each as a cause
+- AND each cause names its path
+- AND each cause quotes the statement of the Protocol check it fails

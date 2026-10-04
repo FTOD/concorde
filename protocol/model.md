@@ -2,13 +2,17 @@
 
 This chapter defines every kind of thing a specification may declare. [Relations](relations.md)
 defines how they may be connected. The machine-readable vocabulary of both is
-[`model.yaml`](model.yaml); the decision procedures are in [Checks](checks.md).
+[`model.yaml`](model.yaml). The decision procedures are in [Checks](checks.md).
 
 Each node type exists because a human reader needs the thing it names explained, a harness needs
-it to compute a boundary, or both; each section says which.
+it to compute a boundary, or both. Each section says which.
 
-The model has **seven node types** and three **value types**. A value type has no identity, no
-owner and no explanation, because the specification makes no promise about it.
+The model has **seven node types** and three **value types**. Because the specification makes no
+promise about a value type, it has:
+
+- No identity.
+- No owner.
+- No explanation.
 
 ## Common obligations
 
@@ -20,15 +24,19 @@ owner and no explanation, because the specification makes no promise about it.
 | explanation | Nonempty prose in a document the owner owns; where it lives depends on the node type |
 
 An ID prefix does not establish ownership. Titles and paths may change without changing identity.
-An explanation cannot be outsourced: it is never a URL or a path into another document.
+An explanation cannot be outsourced. It is never a URL or a path into another document.
 
-Nodes are declared at one of three sites. A **concept** is an entry of the project
-[glossary](#the-glossary), which names its owner and points to its explanation in a document that
-owner owns. A **realization** is a record in a document's metadata and points to its explanation
-with a local `meaning` anchor. **Reading-declared** nodes (`requirement`, `scenario`, `contract`)
-are located by reading syntax, and their defining section is their explanation. A Module and the
-documents it owns are declared in the `module` block of its entry's metadata, and mirrored in the
-project registry.
+Nodes are declared at one of three sites:
+
+- A **concept** is an entry of the project [glossary](#the-glossary). The entry names its owner.
+  It points to its explanation in a document that owner owns.
+- A **realization** is a record in a document's metadata. The record points to its explanation
+  with a local `meaning` anchor.
+- **Reading-declared** nodes (`requirement`, `scenario`, `contract`) are located by reading syntax.
+  Their defining section is their explanation.
+
+A Module and the documents it owns are declared in the `module` block of its entry's metadata.
+They are mirrored in the project registry.
 
 ## module
 
@@ -38,62 +46,105 @@ project registry.
 owner, independent of how files happen to be arranged.
 
 **Boundaries.** A Module is what a task is bound to. Its read sets and write sets are all computed
-from it, so "who promises this" and "what a task on it may read and write" have one answer that
-survives file movement. The Protocol accepts over-inclusion in read sets deliberately, because a
-reader cannot detect meaning that was silently withheld.
+from it. Thus, "who promises this" and "what a task on it may read and write" have one answer that
+survives file movement. Because a reader cannot detect meaning that was silently withheld, the
+Protocol deliberately accepts over-inclusion in read sets.
 
-**Fields.** `id` (the entry's owner) and `title`, declared in the entry's `module` block and
-mirrored in the registry. Its owner is itself. Its explanation is its entry document, which
-opens with its purpose.
+**Fields.** The entry's `module` block declares `id` (the entry's owner) and `title`.
+The registry mirrors these fields. Its owner is itself. Its explanation is its entry document.
+The entry document opens with its purpose.
 
 **Constraints.** A Module MUST own exactly one document whose role is `module` and whose reading
-path ends in `module.md`; that document is its **entry**. A Module need not correspond to a package,
-directory, service or process, and its realization may span, share or omit physical files. A
-composite Module may bind no implementation of its own, and a composite Module may also bind files,
+path ends in `module.md`. That document is its **entry**. A Module need not do any of these:
+
+- Correspond to a package.
+- Correspond to a directory.
+- Correspond to a service.
+- Correspond to a process.
+
+Its realization may do any of these:
+
+- Span physical files.
+- Share physical files.
+- Omit physical files.
+
+A composite Module may bind no implementation of its own. A composite Module may also bind files,
 such as end-to-end tests of its own promises.
 
 ## document
 
 **What it is.** A reading Markdown file **paired** with its metadata file. The pair is one node.
 
-**Understanding.** Prose and the declarations it justifies cannot be separated, so metadata never
-becomes a second, unreviewed specification.
+**Understanding.** Prose and the declarations it justifies cannot be separated.
+Thus, metadata never becomes a second, unreviewed specification.
 
-**Boundaries.** The pair is the unit of ownership, selection and writing. A boundary always
-contains both members or neither.
+**Boundaries.** The pair is the unit of:
 
-**Fields.** `id`, `owner` and `role`, stated in the metadata and agreeing with the owner's `owns`.
-`role` is exactly `module` or `implementation`, with no default. A document explains itself; it has
-no separate explanation.
+- Owning the pair.
+- Selecting the pair.
+- Writing the pair.
 
-- `module` — the entry and explanatory topics: the responsibility, its correct use, its design and
-  its collaborations.
+A boundary always contains both members or neither.
+
+**Fields.** `id`, `owner` and `role` are stated in the metadata and agree with the owner's `owns`.
+`role` is exactly `module` or `implementation`, with no default. A document explains itself.
+It has no separate explanation.
+
+- `module` — the entry and explanatory topics cover:
+  - The Module's responsibility.
+  - The Module's correct use.
+  - The Module's design.
+  - The Module's collaborations.
 - `implementation` — the precise requirements, scenarios and canonical contracts. These are
-  specifications, not source code, and are reading content like any other document.
+  specifications, not source code. They are reading content like any other document.
 
-**Constraints.** Both members have the same owner, identity and inclusion provenance. Registering
-the reading path registers its exact companion. Role is document organization only: it MUST NOT act
-as an ownership level, a context filter or a separate Spec kind.
+**Constraints.** Both members share:
 
-The two roles serve understanding: explanation is not buried under acceptance cases, and precise
-obligations are not diluted into prose.
+- The same owner.
+- The same identity.
+- The same inclusion provenance.
+
+Registering the reading path registers its exact companion. Role is document organization only.
+Role MUST NOT act as any of these:
+
+- An ownership level.
+- A context filter.
+- A separate Spec kind.
+
+The two roles serve understanding. Explanation is not buried under acceptance cases.
+Precise obligations are not diluted into prose.
 
 ## concept
 
 **What it is.** One named meaning a reader would get wrong without its definition, shared by more
-than one Module: a domain word, a boundary actor, an external standard, a participant in a
-collaboration. Its title is the **term** the specification uses for it.
+than one Module. A concept can be:
+
+- A domain word.
+- A boundary actor.
+- An external standard.
+- A participant in a collaboration.
+
+Its title is the **term** the specification uses for it.
 
 **Understanding.** Meaning is what crosses Module boundaries. A concept gives a word one owner and
-one canonical sentence, and the whole project shares one list of them, so a reader finds one
-meaning per word everywhere, and specializing, retiring and colliding are declarations a tool checks
-instead of prose conventions.
+one canonical sentence. The whole project shares one list of them, so a reader finds one meaning
+per word everywhere. A tool checks these as declarations instead of prose conventions:
+
+- Specializing a concept.
+- Retiring a concept.
+- Colliding concepts.
 
 **Boundaries.** A reader receives the definition of every concept its documents link and of every
-concept its declarations name, never the whole glossary; see [Context](context.md#term-selection).
-The definition is one sentence; the extended explanation lives in a document of the owner and is
-read only through a `uses` or `contains` of the owner, or an `includes`. `referenced-by` makes the
-impact of changing a definition computable.
+concept its declarations name, never the whole glossary.
+
+See [Context](context.md#term-selection). The definition is one sentence.
+The extended explanation lives in a document of the owner. It is read only through one of these:
+
+- A `uses` of the owner.
+- A `contains` of the owner.
+- An `includes`.
+
+`referenced-by` makes the impact of changing a definition computable.
 
 **Fields.** One entry of the glossary:
 
@@ -107,52 +158,60 @@ impact of changing a definition computable.
 | `retired` | Optional object `{"reason": "..."}`; the term is kept only for migration readers |
 | `external_conflict` | Optional prose naming a conflicting usage outside this project |
 
-The entry also declares the relations whose source is the concept: `narrows`, `supersedes`,
-`contrasts` and `relates`; see [Relations](relations.md#meaning).
+The entry also declares `narrows`, `supersedes`, `contrasts` and `relates` relations whose source
+is the concept. See [Relations](relations.md#meaning).
 
 **Which words are concepts.** A word earns a glossary entry only when both hold:
 
 - **It is not common sense.** Its meaning in the project is narrower than, or different from,
-  ordinary usage, so a reader who takes the word in its ordinary sense would misread it.
+  ordinary usage. Thus, a reader who takes the word in its ordinary sense would misread it.
 - **It crosses a Module boundary.** A Module other than its owner uses it. The words of the Module
   that declares the glossary are the project's core terms and are exempt from this condition.
 
-Any other word is written in its ordinary sense, or, when the owner needs it in a narrower one,
-explained in the owner's own document where it is first used. The name of an operation, a command,
-a rule or a component is not a concept, and neither is a record whose shape a contract already
-gives, unless other Modules reason about it. `CHK.concept.local` reports a concept no other Module
-uses; whether a word is common sense no check decides.
+Any other word is written in its ordinary sense. When the owner needs it in a narrower sense, the
+owner's own document explains it where it is first used.
+Unless other Modules reason about them, these are not concepts:
 
-**Constraints.** A concept MUST NOT bind implementation and MUST NOT stand for another Module; a
-collaboration with another Module is a `uses` or `contains` relation, and a naming collision with
-one is a `contrasts` relation.
+- The name of an operation.
+- The name of a command.
+- The name of a rule.
+- The name of a component.
+- A record whose shape a contract already gives.
 
-**Who owns a word.** Owning a concept means being entitled to change its meaning: its entry lies in
-the owner's write set, and a change concerns every Module whose context holds the definition.
-Ownership does not mean having invented the word or using it most. Every concept has exactly one
-owner, chosen as follows:
+`CHK.concept.local` reports a concept no other Module uses. No check decides whether a word is
+common sense.
+
+**Constraints.** A concept MUST NOT bind implementation. A concept MUST NOT stand for another
+Module. A collaboration with another Module is a `uses` or `contains` relation.
+A naming collision with another Module is a `contrasts` relation.
+
+**Who owns a word.** Owning a concept means being entitled to change its meaning.
+Its entry lies in the owner's write set. A change concerns every Module whose context holds the
+definition. Ownership does not mean inventing the word or using it most. Every concept has exactly
+one owner, chosen as follows:
 
 - A word of a provider's own interface belongs to the provider.
 - A word several Modules use with one meaning belongs to their nearest common ancestor in the
   composition tree, or to the root. When the owner is hard to name, move the word one level up.
 - A project has one meaning per term. A word two Modules use differently needs two terms, such as
-  `Session round` and `Headless round`, connected by `contrasts` or `narrows` when a reader could
-  confuse them.
+  `Session round` and `Headless round`. When a reader could confuse them, the terms are connected
+  by `contrasts` or `narrows`.
 
 ## The glossary
 
-**What it is.** The project's one JSON file of concept entries. It is not a node and has no owner:
-each of its entries has one. A project declares it by the `glossary` field of its root Module's
-`module` block; see [Required format](format.md#glossary). A project without concepts needs no
-glossary.
+**What it is.** The project's one JSON file of concept entries. It is not a node.
+It has no owner. Each of its entries has one. A project declares it by the `glossary` field of its
+root Module's `module` block. See [Required format](format.md#glossary).
+A project without concepts needs no glossary.
 
 **Understanding.** A reader looks words up in one place and never meets two definitions of one
-term. A publisher renders the glossary as a page, and every term link leads there.
+term. A publisher renders the glossary as a page. Every term link leads there.
 
-**Boundaries.** The glossary is the declaration site of every concept, so it is a shared file with
-entry-level ownership: a task bound to a Module may change the entries that Module owns and add
-entries naming it as owner, and nothing else in the file. See
-[Boundaries](boundaries.md#the-glossary). Definitions reach a reader one by one, as
+**Boundaries.** The glossary is the declaration site of every concept.
+Thus, it is a shared file with entry-level ownership. A task bound to a Module may change the
+entries that Module owns and add entries naming it as owner, and nothing else in the file.
+
+See [Boundaries](boundaries.md#the-glossary). Definitions reach a reader one by one, as
 [term selection](context.md#term-selection) chooses them, never as the whole file.
 
 ## realization
@@ -164,22 +223,27 @@ Module.
 names.
 
 **Boundaries.** Its entries are the Module's `ImplementationScope`: the code a task bound to the
-Module may be given to change. Only paths that exist are bound; a new file is created before it is
+Module may be given to change. Only paths that exist are bound. A new file is created before it is
 bound, or below a bound directory.
 
 **Fields.** `id`, `type`, `title`, `meaning`, `entries` (exact project-relative paths, or directory
 prefixes ending in `/`).
 
 **Constraints.** Every entry MUST exist. Within a Module no two realizations list the same
-entry, and the longest covering entry determines which realization a file belongs to. A directory
+entry. The longest covering entry determines which realization a file belongs to. A directory
 entry binds present and future regular files below it under the tool's deterministic exclusion
-rule. No document member, generated output or project-control record may be bound, and a bound
-directory MUST NOT contain a document member. Several Modules MAY bind the same path; each keeps
-its own promises, and a change concerns all of them.
+rule. None of these may be bound:
 
-A realization records what exists, never an intent: a path that does not exist yet is not bound.
-On the read side, listing a path grants its **name**; contents are readable or writable only through a task
-boundary. See [Boundaries](boundaries.md).
+- A document member.
+- Generated output.
+- A project-control record.
+
+A bound directory MUST NOT contain a document member. Several Modules MAY bind the same path.
+Each keeps its own promises. A change concerns all of them.
+
+A realization records what exists, never an intent. A path that does not exist yet is not bound.
+On the read side, listing a path grants its **name**. Contents are readable or writable only
+through a task boundary. See [Boundaries](boundaries.md).
 
 ## requirement
 
@@ -188,48 +252,65 @@ boundary. See [Boundaries](boundaries.md).
 **Understanding.** A Module-wide promise is stated once, exactly, and survives the churn of the
 situations that demonstrate it.
 
-**Boundaries.** Its identity lets reviews, tasks and evidence name an exact promise.
+**Boundaries.** Its identity lets an exact promise be named in:
 
-**Constraints.** Declared by a heading in an `implementation` document; the heading supplies `id`
-and title, and the section is its explanation. Its statement is one sentence containing `SHALL` or
-`SHALL NOT` exactly once. Two obligations under one identity make partial satisfaction
-undecidable, so they MUST be split.
+- Reviews of the promise.
+- Tasks concerning the promise.
+- Evidence of the promise.
+
+**Constraints.** A heading in an `implementation` document declares a requirement.
+The heading supplies `id` and title. The section is its explanation.
+Its statement is one sentence containing `SHALL` or `SHALL NOT` exactly once.
+Because two obligations under one identity make partial satisfaction undecidable, they MUST be
+split.
 
 ## scenario
 
-**What it is.** One concrete situation with preconditions, a trigger and a promised outcome.
+**What it is.** One concrete situation with:
 
-**Understanding.** A concrete situation shows what a requirement means in practice; the step
-grammar keeps a situation from quietly growing into a Module-wide obligation.
+- Preconditions of the situation.
+- A trigger for the situation.
+- A promised outcome of the situation.
 
-**Boundaries.** A requirement cannot be executed; a scenario is what tests declare they verify. A
-task focused on a scenario is bound to the scenario's owner and receives that owner's whole
-boundary.
+**Understanding.** A concrete situation shows what a requirement means in practice.
+The step grammar keeps a situation from quietly growing into a Module-wide obligation.
 
-**Constraints.** Declared by a heading in an `implementation` document; the heading supplies `id`
-and title. Situations with different successful, failed, repeated or concurrent outcomes get their
-own scenarios. A Module-wide obligation is defined once as a requirement and linked, never restated
-in steps.
+**Boundaries.** A requirement cannot be executed. A scenario is what tests declare they verify.
+A task focused on a scenario is bound to the scenario's owner.
+The task receives that owner's whole boundary.
+
+**Constraints.** A heading in an `implementation` document declares a scenario.
+The heading supplies `id` and title. When their outcomes differ in any of these ways, situations
+get their own scenarios:
+
+- Successful outcomes.
+- Failed outcomes.
+- Repeated outcomes.
+- Concurrent outcomes.
+
+A Module-wide obligation is defined once as a requirement and linked, never restated in steps.
 
 ## contract
 
 **What it is.** The canonical, versioned agreement for a shared interface: an API, command,
 protocol, event or file boundary.
 
-**Understanding.** A shared interface is stated once, with one owner, and every participant says
-which version it conforms to.
+**Understanding.** A shared interface is stated once, with one owner.
+Every participant says which version it conforms to.
 
 **Boundaries.** Participants are declared, so the impact of a contract change and the multi-Module
-write boundary it needs are computable. Without a version, a participant bound to an older meaning
-is undetectable.
+write boundary it needs are computable.
+
+Without a version, a participant bound to an older meaning is undetectable.
 
 **Fields.** `id`, `version` (positive integer), `schema`, `semantics`, `example`, all inside one
 `concorde-contract` fence in an `implementation` document. Its explanation is `semantics` together
 with the prose of the section containing the fence.
 
-**Constraints.** The schema vocabulary is explicit and offline: a schema MUST NOT load Spec
-documents or remote resources. The example MUST satisfy the schema. A behaviour or schema change
-increments `version`, and every participant is reconciled atomically.
+**Constraints.** The schema vocabulary is explicit and offline.
+A schema MUST NOT load Spec documents or remote resources. The example MUST satisfy the schema.
+A behaviour or schema change increments `version`. For that change, every participant is reconciled
+atomically.
 
 ## Value types
 

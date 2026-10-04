@@ -31,16 +31,21 @@ Concrete situations of the [Spec MCP server](module.md). Exact tools and results
 
 - GIVEN a root whose [Module](../../glossary.json#concept.module) A binds `src/a/` and uses Module B
 - WHEN the client calls `boundary` with Modules `["module.a"]` and [task type](../../glossary.json#concept.task-type) `implement`
-- THEN the result equals the [context identity](../../glossary.json#concept.context-identity) and entries of Spec core's grant for the same root, Module and task type
-- AND `src/a/` is listed as `rw` and A's and B's selected documents as `ro`
-- BUT no file is written and no grant is stored
+- THEN the result equals the [context identity](../../glossary.json#concept.context-identity) and
+  entries of Spec core's grant for the same root, Module and task type
+- AND `src/a/` is listed as `rw`
+- AND A's and B's selected documents are listed as `ro`
+- BUT no file is written
+- BUT no grant is stored
 
 ### scenario.spec-mcp.boundary-task-types — Every task type is offered
 
 - GIVEN a root whose [Module](../../glossary.json#concept.module) A uses Module B
 - WHEN the client lists the tools
 - THEN `boundary` offers exactly the eight [task types](../../glossary.json#concept.task-type) for `task_type`
-- AND a `boundary` call with task type `review-architecture` returns Spec core's grant for the same root, Module and task type, which writes nothing
+- AND a `boundary` call with task type `review-architecture` returns Spec core's grant for the
+  same root, Module and task type
+- AND the call writes nothing
 
 ### scenario.spec-mcp.boundary-refused — A grant Spec core refuses
 
@@ -52,8 +57,15 @@ Concrete situations of the [Spec MCP server](module.md). Exact tools and results
 ### scenario.spec-mcp.queries — Reading the model
 
 - GIVEN a root with several registered Modules
-- WHEN the client calls `modules`, `module` for one of them, `context` for it and `impact` for one of its bound files
-- THEN each result equals Spec core's registry records, Module descriptor, [Spec context](../../glossary.json#concept.spec-context) records and binding Modules for the same root
+- WHEN the client calls `modules`
+- AND the client calls `module` for one of them
+- AND the client calls `context` for it
+- AND the client calls `impact` for one of its bound files
+- THEN the `modules` result equals Spec core's registry records for the same root
+- AND the `module` result equals Spec core's Module descriptor for the same root
+- AND the `context` result equals Spec core's [Spec context](../../glossary.json#concept.spec-context)
+  records for the same root
+- AND the `impact` result equals Spec core's binding Modules for the same root
 - AND every path in the results is project-relative
 
 ### scenario.spec-mcp.validate — Validating through the server
@@ -65,13 +77,16 @@ Concrete situations of the [Spec MCP server](module.md). Exact tools and results
 
 ### scenario.spec-mcp.current-specs — A Spec change is seen at once
 
-- GIVEN a server that has answered `context` for Module A
-- WHEN a document A selects is changed on disk and `context` is called again
+- GIVEN a server that answered `context` for Module A
+- WHEN a document A selects changes on disk
+- AND `context` is called again
 - THEN the second result carries the new digest and a different context identity
 
 ### scenario.spec-mcp.worktree-answers — Two worktrees answer differently
 
-- GIVEN one server rooted at the primary worktree and one rooted at a task worktree in which a new file was created and bound to Module A
+- GIVEN one server rooted at the primary worktree
+- AND one server rooted at a task worktree
+- AND a new file was created and bound to Module A in the task worktree
 - WHEN both are asked for the `implement` boundary of Module A
 - THEN only the task worktree's answer lists the new file
 - AND the two answers carry different context identities
@@ -81,7 +96,8 @@ Concrete situations of the [Spec MCP server](module.md). Exact tools and results
 ### scenario.spec-mcp.outside-root — Paths outside the root are refused
 
 - GIVEN a server rooted at a worktree
-- WHEN the client calls `impact` with a path containing `..` that leaves the root, an absolute path in another directory, or a path through a symbolic link that points outside the root
+- WHEN the client calls `impact` with a path containing `..` that leaves the root, an absolute
+  path in another directory, or a path through a symbolic link pointing outside the root
 - THEN each call fails with `outside_root`
 - AND its error names what the path resolved to
 
@@ -95,6 +111,7 @@ Concrete situations of the [Spec MCP server](module.md). Exact tools and results
 ### scenario.spec-mcp.malformed-call — A malformed call is refused and the session goes on
 
 - GIVEN a server rooted at a worktree
-- WHEN the client sends a `tools/call` whose params are not an object, whose tool name is not a string, whose `arguments` are present but not an object, or whose optional `target` is `null`
+- WHEN the client sends a `tools/call` with params that are not an object, a tool name that is
+  not a string, present `arguments` that are not an object, or optional `target` set to `null`
 - THEN each call fails with `invalid_input` naming the argument
 - AND the next well-formed call on the same connection is answered

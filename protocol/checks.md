@@ -3,13 +3,18 @@
 Every check has a stable identity, a decidable statement and a strictness. The identities listed
 here are exactly those referenced by [`model.yaml`](model.yaml) and the other chapters.
 
-Checks serve boundaries directly: a harness can only compute a trustworthy boundary from a
-specification whose ownership, declaration sites and selections are structurally sound. They serve
-understanding only indirectly, by keeping explanations attached to what they explain; no check
-proves that an explanation is understandable.
+Checks serve boundaries directly. Only from a specification that satisfies these conditions can a
+harness compute a trustworthy boundary:
 
-Strictness: a violation of an **error** check blocks structural conformance; a violation of a
-**warning** check is reported and does not block.
+- Its ownership is structurally sound.
+- Its declaration sites are structurally sound.
+- Its selections are structurally sound.
+
+Checks serve understanding only indirectly, by keeping explanations attached to what they explain.
+No check proves that an explanation is understandable.
+
+Strictness: a violation of an **error** check blocks structural conformance. A violation of a
+**warning** check is reported. A violation of a **warning** check does not block.
 
 ## Nodes
 
@@ -83,9 +88,13 @@ Strictness: a violation of an **error** check blocks structural conformance; a v
 | `CHK.verifies.resolves` | Every verified scenario identity exists. | error |
 | `CHK.evidence.no-spec-coverage` | Reading content contains no test-declaration syntax outside fences. | error |
 
-**Name normalization** for `CHK.node.title` and `CHK.contrasts.required`: Unicode NFKC, case
-folding, and every run of whitespace, hyphens and underscores treated as one space, trimmed.
-`CHK.node.title` compares concepts with each other; `CHK.contrasts.required` compares concepts with
+**Name normalization** for `CHK.node.title` and `CHK.contrasts.required` applies these operations:
+
+- Apply Unicode NFKC.
+- Apply case folding.
+- Treat every run of whitespace, hyphens and underscores as one space, trimmed.
+
+`CHK.node.title` compares concepts with each other. `CHK.contrasts.required` compares concepts with
 Modules, never a concept with its own Module.
 
 ## Views
@@ -101,8 +110,8 @@ Modules, never a concept with its own Module.
 ## Style
 
 These checks measure the decidable part of [Sentence style](style.md) in the reading of every
-document and in every concept definition, as that chapter's
-[What a program measures](style.md#what-a-program-measures) states.
+document and in every concept definition. That chapter's
+[What a program measures](style.md#what-a-program-measures) states this scope.
 
 | Identity | Statement | Strictness |
 | --- | --- | --- |
@@ -133,19 +142,25 @@ These checks are weaker than the obligations they serve:
 | `CHK.style.sentence-length` | That a sentence of 35 words or fewer is short enough, or that a sentence carries one fact. |
 | `CHK.style.one-obligation` | That a sentence with one keyword carries one obligation. A sentence that joins two obligations under one keyword is not reported. |
 
-Not checked at all: whether a requirement is true of the implementation, how an entry is
-organized, whether reading is sufficient for its reader, whether a scenario is worth having, and whether an illustrative block is
-accurate.
+The checks do not check any of the following:
+
+- Whether a requirement is true of the implementation.
+- How an entry is organized.
+- Whether reading is sufficient for its reader.
+- Whether a scenario is worth having.
+- Whether an illustrative block is accurate.
 
 ## Tool obligations
 
 These are requirements on tools rather than checks of declarations:
 
-- Context selection is one level and never follows a selected Module's own relations; term
-  selection closes over the glossary only.
-- Documents are registered, never discovered from the filesystem or links.
+- Context selection is one level. Context selection never follows a selected Module's own relations.
+  Term selection closes over the glossary only.
+- Documents are registered. Documents are never discovered from the filesystem or links.
 - Coverage is read from test declarations without executing tests.
 - Derived views are never written into reading files.
 - A harness keeps every task boundary within the composition rules of [Boundaries](boundaries.md):
-  writes only within write sets of bound Modules, write implies read, reads only within their read
-  sets, and task material adds no source.
+  - The harness writes only within write sets of bound Modules.
+  - Write implies read.
+  - The harness reads only within their read sets.
+  - Task material adds no source.

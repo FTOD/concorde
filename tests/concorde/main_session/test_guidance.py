@@ -632,8 +632,8 @@ class GuidanceTests(unittest.TestCase):
                 text,
             )
             self.assertIn(
-                "(`code`, `message`, `reason`, `location`, `remediation`, `causes`), which is "
-                "no link",
+                "(`code`, `message`, `reason`, `location`, `remediation`, `causes`). This record "
+                "is no link",
                 text,
             )
             self.assertIn(
@@ -641,13 +641,17 @@ class GuidanceTests(unittest.TestCase):
                 text,
             )
             self.assertIn(
-                "translate it into a `component` link and save that in a JSON file: `level` "
-                "`component`, `actor` `Spec tooling (concorde <command>)`",
+                "translate it into a `component` link. Save that link in a JSON file with these "
+                "fields: - `level` set to `component`. - `actor` set to `Spec tooling (concorde "
+                "<command>)`.",
                 text,
             )
             self.assertIn(
-                "as `causes` the record's causes translated the same way. Then name that "
-                "file with `--error-file`",
+                "- `causes` holding the record's causes translated the same way.",
+                text,
+            )
+            self.assertIn(
+                "Otherwise, use `environment`. Then name that file with `--error-file`.",
                 text,
             )
 

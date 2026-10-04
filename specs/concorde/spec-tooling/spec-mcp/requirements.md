@@ -1,7 +1,7 @@
 # Spec MCP server requirements
 
 The Module-wide obligations of the [Spec MCP server](module.md). The headings group them by
-subject; each requirement belongs to the [Module](../../glossary.json#concept.module) as a whole.
+subject. Each requirement belongs to the [Module](../../glossary.json#concept.module) as a whole.
 
 ## Root
 
@@ -12,15 +12,18 @@ server root it resolved when the session started.
 
 ### req.spec-mcp.no-root-no-answer — No root, no answer
 
-The server SHALL fail every tool call with `no_root` when it could resolve no single server root.
+When the server could resolve no single server root, it SHALL fail every tool call with `no_root`.
 
 ### req.spec-mcp.root-confined — Paths stay inside the root
 
 The server SHALL refuse with `outside_root` every path argument that resolves outside the server
 root.
 
-A path resolves outside the root through `..` components, an absolute path elsewhere, or a symbolic
-link whose target lies elsewhere.
+A path resolves outside the root through any of these:
+
+- `..` components.
+- An absolute path elsewhere.
+- A symbolic link whose target lies elsewhere.
 
 ## Answers
 
@@ -30,8 +33,8 @@ Every successful tool result SHALL equal what Spec core computes for the server 
 arguments.
 
 In particular, `boundary` returns the
-[context identity](../../glossary.json#concept.context-identity) and entries of Spec core's grant,
-so the server adds no rule about what a task may read or write.
+[context identity](../../glossary.json#concept.context-identity) and entries of Spec core's grant.
+The server therefore adds no rule about what a task may read or write.
 
 ### req.spec-mcp.current-sources — Answers reflect the current Specs
 
@@ -46,9 +49,9 @@ A tool call whose request is rejected, or whose Specs a tool other than `validat
 SHALL return a tool error carrying the failure's code and no result.
 
 The failure's code is one of the server's own codes or Spec core's, as the
-[contracts](contracts.md#session) list them. `validate` reports Specs it cannot load the way
-Spec core's validation result does: with status `invalid` and an error finding that describes the
-load failure.
+[contracts](contracts.md#session) list them. For Specs it cannot load, `validate` reports the load
+failure the way Spec core's validation result does.
+The result has status `invalid` and an error finding that describes the load failure.
 
 ## Safety
 
