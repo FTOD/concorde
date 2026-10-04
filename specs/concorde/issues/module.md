@@ -183,7 +183,8 @@ there. Each write holds the primary worktree's
 [merge lock](../glossary.json#concept.merge-lock), publishes the record in the folder its status
 names and commits that one record on the primary branch, in a commit of its own whose trailer
 `Concorde-Issue` names the Issue, before it answers; a disposition that changes the status moves the
-record into the other folder in that same commit; other changes of the primary worktree, staged or not, stay as they were. So the records are
+record into the other folder in that same commit, and an archive commits the records it moves, and
+only them, in one commit; other changes of the primary worktree, staged or not, stay as they were. So the records are
 versioned with the project and, once acknowledged, are committed; a write never lands between a
 task's merge commit and the checks that decide whether the merge stays, and, where the
 coordination part is installed, while a task's merge is unfinished no write is made at all.
@@ -207,8 +208,10 @@ when no commit holds it, and the temporaries are removed. A write that moves a r
 folders publishes it in one before it removes it from the other, so a committed record whose file
 is gone while the other folder holds such a continuation is a move's leftover too: the record is
 restored where it was committed and the new file removed. Nothing is committed in recovery, because a write that
-gave no receipt recorded nothing: whoever made it was refused or never answered, and may repeat
-it. Any other change of a record, such as a deleted, edited or invalid record, was made by no
+left an uncommitted record gave no receipt and recorded nothing: whoever made it was refused or
+never answered, and may repeat it. A write killed, or whose answer was lost, after its commit did
+record its report, so a caller left without an answer reads `list` or `show` before it repeats a
+creation. Any other change of a record, such as a deleted, edited or invalid record, was made by no
 write, so recovery leaves it as it is, and only a write of that very Issue is refused, with
 `uncommitted_change`, until someone inspects and reverts it; writes of other Issues go on. Recovery
 touches nothing outside `.concorde/issues/`, and nothing there but those records and temporaries.
@@ -262,7 +265,8 @@ leave its record unchanged.
 A record lies in the folder of its status: `.concorde/issues/` while open, `.concorde/issues/closed/`
 once closed. A record that lies in the other folder is **misplaced**, such as a closed record
 committed before closed Issues had a folder of their own or one moved by hand. It is still read,
-listed, shown and written like any other, and a write leaves it in its place; `check` reports it,
+listed, shown and written like any other, and a write of it moves it into the folder of its status
+in that write's commit; `check` reports it,
 and `concorde issues archive` moves every misplaced record into its place, unchanged, in one commit
 under the merge lock. An Issue lives in exactly one place: one committed in both folders is refused
 by every read until someone removes the copy that is not its whole history.
@@ -503,22 +507,19 @@ entry of the store skips taking the lock.
 
 **The Issue store** is the only code that creates, appends to, disposes or moves an Issue record,
 and it never deletes a committed record: moving one between the folders removes it from one only
-in the commit that adds it to the other. Each file holds one identity heading and one JSON record, so no prose
-copy can drift from it, and reports are never rewritten: a later observation that classifies the
-problem differently is a new report. Each write refuses a root that is not the primary worktree,
-holds the merge lock, refuses while a task's merge is unfinished where the coordination part is
-installed, puts back what earlier writes
-left uncommitted, checks the revision its caller read against the committed record, publishes
-through a [file transaction](../glossary.json#concept.file-transaction) in the folder of the
-record's status, removes it from the other folder when it moves, syncs, and commits the record
-alone, with the path it left, with `git commit --only`, so success means the record is committed
-and a concurrent writer is never silently overwritten. A failure after publication, a commit Git refuses among
-them, puts the record back as it was and refuses the write. Reads ask Git for the records of the
-last commit, so they need no lock and see one commit's records at once. Identities are derived from
-the reporting invocation and the reporter's key rather than counted, so no allocation state is
-shared. The report and receipt shapes are registered as
-[typed-value](../glossary.json#concept.typed-value) types, `concorde-issue-report@3` and
-`concorde-issue-receipt@2`, so that another part's schema could embed one by name; Issues itself
+in the commit that adds it to the other. Each file holds the record alone, so no prose copy can
+drift from it, and reports are never rewritten: a later observation that classifies the problem
+differently is a new report. Writes are serialized by the merge lock; each puts back what earlier
+writes left uncommitted, checks the revision its caller read against the committed record and
+commits the record alone before it answers, so success means the record is committed and a
+concurrent writer is never silently overwritten, and a failure after publication puts the record
+back as it was and refuses the write. The [record file](interface.md#record-file) and the
+[store operations](interface.md#store-operations) give the exact layout, order of steps and Git
+commands. Reads ask Git for the records of the last commit, so they need no lock and see one
+commit's records at once. Identities are derived from the reporting invocation and the reporter's
+key rather than counted, so no allocation state is shared. The report and receipt shapes are
+registered as [typed-value](../glossary.json#concept.typed-value) types, so that another part's
+schema could embed one by name; Issues itself
 exchanges and checks reports, receipts and records as they are, without an envelope, and no other
 part knows the types.
 
