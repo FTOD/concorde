@@ -44,7 +44,7 @@ they accept.
 
 ### req.scaffold.rechecked — The proposal is checked again before writing
 
-The scaffold host SHALL check the proposal against the workspace again before writing, ending the run `blocked` with `stale_proposal` and every mismatch listed when it no longer fits.
+The scaffold host SHALL check the proposal against the workspace again before writing, ending the run `blocked` with `stale_proposal` and every mismatch listed, each a cause of its error, when it no longer fits.
 
 ### req.scaffold.no-overwrite — The scaffold never replaces a file
 
@@ -54,9 +54,20 @@ The scaffold host SHALL end the run `blocked` with `stale_proposal`, naming the 
 
 The scaffold host SHALL write all its changes in one [file transaction](../../glossary.json#concept.file-transaction) that is kept only when it adds no structural error.
 
+### req.scaffold.write-failed — A failed write names what was not restored
+
+The scaffold host SHALL end the run `failed` with `write_failed` when its file transaction fails for a reason other than a file changed while it was written or a new structural error, or cannot restore a file it wrote, naming every file that still holds the scaffold's content.
+
+A stale file stays `stale_proposal` and a new structural error `scaffold_invalid`, when every file
+was restored; a file the transaction could not restore makes the run `write_failed` whatever made
+the transaction fail, since the workspace is then not as before and the
+[main agent](../../glossary.json#concept.main-agent) must repair it.
+
 ### req.scaffold.parent-narrowed — A child's paths leave the parent
 
 After a scaffold, every file the parent's realizations bound SHALL be bound by exactly one of the parent and the created children, unless the proposal gave it to several children or named it, or a directory holding it, as vendored code.
+
+This holds for a realization the parent declares in any of its documents, not only its entry.
 
 Vendored code is bound by no Module
 ([req.scaffold.vendored-external](#req.scaffold.vendored-external)).

@@ -112,9 +112,10 @@ those Modules own; a changed glossary shows among the changed documents. When th
 new document of a bound Module, the worker proposes it and ends `blocked`; the Operation then
 creates each proposed document, empty and registered in its Module's `owns` and the registry
 mirror, and launches a worker once more, with the same intent and a brief naming the created
-documents, to fill them. A proposal it may not create — a Module the run is not bound to, a path
-outside the folder of that Module's entry, a file already there — refuses the whole list, since the
-change needs all of them: nothing is created, no second worker runs and the run stays `blocked`,
+documents, to fill them. A document may lie in a subfolder of the entry's folder; its one line
+links to the entry by a relative path, such as `../module.md`. A proposal it may not create — a Module the run is not bound to, a path
+outside the folder of that Module's entry, a file already there, a path proposed more than once —
+refuses the whole list, since the change needs all of them: nothing is created, no second worker runs and the run stays `blocked`,
 with `document-refused` evidence naming the reason for each refused proposal. An owned document is
 deleted only by proposing it; the Operation performs the deletion after a clean audit. A change
 spanning several Modules, such as a contract version increment, needs them all bound in one run.

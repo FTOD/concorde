@@ -4,12 +4,16 @@ with the fake ``claude``."""
 from __future__ import annotations
 
 import json
+import os
+from pathlib import Path
+from unittest.mock import patch
 
 from concorde.method.scaffold.command import SCAFFOLD_RECORD_SCHEMA
+from concorde.spec.registry import registry_command
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies
 from tests.concorde.support.adoption_case import PROPOSAL, AdoptionCase, contract
-from tests.concorde.support.brownfield_project import git
+from tests.concorde.support.brownfield_project import commit, git
 
 
 def sections(text: str) -> list[str]:
@@ -195,8 +199,16 @@ class ScaffoldTests(AdoptionCase):
             "scaffold", "--task", "adopt", "--input", survey["run_id"]
         )
         self.assertEqual("blocked", envelope["status"])
-        self.assertEqual("stale_proposal", envelope["error"]["code"])
-        self.assertIn("src/checkout/", envelope["error"]["detail"])
+        error = envelope["error"]
+        self.assertEqual("stale_proposal", error["code"])
+        self.assertIn("src/checkout/", error["detail"])
+        # Every mismatch is a cause of its own, as listed in the evidence.
+        mismatches = [e["detail"] for e in error["evidence"] if e["kind"] == "mismatch"]
+        self.assertTrue(mismatches)
+        self.assertEqual(
+            [("proposal_mismatch", item) for item in mismatches],
+            [(cause["code"], cause["detail"]) for cause in error["causes"]],
+        )
         self.assertEqual(before, git(worktree, "status", "--porcelain"))
         self.assertFalse((worktree / "specs/project/checkout").exists())
 
@@ -214,6 +226,10 @@ class ScaffoldTests(AdoptionCase):
         self.assertEqual("blocked", envelope["status"])
         self.assertEqual("stale_proposal", envelope["error"]["code"])
         self.assertIn("specs/project/checkout/", envelope["error"]["detail"])
+        self.assertEqual(
+            ["proposal_mismatch"],
+            [cause["code"] for cause in envelope["error"]["causes"]],
+        )
         self.assertEqual(
             before, git(worktree, "status", "--porcelain", "--untracked-files=all")
         )
@@ -276,6 +292,153 @@ class ScaffoldTests(AdoptionCase):
         )
         self.assertFalse((worktree / "specs/project/checkout").exists())
         self.assertFalse((worktree / "specs/project/inventory").exists())
+
+    @verifies("scenario.scaffold.creates")
+    def test_realizations_outside_the_parent_entry_are_narrowed_too(self):
+        # The root binds src/ in a document of its own besides its entry.
+        root = self.project.root
+        entry = root / "specs/project/module.md.json"
+        value = json.loads(entry.read_text())
+        value["module"]["owns"].append("specs/project/code.md")
+        (existing,) = [
+            r for r in value["defines"] if r["id"] == "realization.shop.existing-files"
+        ]
+        existing["entries"].remove("src/")
+        entry.write_text(json.dumps(value, indent=2) + "\n")
+        (root / "specs/project/code.md").write_text(
+            "# Code\n\nPart of the Spec of [Shop](module.md).\n\n"
+            '<a id="realization.shop.sources"></a>\n\n'
+            "The project's sources are bound to Shop.\n"
+        )
+        (root / "specs/project/code.md.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": 3,
+                    "document": {
+                        "id": "document.shop.code",
+                        "owner": "module.shop",
+                        "role": "implementation",
+                    },
+                    "defines": [
+                        {
+                            "id": "realization.shop.sources",
+                            "type": "realization",
+                            "title": "Sources",
+                            "meaning": "#realization.shop.sources",
+                            "entries": ["src/"],
+                        }
+                    ],
+                    "relations": [],
+                    "extensions": {},
+                },
+                indent=2,
+            )
+            + "\n"
+        )
+        self.assertEqual("success", registry_command(root, write=True).status)
+        commit(root, "bind the sources in a document of their own")
+        worktree = self.open()
+        before = validate_repository(worktree)
+        self.assertEqual(
+            [], [f.message for f in before.findings if f.strictness == "error"]
+        )
+        status, survey = self.survey()
+        self.assertEqual(0, status, survey)
+        status, envelope = self.project.run(
+            "scaffold", "--task", "adopt", "--input", survey["run_id"]
+        )
+        self.assertEqual(0, status, envelope)
+        record = envelope["output"]
+        code = json.loads((worktree / "specs/project/code.md.json").read_text())
+        self.assertEqual(["src/db.py"], code["defines"][0]["entries"])
+        self.assertIn("specs/project/code.md.json", record["files_written"])
+        entries = [
+            e
+            for path in ("specs/project/module.md.json", "specs/project/code.md.json")
+            for r in json.loads((worktree / path).read_text())["defines"]
+            if r["type"] == "realization"
+            for e in r["entries"]
+        ]
+        self.assertEqual(sorted(entries), record["parent_entries_after"])
+        self.assertIn("src/", record["parent_entries_before"])
+        self.assertNotIn("src/", record["parent_entries_after"])
+        report = validate_repository(worktree)
+        self.assertEqual(
+            [], [f.message for f in report.findings if f.strictness == "error"]
+        )
+
+    @verifies("scenario.scaffold.write-failed")
+    def test_a_refused_write_is_reported_with_every_file_restored(self):
+        worktree = self.open()
+        _, survey = self.survey()
+        before = git(worktree, "status", "--porcelain", "--untracked-files=all")
+        replace = os.replace
+
+        def refuse(source, target):
+            if str(target).endswith(".concorde/specs.json"):
+                raise PermissionError(13, "Permission denied", str(target))
+            return replace(source, target)
+
+        with patch("concorde.spec.changes.os.replace", refuse):
+            status, envelope = self.project.run(
+                "scaffold", "--task", "adopt", "--input", survey["run_id"]
+            )
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+        error = envelope["error"]
+        self.assertEqual(
+            ("write_failed", "environment"),
+            (error["code"], error["unhandled"]["reason"]),
+        )
+        self.assertIn("every file it would write is as before", error["detail"])
+        self.assertEqual(["system_error"], [cause["code"] for cause in error["causes"]])
+        self.assertEqual(
+            before, git(worktree, "status", "--porcelain", "--untracked-files=all")
+        )
+        self.assertFalse((worktree / "specs/project/checkout").exists())
+
+    @verifies("scenario.scaffold.write-failed")
+    def test_a_file_that_could_not_be_restored_is_named(self):
+        worktree = self.open()
+        broken = json.loads(json.dumps(PROPOSAL))
+        broken["children"][0]["purpose"] = (
+            "Checkout turns a basket into one order, as "
+            "[the missing scenario](module.md#scenario.checkout.missing) says."
+        )
+        _, survey = self.survey(broken)
+        stuck = "specs/project/checkout/module.md"
+        unlink = Path.unlink
+
+        def refuse(path, *arguments, **keywords):
+            if path.as_posix().endswith(stuck):
+                raise PermissionError(13, "Permission denied", str(path))
+            return unlink(path, *arguments, **keywords)
+
+        with patch.object(Path, "unlink", refuse):
+            status, envelope = self.project.run(
+                "scaffold", "--task", "adopt", "--input", survey["run_id"]
+            )
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+        error = envelope["error"]
+        self.assertEqual("write_failed", error["code"])
+        self.assertEqual(
+            [stuck],
+            [e["ref"] for e in error["evidence"] if e["kind"] == "unrestored"],
+        )
+        self.assertIn(f"{stuck} still hold the scaffold's new content", error["detail"])
+        self.assertIn(f"remove {stuck}", error["options"][0])
+        # Spec core's account is the cause: the refused restore and, below it, the new
+        # structural errors that made the transaction fail.
+        (cause,) = error["causes"]
+        self.assertEqual("system_error", cause["code"])
+        self.assertIn("scaffold_invalid", [c["code"] for c in cause["causes"]])
+        self.assertIn("Checkout turns a basket", (worktree / stuck).read_text())
+        # Every other file was restored.
+        self.assertFalse((worktree / "specs/project/inventory").exists())
+        self.assertFalse((worktree / "specs/project/checkout/module.md.json").exists())
+        self.assertEqual(
+            "",
+            git(worktree, "status", "--porcelain", "--untracked-files=no"),
+        )
 
     @verifies("scenario.scaffold.refused-input")
     def test_the_scaffold_needs_one_survey_of_its_task(self):

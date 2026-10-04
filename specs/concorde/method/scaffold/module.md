@@ -99,6 +99,10 @@ the proposal no longer fits the worktree (a child's folder that already exists i
 a file it would create exists or a file changed while it was written, and `failed` when the input is
 not one survey, the Specs cannot be loaded or the files would add a structural error; the
 [error chain](../../glossary.json#concept.error-chain) names every mismatch or finding as a cause.
+It is `failed` with `write_failed` when the file transaction fails for another reason, such as the
+operating system refusing a write, or cannot restore a file it wrote: the result then names every
+file that still holds the scaffold's content, to be removed or restored by hand, and says every
+other file is as before.
 A stale proposal is `blocked` because what follows is the
 [main agent](../../glossary.json#concept.main-agent)'s decision: survey again, or undo the change
 to the worktree. A structural error is `failed` because the scaffold writes by fixed rules and cannot
@@ -119,7 +123,8 @@ proposal, and it is an execution command rather than an
 
 Scaffold writes where it can decide by rules alone. A child's folder is the parent entry's folder
 plus the child identity's last segment. The parent keeps every path its realizations covered that no
-child took and the proposal did not name as vendored code. A directory entry of the parent that
+child took and the proposal did not name as vendored code, whichever of its documents declares the
+realization: the metadata of each is rewritten in the same file transaction. A directory entry of the parent that
 contains a child's entry is replaced by the entries below it that no child took: a directory stays
 one entry when no child took anything inside it, and a file is listed exactly. A directory that
 would bind no file, such as an empty one or one holding only skipped files, and a symbolic link are
@@ -146,8 +151,8 @@ command, which launches no worker:
 | --- | --- | --- | --- |
 | 1 | Admit exactly one `ok` survey of the same workspace as input | host | none or several, not a survey, or a survey output that breaks its contract (`failed`, `invalid_request`) |
 | 2 | Validate the worktree as a baseline and check the proposal against it again | host, Spec core | the Specs cannot be loaded (`failed`, `specs_unloadable`); the proposal no longer fits, such as a child's folder that already exists (`blocked`, `stale_proposal`) |
-| 3 | Compute every file change: child entries, parent entry and realization, registry | host | a target file already exists (`blocked`, `stale_proposal`) |
-| 4 | Apply them as one file transaction, kept only if validation finds no new error | host, Spec core | a new error (`failed`, `scaffold_invalid`), nothing kept; a file changed while it was written (`blocked`, `stale_proposal`), nothing kept |
+| 3 | Compute every file change: child entries, parent entry, the metadata of every parent document declaring a realization, registry | host | a target file already exists (`blocked`, `stale_proposal`) |
+| 4 | Apply them as one file transaction, kept only if validation finds no new error | host, Spec core | a new error (`failed`, `scaffold_invalid`), nothing kept; a file changed while it was written (`blocked`, `stale_proposal`), nothing kept; a write the operating system refused or a file it could not restore (`failed`, `write_failed`), naming every file not restored |
 | 5 | Return the run result with the scaffold record | host | — |
 
 Its tests, under `tests/concorde/scaffold/`, run a survey and the scaffold in a bound task worktree

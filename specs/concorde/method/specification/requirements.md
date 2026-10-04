@@ -79,11 +79,12 @@ The second worker launched to fill created documents has its own two repair roun
 
 The specify Operation SHALL create the documents a `blocked` worker proposes only when every one of
 them belongs to a bound [Module](../../glossary.json#concept.module), lies in the folder of that
-Module's entry and does not exist.
+Module's entry or below it, does not exist and is proposed only once.
 
 A document is created empty and registered in its Module's `owns`, so that the second worker's
 grant makes it writable; the Operation writes nothing else into it. One refused proposal refuses
-the whole list, since the change needs all of them.
+the whole list, since the change needs all of them; a path proposed more than once is refused,
+before anything is written, so that no document is created twice.
 
 ### req.specification.one-relaunch — Created documents are filled by one more worker
 

@@ -7,12 +7,12 @@ import re
 import unittest
 from pathlib import Path
 
-from concorde.worker_harness.runs import read_record
-from concorde.spec.verification import verifies
 from concorde.method.specification.operation import (
     SPEC_CHANGE_SCHEMA,
     WORKER_OUTPUT_SCHEMA,
 )
+from concorde.spec.verification import verifies
+from concorde.worker_harness.runs import read_record
 from tests.concorde.support.operation_project import (
     OperationProject,
     commit,
@@ -249,8 +249,9 @@ class SpecifyTests(unittest.TestCase):
         self.assertEqual(["specs/a/module.md"], envelope["output"]["changed_documents"])
         self.assertIn("validation", self.kinds(envelope))
 
-    def needs(self, path: str, module: str = "module.a") -> dict:
-        """A first round that ends blocked because it needs a new document at ``path``."""
+    def needs(self, path: str, module: str = "module.a", times: int = 1) -> dict:
+        """A first round that ends blocked because it needs a new document at ``path``, proposed
+        ``times`` times."""
         return {
             "result": {
                 "status": "blocked",
@@ -270,7 +271,8 @@ class SpecifyTests(unittest.TestCase):
                             "role": "implementation",
                             "reason": "the precise obligations need an implementation document",
                         }
-                    ],
+                    ]
+                    * times,
                 },
             }
         }
@@ -293,7 +295,12 @@ class SpecifyTests(unittest.TestCase):
         self.assertEqual(0, status, envelope)
         output = envelope["output"]
         self.assertEqual(["specs/a/rules.md"], output["created_documents"])
-        self.assertIn("specs/a/rules.md", output["changed_documents"])
+        # The host's own writes are observed too: the new metadata and the entry metadata whose
+        # owns registers the document, which the second worker did not touch.
+        self.assertEqual(
+            ["specs/a/module.md.json", "specs/a/rules.md", "specs/a/rules.md.json"],
+            output["changed_documents"],
+        )
         self.assertEqual([], output["validation"]["new_errors"])
         self.assertEqual(filled, (worktree / "specs/a/rules.md").read_text())
         metadata = json.loads((worktree / "specs/a/rules.md.json").read_text())
@@ -316,17 +323,49 @@ class SpecifyTests(unittest.TestCase):
         brief = (Path(second["run_directory"]) / "brief.md").read_text()
         self.assertIn("Documents the host created for you", brief)
 
+    @verifies("scenario.specification.new-document")
+    def test_a_needed_document_below_the_entry_folder_is_created(self):
+        worktree = self.open()
+        path = "specs/a/details/rules.md"
+        status, envelope = self.specify(
+            {
+                "first": [self.needs(path)],
+                "relaunch": [{"result": {"output": CLAIMS}}],
+            }
+        )
+        self.assertEqual(0, status, envelope)
+        output = envelope["output"]
+        self.assertEqual([path], output["created_documents"])
+        self.assertEqual(
+            [
+                "specs/a/details/rules.md",
+                "specs/a/details/rules.md.json",
+                "specs/a/module.md.json",
+            ],
+            sorted(output["changed_documents"]),
+        )
+        self.assertEqual([], output["validation"]["new_errors"])
+        # The link to the entry climbs out of the subfolder.
+        self.assertIn("](../module.md)", (worktree / path).read_text())
+        owns = json.loads((worktree / "specs/a/module.md.json").read_text())["module"][
+            "owns"
+        ]
+        self.assertIn(path, owns)
+        self.assertEqual(2, len(envelope["worker_runs"]))
+
     @verifies("scenario.specification.document-refused")
     def test_a_document_outside_the_bound_modules_is_not_created(self):
         worktree = self.open()
-        for path, module in (
-            ("specs/b/rules.md", "module.b"),
-            ("docs/rules.md", "module.a"),
+        owns = (worktree / "specs/a/module.md.json").read_text()
+        for path, module, times in (
+            ("specs/b/rules.md", "module.b", 1),
+            ("docs/rules.md", "module.a", 1),
+            ("specs/a/rules.md", "module.a", 2),
         ):
-            with self.subTest(path=path):
+            with self.subTest(path=path, times=times):
                 status, envelope = self.specify(
                     {
-                        "first": [self.needs(path, module)],
+                        "first": [self.needs(path, module, times)],
                         "relaunch": [{"result": {"output": CLAIMS}}],
                     }
                 )
@@ -335,7 +374,19 @@ class SpecifyTests(unittest.TestCase):
                 self.assertEqual([], envelope["output"]["created_documents"])
                 self.assertIn("document-refused", self.kinds(envelope))
                 self.assertFalse((worktree / path).exists())
+                self.assertEqual(
+                    owns, (worktree / "specs/a/module.md.json").read_text()
+                )
                 self.assertEqual(1, len(envelope["worker_runs"]))
+        refused = [
+            item
+            for item in envelope["host_evidence"]
+            if item["kind"] == "document-refused"
+        ]
+        self.assertEqual(
+            [("specs/a/rules.md", "the path is proposed more than once")] * 2,
+            [(item["ref"], item["detail"]) for item in refused],
+        )
 
     @verifies("scenario.specification.code-write")
     def test_a_write_to_code_fails_the_run(self):
@@ -513,7 +564,7 @@ class ContractTests(unittest.TestCase):
         text = (
             REPOSITORY_ROOT / "specs/concorde/method/specification/contracts.md"
         ).read_text()
-        fence = re.search(r"```concorde-contract\n(.*?)\n```", text, re.S).group(1)
+        fence = re.search(r"```concorde-contract\n(.*?)\n```", text, re.DOTALL).group(1)
         schema = json.loads(fence)["schema"]
         self.assertEqual(schema, SPEC_CHANGE_SCHEMA)
         for name in ("summary", "promise_changes", "proposed_documents"):
