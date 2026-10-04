@@ -1029,19 +1029,8 @@ def _abort(primary: Path, record: dict, waited, reserved: Path | None = None) ->
 def _aborted(primary: Path, record: dict, attempt: Attempt, waited) -> dict:
     merging = record["merging"]
     before = merging["before"]
-    in_progress = store._git(
-        primary, "rev-parse", "-q", "--verify", "MERGE_HEAD", check=False
-    )
-    if in_progress.returncode == 0:
-        aborted = store._git(primary, "merge", "--abort", check=False)
-        if aborted.returncode != 0:
-            raise TaskError(
-                "rollback_failed",
-                f"--abort found a merge in progress in {primary}, and git merge --abort "
-                f"exited {aborted.returncode}: {aborted.stderr.strip() or '(no output)'}; "
-                f"the primary branch is at {_head(primary)} and its worktree as Git left it"
-                + _stays_merging(record["id"]),
-            )
+    # Everything is checked before anything is touched: a merge in progress that is not the
+    # task's, or on another branch, is someone else's work.
     branch = store._git(primary, "symbolic-ref", "-q", "--short", "HEAD", check=False)
     if branch.returncode != 0 or branch.stdout.strip() != merging["branch"]:
         where = (
@@ -1050,6 +1039,27 @@ def _aborted(primary: Path, record: dict, attempt: Attempt, waited) -> dict:
             else f"has a detached HEAD at {_head(primary)}"
         )
         raise _diverged(primary, record, where)
+    in_progress = store._git(
+        primary, "rev-parse", "-q", "--verify", "MERGE_HEAD", check=False
+    )
+    if in_progress.returncode == 0:
+        merged, head = in_progress.stdout.strip(), _head(primary)
+        if merged != merging["checked"] or head != before:
+            raise _diverged(
+                primary,
+                record,
+                f"has a merge of {merged} into {head} in progress, which is not the task's",
+            )
+        aborted = store._git(primary, "merge", "--abort", check=False)
+        if aborted.returncode != 0:
+            raise TaskError(
+                "rollback_failed",
+                f"--abort found the task's merge in progress in {primary}, and git merge "
+                f"--abort exited {aborted.returncode}: "
+                f"{aborted.stderr.strip() or '(no output)'}; the primary branch is at "
+                f"{_head(primary)} and its worktree as Git left it"
+                + _stays_merging(record["id"]),
+            )
     head = _head(primary)
     undone = None
     if head != before:

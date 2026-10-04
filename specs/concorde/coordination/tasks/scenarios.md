@@ -465,6 +465,7 @@ This illustrates [a merge running the Concorde it started with](requirements.md#
 - WHEN the main agent runs `concorde task merge <task-id> --abort`
 - THEN the command fails with `merge_diverged`, naming the primary branch's head, the commit before the merge and the merge commit
 - AND the primary branch and the task, still `merging`, are unchanged
+- BUT when the primary branch is back at the commit before the merge with a merge of another commit in progress, made by hand, the command fails with `merge_diverged` naming that commit and leaves that merge in progress
 
 ### scenario.tasks.merge-live-busy — A merge still running is busy, not incomplete
 

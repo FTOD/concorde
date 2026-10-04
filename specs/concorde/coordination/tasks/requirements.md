@@ -396,8 +396,10 @@ uninterrupted merge does, and otherwise refuses with `not_resumable`; `concorde 
 merge commit, and returns the task to delivered.
 
 Both refuse with `merge_diverged`, touching nothing, when the primary worktree is on another branch
-or its head is neither the commit before the merge nor the merge commit, and with `not_merging` for
-a task that is not `merging`.
+or its head is neither the commit before the merge nor the merge commit, and `--abort` also when
+a Git merge in progress there is not the task's, merging another commit than the checked one or
+into another head than the commit before the merge, checked before it aborts anything; both refuse
+with `not_merging` for a task that is not `merging`.
 
 ### req.tasks.empty-log-warned — A merge warns of an unwritten decision log
 

@@ -1090,6 +1090,21 @@ class MergeTests(unittest.TestCase):
         for part in (moved, before, after):
             self.assertIn(part, error["detail"])
         self.assertEqual((moved, "merging"), (self.head(), self.state()))
+        # A merge in progress that is not the task's is refused before Git aborts it.
+        git(self.root, "reset", "--hard", before)
+        git(self.root, "branch", "side", before)
+        git(self.root, "checkout", "-q", "side")
+        (self.root / "side.txt").write_text("a merge made by hand\n")
+        side = commit(self.root, "a side commit")
+        git(self.root, "checkout", "-q", "-")
+        git(self.root, "merge", "--no-commit", "--no-ff", "side")
+        error = self.refusal("merge", "t1", "--abort")
+        self.assertEqual("merge_diverged", error["code"])
+        self.assertIn(f"a merge of {side}", error["detail"])
+        self.assertEqual(
+            side, git(self.root, "rev-parse", "-q", "--verify", "MERGE_HEAD")
+        )
+        self.assertEqual("merging", self.state())
 
     @verifies("scenario.tasks.merge-live-busy")
     def test_a_merge_still_running_answers_busy(self):
