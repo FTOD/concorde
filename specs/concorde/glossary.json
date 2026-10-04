@@ -73,7 +73,7 @@
       "id": "concept.check-result",
       "title": "Check result",
       "owner": "module.checks",
-      "definition": "The record of one configured check run: the check, its Module, the status, the exit code, the digest of what was measured and the saved log with its digest.",
+      "definition": "The record of one configured check run: the check, its Module, the status, the exit code, the digest of what was measured, the saved log with its digest and the refused writes of its trace node.",
       "explanation": "specs/concorde/execution/checks/module.md#concept.check-result",
       "narrows": [
         "concept.evidence"

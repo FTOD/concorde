@@ -28,6 +28,17 @@ grant with every writable level lowered to read; that narrowing is the only chan
 them, never adds a path or raises a level, and keeps the context identity
 ([Standard worker sequence](workers.md#standard-worker-sequence)).
 
+### req.method.trace-writes-reported — A refused trace write below the run is in its result
+
+A Method run SHALL report, as `trace-write` evidence of its result, every write of the
+[trace node](../glossary.json#concept.trace-node) of a worker run it launched, of one of that run's rounds or of a check it ran that the operating
+system refused, as Workers and Check execution report it, without changing the run's status for it.
+
+Workers and Check execution report such a failure in their own results
+([req.tracing.written-at-start](../kernel/tracing/requirements.md#req.tracing.written-at-start)),
+which only the run that called them reads; the run's result is where whoever started it learns that
+a node of its trace is missing or stale.
+
 ### req.method.glossary-by-entry — The glossary is audited by entry
 
 When a worker's grant names a writable glossary, a Method Operation SHALL end the run `failed` with `audit_violation` for every glossary entry the worker run added, changed or removed, including by a deletion it proposed, whose owner, before or after, is not one of the grant's Modules, whatever status the worker ended with.

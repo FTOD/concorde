@@ -228,7 +228,11 @@ computed grant, so the evidence still names the Specs the grant came from.
 The run keeps the worker result in the result's `worker` field unchanged and adds as its own
 evidence the grant, the context identity, the audit, each check by its id, which names the
 configured command, with its status, exit code and log path, the rounds used, the transcript path
-and the worker's standard error. It never moves a statement of the worker into `summary` or
+and the worker's standard error. Tracing is best-effort for the work, never silent: the run adds as
+`trace-write` evidence each write of a trace node below it that the operating system refused, as
+the worker run's record (its `trace_failures`) and each check result name them, by the worker run's
+or the check's identity, with the node's file, the moment and the error, whatever the step makes of
+the worker run's outcome and without changing the run's status for it. It never moves a statement of the worker into `summary` or
 `host_evidence`; the summary of a worker-backed result states the status and what the run
 verified, and the caller reads the worker's own account in `worker`, as
 [Execution requires](../execution/requirements.md#req.execution.claims-apart) of every run.

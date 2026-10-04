@@ -306,6 +306,48 @@ class Attempt:
         return checks.with_failures(refusal, self.failures)
 
 
+def end_unfinished_attempt(primary: Path, task_id: str) -> list[str]:
+    """End the task's latest merge attempt node that still says it runs, as a ``close --merged``
+    that finishes the task does once nothing of that merge runs any more: ``ok`` with the
+    merge's outcome, ``merged`` or ``contained``, when its merge commit was made, else ``failed``
+    with ``interrupted``. The warning naming a refused write of the node, if any."""
+    parent = store.task_folder(primary, task_id) / "merges"
+    attempts = sorted(
+        (item for item in parent.iterdir() if item.is_dir() and item.name.isdigit())
+        if parent.is_dir()
+        else (),
+        key=lambda item: int(item.name),
+    )
+    for folder in reversed(attempts):
+        found = trace.read(folder)
+        if found is None or found.get("status") != "running":
+            continue
+        data = (found.get("content") or {}).get("data") or {}
+        after = data.get("after")
+        ended = trace.now()
+        found.update(
+            ended_at=ended,
+            status="ok" if after else "failed",
+            outcome=(
+                ("contained" if after == data.get("before") else "merged")
+                if after
+                else "interrupted"
+            ),
+        )
+        found["usage"]["duration_seconds"] = trace.seconds_between(
+            found["started_at"], ended
+        )
+        try:
+            trace.write(folder, found)
+        except OSError as error:
+            return [
+                f"the trace node {folder / 'trace.json'} of the merge attempt could not be "
+                f"written at its end: {type(error).__name__}: {error}"
+            ]
+        return []
+    return []
+
+
 # A check that runs longer than this is stopped and counts as failed, so the lock is not held
 # for ever by a check that hangs.
 CHECK_TIMEOUT = checks.TIMEOUT

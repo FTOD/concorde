@@ -129,6 +129,66 @@ class CheckServiceTests(unittest.TestCase):
         self.assertEqual(("failed", 1), (failed["status"], failed["exit_code"]))
         self.assertEqual([], self.run_checks(["module.b"]))
 
+    @verifies("scenario.checks.service-trace-write")
+    def test_a_refused_trace_write_is_in_the_check_result(self):
+        from concorde.kernel.tracing import node as trace_node
+
+        [plain] = self.run_checks(["module.a"])
+        self.assertEqual([], plain["trace_failures"])
+        original = trace_node.write
+
+        def refused(folder, record):
+            if record["kind"] != "check":
+                return original(folder, record)
+            Path(folder).mkdir(parents=True, exist_ok=True)
+            raise OSError(28, "No space left on device")
+
+        with patch.object(trace_node, "write", refused):
+            [result] = self.run_checks(["module.a"])
+        self.assertEqual(("passed", 0), (result["status"], result["exit_code"]))
+        self.assertTrue(Path(result["log"]).is_file())
+        trace = (self.logs / "check.a/trace.json").as_posix()
+        self.assertEqual(
+            [
+                f"the trace node {trace} could not be written at its {moment}: "
+                "OSError: [Errno 28] No space left on device"
+                for moment in ("start", "end")
+            ],
+            result["trace_failures"],
+        )
+        # Method's steps add each to their run's host evidence.
+        report: list[dict] = []
+        with patch.object(trace_node, "write", refused):
+            self.run_checks(["module.a"], report=report)
+        self.assertEqual(
+            [("trace-write", "check.a")] * 2,
+            [(item["kind"], item["ref"]) for item in report],
+        )
+
+        # A call that fails names them in its error, which has no result to carry them.
+        from concorde.execution.checks import checks
+
+        real = checks.execute_check
+
+        def changing(worktree, argv, **options):
+            outcome = real(worktree, argv, **options)
+            (self.root / "src/a/calc.py").write_text("changed = True\n")
+            return outcome
+
+        with (
+            patch.object(trace_node, "write", refused),
+            patch.object(checks, "execute_check", changing),
+        ):
+            with self.assertRaises(CheckError) as raised:
+                self.run_checks(["module.a"])
+        self.assertEqual("stale_evidence", raised.exception.code)
+        error = service_error(raised.exception)
+        validate(error, ERROR_SCHEMA)
+        self.assertEqual(
+            ["trace-write", "trace-write"],
+            [item["kind"] for item in error["evidence"]],
+        )
+
     def configure(self, **changes) -> None:
         path = self.root / ".concorde/config.json"
         config = json.loads(path.read_text())

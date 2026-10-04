@@ -617,6 +617,10 @@ def execute(
             # written whatever arrives meanwhile.
             if checkout is not None:
                 context.evidence.extend(_close(checkout))
+            # Every write of the run's trace.json refused so far; one of the final write, which
+            # follows the result, is added to the published result afterwards.
+            reported = len(node.failures)
+            context.evidence.extend(_trace_writes(context.run_id, node.failures))
             envelope = _envelope(chosen, context, stop, started)
             status = 0 if envelope["status"] == "ok" else 1
             # The result is written while the lock is still held, so a run admitted after this
@@ -637,6 +641,18 @@ def execute(
                     summary=envelope["summary"],
                 )
                 _finish_node(chosen, context, node, words, envelope, status)
+                if len(node.failures) > reported:
+                    envelope = {
+                        **envelope,
+                        "host_evidence": [
+                            *envelope["host_evidence"],
+                            *_trace_writes(context.run_id, node.failures[reported:]),
+                        ],
+                    }
+                    _publish(
+                        context.run_dir / layout.RESULT,
+                        json.dumps(envelope, indent=2) + "\n",
+                    )
             except (OSError, TraceError) as error:
                 # Leaving the blocks releases the locks; the run is lost to every observer.
                 unsaved = _unsaved(kind, name, context, envelope, written, error)
@@ -645,6 +661,12 @@ def execute(
         for sig, handler in previous.items():
             signal.signal(sig, handler)
     return status, envelope
+
+
+def _trace_writes(run_id: str, failures: list[str]) -> list[dict]:
+    """``trace-write`` evidence of each refused write of the run's ``trace.json``, which never
+    changes the result's status."""
+    return [evidence("trace-write", run_id, failure) for failure in failures]
 
 
 def _close(checkout: Checkout) -> list[dict]:

@@ -1842,8 +1842,19 @@ def close_task(
                 errors=errors,
                 force=force,
                 warnings=warnings,
+                before_move=(lambda: warnings.extend(_end_merge(primary, task_id)))
+                if outcome == "merged"
+                else None,
             )
     return {"record": closed, "warnings": warnings + end_sessions(primary, closed)}
+
+
+def _end_merge(primary: Path, task_id: str) -> list[str]:
+    """End the merge attempt a ``close --merged`` finishes, such as one whose own close failed
+    after its merge commit; the warning naming a refused write of its node."""
+    from . import merge
+
+    return merge.end_unfinished_attempt(primary, task_id)
 
 
 def end_sessions(primary: Path, closed: dict) -> list[str]:

@@ -255,7 +255,7 @@ flags and environment listed here; the Harness generates everything the settings
 | --- | --- | --- |
 | Read, Glob, Grep | `permissions.deny` for the grant's complement in the task worktree; the primary worktree and the user's home but for the way to the task worktree and the runtime paths; every Git administrative path; `~/.claude` with Claude Code's credential file | Ungranted/`names` reads; Grep silently omits them |
 | Edit, Write | Same deny rules, plus a write-only PreToolUse hook denying non-`rw` paths, reason naming the level | `ro` edits or new files — deny alone can't, since deny beats allow |
-| Bash | Sandbox: `denyRead` worktree/`$HOME`/primary worktree/Git paths, `allowRead` granted files + runtime paths, `allowWrite` `rw` files + the runtime directory's `work/`, `home/`, `tmp/`, no network, `allowUnsandboxedCommands: false` | Ungranted reads, `ro` writes, network, `dangerouslyDisableSandbox` |
+| Bash | Sandbox: `denyRead` worktree/`$HOME`/primary worktree/Git paths, `allowRead` granted files + runtime paths, `allowWrite` `rw` files + the runtime directory's `work/`, `home/`, `tmp/`, `denyWrite` each `ro` or `names` path listed apart below a `rw` directory, no network, `allowUnsandboxedCommands: false` | Ungranted reads, `ro` writes, network, `dangerouslyDisableSandbox` |
 | Permission mode | `bypassPermissions` via `--allow-dangerously-skip-permissions`; deny rules/hook/sandbox are the boundary | Nothing alone; `dontAsk` denies writes outside the working dir even when allowed |
 | Working directory | The runtime directory's `work/`, never the task worktree | Claude Code adding the worktree to the Bash sandbox's read/write set |
 | Tool set | `--tools` per task type, never WebFetch/WebSearch, no agent tool | Web access via tools, workers starting other agents |
@@ -276,9 +276,11 @@ flags and environment listed here; the Harness generates everything the settings
   like one inside it, and so is its Git metadata.
 - A read denial's message is Claude Code's generic "denied by your permission settings", so the
   brief states the grant; write denials explain themselves via the hook.
-- The Bash sandbox writes a `rw` directory whole: a file the grant lists apart below it at `ro` or
-  `names` is protected from the file tools, but a Bash write to it is caught only by Workers'
-  audit after the round, which fails the run.
+- A path the grant lists apart at `ro` or `names` below a `rw` directory is in the Bash sandbox's
+  `denyWrite`, which wins inside the wider `allowWrite` on both backends: Claude Code's
+  `sandbox.filesystem.denyWrite` and sandbox-runtime's, which bind it read-only on Linux. A
+  `denyWrite` entry covers everything below it, so a `rw` path the grant lists below such a `ro`
+  or `names` directory is writable to the file tools but not to Bash.
 - A single `rw` file granted to Bash is bind-mounted, so it can't be deleted or renamed from Bash,
   and a file created outside `rw` appears to succeed but lands on a throw-away filesystem, unseen by
   the audit — the brief warns of this.

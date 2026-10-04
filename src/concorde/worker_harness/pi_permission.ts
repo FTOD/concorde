@@ -51,7 +51,7 @@ function sandbox(): Promise<void> {
   sandboxReady ??= (async () => {
     await SandboxManager.initialize({
       network: { allowedDomains: [], deniedDomains: [], strictAllowlist: true },
-      filesystem: { ...POLICY.sandbox, denyWrite: [] },
+      filesystem: POLICY.sandbox,
     } as never);
     sandboxStarted = true;
   })();
@@ -80,7 +80,7 @@ async function inSandbox(
 ): Promise<Completed> {
   await sandbox();
   const wrapped = await SandboxManager.wrapWithSandbox(command, undefined, {
-    filesystem: { ...POLICY.sandbox, denyWrite: [] },
+    filesystem: POLICY.sandbox,
   } as never);
   return new Promise((resolve, reject) => {
     const child = spawn("bash", ["-c", wrapped], {

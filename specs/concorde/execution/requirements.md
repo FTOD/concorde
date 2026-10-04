@@ -61,8 +61,8 @@ A malformed command line, including one with an unknown argument, or one started
 worktree starts no run and writes no result (exit status 2), and a detached runner that ends or is
 killed before it announced its run (`detach_failed`) leaves no run, as
 [How a run is executed](runner.md) describes. A run whose first records could not be created runs
-no step, and one whose result or final `trace.json` could not be written still prints its result
-and counts as lost, both with exit status 1
+no step, and one whose result could not be saved, or whose final `trace.json` broke the node
+contract, still prints its result and counts as lost, both with exit status 1
 ([When records cannot be written](runner.md#when-records-cannot-be-written)). A runner killed
 outside its control after its announcement leaves a run without a result whose
 [run lock](../glossary.json#concept.run-lock) nobody holds: a lost run, which every observer tells by
@@ -70,16 +70,17 @@ that lock ([Run progress file](runner.md#run-progress-file)).
 
 ### req.execution.unrecorded-runs-nothing — A run that cannot be recorded runs no step
 
-The runner SHALL run no step of a run whose folder, run lock, first `trace.json` or first
-[run progress file](../glossary.json#concept.run-progress-file) it could not create.
+The runner SHALL run no step of a run whose folder, run lock or first
+[run progress file](../glossary.json#concept.run-progress-file) it could not create, or whose
+first `trace.json` breaks the node contract.
 
 It exits instead with status 1 and its `run_unrecorded` link on standard error, as
 [When records cannot be written](runner.md#when-records-cannot-be-written) describes.
 
 ### req.execution.unsaved-printed — A result that cannot be saved is still printed
 
-When publishing a run's result or writing its final `trace.json` fails, the runner SHALL print the
-result it composed on standard output.
+When publishing a run's result fails, or its final `trace.json` breaks the node contract, the
+runner SHALL print the result it composed on standard output.
 
 The run then counts as lost; the runner writes its `result_unsaved` link to standard error,
 releases the run's locks and exits with status 1, as
@@ -228,6 +229,18 @@ The runner SHALL write a run's `trace.json`, with the status `running`, before t
 
 The runner SHALL write a run's `trace.json` again after its result, with the run's end, status and
 outcome, as [Run identity and trace node](runner.md#run-identity-and-trace-node) lists.
+
+### req.execution.trace-write-reported — A refused trace write is in the result
+
+The runner SHALL report every write of a run's `trace.json` that the operating system refused as
+`trace-write` evidence of the run's result, without changing the run's status, its steps or its
+exit status for it.
+
+Tracing is best-effort for the run, never silent
+([req.tracing.written-at-start](../kernel/tracing/requirements.md#req.tracing.written-at-start)):
+the result names each refused write with the node's file, the moment (start, update or end) and
+the error, and a refused final write, which follows the result, is added to the published result
+afterwards, so that the result as published and printed names it.
 
 ### req.execution.files-in-node — Every file of a run lies in its node
 

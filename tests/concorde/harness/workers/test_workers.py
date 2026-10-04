@@ -24,6 +24,7 @@ from concorde.worker_harness.settings import (
     RunPaths,
     SettingsError,
     deny_rules,
+    sandbox_filesystem,
     worker_settings,
     write_hook_source,
 )
@@ -524,6 +525,30 @@ class SettingsTests(unittest.TestCase):
                 {"tool_input": {"file_path": f"{root}/src/a/new.py"}}, data
             )
         )
+
+    @verifies("scenario.workers.most-specific-entry")
+    def test_the_bash_sandbox_denies_writes_listed_apart_below_a_rw_directory(self):
+        root = self.project.root
+        grant_value = {
+            **self.project.grant,
+            "entries": [
+                *self.project.grant["entries"],
+                {"path": "src/a/calc.py", "level": "ro"},
+                {"path": "src/a/generated/", "level": "names"},
+            ],
+        }
+        lists = sandbox_filesystem(root, grant_value, self.run, home=self.project.home)
+        # denyWrite wins inside the wider allowWrite, so Bash can neither write the file nor
+        # anything below the names directory, while the rest of src/a/ stays writable.
+        self.assertIn(f"{root}/src/a", lists["allowWrite"])
+        self.assertEqual(
+            [f"{root}/src/a/calc.py", f"{root}/src/a/generated"], lists["denyWrite"]
+        )
+        # Nothing the grant does not list apart below a rw directory is denied.
+        plain = sandbox_filesystem(
+            root, self.project.grant, self.run, home=self.project.home
+        )
+        self.assertEqual([], plain["denyWrite"])
 
     def test_a_rw_directory_below_a_ro_directory_stays_writable(self):
         grant_value = {

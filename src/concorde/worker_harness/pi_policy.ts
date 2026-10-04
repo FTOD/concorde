@@ -36,7 +36,12 @@ export interface Policy {
   git: string[];
   primary: string;
   userHome: string;
-  sandbox: { denyRead: string[]; allowRead: string[]; allowWrite: string[] };
+  sandbox: {
+    denyRead: string[];
+    allowRead: string[];
+    allowWrite: string[];
+    denyWrite: string[];
+  };
   programs: { rg: string; fd: string };
   limits: { maxTurns: number; maxBudgetUsd: number | null };
   resultSchema: Record<string, unknown>;

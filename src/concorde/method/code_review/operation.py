@@ -527,6 +527,7 @@ def prepare(ctx: RunContext):
             modules,
             trace_directory=ctx.run_dir / "checks",
             repository=repository,
+            report=ctx.evidence,
         )
     except (CheckError, SpecError, OSError) as error:
         stop = ctx.checks_unavailable(error)
