@@ -13,7 +13,7 @@ run does, whatever its definition, is shown by the [Execution scenarios](../exec
 
 - GIVEN a bound workspace `severity` of `module.issues`
 - AND a worker that ends `ok` after changing only files its grant makes writable
-- AND a change on which every [configured check](../glossary.json#concept.configured-check) of the bound Modules passes
+- AND a change on which every [configured check](../glossary.json#concept.configured-check) of the bound Modules and of every Module that uses one of them, directly or through further uses, passes
 - WHEN the task level runs `concorde run implement --goal "<goal>"` in it
 - THEN the run computes the implement grant from the workspace's Specs and launches one worker through the worker harness
 - AND the audit is clean and every configured check passes
@@ -31,7 +31,9 @@ run does, whatever its definition, is shown by the [Execution scenarios](../exec
 
 ### scenario.method.worker-backend-configured — Workers run on pi, whatever the main session
 
-- GIVEN a Claude Code main session, pi installed, and a task worktree whose worker configuration gives `implement`'s worker a pi model and puts another [Operation](../glossary.json#concept.operation)'s worker on Claude Code
+- GIVEN a Claude Code main session and pi installed
+- AND a task worktree whose worker configuration gives `implement`'s worker a project model name, with no entry choosing a backend for it, and puts another [Operation](../glossary.json#concept.operation)'s worker on Claude Code
+- AND a [model map](../glossary.json#concept.model-map) that gives that model a pi id
 - WHEN the task level runs `implement` and then that Operation in the task worktree
 - THEN the run launches `implement`'s worker with `pi -p` and the local id the model map gives that model on pi, under the same grant a Claude Code worker would get, and the run record and `worker-model` evidence name `pi` as Concorde's default [worker backend](../glossary.json#concept.worker-backend)
 - AND it launches the other Operation's worker with `claude -p`, naming the entry of its worker id that chose it
