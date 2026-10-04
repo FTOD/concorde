@@ -6,10 +6,10 @@ audience: shared
 
 Method's Operations and execution commands do bounded work in a bound workspace. Each starts inside
 its worktree with that worktree's own `concorde`. Where the coordination part is installed, the
-workspace is a task's. The task session starts them inside the task worktree. Without that part,
-nothing in Concorde binds a worktree. They run in a workspace something else prepared. Only the
-reading Operations `understand`, `survey`, `spec_review`, `spec_panel` and `code_review` run anywhere
-else, unbound (see "Unbound runs").
+workspace is a task's. In that case, the task session starts them inside the task worktree. Without
+that part, nothing in Concorde binds a worktree. In that case, they run in a workspace something
+else prepared. Only the reading Operations `understand`, `survey`, `spec_review`, `spec_panel` and
+`code_review` run anywhere else, unbound (see "Unbound runs").
 
 ```bash
 concorde run understand  --goal "<question>" [--plan]
@@ -62,7 +62,7 @@ unrealizable. Use it for a whole-Module check in these cases:
 
 When run unbound in the primary worktree, it needs only `--modules`. Where the issues part is
 installed, the reviews (`spec_review`, `spec_panel`, `code_review`) report their findings as Issues,
-as "Issues" says. Otherwise, they keep their findings in their run result. You read them there.
+as "Issues" says. Otherwise, they keep their findings in their run result, where you read them.
 
 **Brownfield.** Concorde works Spec first. Only when Concorde was just installed and initialized in
 a project whose code came before its Specs, describe that code with the `brownfield` workflow.
