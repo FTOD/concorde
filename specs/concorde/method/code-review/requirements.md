@@ -22,10 +22,11 @@ execution according to its scope:
 ### req.code-review.module-scope — A Module review judges each Module whole
 
 In a Module review, the code review Operation SHALL launch one reviewer per named
-[Module](../../glossary.json#concept.module), each with these:
+[Module](../../glossary.json#concept.module), each under these conditions:
 
-- The `review-code` [grant](../../glossary.json#concept.grant) of that Module alone.
-- A brief that names the Module's own Spec documents and code files and gives no diff.
+- The reviewer runs under the `review-code` [grant](../../glossary.json#concept.grant) of that
+  Module alone.
+- Its brief names the Module's own Spec documents and code files and gives no diff.
 
 ### req.code-review.module-scope-no-base — A Module review has no base
 
@@ -62,7 +63,7 @@ Before each reviewer judges, the code review Operation SHALL give it the
 [Issues](../../glossary.json#concept.issue) that meet these conditions, each with its identity,
 severity, tier, title, description and evidence as its latest report states them:
 
-- The Issue is open and is an Issue of one of its reviewed Modules.
+- The Issue is open and is an Issue of one of the reviewer's reviewed Modules.
 - A `code_review` run made one of its reports.
 
 Where the issues part is not installed, there are no earlier Issues. In that case, the reviewer
@@ -88,19 +89,19 @@ unrealizable, it SHALL report it as a finding with all of these properties:
 - Its kind is `spec-challenge`.
 - Its basis is that promise.
 - Its problem says why the reviewer judges it unreasonable or unrealizable.
-- It is not a defect of the code.
+- It is reported as a Spec challenge rather than as a defect of the code.
 
 ### req.code-review.evidence-resolves — Cited evidence exists
 
-After the reviewer's one [resume round](../../glossary.json#concept.resume-round) to correct its
-citations, the code review Operation SHALL handle findings as follows:
+The code review Operation SHALL handle each reviewer's findings as follows:
 
-- Report no finding that still names a Module the reviewer did not review.
-- Report no finding that still cites a stable identity or document that the reviewed Modules' Spec
-  context does not define.
-- Report no finding that still names a location whose file is neither in the worktree nor a changed
-  path of the diff.
-- Report no finding that still names a location whose line lies beyond that file's end.
+- Report no finding that, after the reviewer's one
+  [resume round](../../glossary.json#concept.resume-round) to correct its citations, still has one
+  of these faults:
+  - It names a Module the reviewer did not review.
+  - It cites a stable identity or document that the reviewed Modules' Spec context does not define.
+  - It names a location whose file is neither in the worktree nor a changed path of the diff.
+  - It names a location whose line lies beyond that file's end.
 - List each such finding as rejected with the reason.
 - Still report every other finding of that reviewer.
 
@@ -143,9 +144,8 @@ The code review Operation SHALL handle a reviewer's findings according to these 
 
 ### req.code-review.no-closing — The review closes no Issue
 
-The code review Operation SHALL NOT close or reopen an Issue.
-
-It lists the earlier Issues the reviewer found resolved in its report.
+The code review Operation SHALL NOT close or reopen an Issue: it lists the earlier Issues the
+reviewer found resolved in its report.
 
 ### req.code-review.store-refusal — A refusal of the Issue store is an error, not an Issue
 
@@ -173,5 +173,5 @@ these rules, in order:
 
 ### req.code-review.no-resume — No resume but to correct citations
 
-After a reviewer returns its result, the code review Operation SHALL NOT resume it except once to
-correct citations when a finding's Module, basis or location does not hold.
+After a reviewer returns its result, the code review Operation SHALL NOT resume it, except once,
+with those citations to correct, when a finding's Module, basis or location does not hold.
