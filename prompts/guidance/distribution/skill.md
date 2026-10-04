@@ -19,9 +19,10 @@ background Bash.
 The update installs the parts the receipt names again. It installs them from the Concorde checkout
 the receipt names as its `source` (or `--from <checkout>`). While a run of the project still runs,
 the update refuses with `concorde_busy`. Until the update ends, start no other `concorde` command in
-any worktree of the project. Where the spec part is installed, the update has these effects:
+any worktree of the project.
 
-- It binds the new Protocol copy.
-- It marks the project Concorde unvalidated until `concorde spec-validation` finds no other error.
+Where the spec part is installed, the update binds the new Protocol copy. Where the spec part is
+installed, it also marks the project Concorde unvalidated until `concorde spec-validation` finds no
+other error.
 
 Where the coordination part is installed, the update's result lists the open tasks of the project.

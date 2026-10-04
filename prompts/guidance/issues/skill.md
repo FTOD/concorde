@@ -103,7 +103,8 @@ None of these steps changes an Issue:
 - Fixing the task.
 - Delivering the task.
 
-Once `task merge` merges the task and its checks pass, the merge does the following:
+Where the coordination part is installed, once `task merge` merges the task and its checks pass,
+the merge does the following:
 
 - It closes each Issue the task resolves as `resolved` with the merge commit as evidence.
 - It lists those Issues as `resolved`.
@@ -148,9 +149,8 @@ also hold it:
 - A task open.
 - A task close.
 
-Where that part is installed, use `register_wait` for the merge lock.
-Where that part is installed, once the lock is released, write again.
-Without that part, only another Issue write holds the lock,
+Where the coordination part is installed, use `register_wait` for the merge lock and write again
+once the lock is released. Without the coordination part, only another Issue write holds the lock,
 for moments. For that reason, write again shortly after.
 
 `recovery_failed` means a record an Issue write published could not be put back.
