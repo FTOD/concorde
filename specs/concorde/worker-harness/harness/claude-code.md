@@ -28,7 +28,7 @@ absolute, `<runtime>` being the runtime directory:
     "enabled": true,
     "allowUnsandboxedCommands": false,
     "filesystem": {
-      "denyRead": ["<worktree>", "<user home>", "<primary worktree>", "<each Git administrative path>", "<runtime>/control", "<runtime>/config"],
+      "denyRead": ["<worktree>", "<user home>", "<primary worktree>", "<each Git administrative path>", "<runtime>/control", "<runtime>/config", "<each names path listed apart below a ro or rw directory entry>"],
       "allowRead": ["<each ro and rw path>", "<runtime paths>", "<runtime>/work", "<runtime>/home", "<runtime>/tmp"],
       "allowWrite": ["<each rw path>", "<runtime>/work", "<runtime>/home", "<runtime>/tmp"],
       "denyWrite": ["<each ro or names path listed apart below a rw directory entry>"]
@@ -46,9 +46,12 @@ that a path holding a space or a quote stays one word.
 Claude Code applies `Read` deny rules to its file tools and also to the Bash sandbox: a path a rule
 denies is absent for Bash too. Its sandbox's `denyWrite` wins inside a wider `allowWrite`, so a
 path the grant lists apart at `ro` or `names` below a `rw` directory entry, which the sandbox
-names in `denyWrite`, is read-only for Bash as for the file tools. The rules are therefore the one place that hides a path from a
-worker, and they must never cover system directories, the runtime paths or the run's own
-directories. They are generated from the grant and the file tree:
+names in `denyWrite`, is read-only for Bash as for the file tools. The sandbox's `denyRead` also
+names each path the grant lists apart at `names` below a `ro` or `rw` directory entry, as the lists
+it shares with pi must, which hides it from Bash as its `Read` rule already does. The rules are
+therefore the one place that hides a path from the file tools, and they must never cover system
+directories, the runtime paths or the run's own directories. They are generated from the grant
+and the file tree:
 
 | Path | Rules |
 | --- | --- |

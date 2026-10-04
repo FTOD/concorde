@@ -331,6 +331,37 @@ class PiRunTests(unittest.TestCase):
             [run.control.as_posix(), run.config.as_posix()], value["hidden"]
         )
 
+    @verifies("scenario.workers.pi-commands-sandboxed")
+    def test_the_extension_sandbox_denies_reads_of_names_below_a_readable_directory(
+        self,
+    ):
+        run = RunPaths(
+            self.project.base / "runtime", self.project.trace / "workers/x", "x"
+        )
+        self.project.grant = {
+            **self.project.grant,
+            "entries": [
+                *self.project.grant["entries"],
+                {"path": "src/a/notes.txt", "level": "names"},
+                {"path": "src/a/generated/", "level": "names"},
+            ],
+        }
+        request = self.project.request([])
+        programs = {
+            "rg": "/usr/bin/rg",
+            "fd": "/usr/bin/fd",
+            "sandbox_runtime": str(self.project.runtime_package),
+        }
+        value = pi_backend.policy(
+            request, self.root, run, programs, self.project.home, {"type": "object"}
+        )
+        # pi's extension receives only these sandbox lists, so the names paths below the rw
+        # directory are in their denyRead, which wins inside the wider allowRead of src/a.
+        root = Path(os.path.realpath(self.root))
+        for path in ("src/a/notes.txt", "src/a/generated"):
+            self.assertIn(f"{root}/{path}", value["sandbox"]["denyRead"])
+        self.assertIn(f"{root}/src/a", value["sandbox"]["allowRead"])
+
 
 POLICY_PROBE = """
 import { readDecision, writeDecision, searchDecision, resolveLikePi } from %(source)s;

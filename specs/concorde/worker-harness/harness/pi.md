@@ -81,8 +81,10 @@ and also denies a Git administrative path with the `.git` row's reason.
 `bash`, `grep`, `find` and `ls` run their command through `@anthropic-ai/sandbox-runtime`, the
 engine Claude Code's own sandbox uses. The extension initializes it once per process with no allowed
 network domain and a strict allowlist, and passes the filesystem configuration with every command:
-`denyRead` the task worktree, the user's home, the primary worktree, every Git administrative path
-and the runtime directory's `control/` and `config/`;
+`denyRead` the task worktree, the user's home, the primary worktree, every Git administrative path,
+the runtime directory's `control/` and `config/` and each path the grant lists apart at `names`
+below a `ro` or `rw` directory entry, which wins inside the wider `allowRead`, so Bash cannot read
+it either;
 `allowRead` each `ro` and `rw` path, the runtime paths, the worker's own directories and the sandbox-runtime's own
 helper programs; `allowWrite` each `rw` path and the worker's own directories; `denyWrite` each path
 the grant lists apart at `ro` or `names` below a `rw` directory entry, which wins inside the wider

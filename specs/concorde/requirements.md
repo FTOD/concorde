@@ -142,6 +142,18 @@ runs is an execution command or a plain `concorde` command instead.
 
 ## Boundaries
 
+A worker works under a grant and never touches Git. Every grant Method computes comes from the Specs
+of the checkout its run works in: the worktree of the run's
+[workspace](glossary.json#concept.workspace) for a bound run, the
+[unbound checkout](glossary.json#concept.unbound-checkout) for an
+[unbound run](glossary.json#concept.unbound-run)
+([req.method.workspace-specs](method/requirements.md#req.method.workspace-specs)). No worker can
+read or change Git metadata
+([req.workers.no-git](worker-harness/workers/launch.md#req.workers.no-git)): Git belongs to the
+levels around the workers, where the run that launches a worker reads the worktree's changes to
+audit them against the grant, the task level commits verified steps on the task branch, `delivery`
+makes the [delivery commit](glossary.json#concept.delivery-commit), and the main agent merges.
+
 ### req.concorde.spec-first — Specs are derived from code only by code-to-spec
 
 Every Spec statement that an Operation or an execution command writes from the contents of implementation files SHALL originate from a worker of [task type](glossary.json#concept.task-type) `code-to-spec`.
@@ -153,15 +165,11 @@ behaviour as it is and return doubtful intent as
 [open questions](glossary.json#concept.open-question) instead of promises, and the one Adoption step
 without a worker, the execution command `scaffold`, writes only what such a worker proposed.
 
-### req.concorde.grant-from-task-worktree — Grants come from the Specs the worker works on
-
-Every grant Method computes for a worker it launches SHALL be computed from the Specs of the checkout its run works in: the worktree of the run's [workspace](glossary.json#concept.workspace) for a bound run, and the [unbound checkout](glossary.json#concept.unbound-checkout) for an [unbound run](glossary.json#concept.unbound-run).
-
 ### req.concorde.no-wider-than-type — A worker's grant never exceeds its task type
 
 The [grant](glossary.json#concept.grant) Method computes for a worker SHALL NOT make readable or writable any of the project's files beyond what its task type assigns to its bound Modules.
 
-These two promises are Method's, which computes every grant of Concorde's own workers. The worker
+This promise is Method's, which computes every grant of Concorde's own workers. The worker
 harness, used alone, enforces and audits whatever grant its caller hands it and promises nothing
 about where that grant came from ([Worker harness](worker-harness/module.md)).
 
@@ -182,16 +190,13 @@ Besides the project's files, the [Harness](worker-harness/harness/module.md) giv
 home and temporary directories and leaves readable the system paths every program needs; its
 [known limits](worker-harness/harness/module.md#known-limits-of-v1) say what else it leaves out.
 
-### req.concorde.workers-no-git — Workers have no Git access
-
-A worker SHALL NOT be able to read or change Git metadata.
-
-Git belongs to the levels around the workers: the run that launches a worker reads the worktree's
-changes to audit them against the grant, the task level commits verified steps on the task branch,
-`delivery` makes the [delivery commit](glossary.json#concept.delivery-commit), and the main agent
-merges.
-
 ## Results and errors
+
+Every [run result](glossary.json#concept.run-result) keeps the evidence the run produced apart from
+the worker's own report, whatever the run's status: the runner and its steps never place a
+statement of a worker result in the result's summary or host evidence
+([req.execution.claims-apart](execution/requirements.md#req.execution.claims-apart)), and the
+worker's link in the chain is marked with the level `worker`.
 
 ### req.concorde.detailed-errors — Errors are reported in detail
 
@@ -218,15 +223,6 @@ Every error link SHALL conform to the error contract wherever it appears: in a [
 
 A [worker result](glossary.json#concept.worker-result) carries the worker's link without `level`,
 `actor` and `causes`, which Workers adds before the link reaches a run record.
-
-### req.concorde.claims-apart — Host evidence and worker claims stay apart
-
-Every run result SHALL keep the evidence the run produced apart from the worker's own report.
-
-This holds whatever the run's status, as Execution's
-[req.execution.claims-apart](execution/requirements.md#req.execution.claims-apart) states for the
-runner and its steps. The worker's link in the chain is marked with the level `worker`; the run
-never moves a worker's statement into its own links or its host evidence.
 
 ### req.concorde.spec-gaps-stop — Automatic rounds never fill a Spec gap
 
