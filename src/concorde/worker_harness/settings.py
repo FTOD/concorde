@@ -208,6 +208,17 @@ class GrantView:
                 return True
         return False
 
+    def held_below_rw(self) -> list[str]:
+        """Every path the grant lists at ``ro`` or ``names`` strictly below an ``rw`` directory
+        entry, which the most specific entry keeps from being written."""
+        writable = [path for path, level in self.directories if level == "rw"]
+        return sorted(
+            path
+            for path, level in [*self.exact.items(), *self.directories]
+            if level != "rw"
+            and any(path != above and path.startswith(above) for above in writable)
+        )
+
     def directory_level(self, directory: str) -> str | None:
         """The level the longest directory entry at or above ``directory`` gives, if any."""
         covering = [
@@ -395,7 +406,9 @@ def sandbox_filesystem(
     grant's ``ro`` and ``rw`` paths, the runtime paths and the run's own directories; only ``rw``
     paths and the run's own directories are writable; the run's ``control/`` and ``config/`` and
     every Git administrative path are hidden. A Git path inside a re-allowed ``ro`` or ``rw``
-    directory stays hidden, since a narrower ``denyRead`` wins inside a wider ``allowRead``.
+    directory stays hidden, since a narrower ``denyRead`` wins inside a wider ``allowRead``. A
+    path the grant lists apart at ``ro`` or ``names`` below an ``rw`` directory is in
+    ``denyWrite``, which wins inside a wider ``allowWrite``, so Bash cannot write it either.
     """
     worktree = Path(os.path.realpath(worktree))
     home = Path(os.path.realpath(home or Path.home()))
@@ -426,6 +439,9 @@ def sandbox_filesystem(
             )
         ),
         "allowWrite": sorted(set(writable + own)),
+        "denyWrite": [
+            (worktree / path.rstrip("/")).as_posix() for path in view.held_below_rw()
+        ],
     }
 
 

@@ -84,7 +84,9 @@ network domain and a strict allowlist, and passes the filesystem configuration w
 `denyRead` the task worktree, the user's home, the primary worktree, every Git administrative path
 and the runtime directory's `control/` and `config/`;
 `allowRead` each `ro` and `rw` path, the runtime paths, the worker's own directories and the sandbox-runtime's own
-helper programs; `allowWrite` each `rw` path and the worker's own directories. These are the lists of
+helper programs; `allowWrite` each `rw` path and the worker's own directories; `denyWrite` each path
+the grant lists apart at `ro` or `names` below a `rw` directory entry, which wins inside the wider
+`allowWrite`, so Bash cannot write it either. These are the lists of
 the Claude Code backend's [sandbox](claude-code.md#worker-settings), computed by the same code. The
 extension resets the sandbox when the session ends, so the process exits.
 

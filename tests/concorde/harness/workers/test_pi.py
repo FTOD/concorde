@@ -319,6 +319,7 @@ class PiRunTests(unittest.TestCase):
         )
         self.assertEqual(expected["denyRead"], value["sandbox"]["denyRead"])
         self.assertEqual(expected["allowWrite"], value["sandbox"]["allowWrite"])
+        self.assertEqual(expected["denyWrite"], value["sandbox"]["denyWrite"])
         self.assertEqual(
             sorted(
                 set(expected["allowRead"])
@@ -387,7 +388,12 @@ class PiPolicyTests(unittest.TestCase):
             ],
             "primary": self.primary.as_posix(),
             "userHome": (base / "user").as_posix(),
-            "sandbox": {"denyRead": [], "allowRead": [], "allowWrite": []},
+            "sandbox": {
+                "denyRead": [],
+                "allowRead": [],
+                "allowWrite": [],
+                "denyWrite": [],
+            },
             "programs": {"rg": "rg", "fd": "fd"},
             "limits": {"maxTurns": 1, "maxBudgetUsd": None},
             "resultSchema": {},
@@ -651,7 +657,12 @@ class PiExtensionTests(unittest.TestCase):
             "git": [],
             "primary": (self.base / "primary").as_posix(),
             "userHome": (self.base / "home").as_posix(),
-            "sandbox": {"denyRead": [], "allowRead": [], "allowWrite": []},
+            "sandbox": {
+                "denyRead": [],
+                "allowRead": [],
+                "allowWrite": [],
+                "denyWrite": [],
+            },
             "programs": {"rg": "rg", "fd": "fd"},
             "limits": {"maxTurns": 10, "maxBudgetUsd": 0.5},
             "resultSchema": result_schema(None),
