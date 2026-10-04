@@ -75,6 +75,8 @@ This illustrates [a guidance section standing without the parts it may lack](req
 - THEN the build is refused, naming the third prompt and both include chains from the root that reach it
 - BUT no output is written or removed
 
+This illustrates [a prompt reached at most once within one root](requirements.md#req.distribution.include-once).
+
 ### scenario.distribution.build-removes-own-leftover — Remove an output the build no longer produces
 
 - GIVEN an output the previous build wrote and whose prompt root was removed since

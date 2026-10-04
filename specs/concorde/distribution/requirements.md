@@ -28,6 +28,32 @@ own source checkout load the same text.
 The build SHALL fail when a Markdown file under `prompts/` is neither a prompt root nor reached
 through the includes of one.
 
+### req.distribution.prompt-includes — A prompt includes another by a line of its own
+
+The build SHALL expand a line `@<path>.md [KEY=value ...]` that starts at column one of a prompt as the prompt at that repository-relative path, each `{KEY}` placeholder of the included prompt filled with the line's value for it.
+
+A prompt is every Markdown file under `prompts/`; the Protocol's own chapters under `protocol/` are
+prompts too and, with the prompts under `prompts/protocol/`, its Protocol prompts.
+
+### req.distribution.safe-includes — Only a safe include is expanded
+
+The build SHALL refuse an include whose target is not a Markdown file at a repository-relative path, is reached through a symbolic link or is a [Spec](../glossary.json#concept.spec) document, and an include from a Protocol prompt to another prompt or from another prompt to a Protocol prompt.
+
+### req.distribution.include-audience — A root takes in only text meant for its audience
+
+The build SHALL refuse a prompt under `prompts/` whose front matter declares no audience among `worker`, `ambient` and `shared`, a root whose audience is not `worker` or `shared`, and a root that reaches through its includes a prompt whose audience is neither `shared` nor the root's own.
+
+A root is resolved as instructions an agent reads, so text meant for another audience, such as an
+`ambient` prompt, is never pulled into it. The Protocol's own chapters are plain Markdown and count
+as `shared`.
+
+### req.distribution.include-once — A prompt is reached at most once within one root
+
+The build SHALL refuse with `CONCORDE-PROMPT-DIAMOND-001`, naming the prompt and both include chains from the root that reach it, a root that reaches one prompt by a second include line, whatever values the lines give, whether in the same prompt or through two prompts that both include it.
+
+An include cycle is refused as well. Nothing is deduplicated: a text needed twice in one root is
+kept in two prompts.
+
 ### req.distribution.no-stale-copy — A stale build is never copied
 
 The [Protocol copy](../glossary.json#concept.protocol-copy) writer SHALL refuse to copy the Protocol
@@ -313,6 +339,13 @@ The installer SHALL create Concorde's own environment under `.concorde/framework
 
 uv chooses an interpreter that satisfies the requirement, downloading a uv-managed CPython when the
 machine has none, so the interpreter that runs the installer never decides Concorde's.
+
+### req.distribution.locked-python-dependencies — Only the locked Python dependencies are installed
+
+Where an installed part names a Python dependency, the installer SHALL install into Concorde's own environment exactly the runtime part of the package's `uv.lock`, exported with `uv export` to `.concorde/framework/requirements.txt` and installed with `uv pip install --require-hashes`.
+
+A package whose hash differs from the lock is therefore never installed, and the
+[install result](contracts.md#contract.distribution.install-result) names the requirements file and the lock's digest.
 
 ### req.distribution.installer-docsite-template — The installer ships the docsite template
 

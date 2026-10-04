@@ -493,10 +493,9 @@ project where every check passes, it goes through these steps in order:
    the install is refused with `python_env_failed` and uv's output. Into that environment go
    Concorde's Python dependencies, such as LangGraph, which Method's `spec_panel` runs on, only
    where an installed part's registration names one under `install.python_dependencies`: exactly
-   the runtime part of the checkout's `uv.lock`, exported with `uv export` to
-   `.concorde/framework/requirements.txt` and installed with `uv pip install --require-hashes`,
-   then checked by importing each dependency the installed parts name. A
-   failing step is refused with `python_dependencies_failed` and the failing command's output;
+   the runtime part of the checkout's `uv.lock`, each package checked against its locked hash
+   ([requirements](requirements.md#req.distribution.locked-python-dependencies)), then checked by
+   importing each dependency the installed parts name. A failing step is refused with `python_dependencies_failed` and the failing command's output;
    `--without-dependencies` skips them, and the Operations that need them then refuse.
 5. **It writes the command.** `.concorde/bin/concorde`, composed from the registrations of the
    installed parts, runs Concorde only in that environment,
@@ -913,21 +912,17 @@ is never shipped with renders made before it.
 
 The **build renderer** is a pure function of the source tree followed by a guarded write: includes
 must be safe, acyclic and audience-consistent, and an output is written only inside the build-owned
-`generated/` locations ([requirements](requirements.md#req.distribution.build-owned-outputs)).
-Every prompt under `prompts/` declares in its front matter an audience, `worker`, `ambient` or
-`shared` (the Protocol's own chapters under `protocol/` are plain Markdown and count as `shared`),
-and includes another with a line `@<path>.md [KEY=value ...]` starting at column one, whose values
-fill the included prompt's `{KEY}` placeholders. An include is safe when its target is a Markdown
-file at a repository-relative path without a symbolic link, never a Spec document, and a Protocol
-prompt includes and is included only by Protocol prompts. A root must be `worker` or `shared` and is
-resolved as instructions an agent reads, so it is audience-consistent when every prompt it includes
-is `worker` or `shared`; text meant for another audience (`ambient`) is never pulled in. Within one
-root a prompt is reached at most once, whatever values its include lines give: a second include line
-reaching it, whether in the same prompt or through a diamond of two prompts that both include it,
-stops the build with `CONCORDE-PROMPT-DIAMOND-001`, naming both include chains from the root, and
-nothing is deduplicated. A text needed twice in one root is therefore kept in two prompts. A
-leftover is removed only when its bytes still match the
-previous manifest; an edited leftover, a link or an unknown file stops the build first.
+`generated/` locations ([requirements](requirements.md#req.distribution.build-owned-outputs)). A
+prompt pulls in another with an include line and declares the audience it is written for, so a
+worker's instructions never take in text meant for another reader; the
+[include line](requirements.md#req.distribution.prompt-includes), the
+[safe include](requirements.md#req.distribution.safe-includes) and the
+[audience rules](requirements.md#req.distribution.include-audience) are requirements. A prompt is
+reached at most once within one root and is never deduplicated
+([requirements](requirements.md#req.distribution.include-once)), so the order and the values of
+every text a root holds are visible in its tree, and a text needed twice in one root is kept in two
+prompts. A leftover is removed only when its bytes still match the previous manifest; an edited
+leftover, a link or an unknown file stops the build first.
 
 The build also renders the **skills** agents load as Agent Skills, each as
 `generated/skills/<name>/SKILL.md` under the front matter naming the skill and describing it
