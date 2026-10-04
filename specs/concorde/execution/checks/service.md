@@ -33,7 +33,8 @@ project-relative path or one that escapes the worktree, through a directory that
 is refused with `invalid_check`, naming the
 file and the entry; its `validate_checks(worktree)` does the same alone, for a caller that wants
 the checks files judged before any check runs, as Method's `task-validation` does. The service
-validates `argv`, `env`, `when` and `timeout_seconds` when it runs the check. An input names a
+validates `argv`, `env`, `when` and `timeout_seconds` of every check it keeps, before it runs the
+first command. An input names a
 regular file or a directory; below a directory the service measures every regular file outside
 `__pycache__` directories. An input that is missing, is itself a symbolic link or is neither a
 regular file nor a directory stops the run before any command and names the check, its Module and
@@ -92,23 +93,32 @@ stage="work", kinds="all")` in `src/concorde/execution/checks/checks.py`:
    [verification declarations](../../glossary.json#concept.verification-declaration); `kinds`
    narrows the call to the ordinary checks (`module`) or to the selective ones (`selective`), so
    that a caller can run each Module's own checks separately and the selective checks once for the
-   whole selection;
-4. for each kept check, computes its measured digest with `measured_digest`, in the same file. For
+   whole selection. A check whose `argv` is not a list is no selective check, and is refused with
+   `invalid_check` like every malformed `argv`;
+4. before running any command, validates the `argv`, `env` and `timeout_seconds` of every kept
+   check, replaces `{python}` and `{tests}`, and finds every declared input of every kept check,
+   so that an invalid check, a missing interpreter or a missing input of any kept check, whichever
+   Module it belongs to, stops the call before the first command;
+5. for each kept check, computes its measured digest with `measured_digest`, in the same file. For
    an ordinary check it is `check_revision` of the check's own Module: the digest of the files the
    caller names for that Module in `measured`, in Concorde its implementation files, each of its
    checks' definitions, the digest of every file below their inputs, and `CHECK_POLICY`. For a
    selective check it is the digest of that `check_revision` together with the sorted selected
    Modules, the tests it selected and the digest of every file holding one of them;
-5. creates the check's [trace node](../../glossary.json#concept.trace-node)
-   `<trace_directory>/<check id>/`, writes its `trace.json` with status `running`, runs the check
-   through `execute_check` with `worktree` as project root and the default boundary, writes
-   `<stdout>\n<stderr>` to `output.log` of the node, preceded for a selective check by the tests it
-   selected, and writes `trace.json` again with the check's end; when the boundary refused the
-   command, the log holds what it reported, the node ends `failed` with the service's error and the
-   call fails with `check_sandbox_unavailable`;
-6. computes the measured digest again, over the same named files and selected tests, and fails the
-   whole call with `stale_evidence` when it differs;
-7. returns one check result per check it ran, in configuration order.
+6. creates the check's [trace node](../../glossary.json#concept.trace-node)
+   `<trace_directory>/<check id>/`, with `trace_directory` made absolute, writes its `trace.json`
+   with status `running`, runs the check through `execute_check` with `worktree` as project root and
+   the default boundary, writes `<stdout>\n<stderr>` to `output.log` of the node, preceded for a
+   selective check by the tests it selected, and writes `trace.json` again with the check's end;
+   when the boundary refused the command, the log holds what it reported, the node ends `failed`
+   with the service's error and the call fails with `check_sandbox_unavailable`. When a
+   cancellation, an interrupt or an unexpected error ends the call before the node ended, the log
+   holds the output the boundary drained, the node ends `failed` with the outcome and status
+   `interrupted`, and the error goes on to the caller unchanged;
+7. computes the measured digest again, over the same named files and selected tests, and fails the
+   whole call with `stale_evidence` when it differs or can no longer be computed, because a
+   measured file, selected test file or input is gone or became a symbolic link;
+8. returns one check result per check it ran, in configuration order.
 
 A failure in any step ends the call without results, including those of checks that already ran.
 A selected Module without configured checks contributes no result; the caller decides whether that
@@ -132,7 +142,7 @@ Every check the service runs is also a trace node of kind `check`, as
 ```concorde-contract
 {
   "id": "contract.checks.check-trace",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -149,7 +159,8 @@ Every check the service runs is also a trace node of kind `check`, as
           "passed",
           "failed",
           "timeout",
-          "refused"
+          "refused",
+          "interrupted"
         ]
       },
       "exit_code": {
@@ -181,7 +192,7 @@ Every check the service runs is also a trace node of kind `check`, as
       }
     }
   },
-  "semantics": "The data of the typed value concorde-check-trace, the content of one check's trace node. status is the check result's status, or refused when the boundary refused to start the command; exit_code is its exit status, -1 on timeout, null when refused; source_digest is the measured digest taken before the run; argv is the command as run; selected_tests are the tests a selective check selected, empty otherwise. The node's identity is the check identity, its metadata the check and its Module, its status ok for passed and failed otherwise, its outcome the check status, its usage the check's duration, and output.log its artifact with the log digest. A behaviour or field change increments the version.",
+  "semantics": "The data of the typed value concorde-check-trace, the content of one check's trace node. status is the check result's status, refused when the boundary refused to start the command, or interrupted when a cancellation, an interrupt or an unexpected error ended the call before the check ended; exit_code is its exit status, -1 on timeout, null when refused or interrupted; source_digest is the measured digest taken before the run; argv is the command as run; selected_tests are the tests a selective check selected, empty otherwise. The node's identity is the check identity, its metadata the check and its Module, its status ok for passed and failed otherwise, its outcome the check status, its usage the check's duration, and output.log its artifact with the log digest. A behaviour or field change increments the version.",
   "example": {
     "status": "failed",
     "exit_code": 1,
@@ -239,8 +250,8 @@ depends on the code:
 `check_error(result)` turns a check result whose status is not `passed` into the check's link of
 the Framework's [error chain](../../kernel/tracing/contracts.md#contract.tracing.error), so every consumer reports
 a failing check the same way: the level `check`, the check's identity as actor, the code
-`check_failed` or `check_timed_out`, a detail naming the Module, the exit code, the log path and the
-last 3,000 bytes of the log, the log as evidence, and the reason `capability`, because a check only
+`check_failed` or `check_timed_out`, a detail naming the Module, the exit code (`-1` for a
+timeout), the log path and the last 3,000 bytes of the log, the log as evidence, and the reason `capability`, because a check only
 measures the code it runs against.
 
 ## Requirements
@@ -339,7 +350,7 @@ start.
 
 ### scenario.checks.check-env-invalid — A check env with invalid names is refused
 
-- GIVEN a check whose `env` has a name that is not a variable name, such as `not a name`
+- GIVEN a check whose `env` has a name that is not a variable name, such as `not a name` or `MARK` followed by a newline
 - WHEN the check runs
 - THEN it is refused with `invalid_check`
 
@@ -380,7 +391,7 @@ start.
 
 ### scenario.checks.service-stale — Input that changes during the run is stale
 
-- GIVEN a check whose Module's implementation file changes while the check runs
+- GIVEN a check whose Module's implementation file changes, or is deleted, while the check runs
 - WHEN the service measures the check revision again
 - THEN the call fails with `stale_evidence` and returns no result
 - AND Check execution's link for it has the level `component`, the actor `Check execution`, the code `stale_evidence` and the reason `environment`
@@ -397,5 +408,5 @@ start.
 ### scenario.checks.service-input-missing — A missing input stops the run
 
 - GIVEN a configured check whose declared input does not exist
-- WHEN the service is asked to run it
+- WHEN the service is asked to run it, alone or after a kept check of another Module that comes first in configuration order
 - THEN the call fails naming the check, its Module and the path before any command runs

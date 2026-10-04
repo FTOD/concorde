@@ -653,6 +653,7 @@ def _run_one(
     )
     node.keep("output", "output.log")
     node.start()
+    logged = False
     try:
         try:
             outcome = execute_check(worktree, argv, timeout=timeout, environment=env)
@@ -678,6 +679,7 @@ def _run_one(
             ("selected tests: " + " ".join(chosen) + "\n\n").encode() if chosen else b""
         )
         log.write_bytes(header + outcome.stdout + b"\n" + outcome.stderr)
+        logged = True
         status = (
             "timeout"
             if outcome.timed_out
@@ -724,7 +726,7 @@ def _run_one(
         if node.record["status"] == "running":
             stdout, stderr = getattr(error, "check_output", (b"", b""))
             with contextlib.suppress(OSError, TraceError, KernelError):
-                if not log.exists():
+                if not logged:
                     log.write_bytes(stdout + b"\n" + stderr)
                 node.finish(
                     "failed",
