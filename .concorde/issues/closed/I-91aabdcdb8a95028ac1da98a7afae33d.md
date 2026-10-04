@@ -4,7 +4,7 @@
 {
   "schema_version": 4,
   "id": "I-91aabdcdb8a95028ac1da98a7afae33d",
-  "status": "open",
+  "status": "closed",
   "reports": [
     {
       "id": "sha256:9f12906cc31579c9f881f38bb0ede17caa31edb5ba3bafa916e0d06745bca218",
@@ -43,6 +43,18 @@
       }
     }
   ],
-  "dispositions": []
+  "dispositions": [
+    {
+      "reason": "resolved",
+      "note": "Fixed by task fix-open-root-distribution, merged into the primary branch at 8a5cfc367a6280e7de01a6d243e445d6ee49f69d.",
+      "evidence": [
+        "merge commit 8a5cfc367a6280e7de01a6d243e445d6ee49f69d",
+        "task fix-open-root-distribution"
+      ],
+      "duplicate_of": null,
+      "actor": "main-agent",
+      "created_at": "2026-10-04T02:34:22.031349+00:00"
+    }
+  ]
 }
 ```
