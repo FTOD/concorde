@@ -509,7 +509,7 @@ it("publishes user documents at the root as the first tab without changing regis
   expect(user?.plugin).toEqual([
     "@docusaurus/plugin-content-docs",
     expect.objectContaining({
-      id: "user",
+      id: "user_docs",
       path: "../docs",
       routeBasePath: "/",
     }),
@@ -520,7 +520,7 @@ it("publishes user documents at the root as the first tab without changing regis
   );
   expect(user?.navbarItem).toEqual({
     type: "docSidebar",
-    docsPluginId: "user",
+    docsPluginId: "user_docs",
     sidebarId: "defaultSidebar",
     label: "User documents",
     position: "left",

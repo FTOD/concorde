@@ -1,4 +1,4 @@
-import { existsSync, realpathSync, statSync } from "node:fs";
+import { existsSync, readdirSync, realpathSync, statSync } from "node:fs";
 import { isAbsolute, relative, resolve } from "node:path";
 import type { PluginConfig } from "@docusaurus/types";
 import type { NavbarItem } from "@docusaurus/theme-common";
@@ -28,26 +28,53 @@ export function collectionDirectory(
   return directory;
 }
 
-/** Refuses a documentation directory that contains a registered Spec document. */
+/** Whether `path` is `directory` itself or lies below it. */
+function inside(directory: string, path: string): boolean {
+  const rel = relative(directory, path);
+  return (
+    rel === "" || (rel !== ".." && !rel.startsWith("../") && !isAbsolute(rel))
+  );
+}
+
+/**
+ * Refuses a documentation directory that contains a registered Spec document: one lying below it,
+ * or one that a symbolic link inside it, to the document or to a directory holding it, reaches.
+ */
 export function refuseRegisteredSpecs(
   directory: string,
   registry: ScopedRegistry,
   collection: string,
 ): void {
-  for (const page of registry.pages) {
-    const path = relative(
-      directory,
-      realpathSync(resolve(registry.projectRoot, page.sourcePath)),
+  const registered = registry.pages.map((page) => ({
+    sourcePath: page.sourcePath,
+    real: realpathSync(resolve(registry.projectRoot, page.sourcePath)),
+  }));
+  const refuse = (sourcePath: string): never => {
+    throw new Error(
+      `${collection} includes registered Spec ${sourcePath}; keep it separate from Module Specs.`,
     );
-    if (
-      path === "" ||
-      (path !== ".." && !path.startsWith("../") && !isAbsolute(path))
-    ) {
-      throw new Error(
-        `${collection} includes registered Spec ${page.sourcePath}; keep it separate from Module Specs.`,
-      );
+  };
+  for (const page of registered)
+    if (inside(directory, page.real)) refuse(page.sourcePath);
+  const walk = (current: string): void => {
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const path = resolve(current, entry.name);
+      if (entry.isDirectory()) {
+        walk(path);
+        continue;
+      }
+      if (!entry.isSymbolicLink()) continue;
+      let real: string;
+      try {
+        real = realpathSync(path);
+      } catch {
+        continue; // A dangling link publishes nothing.
+      }
+      for (const page of registered)
+        if (inside(real, page.real)) refuse(page.sourcePath);
     }
-  }
+  };
+  walk(directory);
 }
 
 export function customDocsConfiguration(

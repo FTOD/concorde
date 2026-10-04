@@ -27,7 +27,16 @@ export interface SiteIdentity {
 }
 
 const SITE_JSON_LABEL = "docsite/site.json";
-const absoluteUrlPattern = /^https?:\/\//i;
+
+/** An absolute http(s) URL with a host and no whitespace. */
+function isAbsoluteHttpUrl(value: string): boolean {
+  if (!/^https?:\/\/[^/?#\s]/i.test(value) || /\s/.test(value)) return false;
+  try {
+    return new URL(value).hostname.length > 0;
+  } catch {
+    return false;
+  }
+}
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
@@ -118,7 +127,7 @@ export function parseSiteIdentity(value: unknown): SiteIdentity {
   if (record.schema_version !== 1) invalid("schema_version must be exactly 1.");
   if (!isNonEmptyString(record.title))
     invalid("title must be a non-empty string.");
-  if (!isNonEmptyString(record.url) || !absoluteUrlPattern.test(record.url)) {
+  if (!isNonEmptyString(record.url) || !isAbsoluteHttpUrl(record.url)) {
     invalid("url must be an absolute http(s):// URL.");
   }
   if (
@@ -135,7 +144,7 @@ export function parseSiteIdentity(value: unknown): SiteIdentity {
   if (
     record.repository !== undefined &&
     (!isNonEmptyString(record.repository) ||
-      !absoluteUrlPattern.test(record.repository))
+      !isAbsoluteHttpUrl(record.repository))
   ) {
     invalid("repository must be an absolute http(s):// URL when present.");
   }

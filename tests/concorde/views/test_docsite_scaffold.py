@@ -3,7 +3,9 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -63,6 +65,20 @@ def _copy_light_package(destination: Path) -> Path:
         REPOSITORY_ROOT / "docsite", destination / "docsite", ignore=_ignore
     )
     return destination
+
+
+def _git(root: Path, *arguments: str) -> None:
+    subprocess.run(
+        ["git", "-C", str(root), *arguments],
+        check=True,
+        capture_output=True,
+        env={"PATH": os.environ["PATH"], "HOME": str(root)},
+    )
+
+
+def _git_repository(root: Path, origin: str) -> None:
+    _git(root, "init", "-q")
+    _git(root, "remote", "add", "origin", origin)
 
 
 class DocsiteScaffoldTests(unittest.TestCase):
@@ -224,12 +240,7 @@ class DocsiteScaffoldTests(unittest.TestCase):
     @verifies("scenario.views.scaffold-propose")
     def test_github_origin_derives_identity_defaults(self) -> None:
         _init_project(self.root)
-        git_dir = self.root / ".git"
-        git_dir.mkdir()
-        (git_dir / "config").write_text(
-            '[remote "origin"]\n\turl = git@github.com:org/atlas.git\n',
-            encoding="utf-8",
-        )
+        _git_repository(self.root, "git@github.com:org/atlas.git")
         result = propose_docsite(self.root)
         identity = result.result["proposal"]["identity"]
         self.assertEqual(identity["repository"], "https://github.com/org/atlas")
@@ -244,15 +255,43 @@ class DocsiteScaffoldTests(unittest.TestCase):
     @verifies("scenario.views.scaffold-propose")
     def test_github_pages_username_repository_uses_root_base_url(self) -> None:
         _init_project(self.root)
-        git_dir = self.root / ".git"
-        git_dir.mkdir()
-        (git_dir / "config").write_text(
-            '[remote "origin"]\n\turl = https://github.com/org/org.github.io.git\n',
-            encoding="utf-8",
-        )
+        _git_repository(self.root, "https://github.com/org/org.github.io.git")
         result = propose_docsite(self.root)
         identity = result.result["proposal"]["identity"]
         self.assertEqual(identity["baseUrl"], "/")
+
+    @verifies("scenario.views.scaffold-propose")
+    def test_linked_worktree_reads_the_repository_origin(self) -> None:
+        primary = self.root / "primary"
+        primary.mkdir()
+        _git_repository(primary, "https://github.com/org/atlas.git")
+        _git(
+            primary,
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@t",
+            "commit",
+            "-q",
+            "--allow-empty",
+            "-m",
+            "start",
+        )
+        linked = self.root / "linked"
+        _git(primary, "worktree", "add", "-q", str(linked))
+        self.assertTrue((linked / ".git").is_file())
+        _init_project(linked)
+        identity = propose_docsite(linked).result["proposal"]["identity"]
+        self.assertEqual(identity["repository"], "https://github.com/org/atlas")
+        self.assertEqual(identity["baseUrl"], "/atlas/")
+
+    def test_a_directory_inside_another_repository_has_no_origin(self) -> None:
+        _git_repository(self.root, "https://github.com/org/atlas.git")
+        project = self.root / "nested"
+        project.mkdir()
+        _init_project(project)
+        identity = propose_docsite(project).result["proposal"]["identity"]
+        self.assertNotIn("repository", identity)
 
     @verifies("scenario.views.scaffold-propose")
     def test_explicit_overrides_win(self) -> None:
@@ -277,6 +316,9 @@ class DocsiteScaffoldTests(unittest.TestCase):
             {"title": "   "},
             {"repository": "not-a-url"},
             {"url": "ftp://example.test"},
+            {"url": "https://"},
+            {"url": "https:///path"},
+            {"repository": "http://:80/x"},
             {"base_url": "no-slashes"},
         ):
             with self.subTest(kwargs=kwargs):
@@ -494,6 +536,149 @@ class DocsiteScaffoldTests(unittest.TestCase):
         payload = json.loads(buffer.getvalue())
         self.assertEqual(payload["status"], "invalid")
         self.assertEqual(payload["findings"][0]["rule_id"], "CONCORDE-DOCSITE-008")
+
+
+class DocsiteScaffoldRefusalTests(unittest.TestCase):
+    """Malformed proposals and damaged packages are refused with the promised status."""
+
+    def setUp(self) -> None:
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.root = Path(directory.name)
+        _init_project(self.root)
+        self.proposed = propose_docsite(self.root)
+        self.assertEqual("proposal", self.proposed.status, self.proposed.findings)
+
+    def apply(self, value, **options):
+        (self.root / ".concorde/docsite-proposal.json").write_text(
+            json.dumps(value), encoding="utf-8"
+        )
+        with mock.patch(
+            "concorde.spec.views.docsite_scaffold.apply_files"
+        ) as apply_files:
+            result = apply_docsite(
+                self.root, ".concorde/docsite-proposal.json", **options
+            )
+        if result.status != "success":
+            apply_files.assert_not_called()
+        return result
+
+    def proposal(self) -> dict:
+        return json.loads(json.dumps(self.proposed.result["proposal"]))
+
+    @verifies("scenario.views.scaffold-stale-rejected")
+    def test_malformed_proposal_shapes_are_invalid_004(self) -> None:
+        cases = {
+            "null result": {"result": None},
+            "result without proposal": {"result": {"prerequisites": []}},
+            "null proposal": {"proposal": None},
+        }
+        extra = self.proposal()
+        extra["unexpected"] = True
+        cases["extra field"] = extra
+        missing = self.proposal()
+        del missing["conflicts"]
+        cases["missing conflicts"] = missing
+        bad_conflicts = self.proposal()
+        bad_conflicts["conflicts"] = [{"path": "x"}]
+        cases["bad conflict"] = bad_conflicts
+        for key, value in (
+            ("schema_version", 2),
+            ("url", "https://"),
+            ("baseUrl", "atlas"),
+            ("title", ""),
+            ("tagline", "added"),
+        ):
+            identity = self.proposal()
+            identity["identity"][key] = value
+            cases[f"identity {key}"] = identity
+        for name, value in cases.items():
+            with self.subTest(name=name):
+                result = self.apply(value)
+                self.assertEqual("invalid", result.status, result.findings)
+                self.assertEqual(
+                    {"CONCORDE-DOCSITE-004"}, {f.rule_id for f in result.findings}
+                )
+                self.assertFalse((self.root / "docsite").exists())
+
+    @verifies("scenario.views.scaffold-stale-rejected")
+    def test_differing_files_name_every_path_and_repeats(self) -> None:
+        many = self.proposal()
+        for item in many["files"]:
+            item["sha256"] = "sha256:" + "0" * 64
+        result = self.apply(many)
+        self.assertEqual("invalid", result.status)
+        message = str(result.error)
+        self.assertGreater(len(many["files"]), 20)
+        for item in many["files"]:
+            self.assertIn(item["path"], message)
+
+        repeated = self.proposal()
+        repeated["files"].append(repeated["files"][0])
+        message = str(self.apply(repeated).error)
+        self.assertIn("repeated paths: " + repeated["files"][0]["path"], message)
+
+        reordered = self.proposal()
+        reordered["files"].reverse()
+        message = str(self.apply(reordered).error)
+        self.assertIn("not sorted by path", message)
+        self.assertNotIn("0 differing", message)
+
+    def test_package_without_docsite_root_is_invalid_002_on_apply(self) -> None:
+        with tempfile.TemporaryDirectory() as package_tmp:
+            package = _copy_light_package(Path(package_tmp) / "package")
+            proposed = propose_docsite(self.root, package_root=package)
+            (package / "concorde.json").write_text(
+                json.dumps({"package_roots": ["src"]}), encoding="utf-8"
+            )
+            result = self.apply(proposed.result, package_root=package)
+        self.assertEqual("invalid", result.status)
+        self.assertEqual({"CONCORDE-DOCSITE-002"}, {f.rule_id for f in result.findings})
+        self.assertIn("reinstall", result.findings[0].remediation)
+
+    def test_unsafe_template_is_invalid_002_on_propose_and_apply(self) -> None:
+        with tempfile.TemporaryDirectory() as package_tmp:
+            package = _copy_light_package(Path(package_tmp) / "package")
+            proposed = propose_docsite(self.root, package_root=package)
+            (package / "docsite/plugins/link.ts").symlink_to("index.ts")
+            for result in (
+                propose_docsite(self.root, package_root=package),
+                self.apply(proposed.result, package_root=package),
+            ):
+                self.assertEqual("invalid", result.status)
+                self.assertEqual(
+                    {"CONCORDE-DOCSITE-002"}, {f.rule_id for f in result.findings}
+                )
+
+    def test_missing_workflow_template_is_invalid_002(self) -> None:
+        with tempfile.TemporaryDirectory() as package_tmp:
+            package = _copy_light_package(Path(package_tmp) / "package")
+            (package / "docsite/scaffold/deploy-docsite.yml").unlink()
+            result = propose_docsite(self.root, package_root=package, github_pages=True)
+        self.assertEqual("invalid", result.status)
+        self.assertEqual({"CONCORDE-DOCSITE-002"}, {f.rule_id for f in result.findings})
+
+    @verifies("scenario.views.scaffold-conflict")
+    def test_dangling_destination_symlink_is_a_conflict(self) -> None:
+        (self.root / "docsite").mkdir()
+        (self.root / "docsite/package.json").symlink_to("missing-target")
+        result = self.apply(self.proposed.result)
+        self.assertEqual("conflict", result.status, result.findings)
+        self.assertEqual(["docsite/package.json"], result.result["conflicts"])
+        self.assertTrue((self.root / "docsite/package.json").is_symlink())
+
+    @verifies("scenario.views.scaffold-apply")
+    def test_every_change_requires_an_absent_destination(self) -> None:
+        (self.root / ".concorde/docsite-proposal.json").write_text(
+            json.dumps(self.proposed.result), encoding="utf-8"
+        )
+        with mock.patch(
+            "concorde.spec.views.docsite_scaffold.apply_files", return_value=[]
+        ) as apply_files:
+            apply_docsite(self.root, ".concorde/docsite-proposal.json")
+        changes = apply_files.call_args.args[1]
+        self.assertTrue(changes)
+        self.assertEqual({None}, {change["before_digest"] for change in changes})
 
 
 if __name__ == "__main__":
