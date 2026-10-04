@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
 import tempfile
 import threading
 import unittest
@@ -109,9 +110,39 @@ class BindingTests(unittest.TestCase):
                 self.assertIn(str(path), str(refused.exception))
                 if field:
                     self.assertIn(f"at {field}:", str(refused.exception))
-        with self.assertRaises(KernelError) as refused:
-            binding.write(self.root, self.value(workspace="Not A Name"))
-        self.assertEqual("binding_invalid", refused.exception.code)
+        alias = Path(tempfile.mkdtemp()) / "alias"
+        alias.symlink_to(self.root)
+        for root in (str(alias), f"{self.root}/.", "relative/root"):
+            with self.subTest(root=root):
+                self.place(json.dumps(self.value(root=root)))
+                with self.assertRaises(KernelError) as refused:
+                    binding.load(self.root)
+                self.assertEqual("binding_invalid", refused.exception.code)
+                self.assertIn("absolute real path", str(refused.exception))
+        for broken in (
+            self.value(workspace="Not A Name"),
+            self.value(root=str(alias)),
+            self.value(root=str(repository())),
+            self.value(traces="relative/folder"),
+            self.value(traces=str(self.traces / "missing")),
+        ):
+            with (
+                self.subTest(written=broken),
+                self.assertRaises(KernelError) as refused,
+            ):
+                binding.write(self.root, broken)
+            self.assertEqual("binding_invalid", refused.exception.code)
+
+    def test_a_binding_the_system_cannot_write_is_refused_with_a_code(self):
+        failure = PermissionError(13, "Permission denied")
+        with (
+            patch.object(Path, "write_text", side_effect=failure),
+            self.assertRaises(KernelError) as refused,
+        ):
+            binding.write(self.root, self.value())
+        self.assertEqual("system_error", refused.exception.code)
+        self.assertEqual(str(binding.path_of(self.root)), refused.exception.field)
+        self.assertIs(failure, refused.exception.causes[0])
 
     @verifies("scenario.kernel.binding-copied")
     def test_a_copied_binding_is_refused(self):
@@ -132,6 +163,7 @@ class DeliveryTests(unittest.TestCase):
         first = commit(root, delivery.message("retry", "Limit retries."))
         commit(root, delivery.message("other", "Another workspace."))
         commit(root, "an ordinary commit\n")
+        commit(root, "  concorde: deliver retry \n\nA padded subject is no delivery.\n")
         second = commit(root, delivery.message("retry", "Limit retries."))
         self.assertEqual(
             [{"commit": first, "mismatches": []}, {"commit": second, "mismatches": []}],
@@ -361,6 +393,95 @@ class TypedValueTests(unittest.TestCase):
         self.assertEqual("incompatible_handoff", refused.exception.code)
 
 
+class DialectTests(unittest.TestCase):
+    def setUp(self):
+        self.registry = patch.dict(schema._TYPES, {})
+        self.registry.start()
+        self.addCleanup(self.registry.stop)
+
+    def refused(self, value, schema_value) -> bool:
+        try:
+            schema.check_schema(value, schema_value)
+        except KernelError as error:
+            self.assertEqual("invalid_field", error.code)
+            return True
+        return False
+
+    def test_values_compare_as_json_values(self):
+        self.assertTrue(self.refused({"x": True}, {"const": {"x": 1}}))
+        self.assertFalse(self.refused({"x": 1.0}, {"const": {"x": 1}}))
+        self.assertTrue(self.refused([True], {"enum": [[1], [2]]}))
+        self.assertFalse(self.refused([2.0], {"enum": [[1], [2]]}))
+        self.assertTrue(self.refused([1, 1.0], {"uniqueItems": True}))
+        self.assertFalse(self.refused([1, True], {"uniqueItems": True}))
+        self.assertTrue(self.refused([{"a": [1]}, {"a": [1.0]}], {"uniqueItems": True}))
+        schema.register("example-flag", 1, {"const": True})
+        with self.assertRaises(KernelError) as refused:
+            schema.register("example-flag", 1, {"const": 1})
+        self.assertEqual("duplicate_type", refused.exception.code)
+        schema.register("example-limit", 1, {"maximum": 1})
+        schema.register("example-limit", 1, {"maximum": 1.0})
+
+    def test_a_boolean_schema_is_registered(self):
+        schema.register("example-any", 1, True)
+        schema.register("example-none", 1, False)
+        self.assertEqual({"x": [1]}, schema.typed("example-any", {"x": [1]})["data"])
+        with self.assertRaises(KernelError) as refused:
+            schema.typed("example-none", {})
+        self.assertEqual(
+            ("invalid_field", "/data"),
+            (refused.exception.code, refused.exception.field),
+        )
+
+    def test_numbers_beyond_float_range(self):
+        huge = 10**400
+        self.assertFalse(self.refused(huge, {"type": "integer", "minimum": 0}))
+        self.assertTrue(self.refused(huge, {"type": "integer", "maximum": 1e300}))
+        self.assertEqual(huge, schema.decode("1" + "0" * 400))
+        for text in ("1e999", "[-1e999]", "NaN"):
+            with self.subTest(text), self.assertRaises(KernelError) as refused:
+                schema.decode(text)
+            self.assertEqual("invalid_json", refused.exception.code)
+
+    def test_min_length_refuses_whitespace_only(self):
+        for minimum, value, refused in (
+            (0, "", False),
+            (0, "  ", True),
+            (1, "  ", True),
+            (1, "", True),
+            (0, " x ", False),
+        ):
+            with self.subTest(minimum=minimum, value=value):
+                self.assertEqual(
+                    refused,
+                    self.refused(value, {"type": "string", "minLength": minimum}),
+                )
+
+    def test_artifacts_of_an_array_are_distinct(self):
+        one = {"id": "a", "path": "a.txt", "digest": "sha256:" + "0" * 64}
+        listed = schema.array(schema.ARTIFACT)
+        self.assertFalse(
+            self.refused([one, {**one, "id": "b", "path": "b.txt"}], listed)
+        )
+        for repeated in ({**one, "path": "b.txt"}, {**one, "id": "b"}):
+            with self.subTest(repeated=repeated):
+                self.assertTrue(self.refused([one, repeated], listed))
+
+    def test_an_artifact_the_system_cannot_read_is_refused_with_a_code(self):
+        root = Path(tempfile.mkdtemp())
+        (root / "a.txt").write_text("a\n")
+        failure = PermissionError(13, "Permission denied")
+        with (
+            patch.object(Path, "read_bytes", side_effect=failure),
+            self.assertRaises(KernelError) as refused,
+        ):
+            schema.artifact(root, "a", "a.txt")
+        self.assertEqual(
+            ("system_error", "a.txt"), (refused.exception.code, refused.exception.field)
+        )
+        self.assertIs(failure, refused.exception.causes[0])
+
+
 class TransactionTests(unittest.TestCase):
     def setUp(self):
         self.root = Path(tempfile.mkdtemp())
@@ -408,6 +529,8 @@ class TransactionTests(unittest.TestCase):
             [{"path": "a.txt"}],
             [*self.changes(), self.changes()[0]],
             [{"path": "../a.txt", "before_digest": None, "content": ""}],
+            [{"path": "a.txt", "before_digest": "sha256:x", "content": ""}],
+            [{"path": "a.txt", "before_digest": "sha256:" + "A" * 64, "content": ""}],
         ):
             with (
                 self.subTest(malformed=malformed),
@@ -438,6 +561,30 @@ class TransactionTests(unittest.TestCase):
             files.apply_files(self.root, self.changes(), {"a.txt", "b.txt"}),
         )
         self.assertEqual({"a.txt": "A\n", "b.txt": "B\n"}, self.contents())
+
+    @verifies("scenario.kernel.transaction-restored")
+    def test_an_interruption_between_writes_restores_every_file(self):
+        write = files._write
+
+        def interrupted(path: Path, data: bytes) -> None:
+            if path.name == "b.txt" and data == b"B\n":
+                raise KeyboardInterrupt
+            write(path, data)
+
+        with (
+            patch.object(files, "_write", interrupted),
+            self.assertRaises(KeyboardInterrupt),
+        ):
+            files.apply_files(self.root, self.changes(), {"a.txt", "b.txt"})
+        self.assertEqual({"a.txt": "a\n", "b.txt": "b\n"}, self.contents())
+        with self.assertRaises(SystemExit):
+            files.apply_files(
+                self.root,
+                self.changes(),
+                {"a.txt", "b.txt"},
+                verify=lambda: sys.exit(3),
+            )
+        self.assertEqual({"a.txt": "a\n", "b.txt": "b\n"}, self.contents())
 
     @verifies("scenario.kernel.transaction-unrestored")
     def test_a_refused_restoration_is_named(self):
@@ -508,6 +655,31 @@ class LockTests(unittest.TestCase):
             )
         self.assertIsNone(locking.merge_lock_holder(concorde))
         self.assertIsNone(locking.workspace_lock_holder(concorde, "t2"))
+
+    def test_a_lock_the_system_refuses_is_refused_with_a_code_and_the_block_is_untouched(
+        self,
+    ):
+        concorde = Path(tempfile.mkdtemp())
+        (concorde / "locks").write_text("a file where the lock folder belongs\n")
+        for taking in (
+            lambda: locking.merge_lock(concorde, "an Issue write", wait=0),
+            lambda: locking.workspace_lock(concorde, "t2", "a run"),
+        ):
+            with self.subTest(), self.assertRaises(KernelError) as refused:
+                with taking():
+                    pass
+            self.assertEqual("system_error", refused.exception.code)
+            self.assertIn("locks", refused.exception.field)
+        other = Path(tempfile.mkdtemp())
+        mine = FileNotFoundError(2, "the caller's own failure")
+        for taking in (
+            lambda: locking.merge_lock(other, "an Issue write", wait=0),
+            lambda: locking.workspace_lock(other, "t2", "a run"),
+        ):
+            with self.subTest(), self.assertRaises(FileNotFoundError) as raised:
+                with taking():
+                    raise mine
+            self.assertIs(mine, raised.exception)
 
     @verifies("scenario.kernel.workspace-lock-retired")
     def test_a_workspace_retired_while_awaited_is_refused(self):

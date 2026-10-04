@@ -6,12 +6,14 @@ before its admission until after its result, and whoever prepared the workspace 
 or retire it. The **merge lock** ``locks/merge.lock`` of the primary worktree's ``.concorde`` keeps
 the changes Concorde makes to the primary branch from interleaving: a task's merge, open and close
 and every Issue write. Both are ``flock`` locks whose holder line names the holder; a taker that
-gives up waiting is refused naming it (``specs/concorde/kernel/module.md#concept.merge-lock``).
+gives up waiting is refused naming it, and one the operating system refuses to open or lock is
+refused with ``system_error`` naming the lock file
+(``specs/concorde/kernel/module.md#concept.merge-lock``).
 """
 
 from __future__ import annotations
 
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
 from typing import Callable
 
@@ -44,6 +46,15 @@ class LockRefused(KernelError):
         self.waited = waited
 
 
+def _system_error(path: Path, error: OSError) -> KernelError:
+    return KernelError(
+        "system_error",
+        f"the lock {path} cannot be taken: {error}",
+        field=str(path),
+        causes=[error],
+    )
+
+
 def merge_lock_path(concorde: Path) -> Path:
     """The merge lock of the ``.concorde`` directory of a primary worktree."""
     return layout.lock_file(concorde, "merge")
@@ -64,19 +75,23 @@ def merge_lock(
     adopted without waiting.
     """
     path = merge_lock_path(concorde)
-    try:
-        with locks.hold(path, holder, wait=wait, task=task) as waited:
-            yield waited
-    except locks.LockBusy as busy:
-        raise LockRefused(
-            "merge_busy",
-            f"the merge lock {path} is still held by {busy.holder} after a wait of "
-            f"{busy.waited:.0f} s",
-            path,
-            holder=busy.holder,
-            entry=busy.entry,
-            waited=busy.waited,
-        ) from None
+    # Only the lock's own acquisition is translated; the block's exceptions pass unchanged.
+    with ExitStack() as stack:
+        try:
+            waited = stack.enter_context(locks.hold(path, holder, wait=wait, task=task))
+        except locks.LockBusy as busy:
+            raise LockRefused(
+                "merge_busy",
+                f"the merge lock {path} is still held by {busy.holder} after a wait of "
+                f"{busy.waited:.0f} s",
+                path,
+                holder=busy.holder,
+                entry=busy.entry,
+                waited=busy.waited,
+            ) from None
+        except OSError as error:
+            raise _system_error(path, error) from error
+        yield waited
 
 
 def merge_lock_holder(concorde: Path) -> str | None:
@@ -109,31 +124,38 @@ def workspace_lock(
     ``workspace_retired`` instead of being taken again.
     """
     path = workspace_lock_path(concorde, workspace)
-    try:
-        with locks.hold(
-            path, holder, wait=wait, waiting=waiting, task=task, retake=retake
-        ) as waited:
-            yield waited
-    except locks.LockGone as gone:
-        raise LockRefused(
-            "workspace_retired",
-            f"the workspace {workspace} was retired while this process waited {gone.waited:.0f} s "
-            f"for its lock: its holder removed the lock file {path}, as the close that retires a "
-            "workspace does, so the lock this process took is no longer the workspace's",
-            path,
-            waited=gone.waited,
-        ) from None
-    except locks.LockBusy as busy:
-        after = f" after waiting {busy.waited:.0f} s" if wait else ""
-        raise LockRefused(
-            "workspace_busy",
-            f"the workspace {workspace} is busy{after}: {busy.holder} holds its lock {path}; "
-            "one workspace does one thing at a time",
-            path,
-            holder=busy.holder,
-            entry=busy.entry,
-            waited=busy.waited,
-        ) from None
+    # Only the lock's own acquisition is translated; the block's exceptions pass unchanged.
+    with ExitStack() as stack:
+        try:
+            waited = stack.enter_context(
+                locks.hold(
+                    path, holder, wait=wait, waiting=waiting, task=task, retake=retake
+                )
+            )
+        except locks.LockGone as gone:
+            raise LockRefused(
+                "workspace_retired",
+                f"the workspace {workspace} was retired while this process waited "
+                f"{gone.waited:.0f} s for its lock: its holder removed the lock file {path}, as "
+                "the close that retires a workspace does, so the lock this process took is no "
+                "longer the workspace's",
+                path,
+                waited=gone.waited,
+            ) from None
+        except locks.LockBusy as busy:
+            after = f" after waiting {busy.waited:.0f} s" if wait else ""
+            raise LockRefused(
+                "workspace_busy",
+                f"the workspace {workspace} is busy{after}: {busy.holder} holds its lock "
+                f"{path}; one workspace does one thing at a time",
+                path,
+                holder=busy.holder,
+                entry=busy.entry,
+                waited=busy.waited,
+            ) from None
+        except OSError as error:
+            raise _system_error(path, error) from error
+        yield waited
 
 
 def workspace_lock_holder(concorde: Path, workspace: str) -> str | None:
