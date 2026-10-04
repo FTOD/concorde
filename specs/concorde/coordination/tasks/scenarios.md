@@ -528,7 +528,7 @@ This illustrates [a merge running the Concorde it started with](requirements.md#
 
 ### scenario.tasks.merge-refused-early — Refuse a merge that cannot close
 
-- GIVEN a task that is not delivered, whose branch moved past its latest delivery commit or whose
+- GIVEN a task not delivered, or whose branch moved past its latest delivery commit, or whose
   worktree has uncommitted changes, or a primary worktree with an uncommitted or untracked path or a
   detached `HEAD`
 - WHEN the main agent runs `concorde task merge` for it
