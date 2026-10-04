@@ -7,18 +7,27 @@ concrete situations.
 
 ### req.dogfooding.clean-primary-source — Only a clean primary worktree is installed from
 
-A [develop install](../glossary.json#concept.develop-install), and every update of one, SHALL be
-refused before anything is written unless the Concorde it installs from is the root of the primary
-worktree of its Git repository, on a branch, with no uncommitted or untracked change.
+Unless its source meets all these conditions, Concorde SHALL refuse a
+[develop install](../glossary.json#concept.develop-install), and every update of one, before
+anything is written:
+
+- The source is the root of the primary worktree of its Git repository.
+- The source is on a branch.
+- The source has no uncommitted or untracked change.
 
 ### req.dogfooding.refusal-names-reason — A refused source names its reason
 
 A refusal of a develop install, or of an update of one, by
-[req.dogfooding.clean-primary-source](#req.dogfooding.clean-primary-source) SHALL name its reason:
-not a worktree's root, a linked worktree (with the primary worktree's path, or, where Git records
-no such path, the repository's Git directory), a detached `HEAD`, or the uncommitted paths.
+[req.dogfooding.clean-primary-source](#req.dogfooding.clean-primary-source) SHALL name its reason
+from these cases:
 
-A refusal lists at most ten uncommitted paths and counts the rest.
+- Not a worktree's root.
+- A linked worktree, with the primary worktree's path or, where Git records no such path, the
+  repository's Git directory.
+- A detached `HEAD`.
+- The uncommitted paths.
+
+A refusal lists at most ten uncommitted paths. It counts the rest.
 
 ### req.dogfooding.develop-kept — An update keeps develop mode
 
@@ -53,9 +62,12 @@ of the four [boundary cases](../glossary.json#concept.boundary-case).
 
 ### req.dogfooding.boundary-evidence — A boundary case rests on three pieces of evidence
 
-The develop guidance SHALL require the main agent to support the case of every refused read, write
-or tool with the [Spec](../glossary.json#concept.spec) and Protocol source of the boundary, the
-grant actually computed and the refused action.
+The develop guidance SHALL require the main agent to support the case of every refused read,
+write or tool with these three pieces of evidence:
+
+- The [Spec](../glossary.json#concept.spec) and Protocol source of the boundary.
+- The grant actually computed.
+- The refused action.
 
 ### req.dogfooding.concorde-cases-only — Only the Concorde cases reach the Concorde repository
 
@@ -65,17 +77,28 @@ Concorde repository.
 ### req.dogfooding.defect-report — A defect report is complete
 
 The develop guidance SHALL require a [defect report](../glossary.json#concept.defect-report) to be
-an [Issue report](../glossary.json#concept.issue-report) with every field its contract requires, a
-`null` owner, its `origin` and the failure's whole
-[error chain](../glossary.json#concept.error-chain) with the main agent's own link on top.
+an [Issue report](../glossary.json#concept.issue-report) with all of the following:
+
+- Every field its contract requires.
+- A `null` owner.
+- Its `origin`.
+- The failure's whole [error chain](../glossary.json#concept.error-chain) with the main agent's own
+  link on top.
 
 ### req.dogfooding.ok-run-defect — A defect in an `ok` run is the main agent's own link
 
-The develop guidance SHALL require the defect report of a run that ended `ok` and still did
-something wrong to carry, as its whole error chain, the main agent's own link without causes,
-citing the run: in a task the link `concorde task escalate` records when it names no run, file or
-escalation, and outside a task one written by hand in the shape of the Framework's
-[error contract](../kernel/tracing/contracts.md#contract.tracing.error).
+For a run that ended `ok` and still did something wrong, the develop guidance SHALL require a
+defect report with the following:
+
+- Its whole error chain is the main agent's own link without causes.
+- The link cites the run.
+- In a task, the link is the one `concorde task escalate` records when it names none of the
+  following:
+  - A run.
+  - A file.
+  - An escalation.
+- Outside a task, the link is one written by hand in the shape of the Framework's
+  [error contract](../kernel/tracing/contracts.md#contract.tracing.error).
 
 Such a run reported no error, so there is no chain to extend.
 
@@ -84,21 +107,24 @@ Such a run reported no error, so there is no chain to extend.
 The develop guidance SHALL require the defect report of a defect seen outside a task to be kept
 only under `.concorde/runs/defects/` and named to the developer, without opening a task for it.
 
-Its error chain is the main agent's link written by hand, with the failure's own error, if any, as
-its only cause.
+Its error chain is the main agent's link written by hand. Its only cause is the failure's own
+error, if any.
 
 ### req.dogfooding.issue-system-defect — A defect of the Issue system travels as its error chain
 
-The develop guidance SHALL require a [Concorde defect](../glossary.json#concept.concorde-defect) of
-Concorde's Issue system itself to be handed over as the failure's whole
-[error chain](../glossary.json#concept.error-chain) with the main agent's own link on top, written
-to `.concorde/runs/defects/` and named to the developer, and never as a
-[defect report](../glossary.json#concept.defect-report).
+For a [Concorde defect](../glossary.json#concept.concorde-defect) of Concorde's Issue system itself,
+the develop guidance SHALL require the following hand-over:
 
-A defect report is an [Issue report](../glossary.json#concept.issue-report), and a failure of the
-Issue system is never recorded as an Issue
-([Issues](../issues/requirements.md#req.issues.own-failures)): the Concorde repository would record
-it with the very Issue system that failed.
+- The failure's whole [error chain](../glossary.json#concept.error-chain) with the main agent's own
+  link on top.
+- The error chain written to `.concorde/runs/defects/`.
+- The error chain named to the developer.
+- Never a [defect report](../glossary.json#concept.defect-report).
+
+A defect report is an [Issue report](../glossary.json#concept.issue-report).
+An Issue system failure is never recorded as an Issue
+([Issues](../issues/requirements.md#req.issues.own-failures)) because the Concorde repository would
+record it with the very system that failed.
 
 ### req.dogfooding.report-checked — A defect report is checked before the hand-off
 
@@ -122,7 +148,7 @@ The Concorde repository's agent instructions SHALL require the session that reco
 to append, after opening the task, a report to the recorded [Issue](../glossary.json#concept.issue)
 naming the [Module](../glossary.json#concept.module) at fault as its `owner_target_id`.
 
-The defect report's owner is `null`, and an Issue's owner is its latest report's.
+The defect report's owner is `null`. An Issue's owner is its latest report's.
 
 ### req.dogfooding.one-observation-rule — Both sides observe runs by the same rule
 
