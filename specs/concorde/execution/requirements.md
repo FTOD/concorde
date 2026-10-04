@@ -93,7 +93,11 @@ complete result, never part of one.
 ### req.execution.result-printed — A foreground run prints its result
 
 A command started without `--detach` SHALL print on standard output exactly the run result it
-wrote.
+composed, unless the run could not be recorded
+([req.execution.unrecorded-runs-nothing](#req.execution.unrecorded-runs-nothing)).
+
+That is the result it wrote, or, when it could not save it, the result it composed
+([req.execution.unsaved-printed](#req.execution.unsaved-printed)).
 
 ### req.execution.claims-apart — Worker claims stay the worker's
 
@@ -117,13 +121,19 @@ The run's own link SHALL give the reason the run cannot handle the error as its 
 
 ### req.execution.error-detail — The run's link names what is concerned
 
-The run's own link SHALL give a detail that names the workspace, the Modules, the run, the paths
-and the messages concerned.
+The run's own link SHALL name the run and its workspace, or for an unbound run the worktree it
+started in and the commit it examined, in its actor, and give a detail that names the paths and
+the messages concerned and the Modules the run works on.
 
 ### req.execution.output-checked — Outputs match their contract
 
 The runner SHALL replace a result that fails the run result contract, or an `ok` result whose
-`output` fails the definition's output contract, by a `failed` result before writing it.
+`output` fails the definition's output contract, by a `failed` result that satisfies the run
+result contract before writing it.
+
+The replacement keeps of what the steps left only what satisfies the contract, as
+[Composing the result](runner.md#composing-the-result) says. A result whose error is not the run's
+own link, of the level `operation` or `command` its definition's kind gives, fails the contract.
 
 ## Runs
 
@@ -189,7 +199,10 @@ of the run writes there, and the checkout it examines, its Specs and its code st
 ### req.execution.checkout-removed — The checkout does not outlive the run
 
 The runner SHALL remove an unbound run's checkout, whatever ended its steps, before it writes the
-run's result.
+run's result, and name in the result whatever of it could not be removed.
+
+What Git refuses to remove the runner removes directly; what that leaves, it names with
+`checkout-not-removed` evidence, as [Unbound checkout](runner.md#unbound-checkout) step 5 says.
 
 ### req.execution.commit-named — The result names the commit examined
 
@@ -199,8 +212,9 @@ checkout held.
 ### req.execution.trace-node — Every run is a trace node where the binding says
 
 The runner SHALL record every run as a [trace node](../glossary.json#concept.trace-node) in the
-binding's workspace folder, or in `.concorde/unbound/` of the worktree it started in for an unbound
-run or a run whose binding it refused.
+binding's workspace folder once the run entered its workspace, in the lobby of the binding's
+`.concorde` when it never did, or in `.concorde/unbound/` of the worktree it started in for an
+unbound run or a run whose binding it refused.
 
 The node lies in `runs/<run-id>/` of the workspace folder, or in the folder `--trace-at` names inside
 it. A bound run's node lies in the [lobby](runner.md#the-lobby) until the run enters its workspace,
@@ -246,7 +260,11 @@ The runner SHALL take a run's [run lock](../glossary.json#concept.run-lock) and
 ### req.execution.inputs-same-workspace — Inputs come from the same workspace
 
 The runner SHALL admit as `--input` only an `ok` run whose workspace is the run's own workspace,
-which for an unbound run is a run whose `workspace` is null.
+which for an unbound run is a run whose `workspace` is null, and whose saved result satisfies the
+current run result contract.
+
+A result an older Concorde wrote under another version of the contract is refused like any other
+inadmissible input: no version field or migration exists, since runs are short-lived trace data.
 
 ### req.execution.detached-same-run — A detached run is an ordinary run
 

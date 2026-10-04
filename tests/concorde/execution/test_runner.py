@@ -1827,6 +1827,7 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual((1, "host_error"), (status, envelope["error"]["code"]))
         self.assertIn("neither continue nor stop", envelope["error"]["detail"])
 
+    @verifies("scenario.execution.cancelled")
     def test_a_signal_while_the_run_finishes_does_not_cut_it_short(self):
         from concorde.execution import runner
 
@@ -1948,7 +1949,7 @@ class RunnerTests(unittest.TestCase):
             envelope["error"]["detail"],
         )
 
-    @verifies("scenario.execution.run-unrecorded")
+    @verifies("scenario.execution.run-unrecorded", "scenario.execution.detach-failed")
     def test_a_detached_run_that_cannot_be_recorded_or_started_leaves_nothing(self):
         lobby = self.records / "lobby"
         lobby.mkdir(exist_ok=True)
