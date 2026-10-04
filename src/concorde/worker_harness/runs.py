@@ -129,6 +129,7 @@ def read_record(root: Path, run_id: str) -> dict:
         "deletions_refused": data["deletions_refused"],
         "deletions_absent": data["deletions_absent"],
         "deletions_failed": data["deletions_failed"],
+        "trace_failures": data["trace_failures"],
         "status": node["status"],
         "error": node["error"],
         "run_directory": folder.as_posix(),

@@ -74,6 +74,7 @@ register(
             "deletions_refused",
             "deletions_absent",
             "deletions_failed",
+            "trace_failures",
             "rounds",
         ],
         "properties": {
@@ -98,6 +99,7 @@ register(
             "deletions_refused": _PATHS,
             "deletions_absent": _PATHS,
             "deletions_failed": _PATHS,
+            "trace_failures": _PATHS,
             "rounds": {"type": "integer", "minimum": 0},
         },
     },
@@ -544,6 +546,8 @@ def _run(
         "deletions_refused": [],
         "deletions_absent": [],
         "deletions_failed": [],
+        # Every write of the run's or a round's trace.json the operating system refused.
+        "trace_failures": [],
         "status": "failed",
         "error": None,
         "run_directory": trace.as_posix(),
@@ -664,6 +668,14 @@ def _run(
                     round_node, record["rounds"][number - 1], "failed", "interrupted"
                 )
         record["status"] = status
+        # Tracing is best-effort for the work, never silent: every refused write of the run's or a
+        # round's trace.json is reported, in the record and in a failed run's error.
+        record["trace_failures"] = traced()
+        if error is not None:
+            error["evidence"] += [
+                evidence("trace-write", "", failure)
+                for failure in record["trace_failures"]
+            ]
         record["error"] = error
         record["ended_at"] = now()
         interrupted = bool(error) and error.get("code") == "interrupted"
@@ -679,7 +691,15 @@ def _run(
             brief_digest=record["brief_digest"],
             settings_digest=record["settings_digest"],
         )
+        # The final write's own failure reaches only the returned record.
+        record["trace_failures"] = traced()
         return record
+
+    def traced() -> list[str]:
+        return [
+            *node.failures,
+            *(failure for item in rounds.values() for failure in item.failures),
+        ]
 
     def fail(code: str, detail: str, reason: str, explanation: str, **extra) -> dict:
         return finish(
@@ -1096,6 +1116,7 @@ def _run_content(record: dict) -> dict:
         "deletions_refused": list(record["deletions_refused"]),
         "deletions_absent": list(record["deletions_absent"]),
         "deletions_failed": list(record["deletions_failed"]),
+        "trace_failures": list(record["trace_failures"]),
         "rounds": len(record["rounds"]),
     }
 

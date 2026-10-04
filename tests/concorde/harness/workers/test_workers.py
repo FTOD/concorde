@@ -1514,6 +1514,37 @@ class WorkerRunTests(unittest.TestCase):
         kept = self.project.runtime({"run_id": run_id})
         self.assertFalse((Path("/tmp") / kept.name).exists())
 
+    @verifies("scenario.workers.trace-failure-reported")
+    def test_a_refused_trace_write_is_reported_never_silent(self):
+        from concorde.kernel.tracing import node as trace_node
+
+        write = trace_node.write
+
+        def refusing(folder, record):
+            # Every write of the first round's node is refused.
+            if Path(folder).parent.name == "rounds" and Path(folder).name == "1":
+                raise OSError(28, "No space left on device")
+            return write(folder, record)
+
+        with patch.object(trace_node, "write", refusing):
+            ok = self.project.run([{}], check_modules=None)
+            blocked = self.project.run(
+                [{"result": {"status": "blocked"}}], check_modules=None
+            )
+        self.assertEqual("ok", ok["status"], ok["error"])
+        self.assertTrue(ok["trace_failures"])
+        self.assertTrue(
+            all("rounds/1/trace.json" in item for item in ok["trace_failures"])
+        )
+        self.assertIn("at its start", ok["trace_failures"][0])
+        self.assertIn("No space left on device", ok["trace_failures"][0])
+        stored = worker_runs.read_record(self.project.trace, ok["run_id"])
+        self.assertEqual(ok["trace_failures"], stored["trace_failures"])
+        self.assertEqual("blocked", blocked["status"])
+        self.assertIn(
+            "trace-write", [item["kind"] for item in blocked["error"]["evidence"]]
+        )
+
     def test_the_final_record_digests_the_final_progress_file(self):
         record = self.project.run([{}], check_modules=None)
         node = json.loads((Path(record["run_directory"]) / "trace.json").read_text())

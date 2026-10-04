@@ -613,6 +613,13 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - AND for the `blocked` worker the error's cause is the link the run would otherwise have ended with, `worker_blocked`
 - AND a transcript that could not be kept is named by no record
 
+### scenario.workers.trace-failure-reported — A refused trace write is reported, never silent
+
+- GIVEN a worker run whose first round's `trace.json` the operating system refuses to write
+- WHEN the worker ends `ok`, or `blocked`
+- THEN the `ok` run still ends `ok`, and its returned record and its node's content list each refused write in `trace_failures`, naming the file, the moment and the error
+- AND the `blocked` run's error carries each refused write as `trace-write` evidence
+
 ### scenario.workers.trace-left — A worker run leaves its trace and no credentials
 
 - GIVEN an Operation run whose worker needs two rounds, the first failing a configured check, on a backend whose configuration holds a credential copy

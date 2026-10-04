@@ -370,6 +370,13 @@ and cost of each model the round used, and its `duration_api_ms`, the time spent
 model, each as the envelope gave it and null when it gave none. The nodes a round's validation placed, such as Concorde's check nodes, lie below it. A worker run's own usage records nothing, since its rounds hold
 what it consumed.
 
+Tracing is best-effort for the work and never silent
+([req.tracing.written-at-start](../../kernel/tracing/requirements.md#req.tracing.written-at-start)):
+a write of the run's or a round's `trace.json` that the operating system refuses changes neither
+the run nor its status, and the host lists every such failure, naming the file, the moment and the
+error, as the run's `trace_failures`, which the returned record completes with any failure of the
+final write itself, and, when the run does not end `ok`, as `trace-write` evidence of its error.
+
 Besides the files, the host returns the run record to its caller as the
 [returned run record](contracts.md#contract.workers.worker-run-record): the run node's content with, in place of
 the number of rounds, the ordered list of every round's content, so that the caller reads the
@@ -679,6 +686,10 @@ When the host cannot keep the transcript or remove the runtime directory, the ru
 ### req.workers.runtime-removed — Nothing but the trace outlives a worker
 
 The host SHALL remove a worker run's runtime directory, with its credential copies, when the run ends, however it ends, unless the host process itself is killed without a chance to act.
+
+### req.workers.trace-failures-reported — A failed trace write is reported, never silent
+
+The host SHALL report every refused write of the worker run's or a round's `trace.json` in the returned run record's `trace_failures` and, when the run does not end `ok`, as evidence of its error, without changing the run's status for it.
 
 ### req.workers.stderr-per-round — Every round keeps its standard error
 
