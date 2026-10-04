@@ -48,7 +48,7 @@ def workflow_node(workspace: Path, steps: list[dict], reports: list[dict] = ()) 
             "references": [],
             "content": {
                 "type_id": WORKFLOW_TRACE,
-                "schema_version": 1,
+                "schema_version": 2,
                 "data": {
                     "workflow": "brownfield",
                     "steps": [
