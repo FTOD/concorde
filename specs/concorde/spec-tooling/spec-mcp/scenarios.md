@@ -23,6 +23,7 @@ Concrete situations of the [Spec MCP server](module.md). Exact tools and results
 - GIVEN a server started without `CLAUDE_PROJECT_DIR` whose client reports no root or several roots
 - WHEN any tool is called
 - THEN the call fails with `no_root`
+- AND a later `initialized` notification resolves no root
 
 ## Answers
 
@@ -57,7 +58,7 @@ Concrete situations of the [Spec MCP server](module.md). Exact tools and results
 
 ### scenario.spec-mcp.validate — Validating through the server
 
-- GIVEN a root whose Specs have one structural error
+- GIVEN a root whose [Specs](../../glossary.json#concept.spec) have one structural error
 - WHEN the client calls `validate`
 - THEN the result is Spec core's validation result with status `invalid` and that finding
 - BUT no file is written
@@ -90,3 +91,10 @@ Concrete situations of the [Spec MCP server](module.md). Exact tools and results
 - WHEN any tool other than `validate` is called
 - THEN the call fails with `protocol_mismatch`
 - AND no partial or earlier answer is returned
+
+### scenario.spec-mcp.malformed-call — A malformed call is refused and the session goes on
+
+- GIVEN a server rooted at a worktree
+- WHEN the client sends a `tools/call` whose params are not an object, whose tool name is not a string, whose `arguments` are present but not an object, or whose optional `target` is `null`
+- THEN each call fails with `invalid_input` naming the argument
+- AND the next well-formed call on the same connection is answered

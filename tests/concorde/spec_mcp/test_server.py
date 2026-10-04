@@ -66,6 +66,9 @@ class Client:
         self.send(
             {"jsonrpc": "2.0", "id": identity, "method": method, "params": params or {}}
         )
+        return self.answer(identity)
+
+    def answer(self, identity):
         while True:
             message = json.loads(self.process.stdout.readline())
             if message.get("method") == "roots/list":
@@ -86,7 +89,16 @@ class Client:
                 return message["result"]
 
     def call(self, name, **arguments):
-        result = self.request("tools/call", {"name": name, "arguments": arguments})
+        return self.call_with({"name": name, "arguments": arguments})
+
+    def call_with(self, params):
+        """Call ``tools/call`` with exactly ``params``, which need not be well formed."""
+        self.next += 1
+        identity = self.next
+        self.send(
+            {"jsonrpc": "2.0", "id": identity, "method": "tools/call", "params": params}
+        )
+        result = self.answer(identity)
         value = json.loads(result["content"][0]["text"])
         return value, result["isError"]
 
@@ -166,6 +178,44 @@ class SpecMcpTests(unittest.TestCase):
                 value, error = client.call("modules")
                 self.assertTrue(error)
                 self.assertEqual("no_root", value["error"]["code"])
+
+    @verifies("scenario.spec-mcp.no-root")
+    def test_a_repeated_initialized_does_not_resolve_again(self):
+        client = self.client(roots=[])
+        value, error = client.call("modules")
+        self.assertEqual("no_root", value["error"]["code"])
+        client.roots = [self.root]
+        client.send({"jsonrpc": "2.0", "method": "notifications/initialized"})
+        value, error = client.call("modules")
+        self.assertTrue(error)
+        self.assertEqual("no_root", value["error"]["code"])
+
+    @verifies("scenario.spec-mcp.malformed-call")
+    def test_a_malformed_call_is_refused_and_the_session_goes_on(self):
+        client = self.client(root=self.root)
+        for params in (
+            {"name": [], "arguments": {}},
+            {"name": {}, "arguments": {}},
+            {"name": None},
+            [1],
+            "modules",
+            None,
+            {"name": "modules", "arguments": []},
+            {"name": "modules", "arguments": False},
+            {"name": "modules", "arguments": 0},
+            {"name": "modules", "arguments": ""},
+            {"name": "modules", "arguments": None},
+            {"name": "validate", "arguments": {"target": None}},
+        ):
+            with self.subTest(params=params):
+                value, error = client.call_with(params)
+                self.assertTrue(error, value)
+                self.assertEqual("invalid_input", value["error"]["code"])
+                validate(value["error"], ERROR_SCHEMA)
+                value, error = client.call("modules")
+                self.assertFalse(error, value)
+        value, error = client.call_with({"name": "modules"})
+        self.assertFalse(error, value)
 
     @verifies("scenario.spec-mcp.boundary")
     def test_boundary_is_spec_cores_grant(self):
