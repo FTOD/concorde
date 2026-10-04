@@ -1450,9 +1450,21 @@ class SchemaKeywordListTests(unittest.TestCase):
     """The keyword list written for readers is the one the contract check enforces."""
 
     def listed(self, path: str, marker: str) -> set[str]:
-        text = " ".join((REPOSITORY_ROOT / path).read_text().split())
-        start = text.index(marker) + len(marker)
-        sentence = text[start : text.index(". ", start)]
+        """The keywords of the sentence after the marker, or of the list it introduces."""
+        raw = (REPOSITORY_ROOT / path).read_text()
+        start = raw.index(marker) + len(marker)
+        lines = raw[start:].split("\n")
+        if not lines[0].strip() and lines[1].lstrip().startswith("- "):
+            indent = lines[1].index("- ")
+            items = []
+            for line in lines[1:]:
+                if not line.startswith(" " * indent + "- "):
+                    break
+                items.append(line)
+            sentence = " ".join(items)
+        else:
+            text = " ".join(raw[start:].split())
+            sentence = text[: text.index(". ")]
         return set(re.findall(r"`([^`]+)`", sentence)) - {"#/$defs/<name>"}
 
     def test_the_protocol_and_the_worker_prompt_list_the_checked_keywords(self):
@@ -1469,7 +1481,9 @@ class SchemaKeywordListTests(unittest.TestCase):
     def test_the_worker_prompt_lists_the_d2_keywords_the_views_check_refuses(self):
         self.assertEqual(
             set(D2_KEYWORDS),
-            self.listed("prompts/workers/common/spec-format.md", "its D2 keywords are"),
+            self.listed(
+                "prompts/workers/common/spec-format.md", "D2 keywords are these:"
+            ),
         )
 
 
