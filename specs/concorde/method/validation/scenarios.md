@@ -85,6 +85,13 @@ readiness is defined in the [contracts](contracts.md).
 - THEN the configuration digest differs from the one measured before, as it would for a changed `.concorde/config.json`
 - AND so does the input digest
 
+### scenario.validation.non-utf8-path — A path that is not UTF-8 is recorded losslessly
+
+- GIVEN a workspace with a new file `src/a/caf<0xE9>.py`, whose name holds a byte that is no part of valid UTF-8, under a directory Module A binds, and a new file `stray<0xFF>.txt` bound by no Module
+- WHEN `task-validation` runs
+- THEN the changed paths are recorded as `"src/a/caf\351.py"` and `"stray\377.txt"`, each naming exactly its file, and measuring again yields the same input digest
+- AND the first is accounted for by Module A's binding, the second is reported as `unbound` under its recorded path
+
 ## Failures
 
 ### scenario.validation.inputs-changed — The worktree changes during the run

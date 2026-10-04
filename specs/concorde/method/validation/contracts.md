@@ -22,10 +22,22 @@ it is bound to.
   submodule is a changed path when its checked-out commit differs; changes inside the submodule's
   own worktree are not measured and are no uncommitted change for Delivery, since the workspace
   commits only the submodule's commit.
+- A changed path is **recorded** as text: as it is when its bytes are valid UTF-8 and it does not
+  begin with `"`; otherwise in double quotes, with `"` and `\` each preceded by `\` and every byte
+  that is no part of a valid UTF-8 sequence written as `\` followed by its three octal digits, as
+  Git quotes a path, so that `"caf\351.txt"` records the file named `caf`, the byte `0xE9` and
+  `.txt`. The record names exactly one path, whatever bytes Git reports for it, and the changed
+  paths stay sorted by the byte order of the paths themselves. Every finding names a changed path
+  as it is recorded, while Validation compares the path itself with the Specs' entries.
 - A changed path's **digest** is `sha256:` followed by the hexadecimal SHA-256 of its content in
   the worktree: a regular file's bytes; for a symbolic link, `symlink:` followed by its link text;
   for a directory, which is a submodule or another repository, `gitlink:` followed by the
-  hexadecimal name of the commit it has checked out. It is `null` when the path no longer exists.
+  hexadecimal name of the commit it has checked out when it is the top level of a repository whose
+  head names a commit; otherwise, such as for a submodule that is not initialized, followed by the
+  commit the worktree's index records for the path, which is what Delivery would commit, or by
+  nothing when the index records none. It is `null` when the path no longer exists. A changed path
+  that exists but cannot be read, or whose Git file mode cannot be determined, fails the
+  measurement (`path_unreadable`).
 - A changed path's **mode** is its Git file mode in the worktree, as six octal digits: `100755`
   for a regular file whose owner may execute it, `100644` for any other regular file, `120000` for
   a symbolic link and `160000` for a directory, which is a submodule; it is `null` when the path no
@@ -33,11 +45,13 @@ it is bound to.
   when its bytes stay the same.
 - The **configuration digest** is the digest of the canonical JSON object that maps
   `.concorde/config.json` and every entry of `.concorde/checks/` in the workspace to the digest of
-  its bytes (a symbolic link's by its link text, any other entry that is not a file as `null`), so
-  a changed check command changes it as a changed configuration does.
+  its bytes (a symbolic link's by its link text, any other entry of the checks directory that is
+  not a file as `null`), each named as a changed path is recorded, so a changed check command
+  changes it as a changed configuration does. A configuration that is missing or cannot be read,
+  or a checks directory entry that cannot be read, fails the measurement (`config_unreadable`).
 - The **input digest** is the digest of the canonical JSON (sorted keys, no insignificant
   whitespace, UTF-8) of the object `{"head", "base", "changed", "config_digest"}` with the values
-  recorded in `inputs`.
+  recorded in `inputs`, each changed path as it is recorded.
 
 Delivery uses the same measurement through Validation, so both compute the same input digest for
 the same workspace.
@@ -57,7 +71,7 @@ object.
 ```concorde-contract
 {
   "id": "contract.validation.readiness",
-  "version": 7,
+  "version": 8,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -255,7 +269,7 @@ object.
       }
     }
   },
-  "semantics": "The output of one task-validation run of the bound workspace named by workspace, and the readiness a delivery run decides with the same steps and saves in its trace node. inputs is the input measurement taken at the start of the run and confirmed unchanged at its end: every changed path with its mode and digest; digest is the input digest. modules lists, sorted, the changed Modules (binding a changed path or owning a changed Spec document) together with the run's Modules. blocking lists every blocking finding: load when the Specs could not be loaded, structural for a structural-check error (ref is the rule identity and path) or one of the run's Modules that the workspace's registry does not register (ref is the Module identity), unbound for an existing changed path that is no document member, not the project glossary, no control record under .concorde/, no generated or build output, no external material and bound by no Module (ref is the path), check for a configured check that failed or timed out (ref is the check identity) or for Modules whose checks could not be run (ref is the Module identity, or the comma-separated identities of the whole selection when its selective checks could not run). warnings lists structural-check warnings in the same shape and never affects ready. checks lists one result per configured check run, in run order, with measured_digest the measured digest Check execution took before the check ran, exit_code null on timeout and log the path of its saved log relative to the run's trace node, checks/<check>/output.log. ready is true exactly when blocking is empty; every check then has status passed. The run's status is ok when ready is true and blocked otherwise, and a blocked run still carries this readiness as its output. A readiness is valid only while a fresh input measurement of the same workspace yields the same digest. workflow is the object of Workflows' step output convention, which defines its fields: its data holds ready, and blocking is null when the workspace is ready and otherwise names the blocking findings (req.validation.step-output); the readiness saved as readiness.json does not carry it. A behaviour or field change increments the version.",
+  "semantics": "The output of one task-validation run of the bound workspace named by workspace, and the readiness a delivery run decides with the same steps and saves in its trace node. inputs is the input measurement taken at the start of the run and confirmed unchanged at its end: every changed path, as the input measurement records it, with its mode and digest; digest is the input digest. modules lists, sorted, the changed Modules (binding a changed path or owning a changed Spec document) together with the run's Modules. blocking lists every blocking finding: load when the Specs could not be loaded, structural for a structural-check error (ref is the rule identity and path) or one of the run's Modules that the workspace's registry does not register (ref is the Module identity), unbound for an existing changed path that is no document member, not the project glossary, no control record under .concorde/, no generated or build output, no external material and bound by no Module (ref is the path as recorded), check for a configured check that failed or timed out (ref is the check identity), for a checks file or declared input of the project that is invalid (ref is configured checks) or for Modules whose checks could not be run (ref is the Module identity, or the comma-separated identities of the whole selection when its selective checks could not run). warnings lists structural-check warnings in the same shape and never affects ready. checks lists one result per configured check run, in run order, including the checks a call of Check execution finished before it failed, with measured_digest the measured digest Check execution took before the check ran, exit_code null on timeout and log the path of its saved log relative to the run's trace node, checks/<check>/output.log. ready is true exactly when blocking is empty; every check then has status passed. The run's status is ok when ready is true and blocked otherwise, and a blocked run still carries this readiness as its output. A readiness is valid only while a fresh input measurement of the same workspace yields the same digest. workflow is the object of Workflows' step output convention, which defines its fields: its data holds ready, and blocking is null when the workspace is ready and otherwise names the blocking findings (req.validation.step-output); the readiness saved as readiness.json does not carry it. A behaviour or field change increments the version.",
   "example": {
     "workspace": "severity",
     "ready": true,
