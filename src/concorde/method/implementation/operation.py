@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+from collections import Counter
 from pathlib import Path
 
 from ...execution.checks.checks import CheckError
@@ -223,8 +224,14 @@ def _admitted(ctx: RunContext) -> str:
 # --- implement ---------------------------------------------------------------------------------
 
 
+def _exists(worktree: Path, path: str) -> bool:
+    """Whether ``path`` is in the worktree, a symbolic link counting whatever it points to."""
+    return os.path.lexists(worktree / path)
+
+
 def _present(worktree: Path) -> set[str]:
-    """Every tracked or untracked, not ignored, path of the worktree (read-only Git)."""
+    """Every tracked or untracked, not ignored, path the worktree holds (read-only Git): a
+    tracked path already deleted in the worktree is not present."""
     output = subprocess.run(
         ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
         cwd=worktree,
@@ -233,7 +240,9 @@ def _present(worktree: Path) -> set[str]:
         env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
     ).stdout
     return {
-        item for item in output.decode("utf-8", "surrogateescape").split("\0") if item
+        item
+        for item in output.decode("utf-8", "surrogateescape").split("\0")
+        if item and _exists(worktree, item)
     }
 
 
@@ -248,19 +257,27 @@ def _latest_checks(record: dict) -> list[dict]:
 
 
 def code_change(ctx: RunContext, record: dict, before: set[str], summary: str) -> dict:
+    """The code change of the run: its files as the net change from ``before``, the paths the
+    worktree held before the run, to the worktree now, over every path the last audit saw
+    changed, which spans every round, and every deletion Workers performed after it."""
     rounds = record.get("rounds") or []
     audit = (rounds[-1].get("audit") if rounds else None) or {}
-    changed = [
-        path for path in audit.get("changed", []) if (ctx.worktree / path).exists()
-    ]
+    touched = sorted({*audit.get("changed", []), *(record.get("deleted") or [])})
+    present = {path for path in touched if _exists(ctx.worktree, path)}
     worker = record.get("worker_result") or {}
     output = worker.get("output") if isinstance(worker.get("output"), dict) else {}
     return {
         "goal": ctx.arguments.goal,
         "summary": worker.get("summary") or summary,
-        "changed_files": [path for path in changed if path in before],
-        "created_files": [path for path in changed if path not in before],
-        "deleted_files": list(record.get("deleted") or []),
+        "changed_files": [
+            path for path in touched if path in before and path in present
+        ],
+        "created_files": [
+            path for path in touched if path not in before and path in present
+        ],
+        "deleted_files": [
+            path for path in touched if path in before and path not in present
+        ],
         "refused_deletions": list(record.get("deletions_refused") or []),
         "rounds": max(len(rounds), 1),
         "checks": check_results(_latest_checks(record)),
@@ -340,6 +357,44 @@ IMPLEMENT = operation(
 
 # --- test --------------------------------------------------------------------------------------
 
+# The resume rounds a test worker gets to make its failures interpret exactly the failed checks.
+FAILURE_ROUNDS = 1
+
+
+def failure_problems(results: list[dict], failures: list[dict]) -> list[str]:
+    """Every way ``failures`` is not exactly one entry per check of ``results`` that did not
+    pass."""
+    failed = Counter(item["check_id"] for item in results if item["status"] != "passed")
+    ran = {item["check_id"] for item in results}
+    given = Counter(item["check"] for item in failures)
+    problems = [
+        f"check {check} did not pass and has {given[check]} failures entries instead of "
+        + ("one" if count == 1 else str(count))
+        for check, count in sorted(failed.items())
+        if given[check] != count
+    ]
+    problems += [
+        f"a failures entry names {check}, "
+        + ("which passed" if check in ran else "which the host did not run")
+        for check in sorted(set(given) - set(failed))
+    ]
+    return problems
+
+
+def failure_repair(problems: list[str]) -> str | None:
+    """The repair text that resumes a test worker with every way its failures do not match the
+    host's check results, or None when they match."""
+    if not problems:
+        return None
+    return (
+        "The host compared your `failures` with its check results. It needs exactly one entry "
+        "per check that did not pass, named by that check's identity, and none for a check "
+        "that passed; these do not hold:\n\n"
+        + "".join(f"- {problem}\n" for problem in problems)
+        + "\nCorrect them from the check results and logs you were given. Then end again with "
+        "your complete structured result, since it replaces your previous result.\n"
+    )
+
 
 def testing_step(ctx: RunContext):
     stopped = preflight(ctx, "test")
@@ -357,6 +412,12 @@ def testing_step(ctx: RunContext):
         + "\n## Check results (run by the host)\n\n"
         + check_material(results)
     )
+
+    def accounted(result: dict) -> str | None:
+        # The worker is resumed once with every way its failures miss the failed checks.
+        output = result.get("output") or {}
+        return failure_repair(failure_problems(results, output.get("failures") or []))
+
     # The worker interprets the checks, so it reads their full logs, passed ones included.
     outcome = run_worker(
         ctx,
@@ -364,11 +425,35 @@ def testing_step(ctx: RunContext):
         task_type="test",
         output_schema=TEST_WORKER_OUTPUT,
         readable=(ctx.run_dir / "checks",),
+        rounds=FAILURE_ROUNDS,
+        validate=accounted,
     )
     outcome.evidence[:0] = found
     if isinstance(outcome, Stop):
         return outcome
     output = outcome.output or {}
+    problems = failure_problems(results, output.get("failures") or [])
+    if problems:
+        return ctx.fail(
+            "failed",
+            "failures_unaccounted",
+            "The test worker's failures do not interpret exactly the checks that did not pass.",
+            "the test worker's failures must hold exactly one entry per check that did not "
+            f"pass, and still did not after {FAILURE_ROUNDS} resume round(s), so its report "
+            "is discarded: " + "; ".join(problems),
+            reason="capability",
+            explanation="the host checks the worker's interpretation against its own check "
+            "results but never corrects it, and resumes the worker only "
+            f"{FAILURE_ROUNDS} time(s)",
+            evidence=[
+                evidence("failures-unaccounted", "", problem) for problem in problems
+            ],
+            host_evidence=outcome.evidence,
+            options=[
+                "run test again",
+                "read the check results and logs in the host evidence",
+            ],
+        )
     return Continue(
         output={
             "focus": focus or None,

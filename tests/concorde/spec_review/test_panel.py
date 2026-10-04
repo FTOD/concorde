@@ -366,6 +366,24 @@ class SpecPanelTests(unittest.TestCase):
             [i["source"] for i in envelope["output"]["modules"][0]["rejected"]],
         )
 
+    def test_a_chair_may_leave_out_its_optional_lists(self):
+        # The chair's report requires only `findings`: an omitted `rejected` or `resolved` is
+        # an empty one.
+        plans = {
+            "reviewer module.a 1": worker(findings=[finding(problem="A.")]),
+            "reviewer module.a 2": worker(findings=[]),
+            "chair module.a 1": worker(findings=[merged("r1.1")]),
+        }
+        exit_status, envelope = self.panel(plans, "--reviewers", "2")
+        self.assertEqual((0, "ok"), (exit_status, envelope["status"]), envelope)
+        (module,) = envelope["output"]["modules"]
+        self.assertEqual("changes_required", module["outcome"])
+        self.assertEqual([], module["rejected"])
+        self.assertEqual(["r1.1"], module["findings"][0]["sources"])
+        self.assertEqual(
+            {"carried": [], "resolved": [], "ignored": []}, module["earlier_issues"]
+        )
+
     def test_a_chair_that_never_accounts_for_everything_fails_the_module(self):
         plans = {
             "reviewer module.a 1": worker(findings=[finding()]),

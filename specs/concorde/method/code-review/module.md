@@ -215,8 +215,9 @@ the quoted evidence; the finding's Module as owner; and as evidence each locatio
 basis's document. Violations, missing tests and Spec challenges are `gap` reports of subtype
 `implementation-spec-mismatch`, Spec gaps `gap` of subtype `missing-contract`, defects and changes
 out of scope `bug`. A finding that names an earlier Issue is appended at the
-[revision](../../glossary.json#concept.issue-revision) read just before. A failure of the Issue
-system is never reported as an Issue: it stays an
+[revision](../../glossary.json#concept.issue-revision) read just before; a finding left unreported
+by a refusal of the Issue store keeps no `earlier`, and the earlier Issue it named is carried. A
+failure of the Issue system is never reported as an Issue: it stays an
 [error chain](../../glossary.json#concept.error-chain) in the result. See the
 [requirements](requirements.md) and [scenarios](scenarios.md) for the precise obligations.
 

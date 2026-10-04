@@ -122,10 +122,16 @@ def issue_report(operation: str, run_id: str, key: str, finding: dict) -> dict:
 
 
 def report(
-    ctx: RunContext, module: str, findings: list[dict], identity: str | None
+    ctx: RunContext,
+    module: str,
+    findings: list[dict],
+    identity: str | None,
+    earlier: list[dict] | None = None,
+    settled: dict | None = None,
 ) -> tuple[list[dict], object | None]:
     """Report every finding the checker did not dispute; returns the host evidence and, when the
-    Issue store refused a report, the Module's stop. Each finding gets its ``issue``."""
+    Issue store refused a report, the Module's stop. Each finding gets its ``issue``; an
+    unreported finding's earlier Issue joins ``settled``'s carried, in ``earlier``'s order."""
     return review_issues.report(
         ctx,
         module,
@@ -136,6 +142,8 @@ def report(
         ),
         review="review",
         skipped=_disputed,
+        earlier=earlier,
+        settled=settled,
     )
 
 

@@ -112,7 +112,7 @@ REJECTION: dict = {
 CHAIR_OUTPUT: dict = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["findings", "rejected"],
+    "required": ["findings"],
     "properties": {
         "findings": {"type": "array", "items": MERGED},
         "rejected": {"type": "array", "items": REJECTION},
@@ -514,7 +514,7 @@ class Panel:
                 for finding, item in zip(merged, output["findings"], strict=True)
                 if finding is not None
             ],
-            "rejected": output["rejected"] + host_rejected,
+            "rejected": list(output.get("rejected") or []) + host_rejected,
             "resolved": list(output.get("resolved") or []),
         }
         problems = account(_labels(reviews), report)

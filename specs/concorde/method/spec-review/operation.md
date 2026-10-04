@@ -101,7 +101,8 @@ answers. A refusal, such as a busy [merge lock](../../glossary.json#concept.merg
 store's wait, an unfinished merge, a stale revision or a closed earlier Issue, stops the Module's
 reporting: the Module is `incomplete` with `issues_unreported`, whose cause is the store's error,
 and the Operation reports no further finding of that Module, never records the refusal as an Issue
-and goes on with the next Module. The Operation never closes or reopens an Issue.
+and goes on with the next Module. A finding left unreported keeps no `earlier`, since nothing was
+appended to that Issue, which is `carried`. The Operation never closes or reopens an Issue.
 
 ### Without the issues part
 

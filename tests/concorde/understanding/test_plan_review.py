@@ -176,6 +176,34 @@ class PlanReviewTests(unittest.TestCase):
         # The previous run is admitted as the previous iteration, not as other material.
         self.assertNotIn("Other admitted inputs", brief)
 
+    def test_the_answers_keep_the_order_given(self):
+        self.write_plan(findings=[finding(1), finding(2), finding(3)])
+        _, first = self.review()
+        self.write_plan(
+            responses=[response("F1"), response("F2"), response("F3")], findings=[]
+        )
+        _, envelope = self.review(
+            "--input",
+            first["run_id"],
+            "--reject",
+            "F2",
+            "no",
+            "--accept",
+            "F1",
+            "done",
+            "--reject",
+            "F3",
+            "not either",
+        )
+        self.assertEqual("ok", envelope["status"], envelope)
+        self.assertEqual(
+            [("F2", "rejected"), ("F1", "accepted"), ("F3", "rejected")],
+            [
+                (item["finding"], item["answer"])
+                for item in envelope["output"]["answers"]
+            ],
+        )
+
     @verifies("scenario.understanding.plan-unanswered")
     def test_an_unanswered_finding_stops_the_next_iteration(self):
         self.write_plan(findings=[finding(1), finding(2)])
@@ -277,6 +305,11 @@ class PlanReviewTests(unittest.TestCase):
                 [response("F1")],
                 [finding(1, module="module.b")],
                 "concerns module.b, which is not bound",
+            ),
+            (
+                [response("F1")],
+                [finding(2), finding(2, kind="code", basis=None)],
+                "2 findings have the id F2",
             ),
         ):
             self.write_plan(responses=responses, findings=findings)

@@ -644,7 +644,9 @@ def report_findings(
     if review.earlier is None:
         # No earlier Issue was read, so none is carried or resolved.
         review.summary = None
-    found, stop = reporting.report(ctx, review.module, review.findings, identity)
+    found, stop = reporting.report(
+        ctx, review.module, review.findings, identity, review.earlier, review.summary
+    )
     if stop is not None:
         review.stop = stop
     return found
