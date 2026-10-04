@@ -92,7 +92,9 @@ A command that needs it is refused naming the part.
 ### req.concorde.one-version — All parts carry one version
 
 Every part SHALL carry the version number of the [Concorde repository](glossary.json#concept.concorde-repository)
-it was built from. This number is the same for every part.
+it was built from.
+
+This number is the same for every part.
 
 ## Runtime
 
@@ -109,8 +111,10 @@ pi workers.
 
 ### req.concorde.worker-program — Workers run on the configured program
 
-Whatever program the main agent runs on, every worker SHALL run on the program its worktree's
-worker configuration chooses. When that configuration chooses none, the worker SHALL run on pi.
+Whatever program the main agent runs on, every worker SHALL run on one of these programs:
+
+- The program its worktree's worker configuration chooses for it.
+- Pi, when that configuration chooses none.
 
 When a worker's chosen program is not installed, the worker is refused, never moved to the other
 program.
@@ -140,7 +144,9 @@ The worker configuration SHALL be a file tracked by Git, so that:
 ### req.concorde.worker-models-install-independent — The tracked configuration names no installation's model ids
 
 The worker configuration SHALL name every model by a project model name that depends on no
-installation. Each program's local model id remains in the user's untracked
+installation.
+
+Each program's local model id remains in the user's untracked
 [model map](glossary.json#concept.model-map).
 
 ### req.concorde.worker-models-explicit — Worker models change only on request
@@ -295,8 +301,9 @@ When a Module cannot handle such a record, it translates the record into a link
 ### req.concorde.error-chain — An unhandled error keeps its chain
 
 When an actor cannot handle an error received from a child, that actor SHALL pass the child's
-error unchanged as a cause of its own link. That link states the reason the actor cannot handle
-the error.
+error unchanged as a cause of its own link.
+
+That link states the reason the actor cannot handle the error.
 
 The reasons are the fixed set of the [error contract](kernel/tracing/contracts.md#contract.tracing.error).
 The last receiver thereby reads one reason per level, from where the error started up to itself.
@@ -348,8 +355,7 @@ it. It judges nothing else.
 
 ### req.concorde.delivery-commit-by-delivery — Only a delivering command makes a delivery commit
 
-Except for a delivering command, no actor SHALL make a delivery commit. The delivering commands
-are:
+No actor SHALL make a delivery commit except one of these delivering commands:
 
 - Method's `delivery` execution command.
 - Only where the method part is not installed, Coordination's `task deliver`.
