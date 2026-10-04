@@ -125,7 +125,7 @@ The `plan_review` Operation SHALL run one reviewer under all of these constraint
 - The reviewer runs under the bound Modules' `review-code`
   [grant](../../glossary.json#concept.grant).
 - The reviewer has no writable path.
-- The reviewer has no [configured check](../../glossary.json#concept.configured-check).
+- The Operation runs no [configured check](../../glossary.json#concept.configured-check).
 - The reviewer has no [resume round](../../glossary.json#concept.resume-round).
 
 Any violation the [write audit](../../glossary.json#concept.write-audit) finds ends the run

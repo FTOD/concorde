@@ -23,11 +23,11 @@ input measurement the readiness is bound to.
   When its checked-out commit differs, a submodule is a changed path. Since the workspace commits
   only the submodule's commit, changes inside the submodule's own worktree are not measured.
   Those changes are no uncommitted change for Delivery.
-- A changed path is **recorded** as text. When its bytes are valid UTF-8 and it does not begin
-  with `"`, it is recorded as it is. Otherwise, it is recorded in double quotes, as Git quotes a
-  path. Each `"` and `\` is preceded by `\`. Every byte that is no part of a valid UTF-8 sequence
-  is written as `\` followed by its three octal digits. Thus, `"caf\351.txt"` records the file
-  named `caf`, the byte `0xE9` and `.txt`.
+- A changed path is **recorded** as text. When its bytes are valid UTF-8 and it does not begin with
+  `"`, it is recorded as it is. Otherwise, it is recorded in double quotes, as Git quotes a path. In
+  that record, each `"` and `\` is preceded by `\`, and every byte that is no part of a valid UTF-8
+  sequence is written as `\` followed by its three octal digits. Thus, `"caf\351.txt"` records the
+  file named `caf`, the byte `0xE9` and `.txt`.
 
   The record names exactly one path, whatever bytes Git reports for it. The changed paths stay
   sorted by the byte order of the paths themselves. Every finding names a changed path as it is
