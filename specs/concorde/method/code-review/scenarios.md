@@ -120,14 +120,18 @@ in the [contracts](contracts.md).
 
 ### scenario.code-review.unknown-basis — A finding citing an unknown promise is not reported
 
-- GIVEN a reviewer that, also after its one [resume round](../../glossary.json#concept.resume-round), returns a first finding citing a requirement identity the reviewed Modules' [Spec context](../../glossary.json#concept.spec-context) does not define and names an earlier Issue, and whose second finding holds
+- GIVEN a reviewer that, also after its one [resume round](../../glossary.json#concept.resume-round), returns two findings
+- AND its first finding cites a requirement identity the reviewed Modules' [Spec context](../../glossary.json#concept.spec-context) does not define and names an earlier Issue
+- AND its second finding holds
 - WHEN the Operation checks the findings
 - THEN the first finding is reported as no Issue and listed under its Module's `rejected` without that earlier Issue, with the reason naming the unresolved identity, which is also host evidence
 - AND the second finding is reported as an Issue, the Module is `changes_required` and the run ends `ok`
 
 ### scenario.code-review.unknown-location — A finding located in no file is not reported
 
-- GIVEN a reviewer that, also after its one resume round, returns findings naming locations whose file does not exist, whose lines lie beyond the file's end or that lie outside the project, and one finding whose location holds
+- GIVEN a reviewer that, also after its one resume round, returns findings naming locations that do not hold
+- AND those locations name a file that does not exist, lines beyond the file's end or a place outside the project
+- AND the reviewer also returns one finding whose location holds
 - WHEN the Operation checks the findings
 - THEN each finding whose location does not hold is listed under `rejected` with the reason, and each such location is host evidence
 - BUT the finding whose location holds is reported as an Issue and the run ends `ok`

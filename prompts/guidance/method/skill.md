@@ -4,12 +4,12 @@ audience: shared
 
 ## Operations
 
-Method's Operations and execution commands do bounded work in a bound workspace, each started
-inside its worktree with that worktree's own `concorde`. Where the coordination part is installed,
-the workspace is a task's and the task session starts them inside the task worktree. Without that
-part nothing in Concorde binds a worktree: they run in a workspace something else prepared, and
-only the reading Operations `understand`, `survey`, `spec_review`, `spec_panel` and `code_review`
-run anywhere else, unbound (see "Unbound runs"):
+Method's Operations and execution commands do bounded work in a bound workspace. Each starts inside
+its worktree with that worktree's own `concorde`. Where the coordination part is installed, the
+workspace is a task's. In that case, the task session starts them inside the task worktree. Without
+that part, nothing in Concorde binds a worktree. In that case, they run in a workspace something
+else prepared. Only the reading Operations `understand`, `survey`, `spec_review`, `spec_panel` and
+`code_review` run anywhere else, unbound (see "Unbound runs").
 
 ```bash
 concorde run understand  --goal "<question>" [--plan]
@@ -23,38 +23,67 @@ concorde task-validation
 concorde delivery
 ```
 
-A typical order is `understand` to assess and plan, optionally `plan_review` of the plan written
-for the work, answered finding by finding over several runs until the verdict is `accepted`,
-`specify` when the Spec must change first, `implement` and `test`, the reviews when the change
-deserves them, then `task-validation` and `delivery`, which validates the whole workspace again and
-creates the delivery commit on the workspace's branch, a task branch where the coordination part
-is installed; only that commit marks the workspace delivered, while whoever works in it may commit
-verified steps before it. Whoever works in the workspace (the task session, where the coordination
-part is installed) prepares the workers' environment: a worker writes only the files its Modules
-bind and new files inside the directories they bind, and a Module binds only files that exist, so
-any other new implementation file the work needs is created first, with the least content its
-format needs to be valid, and bound to its Module before the worker that fills it is launched. A new Spec document is not prepared this way: `specify` proposes
-it and the Operation creates it and registers it in its Module's `owns`.
+A typical order is:
+
+- Run `understand` to assess and plan.
+- Optionally run `plan_review` of the plan written for the work. Answer it finding by finding over
+  several runs until the verdict is `accepted`.
+- When the Spec must change first, run `specify`.
+- Run `implement`.
+- Run `test`.
+- When the change deserves them, run the reviews.
+- Run `task-validation`.
+- Run `delivery`.
+
+`delivery` validates the whole workspace again. It creates the delivery commit on the workspace's
+branch. Where the coordination part is installed, this is a task branch. Only that commit marks the
+workspace delivered. Before it, whoever works in the workspace may commit verified steps.
+
+Whoever works in the workspace prepares the workers' environment. Where the coordination part is
+installed, this is the task session. A worker writes only the files its Modules bind and new files
+inside the directories they bind. A Module binds only files that exist. Before launching a worker
+to fill any other new implementation file the work needs, whoever works in the workspace takes
+these steps:
+
+- Create the file with the least content its format needs to be valid.
+- Bind the file to its Module.
+
+Whoever works in the workspace does not prepare a new Spec document this way. `specify` proposes
+it. The Operation creates it. The Operation registers it in its Module's `owns`.
 
 `code_review` judges a task's change since its base. With `--scope module` it is a **Module
 review** instead: one reviewer per named Module judges that Module's whole code and tests against
-all of its Specs, and may challenge a Spec requirement it finds unreasonable or unrealizable. Use it
-for a whole-Module check after a large change, on code written before its Specs or by an earlier
-version, or on a project just adopted with the brownfield workflow; run unbound in the primary
-worktree it needs only `--modules`. The reviews (`spec_review`, `spec_panel`, `code_review`) report
-their findings as Issues where the issues part is installed, as "Issues" says, and otherwise keep
-them in their run result, where you read them.
+all of its Specs. The reviewer may challenge a Spec requirement it finds unreasonable or
+unrealizable. Use it for a whole-Module check after a large change, on code written before its
+Specs or by an earlier version, or on a project just adopted with the brownfield workflow.
+
+When run unbound in the primary worktree, it needs only `--modules`. Where the issues part is
+installed, the reviews (`spec_review`, `spec_panel`, `code_review`) report their findings as Issues,
+as "Issues" says. Otherwise, they keep their findings in their run result, where you read them.
 
 **Brownfield.** Concorde works Spec first. Only when Concorde was just installed and initialized in
-a project whose code came before its Specs, describe that code with the `brownfield` workflow, run
-with `module` set to the root Module (or to the Module to split) in a workspace bound to that
-Module: where the coordination part is installed, open a task bound to it and have its task
-session run the workflow. It surveys the code, scaffolds child Modules, describes each Module's
-code with `code_to_spec`, reviews, validates and delivers. Its workers write down behaviour as it
-is and report doubtful intent as open questions instead of promises; show the developer the open
-questions, the decisions and the checks the survey proposed, which are never configured
-automatically: in a task (or, without the coordination part, a workspace), add each one the
-developer accepts to the checks file of the Module it checks, `.concorde/checks/<module id>.json`,
-without its `module` and `reason`. Splitting a created Module further is a new run of the workflow
-on that Module, in a task of its own where the coordination part is installed. Never use `code_to_spec`
-for a project that is already specified: there, a missing promise is a Spec gap for `specify`.
+a project whose code came before its Specs, describe that code with the `brownfield` workflow.
+Run it with `module` set to the root Module (or to the Module to split) in a workspace bound to that
+Module. Where the coordination part is installed, open a task bound to it and have its task session
+run the workflow. The workflow takes these steps:
+
+- Survey the code.
+- Scaffold child Modules.
+- Describe each Module's code with `code_to_spec`.
+- Review.
+- Validate.
+- Deliver.
+
+Its workers write down behaviour as it is. They report doubtful intent as open questions instead of
+promises. Show the developer the following:
+
+- The open questions.
+- The decisions.
+- The checks the survey proposed.
+
+The checks are never configured automatically. In a task (or, without the coordination part, a
+workspace), add each check the developer accepts to `.concorde/checks/<module id>.json` for the
+Module it checks. Omit its `module` and `reason`. Splitting a created Module
+further is a new run of the workflow on that Module. Where the coordination part is installed, this
+runs in a task of its own. For a project that is already specified, never use `code_to_spec`.
+There, a missing promise is a Spec gap for `specify`.

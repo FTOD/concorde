@@ -1,11 +1,11 @@
 # Understanding contracts
 
 The exact shape of what [Understanding](module.md) returns: the assessment of `understand` and the
-plan review report of `plan_review`, each the `output` of its
+plan review report of `plan_review`. Each is the `output` of its
 [run result](../../glossary.json#concept.run-result). The understand worker proposes the
-assessment as the Operation-specific part of its answer, and the
-[Operation](../../glossary.json#concept.operation)'s steps pass it on once their checks have
-passed, with `goal` set to the run's own `--goal` argument.
+assessment as the Operation-specific part of its answer. Once their checks pass, the
+[Operation](../../glossary.json#concept.operation)'s steps pass it on, with `goal` set to the run's
+own `--goal` argument.
 
 ## Assessment
 
@@ -142,9 +142,15 @@ passed, with `goal` set to the run's own `--goal` argument.
 ## Plan review report
 
 The `output` of a `plan_review` run. The reviewer supplies `responses` and `findings` as the
-Operation-specific part of its answer and `summary` as the summary of its
-[worker result](../../glossary.json#concept.worker-result); the Operation
-adds the plan it read, the iteration, the previous run and the answers, and derives the verdict.
+Operation-specific part of its answer. It supplies `summary` as the summary of its
+[worker result](../../glossary.json#concept.worker-result). The Operation adds these:
+
+- The plan it read.
+- The iteration.
+- The previous run.
+- The answers.
+
+The Operation derives the verdict.
 
 ```concorde-contract
 {

@@ -5,13 +5,15 @@ The exact shape [Scaffold](module.md) returns, the `output` of its
 proposal it applies is Adoption's
 [decomposition proposal](../adoption/contracts.md#contract.adoption.decomposition).
 
-The output also carries, beside the record's fields, the `workflow` object of the
-[step output convention](../../workflows/contracts.md#contract.workflows.step-output), whose `data`
-hands a [workflow script](../../glossary.json#concept.workflow-script) what it needs to describe the created [Modules](../../glossary.json#concept.module), as
-[req.scaffold.step-output](requirements.md#req.scaffold.step-output) says: `created_modules`, the
-list of the created Modules in the record's order, each `{"id": "<module>", "uses":
-["<module>", …]}` with the `uses` the survey proposed among the created Modules alone. It declares
-no [decision point](../../glossary.json#concept.decision-point), decision or note; the convention, not this contract, defines the object.
+The output also carries the `workflow` object of the
+[step output convention](../../workflows/contracts.md#contract.workflows.step-output), beside the
+record's fields. As [req.scaffold.step-output](requirements.md#req.scaffold.step-output) says,
+its `data` hands a [workflow script](../../glossary.json#concept.workflow-script) what it needs to
+describe the created [Modules](../../glossary.json#concept.module). That is `created_modules`,
+the list of the created Modules in the record's order. Each is `{"id": "<module>", "uses":
+["<module>", …]}` with the `uses` the survey proposed among the created Modules alone. The object
+declares no [decision point](../../glossary.json#concept.decision-point), decision or note. The convention,
+not this contract, defines the object.
 
 ## Scaffold record
 
@@ -201,12 +203,12 @@ The `output` of `scaffold`, entirely observed by its steps.
 
 ## Errors
 
-The codes of the run's own link, level `command`, in a result that is not `ok` because one of the
-scaffold's steps stopped it. Spec core links below it keep their own codes. A run the runner
-refuses before the first step, such as an
-[unbound run](../../glossary.json#concept.unbound-run) (`binding_required`) or one with an input
-it does not admit (`input_not_admissible`), carries the runner's `refused` link instead, listed in
-the [runner's errors](../../execution/runner.md#errors).
+When one of the scaffold's steps stops a run, these codes belong to the run's own link, level
+`command`. That link appears in a result that is not `ok`. Spec core links below it keep their own
+codes. Before the first step, a run the runner refuses carries the runner's `refused` link instead.
+Such runs include an [unbound run](../../glossary.json#concept.unbound-run) (`binding_required`) or
+one with an input it does not admit (`input_not_admissible`). The
+[runner's errors](../../execution/runner.md#errors) list that link.
 
 | Code | Status | Reason | Raised when |
 | --- | --- | --- | --- |

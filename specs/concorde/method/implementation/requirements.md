@@ -1,9 +1,8 @@
 # Implementation requirements
 
-The Module-wide obligations of [Implementation](module.md). The shapes of the
-code change and the
-test report are in the [contracts](contracts.md); the
-[scenarios](scenarios.md) show the obligations in concrete situations.
+The Module-wide obligations of [Implementation](module.md). The shapes of the code change and the
+test report are in the [contracts](contracts.md). The [scenarios](scenarios.md) show the obligations
+in concrete situations.
 
 ## Implement
 
@@ -24,25 +23,30 @@ document or metadata file itself.
 
 ### req.implementation.audit — Writes outside the grant fail the run
 
-An implement run whose [write audit](../../glossary.json#concept.write-audit) finds a change
-outside the grant's writable paths SHALL end `failed` with the offending paths as host evidence.
+When an implement run's [write audit](../../glossary.json#concept.write-audit) finds a change outside
+the grant's writable paths, the run SHALL end `failed` with the offending paths as host evidence.
 
 Such a run gets no [resume round](../../glossary.json#concept.resume-round), since rounds only
 repair failed checks.
 
 ### req.implementation.host-deletes — Deletions are performed by the Operation
 
-The implement Operation SHALL delete a file only when the worker's result proposes it, the file lies
-inside the grant's writable paths and the audit was clean.
+The implement Operation SHALL delete a file only when all of these conditions hold:
+
+- The worker's result proposes it.
+- The file lies inside the grant's writable paths.
+- The audit was clean.
 
 ### req.implementation.checks-follow-uses — The checks of users run too
 
-The Operation SHALL run the [configured checks](../../glossary.json#concept.configured-check) of the bound Modules and of every [Module](../../glossary.json#concept.module) that uses one of them, directly or through further uses.
+The Operation SHALL run the [configured checks](../../glossary.json#concept.configured-check) of the
+bound Modules and of every [Module](../../glossary.json#concept.module) that uses one of them,
+directly or through further uses.
 
 ### req.implementation.checks-outside — Checks run outside the worker
 
-The implement Operation SHALL run the configured checks through Check execution after every worker
-round whose audit is clean and whose worker ended `ok`.
+After every worker round whose audit is clean and whose worker ended `ok`, the implement Operation
+SHALL run the configured checks through Check execution.
 
 ### req.implementation.resume-checks-only — Resume rounds repair failed checks only
 
@@ -51,17 +55,22 @@ preceding round.
 
 ### req.implementation.worker-status — A blocked or failed worker ends the run
 
-An implement run whose [worker result](../../glossary.json#concept.worker-result) is `blocked`
-or `failed`, including one that reports a [Spec gap](../../glossary.json#concept.spec-gap),
-SHALL end with that status and an [error chain](../../glossary.json#concept.error-chain) that
-ends in the worker's own link.
+When an implement run's [worker result](../../glossary.json#concept.worker-result) is `blocked` or
+`failed`, including one that reports a [Spec gap](../../glossary.json#concept.spec-gap), the run
+SHALL end with both of these:
+
+- That status.
+- An [error chain](../../glossary.json#concept.error-chain) that ends in the worker's own link.
 
 ### req.implementation.round-limit — Resume rounds are bounded
 
-The implement Operation SHALL run at most the configured number of resume rounds: the number
-`--rounds` gives, or else the
-[worker configuration](../../glossary.json#concept.worker-configuration)'s `limits.rounds`, or
-else three.
+The implement Operation SHALL run at most the configured number of resume rounds, selected in this
+order:
+
+- The number `--rounds` gives.
+- Otherwise, the [worker configuration](../../glossary.json#concept.worker-configuration)'s
+  `limits.rounds`.
+- Otherwise, three.
 
 ## Test
 
@@ -75,19 +84,22 @@ The test worker's tool list SHALL NOT include Bash or any other tool that runs a
 
 ### req.implementation.test-reads-logs — The test worker reads every check log
 
-The test Operation SHALL let its worker read the log of every check the Operation ran for the run, whether the check passed or not.
+The test Operation SHALL let its worker read the log of every check the Operation ran for the run,
+whether the check passed or not.
 
 ### req.implementation.test-failures-accounted — Each failed check is interpreted once
 
-The test Operation SHALL end the run `failed` with `failures_unaccounted` when its worker's
-`failures`, after one resume round with every mismatch, do not hold exactly one entry per check that
-did not pass, named by that check's identity, and none for a check that passed.
+When, after one resume round with every mismatch, its worker's `failures` violate any of these
+conditions, the test Operation SHALL end the run `failed` with `failures_unaccounted`:
 
-The resume round is given only when the first answer does not hold; the entries' contents stay the
-worker's interpretation.
+- They hold exactly one entry per check that did not pass.
+- Each entry is named by that check's identity.
+- They hold no entry for a check that passed.
+
+The test Operation gives the resume round only when the first answer does not hold. The
+entries' contents stay the worker's interpretation.
 
 ### req.implementation.host-check-facts — Check outcomes come from the Operation
 
-The check outcomes in a code change or a test report SHALL be the
-[check results](../../glossary.json#concept.check-result) the Operation recorded, never the
-worker's statement of them.
+The Operation SHALL use its recorded [check results](../../glossary.json#concept.check-result) as
+the check outcomes in a code change or a test report, never the worker's statement of them.

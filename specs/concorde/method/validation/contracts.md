@@ -1,73 +1,91 @@
 # Validation contracts
 
-The readiness that the [execution command](../../glossary.json#concept.execution-command)
-`task-validation` of [Validation](module.md) returns as its output, and the exact input measurement
-it is bound to.
+The [execution command](../../glossary.json#concept.execution-command) `task-validation` of
+[Validation](module.md) returns readiness as its output. This contract also describes the exact
+input measurement the readiness is bound to.
 
 ## Input measurement
 
-- The **changed paths** are the union of the paths Git reports as different between the base
-  commit and the working tree, staged or not, and the untracked paths Git does not ignore, each as
-  a project-relative POSIX path, sorted by byte order. Two kinds of untracked path are left out,
-  since they are no content of the task. One is a path that is neither a regular file, a symbolic
-  link nor a directory: Git cannot version it, and it is how Claude Code's Bash sandbox hides a
-  path such as `.bashrc` behind a `/dev/null` mount. The other is a **sandbox placeholder**: an
-  empty regular file with no write bit and a single link, which that sandbox creates on the host
-  where an absent path is to be hidden, before it mounts `/dev/null` over it, and removes only
-  when no sandbox of its Claude Code process is alive, so that meanwhile another command sees it
-  as a regular file. This is the signature by which the sandbox runtime itself recognises such a
-  file; a file a task creates has a write bit, content or another link, and is measured. Neither
-  kind is an uncommitted change for Delivery either, which tests for one with this measurement's
-  rules. A
-  submodule is a changed path when its checked-out commit differs; changes inside the submodule's
-  own worktree are not measured and are no uncommitted change for Delivery, since the workspace
-  commits only the submodule's commit.
-- A changed path is **recorded** as text: as it is when its bytes are valid UTF-8 and it does not
-  begin with `"`; otherwise in double quotes, with `"` and `\` each preceded by `\` and every byte
-  that is no part of a valid UTF-8 sequence written as `\` followed by its three octal digits, as
-  Git quotes a path, so that `"caf\351.txt"` records the file named `caf`, the byte `0xE9` and
-  `.txt`. The record names exactly one path, whatever bytes Git reports for it, and the changed
-  paths stay sorted by the byte order of the paths themselves. Every finding names a changed path
-  as it is recorded, while Validation compares the path itself with the entries of the
+- The **changed paths** are the union of these paths:
+  - The paths Git reports as different between the base commit and the working tree, staged or not.
+  - The untracked paths Git does not ignore.
+
+  Each is a project-relative POSIX path, sorted by byte order. Two kinds of untracked path are
+  left out, since they are no content of the task. One is a path that is neither a regular file,
+  a symbolic link nor a directory. Git cannot version it. This is how Claude Code's Bash sandbox hides a path such as `.bashrc`
+  behind a `/dev/null` mount. The other is a **sandbox placeholder**: an empty regular file with
+  no write bit and a single link. Where an absent path is to be hidden, that sandbox creates the
+  file on the host before it mounts `/dev/null` over it. It removes the file only when no sandbox
+  of its Claude Code process is alive. Meanwhile, another command sees it as a regular file.
+  This is the signature by which the sandbox runtime itself recognises such a file. A file a task
+  creates has a write bit, content or another link. Such a file is measured. Neither kind is an
+  uncommitted change for Delivery either, which tests for one with this measurement's rules.
+  When its checked-out commit differs, a submodule is a changed path. Since the workspace commits
+  only the submodule's commit, changes inside the submodule's own worktree are not measured.
+  Those changes are no uncommitted change for Delivery.
+- A changed path is **recorded** as text. When its bytes are valid UTF-8 and it does not begin with
+  `"`, it is recorded as it is. Otherwise, it is recorded in double quotes, as Git quotes a path. In
+  that record, each `"` and `\` is preceded by `\`, and every byte that is no part of a valid UTF-8
+  sequence is written as `\` followed by its three octal digits. Thus, `"caf\351.txt"` records the
+  file named `caf`, the byte `0xE9` and `.txt`.
+
+  The record names exactly one path, whatever bytes Git reports for it. The changed paths stay
+  sorted by the byte order of the paths themselves. Every finding names a changed path as it is
+  recorded. Validation compares the path itself with the entries of the
   [Specs](../../glossary.json#concept.spec).
 - A changed path's **digest** is `sha256:` followed by the hexadecimal SHA-256 of its content in
-  the worktree: a regular file's bytes; for a symbolic link, `symlink:` followed by its link text;
-  for a directory, which is a submodule or another repository, `gitlink:` followed by the
-  hexadecimal name of the commit it has checked out when it is the top level of a repository whose
-  head names a commit; otherwise, such as for a submodule that is not initialized, followed by the
-  commit the worktree's index records for the path, which is what Delivery would commit, or by
-  nothing when the index records none. It is `null` when the path no longer exists. A changed path
-  that exists but cannot be read, or whose Git file mode cannot be determined, fails the
-  measurement (`path_unreadable`).
-- A changed path's **mode** is its Git file mode in the worktree, as six octal digits: `100755`
-  for a regular file whose owner may execute it, `100644` for any other regular file, `120000` for
-  a symbolic link and `160000` for a directory, which is a submodule; it is `null` when the path no
-  longer exists. Setting or clearing a file's execute bit therefore changes the input digest even
-  when its bytes stay the same.
-- The **configuration digest** is the digest of the canonical JSON object that maps
+  the worktree. The content depends on the kind of path:
+  - For a regular file, the content is its bytes.
+  - For a symbolic link, the content is `symlink:` followed by its link text.
+  - For a directory, which is a submodule or another repository, the content starts with
+    `gitlink:`.
+
+  For a directory, what follows depends on these cases:
+  - When it is the top level of a repository whose head names a commit, the hexadecimal name of
+    its checked-out commit follows.
+  - Otherwise, such as for a submodule that is not initialized, when the worktree's index records
+    a commit for the path, that commit follows. This is what Delivery would commit.
+  - When the index records none in that latter case, nothing follows.
+
+  When the path no longer exists, its digest is `null`. A changed path that exists but cannot be
+  read, or whose Git file mode cannot be determined, fails the measurement (`path_unreadable`).
+- A changed path's **mode** is its Git file mode in the worktree, as six octal digits:
+  - `100755` for a regular file whose owner may execute it.
+  - `100644` for any other regular file.
+  - `120000` for a symbolic link.
+  - `160000` for a directory, which is a submodule.
+
+  When the path no longer exists, its mode is `null`. Setting or clearing a file's execute bit
+  therefore changes the input digest even when its bytes stay the same.
+- The **configuration digest** is the digest of a canonical JSON object. The object maps
   `.concorde/config.json` and every entry of `.concorde/checks/` in the workspace to the digest of
-  its bytes (a symbolic link's by its link text, any other entry of the checks directory that is
-  not a file as `null`), each named as a changed path is recorded, so a changed check command
-  changes it as a changed configuration does. A configuration that is missing or cannot be read,
-  or a checks directory entry that cannot be read, fails the measurement (`config_unreadable`).
-- The **input digest** is the digest of the canonical JSON (sorted keys, no insignificant
-  whitespace, UTF-8) of the object `{"head", "base", "changed", "config_digest"}` with the values
-  recorded in `inputs`, each changed path as it is recorded.
+  its bytes. Each is named as a changed path is recorded. For a symbolic link, the object uses
+  the digest of its link text. For any other entry of the checks directory that is not a file,
+  the object uses `null`. Thus, a changed check command changes the configuration digest as a
+  changed configuration does. The measurement fails (`config_unreadable`) in any of these cases:
+  - A configuration is missing.
+  - A configuration cannot be read.
+  - A checks directory entry cannot be read.
+- The **input digest** is the digest of the canonical JSON of the object
+  `{"head", "base", "changed", "config_digest"}`. Its values are those recorded in `inputs`, with
+  each changed path as it is recorded. The canonical JSON has sorted keys, no insignificant
+  whitespace and UTF-8.
 
 Delivery uses the same measurement through Validation, so both compute the same input digest for
 the same workspace.
 
 ## Readiness
 
-The `output` of `task-validation` also carries, beside the readiness's fields, the `workflow` object
-of the [step output convention](../../workflows/contracts.md#contract.workflows.step-output), as
-[req.validation.step-output](requirements.md#req.validation.step-output) says: `data` holds `ready`,
-the readiness's own value, and `blocking` is `null` when the workspace is ready and otherwise
-`{"code": "not_ready", "detail": "<each blocking finding's kind and subject>"}`, so that the run
-declares to a workflow, which reads nothing else of its output, that its procedure stops here. The
-readiness saved as `readiness.json` does not carry the object.
-It declares no [decision point](../../glossary.json#concept.decision-point), decision or note; the convention, not this contract, defines the
-object.
+Beside the readiness's fields, the `output` of `task-validation` also carries the `workflow`
+object of the [step output convention](../../workflows/contracts.md#contract.workflows.step-output).
+This follows [req.validation.step-output](requirements.md#req.validation.step-output).
+The object's `data` holds `ready`, the readiness's own value. When the workspace is ready,
+`blocking` is `null`. Otherwise, it is
+`{"code": "not_ready", "detail": "<each blocking finding's kind and subject>"}`. In that case, the run
+declares to a workflow that its procedure stops here. The workflow reads nothing else of the
+run's output. The readiness saved as `readiness.json` does not carry the object. The object
+declares no [decision point](../../glossary.json#concept.decision-point), decision or note. The convention,
+not this contract, defines the object.
 
 ```concorde-contract
 {

@@ -1,25 +1,32 @@
 # Adoption contracts
 
 The exact shapes [Adoption](module.md) returns and accepts. Each output is the `output` of a
-[run result](../../glossary.json#concept.run-result); the worker proposes the parts it
-claims, and the host steps check them before passing them on.
+[run result](../../glossary.json#concept.run-result). The worker proposes the parts it claims. The
+host steps check them before passing them on.
 
-Two things the host writes itself, so that no worker has to repeat text exactly. A worker's
-decision names each option by a short identity of its own and its choice by that identity, or
-names none when an answer settles the decision; the host records the options' texts and the chosen
-option's text, or the answer, with who decided it. And a worker gives its tools absolute paths, so a
-path it writes that begins with the worktree's own absolute path is written relative to the
-worktree before anything checks it.
+The host writes two things itself, so that no worker has to repeat text exactly:
 
-Both outputs also carry, beside the fields below, the `workflow` object of the
-[step output convention](../../workflows/contracts.md#contract.workflows.step-output), which repeats
-their [decision points](../../glossary.json#concept.decision-point), decisions, deviations and, for a survey, its proposed checks in the shape
-every workflow reads, as [req.adoption.step-output](requirements.md#req.adoption.step-output) says;
-the convention, not these contracts, defines its fields.
+- A worker's decision names each option by a short identity of its own. It names its choice by
+  that identity, or names no choice when an answer settles the decision. The host records the
+  options' texts and the chosen option's text, or the answer, with who decided it.
+- A worker gives its tools absolute paths. When a path it writes begins with the worktree's own
+  absolute path, the host writes it relative to the worktree before anything checks it.
+
+Beside the fields below, both outputs also carry the `workflow` object of the
+[step output convention](../../workflows/contracts.md#contract.workflows.step-output). As
+[req.adoption.step-output](requirements.md#req.adoption.step-output) says, the object repeats these
+in the shape every workflow reads:
+
+- Their [decision points](../../glossary.json#concept.decision-point).
+- Their decisions.
+- Their deviations.
+- For a survey, its proposed checks.
+
+The convention, not these contracts, defines its fields.
 
 ## Decomposition proposal
 
-The `output` of a `survey`. `remaining_entries` is computed by the host, never by the worker.
+The `output` of a `survey`. The host computes `remaining_entries`, never the worker.
 
 ```concorde-contract
 {
@@ -447,9 +454,8 @@ The `output` of a `survey`. `remaining_entries` is computed by the host, never b
 ## Spec description
 
 The `output` of a `code_to_spec` run. The document lists and `validation` are the host's
-observations; `summary`, `promises`, `decisions`, `open_questions` and `deviations` are the worker's
-claims, checked for consistency only, with each decision written by the host from the worker's
-choice.
+observations. `summary`, `promises`, `decisions`, `open_questions` and `deviations` are the worker's
+claims, checked for consistency only. The host writes each decision from the worker's choice.
 
 ```concorde-contract
 {
@@ -1006,8 +1012,8 @@ The file `--answers` names. Every answer names a decision (`d.`) or
 
 ## Errors
 
-The codes of the run's own link in a result that is not `ok`, level `operation`. Worker, Workers
-and Spec core links below it keep their own codes.
+In a result that is not `ok`, these are the codes of the run's own link, level `operation`.
+Worker, Workers and Spec core links below it keep their own codes.
 
 | Code | Run | Status | Reason | Raised when |
 | --- | --- | --- | --- | --- |
@@ -1021,5 +1027,9 @@ and Spec core links below it keep their own codes.
 | `new_structural_errors` | code_to_spec | `blocked` | `decision` | the description adds structural errors; one cause per finding |
 | `inconsistent_description` | code_to_spec | `failed` | `capability` | the description names another Module, repeats an identity, names an absolute path as an open question's evidence, has a decision whose choice names none of its options or that neither chooses nor follows an answer, or leaves out an answered decision or question; every problem is listed |
 
-A worker that ended `blocked` or `failed`, a launch error, a timeout and an audit violation keep
-the codes of the [standard worker sequence](../workers.md#errors-of-the-worker-sequence).
+These keep the codes of the [standard worker sequence](../workers.md#errors-of-the-worker-sequence):
+
+- A worker that ended `blocked` or `failed`.
+- A launch error.
+- A timeout.
+- An audit violation.

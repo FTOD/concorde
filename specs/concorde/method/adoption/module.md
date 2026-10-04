@@ -2,16 +2,19 @@
 
 ## Purpose
 
-Adoption describes a project whose code came before its Specs. It provides two Operations: `survey`
-has a worker read a [Module](../../glossary.json#concept.module)'s code and propose how to split
-it into child Modules, and `code_to_spec` has a worker read a Module's code and write that Module's
-[Spec](../../glossary.json#concept.spec). Between them the
-[execution command](../../glossary.json#concept.execution-command) `scaffold` of
-[Scaffold](../scaffold/module.md) creates the proposed child Modules. The three are the
-only runs that turn code into Specs, and they exist for the uncommon project adopted after its code
-was written; a project specified first never needs them. Adoption never changes what code does,
-records behaviour as it is instead of improving it, and never writes a behaviour whose intent the
-code does not settle as a promise: such behaviour becomes an
+Adoption describes a project whose code came before its Specs. It provides two Operations:
+
+- `survey` has a worker read a [Module](../../glossary.json#concept.module)'s code and propose
+  how to split it into child Modules.
+- `code_to_spec` has a worker read a Module's code and write that Module's
+  [Spec](../../glossary.json#concept.spec).
+
+Between them the [execution command](../../glossary.json#concept.execution-command) `scaffold` of
+[Scaffold](../scaffold/module.md) creates the proposed child Modules. The three are the only runs
+that turn code into Specs. They exist for the uncommon project adopted after its code was written.
+A project specified first never needs them. Adoption never changes what code does. It records
+behaviour as it is instead of improving it. When the code does not settle a behaviour's intent,
+Adoption never writes that behaviour as a promise. Such behaviour becomes an
 [open question](../../glossary.json#concept.open-question) for the developer. The one edit it
 makes outside Specs marks the project's existing tests with the scenarios taken from them.
 
@@ -21,69 +24,93 @@ makes outside Specs marks the project's existing tests with the scenarios taken 
 
 <a id="concept.decomposition-proposal"></a>
 
-A survey worker reads the code of one Module, usually the root, and returns a **decomposition
-proposal** ([contract](contracts.md#contract.adoption.decomposition)): for each child Module to
-create, its identity, title, a one-paragraph purpose, the paths it should bind and the Modules it
-uses with the reason; the third-party code the project vendors, such as a bundled copy of a
-library, each with the Module that uses it; the test and lint commands it found, proposed in the
-shape of [configured checks](../../glossary.json#concept.configured-check) of the Modules they
-check; the decisions it took; and its open questions. The host adds the realization entries, the
-bound paths, that stay with the surveyed Module. A proposal with no children is valid: the Module is
-small enough to describe as it is.
+A survey worker reads the code of one Module, usually the root. It returns a **decomposition
+proposal** ([contract](contracts.md#contract.adoption.decomposition)) with these items:
+
+- Each child Module to create, with these details:
+  - Its identity.
+  - Its title.
+  - Its one-paragraph purpose.
+  - The paths it should bind.
+  - The Modules it uses with the reason.
+- The third-party code the project vendors, such as a bundled copy of a library, each with the
+  Module that uses it.
+- The test and lint commands it found, proposed in the shape of
+  [configured checks](../../glossary.json#concept.configured-check) of the Modules they check.
+- The decisions it took.
+- Its open questions.
+
+The host adds the realization entries, the bound paths, that stay with the surveyed Module. A
+proposal with no children is valid: the Module is small enough to describe as it is.
 
 ### Spec description
 
-A `code_to_spec` worker rewrites the bound Modules' own documents from their code, and the result's
+A `code_to_spec` worker rewrites the bound Modules' own documents from their code. The result's
 output is a **Spec description** ([contract](contracts.md#contract.adoption.spec-description)).
 
 ### Decisions and open questions
 
 <a id="concept.open-question"></a>
 
-Workers of both Operations meet two kinds of uncertainty and report each separately instead of
+Workers of both Operations meet two kinds of uncertainty. They report each separately instead of
 hiding it in prose:
 
 - A **decision** is a choice the code leaves open, such as whether two directories are one Module
-  or two, or which name a concept gets. The worker takes it, with its options and reason, and goes
-  on. It names each option by a short identity of its own and its choice by that identity; the host
-  records the chosen option's text and that the worker decided it, so no worker has to repeat an
-  option word for word.
-- An **open question** is about intent: the code does something, such as swallowing an error or
-  treating one input specially, and nothing shows whether it is meant. The worker writes no promise
-  about it. The Spec states it as an honest unknown, and the result reports what was observed, why
-  it is uncertain, the options and a recommendation.
+  or two, or which name a concept gets. The worker takes it, with its options and reason. It goes
+  on. It names each option by a short identity of its own. It names its choice by that identity.
+  The host records the chosen option's text. It records that the worker decided it. This means no
+  worker has to repeat an option word for word.
+- An **open question** is about intent. The code does something, such as swallowing an error or
+  treating one input specially. Nothing shows whether it is meant. The worker writes no promise
+  about it. The Spec states it as an honest unknown. The result reports these items:
+  - What was observed.
+  - Why it is uncertain.
+  - The options.
+  - A recommendation.
 
-Neither Operation asks the developer: they have no one to ask. What happens next is the task
-level's or the workflow's choice: go on with the worker's decisions, or seek answers through the
-existing escalation path, which settles each in the main agent when its authority covers it and
-otherwise with the developer.
+Neither Operation asks the developer: they have no one to ask. The task level or the workflow
+chooses what happens next: go on with the worker's decisions, or seek answers through the existing
+escalation path. When its authority covers a decision or open question, the main agent settles it
+through that path. Otherwise, the developer settles it.
 
-Which of them a workflow stops for is this Module's to say, not the workflow's: each run's output
-lists them again under the
+This Module, not the workflow, says which of them a workflow stops for. Each run's output lists
+them again under the
 [step output convention](../../workflows/contracts.md#contract.workflows.step-output) that
-[Workflows](../../workflows/module.md) reads. A survey declares every decision its worker took itself
-and every open question as a [decision point](../../glossary.json#concept.decision-point), since how
-a project splits into Modules shapes all later work, lists every decision it reports among
-`decisions` as well, a decision point of kind `decision` keeping the same identity, and declares its
-proposed checks as `notes` for the developer; a code_to_spec run declares its open questions as decision points of kind `question` and
-its decisions, which are ordinary, as `decisions` the workflow only reports; both list their
-deviations as `deviations`
+[Workflows](../../workflows/module.md) reads. Since how a project splits into Modules shapes all
+later work, a survey declares each of these as a
+[decision point](../../glossary.json#concept.decision-point):
+
+- Every decision its worker took itself.
+- Every open question.
+
+A survey lists every decision it reports among `decisions` as well. A decision point of kind
+`decision` keeps the same identity. A survey declares its proposed checks as `notes` for the
+developer. A code_to_spec run declares its open questions as decision points of kind `question`.
+Its decisions are ordinary. It declares them as `decisions` the workflow only reports. Both list
+their deviations as `deviations`
 ([req.adoption.step-output](requirements.md#req.adoption.step-output)).
 
 ### Answers and deviations
 
 The answers reach a later run as an **answers** file
-([contract](contracts.md#contract.adoption.answers)) with `--answers`, each naming the decision or
-question it answers, the question's text, the answer and who settled it, the main agent or the
-developer; the worker lists an answered decision without choosing, and the host records the answer
-as its choice, decided by whoever gave it, so the record never credits the developer with a choice
-the main agent made. `--input` admits the run that asked,
-so the worker sees the earlier proposal or description. An answers file lists every answer given
-so far for that step, not only the latest. A survey rerun follows every answered decision and no longer lists
-an answered open question. A code_to_spec rerun writes an answered question as the promise the
-answer states. When that intent differs from what the code does, the Spec states the intent, and
-the result lists a **deviation** with the intended and the observed behaviour, for later
-`implement` work: the Spec is again ahead of the code, as Concorde expects.
+([contract](contracts.md#contract.adoption.answers)) with `--answers`. Each answer names these
+items:
+
+- The decision or question it answers.
+- The question's text.
+- The answer.
+- Who settled it, the main agent or the developer.
+
+The worker lists an answered decision without choosing. The host records the answer as its choice.
+It records whoever gave the answer as the one who decided it. This means the record never credits
+the developer with a choice the main agent made. `--input` admits the run that asked, so the worker
+sees the earlier proposal or description. An answers file lists every answer given so far for that
+step, not only the latest.
+A survey rerun follows every answered decision. It no longer lists an answered open question. A
+code_to_spec rerun writes an answered question as the promise the answer states. When that intent
+differs from what the code does, the Spec states the intent. In that case, the result lists a
+**deviation** with the intended and the observed behaviour, for later `implement` work. The Spec
+is again ahead of the code, as Concorde expects.
 
 ## Overview
 
@@ -126,14 +153,18 @@ answers -> decision: settle
 
 ## Running the three steps
 
-Adoption starts where initialization leaves a project: a root Module whose realization binds every
-existing file and whose entry says nothing is specified yet. The
-[main agent](../../glossary.json#concept.main-agent) opens a task bound to that Module and hands
-it to the task's [task session](../../glossary.json#concept.task-session), which runs the three
-steps in order in its task worktree, directly or through Method's
-[brownfield workflow](../../glossary.json#concept.brownfield-workflow) ([how it runs](../brownfield.md)); the main agent settles the
-[decision points](../../glossary.json#concept.decision-point) within its authority and puts the
-rest to the developer:
+Adoption starts where initialization leaves a project: a root Module with these properties:
+
+- Its realization binds every existing file.
+- Its entry says nothing is specified yet.
+
+The [main agent](../../glossary.json#concept.main-agent) opens a task bound to that Module. It
+hands the task to the task's [task session](../../glossary.json#concept.task-session). The task
+session runs the three steps in order in its task worktree. It runs them directly or through
+Method's [brownfield workflow](../../glossary.json#concept.brownfield-workflow)
+([how it runs](../brownfield.md)).
+Within its authority, the main agent settles the
+[decision points](../../glossary.json#concept.decision-point). It puts the rest to the developer:
 
 ```text
 concorde run survey --modules <module-id> [--answers <file>] [--input <run-id>]…
@@ -142,97 +173,143 @@ concorde run code_to_spec --modules <module-id>[,<module-id>…] [--answers <fil
 ```
 
 Each works on the [workspace](../../glossary.json#concept.workspace) of the worktree it starts
-in, whose binding names it, and each is recorded in the
-[run store](../../glossary.json#concept.run-store) like any run, so that the scaffold can admit
-the survey and a later survey or code_to_spec the run whose questions it answers.
+in. The worktree's binding names that workspace. Each is recorded in the
+[run store](../../glossary.json#concept.run-store) like any run. This lets the scaffold admit the
+survey. It also lets a later survey or code_to_spec admit the run whose questions it answers.
 
-**Survey.** A survey writes nothing, so it may also run
+**Survey.** A survey writes nothing. It may therefore also run
 [unbound](../../glossary.json#concept.unbound-run), in the primary worktree, to show the
-developer a proposal before any task exists. The host gives the worker, as task material, an
-inventory of every file the surveyed Module binds with its size in lines, so the worker can plan
-what to read in a large codebase instead of opening everything. The inventory is a file of the
-run's [trace node](../../glossary.json#concept.trace-node), which the worker may read beside its
-grant, and the brief names it with a summary, the number of files and lines in all and under each
-top-level path, so that no number of files makes the brief too long and none is left out. The
-files of the surveyed Module's Concorde installation realization, the skill, workflows and agents
-the installer placed, are left out of it and stay with the surveyed Module: a proposal that gives
-one of them to a child fails, since they configure the agents, not the project, and the installer
-replaces them on every update.
+developer a proposal before any task exists. As task material, the host gives the worker an
+inventory of every file the surveyed Module binds. The inventory gives each file's size in lines.
+This lets the worker plan what to read in a large codebase instead of opening everything. The inventory is a file of
+the run's [trace node](../../glossary.json#concept.trace-node). The worker may read it beside its
+grant. The brief names it with a summary: the number of files and lines in all and under each
+top-level path. Thus no number of files makes the brief too long. No file is left out.
 
-A survey proposes against the Module as it is, so it never runs in a workspace in which a scaffold
-has already written to the surveyed Module: it ends `failed` with `fresh_workspace_required`
-before any worker starts. Revising a survey after its scaffold ran requires a fresh workspace, a
-new task in Concorde, in which the survey runs again, with the answers that revise it; nothing the
-scaffold or a later run wrote in the first workspace is undone, and whether that workspace is kept
-or discarded is the task level's decision. The host tells a scaffold's writes from the surveyed
-Module's entry metadata alone: a Module it contains, or an external inclusion it has, that the
-same metadata at the workspace's base commit did not have, which are exactly the additions a
-scaffold makes to the Module it applies a proposal to
+The inventory leaves out the files of the surveyed Module's Concorde installation realization.
+These files stay with the surveyed Module:
+
+- The skill the installer placed.
+- The workflows the installer placed.
+- The agents the installer placed.
+
+When a proposal gives one of them to a child, it fails. They configure the agents, not the project.
+The installer replaces them on every update.
+
+A survey proposes against the Module as it is. In a workspace where a scaffold already wrote to
+the surveyed Module, a survey never runs. Before any worker starts, it ends `failed` with
+`fresh_workspace_required`. Revising a survey after its scaffold ran requires a fresh workspace,
+a new task in Concorde. In that workspace, the survey runs again with the answers that revise it.
+Nothing the scaffold or a later run wrote in the first workspace is undone. The task level decides
+whether to keep or discard that workspace.
+
+The host tells a scaffold's writes from the surveyed Module's entry metadata alone. It identifies
+these additions compared with the same metadata at the workspace's base commit:
+
+- A Module it contains.
+- An external inclusion it has.
+
+These are exactly the additions a scaffold makes to the Module it applies a proposal to
 ([req.adoption.survey-after-scaffold](requirements.md#req.adoption.survey-after-scaffold)).
 
 **Scaffold.** The execution command `concorde scaffold` of
-[Scaffold](../scaffold/module.md), with no worker, applies exactly one proposal admitted
-with `--input` from an `ok` survey of the same workspace: it creates each proposed child as a stub
-Module that states the survey's purpose and says honestly that nothing else is specified yet,
-narrows the parent's realizations, makes vendored code an external inclusion of its user, and
-returns a scaffold record. Adding Modules is a
-project-level step no worker's write set includes, which is why deterministic code makes it and not
-a worker, and why it is not an [Operation](../../glossary.json#concept.operation) of this Module.
+[Scaffold](../scaffold/module.md) has no worker. It applies exactly one proposal admitted
+with `--input` from an `ok` survey of the same workspace. It takes these steps:
+
+- It creates each proposed child as a stub Module that states the survey's purpose. The stub says
+  honestly that nothing else is specified yet.
+- It narrows the parent's realizations.
+- It makes vendored code an external inclusion of its user.
+- It returns a scaffold record.
+
+Adding Modules is a project-level step no worker's write set includes. That is why deterministic
+code makes it and not a worker. It is also why it is not an
+[Operation](../../glossary.json#concept.operation) of this Module.
 
 **Code to spec.** A worker of [task
 type](../../glossary.json#concept.task-type) `code-to-spec` reads the bound Modules' code and
-their Specs and rewrites their own documents: each entry document (`module.md`), in the reading
-order the Protocol recommends, the glossary entries of the words they own, and requirements, scenarios and contracts
-in implementation documents. The host prepares the implementation documents the worker may need,
-`requirements.md`, `scenarios.md` and `contracts.md`, as owned stubs before the grant is frozen, and
-removes again every stub the worker left unchanged or deleted, however the run ends. The answers are
-checked before anything is written. Describing the root after its children are scaffolded describes
-how the children compose and the files that stayed with it.
+their Specs. It rewrites their own documents:
 
-**Statuses.** Status follows the other worker-backed Operations. A survey or code_to_spec run is
-`ok` when the worker completed its proposal or description, whatever decisions and open questions it
-lists. It is `blocked` when the worker could not do the work at all or when a code_to_spec change
-adds a structural error; the [error chain](../../glossary.json#concept.error-chain) then names
-each finding as a cause. It is `failed` when the request or the answers are invalid, a survey's
-workspace already holds a scaffold's writes, the host could not run the worker, the audit found a
-write outside the grant, or the output is inconsistent, with every inconsistency listed in the
-Operation's own link. Every code is in the [error table](contracts.md#errors).
+- Each entry document (`module.md`), in the reading order the Protocol recommends.
+- The glossary entries of the words they own.
+- Requirements, scenarios and contracts in implementation documents.
+
+Before the host freezes the grant, it prepares these implementation documents the worker may need
+as owned stubs:
+
+- `requirements.md`.
+- `scenarios.md`.
+- `contracts.md`.
+
+However the run ends, the host removes every stub the worker left unchanged or deleted. Before
+anything is written, the host checks the answers. After its children are scaffolded, describing
+the root describes how the children compose and the files that stayed with it.
+
+**Statuses.** Status follows the other worker-backed Operations. When the worker completes its
+proposal or description, a survey or code_to_spec run is `ok`, whatever decisions and open
+questions it lists. Under either of these conditions, it is `blocked`:
+
+- The worker could not do the work at all.
+- A code_to_spec change adds a structural error.
+
+The [error chain](../../glossary.json#concept.error-chain) then names each finding as a cause.
+Under any of these conditions, it is `failed`:
+
+- The request or the answers are invalid.
+- A survey's workspace already holds a scaffold's writes.
+- The host could not run the worker.
+- The audit found a write outside the grant.
+- The output is inconsistent.
+
+For inconsistent output, the Operation's own link lists every inconsistency. Every code is in the
+[error table](contracts.md#errors).
 
 ## Why it is built this way
 
 The two Operations and the scaffold between them keep the Protocol's separation of reading, deciding
-and writing. The survey worker reads code but writes nothing; deciding which Modules exist is then a
-deterministic step, Scaffold's, that anyone can check against the proposal; describing a Module is a
-worker bounded by that Module's own documents. A worker never adds or removes Modules, because the
-registry is outside every Module's write set.
+and writing. They divide the work as follows:
 
-The `code-to-spec` task type is what makes this legal: it reads the bound Modules'
-ImplementationScope and writes their SpecScope, which no other task type combines. The survey runs
-under the same task type with every writable level withheld, as the Protocol lets a harness give
-less than a type assigns, so it reads the code and the Specs its grant names and writes nothing. As for `specify`, the code_to_spec brief
-states the rules for writing Spec documents and ends with the project's copy of Spec writing
-guidelines, since no grant shows the [Protocol copy](../../glossary.json#concept.protocol-copy).
-That guide includes the overview, Required format, Writing guidance and templates: both
-machine-checkable structure and syntax and content requiring reader and editor judgment. Structural
-validation does not establish semantic sufficiency. Both workers get only Read, Glob and Grep, and
-the code_to_spec worker also Edit and Write; neither gets Bash, so neither can run the code it
-describes. What the code does is taken from reading it.
+- The survey worker reads code but writes nothing.
+- Scaffold deterministically decides which Modules exist. Anyone can check this against the proposal.
+- A worker bounded by a Module's own documents describes that Module.
 
-The survey and code_to_spec results hold decisions and open questions as structured lists, not
-prose, because a workflow must count them to decide whether to stop in interactive mode, and must
-copy them unchanged into its report in no-ask mode.
+Because the registry is outside every Module's write set, a worker never adds or removes Modules.
+
+The `code-to-spec` task type makes this legal. It combines reading the bound Modules'
+ImplementationScope with writing their SpecScope, which no other task type combines. The survey runs
+under the same task type with every writable level withheld. The Protocol lets a harness give less
+than a type assigns. Thus the survey reads the code and the Specs its grant names and writes nothing.
+As for `specify`, the code_to_spec brief states the rules for writing Spec documents.
+Since no grant shows the [Protocol copy](../../glossary.json#concept.protocol-copy), the brief ends
+with the project's copy of Spec writing guidelines. That guide includes these parts:
+
+- The overview.
+- Required format.
+- Writing guidance.
+- Sentence style.
+- Evaluating a Spec.
+- Templates.
+
+It covers machine-checkable structure and syntax. It also covers content requiring reader and
+editor judgment. Structural validation does not establish semantic sufficiency. Both workers get
+only Read, Glob and Grep. The code_to_spec worker also gets Edit and Write. Since neither gets
+Bash, neither can run the code it describes. What the code does is taken from reading it.
+
+Because a workflow must count them, the survey and code_to_spec results hold decisions and open
+questions as structured lists, not prose. The workflow counts them to decide whether to stop in
+interactive mode. In no-ask mode, it must copy them unchanged into its report.
 
 Wherever a worker would otherwise have to repeat something exactly, the host writes it instead. A
-worker restating an option in its own words is not a wrong choice, so the worker names options by
-identities and the host copies the text. Its tools take absolute paths, since its working directory
-is not the worktree, while the outputs name project-relative paths; the brief asks for relative
-paths in the result, and a path that begins with the worktree's own path is unambiguous, so the host
-writes it relative instead of failing the run.
+worker restating an option in its own words is not a wrong choice. The worker therefore names
+options by identities. The host copies the text. Since its working directory is not the worktree,
+the worker's tools take absolute paths. The outputs name project-relative paths. The brief asks
+for relative paths in the result. When a path begins with the worktree's own path, it is unambiguous.
+The host therefore writes it relative instead of failing the run.
 
-The code_to_spec host writes Specs itself before its worker runs, when it prepares the stubs. So it
-checks the answers first, and removes every stub left unchanged on every way out of the run, a
-failed grant or a stopped worker included: a run that ends early leaves behind only what its worker
-changed.
+When it prepares the stubs before its worker runs, the code_to_spec host writes Specs itself. It
+therefore checks the answers first. On every way out of the run, it removes every stub left
+unchanged, including after a failed grant or a stopped worker. A run that ends early leaves behind
+only what its worker changed.
 
 ## How it is built
 
@@ -288,105 +365,152 @@ The **Code to spec Operation** realization declares the `CODE_TO_SPEC` provider:
 | 11 | Return the run result | host | — |
 
 A scenario the worker took from existing tests names them in its promise's `tests`, as
-`path::name` or `path::Class::name`. The worker never edits a test: step 10, the host, adds a
-`verifies` decorator above each named test that exists in a Module's implementation file, and
-once per file a two-line no-op definition of `verifies` after the file's docstring and imports,
-so that the project's tests stay free of any import of Concorde and run the same in the project's
-own environment, while the coverage check sees which test verifies which scenario. A test is found
-where the coverage check finds it: in the module or a class body, also under a control-flow
-statement such as a top-level `if` or `try`, never inside a function; a name defined there more
-than once is reported, since which definition is the test cannot be told. The host adds nothing
-else, adds nothing twice, and leaves every byte already in the file as it was, its line endings and
-blank lines included: what it inserts takes the file's own line ending and indentation, and the
-blank lines it adds around the helper only make up the two that set it apart. It leaves a file
-untouched when the decorated file would not parse or cannot be written, and replaces a file only
-through a new file beside it, so that a failed write leaves the original whole; the links of such a
-file are reported, and the next file is linked all the same. A file that already binds `verifies`
-at module level, by any statement, `except` clause, assignment expression or match pattern,
-keeps that binding: the host adds only decorators when the binding is its own no-op helper,
-however formatted, or an import of Concorde's decorator from `concorde.spec.verification`, standing
-at the file's top level before the test, and otherwise leaves the file untouched and reports each
-of its links in `unlinked_tests`, because a decorator would call the project's own `verifies`,
-whatever it does, or find no `verifies` at all when the module is imported. Only Python tests are
-linked.
+`path::name` or `path::Class::name`. The worker never edits a test. In step 10, the host adds a
+`verifies` decorator above each named test that exists in a Module's implementation file. Once per
+file, it adds a two-line no-op definition of `verifies` after the file's docstring and imports.
+This keeps the project's tests free of any import of Concorde. They run the same in the project's
+own environment. The coverage check sees which test verifies which scenario.
+
+The host finds a test where the coverage check finds it:
+
+- In the module body.
+- In a class body.
+- Under a control-flow statement such as a top-level `if` or `try`.
+
+It never finds a test inside a function. When a name is defined more than once in those places, the
+host reports it, since it cannot tell which definition is the test. The host adds nothing else. It adds
+nothing twice. It leaves every byte already in the file as it was, including its line endings and
+blank lines. What it inserts takes the file's own line ending and indentation. The blank lines it
+adds around the helper only make up the two that set it apart.
+
+When the decorated file would not parse or cannot be written, the host leaves the file untouched.
+It replaces a file only through a new file beside it, so that a failed write leaves the original
+whole. It reports the links of such a file. It links the next file all the same.
+
+When a file already binds `verifies` at module level, the host keeps that binding. This applies to
+bindings by any of these forms:
+
+- A statement.
+- An `except` clause.
+- An assignment expression.
+- A match pattern.
+
+When that existing binding is one of these, the host adds only decorators:
+
+- Its own no-op helper, however formatted.
+- An import of Concorde's decorator from `concorde.spec.verification`, standing at the file's top
+  level before the test.
+
+When that existing binding is neither, the host leaves the file untouched. It reports each of the
+file's links in `unlinked_tests`. A decorator would call the project's own `verifies`, whatever it does, or find no
+`verifies` at all when the module is imported. Only Python tests are linked.
 
 Unlike `specify`, every structural error in a described Module's own documents counts as the
-run's, even one the baseline already had: the worker rewrites those documents, and a retry must not
+run's, even one the baseline already had. The worker rewrites those documents. A retry must not
 inherit a failed attempt's errors as the project's. As with `specify`, the host validates after each
-round and resumes the worker, at most twice, with the errors the run is judged by, so the worker
-repairs what it broke itself; only errors left after the last round stop the run as `blocked`, and
-the task level or the workflow goes on.
+round. It resumes the worker, at most twice, with the errors the run is judged by, so the worker
+repairs what it broke itself. Only errors left after the last round stop the
+run as `blocked`. The task level or the workflow goes on.
 
 <a id="realization.adoption.shared"></a>
 
-The **Adoption shared records** realization holds the schemas of the
-[decomposition proposal](../../glossary.json#concept.decomposition-proposal), the answers and the
-decision and open-question records, and the checks of a proposal against a worktree, which the
-survey applies and [Scaffold](../scaffold/module.md) applies again before writing.
+The **Adoption shared records** realization holds these schemas and checks:
+
+- The schema of the [decomposition proposal](../../glossary.json#concept.decomposition-proposal).
+- The schema of the answers.
+- The schemas of the decision and open-question records.
+- The checks of a proposal against a worktree.
+
+The survey applies those checks. Before writing, [Scaffold](../scaffold/module.md) applies them
+again.
 
 <a id="realization.adoption.tests"></a>
 
 Adoption is tried on real codebases with real workers by
 [End-to-end testing](../../e2e/module.md), on projects from SWE-bench.
 
-The **Adoption tests**, under `tests/concorde/adoption/` with the existing-codebase fixture
-`tests/concorde/support/brownfield_project.py` and the adoption test case
-`tests/concorde/support/adoption_case.py` they share with Workflows and Scaffold, run the survey and
-code_to_spec, after a scaffold, in a bound task worktree of a small existing codebase with a fake
-worker, verifying the [requirements](requirements.md) and [scenarios](scenarios.md).
+The **Adoption tests** are under `tests/concorde/adoption/`. They share these with Workflows and
+Scaffold:
+
+- The existing-codebase fixture `tests/concorde/support/brownfield_project.py`.
+- The adoption test case `tests/concorde/support/adoption_case.py`.
+
+After a scaffold, the tests run the survey and code_to_spec in a bound task worktree of a small
+existing codebase with a fake worker. They verify the [requirements](requirements.md) and
+[scenarios](scenarios.md).
 
 ## What it relies on
 
 <a id="uses-execution"></a>
 
-**Execution**'s runner runs both: it reads the
-[workspace binding](../../glossary.json#concept.workspace-binding), holds the
-[workspace lock](../../glossary.json#concept.workspace-lock), admits `--input` runs only when
-they ended `ok` in the same workspace (or, for an unbound survey, in none), and wraps each output in
-the [run result](../../glossary.json#concept.run-result). It refuses code_to_spec unbound, and
-Adoption relies on it admitting only runs of the same workspace as inputs, so that a rerun sees only
-that workspace's earlier proposal or description.
+**Execution**'s runner runs both. It takes these steps:
+
+- It reads the [workspace binding](../../glossary.json#concept.workspace-binding).
+- It holds the [workspace lock](../../glossary.json#concept.workspace-lock).
+- It admits `--input` runs only when they ended `ok` in the same workspace (or, for an unbound
+  survey, in none).
+- It wraps each output in the [run result](../../glossary.json#concept.run-result).
+
+It refuses code_to_spec unbound. Adoption relies on it admitting only runs of the same workspace
+as inputs. Thus a rerun sees only that workspace's earlier proposal or description.
 
 <a id="uses-operations"></a>
 
-**Operations**, Execution's Operation framework, is what both plug into: Method registers `survey`
+**Operations**, Execution's Operation framework, is what both plug into. Method registers `survey`
 and `code_to_spec` with it, naming this Module as their provider
-([Method](../module.md#the-operations-and-commands-it-provides)), and `survey` is the one Adoption
-Operation whose definition lets it run unbound. Adoption never starts another
-run: the order of the survey, the scaffold and code_to_spec, and whether to seek the developer's
-answers between them through the existing escalation path, is decided by the task level or a
-workflow.
+([Method](../module.md#the-operations-and-commands-it-provides)). The `survey` Operation is the one
+Adoption Operation whose definition lets it run unbound. Adoption never starts another run. The
+task level or a workflow decides these matters:
+
+- The order of the survey, the scaffold and code_to_spec.
+- Whether to seek the developer's answers between them through the existing escalation path.
 
 <a id="uses-workers"></a>
 
-**Workers**, in the worker harness, receives each frozen grant as data, with code_to_spec's round
-validation, through Method's
-[standard worker sequence](../../glossary.json#concept.standard-worker-sequence), turns it into
-settings, launches the survey and code_to_spec workers with this Module's instructions, collects their [worker results](../../glossary.json#concept.worker-result),
-audits the worktree and writes the run records; any change beyond the grant fails the run.
+Through Method's [standard worker sequence](../../glossary.json#concept.standard-worker-sequence),
+**Workers**, in the worker harness, receives each frozen grant as data. It also receives
+code_to_spec's round validation. It takes these steps:
+
+- It turns the grant into settings.
+- It launches the survey and code_to_spec workers with this Module's instructions.
+- It collects their [worker results](../../glossary.json#concept.worker-result).
+- It audits the worktree.
+- It writes the run records.
+
+Any change beyond the grant fails the run.
 
 <a id="uses-checks"></a>
 
 **Check execution** defines the configured check entries of the checks files, one
 `.concorde/checks/<module id>.json` per Module. A survey proposes checks in that shape, each with the
-`module` it is for, so that the developer can put each one they accept into that Module's checks
-file without its `module` and otherwise unchanged; Adoption itself never runs or configures a check.
+`module` it is for. The developer can put each check they accept into that Module's checks file
+without its `module` and otherwise unchanged. Adoption itself never runs or configures a check.
 
 <a id="uses-spec"></a>
 
-**Spec core** computes the `code-to-spec` [grant](../../glossary.json#concept.grant), lists a
-Module's bound files, runs the [structural checks](../../glossary.json#concept.structural-check),
-and regenerates the [registry](../../glossary.json#concept.registry) mirror, always on the
-workspace. Adoption relies on its checks as the definition of a valid Spec and adds none of its own;
-a Spec that cannot be loaded ends the run `failed`.
+Always on the workspace, **Spec core** performs these actions:
+
+- It computes the `code-to-spec` [grant](../../glossary.json#concept.grant).
+- It lists a Module's bound files.
+- It runs the [structural checks](../../glossary.json#concept.structural-check).
+- It regenerates the [registry](../../glossary.json#concept.registry) mirror.
+
+Adoption relies on its checks as the definition of a valid Spec. Adoption adds none of its own.
+When a Spec cannot be loaded, the run ends `failed`.
 
 <a id="uses-workflows"></a>
 
 **Workflows** defines the
 [step output convention](../../workflows/contracts.md#contract.workflows.step-output), the
-`workflow` object of a run's output, in which every `ok` survey and code_to_spec run declares its
-[decision points](../../glossary.json#concept.decision-point), its decisions, its deviations and,
-for a survey, its proposed checks as notes, as [Decisions and open
-questions](#decisions-and-open-questions) says. Adoption builds that object with Workflows'
-`step_output` helper, which checks it against the convention, and knows no workflow: which of its
-items are decision points is Adoption's rule, and what a workflow does with them is the workflow's.
+`workflow` object of a run's output. As [Decisions and open
+questions](#decisions-and-open-questions) says, every `ok` survey and code_to_spec run declares
+these items in that object:
+
+- Its [decision points](../../glossary.json#concept.decision-point).
+- Its decisions.
+- Its deviations.
+- For a survey, its proposed checks as notes.
+
+Adoption builds that object with Workflows' `step_output` helper. The helper checks it against the
+convention. Adoption knows no workflow. Which items are decision points is Adoption's rule. What a
+workflow does with them is the workflow's rule.

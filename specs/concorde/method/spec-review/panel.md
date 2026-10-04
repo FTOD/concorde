@@ -1,7 +1,12 @@
 # Spec panel Operation
 
-The exact step sequence, panel graph, accounting rule, arguments and result of the `spec_panel`
-Operation of [Spec review](module.md).
+The `spec_panel` Operation of [Spec review](module.md) has these details:
+
+- The exact step sequence.
+- The panel graph.
+- The accounting rule.
+- The arguments.
+- The result.
 
 ## Invocation
 
@@ -9,23 +14,29 @@ Operation of [Spec review](module.md).
 concorde run spec_panel [--modules <id>[,<id>...]] [--reviewers <2-5>] [--architects <0-2>]
 ```
 
-The panel works on the worktree it starts in, as [Spec review](operation.md#invocation) does: the
-bound [workspace](../../glossary.json#concept.workspace), whose Modules `--modules` defaults to, or,
-without a binding, an [unbound run](../../glossary.json#concept.unbound-run) that judges the [Specs](../../glossary.json#concept.spec)
-as merged there. `--modules` names one or more registered Modules of that worktree. `--reviewers` is
-the number of reviewers on each [Module](../../glossary.json#concept.module)'s panel, 3 by default,
-and `--architects` the number of architects, 2 by default. Each reviewer is the worker
-`reviewer<seat>`, `reviewer1` to `reviewer5`, each architect the worker `architect<seat>`,
-`architect1` or `architect2`, and the chair the worker `chair`; by these
-[worker ids](../../glossary.json#concept.worker-id) the
-[worker configuration](../../glossary.json#concept.worker-configuration) gives each
-worker its own backend, model and thinking level, and workers on different models make their
-reviews more independent still. The [Operation](../../glossary.json#concept.operation) takes no
-other argument and needs no user consent.
+The panel works on the worktree it starts in, as [Spec review](operation.md#invocation) does. With a
+binding, it works on the bound [workspace](../../glossary.json#concept.workspace). `--modules`
+defaults to that workspace's Modules. Without a binding, it runs as an
+[unbound run](../../glossary.json#concept.unbound-run) that judges the
+[Specs](../../glossary.json#concept.spec) as merged there. `--modules` names one or more registered
+Modules of that worktree. `--reviewers` is the number of reviewers on each
+[Module](../../glossary.json#concept.module)'s panel. Its default is 3. `--architects` is the number
+of architects. Its default is 2. The workers have these names:
 
-The panel runs as a LangGraph graph, one of Concorde's Python dependencies. An Execution runner
-whose interpreter cannot import it, such as an install made with `--without-dependencies`, fails the
-run with `langgraph_unavailable` before any worker is launched.
+- Each reviewer is the worker `reviewer<seat>`, `reviewer1` to `reviewer5`.
+- Each architect is the worker `architect<seat>`, `architect1` or `architect2`.
+- The chair is the worker `chair`.
+
+By these [worker ids](../../glossary.json#concept.worker-id), the
+[worker configuration](../../glossary.json#concept.worker-configuration) gives each worker its own
+backend, model and thinking level. Workers on different models make their reviews more independent
+still. The [Operation](../../glossary.json#concept.operation) takes no other argument. It needs no
+user consent.
+
+The panel runs as a LangGraph graph, one of Concorde's Python dependencies. When an Execution
+runner's interpreter cannot import LangGraph, such as an install made with
+`--without-dependencies`, the runner fails the run with `langgraph_unavailable`. It fails before
+the Operation launches any worker.
 
 ## Host sequence
 
@@ -37,16 +48,22 @@ run with `langgraph_unavailable` before any worker is launched.
 | 4 | For each Module whose panel completed, settle the earlier Issues the chair's findings name and resolve, as step 7 of Spec review does, and report every finding of the chair's report as an [Issue](../../glossary.json#concept.issue), as step 8 of Spec review does, in the order of the report | Operation (Issues) | as there: the Module is `incomplete` (`issues_unreported`) |
 | 5 | Derive every Module's outcome and the verdict from the Issues that stand | Operation | none |
 
-Modules are paneled one after another; the reviewers and architects of one Module run at the same
-time. A panel changes no file of the workspace: its only writes are its [Issue reports](../../glossary.json#concept.issue-report), which the
-primary worktree keeps. A Module whose panel stopped reports no Issue and keeps the reviews it had
-and its **stop**: the status, summary and error link that stopped it.
+The Operation panels Modules one after another. The reviewers and architects of one Module run at
+the same time. A panel changes no file of the workspace. Its only writes are its
+[Issue reports](../../glossary.json#concept.issue-report), which the primary worktree keeps. When a
+Module's panel stops, the Module reports no Issue. It keeps the reviews it had. It also keeps its
+**stop**: the status, summary and error link that stopped it.
 
 Where the issues part is not installed, steps 2 and 4 read and report no Issues, exactly as
-[Spec review does without them](operation.md#without-the-issues-part): every merged finding keeps
-`issue` null, `earlier_issues` is null, step 5 derives each outcome from the blocking findings of the
-chair's report, and the result says that the findings were not recorded as Issues. The run's output
-carries the same `review` note under the
+[Spec review does without them](operation.md#without-the-issues-part). In that case, the panel
+handles findings and results as follows:
+
+- Every merged finding keeps `issue` null.
+- `earlier_issues` is null.
+- Step 5 derives each outcome from the blocking findings of the chair's report.
+- The result says that the findings were not recorded as Issues.
+
+The run's output carries the same `review` note under the
 [step output convention](../../workflows/contracts.md#contract.workflows.step-output) as a Spec
 review's.
 
@@ -62,47 +79,76 @@ gather -> chair: every worker finished
 chair -> chair: "a label unaccounted\nand an attempt remains"
 ```
 
-- **review** runs once per seat, all seats at the same time: reviewer `n` reviews the Module on its
-  own, by the Module quality criteria, and architect `n` judges it on its own, by the architecture
-  quality criteria, each seeing no other review. The Operation normalizes their findings as [Spec
-  review](operation.md#host-sequence) does and labels a reviewer's `r<n>.1`, `r<n>.2` and so on and
-  an architect's `a<n>.1`, `a<n>.2` and so on. A finding whose path is not one of the workspace is
-  rejected alone, unlabelled, and kept with the reason among that worker's `rejected`. It keeps
-  each worker's resolutions as its claims.
+- **review** runs once per seat. All seats run at the same time. Reviewer `n` reviews the Module on
+  its own, by the Module quality criteria. Architect `n` judges it on its own, by the architecture
+  quality criteria. Each sees no other review. The Operation normalizes their findings as [Spec
+  review](operation.md#host-sequence) does. It labels a reviewer's findings `r<n>.1`, `r<n>.2`
+  and so on. It labels an architect's findings `a<n>.1`, `a<n>.2` and so on. When a finding's path
+  is not one of the workspace, the Operation rejects that finding alone. It keeps the finding
+  unlabelled, with the reason, among that worker's `rejected`. It keeps each worker's resolutions
+  as its claims.
 - **gather** waits for every seat. When any worker did not finish, it stops the Module with
-  `panel_short`, whose causes are every such worker's error link; the chair does not run, because
-  a report must never silently lack a review.
-- **chair** receives every labelled finding and every claimed resolution, grouped by worker, with
-  the earlier Issues, and returns the report: merged findings, each with the labels it merges as
-  `sources`, a `note` and the severity and tier the chair gives it, rejections, each with a label and a reason,
-  and the earlier Issues it finds resolved, each with a reason. The Operation normalizes the merged
-  findings as well; a merged finding whose path is not one of the workspace is reported nowhere,
-  and each of its labels becomes a rejection with the Operation's reason.
-- **accounting**, part of the chair node, is the Operation's check that the report accounts for
-  every label exactly once: in one finding's `sources` or as one rejection, and names no other
-  label. The result is host evidence of kind `panel-accounting`.
+  `panel_short`. Its causes are every such worker's error link. In that case, the chair does not
+  run because a report must never silently lack a review.
+- **chair** receives these items:
+  - Every labelled finding, grouped by worker.
+  - Every claimed resolution, grouped by worker.
+  - The earlier Issues.
+
+  It returns the report with these items:
+  - Merged findings, each with these items:
+    - The labels it merges as `sources`.
+    - A `note`.
+    - The severity and tier the chair gives it.
+  - Rejections, each with a label and a reason.
+  - Earlier Issues it finds resolved, each with a reason.
+
+  The Operation normalizes the merged findings as well. When a merged finding's path is not one
+  of the workspace, the Operation reports it nowhere. In that case, each of its labels becomes a
+  rejection with the Operation's reason.
+- **accounting**, part of the chair node, is the Operation's check of the report's labels. It
+  checks that every label appears exactly once, in one finding's `sources` or as one rejection.
+  It checks that the report names no other label. The result is host evidence of kind
+  `panel-accounting`.
 
 Control moves by these rules:
 
-1. The reviewers and architects start together; `gather` runs once all of them have ended.
-2. After `gather`, the chair runs when every worker finished; otherwise the graph ends.
-3. After the chair, the graph ends when its turn stopped or its report is complete. When a label is
-   unaccounted for, named twice or unknown, the chair runs once more, with its previous report and
-   every accounting problem; after that second attempt a report still incomplete stops the Module
-   with `report_unaccounted`, whose detail names every problem.
+1. The reviewers and architects start together. Once all of them end, `gather` runs.
+2. When every worker finished, the chair runs after `gather`. Otherwise the graph ends.
+3. When the chair's turn stopped or its report is complete, the graph ends after the chair. When a
+   label meets any of these conditions, the chair runs once more:
+   - It is unaccounted for.
+   - It is named twice.
+   - It is unknown.
 
-A Module's panel therefore takes `--reviewers` reviewer runs, `--architects` architect runs and,
-when every one of them finished, one or two chair runs. The graph's
-state is the reviews, the host evidence, the Module's
-[context identities](../../glossary.json#concept.context-identity) for the two [task types](../../glossary.json#concept.task-type), the
-chair's latest report, its accounting problems, the chair attempts and the Module's stop, all plain
-JSON values; the reviews and the evidence are appended to by the parallel workers in whatever order
-they end, and the Operation sorts the reviews by role and seat.
+   On that second attempt, the chair receives its previous report and every accounting problem.
+   When a report is still incomplete after that second attempt, it stops the Module with
+   `report_unaccounted`. Its detail names every problem.
+
+A Module's panel therefore takes these runs:
+
+- `--reviewers` reviewer runs.
+- `--architects` architect runs.
+- When every reviewer and architect finished, one or two chair runs.
+
+The graph's state holds these plain JSON values:
+
+- The reviews.
+- The host evidence.
+- The Module's [context identities](../../glossary.json#concept.context-identity) for the two
+  [task types](../../glossary.json#concept.task-type).
+- The chair's latest report.
+- Its accounting problems.
+- The chair attempts.
+- The Module's stop.
+
+The parallel workers append to the reviews and the evidence in whatever order they end. The
+Operation sorts the reviews by role and seat.
 
 ## Panel result
 
-Every worker ends with the ordinary [worker result](../../glossary.json#concept.worker-result),
-whose `output` depends on its role:
+Every worker ends with the ordinary [worker result](../../glossary.json#concept.worker-result).
+Its `output` depends on its role:
 
 | Role | `output` |
 | --- | --- |
@@ -111,19 +157,35 @@ whose `output` depends on its role:
 | `chair` | `{"findings": [...], "rejected": [...], "resolved": [...]}` |
 
 A reviewer finding has the shape of a Spec review [reviewer finding](operation.md#reviewer-result).
-An architect finding has the same shape, except that its `dimension` is one of the architecture
-quality dimensions `responsibilities`, `ownership`, `interfaces`, `dependencies`,
-`failure-containment` and `consistency`, or `context`, and that it may add `related`, the other
-registered Modules the problem concerns. A chair finding has either shape and adds `sources`, a
-non-empty list of labels, and `note`, what the chair verified and why it chose the severity and tier. A
-rejection is `{source, reason}` and a resolution `{issue, reason}`, both optional lists but for
-`findings`. A result that does not match its role's shape is an **invalid result** and stops the
-Module; a report that matches but accounts badly goes back to the chair as rule 3 says.
+Except for its dimension and the other registered Modules it may name, an architect finding has
+that same shape. Its `dimension` is one of these architecture quality dimensions, or `context`:
 
-The chair may change a merged finding's wording, evidence, suggestion, severity and tier, and names the
-earlier Issue it is when any of its sources named one. It may not add a problem that no reviewer or
-architect reported: every report finding has sources. Each worker's findings stay in the payload as
-the Operation normalized them, so the chair's changes can be compared with them.
+- `responsibilities`.
+- `ownership`.
+- `interfaces`.
+- `dependencies`.
+- `failure-containment`.
+- `consistency`.
+
+It may add `related`, the other registered Modules the problem concerns. A chair finding has either
+shape. It adds `sources`, a non-empty list of labels. It also adds `note`, which says what the chair
+verified. The note also says why it chose the severity and tier. A rejection is `{source, reason}`.
+A resolution is `{issue, reason}`. Both are optional lists, unlike `findings`. When a result does
+not match its role's shape, it is an **invalid result**. An invalid result stops the Module. When a
+report matches but accounts badly, it goes back to the chair as rule 3 says.
+
+The chair may change these parts of a merged finding:
+
+- Its wording.
+- Its evidence.
+- Its suggestion.
+- Its severity.
+- Its tier.
+
+When any of that finding's sources named an earlier Issue, the chair names the earlier Issue it is.
+It may not add a problem that no reviewer or architect reported. Every report finding has sources.
+Each worker's findings stay in the payload as the Operation normalized them, so that the chair's
+changes can be compared with them.
 
 ## Result status
 
@@ -134,15 +196,24 @@ the Operation normalized them, so the chair's changes can be compared with them.
 | `incomplete` otherwise: a structural error or a `blocked` reviewer, architect or chair | `blocked` | `panel_incomplete`, one cause per incomplete Module |
 
 A loading error in step 1 and `langgraph_unavailable` are `failed` with no output. In every other
-case the result's `output` is the panel payload, including the reviews of a Module whose panel
-stopped. The error of an incomplete Module is the Operation's link for it: `panel_short` over the
-links of the workers that did not finish, each naming its worker id, `report_unaccounted`,
-`issues_unreadable` or `issues_unreported` over the Issue store's error, or the link of a chair turn
-that stopped; below a worker's link are Workers' link and the worker's own. The summary counts the
-report's findings of a blocking tier and suggestions, the worker findings they were merged from,
-the rejections and the blocking Issues that stand. The host evidence adds, besides the evidence of
-Spec review's steps and the accounting, the panel graph as Mermaid text (kind `graph`), written once
-per run in the [run directory](../../glossary.json#concept.run-directory).
+case, the result's `output` is the panel payload. It includes the reviews of a Module whose panel
+stopped. The error of an incomplete Module is the Operation's link for it, in one of these forms:
+
+- `panel_short` over the links of the workers that did not finish, each naming its worker id.
+- `report_unaccounted`.
+- `issues_unreadable` or `issues_unreported` over the Issue store's error.
+- The link of a chair turn that stopped.
+
+Below a worker's link are Workers' link and the worker's own. The summary counts these items:
+
+- The report's findings of a blocking tier and suggestions.
+- The worker findings they were merged from.
+- The rejections.
+- The blocking Issues that stand.
+
+Besides the evidence of Spec review's steps and the accounting, the host evidence adds the panel
+graph as Mermaid text (kind `graph`). The Operation writes that graph once per run in the
+[run directory](../../glossary.json#concept.run-directory).
 
 ## Panel payload
 
