@@ -61,16 +61,15 @@ before any step:
 
 Every `concorde run` or [execution command](../glossary.json#concept.execution-command) started in
 a Git worktree, whose whole command line is accepted and names a known
-[Operation](../glossary.json#concept.operation) or command, SHALL write exactly one run result
-unless one of these exceptions applies:
+[Operation](../glossary.json#concept.operation) or command, SHALL write exactly one run result in
+every case except these:
 
 - It was started with `--detach` and reported `detach_failed`.
 - Its first records could not be created (`run_unrecorded`).
 - A final write of its records failed (`result_unsaved`).
 - Its runner was killed by a signal it cannot handle, such as `SIGKILL`, before writing the result.
 
-Outside these exceptions, such a run SHALL write its one result also when it is refused, fails or
-is cancelled by `SIGINT` or `SIGTERM`.
+Every case includes a run that is refused, fails or is cancelled by `SIGINT` or `SIGTERM`.
 
 A malformed command line, including one with an unknown argument, starts no run and writes no
 result (exit status 2). A command line started outside every Git worktree also starts no run and
@@ -150,14 +149,12 @@ The run's own link SHALL give the reason the run cannot handle the error as its 
 
 ### req.execution.error-detail — The run's link names what is concerned
 
-The run's own link SHALL name in its actor the run and its workspace or, for an unbound run, the
-worktree it started in and the commit it examined.
+The run's own link SHALL name all of these:
 
-The run's own link SHALL give a detail that names all of the following:
-
-- the paths concerned
-- the messages concerned
-- the Modules the run works on
+- in its actor, the run and its workspace or, for an unbound run, the worktree it started in and
+  the commit it examined
+- in a detail, the paths and the messages concerned
+- in that detail, the Modules the run works on
 
 ### req.execution.output-checked — Outputs match their contract
 
@@ -188,16 +185,19 @@ With `--wait <seconds>`, the runner SHALL wait for a busy workspace's lock insid
 
 ### req.execution.waiting-progress — A waiting run names the lock's holder
 
-While a run waits for its workspace's lock, the runner SHALL name the step `workspace-lock` in its
-[run progress file](../glossary.json#concept.run-progress-file). While the run waits, the runner
-SHALL name in the file's `waiting_for` the lock's holder as its holder line describes it, whether a
-run or another taker, such as a task's merge or close.
+While a run waits for its workspace's lock, its
+[run progress file](../glossary.json#concept.run-progress-file) SHALL name both of these:
+
+- the step `workspace-lock`
+- in `waiting_for`, the lock's holder as its holder line describes it, whether that holder is a run
+  or another taker of the lock, such as a task's merge or close
 
 ### req.execution.workspace-wait-continues — A waiting run goes on once the lock is free
 
-With `--wait <seconds>`, the runner SHALL take a busy workspace's lock as soon as it is free within
-that time. With `--wait <seconds>`, once the runner takes the lock within that time, it SHALL go on
-with the run from its admission, as for a run that found the workspace free.
+With `--wait <seconds>`, the runner SHALL do both of these:
+
+- take a busy workspace's lock as soon as it is free within that time
+- go on with the run from its admission, as for a run that found the workspace free
 
 ### req.execution.unbound-read-only — Only a definition that allows it runs unbound
 
@@ -237,8 +237,7 @@ checkout the run examines stays as it was. Its Specs and its code stay as they w
 
 ### req.execution.checkout-removed — The checkout does not outlive the run
 
-Whatever ended an unbound run's steps, the runner SHALL remove its checkout before it writes the
-run's result. The runner SHALL name in the result whatever of the checkout it could not remove.
+Whatever ended an unbound run's steps, the runner SHALL remove the run's checkout before it writes the run's result, and name in that result whatever of the checkout it could not remove.
 
 When Git refuses to remove something, the runner removes it directly. The runner names what that
 leaves with `checkout-not-removed` evidence, as [Unbound checkout](runner.md#unbound-checkout)

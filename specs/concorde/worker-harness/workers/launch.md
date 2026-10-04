@@ -927,10 +927,7 @@ that deletion as already absent.
 
 ### req.workers.deletion-failure — A failed deletion fails the run without stopping the others
 
-When a proposed deletion fails, the host SHALL still attempt every other proposed deletion.
-
-When a proposed deletion fails, the host SHALL end the run `failed` with `deletion_failed`, naming
-what it deleted and what it did not.
+When a proposed deletion fails, the host SHALL still attempt every other proposed deletion and end the run `failed` with `deletion_failed`, naming what it deleted and what it did not.
 
 ### req.workers.no-precreation — The host creates no file for the worker
 
@@ -954,7 +951,7 @@ start, with status `running`.
 
 Once the run's node exists, the host SHALL write the final run record of every run it was asked to start when the run ends, a run refused before launch included.
 
-When a run's node could not be written, the host SHALL still remove its runtime directory.
+A run whose node could not be written still has its runtime directory removed.
 
 ### req.workers.transcript-kept — The transcript is kept before the runtime directory goes
 
