@@ -177,6 +177,13 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - AND the primary branch's head is a commit adding only `.concorde/decisions/<task-id>.md`, the decision log with its closing, with the trailer `Concorde-Task: <task-id>`
 - AND the branch remains, and the task's workspace and task locks are gone
 
+### scenario.tasks.close-merged-ends-attempt — Closing a merged task ends the merge attempt that made it
+
+- GIVEN a task whose `concorde task merge` made its merge commit, stored the task closed as merged and then failed, so that its merge attempt's node `merges/1/` still says `running`
+- WHEN the main agent finishes it with `concorde task close <task-id> --merged`
+- THEN the task's history holds that node ended `ok` with outcome `merged` and an end time
+- AND a merge attempt still running that never made its merge commit is ended `failed` with outcome `interrupted`
+
 ### scenario.tasks.close-submodules — Close a task whose worktree has submodules
 
 - GIVEN a merged task whose worktree has a checked-out submodule without local changes

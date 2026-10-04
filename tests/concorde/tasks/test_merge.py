@@ -1060,6 +1060,48 @@ class MergeTests(unittest.TestCase):
             (self.history("t2") / "decisions.md").read_text(),
         )
 
+    @verifies("scenario.tasks.close-merged-ends-attempt")
+    def test_closing_a_merged_task_ends_the_merge_attempt_left_running(self):
+        self.project.open_task("t1")
+        self.deliver()
+        log = self.root / ".concorde/tasks/t1/decisions.md"
+        log.chmod(0o444)
+        self.addCleanup(lambda: log.exists() and log.chmod(0o644))
+        original = trace.write
+
+        def refusing_the_end(folder, record):
+            if record["kind"] == "merge" and record["status"] != "running":
+                raise OSError(28, "No space left on device")
+            return original(folder, record)
+
+        # The merge commits, its close refuses the closing and the attempt's end is not written.
+        with patch.object(trace, "write", refusing_the_end):
+            error = self.refusal("merge", "t1", "--check", python("pass"))
+        self.assertEqual("decision_log_failed", error["code"])
+        self.assertIn("No space left on device", error["detail"])
+        attempt = self.root / ".concorde/tasks/t1/merges/1"
+        self.assertEqual("running", trace.read(attempt)["status"])
+        log.chmod(0o644)
+        status, value = self.command("close", "t1", "--merged")
+        self.assertEqual(0, status, value)
+        self.assertFalse(any("merges/1" in text for text in value["warnings"]))
+        ended = trace.read(self.history() / "merges/1")
+        self.assertEqual(("ok", "merged"), (ended["status"], ended["outcome"]))
+        self.assertIsNotNone(ended["ended_at"])
+
+        # An attempt left running before it made its merge commit was interrupted.
+        self.project.open_task("t2")
+        self.deliver("t2", "src/a/other.py", "OTHER = 1\n")
+        branch = git(self.root, "rev-parse", "--abbrev-ref", "HEAD")
+        merge.Attempt(
+            self.root, "t2", "merge", {"branch": branch, "before": self.head()}, 0
+        )
+        git(self.root, "merge", "--no-ff", "-m", "merged by hand", "concorde/t2")
+        status, value = self.command("close", "t2", "--merged")
+        self.assertEqual(0, status, value)
+        ended = trace.read(self.history("t2") / "merges/1")
+        self.assertEqual(("failed", "interrupted"), (ended["status"], ended["outcome"]))
+
     @verifies("scenario.tasks.merge-resume-check-failed")
     def test_resume_undoes_a_merge_whose_check_fails(self):
         before, _ = self.interrupted(then=1)

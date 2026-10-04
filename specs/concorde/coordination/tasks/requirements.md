@@ -254,6 +254,17 @@ fixed, or, for a close run by a merge whose task stays `merging`, `concorde task
 closed with that outcome appends the closing its decision log lacks, ends the trace node that has
 not ended, commits the log the primary branch lacks and changes nothing else.
 
+### req.tasks.close-ends-merge-attempt — A close that finishes a merge ends its attempt
+
+A `concorde task close <task-id> --merged` SHALL end the task's latest merge attempt node that still
+says it runs, `ok` with the merge's outcome, `merged` or `contained`, when its merge commit was
+made, and otherwise `failed` with the outcome `interrupted`.
+
+The close holds the merge lock, so no merge of the task still runs; an attempt whose own close
+failed after its merge commit, which `close --merged` finishes, would otherwise stay `running` in
+the task's history for ever. A write of that node the operating system refuses is a warning of the
+close.
+
 ## Merging
 
 ### req.tasks.merge-exact-commit — A merge merges the commit it checked
