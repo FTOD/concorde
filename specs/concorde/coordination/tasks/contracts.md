@@ -1,7 +1,13 @@
 # Tasks contracts
 
-The exact record, trace, commands and record updates of [Tasks](module.md). The obligations they serve are
-in the [requirements](requirements.md).
+The exact details of [Tasks](module.md) covered here are:
+
+- The record.
+- The trace.
+- The commands.
+- The record updates.
+
+The obligations they serve are in the [requirements](requirements.md).
 
 ## Task record
 
@@ -521,11 +527,18 @@ in the [requirements](requirements.md).
 
 ## Task trace
 
-A task is a [trace node](../../glossary.json#concept.trace-node) of kind `task`, each of its merge attempts one of kind
-`merge` with its checks as `merge-check` nodes below it, and each `task deliver` attempt one of kind
-`delivery` with its checks as `delivery-check` nodes below it, kinds Tasks registers with Tracing, as
-[Tracing](../../kernel/tracing/contracts.md#contract.tracing.node) defines them; their contents are these values. The nodes of its task
-sessions are [Task sessions](../task-session/contracts.md#session-trace)'.
+The task trace contains these nodes:
+
+- A task is a [trace node](../../glossary.json#concept.trace-node) of kind `task`.
+- Each of the task's merge attempts is a node of kind `merge`. Its checks are `merge-check` nodes
+  below the merge attempt's node.
+- Each `task deliver` attempt is a node of kind `delivery`. Its checks are `delivery-check` nodes
+  below the delivery attempt's node.
+
+Tasks registers these kinds with Tracing, as
+[Tracing](../../kernel/tracing/contracts.md#contract.tracing.node) defines them. Their contents are
+these values. The nodes of the task's task sessions are
+[Task sessions](../task-session/contracts.md#session-trace)'.
 
 ```concorde-contract
 {
@@ -824,7 +837,9 @@ sessions are [Task sessions](../task-session/contracts.md#session-trace)'.
 }
 ```
 
-Each `concorde task deliver` attempt is a node `deliveries/<n>/` of the task, of kind `delivery`, with each of its checks a node `checks/<i>/` below it, of kind `delivery-check`:
+Each `concorde task deliver` attempt is a node `deliveries/<n>/` of the task, of kind `delivery`.
+Each of the attempt's checks is a node `checks/<i>/` below the attempt's node, of kind
+`delivery-check`:
 
 ```concorde-contract
 {
@@ -939,67 +954,175 @@ Each `concorde task deliver` attempt is a node `deliveries/<n>/` of the task, of
 
 ## Commands
 
-`open`, `close`, `merge`, `session`, `rebind` and `answer` run only in the primary worktree, and
-`deliver` only in the worktree of the task it names.
-`list`, `show`, `escalate`, `report`, `resolve` and `wait` run in any worktree of the repository, so a task
-session escalates and reports from its task worktree; they find the primary worktree, and with it
-the task folders, through Git's common directory.
-Every command prints one JSON value on standard output and exits with status 0 on success. A
-refusal prints `{"error": <link>}`, where the link is a
-[`component` link](../../kernel/tracing/contracts.md#contract.tracing.error) of the actor
-`Tasks (concorde task <command>)` whose code is one of the error codes below or, for `session` and
-the record updates, one of the [Task session codes](../task-session/contracts.md#commands), whose
-detail names the
-task, [Module](../../glossary.json#concept.module), path, run or Git command concerned with its
-message (for an unknown task, the known tasks; for a dirty worktree, the uncommitted paths; for a
-busy [merge lock](../../glossary.json#concept.merge-lock), its holder), and whose reason is
-`environment` for `git_failed`, `worktree_failed`, `record_conflict`, `record_unreadable`,
-`record_unwritable`, `decision_log_failed`, `decision_log_uncommitted`, `binding_failed`, `merge_busy`, `workspace_busy`, `rollback_failed`, `wait_timeout`, `wait_failed`, `part_unknown`, `issues_unavailable` and the
-session codes `session_failed` and `missing_worktree`, `decision` for `dirty_worktree`,
-`not_merged`, `delivery_unverified`, `primary_dirty`, `changed_outside`, `merge_conflict`, `check_failed`,
-`merge_incomplete`, `not_resumable` and `merge_diverged`, and `input` otherwise. A
-refusal exits with status 1 and changes nothing, apart from the refusals that
-[req.tasks.refusal-inert](requirements.md#req.tasks.refusal-inert) names, each of which says what
-it left behind: `open`'s `binding_failed`, and `merge`'s
-`rollback_failed`, a `check_failed` whose checks created paths, and a close that failed after the
-merge, and the refusals of `close` and `escalate` after a step they could not undo (below). A malformed command line prints the same shape with the code `invalid_command` and
-exits with status 2.
+These commands run only in the primary worktree:
 
-While a task is stored as `merging` and no live process holds the merge lock, `open`, `merge`,
-`close`, `session`, `escalate` and `resolve` refuse with `merge_incomplete` before they change
-anything: `open`, `merge` and `close` once they hold the merge lock, `session`, `escalate` and
-`resolve` once they found it free. Exempt are `merge --resume` and `merge --abort` of the merging task. While a live process holds the merge lock and a task is `merging`, `session`,
-`escalate` and `resolve` of that task refuse with `merge_busy` at once, and those of other tasks are not refused
-for it. `list`, `show`, `rebind`, `report`, `answer` and `wait` are never refused for a merge:
-they change at most a task's record, never Git, and a report or a rebind is how a
-refusal such as `merge_incomplete` reaches the main agent that must finish the merge.
+- `open`
+- `close`
+- `merge`
+- `session`
+- `rebind`
+- `answer`
+
+`deliver` runs only in the worktree of the task it names. These commands run in any worktree of the
+repository, so a task session escalates and reports from its task worktree:
+
+- `list`
+- `show`
+- `escalate`
+- `report`
+- `resolve`
+- `wait`
+
+Through Git's common directory, these commands find the primary worktree and, with it, the task
+folders. Every command prints one JSON value on standard output. On success, every command exits
+with status 0.
+
+A refusal prints `{"error": <link>}`. The link is a
+[`component` link](../../kernel/tracing/contracts.md#contract.tracing.error) of the actor
+`Tasks (concorde task <command>)`. Its code is one of the error codes below. For `session` and the
+record updates, its code may instead be one of the
+[Task session codes](../task-session/contracts.md#commands). With its message, the detail names the
+concerned item:
+
+- The task.
+- The [Module](../../glossary.json#concept.module).
+- The path.
+- The run.
+- The Git command.
+
+For an unknown task, the detail names the known tasks. For a dirty worktree, the detail names the
+uncommitted paths. For a busy [merge lock](../../glossary.json#concept.merge-lock), the detail names
+its holder. The reason is `environment` for these codes:
+
+- `git_failed`
+- `worktree_failed`
+- `record_conflict`
+- `record_unreadable`
+- `record_unwritable`
+- `decision_log_failed`
+- `decision_log_uncommitted`
+- `binding_failed`
+- `merge_busy`
+- `workspace_busy`
+- `rollback_failed`
+- `wait_timeout`
+- `wait_failed`
+- `part_unknown`
+- `issues_unavailable`
+- The session codes `session_failed` and `missing_worktree`.
+
+The reason is `decision` for these codes:
+
+- `dirty_worktree`
+- `not_merged`
+- `delivery_unverified`
+- `primary_dirty`
+- `changed_outside`
+- `merge_conflict`
+- `check_failed`
+- `merge_incomplete`
+- `not_resumable`
+- `merge_diverged`
+
+Otherwise, the reason is `input`. A refusal exits with status 1. Apart from the refusals that
+[req.tasks.refusal-inert](requirements.md#req.tasks.refusal-inert) names, a refusal changes nothing.
+Each exception says what it left behind:
+
+- `open`'s `binding_failed`.
+- `merge`'s `rollback_failed`.
+- `merge`'s `check_failed` whose checks created paths.
+- `merge`'s close that failed after the merge.
+- The refusals of `close` and `escalate` after a step they could not undo (below).
+
+A malformed command line prints the same shape with the code `invalid_command` and exits with status
+2.
+
+While a task is stored as `merging` and no live process holds the merge lock, these commands refuse
+before they change anything:
+
+- `open`
+- `merge`
+- `close`
+- `session`
+- `escalate`
+- `resolve`
+
+The refusal code is `merge_incomplete`. The commands refuse at these points:
+
+- Once the command holds the merge lock, `open` refuses.
+- Once the command holds the merge lock, `merge` refuses.
+- Once the command holds the merge lock, `close` refuses.
+- Once the command found the merge lock free, `session` refuses.
+- Once the command found the merge lock free, `escalate` refuses.
+- Once the command found the merge lock free, `resolve` refuses.
+
+Exempt are `merge --resume` and `merge --abort` of the merging task. While a live process holds the
+merge lock and a task is `merging`, these commands of that task refuse at once:
+
+- `session`
+- `escalate`
+- `resolve`
+
+The refusal code is `merge_busy`. Those commands of other tasks are not refused for that merge.
+These commands are never refused for a merge:
+
+- `list`
+- `show`
+- `rebind`
+- `report`
+- `answer`
+- `wait`
+
+They change at most a task's record, never Git. A report or a rebind is how a refusal such as
+`merge_incomplete` reaches the main agent that must finish the merge.
 
 <a id="parts-not-depended-on"></a>
 
-**The parts Tasks does not depend on.** Tasks reaches every part but the Kernel only through that
-part's `concorde` command, JSON in and out, or a file format its [Spec](../../glossary.json#concept.spec) defines, never its code
-([Coordination](../module.md#optional-integrations)), and learns from them whether the part is
-installed. The spec part is installed for a worktree exactly when its registry mirror
-`.concorde/specs.json` exists, which `open` reads for the Modules it admits. The execution, method
-and issues parts are installed exactly when the worktree's own `concorde`, its
-`.concorde/bin/concorde`, else the checkout's `scripts/concorde.py`, else the running package,
-offers their commands `run`, `delivery` and `issues`: it does unless, asked for one, it refuses it
-as a command of a part the project has not installed, as
-[Distribution](../../distribution/module.md#the-command-line) does, printing `{"error": <link>}`
-whose code is `part_missing` and exiting with status 1; any other answer, a refusal of the
-arguments included, means it is offered. `deliver` and `wait --run`
-ask with `concorde <command> --help`, which changes nothing. `--resolves` and `resolve` read each
-Issue with `concorde issues show <issue> --root <primary worktree>`. A merge puts back what Issue
-writes left with `concorde issues recover --root <primary worktree>` and closes each resolved Issue
+**The parts Tasks does not depend on.** Tasks reaches every part but the Kernel only through these
+interfaces:
+
+- That part's `concorde` command, JSON in and out.
+- A file format its [Spec](../../glossary.json#concept.spec) defines.
+
+Tasks never reaches those parts through their code
+([Coordination](../module.md#optional-integrations)). Tasks learns from those parts whether each
+part is installed. For a worktree, the spec part is installed exactly when its registry mirror
+`.concorde/specs.json` exists. For the Modules it admits, `open` reads that mirror.
+
+The worktree's own `concorde` command is the first available of these:
+
+- Its `.concorde/bin/concorde`.
+- Else the checkout's `scripts/concorde.py`.
+- Else the running package.
+
+The execution, method and issues parts are installed exactly when that command offers their
+respective commands:
+
+- `run`
+- `delivery`
+- `issues`
+
+The command offers each part's commands unless, asked for one, it refuses it as a command of a part
+the project has not installed. As [Distribution](../../distribution/module.md#the-command-line)
+does, that refusal prints `{"error": <link>}` whose code is `part_missing` and exits with status 1.
+Any other answer, including a refusal of the arguments, means the command is offered.
+
+`deliver` and `wait --run` ask with `concorde <command> --help`, which changes nothing.
+`--resolves` and `resolve` read each Issue with
+`concorde issues show <issue> --root <primary worktree>`. A merge puts back what Issue writes
+left with `concorde issues recover --root <primary worktree>`. A merge closes each resolved Issue
 with `concorde issues close <issue> --reason resolved --note <note> --evidence <item>… --root
-<primary worktree>`, handing the merge lock it holds on to each as
-[Tracing](../../kernel/tracing/contracts.md#handing-a-lock-on) describes, and reads its answer or
-its `{"error": <link>}`. Execution's runs are read through its
-[run result](../../execution/contracts.md#contract.execution.run-result), its
-[run progress file](../../glossary.json#concept.run-progress-file), the
-[run store](../../glossary.json#concept.run-store)'s folders and the
-[run lock](../../glossary.json#concept.run-lock), and Distribution's update mark through its file
-`.concorde/update.json`.
+<primary worktree>`. As
+[Tracing](../../kernel/tracing/contracts.md#handing-a-lock-on) describes, the merge hands the merge
+lock it holds on to each of these commands. The merge reads each command's answer or its
+`{"error": <link>}`. Execution's runs are read through these interfaces:
+
+- Its [run result](../../execution/contracts.md#contract.execution.run-result).
+- Its [run progress file](../../glossary.json#concept.run-progress-file).
+- Its [run store](../../glossary.json#concept.run-store)'s folders.
+- Its [run lock](../../glossary.json#concept.run-lock).
+
+Distribution's update mark is read through its file `.concorde/update.json`.
 
 | Command | Effect | Output |
 | --- | --- | --- |
@@ -1030,31 +1153,42 @@ and a paragraph `Goal: <goal>`.
 
 <a id="settled-reports"></a>
 
-The end of a task answers every report of its record still unanswered, so that no report of an
-ended task waits for an answer nobody may give any more: the close that stores the task `closed`
-or `failed` gives each such report, in the same write, the answer
-`{"at": <the closing's time>, "text": <how the task ended>, "by": "merge"|"close"}`, `merge` when
-`concorde task merge` closes the task and `close` when `concorde task close` does. The text is
-`The task ended before the main agent answered: <how>. Nobody answers a report after that.`, where
-`<how>` is ``concorde task merge` merged its delivery commit <checked commit> into <primary branch> and closed it as merged`` for a merge,
-``concorde task close --merged` closed it as merged, its delivery commit being in the primary branch``
-for `close --merged`, and ``concorde task close --<outcome>` closed it as <outcome>: <note>`` for
-`--completed` and `--failed`, with the note or reason. The closing entry of the decision log ends,
-after the note and the errors, with the paragraph
-`The <merge|close> answered report(s) <n>, … of the task session, unanswered until then: <text>`
-when the end answered any report. A merge writes that paragraph into the merge commit's copy of
-the log for the reports unanswered when it commits, so a report recorded after the merge commit
-changes the log, which the close then commits again.
+The end of a task answers every report of its record still unanswered. This ensures that no report
+of an ended task waits for an answer nobody may give any more. The close that stores the task
+`closed` or `failed` gives each such report, in the same write, the answer
+`{"at": <the closing's time>, "text": <how the task ended>, "by": "merge"|"close"}`. `by` is `merge`
+when `concorde task merge` closes the task, and `close` when `concorde task close` does. The text is
+`The task ended before the main agent answered: <how>. Nobody answers a report after that.`. The
+value of `<how>` depends on the closing command:
+
+- For a merge, ``concorde task
+  merge` merged its delivery commit <checked commit> into <primary branch> and closed it as merged``.
+- ``concorde task close
+  --merged` closed it as merged, its delivery commit being in the primary branch`` for `close
+  --merged`.
+- ``concorde task close
+  --<outcome>` closed it as <outcome>: <note>`` for `--completed` and `--failed`, with the note or
+  reason.
+
+When the end answered any report, the closing entry of the decision log ends, after the note and the
+errors, with the paragraph
+`The <merge|close> answered report(s) <n>, … of the task session, unanswered until then: <text>`.
+For the reports unanswered when it commits, a merge writes that paragraph into the merge commit's
+copy of the log. Thus, a report recorded after the merge commit changes the log, which the close
+then commits again.
 
 <a id="decision-log-commit"></a>
 
-A close commits the decision log, as it stands once the closing is appended, when the primary
-branch's `HEAD` does not hold `.concorde/decisions/<history key>.md` with exactly the log's bytes,
-either lacking the file or holding an earlier copy, such as a merge commit's copy of a log that
-changed afterwards: it writes the log there in the
-primary worktree, stages it with `git add -f` and commits that path alone with
-`git commit --only`, which leaves every other staged or unstaged change of the primary worktree as
-it was, with the repository's author identity and commit hooks and the message:
+When the primary branch's `HEAD` lacks `.concorde/decisions/<history key>.md` with exactly the log's
+bytes, a close commits the decision log as it stands once the closing is appended. The branch either
+lacks the file or holds an earlier copy, such as a merge commit's copy of a log that changed
+afterwards. The close writes the log there in the primary worktree and stages it with `git add -f`.
+The close commits that path alone with `git commit --only`, which leaves every other staged or
+unstaged change of the primary worktree as it was. The close uses these for the commit:
+
+- The repository's author identity.
+- The repository's commit hooks.
+- The message:
 
 ```text
 concorde: keep the decision log of <task-id>
@@ -1065,82 +1199,156 @@ Concorde-Task: <task-id>
 ```
 
 When the primary worktree's `HEAD` is detached or Git refuses the commit, the close unstages and
-removes the log's copy, or restores the copy `HEAD` holds, and refuses with `decision_log_uncommitted`; the record is already closed,
-the decision log holds the closing and the folder is still current, and the same close run again
-commits the log, then keeps the transcripts and moves the folder.
+removes the log's copy, or restores the copy `HEAD` holds. The close refuses with
+`decision_log_uncommitted`. The following state remains:
+
+- The record is already closed.
+- The decision log holds the closing.
+- The folder is still current.
+
+When run again, the same close proceeds in this order:
+
+- It commits the log.
+- It keeps the transcripts.
+- It moves the folder.
 
 The merge lock is an exclusive `flock` on `.concorde/locks/merge.lock` of the primary worktree. The
-process running `open`, `close` or `merge` takes it before reading anything it acts on, holds it
-for the whole command and releases it when it ends, and so does every write of the project's
-[Issues](../../issues/interface.md#store-operations), which commits on the primary branch, naming
-itself `an Issue write (<what it writes>)`; the operating system releases it when the process dies,
-however it dies. While holding it, the process keeps in the file one JSON object
-`{"holder": "`concorde task <open|close|merge>` of task <task-id>", "pid": <pid>, "since": "<RFC 3339 time>", "session": "<Claude Code session>", "task": "<task-id>"}`, the holder line of every lock under `.concorde/locks/`, with `session` only when the process's environment names one in `CLAUDE_CODE_SESSION_ID`.
-A merge started with its locks inherited, as [Tracing](../../kernel/tracing/contracts.md#handing-a-lock-on)
-states, adopts them without waiting and writes its own holder line into each. A merge whose
-environment variable `CONCORDE_MERGE_ATTEMPT` names the task's next attempt folder `merges/<n>/`,
-made for it and holding no node yet, removes the variable and records its attempt's node there:
-the folder of its standard output `output.json` and standard error `messages.log`, which the node
-names as its artifacts `output` and `messages` without a digest, since the merge completes them
-after the node ends. When such a merge is refused before its attempt began, by any refusal of the
-table below, it still records the attempt there, `failed` with the outcome `refused` and the
-refusal's link as its error, the primary worktree's branch (`HEAD` when detached) and commit as it
-found them as `branch` and `before`, and `checked` and `after` null.
-Only a process that failed to take the lock reads that object, so an object left by a dead holder
-is overwritten by the next holder and never reported. `open` and `close` wait for the lock as long
-as `merge` does by default.
+process running these commands takes the lock before reading anything it acts on:
 
-`merge` refuses before merging whatever `close --merged` would refuse apart from containment, so
-closing after the checks passed fails only for an environment error such as `worktree_failed`, or
-with `not_merged` or `dirty_worktree` when the task branch or worktree was changed by hand during
-the merge. That refusal leaves the merge and its checked commit in place and the task `merging`,
-names the merge commit and says that `concorde task merge <task-id> --resume` finishes the task
-once the cause is fixed. A `rollback_failed` also leaves the task `merging`, and says that
-`--abort` restores the primary branch.
+- `open`
+- `close`
+- `merge`
 
-`close` runs its steps in order, `git worktree remove` (with `--force` when the close is forced or
-the worktree has submodules, since Git removes a worktree holding submodule checkouts only then),
-the record update, the append of the closing to the decision log, the end of the trace node, which
-so records the log's final digest, and the move of the task's folder to the history, and a refusal
-after a step leaves what the steps before it did. It
-never runs `git submodule deinit`, which would unregister the submodules in the configuration every
-worktree shares. A `worktree_failed` from the removal says that the worktree is as Git left it and
-the record unchanged; a `record_conflict`, `record_unwritable` or `unknown_task` of the record
-update after the worktree was removed names the removed worktree and says the task keeps its
-state without it; any refusal after the record update, such as a `decision_log_failed` or a
-`record_unwritable` of the trace node, names the task's stored state, outcome and time. Each
-says that running the same close again, with the same options, finishes it once the cause is
-fixed, and, when the close is a merge's, the `merge` refusal says that
-`concorde task merge <task-id> --resume` does while the task is still `merging`, and, once the
-record update stored the task closed as merged, that `close --merged` finishes it. The rerun skips
-a worktree that no longer exists, and records `worktree_removed` false then; run on a task already
-stored `closed` or `failed` with the outcome it names, it appends the closing the record holds when
-the decision log holds no line `## Closed: <outcome>, <closed.at>`, ends the task's trace node when
-it has not ended, as the close that stored it would have, and returns the record unchanged.
+The process holds the lock for the whole command. When the process ends, the process releases the
+lock. Every write of the project's [Issues](../../issues/interface.md#store-operations) does the
+same. Each write commits on the primary branch, naming itself `an Issue write (<what it writes>)`.
+When the process dies, however it dies, the operating system releases the lock. While holding the
+lock, the process keeps in the file one JSON object `{"holder": "`concorde task
+<open|close|merge>` of task <task-id>", "pid": <pid>, "since": "<RFC 3339 time>", "session": "<Claude Code session>", "task": "<task-id>"}`.
+This object is the holder line of every lock under `.concorde/locks/`. The object contains `session`
+only when the process's environment names one in `CLAUDE_CODE_SESSION_ID`.
 
-`escalate`, `report` and `answer` hold the task's lock from the check that the task has not ended
-through their append to the decision log, as a close holds it from its record update through the
-end of the trace node, so nothing is appended to a decision log after its closing; `escalate`
-refuses a task that ended with `task_closed`.
+After a merge starts with its locks inherited, as
+[Tracing](../../kernel/tracing/contracts.md#handing-a-lock-on) states, the merge adopts them without
+waiting. The merge writes its own holder line into each lock. When `CONCORDE_MERGE_ATTEMPT` names
+the task's next attempt folder `merges/<n>/`, made for the merge and holding no node yet, the merge
+removes the environment variable. Such a merge records its attempt's node there. That folder holds
+the merge's standard output `output.json` and standard error `messages.log`. The node names those
+files as its artifacts `output` and `messages` without a digest, since the merge completes them
+after the node ends.
+
+When any refusal of the table below refuses such a merge before its attempt began, the merge still
+records the attempt there. The attempt is `failed` with the outcome `refused` and the refusal's link
+as its error. The attempt records the primary worktree's branch (`HEAD` when detached) and commit as
+it found them as `branch` and `before`. The attempt records `checked` and `after` as null.
+
+Only a process that failed to take the lock reads that object. Thus, the next holder overwrites an
+object left by a dead holder, and that object is never reported. `open` and `close` wait for the
+lock as long as `merge` does by default.
+
+Before merging, `merge` refuses whatever `close --merged` would refuse apart from containment. Thus,
+after the checks passed, closing fails only in these cases:
+
+- For an environment error such as `worktree_failed`, closing fails.
+- If the task branch or worktree was changed by hand during the merge, closing fails with
+  `not_merged` or `dirty_worktree`.
+
+That refusal leaves these in place:
+
+- The merge.
+- Its checked commit.
+- The task in state `merging`.
+
+The refusal names the merge commit. The refusal says that, once the cause is fixed,
+`concorde task merge <task-id> --resume` finishes the task. A `rollback_failed` also leaves the task
+`merging`, and says that `--abort` restores the primary branch.
+
+`close` runs its steps in this order:
+
+- `git worktree remove`.
+- The record update.
+- The append of the closing to the decision log.
+- The end of the trace node, which thus records the log's final digest.
+- The move of the task's folder to the history.
+
+When the close is forced or the worktree has submodules, removal uses `--force`, since Git removes a
+worktree holding submodule checkouts only then. After a step, a refusal leaves what the steps before
+it did. The close never runs `git submodule deinit`, which would unregister the submodules in the
+configuration every worktree shares.
+
+A `worktree_failed` from the removal says that the worktree is as Git left it and the record
+unchanged. After the worktree was removed, these refusals of the record update name the removed
+worktree and say the task keeps its state without it:
+
+- `record_conflict`
+- `record_unwritable`
+- `unknown_task`
+
+After the record update, any refusal names these details:
+
+- The task's stored state.
+- The task's outcome.
+- The task's time.
+
+Examples are a `decision_log_failed` or a `record_unwritable` of the trace node. Each refusal says
+that, once the cause is fixed, running the same close again with the same options finishes it. When
+the close is a merge's, the `merge` refusal also says this:
+
+- While the task is still `merging`, `concorde task merge <task-id> --resume` finishes it.
+- Once the record update stored the task closed as merged, `close --merged` finishes it.
+
+The rerun skips a worktree that no longer exists and records `worktree_removed` false then. For a
+task already stored `closed` or `failed` with the outcome it names, the rerun returns the record
+unchanged. For that task, the rerun also does the following:
+
+- When the decision log holds no line `## Closed: <outcome>, <closed.at>`, the rerun appends the
+  closing the record holds.
+- When the task's trace node has not ended, the rerun ends that node as the close that stored the
+  task would have.
+
+These commands hold the task's lock from the check that the task has not ended through their append
+to the decision log:
+
+- `escalate`
+- `report`
+- `answer`
+
+A close holds the task's lock from its record update through the end of the trace node. Thus,
+nothing is appended to a decision log after its closing. For a task that ended, `escalate` refuses
+with `task_closed`.
 
 `escalate` writes the record before it appends to the decision log. When the append fails, it
-refuses with `decision_log_failed`, naming the escalation's number in the record, the decision
-log, the file system's error and the heading the entry would have had, carrying the rendered
-chain and saying that escalating again would record it twice, so the chain is appended by hand.
-`report` and `answer` likewise write the record first and, when the append fails, refuse
-with `decision_log_failed`, naming the report and carrying the entry to append by hand.
+refuses with `decision_log_failed`. The refusal names these details:
+
+- The escalation's number in the record.
+- The decision log.
+- The file system's error.
+- The heading the entry would have had.
+
+The refusal carries the rendered chain. The refusal says that escalating again would record the
+chain twice, so the chain is appended by hand. `report` and `answer` likewise write the record
+first. When the append fails, they refuse with `decision_log_failed`, naming the report and carrying
+the entry to append by hand.
 
 The task's workspace lock is the Kernel's lock of the workspace named after the task,
-`.concorde/locks/workspaces/<task-id>.lock` (`contract.kernel.workspace-binding`); `merge` and
-`close` take it before the merge lock and name themselves in it as
-`` `concorde task <command>` of task <task-id> ``. The task's workflow lock,
-`.concorde/locks/workflows/<task-id>.lock`, is Workflows' lock of the workspace's [workflow record](../../glossary.json#concept.workflow-record);
-every close, the close that ends a merge included, takes it after the workspace and merge locks,
-waiting as long as it takes, since a [workflow step](../../glossary.json#concept.workflow-step) holds it only for writes that wait for no other
-lock, names itself in it the same way and holds it until the task's folder moved. The task's lock,
-`.concorde/locks/tasks/<task-id>.lock`, is held by every change of the task's record and trace, so
-that two processes never change a task at once; the close that moves the task removes the task,
-workspace and workflow locks while it holds all three.
+`.concorde/locks/workspaces/<task-id>.lock` (`contract.kernel.workspace-binding`). Before the merge
+lock, `merge` and `close` take the workspace lock. They name themselves in the workspace lock as ``
+`concorde task <command>` of task <task-id> ``.
+
+The task's workflow lock, `.concorde/locks/workflows/<task-id>.lock`, is Workflows' lock of the
+workspace's [workflow record](../../glossary.json#concept.workflow-record). Every close, including
+the close that ends a merge, takes the workflow lock after the workspace and merge locks. The close
+waits as long as it takes, since a [workflow step](../../glossary.json#concept.workflow-step) holds
+the workflow lock only for writes that wait for no other lock. The close names itself in the
+workflow lock the same way. The close holds the workflow lock until the task's folder moved.
+
+Every change of the task's record and trace holds the task's lock,
+`.concorde/locks/tasks/<task-id>.lock`, so that two processes never change a task at once. While
+holding all three, the close that moves the task removes these locks:
+
+- The task lock.
+- The workspace lock.
+- The workflow lock.
 
 | Error code | Raised when |
 | --- | --- |
@@ -1199,11 +1407,35 @@ workspace and workflow locks while it holds all three.
 
 ## Record updates
 
-Nothing below the task level updates a task: runs, deliveries and workflows are recorded where
-they happen, in the workspace folder and on the task branch, and Tasks reads them. Besides `open`,
-`merge`, `close`, `deliver`, `escalate`, `rebind`, `report`, `answer` and `resolve`, a task changes only through the update a task session's start makes, which writes a
-trace node below the task's node. It holds the task's lock while it reads, checks its precondition
-and writes, so the precondition holds for what it writes, and refuses with the codes above.
+Nothing below the task level updates a task. The following are recorded where they happen, in the
+workspace folder and on the task branch:
+
+- Runs.
+- Deliveries.
+- Workflows.
+
+Tasks reads them. Besides the following commands, a task changes only through the update a task
+session's start makes:
+
+- `open`
+- `merge`
+- `close`
+- `deliver`
+- `escalate`
+- `rebind`
+- `report`
+- `answer`
+- `resolve`
+
+That update writes a trace node below the task's node. The update holds the task's lock during these
+actions:
+
+- It reads.
+- It checks its precondition.
+- It writes.
+
+Holding the lock keeps the precondition true for what the update writes. The update refuses with the
+codes above.
 
 | Update | Preconditions | Effect |
 | --- | --- | --- |

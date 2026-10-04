@@ -7,7 +7,8 @@ are in the [requirements](requirements.md).
 
 Every [task session](../../glossary.json#concept.task-session) is a
 [trace node](../../glossary.json#concept.trace-node) of kind `session` below its task's node, as
-[Tracing](../../kernel/tracing/contracts.md#contract.tracing.node) defines it; its content is this value.
+[Tracing](../../kernel/tracing/contracts.md#contract.tracing.node) defines it. The session node's
+content is this value.
 
 ```concorde-contract
 {
@@ -165,11 +166,17 @@ Every [task session](../../glossary.json#concept.task-session) is a
 
 ## Commands
 
-`concorde task session` is one of the `concorde task` commands: it runs in the primary worktree,
-prints one JSON value and refuses in the shape, with the actor and exit statuses, that the
-[Tasks commands](../tasks/contracts.md#commands) state. Besides the codes shared by every
-`concorde task` command, such as `not_primary`, `unknown_task`, `task_closed` and `invalid_input`,
-its refusals use these:
+`concorde task session` is one of the `concorde task` commands. It runs in the primary worktree and
+prints one JSON value. It refuses in the shape, with the actor and exit statuses, that the
+[Tasks commands](../tasks/contracts.md#commands) state. Every `concorde task` command shares codes
+such as:
+
+- `not_primary`
+- `unknown_task`
+- `task_closed`
+- `invalid_input`
+
+Besides those shared codes, its refusals use these:
 
 | Error code | Raised when |
 | --- | --- |
@@ -187,16 +194,29 @@ A task session's settings, `.concorde/tasks/<task>/runtime/settings.json`, hold 
 [session boundary](../../glossary.json#concept.session-boundary) and nothing that restricts the
 session besides:
 
-- a PreToolUse hook on Edit, Write, MultiEdit and NotebookEdit, `session_hook.py` copied beside the
-  settings with the task worktree and [decision log](../../glossary.json#concept.decision-log)
-  embedded, which judges the path with every symbolic link resolved, a final link included, since
-  Edit and Write write through a link to the file it points to; it allows a path inside the task
-  worktree, or the decision log while its folder exists, and denies any other with a reason naming
-  the task worktree, or naming the closed task
-  for the decision log of a task whose folder has moved to the history; any failure denies;
-- no `sandbox`: the session's Bash runs as the developer's own shell does, with every path,
-  process, socket and host open to it;
-- no `permissions.deny` entries: reads stay open.
+- A PreToolUse hook on these tools:
+
+  - Edit
+  - Write
+  - MultiEdit
+  - NotebookEdit
+
+  The hook is `session_hook.py`, copied beside the settings with the task worktree and
+  [decision log](../../glossary.json#concept.decision-log) embedded. The hook judges the path with
+  every symbolic link resolved, a final link included, since Edit and Write write through a link to
+  the file it points to. The hook allows a path inside the task worktree. While the decision log's
+  folder exists, the hook also allows the decision log. The hook denies any other path with a reason
+  naming the task worktree. For the decision log of a task whose folder moved to the history, the
+  reason names the closed task. Any failure denies.
+- No `sandbox`: the session's Bash runs as the developer's own shell does, with all of these open to
+  it:
+
+  - Every path
+  - Every process
+  - Every socket
+  - Every host
+
+- No `permissions.deny` entries: reads stay open.
 
 What the settings carry besides is no part of the boundary: the
 [approvals](module.md#project-mcp-approvals) that keep Claude Code from asking a background session
@@ -214,7 +234,11 @@ hand the task's task sessions, every node `sessions/<id>/`, to
 | Every close, just before the task's folder moves to the history | `claude agents --json --all`, once for the close; the entry whose `id` is the session's `reported_id` gives its `sessionId`, `cwd` and `state`. The transcript `projects/<cwd, each character that is no letter or digit as ->/<session id>.jsonl` of `$CLAUDE_CONFIG_DIR` (default `~/.claude`), else `<session id>.jsonl` of any folder of `projects/`, is copied to the session's node as `transcript.jsonl`, and the folder of the same name without `.jsonl`, when present, as `transcript/`; the node is then finished as the [session trace](#contract.task-session.session-trace) says | A warning naming what Claude Code answered or where the transcript was looked for; the session is not removed. The node still receives the session id and status Claude Code told |
 | Every close, once the task is closed | `claude rm <id>` for each session whose transcript was kept; exit 0, or `No job matching`, counts as removed | A warning |
 
-Each warning is one string in the command's `warnings`, naming the session's id and name, the task,
-the whole reason (where the transcript was looked for, or the command with its exit code and Claude
-Code's answer), where the transcript is kept when it was, and `claude rm <id>` to remove the
-session by hand.
+Each warning is one string in the command's `warnings`. Each warning names:
+
+- The session's id and name
+- The task
+- The whole reason (where the transcript was looked for, or the command with its exit code and
+  Claude Code's answer)
+- Where the transcript is kept when it was kept
+- `claude rm <id>` to remove the session by hand
