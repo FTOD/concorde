@@ -78,7 +78,7 @@ validator opens the repository so that the same problems become findings instead
 
 ### req.spec.protocol-binding — Only the accepted Protocol is admitted
 
-Only when all these conditions hold, the loader SHALL admit a project:
+The loader SHALL admit a project only when all these conditions hold:
 
 - Its configuration binds exactly the
   [Protocol copy](../../glossary.json#concept.protocol-copy) under `.concorde/protocol/`.
@@ -239,7 +239,7 @@ No index reads implementation file contents, test results or recorded evidence. 
 changes a boundary set. The one exception is `covered-by`, which reads the
 [verification declarations](../../glossary.json#concept.verification-declaration) of bound test
 sources as [req.spec.coverage-from-tests](#req.spec.coverage-from-tests) says. It reads them
-without importing, compiling or running them.
+without importing, compiling or running the test sources.
 
 ## Grants
 
@@ -277,8 +277,8 @@ None of the following adds anything:
 
 ### req.spec.grant-installed-read-only — An installed file is never writable
 
-For a file that the installation record `.concorde/install.json` lists as the installer's own,
-a grant SHALL give an exact entry at most the level `ro`.
+A grant SHALL give an exact entry for a file that the installation record `.concorde/install.json`
+lists as the installer's own at most the level `ro`.
 
 The cap applies after the highest level is chosen.
 It therefore overrides an `rw` that an implementation scope would give.
@@ -439,7 +439,7 @@ Applying an initial proposal SHALL NOT replace a file that already exists.
 
 ### req.spec.init-explicit-envelope — Apply checks shape, integrity and freshness
 
-Only when all these conditions hold, applying SHALL accept an initial proposal:
+Applying SHALL accept an initial proposal only when all these conditions hold:
 
 - The proposal is a complete typed value of the proposal type in exactly the shape propose returns.
 - The proposal comes with a proposal digest that is the digest of that value.
@@ -460,7 +460,7 @@ An applied proposal is also held to the following:
 
 ### req.spec.init-validated — The result must validate
 
-Only if the resulting project validates without errors, applying SHALL keep the written files.
+Applying SHALL keep the written files only if the resulting project validates without errors.
 
 ### req.spec.init-honest-stub — The first Spec invents nothing
 
@@ -474,7 +474,7 @@ state the following as not yet specified:
 ### req.spec.init-binds-existing-files — Existing files are bound at once
 
 The initial Module stub SHALL bind every existing project file that version control tracks or does
-not ignore, so that the new project validates without errors, apart from these files:
+not ignore, apart from the files below, so that the new project validates without errors:
 
 - Document members.
 - Control records.

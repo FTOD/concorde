@@ -732,7 +732,7 @@ agents. Follow these steps:
 
 When who does a step matters, give each participant a lane so that an edge between lanes shows a
 hand-off. A sequence diagram is heavier to read. The reader must follow lifelines and messages to
-find the steps. Only when the interleaving of messages is itself the point, use a sequence diagram.
+find the steps. Use one only when the interleaving of messages is itself the point.
 
 All these views use D2. A checked `d2` diagram uses only the semantic subset. It asserts only
 declared static relations:

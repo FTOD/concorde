@@ -143,8 +143,8 @@ complete set is fixed:
   - Sorted keys.
   - Two-space indentation.
   - A final newline.
-- Only when `github_pages` is true, the set includes `.github/workflows/deploy-docsite.yml` with
-  `source` `docsite/scaffold/deploy-docsite.yml`.
+- `.github/workflows/deploy-docsite.yml` with `source` `docsite/scaffold/deploy-docsite.yml`, only
+  when `github_pages` is true.
 
 **Template inventory.** The template files are the regular files below the installed package's
 `docsite/` whose suffix is `.css`, `.json`, `.md`, `.svg`, `.ts`, `.tsx` or `.yml`.
@@ -222,10 +222,7 @@ Views:
 
 - Keeps the proposal deterministic for unchanged inputs.
 - Refuses any proposal that differs from the exact current inventory.
-- Never lets an accepted proposal do any of the following:
-  - Replace a file.
-  - Delete a file.
-  - Reach outside the files listed above.
+- Never lets an accepted proposal replace, delete or reach outside the files listed above.
 
 ## Site identity {#site-identity}
 
@@ -309,7 +306,7 @@ Commands run from `docsite/` with the dependencies installed from `package-lock.
 | `npm run check` | Runs typecheck, tests, validate and build in that order. |
 
 `validate`, `build`, `test`, `typecheck` and `check` exit nonzero with a diagnostic on any failure.
-Only when its first staging fails, `start` exits nonzero with a diagnostic.
+`start` exits nonzero with a diagnostic only when its first staging fails.
 A later staging failure or a Docusaurus exit is reported while the command keeps waiting for the
 next change, as the [pipeline](pipeline.md#preview) describes.
 An interruption stops it.

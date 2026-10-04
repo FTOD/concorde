@@ -285,7 +285,7 @@ paths=())` returns every Module that writing the given documents, nodes or files
 - The Modules referencing the nodes.
 - The Modules binding the files.
 
-`shared_files` is computed from entries alone. A file is shared in any of these cases:
+`shared_files` is computed from entries alone. It finds each of these entries:
 
 - An exact entry both Modules list.
 - An exact entry of one below a directory entry of the other.

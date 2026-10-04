@@ -1334,7 +1334,7 @@ Two rules follow from the model:
   break a promise it cannot see. Binding the task to every binder keeps its reads within the
   `SpecContext` of the Modules it is bound to (rule 3 below). Sharing grants no extra read.
   A task that only reads the file needs no such widening.
-- **Atomic reconciliation.** Only if other Modules change with them are some changes valid.
+- **Atomic reconciliation.** Some changes are valid only if other Modules change with them.
   A contract version increment requires every participant's `participates` version to move.
   Retiring a concept requires the documents that mention it to follow. Such a change is a
   multi-Module change. Its write boundary is the union of the write sets of every Module it edits.
@@ -1418,8 +1418,8 @@ types that work on Specs alone never see code contents.
   it as an honest unknown, and the task reports it as an open question for a human to decide. Examples
   of such behaviour include a probable defect or an unexplained special case.
 - **`review-architecture`** judges the architecture between Modules against
-  [Architecture quality](evaluation.md#architecture-quality). This includes how the project is
-  divided into Modules and how they depend on each other. The task writes nothing. The task is
+  [Architecture quality](evaluation.md#architecture-quality). That architecture is how the project
+  is divided into Modules and how they depend on each other. The task writes nothing. The task is
   bound to the Modules whose place in the architecture it is asked about. The task judges them
   first. Since its reads do not depend on its bound Modules, a task that judges the whole project
   may be bound to the root Module alone.
