@@ -50,6 +50,13 @@ Concrete situations that show the [requirements](requirements.md) of
 - AND `prepare` clones nothing
 - BUT a `CONCORDE_E2E_ROOT` outside the checkout is the root
 
+### scenario.e2e.relative-root — A relative root is resolved before preparation
+
+- GIVEN a `CONCORDE_E2E_ROOT` that is a relative path, from a working directory outside this checkout
+- WHEN the developer prepares a test project
+- THEN the end-to-end root is that path resolved against the working directory, as an absolute path
+- AND `prepare` works under that absolute root, so every command it runs in another directory finds the project
+
 ### scenario.e2e.trust — Trusting a test project
 
 - GIVEN a [test project](../glossary.json#concept.test-project) whose repository root Claude Code does not trust, and a configuration with other settings
@@ -74,6 +81,29 @@ Concrete situations that show the [requirements](requirements.md) of
 - AND the prompt places the session in the task's worktree as the task's [task session](../glossary.json#concept.task-session) and has it report with `concorde workflow report`
 - AND its appended system prompt is the headless note alone, without the test procedure of a headless main session
 - BUT the workflow's arguments name no task
+
+### scenario.e2e.driver-paths — A driver run works in a project whose path holds spaces
+
+- GIVEN a test project whose directory and task worktree have names holding spaces and a quote
+- WHEN a driver run's [step agent](../glossary.json#concept.step-agent) plays a `workflow_step` call of the script
+- THEN it runs the worktree's own `concorde workflow step` with the step's request and wait as separate arguments, in the worktree
+- AND it answers what that command printed
+
+This illustrates [the driver's real step commands](requirements.md#req.e2e.driver-real-steps).
+
+### scenario.e2e.malformed-restart — A malformed restart is a usage error
+
+- GIVEN a test project with an open task
+- WHEN the developer runs `run` with `--restart scaffold`, which names no label
+- THEN the tool prints its usage to standard error and exits 2
+- AND no workflow runs
+
+### scenario.e2e.runtime-failures — A failure at run time is printed as an error
+
+- GIVEN a command that cannot be started, a task whose record is missing or names no worktree, this checkout's [worker configuration](../glossary.json#concept.worker-configuration) holding JSON that is no object, or a failure the tool did not foresee
+- WHEN a command of the tool meets it
+- THEN the tool prints `{"error": …}` with `command_failed`, `no_task`, `worker_configuration_unreadable` or `unexpected_error` and its traceback, and exits 1
+- BUT it never ends in a traceback of its own
 
 ### scenario.e2e.stale-result — A result an earlier run saved is not the run's
 
@@ -116,6 +146,13 @@ Concrete situations that show the [requirements](requirements.md) of
 - THEN the case stops with `workspace_busy`, naming the phase and the refused run's result in the lobby
 - AND it judges no phase of that run
 
+### scenario.e2e.owners-session-ended — A session that ends stops the case
+
+- GIVEN a test project with a task `t1` with a worktree, and live sessions of two Claude Code main sessions in its primary worktree, the first of which ends right after it started a background command
+- WHEN `owners` plays a run the first session starts in background Bash and the run writes its result
+- THEN the case stops with `session_failed`, naming the session and the phase
+- BUT it judges no phase of that run, so the ended owner is not reported as an owner that was not woken
+
 ### scenario.e2e.owners-too-few-sessions — The owners case needs two sessions
 
 - GIVEN a test project with a task `t1` with a worktree
@@ -124,6 +161,6 @@ Concrete situations that show the [requirements](requirements.md) of
 
 ### scenario.e2e.owners-no-task — The owners case needs a task with a worktree
 
-- GIVEN a test project without a task `t9`
-- WHEN `owners` is asked to play its runs on `t9`
+- GIVEN a test project without a task `t9`, or whose [task record](../glossary.json#concept.task-record) names a worktree that does not exist
+- WHEN `owners` is asked to play its runs on that task
 - THEN it stops with `no_task` before any session starts

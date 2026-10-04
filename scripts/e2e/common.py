@@ -26,10 +26,17 @@ class E2EError(Exception):
 
 
 def run(command: list[str], cwd: Path, **options) -> subprocess.CompletedProcess:
-    """Run a command; ``E2EError`` names it, its exit status and its output when it fails."""
-    completed = subprocess.run(
-        command, cwd=cwd, capture_output=True, text=True, check=False, **options
-    )
+    """Run a command; ``E2EError`` names it, its exit status and its output when it fails, and
+    the operating system's refusal when it cannot be started."""
+    try:
+        completed = subprocess.run(
+            command, cwd=cwd, capture_output=True, text=True, check=False, **options
+        )
+    except OSError as error:
+        raise E2EError(
+            "command_failed",
+            f"`{' '.join(command)}` in {cwd} could not be started: {error}",
+        ) from error
     if completed.returncode != 0:
         raise E2EError(
             "command_failed",
@@ -41,7 +48,8 @@ def run(command: list[str], cwd: Path, **options) -> subprocess.CompletedProcess
 
 
 def e2e_root() -> Path:
-    """The end-to-end root; ``E2EError`` ``root_inside_checkout`` when it lies in this checkout."""
+    """The end-to-end root, resolved to an absolute path, since its commands run in other
+    directories; ``E2EError`` ``root_inside_checkout`` when it lies in this checkout."""
     named = os.environ.get("CONCORDE_E2E_ROOT")
     root = Path(named or DEFAULT_ROOT).expanduser()
     resolved = Path(os.path.realpath(root))
@@ -53,7 +61,7 @@ def e2e_root() -> Path:
             f"would load the checkout's CLAUDE.md into every session of a test project there; "
             "set CONCORDE_E2E_ROOT to a directory outside the checkout",
         )
-    return root
+    return resolved
 
 
 def test_directory(root: Path, name: str) -> Path:

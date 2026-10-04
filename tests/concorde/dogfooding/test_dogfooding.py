@@ -5,15 +5,17 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
 from concorde.distribution.build import build
 from concorde.distribution.install import InstallError, install, update
 from concorde.distribution.prompt_resolver import resolve_role_prompt
-from concorde.kernel.errors import link
+from concorde.dogfooding.develop import DevelopError, develop_source
 from concorde.issues.shapes import REPORT
 from concorde.issues.store import validate_report
+from concorde.kernel.errors import link
 from concorde.spec.verification import verifies
 from tests.concorde.distribution.test_distribution import package_copy, write_build
 from tests.concorde.support.paths import REPOSITORY_ROOT
@@ -134,6 +136,51 @@ class DevelopInstallTests(unittest.TestCase):
             "develop_source_not_primary",
             str(package),
         )
+
+    def test_a_source_path_with_spaces_is_read_whole(self):
+        root = Path(self.enterContext(tempfile.TemporaryDirectory())) / "with  spaces"
+        source = root / "concorde repo"
+        source.mkdir(parents=True)
+        git(source, "init", "-q", "-b", "main")
+        git(source, "commit", "-q", "--allow-empty", "-m", "concorde")
+        self.assertEqual(
+            {
+                "repository": str(source.resolve()),
+                "branch": "main",
+                "commit": git(source, "rev-parse", "HEAD"),
+            },
+            develop_source(source),
+        )
+        linked = root / "linked worktree"
+        git(source, "worktree", "add", "-q", "-b", "task", str(linked))
+        with self.assertRaises(DevelopError) as raised:
+            develop_source(linked)
+        self.assertEqual("develop_source_not_primary", raised.exception.code)
+        self.assertIn(f"primary worktree is {source.resolve()};", str(raised.exception))
+
+    @verifies("scenario.dogfooding.refused-source")
+    def test_a_linked_worktree_refusal_of_a_separate_git_dir_names_what_git_records(
+        self,
+    ):
+        root = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        work = root / "work"
+        git(root, "init", "-q", "-b", "main", "--separate-git-dir", "meta.git", "work")
+        git(work, "commit", "-q", "--allow-empty", "-m", "concorde")
+        linked = root / "linked"
+        git(work, "worktree", "add", "-q", "-b", "task", str(linked))
+        with self.assertRaises(DevelopError) as raised:
+            develop_source(linked)
+        self.assertEqual("develop_source_not_primary", raised.exception.code)
+        # Git records no path for the primary worktree here, so the refusal says where its
+        # Git directory is instead of naming the directory around it.
+        self.assertIn(
+            f"Git directory is {(root / 'meta.git').resolve()}, which records no path",
+            str(raised.exception),
+        )
+        git(work, "config", "core.worktree", "../work")
+        with self.assertRaises(DevelopError) as raised:
+            develop_source(linked)
+        self.assertIn(f"primary worktree is {work.resolve()};", str(raised.exception))
 
     @verifies("scenario.dogfooding.refused-not-root")
     def test_a_checkout_that_is_no_worktree_root_is_not_installed_from(self):
@@ -269,7 +316,9 @@ class GuidanceTests(unittest.TestCase):
     @verifies("scenario.dogfooding.guidance")
     def test_the_guidance_says_how_to_watch_classify_and_report(self):
         for fragment in (
-            "Observe every Operation, workflow and worker run closely",
+            # Execution commands such as delivery are runs too, apart from Operations.
+            "Observe every run of an Operation or execution command, every workflow and every "
+            "worker run closely",
             "can end `ok` and still be wrong",
             "Do not edit the Concorde repository, the framework copy under `.concorde/framework/`",
             "Do not work around a Concorde defect",
@@ -289,7 +338,8 @@ class GuidanceTests(unittest.TestCase):
             "`report_key`: a short kebab-case name of the defect",
             "`subtype`: `null` for a bug or a limitation",
             "concorde issues report --check --file <path>",
-            "run `concorde update`",
+            "while no run of an Operation or execution command, workflow or task session is "
+            "running, run `concorde update`: it refuses while such a run is still running",
             "Start nothing until the update ends",
             # A run that ended ok reported no error: the link alone is the whole chain, built by
             # task escalate naming no run in a task and written by hand outside one.

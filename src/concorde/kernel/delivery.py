@@ -66,7 +66,7 @@ def deliveries(worktree: Path, branch: str, base: str, workspace: str) -> list[d
     for line in result.stdout.splitlines():
         commit, _, rest = line.partition("\x1f")
         parents, _, text = rest.partition("\x1f")
-        if text.strip() != wanted:
+        if text != wanted:
             continue
         parents = parents.split()
         found.append(

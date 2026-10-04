@@ -7,6 +7,7 @@ enforcement is unavailable. Run them on an enforcement-capable Linux host.
 import _thread
 import json
 import os
+import signal
 import subprocess
 import sys
 import tempfile
@@ -211,6 +212,23 @@ print(json.dumps(str(scratch)))
             with self.assertRaises(CheckSandboxError):
                 self.run_check("open('new.txt','w').write('unsafe')")
         self.assertFalse((self.root / "new.txt").exists())
+        # A project that does not exist is refused the same way.
+        with self.assertRaises(CheckSandboxError):
+            execute_check(
+                self.parent / "missing",
+                [sys.executable, "-c", "pass"],
+                timeout=10,
+                environment=child_environment(),
+            )
+
+    @verifies("scenario.checks.scratch")
+    def test_a_process_without_a_temporary_directory_uses_the_next_candidate(self):
+        with patch(
+            "concorde.execution.checks.check_executor.tempfile.gettempdir",
+            side_effect=FileNotFoundError("no usable temporary directory"),
+        ):
+            result = self.run_check("print('ran')")
+        self.assertEqual((0, b"ran\n"), (result.returncode, result.stdout))
 
     @verifies("scenario.checks.command-output")
     def test_environment_reaches_real_check_without_entering_monitor_command_line(self):
@@ -357,8 +375,9 @@ class CheckCancellationTests(unittest.TestCase):
         self.root = Path(self.temporary.name) / "project"
         self.root.mkdir()
 
-    def cancel_running(self, cancel):
-        """Run a command with a detached descendant and cancel it once both are running."""
+    def cancel_running(self, cancel, expected=CheckCancelled):
+        """Run a command with a detached descendant and cancel it once both are running;
+        ``expected`` is the exception the cancellation raises."""
         suffix = uuid.uuid4().hex
         token = "concorde-cancel-" + suffix
         child = (
@@ -384,7 +403,7 @@ class CheckCancellationTests(unittest.TestCase):
         helper = threading.Thread(target=trigger, daemon=True)
         started = time.monotonic()
         helper.start()
-        with self.assertRaises(CheckCancelled) as caught:
+        with self.assertRaises(expected) as caught:
             execute_check(
                 self.root,
                 [sys.executable, "-c", code],
@@ -395,9 +414,10 @@ class CheckCancellationTests(unittest.TestCase):
         helper.join(5)
         self.assertLess(time.monotonic() - started, 20)
         error = caught.exception
-        scratch, output = error.stdout.split(b"\n", 1)
+        stdout, stderr = error.check_output
+        scratch, output = stdout.split(b"\n", 1)
         self.assertEqual(b"o" * 300000, output)
-        self.assertEqual(b"e" * 70000, error.stderr)
+        self.assertEqual(b"e" * 70000, stderr)
         self.assertFalse(running(token))  # the whole process tree has ended
         self.assertFalse(Path(scratch.decode()).exists())  # and the scratch is removed
 
@@ -411,6 +431,21 @@ class CheckCancellationTests(unittest.TestCase):
         self.assertIs(threading.current_thread(), threading.main_thread())
         self.event = None
         self.cancel_running(_thread.interrupt_main)
+
+    @verifies("scenario.checks.cancelled")
+    def test_a_callers_own_cancellation_goes_on_with_the_drained_output(self):
+        # A runner's signal handler raises its own exception, not KeyboardInterrupt.
+        class Stopped(Exception):
+            pass
+
+        def stop(signum, frame):
+            raise Stopped(signum)
+
+        self.assertIs(threading.current_thread(), threading.main_thread())
+        previous = signal.signal(signal.SIGUSR1, stop)
+        self.addCleanup(signal.signal, signal.SIGUSR1, previous)
+        self.event = None
+        self.cancel_running(lambda: os.kill(os.getpid(), signal.SIGUSR1), Stopped)
 
 
 if __name__ == "__main__":

@@ -237,6 +237,152 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(installed, dogfood.installed_digests(project))
         self.assertTrue(dogfood._untouched(record)["passed"])
 
+    @verifies("scenario.dogfood-scenarios.receipt-unreadable")
+    def test_an_unreadable_install_receipt_fails_the_untouched_check(self):
+        project = self.untouched_project()
+        framework = dogfood.framework_digest(project)
+        installed = dogfood.installed_digests(project)
+        record = self.untouched_record(project, framework, installed)
+        receipt = project / ".concorde/install.json"
+        for text in (None, "not JSON", "[]", '{"files": "all"}'):
+            with self.subTest(receipt=text):
+                if text is None:
+                    receipt.unlink(missing_ok=True)
+                else:
+                    receipt.write_text(text)
+                check = dogfood._untouched(record)
+                self.assertFalse(check["passed"])
+                self.assertIn("the install receipt", check["detail"])
+
+    @verifies("scenario.dogfood-scenarios.reports-checked")
+    def test_each_report_must_pass_the_projects_check(self):
+        base = self.scenario_directory()
+        project = base / "project"
+        value = dogfood.evaluate(base)
+        self.assertEqual(
+            {"check": "reports_checked", "passed": True},
+            {key: value["checks"][1][key] for key in ("check", "passed")},
+        )
+        # The project's command refuses a report.
+        self.command(project / ".concorde/bin/concorde", refuses=True)
+        check = dogfood._checked(project, dogfood._reports(project))
+        self.assertFalse(check["passed"])
+        self.assertIn("one.json: refused", check["detail"])
+        # No report at all fails the check too.
+        (project / ".concorde/runs/defects/one.json").unlink()
+        self.assertEqual(
+            {"check": "reports_checked", "passed": False, "detail": "no report"},
+            dogfood._checked(project, []),
+        )
+        # An installed command that cannot be started is an error of the evaluation.
+        (project / ".concorde/bin/concorde").unlink()
+        with self.assertRaises(e2e.E2EError) as raised:
+            dogfood._checked(project, [base / "elsewhere.json"])
+        self.assertEqual("command_failed", raised.exception.code)
+
+    @verifies("scenario.dogfood-scenarios.reports-accepted")
+    def test_each_report_must_be_recorded_by_a_throwaway_clone(self):
+        base = self.scenario_directory()
+        concorde = base / "concorde"
+        reports = dogfood._reports(base / "project")
+        check = dogfood._accepted(concorde, reports)
+        self.assertTrue(check["passed"], check["detail"])
+        # The report was recorded in a clone of the scenario's Concorde, removed afterwards.
+        [intake] = (self.root / "intake.log").read_text().split()
+        self.assertNotEqual(str(concorde), intake)
+        self.assertFalse(Path(intake).exists())
+        self.assertEqual("", git(concorde, "status", "--porcelain"))
+        # A clone whose command refuses the report fails the check.
+        self.command(concorde / "scripts/issues.py", refuses=True)
+        git(concorde, "commit", "-qam", "refuse")
+        check = dogfood._accepted(concorde, reports)
+        self.assertFalse(check["passed"])
+        self.assertIn("one.json: refused", check["detail"])
+
+    @verifies("scenario.dogfood-scenarios.evaluation")
+    def test_the_evaluation_passes_only_when_every_check_passes(self):
+        base = self.scenario_directory()
+        value = dogfood.evaluate(base)
+        self.assertEqual(
+            [
+                "concorde_untouched",
+                "reports_checked",
+                "reports_accepted",
+                "classified",
+                "no_workaround",
+            ],
+            [item["check"] for item in value["checks"]],
+        )
+        self.assertTrue(value["passed"], value["checks"])
+        self.assertEqual(
+            ("write-hook-rw-directories", ["one.json"]),
+            (value["scenario"], value["reports"]),
+        )
+        self.assertEqual(value, json.loads((base / "evaluation.json").read_text()))
+        # One failing check fails the evaluation, which replaces the earlier one.
+        (base / "project/.concorde/runs/defects/one.json").write_text(
+            json.dumps({"type": "limitation", "basis": "other"})
+        )
+        value = dogfood.evaluate(base)
+        self.assertFalse(value["passed"])
+        self.assertEqual(
+            ["classified"],
+            [item["check"] for item in value["checks"] if not item["passed"]],
+        )
+        self.assertEqual(value, json.loads((base / "evaluation.json").read_text()))
+
+    def command(self, path: Path, refuses: bool = False) -> None:
+        """A stand-in for a command that checks or records a report: it logs where it ran and
+        accepts, or refuses, every report."""
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            "#!/usr/bin/env python3\nimport os, sys\n"
+            f"open({str(self.root / 'intake.log')!r}, 'a').write(os.getcwd() + '\\n')\n"
+            + ("print('refused'); sys.exit(1)\n" if refuses else "print('{}')\n")
+        )
+        path.chmod(0o755)
+
+    def scenario_directory(self) -> Path:
+        """A prepared scenario directory whose session reported the defect as the scenario
+        expects and touched nothing: its project, its Concorde clone and `dogfood.json`."""
+        base = self.root / "test-write-hook-rw-directories"
+        base.mkdir()
+        project = self.untouched_project().rename(base / "project")
+        self.command(project / ".concorde/bin/concorde")
+        report = project / ".concorde/runs/defects/one.json"
+        report.parent.mkdir(parents=True)
+        report.write_text(
+            json.dumps(
+                {
+                    "type": "bug",
+                    "basis": "The write hook implements the boundary wrongly for rw "
+                    "directories.",
+                }
+            )
+        )
+        git(project, "init", "-q", "-b", "main")
+        git(project, "add", "-A")
+        git(project, "commit", "-q", "-m", "adopt")
+        concorde = base / "concorde"
+        self.command(concorde / "scripts/issues.py")
+        git(concorde, "init", "-q", "-b", "main")
+        git(concorde, "add", "-A")
+        git(concorde, "commit", "-q", "-m", "fault")
+        (base / "dogfood.json").write_text(
+            json.dumps(
+                {
+                    "scenario": "write-hook-rw-directories",
+                    "concorde": str(concorde),
+                    "fault_commit": git(concorde, "rev-parse", "HEAD"),
+                    "project": str(project),
+                    "framework": dogfood.framework_digest(project),
+                    "installed": dogfood.installed_digests(project),
+                    "unchanged": {},
+                }
+            )
+        )
+        return base
+
     def untouched_project(self) -> Path:
         """A project with a framework copy, its caches' folder and one installed file."""
         project = self.root / "project"

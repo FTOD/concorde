@@ -302,7 +302,9 @@ admit `module.http` against the worktree's Specs, compute the implement grant fo
 worker through the [worker harness](../worker-harness/module.md), and audit and check its change.
 The runner prints its run result and saves it in the run's trace node,
 `<workspace folder>/runs/<run-id>/result.json`. The command exits 0 for `ok`, 1 for `blocked` or
-`failed`, and 2 for a malformed command line, which starts nothing.
+`failed`, and 1 also when the run could not be recorded or its result not saved, whatever the work
+did ([When records cannot be written](runner.md#when-records-cannot-be-written)), and 2 for a
+malformed command line, which starts nothing.
 
 ### Waiting for a busy workspace
 
@@ -371,7 +373,10 @@ Two parts that do not depend on Execution reach it, each through an
 - **An idle check**, for Distribution, the one integration Execution's
   [part registration](../glossary.json#concept.part-registration) names: whether any run of the
   project holds its run lock when asked, naming each, so that the installer refuses to replace the
-  code under a run it finds running. It keeps no run from starting afterwards
+  code under a run it finds running. It reads the run locks of the primary worktree's `.concorde`,
+  where every bound run keeps them, and of the `.concorde` of every other worktree Git lists, where
+  an unbound run started there keeps them, since every worktree runs the primary worktree's one
+  Framework copy. It keeps no run from starting afterwards
   ([Distribution](../distribution/requirements.md#req.distribution.idle-install)).
 
 ## How it is built

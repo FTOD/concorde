@@ -640,7 +640,7 @@ This illustrates [status derived from history](requirements.md#req.issues.status
 
 ### scenario.issues.store-corrupted-record — A record whose report no longer matches its digest is refused
 
-- GIVEN a record file whose report text was edited after it was accepted, so the report's `id` no longer matches its content
+- GIVEN a committed record whose report text was edited after it was accepted and the edit committed, so the report's `id` no longer matches its content
 - WHEN the store reads that Issue
 - THEN it refuses with `invalid_issue`, naming the Issue and saying the digest differs from the content
 - BUT it leaves the file as it found it

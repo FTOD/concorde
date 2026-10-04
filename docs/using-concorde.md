@@ -732,7 +732,11 @@ it tried, the options it sees, and the specific reason it could not handle the e
 errors it received stay underneath as `causes`, unchanged. Reading from the top down, you see the
 Operation's link, then the worker run's, the worker's own report, the failing check with the end of
 its log, down to where the error started. Standard error shows the same chain as indented text,
-and every other `concorde` command refuses with `{"error": <link>}` in the same shape.
+and every other `concorde` command refuses with `{"error": <link>}` in the same shape, except Spec
+tooling's deterministic commands, such as `spec-validation`, `registry` and `grant`, and
+Distribution's `build` and `protocol-manifest`: these print Spec core's result envelope, whose
+`error` is Spec tooling's own error record (`code`, `message`, `reason`, `location`, `remediation`,
+`causes`) rather than a link.
 
 When the main agent needs you to decide, it adds its own link on top instead of summarizing:
 

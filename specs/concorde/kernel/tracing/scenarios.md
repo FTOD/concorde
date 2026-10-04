@@ -26,6 +26,7 @@ and the command are defined in the [contracts](contracts.md).
 - GIVEN a run whose `trace.json` says `running` and whose worker run says `running`, and no process holding its [run lock](../../glossary.json#concept.run-lock)
 - WHEN `concorde trace show` shows it
 - THEN the run and its worker run are shown `lost`
+- AND the worker run shown by its own identity is shown `lost` too
 
 ### scenario.tracing.list — Current tasks, history and unbound runs are listed
 
@@ -66,6 +67,7 @@ and the command are defined in the [contracts](contracts.md).
 - AND the year-old folder keeps its [decision log](../../glossary.json#concept.decision-log) and [trace nodes](../../glossary.json#concept.trace-node), and the folder closed two days ago keeps its transcript
 - AND with `--dry-run` it prints the same and removes nothing
 - AND with a configuration whose `history_days` is 30 it also removes the year-old history folder
+- AND a folder the operating system does not let it remove wholly is printed with the error among the failed paths, keeps its `trace.json`, and is removed by a later prune
 
 ## Locks
 

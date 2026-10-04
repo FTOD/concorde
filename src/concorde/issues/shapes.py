@@ -68,7 +68,12 @@ PROVENANCE = obj(
         "head": NULLABLE_STRING,
     }
 )
-RECEIPT = obj({"issue_id": ISSUE_ID, "report_id": DIGEST, "path": PATH})
+# A receipt names the record file of its Issue, in either folder (contract.issues.receipt).
+RECORD_PATH = {
+    **STRING,
+    "pattern": r"^\.concorde/issues/(closed/)?I-[0-9a-f]{32}\.md$",
+}
+RECEIPT = obj({"issue_id": ISSUE_ID, "report_id": DIGEST, "path": RECORD_PATH})
 OBSERVATION = obj(
     {"id": DIGEST, "created_at": STRING, "report": STORED_REPORT, "source": PROVENANCE}
 )

@@ -42,10 +42,13 @@ WORKTREES = ".claude/worktrees"
 PREFIX = "unbound-"
 
 
-def _git(cwd: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
+def _git(
+    cwd: Path, *arguments: str, given: str | None = None
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [*GIT, *arguments],
         cwd=cwd,
+        input=given,
         capture_output=True,
         text=True,
         check=False,
@@ -89,24 +92,73 @@ class Checkout:
         for path in reversed(self.submodules):
             problems += _remove(self.origin / path, self.path / path)
         problems += _remove(self.origin, self.path)
-        shutil.rmtree(self.path, ignore_errors=True)
+        if os.path.lexists(self.path) and not problems:
+            shutil.rmtree(self.path, ignore_errors=True)
+            if os.path.lexists(self.path):
+                problems.append(
+                    evidence(
+                        "checkout-not-removed",
+                        self.path.as_posix(),
+                        f"Git removed the checkout, but {self.path} could not be deleted: "
+                        f"{_leftover(self.path)}; remove it by hand",
+                    )
+                )
         return problems
 
 
+def _leftover(path: Path) -> str:
+    """What is left at ``path``, for the evidence of a removal that did not finish."""
+    try:
+        names = sorted(os.listdir(path))
+    except NotADirectoryError:
+        return "a file is left there"
+    except OSError as error:
+        return f"it is left and cannot be listed ({error})"
+    shown = ", ".join(names[:10]) + (", …" if len(names) > 10 else "")
+    return f"the directory is left with {len(names)} entries ({shown or 'none'})"
+
+
 def _remove(repository: Path, path: Path) -> list[dict]:
+    """Remove the linked checkout ``path`` of ``repository``; evidence of what Git refused and
+    of whatever the direct removal then left."""
     removed = _git(repository, "worktree", "remove", "--force", path.as_posix())
-    if removed.returncode == 0:
+    if removed.returncode == 0 and not os.path.lexists(path):
         return []
     # A checkout Git no longer knows, or cannot remove, goes directly; pruning then drops the
     # administrative entry of every worktree whose directory is gone.
     shutil.rmtree(path, ignore_errors=True)
-    _git(repository, "worktree", "prune")
+    pruned = _git(repository, "worktree", "prune")
+    said = (
+        f"git worktree remove --force in {repository} exited {removed.returncode}: "
+        f"{_said(removed)}"
+        if removed.returncode != 0
+        else f"git worktree remove --force in {repository} left {path} behind"
+    )
+    outcome = []
+    if os.path.lexists(path):
+        outcome.append(f"{_leftover(path)}, so it could not be deleted directly")
+    else:
+        outcome.append("the directory was deleted directly")
+    if pruned.returncode != 0:
+        outcome.append(
+            f"git worktree prune exited {pruned.returncode}: {_said(pruned)}, so the "
+            "worktree list may still name it"
+        )
+    else:
+        outcome.append("the worktree list was pruned")
+    left = os.path.lexists(path) or pruned.returncode != 0
     return [
         evidence(
             "checkout-not-removed",
             path.as_posix(),
-            f"git worktree remove --force in {repository} exited {removed.returncode}: "
-            f"{_said(removed)}; the directory was deleted and the worktree list pruned",
+            f"{said}; "
+            + "; ".join(outcome)
+            + (
+                f"; remove what is left with git worktree remove --force {path} and "
+                f"git worktree prune in {repository}"
+                if left
+                else ""
+            ),
         )
     ]
 
@@ -257,26 +309,53 @@ def _submodules(checkout: Checkout) -> None:
                 )
             )
             continue
+        # Listed at once, so that the checkout's removal takes it along whatever happens next.
         checkout.submodules.append(path)
         steps = []
         if (
             _git(source, "config", "--bool", "core.sparseCheckout").stdout.strip()
             == "true"
         ):
-            patterns = _git(source, "sparse-checkout", "list").stdout.split()
-            steps.append(("sparse-checkout", "set", "--no-cone", *patterns))
-        steps.append(("read-tree", "-mu", "HEAD"))
-        for step in steps:
-            done = _git(target, *step)
+            # The origin's patterns line by line, a pattern holding spaces included, in its own
+            # mode: in cone mode git lists the directories it keeps, which only cone mode reads
+            # back as the same set.
+            cone = (
+                _git(
+                    source, "config", "--bool", "core.sparseCheckoutCone"
+                ).stdout.strip()
+                == "true"
+            )
+            listed = _git(source, "sparse-checkout", "list")
+            patterns = [line for line in listed.stdout.splitlines() if line]
+            steps.append(
+                (
+                    (
+                        "sparse-checkout",
+                        "set",
+                        "--cone" if cone else "--no-cone",
+                        "--stdin",
+                    ),
+                    "".join(f"{pattern}\n" for pattern in patterns),
+                )
+            )
+        steps.append((("read-tree", "-mu", "HEAD"), None))
+        for step, given in steps:
+            done = _git(target, *step, given=given)
             if done.returncode != 0:
+                # A submodule Git cannot check out stays empty, as in a fresh clone: nothing
+                # of a partial checkout is left for the steps to read.
+                removal = _remove(source, target)
+                checkout.submodules.remove(path)
+                target.mkdir(parents=True, exist_ok=True)
                 checkout.evidence.append(
                     evidence(
                         "submodule-absent",
                         path,
                         f"git {' '.join(step[:2])} in the checkout of {path} exited "
-                        f"{done.returncode}: {_said(done)}; the submodule may be incomplete",
+                        f"{done.returncode}: {_said(done)}; the checkout leaves it empty",
                     )
                 )
+                checkout.evidence.extend(removal)
                 break
         else:
             checkout.evidence.append(
@@ -285,14 +364,17 @@ def _submodules(checkout: Checkout) -> None:
 
 
 def _environments(checkout: Checkout, environments) -> None:
-    """Link each relative runtime path the origin has and Git ignores into the checkout."""
+    """Link each relative runtime path the origin has and Git ignores into the checkout,
+    creating the directories leading to it that the checkout lacks; evidence of each such path
+    not linked."""
+    root = Path(os.path.realpath(checkout.path))
     for entry in environments:
         if not isinstance(entry, str) or not entry.strip() or os.path.isabs(entry):
             continue
         relative = entry.strip().strip("/")
         source = checkout.origin / relative
         target = checkout.path / relative
-        if not source.exists() or os.path.lexists(target) or not target.parent.is_dir():
+        if not source.exists():
             continue
         # The link does not exist yet, so a directory is named as one for ``dir/`` patterns.
         asked = relative + "/" if source.is_dir() else relative
@@ -306,6 +388,32 @@ def _environments(checkout: Checkout, environments) -> None:
                 )
             )
             continue
+        if os.path.lexists(target):
+            checkout.evidence.append(
+                evidence(
+                    "environment-not-linked",
+                    relative,
+                    f"the checkout already holds {relative}, so {source} is not linked "
+                    "over it",
+                )
+            )
+            continue
+        # The directories leading to it are created inside the checkout only, never through a
+        # link into the origin.
+        existing = target.parent
+        while not existing.exists():
+            existing = existing.parent
+        if not Path(os.path.realpath(existing)).is_relative_to(root):
+            checkout.evidence.append(
+                evidence(
+                    "environment-not-linked",
+                    relative,
+                    f"{relative} lies below {existing}, which leads out of the checkout, so "
+                    f"{source} is not linked",
+                )
+            )
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
         target.symlink_to(source, target_is_directory=source.is_dir())
         checkout.links.append(target)
         checkout.evidence.append(

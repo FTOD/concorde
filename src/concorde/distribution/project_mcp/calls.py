@@ -84,6 +84,19 @@ def toplevel(folder: Path) -> Path | None:
     return Path(found.stdout.strip()) if found.returncode == 0 else None
 
 
+def printed(stdout, stderr, keep: int = 2000) -> str:
+    """The end of what a call's process printed on each stream, for a ``call_failed`` link; a
+    stream a timeout cut off may come as bytes."""
+    parts = []
+    for stream, value in (("standard error", stderr), ("standard output", stdout)):
+        if isinstance(value, bytes):
+            value = value.decode("utf-8", "replace")
+        value = (value or "").strip()
+        if value:
+            parts.append(f"on {stream}: {value[-keep:]}")
+    return "; ".join(parts) or "(no output)"
+
+
 def last_answer(text: str) -> dict | None:
     """The last line of a call's output that is a JSON object with ``value``, ``error`` or
     ``reroute``."""
@@ -296,11 +309,12 @@ class Calls:
                 timeout=limit,
                 check=False,
             )
-        except subprocess.TimeoutExpired:
+        except subprocess.TimeoutExpired as error:
             raise self.failed(
                 name,
                 argv,
-                f"gave no answer within {limit:g} seconds and was stopped",
+                f"gave no answer within {limit:g} seconds and was stopped; it printed "
+                f"{printed(error.stdout, error.stderr)}",
                 worktree,
             ) from None
         except OSError as error:
@@ -309,11 +323,11 @@ class Calls:
             ) from None
         reply = last_answer(done.stdout)
         if reply is None:
-            output = (done.stderr or done.stdout).strip()[-2000:] or "(no output)"
             raise self.failed(
                 name,
                 argv,
-                f"exited with status {done.returncode} and printed no answer: {output}",
+                f"exited with status {done.returncode} and printed no answer: "
+                f"{printed(done.stdout, done.stderr)}",
                 worktree,
             )
         return reply
@@ -363,14 +377,14 @@ class Calls:
             process.wait()
             if reply is None:
                 try:
-                    said = messages.read_text(errors="replace").strip()[-2000:]
+                    said = messages.read_text(errors="replace")
                 except OSError:
                     said = ""
                 raise self.failed(
                     name,
                     argv,
                     f"exited with status {process.returncode} and printed no answer: "
-                    f"{said or '(no output)'}",
+                    f"{printed(text, said)}",
                     worktree,
                 )
             return reply

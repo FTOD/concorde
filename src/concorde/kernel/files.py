@@ -13,12 +13,13 @@ writer of its files by holding the lock its records require
 from __future__ import annotations
 
 import os
+import re
 import tempfile
 from pathlib import Path
 from typing import Callable
 
 from .refusal import KernelError
-from .schema import checked_path, digest
+from .schema import DIGEST_PATTERN, checked_path, digest
 
 
 def _bytes_of(root: Path, relative: str) -> bytes | None:
@@ -102,7 +103,7 @@ def _checked(
             )
         before = item["before_digest"]
         if before is not None and not (
-            isinstance(before, str) and before.startswith("sha256:")
+            isinstance(before, str) and re.fullmatch(DIGEST_PATTERN[1:-1], before)
         ):
             raise KernelError(
                 "invalid_proposal",
@@ -139,7 +140,9 @@ def apply_files(
     """Apply the file transaction ``changes`` below ``root``; the written paths in order.
 
     ``allowed`` are the paths the caller allows; ``verify`` is the final check, run after the last
-    write, whose own exception is raised unchanged once every file was restored.
+    write, whose own exception is raised unchanged once every file was restored. An interruption
+    the process observes, such as ``KeyboardInterrupt`` or ``SystemExit``, restores the same way
+    as any other failure.
     """
     root = Path(root)
     backups = _checked(root, changes, allowed)
@@ -160,7 +163,7 @@ def apply_files(
         current = None
         if verify is not None:
             verify()
-    except Exception as error:
+    except BaseException as error:
         refused = _restore(root, written, backups)
         if refused:
             raise KernelError(

@@ -13,6 +13,7 @@ digest also covers the selected Modules and the tests it selected.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import math
@@ -27,20 +28,22 @@ from ...kernel.schema import checked_path, decode, register, safe_path
 from ...kernel.tracing.kinds import NodeKind, register as register_kinds
 from ...kernel.tracing import layout
 from ...kernel.tracing.layout import primary_worktree
-from ...kernel.tracing.node import Node
+from ...kernel.tracing.node import Node, TraceError
 from .check_executor import CHECK_POLICY, CheckSandboxError, execute_check
 
-# contract.checks.check-trace, version 1: the content of one check's trace node.
+# contract.checks.check-trace, version 2: the content of one check's trace node.
 CHECK_TRACE = "concorde-check-trace"
 register(
     CHECK_TRACE,
-    1,
+    2,
     {
         "type": "object",
         "additionalProperties": False,
         "required": ["status", "exit_code", "source_digest", "argv", "selected_tests"],
         "properties": {
-            "status": {"enum": ["passed", "failed", "timeout", "refused"]},
+            "status": {
+                "enum": ["passed", "failed", "timeout", "refused", "interrupted"]
+            },
             "exit_code": {"anyOf": [{"type": "null"}, {"type": "integer"}]},
             "source_digest": {"type": "string", "minLength": 1},
             "argv": {"type": "array", "items": {"type": "string"}},
@@ -140,8 +143,10 @@ def _file_digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def _inputs(root: Path, check: dict) -> list[tuple[str, str]]:
-    digests = []
+def _present_inputs(root: Path, check: dict) -> list[tuple[str, Path]]:
+    """The check's declared inputs as ``(relative, path)``; ``check_input_missing`` for one that
+    is missing, a symbolic link or neither a regular file nor a directory."""
+    found = []
     for relative in check.get("inputs", []):
         path = root / relative
         if path.is_symlink() or not path.exists():
@@ -152,6 +157,21 @@ def _inputs(root: Path, check: dict) -> list[tuple[str, str]]:
                 path=relative,
                 subject=check["id"],
             )
+        if not path.is_dir() and not path.is_file():
+            raise CheckError(
+                f"input {relative} of check {check['id']} ({check['module']}) is not a "
+                "regular file",
+                "check_input_missing",
+                path=relative,
+                subject=check["id"],
+            )
+        found.append((relative, path))
+    return found
+
+
+def _inputs(root: Path, check: dict) -> list[tuple[str, str]]:
+    digests = []
+    for relative, path in _present_inputs(root, check):
         if path.is_dir():
             for item in sorted(path.rglob("*")):
                 if "__pycache__" in item.parts or item.is_symlink():
@@ -160,16 +180,8 @@ def _inputs(root: Path, check: dict) -> list[tuple[str, str]]:
                     digests.append(
                         (item.relative_to(root).as_posix(), _file_digest(item))
                     )
-        elif path.is_file():
-            digests.append((relative, _file_digest(path)))
         else:
-            raise CheckError(
-                f"input {relative} of check {check['id']} ({check['module']}) is not a "
-                "regular file",
-                "check_input_missing",
-                path=relative,
-                subject=check["id"],
-            )
+            digests.append((relative, _file_digest(path)))
     return digests
 
 
@@ -425,7 +437,7 @@ def measured_digest(
     revision = check_revision(
         root, checks, check["module"], (measured or {}).get(check["module"], ())
     )
-    if TESTS not in (check.get("argv") or []):
+    if not selective(check):
         return revision
     tests = list(tests)
     files = sorted({test.split("::", 1)[0] for test in tests})
@@ -441,9 +453,16 @@ def measured_digest(
     )
 
 
-def _argv(check: dict, python, tests=()) -> list[str]:
-    """The check's command; ``python`` gives the project interpreter for ``{python}`` and
-    ``tests`` the test identities ``{tests}`` stands for."""
+def selective(check: dict) -> bool:
+    """Whether ``check`` is selective, its ``argv`` a list holding ``{tests}``; an ``argv`` of
+    another type makes no check selective, and running it is refused with ``invalid_check``."""
+    argv = check.get("argv")
+    return isinstance(argv, list) and TESTS in argv
+
+
+def _valid_argv(check: dict) -> list[str]:
+    """The check's ``argv`` as declared; ``invalid_check`` unless it is a nonempty list of
+    nonempty strings."""
     argv = check.get("argv")
     if (
         not isinstance(argv, list)
@@ -455,8 +474,14 @@ def _argv(check: dict, python, tests=()) -> list[str]:
             "invalid_check",
             subject=check["id"],
         )
+    return argv
+
+
+def _argv(check: dict, python, tests=()) -> list[str]:
+    """The check's command; ``python`` gives the project interpreter for ``{python}`` and
+    ``tests`` the test identities ``{tests}`` stands for."""
     result: list[str] = []
-    for item in argv:
+    for item in _valid_argv(check):
         if item == "{python}":
             result.append(python())
         elif item == TESTS:
@@ -477,7 +502,7 @@ def _timeout(check: dict) -> float:
     return float(value)
 
 
-ENV_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+ENV_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 # Transport configuration can be required by an enclosing sandbox. Keep this list exact:
 # runtime injection variables (e.g. PYTHONPATH, NODE_OPTIONS) do not belong to a check.
 TRANSPORT_ENV = (
@@ -510,7 +535,7 @@ def environment(check: dict | None = None) -> dict[str, str]:
     own = (check or {}).get("env", {})
     if not isinstance(own, dict) or any(
         not isinstance(key, str)
-        or not ENV_NAME.match(key)
+        or not ENV_NAME.fullmatch(key)
         or not isinstance(value, str)
         for key, value in own.items()
     ):
@@ -549,9 +574,10 @@ def run_checks(
     tests = list(tests or ())
     # Each Module's files once, since every check is measured before and after it runs.
     measured = {module: tuple(files) for module, files in (measured or {}).items()}
-    trace_directory = Path(trace_directory)
-    trace_directory.mkdir(parents=True, exist_ok=True)
-    results = []
+    # A result names its log by an absolute path, whatever the caller passed.
+    trace_directory = Path(os.path.abspath(trace_directory))
+    # Every kept check is judged, and its declared inputs found, before any command runs.
+    kept = []
     for check in checks:
         when = check.get("when", "always")
         if when not in WHEN:
@@ -563,8 +589,8 @@ def run_checks(
             )
         if when == "readiness" and stage != "readiness":
             continue
-        selective = TESTS in (check.get("argv") or [])
-        if selective:
+        _valid_argv(check)
+        if selective(check):
             if kinds == "module" or not tests:
                 continue
         elif kinds == "selective" or check["module"] not in selected:
@@ -574,31 +600,63 @@ def run_checks(
             lambda check=check: project_python(worktree, python, check["id"]),
             tests,
         )
-        timeout = _timeout(check)
+        kept.append((check, argv, _timeout(check), environment(check)))
+    for check, *_ in kept:
+        _present_inputs(worktree, check)
+    trace_directory.mkdir(parents=True, exist_ok=True)
+    results = []
+    for check, argv, timeout, env in kept:
 
         def measure(check=check, checks=checks):
             return measured_digest(
                 worktree, check, selected, checks=checks, measured=measured, tests=tests
             )
 
-        before = measure()
-        folder = layout.check_folder(trace_directory, check["id"])
-        log = folder / "output.log"
-        chosen = list(tests) if selective else []
-        node = Node(
-            folder,
-            check["id"],
-            "check",
-            content_type=CHECK_TRACE,
-            metadata={"check": check["id"], "module": check["module"]},
-            content=_check_content("passed", None, before, argv, chosen),
-        )
-        node.keep("output", "output.log")
-        node.start()
-        try:
-            outcome = execute_check(
-                worktree, argv, timeout=timeout, environment=environment(check)
+        results.append(
+            _run_one(
+                worktree,
+                check,
+                argv,
+                timeout,
+                env,
+                trace_directory,
+                measure,
+                list(tests) if selective(check) else [],
             )
+        )
+    return results
+
+
+def _run_one(
+    worktree: Path,
+    check: dict,
+    argv: list[str],
+    timeout: float,
+    env: dict[str, str],
+    trace_directory: Path,
+    measure,
+    chosen: list[str],
+) -> dict:
+    """Run one kept check in its trace node and return its result. ``measure`` gives its
+    measured digest, reading the checks files again when called with ``checks=None``;
+    ``chosen`` are the tests a selective check selected."""
+    before = measure()
+    folder = layout.check_folder(trace_directory, check["id"])
+    log = folder / "output.log"
+    node = Node(
+        folder,
+        check["id"],
+        "check",
+        content_type=CHECK_TRACE,
+        metadata={"check": check["id"], "module": check["module"]},
+        content=_check_content("passed", None, before, argv, chosen),
+    )
+    node.keep("output", "output.log")
+    node.start()
+    logged = False
+    try:
+        try:
+            outcome = execute_check(worktree, argv, timeout=timeout, environment=env)
         except CheckSandboxError as error:
             log.write_bytes(
                 (error.stdout or b"")
@@ -618,21 +676,26 @@ def run_checks(
             )
             raise refusal from error
         header = (
-            ("selected tests: " + " ".join(tests) + "\n\n").encode()
-            if selective
-            else b""
+            ("selected tests: " + " ".join(chosen) + "\n\n").encode() if chosen else b""
         )
         log.write_bytes(header + outcome.stdout + b"\n" + outcome.stderr)
+        logged = True
         status = (
             "timeout"
             if outcome.timed_out
             else ("passed" if outcome.returncode == 0 else "failed")
         )
         exit_code = -1 if outcome.timed_out else outcome.returncode
-        # The checks files are read again: a definition changed during the run is stale too.
-        if measure(checks=None) != before:
+        # The checks files are read again: a definition changed during the run is stale too,
+        # and so is a measured file or input that is gone.
+        try:
+            changed = measure(checks=None) != before
+            why = "changed while it ran"
+        except (OSError, CheckError) as error:
+            changed, why = True, f"could not be measured again after the run: {error}"
+        if changed:
             stale = CheckError(
-                f"the input of check {check['id']} changed while it ran",
+                f"the input of check {check['id']} {why}",
                 "stale_evidence",
             )
             node.finish(
@@ -656,8 +719,22 @@ def run_checks(
             outcome=status,
             content=_check_content(status, exit_code, before, argv, chosen),
         )
-        results.append(result)
-    return results
+        return result
+    except BaseException as error:
+        # A cancellation, an interrupt or an unexpected error ended the call before the node
+        # did: it ends with the output drained so far, and the error goes on.
+        if node.record["status"] == "running":
+            stdout, stderr = getattr(error, "check_output", (b"", b""))
+            with contextlib.suppress(OSError, TraceError, KernelError):
+                if not logged:
+                    log.write_bytes(stdout + b"\n" + stderr)
+                node.finish(
+                    "failed",
+                    outcome="interrupted",
+                    error=service_error(error) if isinstance(error, OSError) else None,
+                    content=_check_content("interrupted", None, before, argv, chosen),
+                )
+        raise
 
 
 def _check_content(status, exit_code, digest, argv, tests) -> dict:
@@ -680,7 +757,11 @@ def check_error(result: dict) -> dict:
     except OSError as error:
         tail = f"(the log cannot be read: {error})"
     timeout = result["status"] == "timeout"
-    outcome = "timed out" if timeout else f"failed with exit code {result['exit_code']}"
+    outcome = (
+        f"timed out (exit code {result['exit_code']})"
+        if timeout
+        else f"failed with exit code {result['exit_code']}"
+    )
     return link(
         "check",
         result["check_id"],
@@ -748,6 +829,7 @@ __all__ = [
     "measured_digest",
     "project_python",
     "run_checks",
+    "selective",
     "service_error",
     "validate_checks",
 ]

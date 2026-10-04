@@ -900,7 +900,11 @@ refusal, for what it could not keep or remove.
 marks it Concorde unvalidated after an update until a validation passes. Tasks relies on that mark,
 `.concorde/update.json` of the primary worktree, to tell that a merge must also run
 `concorde spec-validation` where the spec part is installed, whatever checks it was given, so that
-nothing merges before an update is validated.
+nothing merges before an update is validated. Tasks also keeps the coordination part's
+[part registration](../../glossary.json#concept.part-registration),
+`src/concorde/coordination/registration.json`, from which Distribution installs the part, and
+relies on it meeting Distribution's
+[registration contract](../../distribution/contracts.md#contract.distribution.part-registration).
 
 <a id="uses-execution"></a>
 

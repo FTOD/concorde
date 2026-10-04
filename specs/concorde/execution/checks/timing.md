@@ -31,7 +31,9 @@ A finished trace handed to a sink is `{schema_version: 1, trace_id, complete, om
 trace keeps at most 20,000 spans, open ones included, so an open span holds its place until it
 finishes; a span marked while the trace is full is not stored. `omitted` counts the spans not
 stored together with the spans still open when the trace is handed to its sink, which are stored
-with status `incomplete`, and `complete` is false whenever `omitted` is not zero.
+with status `incomplete`, and `complete` is false whenever `omitted` is not zero. The sink receives
+a copy of the trace, which is then sealed: a span that finishes or starts afterwards changes nothing
+handed over and is not recorded.
 
 ## Library entry points
 

@@ -70,6 +70,23 @@ class TimingTests(unittest.TestCase):
             {},
         )
 
+    @verifies("scenario.checks.timing-spans")
+    def test_a_span_finished_after_the_flush_changes_nothing_handed_over(self):
+        handed = []
+        trace = Trace(sink=handed.append)
+        with tracing(trace):
+            late = Span("late")
+        trace.flush()
+        late.finish()
+        Span("later").finish()
+        [record] = handed[0]["spans"]
+        self.assertEqual(
+            ("late", None, "incomplete"),
+            (record["name"], record["duration_ns"], record["status"]),
+        )
+        self.assertEqual(1, handed[0]["omitted"])
+        self.assertEqual([None], [item["duration_ns"] for item in trace.records])
+
     @verifies("scenario.checks.timing-summary")
     def test_overlap_and_missing_are_counted_per_process(self):
         spans = [
