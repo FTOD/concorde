@@ -212,8 +212,9 @@ under the same task type with every writable level withheld, as the Protocol let
 less than a type assigns, so it reads the code and the Specs its grant names and writes nothing. As for `specify`, the code_to_spec brief
 states the rules for writing Spec documents and ends with the project's copy of Spec writing
 guidelines, since no grant shows the [Protocol copy](../../glossary.json#concept.protocol-copy).
-That guide includes the overview, Required format, Writing guidance and templates: both
-machine-checkable structure and syntax and content requiring reader and editor judgment. Structural
+That guide includes the overview, Required format, Writing guidance, Sentence style, Evaluating a
+Spec and templates: both machine-checkable structure and syntax and content requiring reader and
+editor judgment. Structural
 validation does not establish semantic sufficiency. Both workers get only Read, Glob and Grep, and
 the code_to_spec worker also Edit and Write; neither gets Bash, so neither can run the code it
 describes. What the code does is taken from reading it.

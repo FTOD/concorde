@@ -183,9 +183,9 @@ each Module whose [Spec context](../../glossary.json#concept.spec-context) it co
 No grant shows the [Protocol copy](../../glossary.json#concept.protocol-copy), so the brief
 states the rules for writing Spec documents and ends with the project's own copy of Spec writing
 guidelines, `.concorde/protocol/kinds/module.md`, as material: the overview, Required format,
-Writing guidance and templates. The two parts cover machine-checkable structure and syntax and
-content requiring reader and editor judgment; structural validation does not establish semantic
-sufficiency. The worker runs no [configured checks](../../glossary.json#concept.configured-check)
+Writing guidance, Sentence style, Evaluating a Spec and templates. Together they cover
+machine-checkable structure and syntax and content requiring reader and editor judgment; structural
+validation does not establish semantic sufficiency. The worker runs no [configured checks](../../glossary.json#concept.configured-check)
 and has only Read, Glob, Grep, Edit and Write — no Bash, web tools or MCP server — and its grant has
 no writable implementation path.
 
