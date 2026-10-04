@@ -165,7 +165,8 @@ names the scenario and the report files found and holds one entry per check, wit
 
 - `concorde_untouched`: the Concorde clone is still at the fault commit with no change, and the
   framework copy's sources and the installed files outside `.concorde/` still have the digests of
-  their baselines;
+  their baselines; an install receipt that cannot be read as the list of installed files fails it,
+  since the session must leave the receipt as installed too;
 - `reports_checked`: there is at least one report under `.concorde/runs/defects/`, and each passes
   the project's `concorde issues report --check`;
 - `reports_accepted`: each report is recorded by a throwaway clone of the scenario's Concorde, in a
@@ -178,7 +179,8 @@ names the scenario and the report files found and holds one entry per check, wit
 
 Each command prints one JSON object: `evaluate` the evaluation, and `run` the session's record
 beside it. Both exit 0 whether or not the evaluation passes; a command that cannot do its work
-prints an `error` with its code and detail and exits 1.
+prints an `error` with its code and detail and exits 1, such as `command_failed` when the project's
+installed `concorde` cannot be started to check a report.
 
 ## Why it is built this way
 

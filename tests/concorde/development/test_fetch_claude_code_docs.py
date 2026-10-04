@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import http.client
 import importlib.util
 import io
 import json
@@ -145,6 +146,74 @@ class FetchClaudeCodeDocsTests(unittest.TestCase):
                 self.assertIn("references/claude-code is unchanged", stderr)
                 self.assertEqual(PREVIOUS, snapshot(self.target))
                 self.assert_no_leftovers()
+
+    @verifies("scenario.concorde.docs-refresh-failed-unchanged")
+    def test_a_body_cut_short_is_reported_with_every_other_failed_page(self):
+        overview, hooks = PAGES
+
+        class Response:
+            def __init__(self, url):
+                self.url = url
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+            def read(self):
+                if self.url == overview:
+                    raise http.client.IncompleteRead(b"# Ov", 20)
+                return INDEX.encode()
+
+        def urlopen(request, timeout):
+            if request.full_url == hooks:
+                raise ConnectionResetError(104, "Connection reset by peer")
+            return Response(request.full_url)
+
+        stderr = io.StringIO()
+        with (
+            patch.object(self.fetcher.urllib.request, "urlopen", urlopen),
+            contextlib.redirect_stderr(stderr),
+        ):
+            status = self.fetcher.main([])
+        self.assertEqual(1, status)
+        self.assertIn("2 of 2 pages could not be fetched", stderr.getvalue())
+        self.assertIn(f"{overview}: IncompleteRead", stderr.getvalue())
+        self.assertIn(f"{hooks}: [Errno 104] Connection reset", stderr.getvalue())
+        self.assertEqual(PREVIOUS, snapshot(self.target))
+        self.assert_no_leftovers()
+
+    def test_an_absolute_page_name_is_refused_before_any_write(self):
+        index = INDEX + "- [Escape](https://code.claude.com/docs/en//tmp/x.md): no\n"
+        stderr = io.StringIO()
+        with (
+            patch.object(self.fetcher, "fetch", lambda url: index),
+            contextlib.redirect_stderr(stderr),
+        ):
+            status = self.fetcher.main([])
+        self.assertEqual(1, status)
+        self.assertIn("unsafe page path: /tmp/x.md", stderr.getvalue())
+        self.assertEqual(PREVIOUS, snapshot(self.target))
+        self.assert_no_leftovers()
+
+    def test_a_failed_restoration_keeps_the_previous_snapshot_and_says_where(self):
+        rename = Path.rename
+
+        def failing_rename(path, destination):
+            if Path(destination) == self.target:
+                raise OSError(16, "Device or resource busy")
+            return rename(path, destination)
+
+        with patch.object(Path, "rename", failing_rename):
+            status, stderr = self.run_fetcher(PAGES)
+        self.assertEqual(1, status)
+        self.assertNotIn("is unchanged", stderr)
+        kept = [p for p in self.target.parent.iterdir() if p.name != "claude-code"]
+        self.assertEqual([".claude-code.old-"], [p.name[:17] for p in kept])
+        self.assertIn(f"it is kept at {kept[0]}, move it back", stderr)
+        self.assertEqual(PREVIOUS, snapshot(kept[0]))
+        self.assertFalse(self.target.exists())
 
 
 if __name__ == "__main__":

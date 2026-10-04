@@ -104,7 +104,8 @@ def digest(value: bytes | Any) -> str:
 
 
 def decode(text: str) -> Any:
-    """The JSON value of ``text``, refusing duplicate fields and non-JSON numeric constants."""
+    """The JSON value of ``text``, refusing duplicate fields, non-JSON numeric constants and
+    numbers too large for a finite float."""
 
     def pairs(items):
         result = {}
@@ -117,8 +118,16 @@ def decode(text: str) -> Any:
     def constant(value):
         raise ValueError(f"non-JSON numeric constant: {value}")
 
+    def number(value):
+        result = float(value)
+        if not math.isfinite(result):
+            raise ValueError(f"the number {value} exceeds the range of a finite number")
+        return result
+
     try:
-        return json.loads(text, object_pairs_hook=pairs, parse_constant=constant)
+        return json.loads(
+            text, object_pairs_hook=pairs, parse_constant=constant, parse_float=number
+        )
     except (ValueError, TypeError, RecursionError) as error:
         raise KernelError(
             "invalid_json", f"the text is no JSON value: {error}"
@@ -197,7 +206,7 @@ def _admit(schema: Any, root: Any, field: str, depth: int, contract: bool) -> No
             raise _refuse_schema(field, f"{key} must be a nonnegative integer")
     for key in ("minimum", "maximum"):
         if key in schema and (
-            type(schema[key]) not in (int, float) or not math.isfinite(schema[key])
+            type(schema[key]) not in (int, float) or not _finite(schema[key])
         ):
             raise _refuse_schema(field, f"{key} must be a finite number")
     for low, high in (
@@ -249,10 +258,10 @@ def _admit_reference(schema: dict, root: Any, field: str, contract: bool) -> Non
 # --- typed value registration --------------------------------------------------------------
 
 # type_id -> (schema_version, data schema). Owners fill it through ``register``.
-_TYPES: dict[str, tuple[int, dict]] = {}
+_TYPES: dict[str, tuple[int, dict | bool]] = {}
 
 
-def register(type_id: str, version: int, schema: dict) -> None:
+def register(type_id: str, version: int, schema: dict | bool) -> None:
     """Register ``type_id`` at ``version`` with the schema of its ``data``.
 
     Registering the same identity again with the same version and an equal schema changes nothing;
@@ -272,8 +281,6 @@ def register(type_id: str, version: int, schema: dict) -> None:
             f"the version of {type_id} must be a positive integer, not {version!r}",
             field="schema_version",
         )
-    if not isinstance(schema, dict):
-        raise KernelError("invalid_input", f"the schema of {type_id} must be an object")
     try:
         admit(schema)
     except KernelError as error:
@@ -285,7 +292,7 @@ def register(type_id: str, version: int, schema: dict) -> None:
         ) from None
     existing = _TYPES.get(type_id)
     if existing is not None:
-        if existing == (version, schema):
+        if existing[0] == version and _equal(existing[1], schema):
             return
         raise KernelError(
             "duplicate_type",
@@ -296,7 +303,7 @@ def register(type_id: str, version: int, schema: dict) -> None:
     _TYPES[type_id] = (version, copy.deepcopy(schema))
 
 
-def _registration(type_id: Any, field: str = "") -> tuple[int, dict]:
+def _registration(type_id: Any, field: str = "") -> tuple[int, dict | bool]:
     try:
         return _TYPES[type_id]
     except (KeyError, TypeError):
@@ -310,7 +317,7 @@ def type_version(type_id: str) -> int:
     return _registration(type_id)[0]
 
 
-def data_schema(type_id: str) -> dict:
+def data_schema(type_id: str) -> dict | bool:
     """A copy of the registered schema of the ``data`` of ``type_id``."""
     return copy.deepcopy(_registration(type_id)[1])
 
@@ -323,12 +330,28 @@ def typed_schema(type_id: str) -> dict:
 # --- checking ------------------------------------------------------------------------------
 
 
+def _finite(number: int | float) -> bool:
+    """Whether a JSON number is finite; an integer always is, however large."""
+    return type(number) is int or math.isfinite(number)
+
+
 def _equal(first: Any, second: Any) -> bool:
-    """JSON equality: numbers compare by value, and a boolean equals only a boolean."""
+    """JSON equality: numbers compare by value, a boolean equals only a boolean, and arrays and
+    objects compare item by item and field by field under the same rule."""
     numbers = (int, float)
     if type(first) in numbers and type(second) in numbers:
         return first == second
-    return type(first) is type(second) and first == second
+    if type(first) is not type(second):
+        return False
+    if isinstance(first, list):
+        return len(first) == len(second) and all(
+            _equal(one, other) for one, other in zip(first, second)
+        )
+    if isinstance(first, dict):
+        return first.keys() == second.keys() and all(
+            _equal(first[key], second[key]) for key in first
+        )
+    return first == second
 
 
 def _invalid(field: str, message: str) -> KernelError:
@@ -416,9 +439,11 @@ def _check(value: Any, schema: Any, field: str, root: Any, depth: int) -> None:
             raise _invalid(field, f"at least {schema['minItems']} items are required")
         if len(value) > schema.get("maxItems", len(value)):
             raise _invalid(field, f"at most {schema['maxItems']} items are admitted")
-        if schema.get("uniqueItems") and len(
-            {canonical(item) for item in value}
-        ) != len(value):
+        if schema.get("uniqueItems") and any(
+            _equal(item, other)
+            for index, item in enumerate(value)
+            for other in value[index + 1 :]
+        ):
             raise _invalid(field, "the items must be distinct")
         for index, item in enumerate(value):
             _check(
@@ -431,7 +456,12 @@ def _check(value: Any, schema: Any, field: str, root: Any, depth: int) -> None:
                         field, f"the artifacts' {key} values must be distinct"
                     )
     elif isinstance(value, str):
-        if schema.get("minLength") and not value.strip():
+        # minLength refuses a string of whitespace only; minLength 0 still admits "".
+        if (
+            "minLength" in schema
+            and not value.strip()
+            and (value or schema["minLength"])
+        ):
             raise _invalid(field, "the string must not be blank")
         if (
             not schema.get("minLength", 0)
@@ -446,7 +476,7 @@ def _check(value: Any, schema: Any, field: str, root: Any, depth: int) -> None:
         if schema.get("format") == "project-path":
             safe_path(value, field)
     elif type(value) in (int, float):
-        if not math.isfinite(value) or not schema.get(
+        if not _finite(value) or not schema.get(
             "minimum", value
         ) <= value <= schema.get("maximum", value):
             raise _invalid(field, f"the number {value!r} is outside its admitted range")
@@ -577,7 +607,16 @@ def artifact(root: Path, identifier: str, relative: str) -> dict:
         raise KernelError(
             "stale_reference", f"the artifact {relative} does not exist", field=relative
         )
-    return {"id": identifier, "path": relative, "digest": digest(path.read_bytes())}
+    try:
+        data = path.read_bytes()
+    except OSError as error:
+        raise KernelError(
+            "system_error",
+            f"the artifact {relative} cannot be read: {error}",
+            field=relative,
+            causes=[error],
+        ) from error
+    return {"id": identifier, "path": relative, "digest": digest(data)}
 
 
 def verify_artifacts(root: Path, value: Any, field: str = "") -> None:

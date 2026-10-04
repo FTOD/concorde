@@ -13,7 +13,10 @@ offers a consumer project.
 The pytest evidence plugin SHALL record each run's reason, scope, phase, attempt and input fingerprints in its JSON report.
 
 Each option has its own default: an omitted `--reason` records `manual`, an omitted `--scope` or
-`--phase` `unspecified` and an omitted `--attempt` `1`. The report is written only to the file
+`--phase` `unspecified` and an omitted `--attempt` `1`. `--reason` accepts `manual`, `local-edit`,
+`coherent-change`, `stable-final`, `changed-input`, `failure`, `independent` and `bootstrap`;
+`--scope` accepts `unspecified`, `targeted` and `full`; `--phase` accepts `unspecified`,
+`maintenance`, `tester` and `postcommit`; pytest refuses any other value with its usage message. The report is written only to the file
 `--json=PATH` names, for example
 `.venv/bin/python -m pytest tests/concorde/spec --scope=targeted --json=report.json`. It keeps
 discovery, queueing and execution times apart and never presents summed parallel test time as
@@ -34,9 +37,11 @@ The pytest evidence plugin SHALL record in the report's `fingerprint` a digest o
 The examined inputs are the files below pytest's root directory that Git tracks or would track
 under `src/`, `scripts/`, `tests/`, `prompts/`, `protocol/`, `specs/` and `.concorde/protocol/`,
 and the files `CLAUDE.md`, `concorde.json`, `pyproject.toml`, `uv.lock`, `.concorde/config.json`
-and `.concorde/specs.json`, each a regular file and not a symbolic link. No other file and no
-environment variable is an input, so `environment_complete` is always `false`. When Git cannot list
-the files or one of them cannot be read, `input_complete` is `false` and `input` is `null`.
+and `.concorde/specs.json`, each a regular file and not a symbolic link. A path Git lists that is
+no such file, such as a tracked file deleted from the working tree or a symbolic link, is no input:
+its absence from the inputs is what changes their digest. No other file and no environment variable
+is an input, so `environment_complete` is always `false`. When Git cannot list the files or one of
+them cannot be read, `input_complete` is `false` and `input` is `null`.
 
 Each digest of the fingerprint is the lowercase hexadecimal SHA-256 of the UTF-8 bytes of one JSON value, written with
 its object keys sorted, `", "` between items, `": "` between a key and its value, and every
@@ -68,17 +73,19 @@ held.
 
 ### req.concorde.test-prior-compare — A prior run is compared by its fingerprint
 
-When `--prior=PATH` names the JSON report of an earlier run, the pytest evidence plugin SHALL record as `same_declared_inputs` whether that report's fingerprint `digest` equals this run's.
+When `--prior=PATH` names the JSON report of an earlier run, the pytest evidence plugin SHALL record as `same_declared_inputs` whether that report's fingerprint `digest` equals this run's when this run's input is complete and its runtime facts are known, and `null` otherwise.
 
-`same_declared_inputs` is `null` without `--prior`, and also when this run's input is incomplete or
-its runtime facts are unknown, since equal digests would then prove nothing; when it is `true`, the
+`same_declared_inputs` is `null` without `--prior` too. Equal digests of an incomplete input or of
+unknown runtime facts would prove nothing, hence the `null`; when it is `true`, the
 terminal says so and that the environment is covered only in part.
 
-### req.concorde.test-counting — The totals count collected tests
+### req.concorde.test-counting — The totals count the tests that ran
 
-The pytest evidence plugin SHALL count in the report's `totals` one unit per collected test, a unit failing when any of its subtests fails.
+The pytest evidence plugin SHALL count in the report's `totals` one unit per collected test that ran, a unit failing when any of its subtests fails, beside the number of collected tests as `collected`.
 
-Subtests are not counted on their own, so the units sum to the collected count. pytest's own
+Subtests are not counted on their own, so the units sum to the collected count when every collected
+test ran. A run stopped early, by `-x` or a crashed xdist worker, has fewer units (`tests`) than
+`collected`: a test that never ran has no unit, since it has no times or outcome to report. pytest's own
 terminal line lists each failed subtest separately and counts its parent as passed, so its numbers
 may differ from the totals; the report's `counting_note` says so.
 
@@ -189,7 +196,11 @@ Every page is fetched before anything is written; the snapshot is written into a
 directory beside `references/claude-code/` and swapped in only once complete, and the temporary
 directories are removed either way. A file of the previous snapshot that the index no longer lists
 is therefore gone after a refresh. A refused refresh exits with status 1 and names on standard error
-every page it could not fetch, or the write that failed.
+every page it could not fetch, whether the request failed or its body was cut short, or the write
+that failed. An index listing a page whose name would lead outside the snapshot, an absolute name
+or one with a `..` component, is refused before any page is fetched. Only when the swap fails and
+moving the previous snapshot back fails as well is the directory left changed: the refusal then says
+so and names where the previous snapshot is kept, which is not removed.
 
 ### scenario.concorde.docs-refresh-replaces — A refresh replaces the snapshot whole
 

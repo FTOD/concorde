@@ -215,11 +215,14 @@ class RunContext:
     ) -> Stop:
         """Stop with ``status`` and this Operation's error link; ``causes`` are child errors.
 
-        ``evidence`` belongs to the error and is also host evidence of the run; ``host_evidence``
-        is host evidence of the run only.
+        The link's actor names the run and its workspace, or its origin and commit when
+        unbound, and its detail ends with the Modules the run works on. ``evidence`` belongs to
+        the error and is also host evidence of the run; ``host_evidence`` is host evidence of
+        the run only.
         """
         found = list(evidence or [])
         options = list(options)
+        modules = ", ".join(str(module) for module in self.modules) or "none"
         return Stop(
             status,
             summary,
@@ -228,7 +231,7 @@ class RunContext:
                 "operation" if self.kind == "operation" else "command",
                 self.actor,
                 code,
-                detail,
+                f"{detail} (Modules: {modules})",
                 reason=reason,
                 explanation=explanation,
                 evidence=found,

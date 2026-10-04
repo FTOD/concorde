@@ -117,9 +117,11 @@ The exit status is 2 for an unusable request (codes `usage`, `not_a_project` and
 The bookkeeping command SHALL NOT commit a record, or leave one a read shows, for a request it
 refuses.
 
-It writes none either, except that a write refused with `recovery_failed`, because the record it
-had published could not be put back, leaves that record uncommitted until the next recovery puts
-it back ([recovery](#req.issues.uncommitted-recovered)).
+It writes nothing of its own either, except that a write refused with `recovery_failed`, because
+the record it had published could not be put back, leaves that record uncommitted until the next
+recovery puts it back. The [recovery](#req.issues.uncommitted-recovered) a write runs before it
+checks its request, which puts back only what earlier writes published but did not commit, stays
+done whatever the request's outcome.
 
 ## Records
 
@@ -212,8 +214,9 @@ start from the most severe problems.
 The Issue store's reads SHALL return only the records the primary worktree's last commit holds,
 never a record file that is not committed or differs from its committed version.
 
-A record is visible exactly when its write is acknowledged, and a reader during a write, or after
-one that failed or was killed, sees the records as they were committed.
+A record is visible exactly when its write is committed, which is before it is acknowledged, and a
+reader during a write, or after one that failed or was killed, sees the records as they were
+committed.
 
 ### req.issues.uncommitted-recovered — Uncommitted records are put back before any write
 
@@ -297,8 +300,9 @@ return as well, which is no project check.
 
 ### req.issues.commit-alone — An Issue commit commits its record alone
 
-The Issue store SHALL commit each write as a commit of that record alone on the primary branch,
-with the path it left when the write moved it.
+The Issue store SHALL commit each report or disposition as a commit of that record alone on the
+primary branch, with the path it left when the write moved it, and an archive as one commit of the
+records it moves, with the paths they left, and only them.
 
 Other changes of the primary worktree, staged or not, stay as they were. A write whose commit Git
 refuses puts its record back and refuses, as the [store operations](interface.md#store-operations)

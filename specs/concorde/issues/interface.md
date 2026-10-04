@@ -199,7 +199,7 @@ version. Its revision is the SHA-256 digest of the file's bytes.
 These are library operations in `concorde.issues.store`. None launches a model. Each takes the
 `root` whose records it reads or writes; `project_root(path)` gives the primary worktree of the
 repository `path` lies in, refusing with `not_a_repository` outside one, and every write refuses
-any other root with `not_primary`. Reads take the committed records of `root`'s `HEAD` from Git
+any other root with `not_primary`, a directory inside the primary worktree among them. Reads take the committed records of `root`'s `HEAD` from Git
 (`git ls-tree` and `git cat-file`), never its files, refusing with `not_a_repository` when `root`
 lies in no repository; an unborn `HEAD` holds no records. A record's revision is the digest of
 its committed bytes. Writes run Git to commit the record they wrote and to put back uncommitted
@@ -238,7 +238,8 @@ The bookkeeping command reports a Kernel error as `invalid_issue`, and a `system
 
 | Operation | Behaviour |
 | --- | --- |
-| `report_issue(root, report, source, wait)` | Validates, then under the merge lock, after recovery: returns the existing receipt when the committed record already holds identical content for the same `(invocation_id, report_key)`, so that receipt names a committed report; fails with `issue_key_conflict` for different content; otherwise creates the record or, for an append, checks that the Issue exists (`unknown_issue`), `expected_revision` (`stale_issue`) and open status (`closed_issue`) and appends. |
+| `record_report(root, report, source, wait)` | Records the report as `report_issue` does and returns `{receipt, revision}`, where `revision` is the revision of the record the receipt names as the write left it, or as it found it when it returned an existing receipt, taken under the merge lock. |
+| `report_issue(root, report, source, wait)` | Returns the receipt of `record_report`. Validates, then under the merge lock, after recovery: returns the existing receipt when the committed record already holds identical content for the same `(invocation_id, report_key)`, so that receipt names a committed report; fails with `issue_key_conflict` for different content; otherwise creates the record or, for an append, checks that the Issue exists (`unknown_issue`), `expected_revision` (`stale_issue`) and open status (`closed_issue`) and appends. |
 | `read_issue(root, id)` | Returns the committed record, at either of its paths, and its revision; `invalid_issue` for a malformed identity, `unknown_issue` when `HEAD` holds it at neither path, even when an uncommitted file does, `invalid_issue` when it is committed at both, malformed, oversized or committed as anything but a regular file. |
 | `locate_issue(root, id)` | Returns what `read_issue` returns and the path the record is committed at, refusing as `read_issue` does. |
 | `read_record_file(root, path)` | Returns the record file at `path` of `root`, either path of an Issue, as it is on disk, committed or not, and the digest of its bytes, refusing as `read_issue` does and with `invalid_issue` for a path that is neither; the store check alone reads this way. |
@@ -246,7 +247,7 @@ The bookkeeping command reports a Kernel error as `invalid_issue`, and a `system
 | `resolve_report(root, receipt)` | Returns the exact report the receipt names, never the latest one; `stale_issue` when it is absent. |
 | `disposition_record(record, ...)` | Prepares and validates a disposed record without writing. |
 | `dispose_issue(root, id, expected_revision, reason, note, evidence, actor, duplicate_of, duplicate_revision, created_at, wait)` | Refuses a `duplicate` without `duplicate_of`, naming the Issue itself, or another reason with `duplicate_of` (`invalid_issue`). Under the lock, checks the revision (`stale_issue`), refuses closing a closed Issue (`closed_issue`) and reopening an open one (`open_issue`), and for `duplicate` that the other Issue exists (`unknown_issue`), is open (`invalid_issue`) and, when the caller gives `duplicate_revision`, the revision it read of that other Issue, still has it (`stale_issue`); appends the disposition, moves the record into the place of its new status and returns the new revision. `duplicate_of` and `duplicate_revision` default to `null`; `created_at` defaults to the time of acceptance; the bookkeeping command never gives `duplicate_revision`. |
-| `archive_issues(root, wait)` | Under the merge lock, as a write holds it, after recovery: moves every misplaced committed record into its place, its bytes unchanged so its revision stays, publishing all of them through one file transaction and committing them in one commit as a write commits, and returns `{"moved": [{issue_id, from, to}], "left": [{path, reason}]}`, sorted by identity. It leaves, with the reason, both paths of an Issue committed at both and a misplaced record whose path or place holds a change recovery left. Nothing to move commits nothing. Refuses as a write does. |
+| `archive_issues(root, wait)` | Under the merge lock, as a write holds it, after recovery: moves every misplaced committed record into its place, its bytes unchanged so its revision stays, refusing with `stale_issue` and moving none when another program changed one of them since it read it, publishing all of them through one file transaction and committing them in one commit as a write commits, and returns `{"moved": [{issue_id, from, to}], "left": [{path, reason}]}`, sorted by identity. It leaves, with the reason, both paths of an Issue committed at both and a misplaced record whose path or place holds a change recovery left. Nothing to move commits nothing. Refuses as a write does. |
 | `recover_issues(root, wait)` | Under the merge lock, as a write holds it, runs the recovery below without writing an Issue and returns `{"recovered": [{path, action}], "left": [{path, reason}]}`: each record put back (`action` `restored` to its committed version, or `removed` when no commit holds it) or temporary file removed (`removed`), and each record change left because no write made it, with the reason. Refuses as a write does, with `not_primary`, `merge_busy`, `merge_incomplete`, `unreadable_task_record` or `recovery_failed`. |
 
 Every write refuses a `root` that is not the primary worktree (`not_primary`), then holds the
@@ -264,7 +265,8 @@ record and checks its revision, and publishes the record at its place through a
 [file transaction](../glossary.json#concept.file-transaction): over the committed bytes when it is
 committed there, and otherwise as a new file, after which a write moving the record checks that the
 path it is committed at still holds the bytes it read, refusing with `stale_issue` and keeping that
-change when another program changed them, and removes it. The write then syncs both folders and
+change when another program changed them, and removes it; an archive checks each record it moves
+so. The write then syncs both folders and
 commits the record alone on the primary worktree's branch: `git add -f` of its place and
 `git commit --only` of its place and of the path it moved from, with the repository's author
 identity and hooks, which leaves every other change of the primary worktree as it was, and the
@@ -326,8 +328,8 @@ disposition's actor. `recover` and `archive` have no tool.
 | `check` | `{"errors": [...], "notes": [...]}`, exit status 1 when `errors` is nonempty and 0 otherwise |
 | `recover` | Runs `recover_issues` on the primary worktree, waiting for the merge lock, and prints its `{"recovered": [...], "left": [...]}` |
 | `archive` | Runs `archive_issues` on the primary worktree, waiting for the merge lock, and prints its `{"moved": [...], "left": [...]}` |
-| `report --file <report.json> [--task <task-id>]` | Records the report in the file with the provenance above and prints `{"receipt": <receipt>, "revision": <digest>}` |
-| `report --file <report.json> --provenance <provenance.json>` | Records the report in the file with the provenance in the provenance file, `{invocation_id, agent, operation, phase, target_id, context_id, change_id, head}`, which its caller vouches for, exactly as `report_issue` records it for a library caller, and prints `{"receipt": <receipt>, "revision": <digest>}` |
+| `report --file <report.json> [--task <task-id>]` | Records the report in the file with the provenance above through `record_report` and prints what it returns, `{"receipt": <receipt>, "revision": <digest>}` |
+| `report --file <report.json> --provenance <provenance.json>` | Records the report in the file with the provenance in the provenance file, `{invocation_id, agent, operation, phase, target_id, context_id, change_id, head}`, which its caller vouches for, exactly as `record_report` records it for a library caller, and prints what it returns, `{"receipt": <receipt>, "revision": <digest>}` |
 | `report --file <report.json> --check` | Runs every check `report` runs on the file, but resolves no reporting Module for a report with an `origin`, records nothing and prints `{"valid": true, "file", "report_key", "reporting_module"}`, `reporting_module` being `null` for a report with an `origin` |
 | `close <id> --reason resolved\|duplicate\|not-actionable --note <text> --evidence <item>... [--duplicate-of <id>]` | Closes the open Issue at its current revision, moving its record into `closed/`, and prints `{"issue_id", "status": "closed", "revision", "path"}` |
 | `reopen <id> --note <text> --evidence <item>...` | Reopens the closed Issue at its current revision, moving its record back into `.concorde/issues/`, and prints `{"issue_id", "status": "open", "revision", "path"}` |
@@ -383,9 +385,11 @@ command would print; its caller decides what the refusal means for its own work 
 note and evidence its own [Spec](../glossary.json#concept.spec) names.
 
 Every refusal prints `{"error": <link>}`, commits nothing and leaves no record a read shows. It
-writes nothing either, with one exception: a write refused with `recovery_failed`, or a process
-killed while writing, may leave an uncommitted record in the primary worktree, which the next
-write or `recover` puts back, so a refused write may be repeated. The link is a `component` link of
+writes nothing of its own either, with one exception: a write refused with `recovery_failed`, or a
+process killed while writing, may leave an uncommitted record in the primary worktree, which the
+next write or `recover` puts back, so a refused write may be repeated. The recovery a write runs
+before it checks its request, which puts back only what earlier writes left uncommitted, stays done
+whatever the request's outcome. The link is a `component` link of
 the Framework's [error chain](../kernel/tracing/contracts.md#contract.tracing.error) with the actor
 `Issues (concorde issues)`: its code is the refusal code, its detail names the Issue, the report
 file and field, or the argument concerned and states what is wrong, and its reason is

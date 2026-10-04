@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import math
 import os
@@ -19,6 +20,7 @@ from concorde.execution.checks.check_executor import execute_check
 from concorde.execution.checks.checks import (
     CheckError,
     _timeout,
+    check_error,
     check_revision,
     configured_checks,
     environment,
@@ -166,10 +168,51 @@ class CheckServiceTests(unittest.TestCase):
         self.assertIn("project interpreter", log)
         # The check's own env, and nothing of Concorde's runtime on the path.
         self.assertIn("mark=yes pythonpath=None", log)
-        self.change_check(env={"not a name": "x"})
-        with self.assertRaises(CheckError) as raised:
-            self.run_checks(["module.a"])
-        self.assertEqual("invalid_check", raised.exception.code)
+        for name in ("not a name", "MARK\n"):
+            with self.subTest(name=name):
+                self.change_check(env={name: "x"})
+                with self.assertRaises(CheckError) as raised:
+                    self.run_checks(["module.a"])
+                self.assertEqual("invalid_check", raised.exception.code)
+
+    def test_an_argv_that_is_no_list_is_an_invalid_check(self):
+        for argv in (1, True, "checks/a_check.py"):
+            with self.subTest(argv=argv):
+                self.change_check(argv=argv)
+                with self.assertRaises(CheckError) as raised:
+                    self.run_checks(["module.a"])
+                self.assertEqual("invalid_check", raised.exception.code)
+
+    def test_a_relative_trace_directory_still_names_an_absolute_log(self):
+        with contextlib.chdir(self.project.base):
+            [result] = run_checks(
+                self.root,
+                modules=["module.a"],
+                trace_directory=Path("relative-checks"),
+                python=sys.executable,
+            )
+        self.assertTrue(os.path.isabs(result["log"]))
+        self.assertEqual(
+            self.project.base / "relative-checks/check.a/output.log",
+            Path(result["log"]),
+        )
+
+    def test_a_timed_out_check_names_its_exit_code(self):
+        log = self.project.base / "timeout.log"
+        log.write_text("slow")
+        error = check_error(
+            {
+                "check_id": "check.a",
+                "module": "module.a",
+                "status": "timeout",
+                "exit_code": -1,
+                "log": log.as_posix(),
+                "log_digest": "sha256:0",
+            }
+        )
+        self.assertEqual("check_timed_out", error["code"])
+        self.assertIn("exit code -1", error["detail"])
+        self.assertIn(log.as_posix(), error["detail"])
 
     @verifies("scenario.checks.transport-environment")
     def test_transport_settings_are_inherited_with_explicit_overrides(self):
@@ -464,6 +507,65 @@ assert result['status'] == 'passed', result
         )
         self.assertIn("check.a", error["detail"])
 
+    @verifies("scenario.checks.service-stale")
+    def test_input_deleted_during_the_run_is_stale(self):
+        from concorde.execution.checks import checks
+
+        real = checks.execute_check
+        for path in ("src/a/calc.py", "checks/a_check.py"):
+            with self.subTest(path=path):
+                saved = (self.root / path).read_bytes()
+
+                def deleting(worktree, argv, path=path, **options):
+                    outcome = real(worktree, argv, **options)
+                    (self.root / path).unlink()
+                    return outcome
+
+                with patch.object(checks, "execute_check", deleting):
+                    with self.assertRaises(CheckError) as raised:
+                        self.run_checks(["module.a"])
+                (self.root / path).write_bytes(saved)
+                self.assertEqual("stale_evidence", raised.exception.code)
+                node = json.loads((self.logs / "check.a/trace.json").read_text())
+                self.assertEqual(
+                    ("failed", "stale_evidence"), (node["status"], node["outcome"])
+                )
+
+    def test_an_interrupted_check_ends_its_node_with_the_drained_output(self):
+        from concorde.execution.checks import checks
+        from concorde.execution.checks.check_executor import CheckCancelled
+
+        class Stopped(Exception):
+            pass
+
+        def stopped(*_arguments, **_options):
+            error = Stopped("SIGTERM")
+            error.check_output = (b"partial out", b"partial err")
+            raise error
+
+        def cancelled(*_arguments, **_options):
+            raise CheckCancelled(b"drained out", b"drained err")
+
+        for interrupt, expected, text in (
+            (stopped, Stopped, "partial out"),
+            (cancelled, KeyboardInterrupt, "drained out"),
+        ):
+            with self.subTest(expected=expected.__name__):
+                with patch.object(checks, "execute_check", interrupt):
+                    with self.assertRaises(expected):
+                        self.run_checks(["module.a"])
+                self.assertIn(text, (self.logs / "check.a/output.log").read_text())
+                node = json.loads((self.logs / "check.a/trace.json").read_text())
+                self.assertEqual(
+                    ("failed", "interrupted", "interrupted", None),
+                    (
+                        node["status"],
+                        node["outcome"],
+                        node["content"]["data"]["status"],
+                        node["content"]["data"]["exit_code"],
+                    ),
+                )
+
     @verifies("scenario.checks.service-refused")
     def test_a_refused_check_has_no_result(self):
         from concorde.execution.checks import checks
@@ -491,6 +593,24 @@ assert result['status'] == 'passed', result
         with self.assertRaises(CheckError) as raised:
             self.run_checks(["module.a"])
         self.assertIn("checks/missing.py", str(raised.exception))
+        self.assertFalse((self.logs / "check.a").exists())
+        # A later Module's missing input stops the call before an earlier Module's command.
+        checks = read_checks(self.root)
+        checks[0]["inputs"] = []
+        checks.append(
+            {
+                "module": "module.b",
+                "id": "check.b",
+                "argv": ["{python}", "checks/a_check.py"],
+                "timeout_seconds": 60,
+                "inputs": ["checks/missing.py"],
+            }
+        )
+        write_checks(self.root, checks)
+        with self.assertRaises(CheckError) as raised:
+            self.run_checks(["module.a", "module.b"])
+        self.assertEqual("check_input_missing", raised.exception.code)
+        self.assertIn("check.b", str(raised.exception))
         self.assertFalse((self.logs / "check.a").exists())
         # A wrong configuration is input only its sender can correct.
         error = service_error(raised.exception)

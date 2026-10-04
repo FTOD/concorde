@@ -35,6 +35,7 @@ writes a Spec document, the registry or the project configuration.
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import contextlib
 import json
@@ -101,6 +102,7 @@ class InstallError(RuntimeError):
 # comes from the environment the installer runs in.
 INPUT_CODES = frozenset(
     {
+        "invalid_arguments",
         "invalid_project",
         "unknown_part",
         "invalid_descriptor",
@@ -116,6 +118,17 @@ INPUT_CODES = frozenset(
         "develop_source_dirty",
     }
 )
+
+
+class ArgumentParser(argparse.ArgumentParser):
+    """Refuses a malformed command line of the installer or of `concorde update` as
+    ``invalid_arguments`` instead of printing argparse's usage and exiting with status 2."""
+
+    def error(self, message):
+        raise InstallError(
+            "invalid_arguments",
+            f"invalid command line: {self.prog}: {message}; see `{self.prog} --help`",
+        )
 
 
 def refusal(
@@ -357,7 +370,9 @@ def _amend(project: Path, name: str, block: str) -> None:
     section = f"{START}\n{block.strip()}\n{END}\n"
     if START in text and END in text:
         before, rest = text.split(START, 1)
-        after = rest.split(END, 1)[1].lstrip("\n")
+        after = rest.split(END, 1)[1]
+        # The section ends with the end marker's own line break; whatever followed it stays.
+        after = after[1:] if after.startswith("\n") else after
         text = before + section + after
     else:
         text = (text.rstrip("\n") + "\n\n" if text.strip() else "") + section
@@ -428,11 +443,12 @@ def _read_settings(project: Path) -> dict:
             "settings_invalid",
             f"{path} cannot be read as JSON: {error}; nothing was written",
         ) from error
-    permissions = value.get("permissions") if isinstance(value, dict) else None
+    # An absent permissions is fine; one that is present must be an object, even a falsy one.
+    permissions = value.get("permissions", {}) if isinstance(value, dict) else None
     if (
         not isinstance(value, dict)
-        or not isinstance(permissions or {}, dict)
-        or not isinstance((permissions or {}).get("allow", []), list)
+        or not isinstance(permissions, dict)
+        or not isinstance(permissions.get("allow", []), list)
     ):
         raise InstallError(
             "settings_invalid",
@@ -1231,9 +1247,7 @@ def split_parts(values: list[str] | None) -> list[str] | None:
 
 
 def main(argv) -> int:
-    import argparse
-
-    parser = argparse.ArgumentParser(
+    parser = ArgumentParser(
         prog="install-concorde",
         description="Install or update Concorde in a project. Start no concorde command, in any "
         "worktree of the project, until the install ends: it is refused only for runs already "
@@ -1275,10 +1289,10 @@ def main(argv) -> int:
         action="store_true",
         help="update an installed Concorde, as `concorde update` does",
     )
-    arguments = parser.parse_args(argv)
     package = Path(__file__).resolve().parents[3]
-    named = split_parts(arguments.parts)
     try:
+        arguments = parser.parse_args(argv)
+        named = split_parts(arguments.parts)
         if arguments.update:
             receipt = update(arguments.project, package, part_names=named or ())
         else:
@@ -1306,6 +1320,7 @@ def main(argv) -> int:
 
 __all__ = [
     "UPDATE_STATE",
+    "ArgumentParser",
     "InstallError",
     "active_work",
     "ignored",

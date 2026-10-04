@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ..execution.checks.checks import TESTS, configured_checks, run_checks
+from ..execution.checks.checks import configured_checks, run_checks, selective
 from ..spec.repository import SpecRepository
 from ..spec.repository_base import bound_by
 
@@ -101,15 +101,15 @@ def run_module_checks(
     repository = repository or SpecRepository(worktree)
     selected = list(dict.fromkeys(modules))
     # The tests are looked for only when some configured check selects tests.
-    selective = kinds != "module" and any(
-        TESTS in (check.get("argv") or []) for check in configured_checks(worktree)
+    selects = kinds != "module" and any(
+        selective(check) for check in configured_checks(worktree)
     )
     return run_checks(
         worktree,
         modules=selected,
         trace_directory=trace_directory,
         measured=measured_files(repository, selected),
-        tests=verified_tests(repository, selected) if selective else (),
+        tests=verified_tests(repository, selected) if selects else (),
         python=repository.config.get("python"),
         stage=stage,
         kinds=kinds,

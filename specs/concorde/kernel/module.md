@@ -67,6 +67,30 @@ records are recovered from both. A transaction protects nothing against another 
 holds whatever lock its records require for the whole transaction. The
 [contracts](contracts.md#typed-values) give both formats exactly.
 
+The outcomes of one transaction, as the [file transaction contract](contracts.md#file-transactions)
+gives them exactly; a killed process takes none of these paths and leaves every file renamed into
+place with its new content:
+
+```d2 illustrative
+direction: right
+check: "Check the list:\nform, allowed paths,\nbefore_digest"
+writes: "Write each file:\ntemporary file, rename"
+final: Final check
+done: "Success:\nthe written paths"
+refused: "Refused, nothing\nwritten"
+restore: "Restore every\nwritten file"
+restored: "The failure,\nevery file restored"
+unrestored: "system_error naming\nthe files not restored"
+check -> refused: "malformed, not allowed\nor stale"
+check -> writes: valid
+writes -> final: all written
+final -> done: passes
+writes -> restore: "a write fails, a file\nturned stale, interrupted"
+final -> restore: "fails or\ninterrupted"
+restore -> restored: every restoration done
+restore -> unrestored: "the operating system\nrefuses one"
+```
+
 ### The workspace
 
 <a id="concept.workspace"></a><a id="concept.workspace-binding"></a>

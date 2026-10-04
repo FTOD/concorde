@@ -45,6 +45,7 @@ class CheckCancelled(KeyboardInterrupt):
     def __init__(self, stdout: bytes, stderr: bytes):
         super().__init__("Test cancelled")
         self.stdout, self.stderr = stdout, stderr
+        self.check_output = (stdout, stderr)
 
 
 class CheckSandboxError(RuntimeError):
@@ -205,6 +206,9 @@ class BubblewrapBackend:
         timed_out = False
         cancelled = False
         failure = None
+        # Another exception that interrupts the wait, such as the caller's own cancellation
+        # raised by its signal handler, which goes on unchanged once the sandbox is cleaned up.
+        interrupted = None
         reader = None
         output = None
         # The status descriptor belongs only to bubblewrap's outside monitor; bubblewrap closes
@@ -314,6 +318,8 @@ class BubblewrapBackend:
                 timed_out = True
             except (OSError, CheckSandboxError) as error:
                 failure = error
+            except BaseException as error:  # noqa: BLE001 -- re-raised after the cleanup
+                interrupted = error
             finally:
                 # Killing PID 1 makes the kernel terminate *all* descendants, including setsid,
                 # double forks, nested PID namespaces and processes that reset parent-death signals.
@@ -350,6 +356,10 @@ class BubblewrapBackend:
                     reader.shutdown()
             if cancelled:
                 raise CheckCancelled(stdout, stderr)
+            if interrupted is not None:
+                # The drained output travels with it, for the service to save as the log.
+                interrupted.check_output = (stdout, stderr)
+                raise interrupted
             if failure is not None:
                 raise CheckSandboxError(
                     str(failure), stdout=stdout, stderr=stderr
@@ -370,6 +380,15 @@ class BubblewrapBackend:
             return CheckResult(stdout, stderr, process.returncode)
 
 
+def _process_tempdir() -> str | None:
+    """The process temporary directory, or None when Python finds no usable one, which leaves
+    the next candidate to try."""
+    try:
+        return tempfile.gettempdir()
+    except (OSError, RuntimeError):
+        return None
+
+
 @timed("check.total")
 def execute_check(
     project_root: Path,
@@ -380,7 +399,12 @@ def execute_check(
     cancel_event: Event | None = None,
 ) -> CheckResult:
     """Run a check with the project read-only and a private, removed-afterwards scratch."""
-    project = project_root.resolve(strict=True)
+    try:
+        project = Path(project_root).resolve(strict=True)
+    except (OSError, RuntimeError) as error:
+        raise CheckSandboxError(
+            f"the project directory {project_root} cannot be resolved: {error}"
+        ) from error
     if not project.is_dir() or not argv or not math.isfinite(timeout) or timeout <= 0:
         raise CheckSandboxError(
             "a project directory, command and positive finite timeout are required"
@@ -401,7 +425,7 @@ def execute_check(
     # checks may use their parent's scratch, provided it is outside their own project.
     candidates = dict.fromkeys(
         (
-            tempfile.gettempdir(),
+            _process_tempdir(),
             os.environ.get("CONCORDE_CHECK_TMPDIR"),
             "/tmp",
             "/var/tmp",

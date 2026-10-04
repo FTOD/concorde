@@ -4,8 +4,9 @@ A producer creates a ``Node`` for the folder its parent gave it, writes it with 
 the work begins, may ``update`` it while it runs and writes it a last time with ``finish``. Every
 write is checked against the node contract (``contract.tracing.node``) and the producer's content
 against the type it registered, and replaces the file atomically. A failed write of the file never
-changes the work it records; a record that breaks its contract is a defect of its producer and
-raises.
+changes the work it records, but it is never silent: the node keeps every failed write in
+``failures`` for its producer to report in its own result; a record that breaks its contract is a
+defect of its producer and raises.
 """
 
 from __future__ import annotations
@@ -331,8 +332,10 @@ class Node:
         self.set_metadata(**(metadata or {}))
         if content is not None:
             self.set_content(content)
-        # The last error writing the file, which never changes the work recorded.
+        # The last error writing the file, None once a later write succeeded, and an account of
+        # every failed write, which never change the work recorded and which the producer reports.
         self.failure: OSError | None = None
+        self.failures: list[str] = []
 
     @property
     def started_at(self) -> str:
@@ -376,7 +379,7 @@ class Node:
         if all(item[0] != identity for item in self._artifacts):
             self._artifacts.append((identity, relative, measured))
 
-    def _write(self, *, measured: bool) -> None:
+    def _write(self, moment: str, *, measured: bool) -> None:
         self.record["artifacts"] = [
             artifact(self.folder, identity, relative, measured=measured and own)
             for identity, relative, own in self._artifacts
@@ -387,9 +390,13 @@ class Node:
             self.failure = None
         except OSError as error:
             self.failure = error
+            self.failures.append(
+                f"the trace node {self.folder / layout.TRACE} could not be written at its "
+                f"{moment}: {type(error).__name__}: {error}"
+            )
 
     def start(self) -> Node:
-        self._write(measured=False)
+        self._write("start", measured=False)
         return self
 
     def update(self, *, content: dict | None = None, **metadata) -> None:
@@ -397,7 +404,7 @@ class Node:
             self.set_metadata(**metadata)
         if content is not None:
             self.set_content(content)
-        self._write(measured=False)
+        self._write("update", measured=False)
 
     def finish(
         self,
@@ -427,7 +434,7 @@ class Node:
             usage=own,
             error=error if status in ("blocked", "failed") else None,
         )
-        self._write(measured=True)
+        self._write("end", measured=True)
         return self.record
 
 

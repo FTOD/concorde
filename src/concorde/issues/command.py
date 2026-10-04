@@ -40,8 +40,8 @@ from .store import (
     project_root,
     read_issue,
     read_record_file,
+    record_report,
     recover_issues,
-    report_issue,
     validate_report,
 )
 
@@ -452,7 +452,7 @@ def report_action(
 
     With ``provenance``, a file holding the provenance its caller vouches for, such as an
     Operation's host reporting its findings, the report is recorded with that provenance as the
-    store's ``report_issue`` records it: its form is checked, its owner and evidence are the
+    store's ``record_report`` records it: its form is checked, its owner and evidence are the
     caller's to vouch for.
     """
     root = project(root)
@@ -487,9 +487,7 @@ def report_action(
                 f"provenance file {provenance}{where}: {error}",
                 cause=error,
             ) from error
-        receipt = guarded(report_issue, primary, report, source, wait=wait)
-        _, revision = guarded(read_issue, primary, receipt["issue_id"])
-        return {"receipt": receipt, "revision": revision}
+        return guarded(record_report, primary, report, source, wait=wait)
     found = registry(primary)
     if check_only and "origin" in report:
         # A report seen in another project is checked here and recorded by the project it is
@@ -529,9 +527,7 @@ def report_action(
         "change_id": task,
         "head": head(root),
     }
-    receipt = guarded(report_issue, primary, report, source, wait=wait)
-    _, revision = guarded(read_issue, primary, receipt["issue_id"])
-    return {"receipt": receipt, "revision": revision}
+    return guarded(record_report, primary, report, source, wait=wait)
 
 
 # --- dispositions -----------------------------------------------------------------------------

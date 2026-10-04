@@ -98,11 +98,25 @@ def framework_digest(project: Path) -> str:
 
 
 def installed_digests(project: Path) -> dict:
-    """The digest of each file the install receipt names outside ``.concorde/``."""
-    receipt = json.loads((project / ".concorde/install.json").read_text())
+    """The digest of each file the install receipt names outside ``.concorde/``;
+    ``receipt_unreadable`` when the receipt cannot be read as one naming its files."""
+    path = project / ".concorde/install.json"
+    try:
+        receipt = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(receipt, dict):
+            raise ValueError(f"it holds a JSON {type(receipt).__name__}, not an object")
+        files = receipt.get("files") or []
+        if not isinstance(files, list) or not all(isinstance(f, str) for f in files):
+            raise ValueError("its files are not a list of paths")
+    except (OSError, ValueError) as error:
+        raise E2EError(
+            "receipt_unreadable",
+            f"the install receipt {path} cannot be read as the list of installed files "
+            f"({error})",
+        ) from error
     return {
         path: "sha256:" + hashlib.sha256((project / path).read_bytes()).hexdigest()
-        for path in sorted(receipt.get("files") or [])
+        for path in sorted(files)
         if not path.startswith(".concorde/") and (project / path).is_file()
     }
 
@@ -220,12 +234,17 @@ def _untouched(record: dict) -> dict:
         problems.append(f"the Concorde clone has changes: {', '.join(changed[:10])}")
     if framework_digest(project) != record["framework"]:
         problems.append("the installed framework under .concorde/framework changed")
-    now = installed_digests(project)
-    problems += [
-        f"the installed file {path} changed"
-        for path, value in record["installed"].items()
-        if now.get(path) != value
-    ]
+    try:
+        now = installed_digests(project)
+    except E2EError as error:
+        # A session that tampered with the install receipt touched Concorde: no error, a finding.
+        problems.append(error.detail)
+    else:
+        problems += [
+            f"the installed file {path} changed"
+            for path, value in record["installed"].items()
+            if now.get(path) != value
+        ]
     return _check(
         "concorde_untouched",
         not problems,
@@ -240,20 +259,21 @@ def _reports(project: Path) -> list[Path]:
 
 def _checked(project: Path, reports: list[Path]) -> dict:
     refused = []
+    command = project / ".concorde/bin/concorde"
     for path in reports:
-        done = subprocess.run(
-            [
-                str(project / ".concorde/bin/concorde"),
-                "issues",
-                "report",
-                "--check",
-                "--file",
-                str(path),
-            ],
-            cwd=project,
-            capture_output=True,
-            text=True,
-        )
+        try:
+            done = subprocess.run(
+                [str(command), "issues", "report", "--check", "--file", str(path)],
+                cwd=project,
+                capture_output=True,
+                text=True,
+            )
+        except OSError as error:
+            raise E2EError(
+                "command_failed",
+                f"the project's installed command {command} could not be started to check "
+                f"{path.name}: {error}",
+            ) from error
         if done.returncode != 0:
             refused.append(f"{path.name}: {done.stdout.strip()[:600]}")
     return _check(

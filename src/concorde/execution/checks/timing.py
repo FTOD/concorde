@@ -7,6 +7,7 @@ No argument, environment value, prompt, source body, output or exception message
 from __future__ import annotations
 
 import contextvars
+import copy
 import functools
 import json
 import os
@@ -76,18 +77,25 @@ class Trace:
         self.records = []
         self.pending = {}
         self.incomplete = 0
+        # Once flushed, the trace is handed over as it was: nothing is added to it any more.
+        self.sealed = False
 
     def emit(self, record):
+        if self.sealed:
+            return
         if len(self.records) < 20000:
             self.records.append(record)
         else:
             self.incomplete += 1
 
     def flush(self):
+        if self.sealed:
+            return
         for record in tuple(self.pending.values()):
             self.emit(record)
             self.incomplete += 1
         self.pending.clear()
+        self.sealed = True
         if self.sink is not None:
             try:
                 self.sink(
@@ -96,7 +104,8 @@ class Trace:
                         "trace_id": self.trace_id,
                         "complete": not self.incomplete,
                         "omitted": self.incomplete,
-                        "spans": self.records,
+                        # A copy: a span finished after the flush changes nothing handed over.
+                        "spans": copy.deepcopy(self.records),
                     }
                 )
             except Exception:
@@ -109,6 +118,8 @@ class Span:
         self.trace = _CURRENT.get()
         self.record = None
         self.token = None
+        if self.trace is not None and self.trace.sealed:
+            self.trace = None
         if (
             self.trace is not None
             and len(self.trace.records) + len(self.trace.pending) >= 20000
@@ -140,7 +151,11 @@ class Span:
         return self
 
     def finish(self, status="ok", **values):
-        if self.record is not None and self.record["duration_ns"] is None:
+        if (
+            self.record is not None
+            and self.record["duration_ns"] is None
+            and not self.trace.sealed
+        ):
             self.record.update(
                 duration_ns=max(0, time.monotonic_ns() - self.record["start_ns"]),
                 status=status,

@@ -4,7 +4,7 @@ Nothing here writes. Nodes are found and listed only among the registered trace 
 (``roots``), or the roots a caller passes. A node's children are the trace nodes in the folders
 below its own, the nearest ones on each path; a task's ``workspace/`` folder, which Execution fills and which has no
 record of its own, is shown as a ``workspace`` node. A node that says it runs is ``lost`` when it is
-a run whose run lock nobody holds, or lies below such a run.
+a run whose run lock nobody holds, or lies below such a run, however it was addressed.
 """
 
 from __future__ import annotations
@@ -77,20 +77,26 @@ def _is_workspace(folder: Path) -> bool:
 
 
 def _workspace_record(folder: Path, children: list[dict]) -> dict:
+    """The record a workspace folder is shown with: ``running`` while any child runs, otherwise
+    the status of its most recently started child, ``unknown`` without children."""
     names = [
         item["metadata"].get("workspace")
         for item in children
         if item["metadata"].get("workspace")
     ]
     starts = [item["started_at"] for item in children if item["started_at"]]
-    running = any(item["status"] in ("running", "lost") for item in children)
+    running = any(item["status"] == "running" for item in children)
     ends = [item["ended_at"] for item in children if item["ended_at"]]
+    # The children are sorted by start, so the last is the most recently started.
+    status = (
+        "running" if running else (children[-1]["status"] if children else "unknown")
+    )
     return {
         "id": names[0] if names else folder.parent.name,
         "kind": "workspace",
         "started_at": min(starts) if starts else None,
-        "ended_at": None if running or not ends else max(ends),
-        "status": "running" if running else ("ok" if children else "unknown"),
+        "ended_at": None if status in ("running", "lost") or not ends else max(ends),
+        "status": status,
         "outcome": None,
         "usage": {name: None for name in USAGE_FIELDS},
         "error": None,
@@ -103,19 +109,44 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
+def _below_lost_run(folder: Path, concorde: Path) -> bool:
+    """Whether a run above ``folder`` says it runs while nobody holds its run lock. The search
+    goes up to ``concorde`` when the folder lies in it, else to the worktree or filesystem root."""
+    top = Path(os.path.realpath(concorde))
+    current = Path(os.path.realpath(folder))
+    inside = current.is_relative_to(top)
+    while current != current.parent and current != top:
+        current = current.parent
+        if not inside and (current / ".git").exists():
+            break
+        record = read(current)
+        if (
+            record
+            and record.get("kind") == "run"
+            and record.get("status") == "running"
+            and isinstance(record.get("id"), str)
+            and not run_alive(concorde, record["id"])
+        ):
+            return True
+    return False
+
+
 def view(
     folder: Path,
     concorde: Path,
     *,
     depth: int | None = None,
-    lost: bool = False,
+    lost: bool | None = None,
 ) -> dict:
     """The view of the node in ``folder`` and its subtree (contract.tracing.view).
 
     ``concorde`` is the ``.concorde`` whose ``locks/`` holds the run locks of the runs below.
-    ``lost`` says an ancestor run was found lost, which makes every running node below lost too.
+    ``lost`` says an ancestor run was found lost, which makes every running node below lost too;
+    None looks for such a run above ``folder`` first, as for a node addressed directly.
     """
     folder = Path(folder)
+    if lost is None:
+        lost = _below_lost_run(folder, concorde)
     record = read(folder)
     # A workspace folder has no record of its own: below a task's node, or any folder a binding
     # names that holds runs or a workflow, whoever prepared the workspace.
@@ -385,32 +416,43 @@ def _owner(folder: Path, searched: list[Path]) -> Path:
 
 
 def listing(
-    concorde: Path,
+    concorde: Path | Iterable[Path],
     *,
     history: bool = False,
     unbound: bool = False,
     roots: Iterable[TraceRoot] | None = None,
 ) -> list[dict]:
     """The top nodes of the roots listed always, and with ``history`` or ``unbound`` also of the
-    roots listed with that option, without children: the roots listed always first, then those
-    of ``--history``, then those of ``--unbound``."""
+    roots listed with that option, under one ``.concorde`` directory or several, without children
+    and each once: the roots listed always first, then those of ``--history``, then those of
+    ``--unbound``, and within each option the directories in the order given."""
+    directories = [concorde] if isinstance(concorde, (str, Path)) else list(concorde)
     wanted = {"always"} | ({"history"} if history else set())
     if unbound:
         wanted.add("unbound")
-    folders: list[Path] = []
-    placed = _placed(_roots(roots), concorde)
-    for root in sorted(placed, key=lambda item: LISTINGS.index(item.listed)):
-        if root.listed in wanted:
-            folders.extend(
-                item
-                for item in root.top_folders(concorde)
-                if (item / layout.TRACE).is_file()
-            )
-    return [_strip(view(folder, concorde), 0) for folder in folders]
+    found: list[tuple[int, int, Path, Path]] = []
+    seen: set[str] = set()
+    for position, directory in enumerate(directories):
+        for root in _placed(_roots(roots), Path(directory)):
+            if root.listed not in wanted:
+                continue
+            for item in root.top_folders(Path(directory)):
+                real = os.path.realpath(item)
+                if (item / layout.TRACE).is_file() and real not in seen:
+                    seen.add(real)
+                    found.append(
+                        (LISTINGS.index(root.listed), position, item, Path(directory))
+                    )
+    found.sort(key=lambda entry: entry[:2])
+    return [
+        _strip(view(folder, directory, lost=False), 0)
+        for _, _, folder, directory in found
+    ]
 
 
 def render(value: dict, indent: int = 0) -> str:
-    """A view as an indented text tree."""
+    """A view summarized as an indented text tree: one line per node with its kind, identity,
+    status, outcome, duration, rolled-up cost and tokens, what ran and its error's code."""
     rolled = value["rolled_up"]
     parts = [
         f"{'  ' * indent}{value['kind']} {value['id']}: {value['status']}",
@@ -441,6 +483,8 @@ def render(value: dict, indent: int = 0) -> str:
     )
     if detail:
         parts.append(f"[{detail}]")
+    if value.get("error"):
+        parts.append(f"error {value['error'].get('code')}")
     lines = [" ".join(parts)]
     for child in value["children"]:
         lines.append(render(child, indent + 1))

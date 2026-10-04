@@ -117,6 +117,15 @@ This illustrates [a guidance section standing without the parts it may lack](req
 - THEN the result is `failed` with `protocol_mismatch`, the configuration is bound to the tracked manifest and `.concorde/protocol/` is left as it was
 - AND when the developer then runs `protocol-manifest --write`, the tracked manifest is rewritten with the new digests, its result names the changed assets and the configuration's binding is unchanged
 
+### scenario.distribution.protocol-manifest-refused — Write nothing without a fresh build and a readable manifest
+
+- GIVEN a package whose Protocol source changed after its last build, or whose tracked Protocol manifest is not of the manifest's shape
+- WHEN the developer runs `protocol-manifest --write --bind-project`
+- THEN the result is `invalid` with `CONCORDE-PROTOCOL-MANIFEST-001` naming the problem
+- BUT nothing is written: neither the tracked manifest, the configuration's binding nor `.concorde/protocol/`
+
+This illustrates [the precondition of `protocol-manifest`](requirements.md#req.distribution.protocol-manifest-precondition).
+
 ### scenario.distribution.stale-copy-refused — Refuse to copy from a stale build
 
 - GIVEN a package whose Protocol source changed after its last build
@@ -271,6 +280,15 @@ This illustrates [refusing a part the package does not build](requirements.md#re
 
 This illustrates [serving a call as the current code registers its tool](requirements.md#req.distribution.mcp-current-serving).
 
+### scenario.distribution.mcp-call-failed — A call without an answer keeps what its process printed
+
+- GIVEN a call whose process prints on standard output and standard error but no answer
+- WHEN the process exits, exceeds its time and is stopped, or, as the process of a long-work tool, exits before answering
+- THEN the server refuses the call with `call_failed`, naming the command
+- AND the link's detail holds the end of what the process printed on each of the two streams
+
+This illustrates [refusing a call without an answer](requirements.md#req.distribution.mcp-call-failed).
+
 ### scenario.distribution.mcp-tools-changed-after-refresh — Learning how a tool is served lists nothing to the session
 
 - GIVEN a server that listed its tools to the session
@@ -371,9 +389,9 @@ This illustrates [the environment deciding the channel](requirements.md#req.dist
 
 ### scenario.distribution.install-refusal-link — A refused install answers with an error link
 
-- GIVEN an installer run on a directory that does not exist, or `concorde update` in a project whose receipt names no checkout
+- GIVEN an installer run on a directory that does not exist or without a project, or `concorde update` in a project whose receipt names no checkout or with `--from` lacking its value
 - WHEN the command refuses
-- THEN it prints `{"error": <link>}` with a link of the Framework's error contract, whose actor is the installer or `concorde update`, whose code is `invalid_project` or `update_source_missing`, and whose reason is `input`
+- THEN it prints `{"error": <link>}` with a link of the Framework's error contract, whose actor is the installer or `concorde update`, whose code is `invalid_project`, `update_source_missing` or `invalid_arguments`, and whose reason is `input`
 - AND it exits with status 1
 
 ### scenario.distribution.install-write-failed — A write that fails after the first write is refused
@@ -480,7 +498,8 @@ This illustrates [the environment deciding the channel](requirements.md#req.dist
 
 - GIVEN a project in which Concorde was installed and then initialized, so that its installation realization binds the files installed then
 - WHEN the developer installs Concorde again, or runs `concorde update`, with a Concorde that installs more files, such as a workflow an older Concorde did not install
-- THEN every file the receipt names outside `.concorde/` that the install added is an exact entry of the installation realization
+- THEN every file listed under the receipt's `files` outside `.concorde/` that the install added, and that no other realization binds by its exact path, is an exact entry of the installation realization
+- BUT the files the receipt names as `amended` are not bound
 - AND once the files are committed, `concorde spec-validation` reports no `CHK.binds.unbound` for them
 - BUT a project that is not initialized gets no Spec, and installing again with nothing new leaves the Specs unchanged
 
