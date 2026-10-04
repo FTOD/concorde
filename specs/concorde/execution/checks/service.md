@@ -208,8 +208,8 @@ stage="work", kinds="all")` in `src/concorde/execution/checks/checks.py` runs th
   fails with names those of every check it ran ([Errors](#errors)).
 7. The service computes the measured digest again, over the same named files and selected tests.
   When the digest differs or can no longer be computed, the service fails the whole call with
-  `stale_evidence`. This happens because a measured file, selected test file or input is gone or
-  became a symbolic link.
+  `stale_evidence`. The digest can no longer be computed when a measured file, selected test file
+  or input is gone or became a symbolic link.
 8. The service returns one check result per check it ran, in configuration order.
 
 A failure in any step ends the call without results, including those of checks that already ran.
