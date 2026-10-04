@@ -111,10 +111,9 @@ environment of one run. It would also let a worker change files through a comman
 
 ### req.adoption.modules-by-host — Only the scaffold adds Modules
 
-A survey or code_to_spec worker SHALL NOT have the ability to add or remove a
-[Module](../../glossary.json#concept.module).
-
-Only the `scaffold` [execution command](../../glossary.json#concept.execution-command) of
+A survey or code_to_spec worker SHALL NOT be able to add or remove a
+[Module](../../glossary.json#concept.module), which only the `scaffold`
+[execution command](../../glossary.json#concept.execution-command) of
 [Scaffold](../scaffold/module.md) does, from an admitted survey.
 
 ### req.adoption.relative-paths — A path inside the worktree is made project-relative
@@ -203,8 +202,8 @@ Every `ok` survey and code_to_spec run SHALL list these under the
 
 - As [decision points](../../glossary.json#concept.decision-point), every open question and, for a
   survey, every decision its worker took itself.
-- As decisions, every decision it reports, with a decision point of kind `decision` keeping the
-  same identity.
+- As decisions, every decision it reports. A decision point of kind `decision` keeps the identity
+  of its decision.
 - As deviations, every deviation.
 - For a survey, as a note, every proposed check.
 
@@ -241,8 +240,8 @@ names any of these:
 
 ### req.adoption.inventory — The survey worker gets an inventory
 
-Apart from its Concorde installation, the survey host SHALL give its worker, as task material,
-every file the surveyed Module binds with its size in lines.
+The survey host SHALL give its worker, as task material, every file the surveyed Module binds with
+its size in lines, apart from that Module's Concorde installation.
 
 The inventory is a file of the run's [trace node](../../glossary.json#concept.trace-node) that the
 worker may read beside its grant. The brief names it with a summary, so that no number of files

@@ -70,14 +70,14 @@ hiding it in prose:
 
 Neither Operation asks the developer: they have no one to ask. The task level or the workflow
 chooses what happens next: go on with the worker's decisions, or seek answers through the existing
-escalation path. When its authority covers a decision, the main agent settles it through that path.
-Otherwise, the developer settles it.
+escalation path. When its authority covers a decision or open question, the main agent settles it
+through that path. Otherwise, the developer settles it.
 
 This Module, not the workflow, says which of them a workflow stops for. Each run's output lists
 them again under the
 [step output convention](../../workflows/contracts.md#contract.workflows.step-output) that
 [Workflows](../../workflows/module.md) reads. Since how a project splits into Modules shapes all
-later work, a survey declares these items as a
+later work, a survey declares each of these as a
 [decision point](../../glossary.json#concept.decision-point):
 
 - Every decision its worker took itself.
@@ -395,14 +395,14 @@ bindings by any of these forms:
 - An assignment expression.
 - A match pattern.
 
-The host adds only decorators when the binding is one of these:
+When that existing binding is one of these, the host adds only decorators:
 
 - Its own no-op helper, however formatted.
 - An import of Concorde's decorator from `concorde.spec.verification`, standing at the file's top
   level before the test.
 
-Otherwise, the host leaves the file untouched. It reports each of the file's links in
-`unlinked_tests`. A decorator would call the project's own `verifies`, whatever it does, or find no
+When that existing binding is neither, the host leaves the file untouched. It reports each of the
+file's links in `unlinked_tests`. A decorator would call the project's own `verifies`, whatever it does, or find no
 `verifies` at all when the module is imported. Only Python tests are linked.
 
 Unlike `specify`, every structural error in a described Module's own documents counts as the
