@@ -60,11 +60,11 @@ The scaffold host SHALL do all of these before writing:
 
 ### req.scaffold.no-overwrite — The scaffold never replaces a file
 
-The scaffold host SHALL end the run `blocked` with `stale_proposal` when either of these holds:
+The scaffold host SHALL end the run `blocked` with `stale_proposal`, naming the existing file or the
+folder of the child that would hold it, when either of these holds:
 
-- A file it would create exists. The error names that file.
-- A child's folder already exists, even one that holds no file it would create. The error names that
-  folder.
+- A file it would create exists.
+- A child's folder already exists, even one that holds no file it would create.
 
 A child's existing folder is refused too, since the scaffold creates files only in folders it
 creates.
@@ -91,8 +91,8 @@ whatever made the transaction fail. The workspace is then not as before, and the
 
 ### req.scaffold.parent-narrowed — A child's paths leave the parent
 
-After a scaffold, the scaffold host SHALL bind every file the parent's realizations bound to
-exactly one of the parent and the created children, except in these cases:
+After a scaffold, every file the parent's realizations bound SHALL be bound by exactly one of the
+parent and the created children, except in these cases:
 
 - The proposal gave the file to several children.
 - The proposal named the file as vendored code.
@@ -128,10 +128,8 @@ realization binding the child's code. Then a `Collaborations` section explains e
 ### req.scaffold.step-output — The created Modules reach a workflow script
 
 Under the [step output convention](../../workflows/contracts.md#contract.workflows.step-output),
-the output of every `ok` scaffold run SHALL carry `data.created_modules`, which lists:
-
-- Every Module the run created, in its record's order.
-- For each of them, the `uses` the survey proposed among the created Modules.
+the output of every `ok` scaffold run SHALL carry `data.created_modules`: every Module the run
+created, in its record's order, each with the `uses` the survey proposed among the created Modules.
 
 A [workflow script](../../glossary.json#concept.workflow-script) reads only what the convention
 hands it. This is how the [brownfield workflow](../../glossary.json#concept.brownfield-workflow)
