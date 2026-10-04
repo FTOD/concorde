@@ -1,6 +1,6 @@
 # Spec writing guidelines
 
-Use these guidelines to write and evaluate a Module's Specs. They have three separately maintained
+Use these guidelines to write and evaluate a Module's Specs. They have four separately maintained
 parts, used together:
 
 - **[Required format](format.md)** defines the machine-checkable structure and syntax: document
@@ -8,11 +8,14 @@ parts, used together:
 - **[Writing guidance](module.md)** explains what the content must communicate to its intended
   reader, in a recommended reading order: purpose, core concepts, overview diagrams, then details
   of correct use, design and collaborations. Applying it requires reader and editor judgment.
+- **[Sentence style](style.md)** states how each sentence is written: one fact in each sentence,
+  short sentences, lists instead of long runs of clauses, the actor named and no semicolons. Its
+  rules are inspired by the structural rules of ASD-STE100 Simplified Technical English.
 - **[Evaluating a Spec](evaluation.md)** states how a Spec is judged good: the quality of one
   Module's Specs for its reader, the quality of the architecture between Modules, and when a
   problem is blocking or advisory. It is a judgment and not deterministic.
 
-All three parts serve the Protocol's purposes of understanding and boundaries. Semantic writing
+All four parts serve the Protocol's purposes of understanding and boundaries. Semantic writing
 requirements still apply when structural checks pass. Mandatory terms retain their force in every
 part: **MUST** and **MUST NOT** state requirements and prohibitions, **SHOULD** allows departure
 for an explained reason, and **MAY** permits a choice. The chapter titles do not change these

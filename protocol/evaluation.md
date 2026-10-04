@@ -76,6 +76,17 @@ into six dimensions.
 - Operational detail stays with the Module that owns it: a parent shows its children's process at
   the level of its own concepts and leaves their commands to them.
 - Unknowns and unsupported behaviour are stated honestly, never invented to fill a structure.
+- The sentences follow [Sentence style](style.md). The style checks report long sentences,
+  semicolons and sentences with more than one requirement keyword, so an evaluation does not
+  report them again. It judges the rules that no program decides:
+  - A requirement and every statement of behaviour name the actor and use the active voice.
+  - Each sentence carries one fact, even when it is short.
+  - Three or more conditions, cases or items stand in a list, not in a run of clauses.
+  - A condition comes before the statement it limits.
+  - Simple tenses say what is true and what happens.
+- A sentence that breaks the style is advisory while a reader still understands it correctly. It
+  is blocking when the reader cannot tell who must act or what is required. A requirement that
+  hides its actor in the passive voice is an example.
 
 ### Obligations
 

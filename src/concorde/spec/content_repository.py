@@ -79,6 +79,9 @@ WARNING_CHECKS = frozenset(
         "CHK.includes.redundant",
         "CHK.term.unlinked",
         "CHK.concept.local",
+        "CHK.style.sentence-length",
+        "CHK.style.semicolon",
+        "CHK.style.one-obligation",
     }
 )
 

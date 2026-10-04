@@ -35,6 +35,7 @@ from .repository_base import (
     overlaps,
     read_file,
 )
+from .style import style_problems
 from .syntax import (
     LINK,
     NODE_PREFIXES,
@@ -65,6 +66,14 @@ REMEDIATION = {
     "CHK.term.unlinked": (
         "Link the term where the document first uses it, or rephrase a word that only looks "
         "like the term."
+    ),
+    "CHK.style.sentence-length": (
+        "Split the sentence into shorter sentences of one fact each, or move its conditions or "
+        "items into a list; see the Protocol's Sentence style."
+    ),
+    "CHK.style.semicolon": "Write separate sentences or a list instead of the semicolon.",
+    "CHK.style.one-obligation": (
+        "Write one sentence for each obligation, each with one requirement keyword."
     ),
     "CHK.concept.local": (
         "Remove the glossary entry and explain the word in its owner's own document where it is "
@@ -131,6 +140,7 @@ class Checks:
             self.reconciliation,
             self.links,
             self.evidence,
+            self.style,
         ):
             family()
         return self.findings
@@ -1313,6 +1323,27 @@ class Checks:
                         line=scenario.line,
                         subject_id=scenario.id,
                     )
+                )
+
+    # --- style -------------------------------------------------------------------------------
+
+    def style(self) -> None:
+        """The style checks over the reading of every document and every concept definition."""
+        repository = self.repository
+        for path, reading in sorted(repository.readings.items()):
+            for problem in style_problems(reading.text):
+                self.add(problem.check, path, problem.message, line=problem.line)
+        if repository.glossary_path is None:
+            return
+        for concept in sorted(
+            repository.concept_nodes.values(), key=lambda item: item.id
+        ):
+            for problem in style_problems(concept.definition or ""):
+                self.add(
+                    problem.check,
+                    repository.glossary_path,
+                    f"the definition of concept {concept.id}: {problem.message}",
+                    subject=concept.id,
                 )
 
 

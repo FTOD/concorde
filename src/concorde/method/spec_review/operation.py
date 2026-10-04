@@ -469,12 +469,13 @@ def _task_section(ctx: RunContext, review: ModuleReview, role: str) -> str:
 
 
 # The parts of the Protocol's writing guide a review worker judges by.
-CRITERIA = ("Writing guidance", "Evaluating a Spec")
+CRITERIA = ("Writing guidance", "Sentence style", "Evaluating a Spec")
 
 
 def criteria(worktree: Path) -> str:
-    """The Protocol's Writing guidance and Evaluating a Spec, from the project's Protocol copy, as
-    the last part of every review worker's brief, or a note that the copy cannot be read."""
+    """The Protocol's Writing guidance, Sentence style and Evaluating a Spec, from the project's
+    Protocol copy, as the last part of every review worker's brief, or a note that the copy cannot
+    be read."""
     path = worktree / PROTOCOL_GUIDE
     try:
         text = path.read_text(encoding="utf-8")

@@ -11,7 +11,7 @@ run does and does not mean. The precise obligations are in the [requirements](re
 ## Check families
 
 The Protocol's Checks chapter (`protocol/checks.md`) lists every check with an identity and a
-strictness. Validation evaluates all of them. They fall into five families:
+strictness. Validation evaluates all of them. They fall into seven families:
 
 | Family | What it catches | Example |
 | --- | --- | --- |
@@ -21,6 +21,13 @@ strictness. Validation evaluates all of them. They fall into five families:
 | Relations | Relations at the wrong site, unresolved targets, composition cycles, registry drift, bad bindings, unbound files, name collisions, contract participation | a [Module](../../glossary.json#concept.module) that uses itself, or a file no Module binds |
 | Views | Mermaid blocks, checked D2 diagrams outside `module` reading or outside the semantic subset, and checked diagrams whose shapes, nesting or edges assert something undeclared | a Module drawn inside another that does not contain it |
 | Reconciliation | A declaration that requires a definition the Module's context does not contain | a `relates` to another Module's realization whose document the Module never selects |
+| Style | A sentence of more than 35 words, a semicolon in prose or a sentence with more than one requirement keyword, in a document's reading or a concept definition (warnings) | a requirement that joins three conditions with semicolons |
+
+The style checks measure the Protocol's *Sentence style* (`protocol/style.md`) in the prose of
+every document and in every concept definition. They see the prose as a reader sees it. Fences,
+headings, tables, front matter and HTML anchors are left out. A link counts as its text, and an
+inline code span counts as one word. Each paragraph and each list item is split into sentences by
+the sentence-break rule that `CHK.concept.definition` uses.
 
 Most families look at one document at a time. Relations and Reconciliation look across the whole
 project, because a relation's target, a registry record or a context selection lives elsewhere. The
@@ -31,9 +38,9 @@ registry mirror covers every field of a Module's `module` block, its title inclu
 A finding names the rule that failed, for example `CHK.context.reconciled`, its strictness, the file
 it concerns and, where known, a line, the node identity involved and a remediation. An error means
 the Specs are not structurally conformant; the result status is `invalid`. A warning is reported
-and does not change the status. `CHK.contains.root`, `CHK.node.explained`, `CHK.term.unlinked`,
-`CHK.concept.local` and `CHK.includes.redundant` are the Protocol's warnings; Concorde adds one, the
-coverage warning `CONCORDE-COVERAGE-001`.
+and does not change the status. The Protocol's warnings are `CHK.contains.root`,
+`CHK.node.explained`, `CHK.term.unlinked`, `CHK.concept.local`, `CHK.includes.redundant` and the
+three style checks. Concorde adds one, the coverage warning `CONCORDE-COVERAGE-001`.
 
 Validation reports every finding it can establish in one run. When a document cannot be read at all,
 for example because its metadata is not valid JSON, the checks that need it are skipped and the

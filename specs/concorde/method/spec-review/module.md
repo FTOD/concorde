@@ -192,7 +192,14 @@ reporting with the Spec review.
 tiers, the one-pass rule and how to treat earlier Issues; plus, from the Operation, the role, the
 reviewed Module's own documents, the workspace's goal, the earlier Issues and, for a checker, the
 numbered findings to check. The criteria are the Protocol's and are not restated, so every worker
-judges by the same bar as a Spec's author reads.
+judges by the same bar as a Spec's author reads. The Operation appends them from the project's
+[Protocol copy](../../glossary.json#concept.protocol-copy), with the *Writing guidance* and the *Sentence style* they build on.
+
+The `readability` dimension covers the Sentence style. Spec core's style checks already report long
+sentences, semicolons and sentences with several requirement keywords as warnings, so a reviewer
+does not report them again. A reviewer reports what no check decides, such as a requirement that
+hides its actor in the passive voice. It groups the instances of one kind in one document into one
+finding. Such a finding is a `suggestion` while a reader still understands the text correctly.
 
 <a id="realization.spec-review.panel"></a>
 

@@ -15,7 +15,7 @@
 # CHK.registry.mirror requires to be equal; the registry is never a
 # declaration site.
 
-protocol: "16.1.0"
+protocol: "16.2.0"
 model_version: 1
 
 context_channels:
@@ -81,6 +81,9 @@ node_types:
       - CHK.view.nodes
       - CHK.view.nesting
       - CHK.view.edges
+      - CHK.style.sentence-length
+      - CHK.style.semicolon
+      - CHK.style.one-obligation
 
   - id: concept
     title: Concept
@@ -108,6 +111,9 @@ node_types:
       - CHK.contrasts.required
       - CHK.glossary.declared
       - CHK.glossary.schema
+      - CHK.style.sentence-length
+      - CHK.style.semicolon
+      - CHK.style.one-obligation
 
   - id: realization
     title: Realization

@@ -4,7 +4,8 @@ audience: worker
 
 You are a Concorde Spec reviewer. You judge whether the Specs of one Module are good enough for
 their reader, by the Protocol's own criteria: **Evaluating a Spec**, which the host appends at the
-end of this brief from the project's Protocol copy, after the **Writing guidance** it builds on.
+end of this brief from the project's Protocol copy, after the **Writing guidance** and the
+**Sentence style** it builds on.
 Judge by those criteria; this brief only says how to report what you find. They judge at two
 levels. A `reviewer` and a `checker` judge **Module quality**: the
 reviewed Module's own documents, for the reader of that Module. An `architect` judges
@@ -59,6 +60,15 @@ problem you can establish in the Specs as one finding:
   it.
 - `evidence`: the text of the Spec that shows it, quoted exactly where possible.
 - `suggestion`: a concrete repair.
+
+Judge the sentences by the Sentence style as part of `readability`. The style checks already
+report every sentence of more than 35 words, every semicolon in prose and every sentence with more
+than one requirement keyword, so do not report those. Report what no check decides, such as a
+requirement that hides its actor in the passive voice, a run of clauses that should be a list or a
+condition that comes after its statement. Group the instances of one kind in one document into one
+finding that quotes the worst of them. Such a finding is a `suggestion` of severity `low` while a
+reader still understands the sentence correctly. It is blocking when a reader cannot tell who must
+act or what is required.
 
 A missing helpful diagram is a `readability` `suggestion`: cite the passage, name the reader's
 question, and suggest the view and what it would clarify. If necessary meaning is missing or

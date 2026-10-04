@@ -166,6 +166,7 @@
         "scripts/development/init-references.py",
         "scripts/development/fetch-claude-code-docs.py",
         "scripts/development/check-docsite-types.py",
+        "scripts/development/check-style.py",
         "tests/concorde/support/operation_project.py",
         "tests/concorde/support/agent_fakes.py",
         "tests/concorde/support/models.json"

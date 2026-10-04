@@ -131,6 +131,16 @@ to it.
 - AND a title whose words wrap onto the next line is a use, reported on the line it starts on
 - BUT a Module's title, a shorter title inside a longer one, a title's words apart by code or a link, and a one-word title as the first word of a sentence or table cell are no use of a term
 
+### scenario.spec.style-warnings — Sentences that break the decidable style rules
+
+- GIVEN a document whose prose has a sentence of more than 35 words, a sentence with a semicolon and a sentence with two requirement keywords
+- AND a glossary entry whose definition has more than 35 words
+- WHEN the validator runs
+- THEN it reports a `CHK.style.sentence-length`, a `CHK.style.semicolon` and a `CHK.style.one-obligation` warning, each naming the document and the line its sentence starts on
+- AND it reports a `CHK.style.sentence-length` warning on the glossary that names the concept
+- AND the result status stays `success`
+- BUT fences, headings, tables and inline code are no prose, a link counts as its text and an inline code span as one word
+
 ### scenario.spec.concept-local — A concept only its owner uses
 
 - GIVEN a glossary entry that the Module declaring the glossary does not own
