@@ -96,14 +96,12 @@ the problem matters to the callers and the later tasks relying on the code. It r
 ### Earlier Issues
 
 A reviewed Module's **earlier Issues** are its open Issues one of whose reports a `code_review` run
-made. The reviewer receives them before it judges. When a problem already recorded is unchanged,
-the reviewer never reports it again. When it changed, the reviewer reports it again as a finding
-naming that Issue, never as a new one. It lists
-each earlier Issue the code no longer has, with its reason, as **resolved**. An earlier Issue it
-neither names nor resolves still stands, **carried**. The Operation, never the reviewer, writes the
-Issues. It appends a finding that names an earlier Issue to that Issue. It records every other
-finding as a new Issue. It closes none. The resolved Issues are listed in the report for the task
-to close.
+made. The reviewer receives them before it judges. A problem already recorded is reported again only
+when it changed, as a finding naming that Issue and never as a new one. It lists each earlier Issue
+the code no longer has, with its reason, as **resolved**. An earlier Issue it neither names nor
+resolves still stands, **carried**. The Operation, never the reviewer, writes the Issues. It appends
+a finding that names an earlier Issue to that Issue. It records every other finding as a new Issue.
+It closes none. The resolved Issues are listed in the report for the task to close.
 
 Earlier Issues exist only where the issues part is installed. Without it, the review does these:
 
@@ -180,16 +178,16 @@ concorde run code_review [--scope change|module] [--modules <module-id>[,<module
 ```
 
 The run judges the [workspace](../../glossary.json#concept.workspace) whose binding lies in the
-worktree it starts in. `--modules` names the reviewed Modules, the binding's by default. An
-[unbound run](../../glossary.json#concept.unbound-run) must name them. Otherwise, its grant cannot
-be computed and it ends `failed` with `grant_unavailable`. `--focus` names a concern to look at
-first, never narrowing what may be reported.
+worktree it starts in. `--modules` names the reviewed Modules, the binding's by default. An [unbound
+run](../../glossary.json#concept.unbound-run) must name them. Otherwise, its grant cannot be
+computed and it ends `failed` with `grant_unavailable`. `--focus` names a concern to look at first,
+never narrowing what may be reported.
 
-In a change review, `--base` names the diff's start commit, the binding's base commit by default.
-For an unbound run, it is required. That run judges the `HEAD` of the worktree it starts in, such
-as the primary worktree, since that commit. It reads it from its
-[unbound checkout](../../glossary.json#concept.unbound-checkout). A Module review has no base and
-refuses `--base`.
+In a change review, `--base` names the diff's start commit, the binding's base commit by default. An
+unbound change review requires `--base`. That run judges the `HEAD` of the worktree it starts in,
+such as the primary worktree, since that commit. It reads it from its [unbound
+checkout](../../glossary.json#concept.unbound-checkout). A Module review has no base and refuses
+`--base`.
 
 For example, `code_review --modules module.issues` gives one reviewer these:
 
@@ -299,10 +297,10 @@ The report types follow these rules:
 - Defects and changes out of scope are `bug` reports.
 
 A finding that names an earlier Issue is appended at the
-[revision](../../glossary.json#concept.issue-revision) read just before. When a refusal of the
-Issue store leaves a finding unreported, it keeps no `earlier`. The earlier Issue it named is
-carried. A failure of the Issue system is never reported as an Issue. It stays an
-[error chain](../../glossary.json#concept.error-chain) in the result. See the
+[revision](../../glossary.json#concept.issue-revision) read just before. When a refusal of the Issue
+store leaves a finding unreported, that finding keeps no `earlier` and the earlier Issue it named is
+carried. A failure of the Issue system is never reported as an Issue. It stays an [error
+chain](../../glossary.json#concept.error-chain) in the result. See the
 [requirements](requirements.md) and [scenarios](scenarios.md) for the precise obligations.
 
 <a id="realization.code-review.operation"></a>
