@@ -265,6 +265,11 @@ A commit added to the task branch after those checks is therefore never merged u
 the task as merged then refuses with `not_merged`, since the branch's head is no longer its latest
 delivery commit.
 
+When the primary branch already contains the checked head, as after a merge made by hand, there is
+nothing to merge and no merge commit is made: the merge runs its checks on the primary branch's
+head as it is, records that head as its `after`, answers `contained` true, ends its attempt's node
+with the outcome `contained`, and closes the task as merged, which commits the decision log alone.
+
 ### req.tasks.merge-workspace-locked — No run of a task changes it while it is merged or closed
 
 `concorde task merge` and `concorde task close` SHALL hold the task's

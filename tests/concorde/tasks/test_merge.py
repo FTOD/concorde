@@ -784,6 +784,35 @@ class MergeTests(unittest.TestCase):
         )
         self.assertEqual("merging", self.state())
 
+    @verifies("scenario.tasks.merge-already-contained")
+    def test_a_head_already_merged_is_checked_and_closed(self):
+        self.project.open_task("t1")
+        checked = self.deliver()
+        git(self.root, "merge", "--ff-only", "concorde/t1")
+        before = self.head()
+        self.assertEqual(checked, before)
+        status, value = self.command("merge", "t1", "--check", python("pass"))
+        self.assertEqual(0, status, value)
+        self.assertEqual(
+            ("closed", "merged"),
+            (value["record"]["state"], value["record"]["closed"]["outcome"]),
+        )
+        self.assertEqual(
+            (before, before, True),
+            (
+                value["merge"]["before"],
+                value["merge"]["after"],
+                value["merge"]["contained"],
+            ),
+        )
+        self.assertEqual([0], [check["exit_code"] for check in value["merge"]["checks"]])
+        self.assertEqual("contained", trace.read(Path(value["merge"]["log"]))["outcome"])
+        # No merge commit: the decision log is committed alone on top of the merged head.
+        self.assertEqual([before], self.parents(self.head()))
+        self.assertTrue(
+            (self.root / ".concorde/decisions/t1.md").is_file(),
+        )
+
     @verifies("scenario.tasks.merge-waits-for-run")
     def test_a_merge_waits_for_the_tasks_run_without_the_merge_lock(self):
         self.project.open_task("t1")

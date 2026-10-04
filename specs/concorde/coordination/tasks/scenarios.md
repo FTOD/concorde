@@ -398,6 +398,13 @@ This illustrates [a merge running the Concorde it started with](requirements.md#
 - THEN the primary branch holds the checked delivery commit and not the later commit
 - AND closing the task fails with `not_merged`, leaving the task `merging` and saying that `--resume` finishes it once the cause is fixed
 
+### scenario.tasks.merge-already-contained — A head the primary branch already holds is checked and closed
+
+- GIVEN a delivered task whose delivery commit was merged into the primary branch by hand
+- WHEN the main agent merges the task with `concorde task merge`
+- THEN no merge commit is made: the checks run on the primary branch's head, which the answer gives as both `before` and `after`, with `contained` true
+- AND the task is closed as merged, its attempt's node ending with the outcome `contained`, and its decision log is committed alone on the primary branch
+
 ### scenario.tasks.merge-waits-for-run — A merge waits for the task's run to end
 
 - GIVEN a delivered task whose [workspace lock](../../glossary.json#concept.workspace-lock) a run that is finishing holds

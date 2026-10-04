@@ -573,7 +573,8 @@ def _merge(primary: Path, record: dict, merging: dict) -> str:
         primary, "rev-parse", "-q", "--verify", "MERGE_HEAD", check=False
     )
     if in_progress.returncode != 0:
-        # Already contained: nothing to merge, and closing commits the decision log alone.
+        # Already contained: nothing to merge, so no merge commit; the checks run on the
+        # primary head as it is, and closing commits the decision log alone.
         return _head(primary)
     path = store.committed_log(key)
     target = primary / path
@@ -914,6 +915,8 @@ def _checked_close(
     warnings.extend(outside or [])
     if not merging["checks"]:
         warnings.append(NO_CHECK.format(registry=parts.REGISTRY))
+    # A checked commit the primary branch already held made no merge commit.
+    contained = after == before
     try:
         folder = attempt.folder
         closed = store.close_locked(
@@ -921,7 +924,7 @@ def _checked_close(
             task_id,
             "merged",
             again=f"`concorde task merge {task_id} --resume`",
-            before_move=lambda: attempt.end("ok", "merged"),
+            before_move=lambda: attempt.end("ok", "contained" if contained else "merged"),
             warnings=warnings,
             key=merging.get("history"),
             at=merging["since"],
@@ -955,6 +958,7 @@ def _checked_close(
         "merge": {
             "before": before,
             "after": after,
+            "contained": contained,
             "checks": results,
             "waited_seconds": waited,
             "log": (
