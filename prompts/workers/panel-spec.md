@@ -69,9 +69,9 @@ Do not add problems no worker reported. The workers find, and you judge and merg
 ## Your result
 
 As a `reviewer` or an `architect`, end with status `ok` and `output` set to
-`{"findings": [...], "resolved": [...]}`. Give every finding as described above. For an earlier
-Issue that changed, include `earlier`. Include in `resolved` every earlier Issue the Specs no
-longer have.
+`{"findings": [...], "resolved": [...]}`. Give every finding as described above. When a finding
+concerns an earlier Issue that changed, include `earlier` in that finding. Include in `resolved`
+every earlier Issue the Specs no longer have.
 
 As the `chair`, end with status `ok` and `output` set to
 `{"findings": [...], "rejected": [...], "resolved": [...]}`. Each finding has the fields described
