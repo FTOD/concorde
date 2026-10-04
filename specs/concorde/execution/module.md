@@ -124,8 +124,8 @@ the run's own link over the unchanged errors it received. The
 For the runner, the [Modules](../glossary.json#concept.module) a run works on are names. They are
 the ones `--modules` gives, or else the binding's. When a definition's steps read the Specs, the
 definition checks the Modules in its own admission. Method's definitions do this through the Spec
-tooling. They leave out the binding's Modules the workspace no longer registers. They refuse a
-named Module the workspace does not register. A definition that reads no Spec takes the Modules as
+tooling. Such an admission leaves out the binding's Modules the workspace no longer registers. It
+refuses a named Module the workspace does not register. A definition that reads no Spec takes the Modules as
 labels.
 
 ### Unbound runs
@@ -209,8 +209,8 @@ Execution's to say. On the Claude Code backend, a worker's Bash is sandboxed
 [task session](../glossary.json#concept.task-session)'s calls are not sandboxed
 ([req.task-session.no-sandbox](../coordination/task-session/requirements.md#req.task-session.no-sandbox)).
 No namespace of a task session's calls therefore ends with them. A task session starts its runs
-in background Bash rather than detached all the same. Claude Code may end the processes of a call
-that returned. Execution itself does not see which namespace it was started in and promises no
+in background Bash rather than detached all the same, because Claude Code may end the processes of
+a call that returned. Execution itself does not see which namespace it was started in and promises no
 more than this.
 
 ### The run store
@@ -437,7 +437,7 @@ The runner prints its run result and saves it in the run's trace node,
 Before it starts its run, a [workflow step](../glossary.json#concept.workflow-step) waits for the
 workspace lock to be free. `--wait <seconds>` queues any run instead. The runner waits for the lock
 inside its own process. Its run progress file names the lock's holder: a run or, in Concorde, a
-task's merge or close. The moment that holder lets go, the runner starts. Only when the lock is
+task's merge or close. The moment that holder lets go, the run starts. Only when the lock is
 still held after that many seconds is the run refused with `workspace_busy`. A caller that wants a
 `delivery` after an `implement` thus asks once and never polls the lock. The run waits in the lobby,
 outside the workspace folder. Only once it holds the lock and finds the binding it started from
@@ -459,8 +459,8 @@ commit checked out, like every other input of the run. The runtime paths its def
 that Git ignores are linked from that worktree into the checkout. Examples include `.venv` and
 `node_modules`. The checks a review runs there therefore find them. Method's definitions name the
 [worker configuration](../glossary.json#concept.worker-configuration)'s runtime paths, as committed
-in the checkout. When its repository holds the recorded commit and Git can check it out, each
-submodule that worktree checked out is checked out in the checkout too. A submodule that cannot be
+in the checkout. Each submodule that worktree checked out is checked out in the checkout too, when
+its repository holds the commit the checkout records for it and Git can check it out. A submodule that cannot be
 checked out stays empty, as in a fresh clone. The `submodule-absent` evidence names why
 ([Unbound checkout](runner.md#unbound-checkout)). However the run ends, the runner removes the
 checkout before it writes the result.
@@ -678,7 +678,7 @@ The runner relies on that definition alone. It performs these actions:
 - When a definition does not allow unbound runs, it refuses that definition unbound.
 - It runs the steps.
 - It checks an `ok` output against the contract.
-- When a result breaks the contract, it replaces that result by a `failed` one.
+- When such an output breaks the contract, it replaces that result by a `failed` one.
 
 <a id="contains-commands"></a>
 

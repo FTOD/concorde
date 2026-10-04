@@ -305,7 +305,7 @@ depends only on outcomes. These outcomes are never resumed:
 
 A clean `ok` round goes on as its round validation answers. What a
 [Spec gap](../glossary.json#concept.spec-gap) or a path outside the grant means is the caller's to
-say, in its instructions and its validation. In Concorde, workers handle gaps in these ways:
+say, in its instructions and its validation. In Concorde, workers handle both in these ways:
 
 - An `understand` worker reports a gap and ends `ok`.
 - A review worker reports a gap as a finding and goes on.
