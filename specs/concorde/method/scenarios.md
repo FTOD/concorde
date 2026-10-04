@@ -2,8 +2,8 @@
 
 Concrete situations that show Method's [standard worker
 sequence](../glossary.json#concept.standard-worker-sequence) at work in worker-backed runs of its
-Operations, such as `implement` and `spec_panel` ([How an Operation runs its workers](workers.md)),
-and the [requirements](requirements.md) it serves, with the
+Operations, such as `implement` and `spec_panel` ([How an Operation runs its workers](workers.md)).
+They also show the [requirements](requirements.md) it serves, with the
 [Operations requirements](../execution/operations/requirements.md) every Operation meets. What every
 run does, whatever its definition, is shown by the [Execution scenarios](../execution/scenarios.md).
 
@@ -30,7 +30,9 @@ run does, whatever its definition, is shown by the [Execution scenarios](../exec
 
 ### scenario.method.worker-model — A worker runs with the worktree's model for its id
 
-- GIVEN a task worktree whose [worker configuration](../glossary.json#concept.worker-configuration) chooses Claude Code, a default model and a level, and a model for `implement`'s worker `worker` that has no level of its own in `enabled_models`, while no entry more specific than the default sets a level
+- GIVEN a task worktree whose [worker configuration](../glossary.json#concept.worker-configuration) chooses Claude Code, a default model and a level
+- AND it chooses a model for `implement`'s worker `worker` that has no level of its own in `enabled_models`
+- AND no entry more specific than the default sets a level
 - WHEN the task level runs `concorde run implement --goal "<goal>"` in the task worktree
 - THEN the run launches `claude -p` with the worker's model and the default's level as `--effort`
 - AND the [run record](../glossary.json#concept.run-record) and the result's `worker-model` host evidence name the backend, the [worker id](../glossary.json#concept.worker-id), the project model name with the local id and the [model map](../glossary.json#concept.model-map) it came from, and the level
@@ -42,7 +44,8 @@ run does, whatever its definition, is shown by the [Execution scenarios](../exec
 - AND a task worktree whose worker configuration gives `implement`'s worker a project model name, with no entry choosing a backend for it, and puts another [Operation](../glossary.json#concept.operation)'s worker on Claude Code
 - AND a [model map](../glossary.json#concept.model-map) that gives that model a pi id
 - WHEN the task level runs `implement` and then that Operation in the task worktree
-- THEN the run launches `implement`'s worker with `pi -p` and the local id the model map gives that model on pi, under the same grant a Claude Code worker would get, and the run record and `worker-model` evidence name `pi` as Concorde's default [worker backend](../glossary.json#concept.worker-backend)
+- THEN the run launches `implement`'s worker with `pi -p` and the local id the model map gives that model on pi, under the same grant a Claude Code worker would get
+- AND the run record and `worker-model` evidence name `pi` as Concorde's default [worker backend](../glossary.json#concept.worker-backend)
 - AND it launches the other Operation's worker with `claude -p`, naming the entry of its worker id that chose it
 
 ### scenario.method.worker-model-unavailable — A run whose worker configuration cannot be read fails before launch
@@ -57,7 +60,8 @@ run does, whatever its definition, is shown by the [Execution scenarios](../exec
 - GIVEN a task whose worktree's valid worker configuration gives `implement`'s worker a model and chooses no backend for it, on a machine without pi
 - WHEN the task level runs `concorde run implement --goal "<goal>"` in the task worktree and the run reaches the worker step
 - THEN no worker starts and the result is `failed` with `worker_model_unavailable`
-- AND its cause is the `component` link of Workers' model configuration with `backend_missing`, saying that the worker runs on pi as Concorde's default worker backend, naming the command looked for and how to choose Claude Code for it
+- AND its cause is the `component` link of Workers' model configuration with `backend_missing`, saying that the worker runs on pi as Concorde's default worker backend
+- AND that link names the command looked for and how to choose Claude Code for it
 
 ### scenario.method.worker-model-unmapped — A run whose worker model the model map cannot place fails before launch
 
@@ -68,10 +72,12 @@ run does, whatever its definition, is shown by the [Execution scenarios](../exec
 
 ### scenario.method.worker-models-checked-at-admission — All of an Operation's workers are placed before the first launches
 
-- GIVEN a task whose worktree's valid worker configuration puts two of `spec_panel`'s workers, `reviewer1` and `chair`, on a backend for which the machine's [model map](../glossary.json#concept.model-map) gives their model no id, while its other workers are placed
+- GIVEN a task whose worktree's valid worker configuration puts two of `spec_panel`'s workers, `reviewer1` and `chair`, on a backend for which the machine's [model map](../glossary.json#concept.model-map) gives their model no id
+- AND its other workers are placed
 - WHEN the task level runs `concorde run spec_panel` in the task worktree
 - THEN the run stops at its first step, `check_worker_models`, before any step of the panel runs and before any worker starts, and the result is `failed` with `worker_model_unavailable`
-- AND its one cause is the `component` link of Workers' model configuration with `model_unmapped`, naming the missing entry once with both workers that would take it, and the options say to add the id to the map
+- AND its one cause is the `component` link of Workers' model configuration with `model_unmapped`, naming the missing entry once with both workers that would take it
+- AND the options say to add the id to the map
 - BUT once the map can place every worker of `spec_panel`, the run goes on to the panel's own steps
 
 ### scenario.method.worker-blocked — A blocked worker escalates

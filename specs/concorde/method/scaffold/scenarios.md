@@ -56,7 +56,9 @@ shapes are in the [contracts](contracts.md).
 - GIVEN a survey whose proposal fits the workspace
 - WHEN the operating system refuses one of the scaffold's writes
 - THEN the result is `failed` with `write_failed`, reason `environment`, Spec core's error as its cause, and every file of the workspace is as before
-- AND when the scaffold's files would add a structural error and the operating system refuses to remove the created `specs/shop/checkout/module.md` while the transaction restores the workspace, the result is `failed` with `write_failed` instead of `scaffold_invalid`, naming that file as still holding the scaffold's content and telling to remove it, while every other file is as before
+- AND when the scaffold's files would add a structural error and the operating system refuses to remove the created `specs/shop/checkout/module.md` while the transaction restores the workspace, the result is `failed` with `write_failed` instead of `scaffold_invalid`
+- AND that result names that file as still holding the scaffold's content and tells to remove it
+- AND every other file is then as before
 
 ### scenario.scaffold.refused-input — The scaffold needs one survey of its workspace
 

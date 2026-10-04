@@ -136,7 +136,8 @@ commit and output are defined in the [contracts](contracts.md).
 
 ### scenario.delivery.stage-refused — Git refuses to stage a change
 
-- GIVEN a workspace that is ready, with changes staged before the delivery, an intent-to-add path, a skip-worktree and an assume-unchanged flag, and a Git clean filter that refuses one of its changed files, which the readiness's checks do not read through Git
+- GIVEN a workspace that is ready, with changes staged before the delivery, an intent-to-add path, a skip-worktree and an assume-unchanged flag
+- AND a Git clean filter that refuses one of its changed files, which the readiness's checks do not read through Git
 - WHEN the workspace is delivered
 - THEN the result has status `failed` with `stage_failed` and a `git add` cause carrying Git's output
 - AND the index is again exactly as before the delivery

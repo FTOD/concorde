@@ -12,7 +12,8 @@ change and the test report are in the
 - WHEN an implement worker starts
 - THEN its brief names that interpreter, which is first on its PATH as `python`
 - AND its sandbox may read the interpreter's environment, so the worker can run the project's code and tests with it
-- AND when the way from the environment to the installation passes through a symbolic link, such as a version directory linking to a patch-release directory, the directory holding each link is readable too, but never the home directory itself
+- AND when the way from the environment to the installation passes through a symbolic link, such as a version directory linking to a patch-release directory, the directory holding each link is readable too
+- BUT the home directory itself is never readable
 
 ### scenario.implementation.checks-of-users — A change runs the checks of the Modules that use it
 
