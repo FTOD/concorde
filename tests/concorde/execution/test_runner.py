@@ -52,6 +52,7 @@ from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
 from concorde.coordination.tasks import store
 from concorde.kernel.tracing import locks
+from concorde.kernel.tracing import node as trace_node
 from concorde.kernel.tracing.node import Node, TraceError
 from tests.concorde.harness.workers.test_pi import FAKE as FAKE_PI
 from tests.concorde.harness.workers.test_pi import fake_which
@@ -1430,6 +1431,71 @@ class RunnerTests(unittest.TestCase):
             ["result.json"],
             [path.name for path in self.run_folder(envelope).glob("*result*")],
         )
+
+    def refusing(self, *kinds: str):
+        """A patch under which the operating system refuses every ``trace.json`` of a node of
+        ``kinds``, its folder being made as the file system would before the file."""
+        original = trace_node.write
+
+        def write(folder, record):
+            if record["kind"] in kinds:
+                Path(folder).mkdir(parents=True, exist_ok=True)
+                raise OSError(errno.ENOSPC, "No space left on device")
+            return original(folder, record)
+
+        return patch.object(trace_node, "write", write)
+
+    @verifies("scenario.execution.trace-write-reported")
+    def test_a_refused_trace_write_is_in_the_result_and_never_fatal(self):
+        with self.refusing("run"):
+            status, envelope = self.project.run("task-validation", "--task", "t1")
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        writes = [
+            item for item in envelope["host_evidence"] if item["kind"] == "trace-write"
+        ]
+        self.assertEqual({envelope["run_id"]}, {item["ref"] for item in writes})
+        moments = " ".join(item["detail"] for item in writes)
+        self.assertIn("could not be written at its start", moments)
+        self.assertIn("could not be written at its end", moments)
+        for item in writes:
+            self.assertIn("trace.json", item["detail"])
+            self.assertIn("No space left on device", item["detail"])
+        # The final write follows the result, which is published again with it.
+        self.assertEqual(envelope, self.saved(envelope))
+        self.assertFalse((self.run_folder(envelope) / "trace.json").exists())
+        self.assertIsNone(runs.lock_holder(self.store(), "t1"))
+
+    @verifies("scenario.method.trace-write-reported")
+    def test_a_refused_trace_write_below_the_run_is_in_its_result(self):
+        with self.refusing("worker-run", "check"):
+            status, envelope = self.implement(
+                [
+                    {
+                        "writes": {
+                            f"{self.worktree}/src/a/calc.py": "def add(a, b):\n    return a + b\n"
+                        }
+                    }
+                ]
+            )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        [worker] = envelope["worker_runs"]
+        writes = [
+            item for item in envelope["host_evidence"] if item["kind"] == "trace-write"
+        ]
+        checks = [
+            item["ref"] for item in envelope["host_evidence"] if item["kind"] == "check"
+        ]
+        self.assertTrue(checks)
+        refs = {item["ref"] for item in writes}
+        self.assertEqual({worker, *checks}, refs)
+        for item in writes:
+            self.assertIn("No space left on device", item["detail"])
+        # The worker run's failures include its first and its final write.
+        worker_writes = " ".join(
+            item["detail"] for item in writes if item["ref"] == worker
+        )
+        self.assertIn("at its start", worker_writes)
+        self.assertIn("at its end", worker_writes)
 
     @verifies("scenario.execution.result-unsaved")
     def test_a_result_that_cannot_be_saved_is_printed_and_the_run_is_lost(self):

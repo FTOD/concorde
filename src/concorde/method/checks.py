@@ -14,6 +14,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ..execution.checks.checks import configured_checks, run_checks, selective
+from ..kernel.errors import evidence
 from ..spec.repository import SpecRepository
 from ..spec.repository_base import bound_by
 
@@ -93,18 +94,20 @@ def run_module_checks(
     stage: str = "work",
     kinds: str = "all",
     repository: SpecRepository | None = None,
+    report: list[dict] | None = None,
 ) -> list[dict]:
     """Run the configured checks of ``modules``, as Check execution's ``run_checks`` does, with
     what the workspace's Specs say about them: each Module's implementation files, the tests
     verifying their scenarios and the project's interpreter. Spec core's errors and Check
-    execution's ``CheckError`` pass through."""
+    execution's ``CheckError`` pass through. ``report``, a run's host evidence, receives each
+    refused write of a check's trace node as ``trace-write`` evidence."""
     repository = repository or SpecRepository(worktree)
     selected = list(dict.fromkeys(modules))
     # The tests are looked for only when some configured check selects tests.
     selects = kinds != "module" and any(
         selective(check) for check in configured_checks(worktree)
     )
-    return run_checks(
+    results = run_checks(
         worktree,
         modules=selected,
         trace_directory=trace_directory,
@@ -114,6 +117,19 @@ def run_module_checks(
         stage=stage,
         kinds=kinds,
     )
+    if report is not None:
+        report.extend(trace_writes(results))
+    return results
+
+
+def trace_writes(results) -> list[dict]:
+    """``trace-write`` evidence of each refused write of the trace node of a check result in
+    ``results``, by the check's identity; it never changes what the check found."""
+    return [
+        evidence("trace-write", result["check_id"], failure)
+        for result in results
+        for failure in result.get("trace_failures") or ()
+    ]
 
 
 __all__ = [
@@ -121,5 +137,6 @@ __all__ = [
     "checked_modules",
     "measured_files",
     "run_module_checks",
+    "trace_writes",
     "verified_tests",
 ]

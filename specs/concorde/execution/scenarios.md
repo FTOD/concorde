@@ -226,7 +226,7 @@ which every Concorde installation of the method part registers.
 
 ### scenario.execution.run-unrecorded — A run whose first records cannot be created runs no step
 
-- GIVEN a bound workspace whose run store refuses the run's first `trace.json`, such as on a read-only file system
+- GIVEN a bound workspace whose run store refuses the run's folder or run lock, such as on a read-only file system
 - WHEN a run is started there
 - THEN no step runs, no result is written and nothing is printed on standard output
 - AND the command exits with status 1, its `run_unrecorded` link on standard error with the `Execution (run store)` link of the refusal as its cause
@@ -239,7 +239,14 @@ which every Concorde installation of the method part registers.
 - WHEN a run is started there and its steps end `ok`
 - THEN the command still prints the run's result on standard output and exits with status 1, its `result_unsaved` link on standard error with the `Execution (run store)` link of the failed write as its cause
 - AND no `result.json` was written, the run's trace node still says `running`, both locks are free and every observer finds the run lost
-- AND when only the final `trace.json` fails, the result is published and the trace node, still `running` with nobody holding its run lock, reads as lost
+- AND when only the final `trace.json` breaks the node contract, the result is published and the trace node, still `running` with nobody holding its run lock, reads as lost
+
+### scenario.execution.trace-write-reported — A refused trace write is in the result, never fatal
+
+- GIVEN a bound workspace whose file system refuses every write of the run's `trace.json`
+- WHEN a run is started there and its steps end `ok`
+- THEN every step runs, the result has status `ok` and the command exits with status 0
+- AND the result, as published in `result.json` and as printed, names each refused write as `trace-write` evidence by the run identity, the write at the run's start and the final write after the result among them, each with the node's file and the error
 
 ### scenario.execution.result-published-whole — An observer never reads part of a result
 

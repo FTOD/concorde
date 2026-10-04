@@ -128,7 +128,7 @@ TRACE_ROOTS = (
 for _root in TRACE_ROOTS:
     roots.register(_root)
 
-# contract.execution.run-result, version 3
+# contract.execution.run-result, version 4
 RESULT_SCHEMA: dict = {
     "type": "object",
     "additionalProperties": False,

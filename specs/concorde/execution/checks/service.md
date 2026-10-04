@@ -118,7 +118,10 @@ stage="work", kinds="all")` in `src/concorde/execution/checks/checks.py`:
    with the service's error and the call fails with `check_sandbox_unavailable`. When a
    cancellation, an interrupt or an unexpected error ends the call before the node ended, the log
    holds the output the boundary drained, the node ends `failed` with the outcome and status
-   `interrupted`, and the error goes on to the caller unchanged;
+   `interrupted`, and the error goes on to the caller unchanged. A write of `trace.json` that the
+   operating system refuses never changes the check or the call: the check result names it in
+   `trace_failures`, and an error the call fails with names those of every check it ran
+   ([Errors](#errors));
 7. computes the measured digest again, over the same named files and selected tests, and fails the
    whole call with `stale_evidence` when it differs or can no longer be computed, because a
    measured file, selected test file or input is gone or became a symbolic link;
@@ -139,6 +142,7 @@ is acceptable.
 | `source_digest` | The measured digest taken before the run |
 | `log` | The absolute path of the check node's `output.log` |
 | `log_digest` | The digest of the saved log |
+| `trace_failures` | Each write of the check node's `trace.json` that the operating system refused, naming the node's file, the moment (`start` or `end`) and the error; empty when every write succeeded |
 
 Every check the service runs is also a trace node of kind `check`, as
 [Tracing](../../kernel/tracing/contracts.md#contract.tracing.node) defines it, whose content is this value:
@@ -228,8 +232,10 @@ names no project interpreter, or none that is an executable file where it was lo
 `check_sandbox_unavailable` (the read-only boundary cannot be established), `stale_evidence` (an
 input changed while the check ran) and `system_error` (an operating-system error). Each carries a
 message naming the check or Module concerned, the code's reason, its location, remediation and
-causes. Check execution depends on no part but the kernel, so its error type is its own; a caller
-never needs to translate it, since `service_error` makes the link.
+causes. A `CheckError` that ends a call after checks ran also carries in `trace_failures` each write
+of their nodes' `trace.json` that the operating system refused, since the call returns no result
+that could name them. Check execution depends on no part but the kernel, so its error type is its
+own; a caller never needs to translate it, since `service_error` makes the link.
 
 ### Check execution's error as a link
 
@@ -238,8 +244,9 @@ Framework's [error chain](../../kernel/tracing/contracts.md#contract.tracing.err
 unchanged as a cause under its own link: a run's stop for checks that could not run, the round
 validation that runs a worker's checks, and Validation's blocking `check` finding and its
 `inputs_changed` stop. The link has the level `component`, the actor `Check execution`, the error's
-code, a detail with its message and location, the code's reason as explanation, its remediation as
-option and recommendation, and the error's own causes nested the same way. Its unhandled reason
+code, a detail with its message and location, the location and each refused trace write of the
+error as `trace-write` evidence, the code's reason as explanation, its remediation as option and
+recommendation, and the error's own causes nested the same way. Its unhandled reason
 depends on the code:
 
 | Code | Reason |
@@ -296,6 +303,15 @@ inside the trace directory its caller named.
 
 The check service SHALL describe a check result that did not pass, when a consumer reports it as an error, with its Module, exit code, log path and the end of its log.
 
+### req.checks.trace-write-reported — A refused trace write is in the check's result
+
+The check service SHALL report every write of a check node's `trace.json` that the operating system
+refused in that check's result, or in the error of a call that returns no result, without changing
+the check's status or the call's outcome for it.
+
+Tracing is best-effort for the check, never silent
+([req.tracing.written-at-start](../../kernel/tracing/requirements.md#req.tracing.written-at-start)).
+
 ### req.checks.no-status-without-run — A refused check has no status
 
 The check service SHALL NOT return a check result for a check whose command the boundary refused to
@@ -324,6 +340,15 @@ start.
 - WHEN the service runs for the Modules a changed path of A's realization or A's [Spec](../../glossary.json#concept.spec) concerns, as its caller selects them
 - THEN it runs A's check read-only and returns one result with its status, exit code, source digest and log path
 - AND the check's trace node, with its `output.log`, is written into the caller's trace directory
+
+### scenario.checks.service-trace-write — A refused trace write is in the check's result
+
+- GIVEN a configured check whose trace node's `trace.json` the operating system refuses to write
+- WHEN the service runs it
+- THEN the check runs, its log is written and its result has the status its command gave
+- AND the result's `trace_failures` names each refused write with the node's file, the moment and the error
+- AND a check whose every write succeeded has empty `trace_failures`
+- BUT when the call then fails, such as with `stale_evidence`, Check execution's link names each refused write of the checks it ran as `trace-write` evidence
 
 ### scenario.checks.service-no-checks — A Module without checks gets no result
 

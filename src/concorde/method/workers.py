@@ -704,6 +704,8 @@ def run_worker(
 
 def absorb(ctx: RunContext, record: dict):
     """Map one worker run record to a step outcome, adding host evidence."""
+    from .checks import trace_writes
+
     ctx.worker_started(record["run_id"])
     ctx.last_record = record
     ctx.worker = record.get("worker_result")
@@ -746,6 +748,21 @@ def absorb(ctx: RunContext, record: dict):
                     )
                 )
     found.append(evidence("rounds", "", f"{len(rounds)} round(s)"))
+    # Tracing is best-effort for the work, never silent: each refused write of the worker run's,
+    # a round's or a round's check's trace.json is the run's own evidence, whatever the step
+    # makes of this outcome.
+    ctx.evidence.extend(
+        evidence("trace-write", record["run_id"], failure)
+        for failure in record.get("trace_failures") or ()
+    )
+    ctx.evidence.extend(
+        trace_writes(
+            check
+            for item in rounds
+            for check in item.get("evidence") or ()
+            if "check_id" in check
+        )
+    )
     if record.get("transcript"):
         found.append(evidence("transcript", record["transcript"], ""))
     if record.get("stderr_tail"):

@@ -476,6 +476,7 @@ def run_configured_checks(ctx: RunContext):
                 stage="readiness",
                 kinds=kinds,
                 repository=state.repository,
+                report=ctx.evidence,
             )
         except (CheckError, SpecError, OSError) as error:
             code = getattr(error, "code", None)

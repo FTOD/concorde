@@ -223,7 +223,7 @@ name; the number gives only the order, so that no row is confused with a step of
 | 4 | admission | Admit the inputs, then run the definition's own admission of its Modules: a definition that reads the [Specs](../glossary.json#concept.spec) leaves out, with `removed-module` evidence, each binding Module the workspace no longer registers and checks the named Modules against the workspace's registry, unless it diagnoses the Specs itself; a definition that reads no Spec takes the Modules as they are | `input_not_admissible`, and from the definition's admission `modules_removed`, `unknown_module`, `specs_unloadable` (`failed`) |
 | 5 | execution | Execute the definition's steps in order | a step stops the run with a status |
 | 6 | composition | Remove an unbound run's checkout, then compose the run result from the step outcomes, as [Composing the result](#composing-the-result) says, and check it against the run result contract and, for an `ok` result, the definition's output contract | the result or output is invalid (`failed`, `invalid-output` evidence) |
-| 7 | finish | Publish `result.json` atomically, mark the run progress file finished, write the final `trace.json`, release the workspace lock, remove and release the run lock, print the result and exit | a final write that fails ([When records cannot be written](#when-records-cannot-be-written): the result printed, exit 1, the run lost) |
+| 7 | finish | Publish `result.json` atomically, mark the run progress file finished, write the final `trace.json`, publish `result.json` again with its `trace-write` evidence when the operating system refused that write, release the workspace lock, remove and release the run lock, print the result and exit | a result that cannot be published or a final `trace.json` that breaks the node contract ([When records cannot be written](#when-records-cannot-be-written): the result printed, exit 1, the run lost) |
 
 - Each of the definition's steps returns either "continue", with any output and evidence it
   produced, or "stop", with a status, a summary, evidence and, unless the status is `ok`, the
@@ -301,14 +301,14 @@ command line writes no result
 cannot create the run's folder or the runner's output `host.out` treats it as the first case and
 starts no runner ([Detached runs](#detached-runs)).
 
-- **Before any step.** When the parse cannot create the run's folder, take its run lock, write its
-  first `trace.json` or write its first run progress file, the run is refused before any step
-  runs: the runner writes no result and nothing on standard output, writes its `run_unrecorded`
+- **Before any step.** When the parse cannot create the run's folder, take its run lock or write
+  its first run progress file, or its first `trace.json` breaks the node contract, the run is
+  refused before any step runs: the runner writes no result and nothing on standard output, writes its `run_unrecorded`
   link to standard error, whose cause is the `Execution (run store)` link with the operating
   system's or Tracing's refusal, releases the run lock if it took it and exits with status 1. A
   folder it created may stay behind, holding no result and no lock anybody holds.
-- **After the composition.** When publishing `result.json` or writing the final `trace.json` fails,
-  the runner writes nothing more, still prints the result it composed on standard output, writes
+- **After the composition.** When publishing `result.json` fails, or the final `trace.json` breaks
+  the node contract, the runner writes nothing more, still prints the result it composed on standard output, writes
   its `result_unsaved` link to standard error, whose causes are the `Execution (run store)` link of
   the failed write and the result's own error when it has one, releases both locks and exits with
   status 1, whatever the result's status. The run counts as lost. Without a published
@@ -318,6 +318,16 @@ starts no runner ([Detached runs](#detached-runs)).
   reads as lost. Its work may have been done: whoever started the run learns from the printed
   result what it did before running it again. A failed write of a later run progress file never
   changes the run.
+
+A write of `trace.json` that the operating system refuses, at the run's start, while a step runs or
+at its end, is neither case: tracing is best-effort for the run, never silent
+([req.execution.trace-write-reported](requirements.md#req.execution.trace-write-reported)). The run
+goes on as if the write had succeeded, and its result names each refused write as `trace-write`
+evidence, by the run identity, with the node's file, the moment and the error. The final write
+follows the result, so when the operating system refuses it the runner publishes the result again
+with that evidence added, before it releases the locks, and prints that result; the trace node
+then still says what it said before, `running` when every earlier write succeeded, which reads as
+lost once nobody holds the run lock.
 
 ## Unbound checkout
 

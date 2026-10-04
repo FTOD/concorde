@@ -21,6 +21,13 @@ run does, whatever its definition, is shown by the [Execution scenarios](../exec
 - AND the result is printed and saved in the run's [trace node](../glossary.json#concept.trace-node) in the [run store](../glossary.json#concept.run-store) of the binding's workspace folder, with the worker run's node below it
 - AND the command exits with status 0
 
+### scenario.method.trace-write-reported — A refused trace write below the run is in its result
+
+- GIVEN a worker-backed run whose worker run and one of whose checks could not write their `trace.json`, the operating system refusing it
+- WHEN the run ends
+- THEN its result keeps the status the worker run and the checks gave it
+- AND its `host_evidence` names each refused write as `trace-write` evidence, by the worker run's or the check's identity, with the node's file and the error
+
 ### scenario.method.worker-model — A worker runs with the worktree's model for its id
 
 - GIVEN a task worktree whose [worker configuration](../glossary.json#concept.worker-configuration) chooses Claude Code, a default model and a level, and a model for `implement`'s worker `worker` that has no level of its own in `enabled_models`, while no entry more specific than the default sets a level

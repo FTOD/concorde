@@ -68,7 +68,8 @@ IDENTITY = re.compile(r"^[a-z][a-z0-9]*(?:[.-][a-z0-9-]+)*$")
 
 class CheckError(Exception):
     """A configured check that cannot be run or whose result cannot be trusted, with its
-    location, reason, remediation and causes."""
+    location, reason, remediation and causes, and the refused writes of the trace nodes of the
+    checks the call ran before it failed."""
 
     CODES = {
         "invalid_check": (
@@ -121,6 +122,8 @@ class CheckError(Exception):
         self.reason = reason or known[0]
         self.remediation = remediation or known[1]
         self.causes = tuple(causes)
+        # Every write of a check's trace.json the operating system refused before the error.
+        self.trace_failures: list[str] = []
 
     def where(self) -> str:
         parts = [self.path or ""]
@@ -615,18 +618,25 @@ def run_checks(
                 worktree, check, selected, checks=checks, measured=measured, tests=tests
             )
 
-        results.append(
-            _run_one(
-                worktree,
-                check,
-                argv,
-                timeout,
-                env,
-                trace_directory,
-                measure,
-                list(tests) if selective(check) else [],
+        try:
+            results.append(
+                _run_one(
+                    worktree,
+                    check,
+                    argv,
+                    timeout,
+                    env,
+                    trace_directory,
+                    measure,
+                    list(tests) if selective(check) else [],
+                )
             )
-        )
+        except CheckError as error:
+            # The call returns no result: its error names the refused trace writes instead.
+            error.trace_failures[:0] = [
+                failure for result in results for failure in result["trace_failures"]
+            ]
+            raise
     return results
 
 
@@ -677,6 +687,7 @@ def _run_one(
                 error=service_error(refusal),
                 content=_check_content("refused", None, before, argv, chosen),
             )
+            refusal.trace_failures.extend(node.failures)
             raise refusal from error
         header = (
             ("selected tests: " + " ".join(chosen) + "\n\n").encode() if chosen else b""
@@ -707,6 +718,7 @@ def _run_one(
                 error=service_error(stale),
                 content=_check_content(status, exit_code, before, argv, chosen),
             )
+            stale.trace_failures.extend(node.failures)
             raise stale
         result = {
             "check_id": check["id"],
@@ -722,6 +734,8 @@ def _run_one(
             outcome=status,
             content=_check_content(status, exit_code, before, argv, chosen),
         )
+        # Tracing is best-effort for the check, never silent: its refused writes of trace.json.
+        result["trace_failures"] = list(node.failures)
         return result
     except BaseException as error:
         # A cancellation, an interrupt or an unexpected error ended the call before the node
@@ -815,7 +829,8 @@ def service_error(error: BaseException) -> dict:
         str(error) + (f" (at {where})" if where else ""),
         reason=SERVICE_REASONS.get(error.code, "input"),
         explanation=error.reason,
-        evidence=[evidence("location", where, "")] if where else [],
+        evidence=([evidence("location", where, "")] if where else [])
+        + [evidence("trace-write", "", failure) for failure in error.trace_failures],
         options=[error.remediation],
         recommendation=error.remediation,
         causes=[service_error(cause) for cause in error.causes],

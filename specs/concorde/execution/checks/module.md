@@ -51,7 +51,8 @@ The check service is called with a worktree, the Modules to run, the files each 
 depends on and a log directory; in Concorde, Method's steps select the Modules and name their
 implementation files through the Spec tooling. For each [Module](../../glossary.json#concept.module)
 it digests the relevant input, runs each check in the boundary, saves logs, and returns one
-**check result** per check. A digest mismatch after the run
+**check result** per check, which also names each write of the check's trace node the operating
+system refused. A digest mismatch after the run
 fails with `stale_evidence`, because the result would vouch for input that changed; a stored result
 stays valid only while a fresh measurement matches it. Exact declaration and records:
 [the check service](service.md).

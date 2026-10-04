@@ -198,6 +198,7 @@ def host_checks(ctx: RunContext) -> list[dict] | Stop:
             checked_modules(repository, ctx.modules),
             trace_directory=ctx.run_dir / "checks",
             repository=repository,
+            report=ctx.evidence,
         )
     except (CheckError, SpecError, OSError) as error:
         return ctx.checks_unavailable(error)
