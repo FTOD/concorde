@@ -1,16 +1,30 @@
 # How a run is executed
 
-The exact behaviour of the [Execution runner](../glossary.json#concept.execution-runner): the
-command lines, the [workspace binding](../glossary.json#concept.workspace-binding) it reads, what
-the runner does from the parse to the finish, the [run progress file](../glossary.json#concept.run-progress-file) and how refusals
-and failures become a result. The Operation or execution command a command line names is the run's
-definition: its steps, its arguments, whether it may run unbound, its admission of the Modules, its
-runtime-path resolver and its output contract
-([What a definition gives the runner](#what-a-definition-gives-the-runner)). The
-envelope is the [run result contract](contracts.md#contract.execution.run-result) and the binding
-the [workspace binding contract](../kernel/contracts.md#contract.kernel.workspace-binding). What Method's
-[Operations](../glossary.json#concept.operation) add in their steps, the [standard worker sequence](../glossary.json#concept.standard-worker-sequence), is
-Method's ([How an Operation runs its workers](../method/workers.md)).
+This document gives the exact behaviour of the [Execution runner](../glossary.json#concept.execution-runner).
+It covers these details:
+
+- the command lines
+- the [workspace binding](../glossary.json#concept.workspace-binding) the runner reads
+- what the runner does from the parse to the finish
+- the [run progress file](../glossary.json#concept.run-progress-file)
+- how refusals and failures become a result
+
+The Operation or execution command a command line names is the run's definition. The definition
+gives the runner these things
+([What a definition gives the runner](#what-a-definition-gives-the-runner)):
+
+- its steps
+- its arguments
+- whether it may run unbound
+- its admission of the Modules
+- its runtime-path resolver
+- its output contract
+
+The envelope is the [run result contract](contracts.md#contract.execution.run-result).
+The binding is the [workspace binding contract](../kernel/contracts.md#contract.kernel.workspace-binding).
+Method's [Operations](../glossary.json#concept.operation) add the
+[standard worker sequence](../glossary.json#concept.standard-worker-sequence) in their steps.
+That sequence is Method's ([How an Operation runs its workers](../method/workers.md)).
 
 ## Command lines
 
@@ -19,164 +33,265 @@ concorde run <operation> [--modules <id>[,<id>…]] [--input <run-id>]… [--det
 concorde <command>       [--modules <id>[,<id>…]] [--input <run-id>]… [--detach] [--wait <seconds>] [--trace-at <folder>] [command arguments]
 ```
 
-- `<operation>` is a name from the [Operation catalog](../glossary.json#concept.operation-catalog);
-  `<command>` is one of the [execution commands](../glossary.json#concept.execution-command) the
-  installed parts register, in Concorde Method's `task-validation`, `delivery` and `scaffold`.
-  `concorde run` naming an execution command is a command-line error that names the command to use
-  instead.
-- The run works on the worktree the command starts in: the Git worktree containing the current
-  directory, or for an [unbound run](../glossary.json#concept.unbound-run) its
-  [unbound checkout](#unbound-checkout). A directory outside every Git worktree is a command-line
-  error.
-- `--modules` names the Modules the run works on. Without it a bound run works on the binding's
-  Modules, and an [unbound run](../glossary.json#concept.unbound-run) on none. For the runner a
-  [Module](../glossary.json#concept.module) is a name; a definition that reads the Specs admits
-  the Modules itself ([admission](#runner)), leaving out the binding's Modules the workspace no
-  longer registers and refusing a named Module the worktree does not register.
-- Each `--input` names a run whose result is `ok` and whose workspace is this run's workspace, or,
-  for an unbound run, a run without a workspace; its saved `output` is admitted, with its name, as
-  material of the run, once its saved result satisfies the current
-  [run result contract](contracts.md#contract.execution.run-result). Any other run, a result an
-  older Concorde wrote under another version of the contract included, is refused with
-  `input_not_admissible`.
-- `--wait <seconds>` (default 0) is how long a bound run waits for a busy workspace's lock before
-  it is refused with `workspace_busy`; a negative value is a command-line error. An unbound run
-  takes no lock and ignores it. A run waits in the [lobby](#the-lobby), never in its workspace
-  folder.
-- `--trace-at <folder>` places the run's [trace node](../glossary.json#concept.trace-node) in that
-  folder instead of `runs/<run-id>/` of the workspace folder. It is how a
-  [workflow step](../glossary.json#concept.workflow-step) nests the run it starts inside its own
-  node. The folder must lie inside the binding's workspace folder and hold no `trace.json` yet;
-  otherwise, and for an unbound run, it is a command-line error.
-- Operation and command arguments are defined by the definition and parsed with the rest; an
-  unknown argument is a command-line error.
-- Without `--detach`, standard output receives exactly the
-  [run result](../glossary.json#concept.run-result) as one JSON value; with it, the announcement
-  described in [Detached runs](#detached-runs). Diagnostics go to standard error.
-- Exit status 0 means the result's status is `ok`, 1 means `blocked` or `failed`, or that the run
-  could not be recorded or its result not saved, whatever the work did
-  ([When records cannot be written](#when-records-cannot-be-written)), and 2 means the command line
-  was malformed or named no known Operation or command, in which case no run is created and no
-  result is written.
+`<operation>` is a name from the [Operation catalog](../glossary.json#concept.operation-catalog).
+`<command>` is one of the [execution commands](../glossary.json#concept.execution-command) the
+installed parts register. Concorde Method registers these commands:
+
+- `task-validation`
+- `delivery`
+- `scaffold`
+
+When `concorde run` names an execution command, it is a command-line error that names the command
+to use instead.
+
+The run works on the worktree the command starts in. This is the Git worktree containing the
+current directory or, for an [unbound run](../glossary.json#concept.unbound-run), its
+[unbound checkout](#unbound-checkout). A directory outside every Git worktree is a command-line
+error.
+
+`--modules` names the Modules the run works on. Without `--modules`, the defaults are these:
+
+- A bound run works on the binding's Modules.
+- An [unbound run](../glossary.json#concept.unbound-run) works on none.
+
+For the runner, a
+[Module](../glossary.json#concept.module) is a name. A definition that reads the Specs admits the
+Modules itself ([admission](#runner)). It leaves out the binding's Modules the workspace no longer
+registers. It refuses a named Module the worktree does not register.
+
+Each `--input` names a run whose result is `ok`. For a bound run, the input run's workspace is this
+run's workspace. For an unbound run, the input run has no workspace. Once its saved result
+satisfies the current [run result contract](contracts.md#contract.execution.run-result), its saved
+`output` is admitted, with its name, as material of the run. Any other run is refused with
+`input_not_admissible`. This includes a result an older Concorde wrote under another version of
+the contract.
+
+For a bound run, `--wait <seconds>` (default 0) is how long it waits for a busy workspace's lock
+before refusal with `workspace_busy`. A negative value is a command-line error. An unbound run
+takes no lock and ignores it. A run waits in the [lobby](#the-lobby), never in its workspace
+folder.
+
+`--trace-at <folder>` places the run's [trace node](../glossary.json#concept.trace-node) in that
+folder instead of `runs/<run-id>/` of the workspace folder. It is how a
+[workflow step](../glossary.json#concept.workflow-step) nests the run it starts inside its own
+node. The folder must lie inside the binding's workspace folder and hold no `trace.json` yet.
+Otherwise, and for an unbound run, it is a command-line error.
+
+The definition defines Operation and command arguments. The runner parses them with the rest.
+An unknown argument is a command-line error.
+
+Without `--detach`, standard output receives exactly the
+[run result](../glossary.json#concept.run-result) as one JSON value. With `--detach`, it receives
+the announcement described in [Detached runs](#detached-runs). Diagnostics go to standard error.
+
+The exit statuses have these meanings:
+
+- Exit status 0 means the result's status is `ok`.
+- Exit status 1 means `blocked` or `failed`, or that the run could not be recorded or its result
+  not saved, whatever the work did
+  ([When records cannot be written](#when-records-cannot-be-written)).
+- Exit status 2 means the command line was malformed or named no known Operation or command.
+  In this case, no run is created and no result is written.
 
 ## Workspace binding
 
-The runner reads `.concorde/workspace.json` at the root of the worktree it starts in:
+The runner reads `.concorde/workspace.json` at the root of the worktree it starts in.
 
-- When the file is absent, the run is **unbound**: its trace node is `.concorde/unbound/<run-id>/`
-  of that worktree and its run lock lies under that worktree's `.concorde/locks/`, its workspace is
-  null, it takes no workspace lock, and it is admitted only when its definition allows unbound runs;
-  otherwise it is refused with `binding_required`. An admitted unbound run works in its
-  [unbound checkout](#unbound-checkout).
-- When the file is present, it must satisfy the binding contract and name as `root` the worktree
-  it lies in; otherwise the run is refused with `binding_unreadable`, `binding_invalid` or
-  `binding_misplaced`, and it is recorded as an unbound run of the worktree would be.
-- A bound run's trace node lies in the binding's workspace folder `traces` once the run holds the
-  workspace lock, and in the [lobby](#the-lobby) of the binding's `concorde` until then; its locks
-  lie under `locks/` of the binding's `concorde`, and its run context gives every step the
-  workspace's name, goal, Modules, branch and base commit. A binding whose workspace folder does
-  not exist is refused with `binding_invalid`.
-- Once it holds the workspace lock, the runner reads the binding again and refuses the run with
-  `workspace_retired` unless it reads the same binding as at the parse, and unless the lock it
-  holds is still the workspace's: whoever retires a workspace, as closing a task does, removes
-  its binding and, still holding the workspace lock, its lock file, so a run that waited for that
-  lock meanwhile takes a file that is no longer there. The runner never takes the lock file that
-  replaced the one it waited for.
+When the file is absent, the run is **unbound**. The unbound run has these properties:
+
+- Its trace node is `.concorde/unbound/<run-id>/` of that worktree.
+- Its run lock lies under that worktree's `.concorde/locks/`.
+- Its workspace is null.
+- It takes no workspace lock.
+
+Only when its definition allows unbound runs is the run admitted. Otherwise, the runner refuses
+it with `binding_required`. An admitted unbound run works in its
+[unbound checkout](#unbound-checkout).
+
+When the file is present, it must satisfy the binding contract and name as `root` the worktree it
+lies in. Otherwise, the runner refuses the run with one of these codes:
+
+- `binding_unreadable`
+- `binding_invalid`
+- `binding_misplaced`
+
+The runner records that refused run as an unbound run of the worktree would be.
+
+Once a bound run holds the workspace lock, its trace node lies in the binding's workspace folder
+`traces`. Until then, its trace node lies in the [lobby](#the-lobby) of the binding's `concorde`.
+Its locks lie under `locks/` of the binding's `concorde`. Its run context gives every step these
+workspace details:
+
+- the name
+- the goal
+- the Modules
+- the branch
+- the base commit
+
+When a binding's workspace folder does not exist, the runner refuses the binding with
+`binding_invalid`.
+
+Once it holds the workspace lock, the runner reads the binding again. Unless it reads the same
+binding as at the parse and the lock it holds is still the workspace's, it refuses the run with
+`workspace_retired`.
+
+Whoever retires a workspace, as closing a task does, removes its binding. Still holding the
+workspace lock, whoever retires the workspace removes its lock file. A run that waited for that
+lock meanwhile therefore takes a file that is no longer there. The runner never takes the lock
+file that replaced the one it waited for.
 
 The runner never writes the binding.
 
 ## Run identity and trace node
 
-The runner creates the run identity `r-<YYYYMMDD>T<HHMMSS>-<name>-<8 hex digits>` from the UTC start
-time, the definition's name with `-` written as `_`, and random digits, and the run's
-[trace node](../glossary.json#concept.trace-node): `runs/<run-id>/` of the workspace folder, the
-folder `--trace-at` names, or `.concorde/unbound/<run-id>/` for an unbound run. A bound run's node
-starts in the [lobby](#the-lobby) and moves to its place in the workspace folder when the run
-enters its workspace. The folder holds
-`trace.json`, the run's node as [Tracing](../kernel/tracing/contracts.md#contract.tracing.node) defines it
-with the [run trace](contracts.md#contract.execution.run-trace) as content; `result.json`, the run
-result exactly as printed; the run progress file `status.json`; the nodes of the checks the run ran
-under `checks/`; the nodes of the worker runs it launched under `workers/`, each with its
-[run record](../glossary.json#concept.run-record); and for a
-[detached run](../glossary.json#concept.detached-run) the runner's output `host.out`. The result
-lists the worker runs' identities and names the run's own node as `trace` evidence.
+The runner creates the run identity `r-<YYYYMMDD>T<HHMMSS>-<name>-<8 hex digits>` from these values:
+
+- the UTC start time
+- the definition's name with `-` written as `_`
+- random digits
+
+The runner also creates the run's [trace node](../glossary.json#concept.trace-node) in one of these
+places:
+
+- `runs/<run-id>/` of the workspace folder
+- the folder `--trace-at` names
+- `.concorde/unbound/<run-id>/` for an unbound run
+
+A bound run's node starts in the [lobby](#the-lobby). When the run enters its workspace, the node
+moves to its place in the workspace folder. The folder holds these files and nodes:
+
+- `trace.json`, the run's node as [Tracing](../kernel/tracing/contracts.md#contract.tracing.node)
+  defines it with the [run trace](contracts.md#contract.execution.run-trace) as content
+- `result.json`, the run result exactly as printed
+- the run progress file `status.json`
+- the nodes of the checks the run ran under `checks/`
+- the nodes of the worker runs it launched under `workers/`, each with its
+  [run record](../glossary.json#concept.run-record)
+- for a [detached run](../glossary.json#concept.detached-run), the runner's output `host.out`
+
+The result lists the worker runs' identities. It names the run's own node as `trace` evidence.
 
 <a id="the-lobby"></a>
 
-**The lobby.** A bound run writes nothing into its workspace folder before it holds the workspace
-lock, since whoever retires the workspace, as closing a task does, holds that lock while it moves
-the folder. Until then its node lies in the lobby, `lobby/<run-id>/` of the binding's `concorde`,
-next to its run lock and outside every workspace folder: its first `trace.json`, its run progress
-file while it waits for the lock and, for a [detached run](../glossary.json#concept.detached-run),
-`host.out`. Once the run holds the lock and the binding passed the second reading, the run
-**enters** its workspace: the runner renames the lobby folder to the run's node folder in the
-workspace folder, creating `runs/` when it is missing, so every file it wrote, the runner's open
-output included, moves with it. On another file system it copies the folder, removes the lobby's
-and writes its own output on in the copy. A node it cannot move refuses the run with
-`run_store_unwritable`, and the run stays in the lobby. A run refused or cancelled before it entered
-its workspace, in the binding check, the lock or the second reading of the binding, never enters
-it: its node, with its result, stays in the lobby, where every reader that looks a run up by its
-identity finds it, and where [Tracing](../kernel/tracing/module.md)'s retention removes it as it removes an
-unbound run. A run with a broken binding is recorded as an unbound run instead, as the
+**The lobby.** Before it holds the workspace lock, a bound run writes nothing into its workspace
+folder. Whoever retires the workspace, as closing a task does, holds that lock while it moves the
+folder. Until then, the run's node lies in the lobby, `lobby/<run-id>/` of the binding's `concorde`.
+The lobby is next to its run lock and outside every workspace folder. The lobby holds these files:
+
+- its first `trace.json`
+- its run progress file while it waits for the lock
+- for a [detached run](../glossary.json#concept.detached-run), `host.out`
+
+Once the run holds the lock and the binding passed the second reading, the run **enters** its
+workspace. The runner renames the lobby folder to the run's node folder in the workspace folder.
+When `runs/` is missing, the runner creates it. Every file the runner wrote moves with the folder,
+the runner's open output included. On another file system, the runner copies the folder and
+removes the lobby's folder. The runner writes its own output on in the copy. When the runner
+cannot move a node, it refuses the run with `run_store_unwritable`. The run stays in the lobby.
+
+A run refused or cancelled before it entered its workspace never enters it. This applies to
+refusal or cancellation in any of these rows:
+
+- the binding check
+- the lock
+- the second reading of the binding
+
+The run's node, with its result, stays in the lobby. Every reader that looks the run up by its
+identity finds it there. [Tracing](../kernel/tracing/module.md)'s retention removes it there as it
+removes an unbound run. A run with a broken binding is recorded as an unbound run instead, as the
 [workspace binding](#workspace-binding) section says.
 
-The runner writes `trace.json` when it has taken the run lock, before any other file of the run,
-with status `running` and the metadata it knows then, and again after `result.json`, with the run's
-end, its status (`ok`, `blocked` or `failed`) and outcome (the status, or `cancelled`), its duration,
-error, metadata, inputs as `input` references, the digests of its files, and the steps with their
-timings. Its metadata are the workspace, the Modules, the Operation or command, the base commit of a
-bound run and the `HEAD` it started on, or the commit an unbound run examined, the Concorde commit
-and the Protocol version the project binds.
+When it has taken the run lock, the runner writes `trace.json` before any other file of the run.
+The runner writes it with status `running` and the metadata it knows then. After `result.json`,
+the runner writes `trace.json` again with these details:
+
+- the run's end
+- its status (`ok`, `blocked` or `failed`) and outcome (the status, or `cancelled`)
+- its duration
+- its error
+- its metadata
+- its inputs as `input` references
+- the digests of its files
+- its steps with their timings
+
+The metadata hold these values:
+
+- the workspace
+- the Modules
+- the Operation or command
+- the base commit of a bound run and the `HEAD` it started on, or the commit an unbound run examined
+- the Concorde commit
+- the Protocol version the project binds
 
 ## What a definition gives the runner
 
-A definition is plain data and functions the runner calls in its own process; the runner relies on
-nothing else of it, and the catalogs of [Operations](operations/module.md) and
-[Commands](commands/module.md) hand it over by name. The other things a definition declares, such as
-the ids of its workers and the Module that provides it, are for the catalogs and the definition's
-own steps.
+A definition is plain data and functions the runner calls in its own process. The runner relies
+on nothing else of it. The catalogs of [Operations](operations/module.md) and
+[Commands](commands/module.md) hand the definition over by name. The other things a definition
+declares are for the catalogs and the definition's own steps. These include the ids of its workers
+and the Module that provides it.
 
-- **Its arguments**: a function the parse calls with the run's command-line parser before parsing,
-  which adds the definition's own arguments beside the common options. The runner parses them with
-  the rest; an unknown or malformed argument is a command-line error that starts no run.
-- **Whether it may run unbound**: required or optional binding. A definition that requires one is
-  refused unbound in the lock row with `binding_required`; one whose binding is optional runs
-  unbound in its [unbound checkout](#unbound-checkout) and its steps learn from the run context that
-  the run may only read.
-- **Its runtime-path resolver**, optional, for a definition that may run unbound: called once in the
-  lock row, after the unbound checkout and its submodules exist, with the checkout's root, it
-  returns relative paths, which the runner links as [Unbound checkout](#unbound-checkout) step 3
-  says; without one, nothing is linked. The runner reads no configuration of its own to find them.
-- **Its admission of the Modules**, optional: called once in the admission row, after the inputs
-  are admitted, with the run context, whose Modules are then `--modules` or else the binding's, as
-  names. It returns nothing: it may narrow the run context's Modules and add evidence to it, as
-  Method's leave out a Module the workspace removed with `removed-module` evidence, or refuse the
-  run by raising the refusal the run context's library defines, with a code, a message, the actor
-  that refused, a reason, an explanation and options. The runner turns that refusal into the run's
-  `refused` link, with the reason, explanation and options the refusal gives, and the refusal as a
-  `component` link of its actor below it ([Errors](#errors)); no step runs. Without an admission
-  the runner takes the Modules as they are.
-- **Its steps**: an ordered list of functions, each called with the run context and returning
-  "continue" or "stop", as the [Runner](#runner) section says; an exception a step raises, or a
-  step returning anything else, becomes a `failed` result with `host-error` evidence.
-- **Its output contract**, optional: a JSON Schema the output of an `ok` result must satisfy. The
-  runner checks it in the composition and replaces a result whose output breaks it by a `failed` one
-  with `invalid-output` evidence and the `invalid_result` link; without one, any output passes.
+**Its arguments.** Before parsing, the parse calls a function with the run's command-line parser.
+The function adds the definition's own arguments beside the common options. The runner parses
+them with the rest. An unknown or malformed argument is a command-line error that starts no run.
 
-An admission or a resolver is called outside every step, but what it raises other than an
-admission's refusal, or the runner's own refusals of the checkout, ends the run as a step's
-exception does: a `failed` result with `host-error` evidence and the `host_error` link, whose cause
-names the definition's admission or resolver and keeps the traceback, no step running; the runner
+**Whether it may run unbound.** The binding is required or optional. When a definition requires a
+binding, the runner refuses it unbound in the lock row with `binding_required`. When the binding
+is optional, the definition runs unbound in its [unbound checkout](#unbound-checkout). Its steps
+learn from the run context that the run may only read.
+
+**Its runtime-path resolver.** This is optional, for a definition that may run unbound. After the
+unbound checkout and its submodules exist, the runner calls the resolver once in the lock row
+with the checkout's root. The resolver returns relative paths. The runner links them as
+[Unbound checkout](#unbound-checkout) step 3 says. Without a resolver, nothing is linked. The
+runner reads no configuration of its own to find the paths.
+
+**Its admission of the Modules.** This is optional. After the inputs are admitted, the runner calls
+admission once in the admission row with the run context. The context's Modules are then
+`--modules` or else the binding's, as names. Admission returns nothing. It may narrow the run
+context's Modules and add evidence to it. Method's admissions leave out a Module the workspace
+removed with `removed-module` evidence. Admission may instead refuse the run by raising the
+refusal the run context's library defines. The refusal holds these details:
+
+- a code
+- a message
+- the actor that refused
+- a reason
+- an explanation
+- options
+
+The runner turns that refusal into the run's `refused` link, with the reason, explanation and
+options the refusal gives. Below that link, the runner puts the refusal as a `component` link of
+its actor ([Errors](#errors)). No step runs. Without an admission, the runner takes the Modules as
+they are.
+
+**Its steps.** These are an ordered list of functions. Each function receives the run context and
+returns "continue" or "stop", as the [Runner](#runner) section says. When a step raises an
+exception or returns anything else, the result becomes `failed` with `host-error` evidence.
+
+**Its output contract.** This is an optional JSON Schema the output of an `ok` result must satisfy.
+The runner checks it in the composition. When a result's output breaks the contract, the runner
+replaces the result by a `failed` one with `invalid-output` evidence and the `invalid_result` link.
+Without an output contract, any output passes.
+
+The runner calls an admission or a resolver outside every step. Except for an admission's refusal
+or the runner's own refusals of the checkout, what either raises ends the run as a step's exception
+does. The result is `failed` with `host-error` evidence and the `host_error` link. The link's cause
+names the definition's admission or resolver and keeps the traceback. No step runs. The runner
 removes the checkout it made first.
 
 ## Runner
 
-The runner's activity, with the hand-off of a [detached run](#detached-runs), whose command does
-the parsing and then starts the runner with the run identity it announces. A signal at any point
-from the binding check to the execution, like a refusal, goes straight to the composition; one that
-arrives while the parse creates the first records cancels the run as the binding check begins, and
-one that arrives after the execution is held until the runner exits, so that nothing cuts the
-composition or the finish short:
+The diagram shows the runner's activity with the hand-off of a [detached run](#detached-runs).
+The detached run's command does the parsing. The command then starts the runner with the run
+identity it announces. Signals follow these rules:
+
+- From the binding check to the execution, a signal at any point goes straight to the composition,
+  like a refusal.
+- While the parse creates the first records, a signal cancels the run as the binding check begins.
+- After the execution, the runner holds a signal until it exits.
+
+Thus nothing cuts the composition or the finish short:
 
 ```d2 illustrative
 direction: down
@@ -213,7 +328,7 @@ launcher.check -> runner.parse: start in a new session with the run identity and
 ```
 
 The runner does what the rows below say, in their order. This document cites each row by its
-name; the number gives only the order, so that no row is confused with a step of the definition.
+name. The number gives only the order, so that no row is confused with a step of the definition.
 
 | # | Name | What the runner does | Stops the run when |
 | --- | --- | --- | --- |
@@ -225,228 +340,346 @@ name; the number gives only the order, so that no row is confused with a step of
 | 6 | composition | Remove an unbound run's checkout, then compose the run result from the step outcomes, as [Composing the result](#composing-the-result) says, and check it against the run result contract and, for an `ok` result, the definition's output contract | the result or output is invalid (`failed`, `invalid-output` evidence) |
 | 7 | finish | Publish `result.json` atomically, mark the run progress file finished, write the final `trace.json`, publish `result.json` again with its `trace-write` evidence when the operating system refused that write, release the workspace lock, remove and release the run lock, print the result and exit | a result that cannot be published or a final `trace.json` that breaks the node contract ([When records cannot be written](#when-records-cannot-be-written): the result printed, exit 1, the run lost) |
 
-- Each of the definition's steps returns either "continue", with any output and evidence it
-  produced, or "stop", with a status, a summary, evidence and, unless the status is `ok`, the
-  run's error link. Steps of one run share the run context: the workspace binding, the
-  worktree the run works in, for an unbound run also the worktree it started in and the commit it
-  examines, the run's node folder, the Modules, the admitted inputs, the output so far, a state the
-  definition owns, and the run record of the latest worker launch. The runner never skips, repeats
-  or reorders steps; any repetition, such as [resume rounds](../glossary.json#concept.resume-round),
-  happens inside one step.
-- An exception raised by a step becomes a `failed` result with `host-error` evidence naming the
-  step, the error type and message; the cause of its error is a `component` link with the
-  exception's type, message and command output, where it was raised and the path of the full
-  traceback in the run's node folder. An exception the runner itself raises outside every step,
-  from the binding check to the execution, other than a refusal, ends the run the same way, the
-  cause's actor being `Execution runner (<command line>)`. A failed write of the run's trace node
-  between steps, like that of a later run progress file, never changes the run.
-- On `SIGINT` or `SIGTERM` the runner stops its running step, which ends every worker process it
-  started through the worker harness, and finishes with a `failed` result with `cancelled` evidence
-  naming the signal. The runner handles both signals from the parse to its exit: one that arrives
-  while the first records are created is held and cancels the run as soon as the binding check
-  begins, no step running; one that arrives once the execution ended, while the checkout is removed
-  or the result composed and written, changes nothing, and the run finishes as composed. Its `cancelled` link names every worker run the run's steps started, with
-  evidence of kind `worker-run` pointing at each worker run's node, with its
-  [progress file](../glossary.json#concept.progress-file), and `worker_runs` lists them: the step
-  tells the run context each worker run's identity when the worker run starts, as the worker harness
-  tells it, not when it returns.
-- The composition and the finish run whatever happened before them. A refusal in the binding
-  check, the lock or the admission still writes and prints a result, with the refusal code as
-  `refused` evidence and an error whose cause is the refusal of the workspace binding, the
-  unbound checkout or the [run store](../glossary.json#concept.run-store) with its message, such as Git's output for a checkout it
-  refused, the holder of a busy workspace's lock, what retired a workspace or the
-  registered Modules for an unknown one.
-- The result is written while the lock is still held, so a run admitted to the workspace after
-  this one always finds its result written. The converse does not hold: whoever reads the result
-  may still find the lock held until the runner has ended, so a caller that wants to start the
-  next run waits for the lock to be free, not for the result.
-- Whenever the status is not `ok`, the runner also writes the
-  [error chain](../glossary.json#concept.error-chain), rendered as indented text, to standard error.
-- The runner publishes `result.json` atomically: it writes the whole result under another name in
-  the run's folder and renames it into place, so an observer that reads it without holding any
-  lock, as a workflow step or the task level does, finds no result or the complete one, never part
-  of it. The run progress file and `trace.json` are replaced the same way.
+Each of the definition's steps returns either "continue" or "stop". A "continue" carries any
+output and evidence the step produced. A "stop" carries these details:
+
+- a status
+- a summary
+- evidence
+- unless the status is `ok`, the run's error link
+
+Steps of one run share the run context. The context holds these things:
+
+- the workspace binding
+- the worktree the run works in
+- for an unbound run, also the worktree it started in and the commit it examines
+- the run's node folder
+- the Modules
+- the admitted inputs
+- the output so far
+- a state the definition owns
+- the run record of the latest worker launch
+
+The runner never skips, repeats or reorders steps. Any repetition, such as
+[resume rounds](../glossary.json#concept.resume-round), happens inside one step.
+
+When a step raises an exception, the result becomes `failed` with `host-error` evidence. The
+evidence names these details:
+
+- the step
+- the error type
+- the message
+
+The cause of the result's error is a `component` link. The link holds these details:
+
+- the exception's type
+- its message
+- its command output
+- where it was raised
+- the path of the full traceback in the run's node folder
+
+From the binding check to the execution, an exception the runner itself raises outside every step,
+other than a refusal, ends the run the same way. The cause's actor is
+`Execution runner (<command line>)`. Between steps, a failed write of the run's trace node never
+changes the run, like that of a later run progress file.
+
+On `SIGINT` or `SIGTERM`, the runner stops its running step. The step ends every worker process it
+started through the worker harness. The runner finishes with a `failed` result with `cancelled`
+evidence naming the signal. The runner handles both signals from the parse to its exit. While
+the first records are created, the runner holds an arriving signal. As soon as the binding check
+begins, that signal cancels the run, no step running. Once the execution ended, an arriving signal
+changes nothing while the checkout is removed or the result composed and written. The run
+finishes as composed.
+
+The run's `cancelled` link names every worker run the run's steps started. Evidence of kind
+`worker-run` points at each worker run's node, with its
+[progress file](../glossary.json#concept.progress-file). `worker_runs` lists those worker runs.
+When a worker run starts, the step tells the run context that worker run's identity, as the worker
+harness tells it. The step does not wait until the worker run returns to tell the run context.
+
+The composition and the finish run whatever happened before them. A refusal in any of these rows
+still writes and prints a result:
+
+- the binding check
+- the lock
+- the admission
+
+The result has the refusal code as `refused` evidence. Its error's cause is the refusal of the
+workspace binding, the unbound checkout or the [run store](../glossary.json#concept.run-store),
+with its message. Such messages include these details:
+
+- Git's output for a checkout it refused
+- the holder of a busy workspace's lock
+- what retired a workspace
+- the registered Modules for an unknown one
+
+While the lock is still held, the runner writes the result. A run admitted to the workspace after
+this one therefore always finds its result written. The converse does not hold. Until the runner
+ends, whoever reads the result may still find the lock held. A caller that wants to start the
+next run therefore waits for the lock to be free, not for the result.
+
+Whenever the status is not `ok`, the runner also writes the
+[error chain](../glossary.json#concept.error-chain), rendered as indented text, to standard error.
+
+The runner publishes `result.json` atomically. It writes the whole result under another name in
+the run's folder and renames it into place. An observer that reads it without holding any lock
+therefore finds no result or the complete one, never part of it. A workflow step or the task level
+is such an observer. The run progress file and `trace.json` are replaced the same way.
 
 ### Composing the result
 
-The steps build the run's output in the run context, where every later step finds it as the output
-so far. A step may set the output so far itself, and a "continue" that carries output replaces the
-output so far with it whole, while one that carries none keeps it; the runner never merges two
-outputs. The evidence of every outcome is appended to the runner's own, in the order the steps ran.
-The result is then composed from what the steps left:
+The steps build the run's output in the run context. Every later step finds it there as the output
+so far. A step may set the output so far itself. When a "continue" carries output, it replaces the
+output so far with that output whole. When a "continue" carries none, it keeps the output so far.
+The runner never merges two outputs. The evidence of every outcome is appended to the runner's
+own, in the order the steps ran. The result is then composed from what the steps left.
 
-- When a step stopped the run, the result takes that step's status, summary and error, and the
-  output so far as its output, whatever the status.
-- When every step continued, the result is `ok`, with the output so far as its output and the
-  runner's own summary, `<name> finished for <Modules>.`, or `<name> finished.` when the run has no
-  Modules. A definition whose summary must say more ends with a step that stops the run with `ok`
-  and that summary, as the reviews and `task-validation` do.
-- A step that stopped the run with a status other than `ok` but no error leaves the runner's
-  `missing_error` link as the result's error ([Errors](#errors)).
-- A result or an `ok` output that breaks its contract becomes `failed` with output null and the
-  runner's `invalid_result` link, its earlier error as the cause when that error is a well-formed
-  link. A result whose error is not the run's own link, of level `operation` for an Operation and
-  `command` for an execution command, breaks the contract. The replacement keeps of what the steps
-  left only what satisfies the contract: it leaves out each host evidence item that breaks it,
-  counted in its `invalid-output` evidence, a `worker` that is no object, and each Module or worker
-  run that is no name, and is checked against the contract again before it is written.
+When a step stopped the run, the result takes these details, whatever the status:
+
+- that step's status
+- that step's summary
+- that step's error
+- the output so far as its output
+
+When every step continued, the result is `ok`, with the output so far as its output. The result
+takes the runner's own summary, `<name> finished for <Modules>.`. When the run has no Modules,
+the summary is `<name> finished.`. A definition whose summary must say more ends with a step that
+stops the run with `ok` and that summary. The reviews and `task-validation` do this.
+
+When a step stopped the run with a status other than `ok` but no error, the result's error is the
+runner's `missing_error` link ([Errors](#errors)).
+
+When a result or an `ok` output breaks its contract, the result becomes `failed` with output null
+and the runner's `invalid_result` link. When the earlier error is a well-formed link, that error
+becomes the cause. A result whose error is not the run's own link breaks the contract. That link
+has level `operation` for an Operation and `command` for an execution command. The replacement
+keeps only what satisfies the contract of what the steps left. The replacement leaves out these
+items:
+
+- each host evidence item that breaks the contract, counted in its `invalid-output` evidence
+- a `worker` that is no object
+- each Module or worker run that is no name
+
+Before the replacement is written, the runner checks it against the contract again.
 
 ### When records cannot be written
 
-A run's records are what every observer knows it by, so the runner treats a failure to write them
-apart from a failure of the run's own work, and in exactly two ways. These are the only cases, with
-a `detach_failed` launch and a runner killed by a signal it cannot handle, in which an accepted
-command line writes no result
-([req.execution.one-result](requirements.md#req.execution.one-result)). A detaching command that
-cannot create the run's folder or the runner's output `host.out` treats it as the first case and
-starts no runner ([Detached runs](#detached-runs)).
+A run's records are what every observer knows it by. The runner therefore treats a failure to
+write them apart from a failure of the run's own work, in exactly two ways. Only these cases allow
+an accepted command line to write no result
+([req.execution.one-result](requirements.md#req.execution.one-result)):
 
-- **Before any step.** When the parse cannot create the run's folder, take its run lock or write
-  its first run progress file, or its first `trace.json` breaks the node contract, the run is
-  refused before any step runs: the runner writes no result and nothing on standard output, writes its `run_unrecorded`
-  link to standard error, whose cause is the `Execution (run store)` link with the operating
-  system's or Tracing's refusal, releases the run lock if it took it and exits with status 1. A
-  folder it created may stay behind, holding no result and no lock anybody holds.
-- **After the composition.** When publishing `result.json` fails, or the final `trace.json` breaks
-  the node contract, the runner writes nothing more, still prints the result it composed on standard output, writes
-  its `result_unsaved` link to standard error, whose causes are the `Execution (run store)` link of
-  the failed write and the result's own error when it has one, releases both locks and exits with
-  status 1, whatever the result's status. The run counts as lost. Without a published
-  `result.json`, every observer finds it lost, as a run whose runner was killed: no result and a
-  run lock nobody holds. When only the final `trace.json` failed, the published result stands for
-  whoever reads it, while the run's trace node, still `running` with nobody holding its run lock,
-  reads as lost. Its work may have been done: whoever started the run learns from the printed
-  result what it did before running it again. A failed write of a later run progress file never
-  changes the run.
+- the two record-write cases below
+- a `detach_failed` launch
+- a runner killed by a signal it cannot handle
 
-A write of `trace.json` that the operating system refuses, at the run's start, while a step runs or
-at its end, is neither case: tracing is best-effort for the run, never silent
+When a detaching command cannot create the run's folder or the runner's output `host.out`, it
+treats the failure as the first case. It starts no runner ([Detached runs](#detached-runs)).
+
+**Before any step.** The runner refuses the run before any step runs when any of these conditions
+holds:
+
+- The parse cannot create the run's folder.
+- The parse cannot take the run lock.
+- The parse cannot write the first run progress file.
+- The first `trace.json` breaks the node contract.
+
+The runner writes no result and nothing on standard output. It writes its `run_unrecorded` link
+to standard error. That link's cause is the `Execution (run store)` link with the operating
+system's or Tracing's refusal. If it took the run lock, the runner releases it. The runner exits
+with status 1. A folder it created may stay behind, holding no result and no lock anybody holds.
+
+**After the composition.** When publishing `result.json` fails or the final `trace.json` breaks the
+node contract, the runner writes nothing more. It still prints the result it composed on standard
+output. The runner writes its `result_unsaved` link to standard error. The link's causes are the
+`Execution (run store)` link of the failed write and, when the result has its own error, that
+error. The runner releases both locks. Whatever the result's status, the runner exits with status
+1. The run counts as lost.
+
+Without a published `result.json`, every observer finds the run lost, as a run whose runner was
+killed. There is no result and a run lock nobody holds. When only the final `trace.json` failed,
+the published result stands for whoever reads it. The run's trace node still reads as lost:
+its status is `running`, with nobody holding its run lock. The run's work may be done. Before
+running it again, whoever started the run learns from the printed result what it did. A failed
+write of a later run progress file never changes the run.
+
+When the operating system refuses a write of `trace.json`, that refusal is neither case. This
+applies at these times:
+
+- at the run's start
+- while a step runs
+- at the run's end
+
+Tracing is best-effort for the run, never silent
 ([req.execution.trace-write-reported](requirements.md#req.execution.trace-write-reported)). The run
-goes on as if the write had succeeded, and its result names each refused write as `trace-write`
-evidence, by the run identity, with the node's file, the moment and the error. The final write
-follows the result, so when the operating system refuses it the runner publishes the result again
-with that evidence added, before it releases the locks, and prints that result; the trace node
-then still says what it said before, `running` when every earlier write succeeded, which reads as
-lost once nobody holds the run lock.
+goes on as if the write succeeded. Its result names each refused write as `trace-write` evidence,
+by the run identity. The evidence holds these details:
+
+- the node's file
+- the moment
+- the error
+
+The final write follows the result. When the operating system refuses that write, the runner
+publishes the result again with that evidence added, before it releases the locks. The runner
+prints that result. The trace node then still says what it said before. When every earlier write
+succeeded, its status is `running`. Once nobody holds the run lock, that status reads as lost.
 
 ## Unbound checkout
 
 An admitted [unbound run](../glossary.json#concept.unbound-run) works in its
-[unbound checkout](../glossary.json#concept.unbound-checkout), never in the worktree it started in,
-here called its origin:
+[unbound checkout](../glossary.json#concept.unbound-checkout), never in the worktree it started in.
+That starting worktree is here called its origin. The runner follows these steps:
 
-1. The runner resolves the origin's `HEAD` to a commit and creates the checkout
-   `.claude/worktrees/unbound-<run-id>` of the repository's primary worktree, the first worktree
-   `git worktree list` names, with `git worktree add --detach` of that commit from the origin's
-   repository, with none of the repository's Git hooks run. It lies there because a worker runs
-   only in a worktree directly inside `.claude/worktrees/` of its primary worktree, where the worker
-   harness lets it run ([Workers](../worker-harness/workers/launch.md#placement)). A run identity always holds an upper-case `T`, which
-   no task name may hold, so the checkout never takes a task worktree's place. Before creating
-   anything the runner asks Git whether the primary worktree ignores that path, so that the
-   checkout never appears there as untracked files. Only Git's administrative files of the
-   repository and the checkout's own directory change; no other file of the origin or of the
-   primary worktree, and not their index.
-2. Each submodule the commit records that the origin has checked out, and whose repository holds
-   the recorded commit, is checked out in the checkout the same way, `git worktree add --detach` of
-   that commit from the submodule's repository, with the origin's sparse-checkout patterns when
-   the origin's checkout is sparse, each pattern as Git lists it, spaces included, read back in the
-   origin's own mode, cone or not; `submodule` evidence names each. A submodule the origin has not
-   checked out, or that Git cannot check out or populate, stays empty, as in a fresh clone, with
-   `submodule-absent` evidence naming why: a checkout Git began and could not finish is removed
-   before any step runs, and whatever of it could not be removed is named by
-   `checkout-not-removed` evidence.
-3. The runner calls the definition's runtime-path resolver, when it has one, with the checkout's
-   root, and links what it returns; the runner itself reads no configuration. For Method's
-   Operations the resolver returns the checked-out
-   [worker configuration](../glossary.json#concept.worker-configuration)'s `runtime` (default
-   `.venv` and `node_modules`), and nothing when that file is invalid. Each relative runtime path so
-   named that exists in the origin and that Git ignores is linked into the checkout as a symbolic
-   link to the origin's, with `environment` evidence, the directories leading to it that the
-   checkout lacks being created inside it; the run's checks and workers only read it, the checks
-   inside their read-only boundary. A runtime path Git does not ignore is not linked, with
-   `environment-not-linked` evidence, since the commit holds it; so is, with the same evidence, a
-   path the checkout already holds or one whose directories lead out of the checkout, such as
-   through an earlier link. A runtime path the origin lacks is passed over.
-4. From here on the run context's worktree is the checkout: the steps work there, and with them
-   whatever they read, in Method's Operations the Specs, the grant, the workers and the worker
-   harness's audit, with the worker configuration committed in the checkout choosing the workers'
-   backends, models and limits. The run context keeps the origin, whose
-   `.concorde` keeps the run's trace node and run lock, and the commit, which the result names as `commit` and the run's
-   error link as `… (unbound, <origin> at <commit>)`. `checkout` evidence names the commit and the
-   checkout's path.
-5. Before the result is composed, however the steps ended, including a refusal, a raised error or
-   a cancellation, the runner removes the links, the submodule checkouts and the checkout with
-   `git worktree remove --force`, then whatever is left of the checkout's directory, never the
-   `.claude/worktrees/` that holds it. A removal Git refuses is done directly, deleting the
-   directory and pruning Git's worktree list, and reported with `checkout-not-removed` evidence,
-   which says what the direct removal did: whether the directory is gone, or what is left of it,
-   and whether the prune succeeded; whatever is left is removed later with
-   `git worktree remove --force <path>` and `git worktree prune`, which the evidence names. None of
-   it ever changes the result's status. A runner killed outside its control, by `SIGKILL`, leaves the
-   checkout and its worktree entry behind, which `git worktree remove --force` of that path
-   removes.
+1. The runner resolves the origin's `HEAD` to a commit. It creates the checkout
+  `.claude/worktrees/unbound-<run-id>` of the repository's primary worktree, the first worktree
+  `git worktree list` names. The runner uses `git worktree add --detach` of that commit from the
+  origin's repository, with none of the repository's Git hooks run. A worker runs only in a
+  worktree directly inside `.claude/worktrees/` of its primary worktree. The checkout lies there
+  because that is where the worker harness lets a worker run
+  ([Workers](../worker-harness/workers/launch.md#placement)). A run identity always holds an
+  upper-case `T`, which no task name may hold. The checkout therefore never takes a task worktree's
+  place. Before creating anything, the runner asks Git whether the primary worktree ignores that
+  path. The checkout therefore never appears there as untracked files. Only Git's administrative
+  files of the repository and the checkout's own directory change. No other file of the origin or
+  of the primary worktree changes, and not their index.
+2. Each submodule the commit records receives the same checkout treatment when both conditions
+  hold: the origin checked it out, and its repository holds the recorded commit. The runner uses
+  `git worktree add --detach` of that commit from the submodule's repository. When the origin's
+  checkout is sparse, the runner uses the origin's sparse-checkout patterns. It uses each pattern
+  as Git lists it, spaces included, read back in the origin's own mode, cone or not. `submodule`
+  evidence names each submodule. When the origin did not check out a submodule or Git cannot check
+  it out or populate it, the submodule stays empty, as in a fresh clone. `submodule-absent` evidence
+  names why. Before any step runs, the runner removes a checkout Git began and could not finish.
+  `checkout-not-removed` evidence names whatever of it could not be removed.
+3. When the definition has a runtime-path resolver, the runner calls it with the checkout's root
+  and links what it returns. The runner itself reads no configuration. For Method's Operations,
+  the resolver returns the checked-out
+  [worker configuration](../glossary.json#concept.worker-configuration)'s `runtime` (default
+  `.venv` and `node_modules`). When that file is invalid, the resolver returns nothing. Each
+  relative runtime path so named that exists in the origin and that Git ignores receives a
+  symbolic link in the checkout to the origin's path. The runner records `environment` evidence.
+  Inside the checkout, the runner creates the directories leading to the path that the checkout
+  lacks. The run's checks and workers only read the path, the checks inside their read-only
+  boundary. When Git does not ignore a runtime path, the runner does not link it, with
+  `environment-not-linked` evidence, since the commit holds it. With the same evidence, the runner
+  also does not link a path the checkout already holds or one whose directories lead out of the
+  checkout. Such directories can lead through an earlier link. When the origin lacks a runtime
+  path, the runner passes it over.
+4. From here on, the run context's worktree is the checkout. The steps work there, and with them
+  whatever they read. In Method's Operations, this includes the Specs, the grant, the workers and
+  the worker harness's audit. The worker configuration committed in the checkout chooses the
+  workers' backends, models and limits. The run context keeps the origin and the commit. The
+  origin's `.concorde` keeps the run's trace node and run lock. The result names the commit as
+  `commit`. The run's error link names it as `… (unbound, <origin> at <commit>)`. `checkout`
+  evidence names the commit and the checkout's path.
+5. Before composing the result, however the steps ended, the runner removes the links, the
+  submodule checkouts and the checkout with `git worktree remove --force`. This includes a refusal,
+  a raised error or a cancellation. The runner then removes whatever is left of the checkout's
+  directory, never the `.claude/worktrees/` that holds it. When Git refuses a removal, the runner
+  does it directly, deleting the directory and pruning Git's worktree list. The runner reports
+  that removal with `checkout-not-removed` evidence. The evidence says whether the directory is
+  gone, or what is left of it, and whether the prune succeeded. Whatever is left is removed later
+  with `git worktree remove --force <path>` and `git worktree prune`, which the evidence names.
+  None of it ever changes the result's status. When a runner is killed outside its control, by
+  `SIGKILL`, it leaves the checkout and its worktree entry behind. `git worktree remove --force`
+  of that path removes them.
 
-When the origin's `HEAD` names no commit, the repository has no primary worktree, the primary
-worktree's Git does not ignore the checkout's path, the path is taken, or Git refuses the checkout,
-the run is refused in the
-lock row, where an unbound run creates its checkout, with `checkout_unavailable`, whose cause is
-the `Execution (unbound checkout)` link with Git's output, and nothing is left behind; the runner
-never falls back to working in the origin.
+When any of these conditions holds, the runner refuses the run with `checkout_unavailable`:
+
+- The origin's `HEAD` names no commit.
+- The repository has no primary worktree.
+- The primary worktree's Git does not ignore the checkout's path.
+- The path is taken.
+- Git refuses the checkout.
+
+The refusal occurs in the lock row, where an unbound run creates its checkout. Its cause is the
+`Execution (unbound checkout)` link with Git's output. Nothing is left behind. The runner never
+falls back to working in the origin.
 
 ## Detached runs
 
-With `--detach` the command checks the command line (a malformed one starts nothing, with exit
-status 2), reads the workspace binding to select the node folder as the parse does, chooses the
-run identity, creates the run's folder, in the [lobby](#the-lobby) for a bound run and its unbound
-node otherwise, and starts the runner as a process of its own, in a new session, handing it the
-identity, so that the runner records in that folder and writes its output to `host.out` there. That
-process is the host's `concorde` command run again with the same command line, which loads the
-definitions the installed parts register before it looks the definition up, as the first did. It
-then waits until the run progress file exists, in the lobby or, once the run entered its
-workspace, in its node there, and prints `{run_id, kind, name, host_pid, trace, progress, result,
-lobby}` with exit status 0: `trace` is the run's node folder in the workspace folder, or its
-unbound node, `progress` and `result` its `status.json` and `result.json`, where they lie once the
-run entered its workspace, and `lobby` the run's lobby folder, null for an unbound run, where a run
-refused before it entered its workspace keeps its progress file and result.
+With `--detach`, the command follows these steps:
 
-When the command cannot create the run's folder or open the runner's output `host.out` there,
-it starts no runner and reports `run_unrecorded` as a foreground run whose first records cannot be
-created does ([When records cannot be written](#when-records-cannot-be-written)), with exit status
-1; when the runner process cannot be started, it removes the run's folder and reports
-`detach_failed` with the same fields, `host_pid` null, and exit status 1.
+1. The command checks the command line. A malformed command line starts nothing, with exit status
+  2.
+2. The command reads the workspace binding to select the node folder as the parse does.
+3. The command chooses the run identity.
+4. The command creates the run's folder, in the [lobby](#the-lobby) for a bound run and its unbound
+  node otherwise.
+5. The command starts the runner as a process of its own, in a new session, handing it the
+  identity. The runner therefore records in that folder and writes its output to `host.out`
+  there.
 
-An existing run progress file always wins: once it exists the run is announced, even when the
-runner has already ended by then, since the run exists and its result, or its lost state when it
-has none, tells how it ended. Only when no run progress file appeared, by the time the runner ended
-or the announcement wait, 60 seconds from its start, ran out, does the command kill the runner with
-its process group and look once more: a progress file written meanwhile still announces the run.
-Otherwise the command reports `detach_failed`. The runner writes its first run progress file
-before any step, or runs none ([When records cannot be written](#when-records-cannot-be-written)),
-so no step ran; the command removes the run's folder, in the lobby or unbound, and a run lock file
-the runner left, so that nothing of the run remains, and prints the same fields with an `error`
-link `detach_failed` naming how the runner ended and the end of its output, with exit status 1. An
-unannounced runner thus never starts its run later, and running the command again starts a new
-run with nothing to repeat. The new session frees the runner from the command, not from the PID
-namespace the command runs in: a runner detached inside a namespace that ends, such as that of a
-sandboxed Bash call, is killed with it
+That process is the host's `concorde` command run again with the same command line. Before it
+looks the definition up, the process loads the definitions the installed parts register, as the
+first command did. The command then waits until the run progress file exists. Until the run
+enters its workspace, that file is in the lobby. Once the run enters its workspace, the file is
+in its node there. The command prints
+`{run_id, kind, name, host_pid, trace, progress, result, lobby}` with exit status 0. The announcement
+fields give these locations:
+
+- `trace` is the run's node folder in the workspace folder, or its unbound node.
+- `progress` and `result` are its `status.json` and `result.json`, where they lie once the run
+  entered its workspace.
+- `lobby` is the run's lobby folder, null for an unbound run. A run refused before it entered its
+  workspace keeps its progress file and result there.
+
+When the command cannot create the run's folder or open the runner's output `host.out` there, it
+starts no runner. It reports `run_unrecorded` with exit status 1. It reports this as a foreground
+run whose first records cannot be created does
+([When records cannot be written](#when-records-cannot-be-written)). When the runner process cannot
+be started, the command removes the run's folder. It reports `detach_failed` with the same fields,
+`host_pid` null, and exit status 1.
+
+An existing run progress file always wins. Once it exists, the run is announced, even when the
+runner already ended by then. The run exists, and its result tells how it ended. When the run has
+no result, its lost state tells how it ended. Only when no run progress file appeared by either
+limit does the command kill the runner with its process group and look once more. The limits are
+the runner's end or the announcement wait running out, 60 seconds from its start. A progress file
+written meanwhile still announces the run. Otherwise, the command reports `detach_failed`.
+
+Before any step, the runner writes its first run progress file, or runs none
+([When records cannot be written](#when-records-cannot-be-written)). Therefore, when no progress
+file appeared, no step ran. The command removes the run's folder, in the lobby or unbound, and a
+run lock file the runner left. Nothing of the run therefore remains. The command prints the same
+fields with an `error` link `detach_failed` and exit status 1. That link names how the runner
+ended and the end of its output. An unannounced runner thus never starts its run later. Running
+the command again starts a new run with nothing to repeat.
+
+The new session frees the runner from the command, not from the PID namespace the command runs
+in. When a namespace ends, a runner detached inside it is killed with it. Such a namespace can
+be that of a sandboxed Bash call
 ([A detached run lives only as long as the PID namespace it started in](module.md#detached-namespace)).
 
 ## Run progress file
 
-Before it writes anything in the run's folder, apart from `host.out` of a detached run, the
-runner takes the [run lock](../glossary.json#concept.run-lock): an exclusive `flock` on the file
-`locks/runs/<run-id>.lock` of the `.concorde` that holds its locks, which it creates, held until
-after the result, the finished progress file and the final `trace.json` are written, through a
-descriptor the processes it starts do not inherit, so a worker or check that outlives the runner
-never keeps its run alive. The runner removes the file, still holding it, as it exits; the file of a
-runner killed with `SIGKILL` stays but is not held. An observer tells a running run from a dead one
-by the file's existence and by trying the lock for an instant, shared and without waiting
-(`runner_alive`); the operating system's lock table `/proc/locks` shows the same for the file's inode,
-whichever PID namespace holds it. A run without `result.json` whose lock nobody holds is `lost`.
+Before it writes anything in the run's folder, apart from `host.out` of a detached run, the runner
+takes the [run lock](../glossary.json#concept.run-lock). This is an exclusive `flock` on the file
+`locks/runs/<run-id>.lock` of the `.concorde` that holds its locks. The runner creates that file.
+It holds the lock until after all these records are written:
 
-The runner writes `status.json` in the run's folder, in the lobby until the run enters its
-workspace, atomically when the folder is created, while it waits for the workspace lock, once it
-holds it, before each step and when the result is written:
+- the result
+- the finished progress file
+- the final `trace.json`
+
+The runner holds the lock through a descriptor the processes it starts do not inherit. A worker
+or check that outlives the runner therefore never keeps its run alive. As it exits, the runner
+removes the file, still holding it. When a runner is killed with `SIGKILL`, its file stays but is
+not held. An observer tells a running run from a dead one by the file's existence and by trying
+the lock for an instant. The observer tries it shared and without waiting (`runner_alive`).
+Whichever PID namespace holds it, the operating system's lock table `/proc/locks` shows the same
+for the file's inode. A run without `result.json` whose lock nobody holds is `lost`.
+
+The runner writes `status.json` atomically in the run's folder. Until the run enters its
+workspace, that folder is in the lobby. The runner writes the file at these times:
+
+- when the folder is created
+- while it waits for the workspace lock
+- once it holds the workspace lock
+- before each step
+- when the result is written
+
+The file holds these fields:
 
 | Field | Content |
 | --- | --- |
@@ -460,22 +693,31 @@ holds it, before each step and when the result is written:
 | `host_pid` | the runner's process identifier in its own PID namespace, for display and for the process that started it; never a sign that the run still runs |
 | `started_at`, `updated_at` | UTC times |
 
-A failed write never changes the run, except the first, without which the run runs no step
-([When records cannot be written](#when-records-cannot-be-written)).
+Except for the first, a failed write never changes the run. Without the first write, the run runs
+no step ([When records cannot be written](#when-records-cannot-be-written)).
 
 ## Errors
 
 When a run does not end `ok`, the result's `error` is the run's own link of the
-[error chain](../kernel/tracing/contracts.md#contract.tracing.error): the level `operation` for an Operation and
-`command` for an execution command, the actor `Operation <name> <run-id> (workspace <workspace>)`,
-`Command <name> <run-id> (workspace <workspace>)` or, unbound, `… (unbound, <origin> at <commit>)`,
-where `<origin>` is the worktree the run started in, never its checkout, without ` at <commit>`
-when the run was refused before its checkout existed, so that the actor names the run and its
-workspace, a code, a detail naming the paths and the messages concerned and ending with the
-Modules the run works on, `(Modules: <id>, …)` or `(Modules: none)`, the reason
-the run cannot handle the error, the options it offers with a recommendation, and as causes the
-errors it received, unchanged. A step that stops the run builds that link itself; the runner builds
-it as follows.
+[error chain](../kernel/tracing/contracts.md#contract.tracing.error). Its level is `operation` for
+an Operation and `command` for an execution command. The actor names the run and its workspace
+in one of these forms:
+
+- `Operation <name> <run-id> (workspace <workspace>)`
+- `Command <name> <run-id> (workspace <workspace>)`
+- for an unbound run, `… (unbound, <origin> at <commit>)`
+
+Here `<origin>` is the worktree the run started in, never its checkout. When the run was refused
+before its checkout existed, the actor omits ` at <commit>`. The link also holds these details:
+
+- a code
+- a detail naming the paths and the messages concerned and ending with the Modules the run works
+  on, `(Modules: <id>, …)` or `(Modules: none)`
+- the reason the run cannot handle the error
+- the options it offers with a recommendation
+- as causes, the errors it received, unchanged
+
+A step that stops the run builds that link itself. The runner builds it as follows.
 
 | Error | Code | Reason | Causes |
 | --- | --- | --- | --- |
@@ -485,17 +727,17 @@ it as follows.
 | Invalid result or output | `invalid_result` | `capability` | the error the run had, if any |
 | A step stopped without an error | `missing_error` | `capability` | none |
 
-The two failures to write the run's records
-([When records cannot be written](#when-records-cannot-be-written)) are no result's error: the runner writes their `component` link, of the actor
-`Execution runner (<command line>)`, to standard error, `run_unrecorded` or `result_unsaved`, with
-the reason `environment`.
+The two failures to write the run's records are no result's error
+([When records cannot be written](#when-records-cannot-be-written)). The runner writes their
+`component` link to standard error. Its actor is `Execution runner (<command line>)`, its code is
+`run_unrecorded` or `result_unsaved`, and its reason is `environment`.
 
-A step keeps the link of whatever it called unchanged as a cause under the run's own link, actor,
-code and reason included. Check execution gives its failures as its own link, made by
-`service_error` of [the check service](checks/service.md#check-executions-error-as-a-link), of the
-actor `Check execution` and with the reason its code maps to, and the
+A step keeps the link of whatever it called unchanged as a cause under the run's own link. This
+includes the actor, code and reason. Check execution gives its failures as its own link.
+`service_error` of [the check service](checks/service.md#check-executions-error-as-a-link) makes
+that link. Its actor is `Check execution`, with the reason its code maps to. The
 [Issues](../issues/interface.md) store gives each refusal its own link, of the actor
-`Issues (concorde issues)`. A component that reports without a link is the concern of the
-definition whose step calls it: Method's steps, for one, turn Spec tooling's own error record into
-a link as [How an Operation runs its workers](../method/workers.md#errors-of-the-worker-sequence)
-says.
+`Issues (concorde issues)`. When a component reports without a link, that report is the concern
+of the definition whose step calls it. Method's steps, for one, turn Spec tooling's own error
+record into a link as
+[How an Operation runs its workers](../method/workers.md#errors-of-the-worker-sequence) says.
