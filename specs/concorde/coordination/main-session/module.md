@@ -302,42 +302,43 @@ The installed guidance gives the main agent this working method:
   - Inspects Issues.
   - Changes the worker configuration.
 
-Before starting the session, record the task's [task brief](../../glossary.json#concept.task-brief)
-in its decision log. The session reads the task brief first. A task session is a background Claude
-Code session, on the main agent's own program. The command names the main agent's session with
-`--main`. The task session reports back with SendMessage. The main agent answers the task session
-the same way. Ending the task, by its merge or its close, stops its task sessions and removes them
-from Claude's session list. Ending the task keeps their transcripts in the task's
-[trace](../../glossary.json#concept.trace), so the main agent never removes the task sessions
-itself. The task session changes Specs and code in the task worktree directly or by running the
-following:
+  Before starting the session, record the task's
+  [task brief](../../glossary.json#concept.task-brief) in its decision log. The session reads the
+  task brief first. A task session is a background Claude Code session, on the main agent's own
+  program. The command names the main agent's session with `--main`. The task session reports back
+  with SendMessage. The main agent answers the task session the same way. Ending the task, by its
+  merge or its close, stops its task sessions and removes them from Claude's session list. Ending
+  the task keeps their transcripts in the task's [trace](../../glossary.json#concept.trace), so the
+  main agent never removes the task sessions itself. The task session changes Specs and code in the
+  task worktree directly or by running the following:
 
   - [Operations](../../glossary.json#concept.operation) with `concorde run <operation> …`.
   - The [execution commands](../../glossary.json#concept.execution-command)
     `concorde task-validation` and `concorde delivery`.
 
-The task session reads each [run result](../../glossary.json#concept.run-result). From the task
-worktree, the task session runs every `concorde` command that works on the task's workspace as that
-worktree's own command ([requirements](requirements.md#req.main-session.worktree-own-concorde)). The
-following commands run from the primary worktree:
+  The task session reads each [run result](../../glossary.json#concept.run-result). From the task
+  worktree, the task session runs every `concorde` command that works on the task's workspace as
+  that worktree's own command
+  ([requirements](requirements.md#req.main-session.worktree-own-concorde)). The following commands
+  run from the primary worktree:
 
   - Commands that open tasks.
   - Commands that merge tasks.
   - Commands that close tasks.
   - Commands that start task sessions.
 
-None of the commands that work on the task's workspace names the task. The task worktree's
-[workspace binding](../../glossary.json#concept.workspace-binding), which `concorde task open`
-wrote, tells every run what it works on:
+  None of the commands that work on the task's workspace names the task. The task worktree's
+  [workspace binding](../../glossary.json#concept.workspace-binding), which `concorde task open`
+  wrote, tells every run what it works on:
 
   - The goal.
   - The Modules.
   - The branch.
   - The base.
 
-One workspace runs one of those Operations or execution commands at a time (`workspace_busy`
-otherwise). A task session starts them in background Bash, which wakes it when they end (see
-[Task sessions](../task-session/module.md)).
+  One workspace runs one of those Operations or execution commands at a time (`workspace_busy`
+  otherwise). A task session starts them in background Bash, which wakes it when they end (see
+  [Task sessions](../task-session/module.md)).
 - **Make only approved small changes in the primary worktree.** Only after both of the following may
   the main agent make a very small change directly in the primary worktree
   ([requirements](requirements.md#req.main-session.small-change)):
@@ -345,14 +346,14 @@ otherwise). A task session starts them in background Bash, which wakes it when t
   - The main agent states what it would change and why the change is small.
   - The developer approves that specific change.
 
-Examples of very small changes are:
+  Examples of very small changes are:
 
   - A typo.
   - A one-line fix.
   - A wording correction.
 
-Besides that change, the primary worktree sees only the following
-([requirements](requirements.md#req.main-session.tasks-own-changes)):
+  Besides that change, the primary worktree sees only the following
+  ([requirements](requirements.md#req.main-session.tasks-own-changes)):
 
   - Housekeeping that regenerates derived files, such as the registry mirror.
   - The commit of the worker configuration alone.
@@ -373,11 +374,11 @@ Besides that change, the primary worktree sees only the following
   - The previous run as `--input`.
   - The answers as `--accept` and `--reject`.
 
-The session repeats these runs until the verdict is `accepted`. If the reviewer maintains a finding
-after the session rejects it, and the session still rejects it, the finding is a disagreement. The
-session does not iterate on that disagreement again. The session escalates the disagreement to the
-main agent, stating the answer in its next run
-([requirements](requirements.md#req.main-session.task-session-plan-review)).
+  The session repeats these runs until the verdict is `accepted`. If the reviewer maintains a
+  finding after the session rejects it, and the session still rejects it, the finding is a
+  disagreement. The session does not iterate on that disagreement again. The session escalates the
+  disagreement to the main agent, stating the answer in its next run
+  ([requirements](requirements.md#req.main-session.task-session-plan-review)).
 - **Keep the decision log.** Each session records in the task's
   [decision log](../../glossary.json#concept.decision-log) what it did without the developer, with
   its reason. The task session starts the task's runs and decides its ordinary questions. The task
@@ -410,8 +411,8 @@ main agent, stating the answer in its next run
   - A Claude Code task session whose transcript the close could not keep or that it could not
     remove, with the command that removes it by hand.
 
-On a close's `decision_log_uncommitted`, fix what Git refused in the primary worktree and run the
-same close again.
+  On a close's `decision_log_uncommitted`, fix what Git refused in the primary worktree and run the
+  same close again.
 - **Keep reports reachable.** A Claude Code session's name does not survive a restart or a resume of
   the session, so the name a task session starts with may no longer reach the main agent. The
   task-session guidance therefore has a task session record every report with `concorde task report`
@@ -430,14 +431,14 @@ same close again.
   - Rebinds each to its current name with `concorde task rebind`.
   - Reads their unanswered reports, those `concorde task show` lists with no answer.
 
-Since the restart may come between `concorde task answer` and SendMessage, an answer the main agent
-records may never have been sent. For each such task whose last report has an answer, the main agent
-also sends the latest recorded answer again to the task's session, naming the reports it answers by
-number. Every answer names those reports. An answer to a report the task session already acted on
-gives the task session nothing to do
-([requirements](requirements.md#req.main-session.reconcile-resend-answer)). An ended task needs none
-of this. An ended task has no task session left. Its merge or close answers every report still
-unanswered when the task ends.
+  Since the restart may come between `concorde task answer` and SendMessage, an answer the main
+  agent records may never have been sent. For each such task whose last report has an answer, the
+  main agent also sends the latest recorded answer again to the task's session, naming the reports
+  it answers by number. Every answer names those reports. An answer to a report the task session
+  already acted on gives the task session nothing to do
+  ([requirements](requirements.md#req.main-session.reconcile-resend-answer)). An ended task needs
+  none of this. An ended task has no task session left. Its merge or close answers every report
+  still unanswered when the task ends.
 - **Report.** Close each piece of work with a short summary for the developer:
 
   - What was merged.
@@ -856,22 +857,23 @@ itself with `concorde task merge`.
     - `tier`.
     - `severity`.
 
-It is sorted by severity as `concorde issues list` is.
+    It is sorted by severity as `concorde issues list` is.
   - `issue_show`.
   - `issue_check`.
 
-These tools read the project's [Issues](../../glossary.json#concept.issue). These tools write them:
+  These tools read the project's [Issues](../../glossary.json#concept.issue). These tools write
+  them:
 
   - `issue_report`.
   - `issue_close`.
   - `issue_reopen`.
 
-All six tools work as `concorde issues` does, without waiting for the merge lock an Issue write
-takes. While another process holds that lock, each write is refused at once with `merge_busy`. Each
-write tool's description also says that the write first puts back what a killed Issue write left.
-The description says how its `recovery_failed` and `uncommitted_change` refusals are put right.
-Recovery itself is `concorde issues recover`'s alone. A report is checked against the session's
-worktree, where its evidence lies. The report is recorded as the session's:
+  All six tools work as `concorde issues` does, without waiting for the merge lock an Issue write
+  takes. While another process holds that lock, each write is refused at once with `merge_busy`.
+  Each write tool's description also says that the write first puts back what a killed Issue write
+  left. The description says how its `recovery_failed` and `uncommitted_change` refusals are put
+  right. Recovery itself is `concorde issues recover`'s alone. A report is checked against the
+  session's worktree, where its evidence lies. The report is recorded as the session's:
 
   - `task-session` with its task in a task worktree bound as a workspace.
   - `main-agent` otherwise.
@@ -885,12 +887,13 @@ worktree, where its evidence lies. The report is recorded as the session's:
   - The holder's Claude Code session.
   - The holder's task.
 
-The call's process takes the locks. When it gets both, it becomes `concorde task merge`, a process
-of its own session, keeping both locks. The `flock` belongs to the open file description, which
-survives the change of program. The server never holds either lock. Therefore, the lock belongs to
-the session's work, never to the server. The lock is released when the merge ends, however it ends,
-even when the session and its server end first. The call returns at once with the merge it started,
-not the merge's result. A channel event or the returned wait command delivers the result later.
+  The call's process takes the locks. When it gets both, it becomes `concorde task merge`, a process
+  of its own session, keeping both locks. The `flock` belongs to the open file description, which
+  survives the change of program. The server never holds either lock. Therefore, the lock belongs to
+  the session's work, never to the server. The lock is released when the merge ends, however it
+  ends, even when the session and its server end first. The call returns at once with the merge it
+  started, not the merge's result. A channel event or the returned wait command delivers the result
+  later.
 - **[Workflow steps](../../glossary.json#concept.workflow-step)**: where the workflow part is
   installed, it registers `workflow_step`. The [step agents](../../glossary.json#concept.step-agent)
   of a [workflow](../../glossary.json#concept.workflow) call it, one call per relay. This makes a
@@ -905,17 +908,17 @@ not the merge's result. A channel event or the returned wait command delivers th
     - `closed`.
     - `failed`.
 
-The tool never waits for `merging`, which lasts only while the merge holds the task's workspace
-lock.
+    The tool never waits for `merging`, which lasts only while the merge holds the task's workspace
+    lock.
   - A task is rebound to a main agent's session other than a named one.
   - A run ends.
   - A lock is released.
 
-The server watches by running the matching `concorde task wait`, which waits without polling. The
-command blocks on the lock itself or on the operating system's notice of each new holder. When the
-awaited event happens, the server wakes its session with a [Claude Code channel](#channels) event
-with that command's answer. The wait process ends with the server. The wait only notifies. It never
-takes a lock for the session it wakes. That session asks again and may be refused again.
+  The server watches by running the matching `concorde task wait`, which waits without polling. The
+  command blocks on the lock itself or on the operating system's notice of each new holder. When the
+  awaited event happens, the server wakes its session with a [Claude Code channel](#channels) event
+  with that command's answer. The wait process ends with the server. The wait only notifies. It
+  never takes a lock for the session it wakes. That session asks again and may be refused again.
 
 The diagram below shows a merge through the server, from a refusal to the merge's end, with who
 holds the locks at each stage. The call's process takes the locks and keeps them as it becomes the

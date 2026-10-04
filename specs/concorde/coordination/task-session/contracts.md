@@ -201,13 +201,13 @@ session besides:
   - MultiEdit
   - NotebookEdit
 
-The hook is `session_hook.py`, copied beside the settings with the task worktree and
-[decision log](../../glossary.json#concept.decision-log) embedded. The hook judges the path with
-every symbolic link resolved, a final link included, since Edit and Write write through a link to
-the file it points to. The hook allows a path inside the task worktree. While the decision log's
-folder exists, the hook also allows the decision log. The hook denies any other path with a reason
-naming the task worktree. For the decision log of a task whose folder moved to the history, the
-reason names the closed task. Any failure denies.
+  The hook is `session_hook.py`, copied beside the settings with the task worktree and
+  [decision log](../../glossary.json#concept.decision-log) embedded. The hook judges the path with
+  every symbolic link resolved, a final link included, since Edit and Write write through a link to
+  the file it points to. The hook allows a path inside the task worktree. While the decision log's
+  folder exists, the hook also allows the decision log. The hook denies any other path with a reason
+  naming the task worktree. For the decision log of a task whose folder moved to the history, the
+  reason names the closed task. Any failure denies.
 - No `sandbox`: the session's Bash runs as the developer's own shell does, with all of these open to
   it:
 

@@ -265,8 +265,8 @@ Claude Code itself would read:
   - The file is unreadable.
   - The file has no `mcpServers` object.
 
-Since Claude Code loads no server from such a file, it asks about none. The session starts all the
-same.
+  Since Claude Code loads no server from such a file, it asks about none. The session starts all the
+  same.
 - The entry `concorde` is disabled (`disabledMcpjsonServers`). The `--mcp-config` server replaces
   it. With both, Claude Code loads only the latter, so nothing is lost.
 - When the primary worktree approved any other server, that server is enabled
@@ -491,12 +491,12 @@ written into the node because retention later removes the transcript:
   - Tokens read from the prompt cache.
   - Tokens written to the prompt cache.
 
-Each API message is counted by its `message.id` once, since one message may span several records.
-The turns are those messages. The duration runs from the earliest time the transcript's records
-carry to the latest. Claude Code's own cost account is the `totalCostUSD` of the transcript's last
-`cost-state` record. When that record exists and no `assistant` record follows it, the cost is that
-account. Otherwise, the cost is null. A background session's transcript often has no such record.
-Concorde computes no price.
+  Each API message is counted by its `message.id` once, since one message may span several records.
+  The turns are those messages. The duration runs from the earliest time the transcript's records
+  carry to the latest. Claude Code's own cost account is the `totalCostUSD` of the transcript's last
+  `cost-state` record. When that record exists and no `assistant` record follows it, the cost is
+  that account. Otherwise, the cost is null. A background session's transcript often has no such
+  record. Concorde computes no price.
 - **end**: when a transcript was kept, the latest time the transcript's records carry.
 - **status**: from the session's state in `claude agents --json --all`, as follows:
 
@@ -504,7 +504,7 @@ Concorde computes no price.
   - `failed` for `failed`.
   - `unknown` for any other state or when Claude Code no longer lists the session.
 
-The state itself is the node's outcome.
+  The state itself is the node's outcome.
 - **content**: the following:
 
   - The full session id.
