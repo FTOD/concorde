@@ -228,7 +228,7 @@ program.result -> workers.audit
 
 Since an `implement` task reads the project's code whole, a `names` path never appears in an
 `implement` grant. A `names` path appears, for instance, in an `understand` grant. That grant's worker
-may see an implementation file's name in its brief. The worker may read the file with no tool.
+may see an implementation file's name in its brief. No tool lets the worker read the file.
 
 ### Its parts
 
@@ -351,8 +351,8 @@ that fits it.
 
 Since an extension sees every tool call before it runs and can explain a denial, it checks the file
 tools on pi. Because only an OS boundary confines what a command or a search actually opens,
-searching and commands go through the sandbox. To see the final arguments, the check replaces the
-worker's tools rather than merely intercepting them. Otherwise, a later `tool_call` handler could
+searching and commands go through the sandbox. The worker's tools are replaced rather than merely
+intercepted, so the check sees the final arguments. Otherwise, a later `tool_call` handler could
 still change those arguments.
 
 ### Three layers on Claude Code
