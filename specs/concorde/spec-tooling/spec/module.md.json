@@ -84,6 +84,7 @@
       "entries": [
         "src/concorde/spec/diagnostics.py",
         "src/concorde/spec/registry.py",
+        "src/concorde/spec/style.py",
         "src/concorde/spec/validation.py",
         "src/concorde/spec/verification.py"
       ]

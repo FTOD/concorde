@@ -25,7 +25,7 @@ from .schema import validate as validate
 from .typed_data import canonical, checked_path, decode
 
 PROFILE_VERSION = 19
-PROTOCOL_VERSION = "16.1.0"
+PROTOCOL_VERSION = "16.2.0"
 REGISTRY_SCHEMA = 3
 METADATA_SCHEMA = 3
 # The installed Protocol copy the configuration binds; the installer places it there.

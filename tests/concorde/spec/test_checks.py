@@ -12,6 +12,7 @@ from pathlib import Path
 from concorde.spec.registry import registry_command
 from concorde.spec.repository import SpecError
 from concorde.spec.schema import KEYWORDS
+from concorde.spec.style import sentences
 from concorde.spec.syntax import D2_KEYWORDS, term_uses
 from concorde.spec.verification import verifies
 from tests.concorde.support.paths import REPOSITORY_ROOT
@@ -91,8 +92,8 @@ CONSUMER = module_document(
     uses=[
         {
             "target": "module.provider",
-            "explanation": "The provider keeps every [thing](@glossary#concept.provider.thing); "
-            "a failed read is shown as unavailable.",
+            "explanation": "The provider keeps every [thing](@glossary#concept.provider.thing). "
+            "A failed read is shown as unavailable.",
         }
     ],
     relations=[
@@ -320,6 +321,84 @@ class CheckTests(unittest.TestCase):
         # Code and links are no words a reader sees between the two words, on one line or
         # wrapped, so neither "task ... records" is the term.
         self.assertEqual({}, term_uses(text, titles, []))
+
+    @verifies("scenario.spec.style-warnings")
+    def test_sentences_that_break_the_style_are_warnings(self):
+        long = " ".join(["word"] * 35)
+        topic = DocumentSource(
+            "# Rules\n\n"
+            f"A {long} end.\n\n"
+            "The store keeps things; the reader reads them.\n\n"
+            "- The store MUST keep a thing and MUST NOT lose it.\n"
+            f"- A short item with `code {long}` and [a link](module.md) stays short.\n",
+            {
+                "schema_version": 3,
+                "document": {
+                    "id": "document.provider.rules",
+                    "owner": "module.provider",
+                    "role": "module",
+                },
+                "defines": [],
+                "relations": [],
+            },
+        )
+        self.project.write("specs/provider/rules.md", topic)
+        self.metadata(
+            "provider",
+            lambda value: value["module"]["owns"].append("specs/provider/rules.md"),
+        )
+        update_glossary_entry(
+            self.root, "concept.provider.thing", definition=f"One {long} value."
+        )
+        found = self.project.validate()
+        self.assertEqual("success", found.status)
+        self.assertEqual(
+            [
+                ("CHK.style.one-obligation", "specs/provider/rules.md", 7, None),
+                ("CHK.style.semicolon", "specs/provider/rules.md", 5, None),
+                (
+                    "CHK.style.sentence-length",
+                    "specs/glossary.json",
+                    None,
+                    "concept.provider.thing",
+                ),
+                ("CHK.style.sentence-length", "specs/provider/rules.md", 3, None),
+            ],
+            sorted(
+                (f.rule_id, f.source, f.line, f.subject_id)
+                for f in found.findings
+                if f.rule_id.startswith("CHK.style.")
+                and f.strictness == "warning"
+                and (f.source == "specs/provider/rules.md" or f.subject_id)
+            ),
+        )
+
+    @verifies("scenario.spec.style-warnings")
+    def test_only_prose_is_measured_as_a_reader_sees_it(self):
+        text = (
+            "---\naudience: shared\n---\n\n"
+            "# A heading; with a semicolon and MUST and MAY\n\n"
+            "| A table; cell | MUST and MAY |\n| --- | --- |\n\n"
+            "```text\na fence; MUST MAY\n```\n\n"
+            '<a id="concept.x"></a>\n\n'
+            "Run `concorde spec-validation --format json; echo MUST MAY` first. Then read the\n"
+            "[validation result of\nthe run](result.md#x) once.\n\n"
+            "- An item. A second sentence\n  that wraps.\n"
+        )
+        self.assertEqual(
+            [
+                (
+                    16,
+                    "Run `concorde spec-validation --format json; echo MUST MAY` first.",
+                    3,
+                ),
+                (16, "Then read the validation result of the run once.", 9),
+                (20, "An item.", 2),
+                (20, "A second sentence that wraps.", 5),
+            ],
+            [(item.line, item.text, item.words) for item in sentences(text)],
+        )
+        self.assertNotIn(";", sentences(text)[0].prose)
 
     @verifies("scenario.spec.node-checks")
     def test_an_anchor_left_empty_by_the_next_group_is_named(self):
@@ -558,8 +637,8 @@ class CheckTests(unittest.TestCase):
 
         self.edit(
             self.entry("consumer"),
-            "a failed read is shown as unavailable.",
-            "a failed read is shown as unavailable, as "
+            "A failed read is shown as unavailable.",
+            "A failed read is shown as unavailable, as "
             "[the keeping rule](../provider/obligations.md#req.provider.keep) allows.",
         )
         narrow(["concept.provider.thing", "req.provider.keep"])

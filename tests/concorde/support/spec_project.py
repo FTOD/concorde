@@ -457,7 +457,7 @@ def module_document(
     text = (
         f"# {title}\n\n## Purpose\n\n{purpose}\n\n"
         "## Usage\n\n"
-        "Use the declared boundary for the cases below; rejected input has no implicit retry.\n\n"
+        "Use the declared boundary for the cases below. Rejected input has no implicit retry.\n\n"
         f"{terms}"
         f"## Design\n\n{design}\n\n{architecture}\n\n"
         + (f"```d2\n{diagram}\n```\n\n" if diagram else "")

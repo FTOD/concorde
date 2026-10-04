@@ -2,8 +2,8 @@
 
 The root [Module](glossary.json#concept.module) binds the files that set up development of this
 checkout: the Python project and lock, the pytest configuration and its evidence plugin, the
-reference initializer, the Claude Code documentation fetcher, the docsite type check and the part
-dependency check. These promises concern how Concorde's own tests and checks run, not what Concorde
+reference initializer, the Claude Code documentation fetcher, the docsite type check, the part
+dependency check and the style check of the prompts. These promises concern how Concorde's own tests and checks run, not what Concorde
 offers a consumer project.
 
 ## Test evidence
@@ -241,6 +241,26 @@ read the rendered files directly.
 - THEN `CLAUDE.md` tells it to load the `concorde` and `concorde-development` skills before any work
 - AND `.claude/skills/concorde` and `.claude/skills/concorde-development` link to the folders of `generated/skills/` that hold the rendered skills
 - AND `concorde-development` states Dogfooding's rule for observing runs word for word ([req.dogfooding.one-observation-rule](dogfooding/requirements.md#req.dogfooding.one-observation-rule))
+
+## Style of the prompts
+
+The Markdown under `prompts/` follows the Spec Protocol's *Sentence style* (`protocol/style.md`).
+This is an extra requirement of Concorde's own checkout, not a rule of the Protocol. The prompts
+are no [Spec](glossary.json#concept.spec) documents, and `concorde spec-validation` never reads
+them. The prompts are read by models, and the same short sentences serve a model as they serve a
+person. The
+[development guidance](module.md#realization.concorde.development-guidance) states the
+requirement. `scripts/development/check-style.py` measures it with the checks that Spec core uses
+for the Specs. It also measures any other Markdown it is given, such as the Protocol's chapters
+under `protocol/`. A change of a prompt adds no new style problem to it.
+
+### scenario.concorde.check-style — The style check measures Markdown that is no Spec
+
+- GIVEN Markdown files with a sentence of more than 35 words, a semicolon in prose and a sentence with two requirement keywords
+- WHEN `scripts/development/check-style.py` runs on them
+- THEN it prints each problem with its path, line and rule, then the count of each rule and of each file
+- AND the problems are those that Spec core's style checks report for the same text
+- AND it exits with status 1, and with status 0 for files without a problem
 
 ## Docsite type check
 

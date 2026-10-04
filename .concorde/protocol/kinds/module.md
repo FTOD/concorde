@@ -1,6 +1,6 @@
 # Spec writing guidelines
 
-Use these guidelines to write and evaluate a Module's Specs. They have three separately maintained
+Use these guidelines to write and evaluate a Module's Specs. They have four separately maintained
 parts, used together:
 
 - **[Required format](format.md)** defines the machine-checkable structure and syntax: document
@@ -8,11 +8,14 @@ parts, used together:
 - **[Writing guidance](module.md)** explains what the content must communicate to its intended
   reader, in a recommended reading order: purpose, core concepts, overview diagrams, then details
   of correct use, design and collaborations. Applying it requires reader and editor judgment.
+- **[Sentence style](style.md)** states how each sentence is written: one fact in each sentence,
+  short sentences, lists instead of long runs of clauses, the actor named and no semicolons. Its
+  rules are inspired by the structural rules of ASD-STE100 Simplified Technical English.
 - **[Evaluating a Spec](evaluation.md)** states how a Spec is judged good: the quality of one
   Module's Specs for its reader, the quality of the architecture between Modules, and when a
   problem is blocking or advisory. It is a judgment and not deterministic.
 
-All three parts serve the Protocol's purposes of understanding and boundaries. Semantic writing
+All four parts serve the Protocol's purposes of understanding and boundaries. Semantic writing
 requirements still apply when structural checks pass. Mandatory terms retain their force in every
 part: **MUST** and **MUST NOT** state requirements and prohibitions, **SHOULD** allows departure
 for an explained reason, and **MAY** permits a choice. The chapter titles do not change these
@@ -598,6 +601,107 @@ selections and publisher summaries cannot silently supply a missing contract. Th
 from code to specification is a `code-to-spec` task (see [Boundaries](boundaries.md#task-types)),
 whose changes are ordinary specification changes and leave every doubtful intent a reported gap.
 
+# Sentence style
+
+This is the sentence part of [Spec writing guidelines](writing.md). [Writing guidance](module.md)
+says what a Spec must communicate. This chapter says how its sentences are written. It applies to
+the reading of every document and to every concept definition in the glossary.
+
+The rules are inspired by the structural rules of ASD-STE100 Simplified Technical English. The
+Protocol adopts only those structural rules, stated here in its own words. It does not adopt the
+STE dictionary or the STE rules for modal verbs.
+
+This chapter serves understanding. A short sentence that carries one fact is read correctly on the
+first pass. This is true for a person and for a model. A requirement that names its actor and
+carries one obligation tells each task what it must do.
+
+## The rules
+
+### One fact in each sentence
+
+Write one fact, one step or one requirement in each sentence. A normative sentence carries one
+obligation, so it contains one of the [requirement keywords](#requirement-keywords) at most. When a
+statement has two obligations, write two sentences.
+
+### Short sentences
+
+A descriptive sentence SHOULD have 25 words or fewer. Split a longer sentence into two sentences,
+or move its details into a list. Count every word of a link's text. Count an inline code span as
+one word. `CHK.style.sentence-length` reports a sentence of more than 35 words.
+
+### Lists for three or more
+
+When a sentence would name three or more conditions, cases, steps or items, write a vertical list.
+Introduce the list with a short sentence that ends with a colon. Give each item one fact. Write the
+items in the same grammatical form, all sentences or all phrases.
+
+A requirement can use a list too. Its first paragraph states the obligation once and ends with a
+colon. The list below it gives the conditions:
+
+```markdown
+### req.checkout.refuse-stale — Refuse a stale cart
+
+Checkout SHALL refuse the submission when any of these conditions is true:
+
+- The cart changed after the price was shown.
+- An item in the cart is no longer sold.
+- The delivery address is outside every delivery zone.
+```
+
+### The condition before the statement
+
+Put a condition before the statement it limits, so that the reader knows the situation before the
+rule. Write "When the lock is busy, the store SHALL refuse the write." Do not write "The store
+refuses the write if the lock is busy and no merge runs, unless the caller waits."
+
+### No semicolons
+
+Do not use a semicolon in prose. Write two sentences, or write a list. A semicolon in an inline
+code span or a code block is not prose. `CHK.style.semicolon` reports a semicolon in prose.
+
+### The actor and the active voice
+
+A requirement names the Module, component or person that acts, and uses the active voice. Write
+"The host SHALL delete the file." Do not write "The file is deleted." Use the passive voice only
+when the actor does not matter to the reader, as in "The file is created at install."
+
+### Simple tenses
+
+Use the simple present for what is true and for what a component does. Use the simple past for
+what happened before, and the simple future only when the order in time matters. Avoid
+progressive and perfect forms when a simple form says the same.
+
+### One word for one meaning
+
+The project glossary is the controlled vocabulary of the Specs. Use a defined term only with the
+meaning its definition gives. Do not use a synonym for a defined term. Do not use the word of a
+term in another sense. A word that the glossary does not define keeps its ordinary meaning. See
+[Terms](module.md#terms).
+
+### Requirement keywords
+
+The requirement keywords `MUST`, `MUST NOT`, `SHALL`, `SHALL NOT`, `SHOULD` and `MAY` keep the
+meanings that the Protocol gives them. They are not the modal verbs that STE restricts. A rule of
+STE that forbids "should" or "may" does not apply to a Spec. `CHK.style.one-obligation` reports a
+sentence that contains more than one of these keywords in capital letters. A keyword with its NOT
+is one keyword.
+
+## What a program measures
+
+The three style checks of [Checks](checks.md#style) have strictness warning. They measure the prose
+of the reading as a reader sees it:
+
+- Fences, headings, tables, front matter, comments and HTML anchors are not prose.
+- A link counts as its text. An inline code span counts as one word.
+- Each paragraph and each list item is split into sentences by the sentence-break rule of
+  `CHK.concept.definition`.
+
+A concept definition is one sentence, so the checks measure it as one sentence.
+
+The other rules need a reader's judgment. A review judges them as part of readability, by the
+criteria of [Evaluating a Spec](evaluation.md#readability). A text with no style warning can still
+break a rule. A sentence of 30 words passes the check and is still longer than the target.
+
 # Evaluating a Spec
 
 This is the evaluation part of [Spec writing guidelines](writing.md). [Required format](format.md)
@@ -676,6 +780,17 @@ into six dimensions.
 - Operational detail stays with the Module that owns it: a parent shows its children's process at
   the level of its own concepts and leaves their commands to them.
 - Unknowns and unsupported behaviour are stated honestly, never invented to fill a structure.
+- The sentences follow [Sentence style](style.md). The style checks report long sentences,
+  semicolons and sentences with more than one requirement keyword, so an evaluation does not
+  report them again. It judges the rules that no program decides:
+  - A requirement and every statement of behaviour name the actor and use the active voice.
+  - Each sentence carries one fact, even when it is short.
+  - Three or more conditions, cases or items stand in a list, not in a run of clauses.
+  - A condition comes before the statement it limits.
+  - Simple tenses say what is true and what happens.
+- A sentence that breaks the style is advisory while a reader still understands it correctly. It
+  is blocking when the reader cannot tell who must act or what is required. A requirement that
+  hides its actor in the passive voice is an example.
 
 ### Obligations
 

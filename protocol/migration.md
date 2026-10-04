@@ -232,3 +232,20 @@ select. Now:
 
 Every specification valid under 16.0 stays valid; nothing needs to change. A harness that does not
 offer the new task type loses nothing it had.
+
+## Version 16.2
+
+Version 16.2 adds a sentence style to the Spec writing guidelines. Specs grew long sentences that
+joined several facts with commas and semicolons. A reader had to hold many clauses at once, and a
+requirement could hide who acts. Now:
+
+- [Sentence style](style.md) is the fourth part of the Spec writing guidelines. Its rules are
+  inspired by the structural rules of ASD-STE100 Simplified Technical English. The requirement
+  keywords keep their Protocol meanings.
+- Three new checks with strictness warning measure the decidable rules:
+  `CHK.style.sentence-length`, `CHK.style.semicolon` and `CHK.style.one-obligation`.
+- [Evaluating a Spec](evaluation.md#readability) judges the other rules as part of readability.
+
+Every specification valid under 16.1 stays valid. The new checks are warnings and block nothing.
+To follow the style, rewrite each sentence that a style check reports. Then read the text again
+for the rules that no check measures.

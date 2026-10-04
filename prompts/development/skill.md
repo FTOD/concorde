@@ -115,6 +115,15 @@ sources, and after Protocol changes also run
 `python3 scripts/concorde.py protocol-manifest --write --bind-project`. After changing a Module's
 `module` block, refresh the registry mirror with `python3 scripts/concorde.py registry --write`.
 
+Write the Markdown under `prompts/` in the Spec Protocol's sentence style
+(`.concorde/protocol/kinds/module.md`, chapter *Sentence style*), as the Specs are written. This is
+Concorde's own requirement, not a Protocol rule. Prompts are read by models, and short sentences
+with one fact each serve a model as they serve a person. Run
+`python3 scripts/development/check-style.py` with the changed prompts, or with no path for all of
+`prompts/`. It reports the same style problems that `spec-validation` reports for the Specs. A
+change adds no new problem to the prompts it touches. The script measures the Protocol's chapters
+under `protocol/` too.
+
 Format changed sources explicitly (`uvx ruff format` for Python, Prettier for TypeScript,
 JavaScript and Markdown under `docs/`) and confirm a second pass changes nothing. Before
 committing, inspect the diff and run `build --check`, `spec-validation` and the relevant tests; run

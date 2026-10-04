@@ -8,6 +8,8 @@ audience: shared
 
 @protocol/module.md
 
+@protocol/style.md
+
 @protocol/evaluation.md
 
 @protocol/templates/module.md

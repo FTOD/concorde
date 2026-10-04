@@ -1,6 +1,6 @@
 # Spec Protocol
 
-Concorde Spec Protocol **16.1.0** describes a project as a set of Modules, each explaining one
+Concorde Spec Protocol **16.2.0** describes a project as a set of Modules, each explaining one
 responsibility, connected by declared relations. It serves two purposes:
 
 1. **Understanding** — a human grasps the backbone of the project, its parts and main flows,
@@ -38,14 +38,17 @@ either assert only declared relations or are marked illustrative.
 4. [Context](context.md) — the read side: four channels, selection and the reconciliation.
 5. [Boundaries](boundaries.md) — the write side, the impact of a write, and the task types that
    compose a task's boundary.
-6. [Spec writing guidelines](writing.md) — the authoring entry, with three separately maintained
-   parts: [Required format](format.md) for machine-checkable structure and syntax, [Writing
-   guidance](module.md) for content requiring reader and editor judgment, and [Evaluating a
-   Spec](evaluation.md) for how a Spec's quality and the architecture between Modules are judged.
+6. [Spec writing guidelines](writing.md) — the authoring entry. It has four separately maintained
+   parts:
+   - [Required format](format.md) for machine-checkable structure and syntax.
+   - [Writing guidance](module.md) for content requiring reader and editor judgment.
+   - [Sentence style](style.md) for how each sentence is written.
+   - [Evaluating a Spec](evaluation.md) for how a Spec's quality and the architecture between
+     Modules are judged.
 7. [Checks](checks.md) — every decidable rule and its limits.
 8. [Views](views.md) — derived views, checked D2 diagrams and illustrative blocks.
 9. [Migration](migration.md) — what changed from version 10, in 11.1, in 13, 13.1, 13.2, 13.3, 14,
-   15, 15.1, 16 and 16.1.
+   15, 15.1, 16, 16.1 and 16.2.
 10. [`model.yaml`](model.yaml) — the machine-readable vocabulary.
 11. Templates: [Module](templates/module.md) and [Scenario fragment](templates/scenario.md).
 
