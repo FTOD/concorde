@@ -104,8 +104,8 @@ Vendored code leaves the parent's realizations too. It never becomes a Module. I
 reviews it as the project's code, as the Protocol treats pinned third-party material. The scaffold
 never configures the proposed checks. A check is a command the host later runs. Before use, the
 developer must accept a command a model chose after reading code nobody vouched for. So the checks
-stay a proposal the workflow reports. Everything is written in one file transaction. If validation
-finds no new error, and only then, Scaffold keeps the transaction.
+stay a proposal the workflow reports. Everything is written in one file transaction. Scaffold keeps
+the transaction only if validation finds no new error.
 
 ## Results and errors
 

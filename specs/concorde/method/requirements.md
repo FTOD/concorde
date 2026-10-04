@@ -128,10 +128,11 @@ that the scaffold hands it, following these rules:
   the scaffold lists first.
 - Describe the Modules of one group in the order the scaffold lists them.
 
-Without a cycle among the created Modules, every group is one Module. Thus, each is described after
-every created Module it uses. Modules that use each other form one group. One of them is described
-before a Module it uses. Its worker reads that Module's stub or description as it stands then.
-Every created Module is still described once, and the surveyed Module last.
+Without a cycle among the created Modules, every group is one Module. In that case, each is
+described after every created Module it uses. Modules that use each other form one group. One of
+them is described before a Module it uses. The worker describing it reads the used Module's stub or
+description as it stands then. Every created Module is still described once, and the surveyed Module
+last.
 
 ### req.method.brownfield-stops — The procedure stops where its mode says
 
