@@ -321,6 +321,28 @@ class TaskStoreTests(unittest.TestCase):
         self.assertFalse(self.folder("t3").exists())
         self.assertEqual("", git(self.root, "branch", "--list", "concorde/t3"))
 
+    @verifies("scenario.tasks.open-unrecorded")
+    def test_an_open_that_cannot_record_its_task_undoes_itself(self):
+        def refusing(path, data):
+            raise OSError(28, "No space left on device")
+
+        with patch.object(store, "_write", refusing):
+            status, value = self.command(
+                "open", "t1", "--goal", "g", "--modules", "module.a"
+            )
+        self.assertEqual(1, status, value)
+        validate(value["error"], ERROR_SCHEMA)
+        self.assertEqual("record_unwritable", value["error"]["code"])
+        self.assertIn("No space left on device", value["error"]["detail"])
+        self.assertIn("the open was undone", value["error"]["detail"])
+        self.assertFalse(self.folder("t1").exists())
+        self.assertFalse((self.root / ".claude/worktrees/t1").exists())
+        self.assertEqual("", git(self.root, "branch", "--list", "concorde/t1"))
+        status, value = self.command(
+            "open", "t1", "--goal", "g", "--modules", "module.a"
+        )
+        self.assertEqual(0, status, value)
+
     @verifies("scenario.tasks.open-not-ignored")
     def test_a_worktree_the_primary_would_track_is_refused(self):
         (self.root / ".gitignore").write_text(".concorde/runs/\n")
@@ -1043,9 +1065,7 @@ class TaskStoreTests(unittest.TestCase):
     @verifies("scenario.tasks.busy")
     def test_a_second_concurrent_run_is_refused(self):
         self.project.open_task("t1")
-        with workspace_lock(
-            store.concorde(self.root), "t1", "implement run r-held"
-        ):
+        with workspace_lock(store.concorde(self.root), "t1", "implement run r-held"):
             self.assertIn(
                 "implement run r-held", store.show_task(self.root, "t1")["busy"]
             )
@@ -1257,6 +1277,9 @@ class TaskStoreTests(unittest.TestCase):
             [item["state"] for item in node["content"]["data"]["transitions"]],
         )
         self.assertEqual("merged", node["content"]["data"]["closing"]["outcome"])
+        # The node ended after the closing was logged: its digest of the log is the final one.
+        (logged,) = [item for item in node["artifacts"] if item["id"] == "decision-log"]
+        self.assertEqual(trace.digest(history / "decisions.md"), logged["digest"])
         for kind in ("task", "workspace", "workflow"):
             self.assertFalse(self.lock(kind, "t1").exists(), kind)
         self.assert_contract(self.record())
@@ -1875,6 +1898,29 @@ class TaskStoreTests(unittest.TestCase):
             )
         self.assertEqual((stored, closing), (self.record("t2"), self.log("t2")))
         self.assert_contract(self.record("t2"))
+        # The record and the closing are written but the trace node refuses its end.
+        self.project.open_task("t3")
+        real_end = store._end_task_node
+
+        def unwritable(primary, task_id, closing, ended):
+            raise store.TaskError(
+                "record_unwritable", "the trace node cannot be written"
+            )
+
+        with patch.object(store, "_end_task_node", unwritable):
+            status, value = self.close("t3", "--completed", "--note", "done")
+        self.assertEqual((1, "record_unwritable"), (status, value["error"]["code"]))
+        self.assertIn("is closed in its record already", value["error"]["detail"])
+        self.assertIn("`concorde task close t3 --completed`", value["error"]["detail"])
+        self.assertIsNone(trace.read(self.folder("t3"))["ended_at"])
+        self.assertIs(real_end, store._end_task_node)
+        status, value = self.close("t3", "--completed", "--note", "done")
+        self.assertEqual(0, status, value)
+        node = trace.read(self.history("t3"))
+        self.assertEqual(("ok", "completed"), (node["status"], node["outcome"]))
+        self.assertEqual(
+            1, self.log("t3").count(f"## Closed: completed, {value['closed']['at']}")
+        )
 
     def log(self, task_id="t1"):
         """The task's decision log, in its folder or, once closed, in the history."""

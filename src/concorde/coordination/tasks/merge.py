@@ -245,6 +245,8 @@ class Attempt:
         self.task_id = task_id
         self.folder = parent / str(number)
         self.checks = 0
+        # The refused writes of the trace nodes of its checks.
+        self.check_failures: list[str] = []
         self.data = {
             "attempt": kind,
             "branch": merging["branch"],
@@ -271,6 +273,11 @@ class Attempt:
         self.data["after"] = after
         self.node.update(content=self.data, commit=after)
 
+    @property
+    def failures(self) -> list[str]:
+        """Every write of the attempt's or its checks' ``trace.json`` the file system refused."""
+        return [*self.node.failures, *self.check_failures]
+
     def check_folder(self) -> Path:
         self.checks += 1
         return self.folder / "checks" / str(self.checks)
@@ -279,7 +286,9 @@ class Attempt:
         if self.node.record["status"] == "running" and self.folder.is_dir():
             self.node.finish(status, outcome=outcome, error=error, content=self.data)
 
-    def refused(self, refusal: TaskError) -> None:
+    def refused(self, refusal: TaskError) -> TaskError:
+        """End the node with ``refusal``; the refusal to raise, naming the trace writes that
+        failed."""
         self.end(
             "failed",
             REFUSED.get(refusal.code, "refused"),
@@ -294,6 +303,7 @@ class Attempt:
                 explanation="the merge attempt ended with this refusal",
             ),
         )
+        return checks.with_failures(refusal, self.failures)
 
 
 # A check that runs longer than this is stopped and counts as failed, so the lock is not held
@@ -573,7 +583,8 @@ def _merge(primary: Path, record: dict, merging: dict) -> str:
         primary, "rev-parse", "-q", "--verify", "MERGE_HEAD", check=False
     )
     if in_progress.returncode != 0:
-        # Already contained: nothing to merge, and closing commits the decision log alone.
+        # Already contained: nothing to merge, so no merge commit; the checks run on the
+        # primary head as it is, and closing commits the decision log alone.
         return _head(primary)
     path = store.committed_log(key)
     target = primary / path
@@ -691,6 +702,7 @@ def _check(
         kind="merge-check",
         content_type=MERGE_CHECK_TRACE,
         environment=_environment(),
+        failures=attempt.check_failures,
     )
 
 
@@ -817,7 +829,11 @@ def _refused_early(
         "before": head.stdout.strip(),
         "checks": commands if kind == "merge" else [],
     }
-    Attempt(primary, task_id, kind, merging, waited, reserved).refused(refusal)
+    reported = Attempt(primary, task_id, kind, merging, waited, reserved).refused(
+        refusal
+    )
+    if reported is not refusal:
+        raise reported from None
 
 
 def _merge_new(
@@ -846,8 +862,7 @@ def _merge_new(
     try:
         after = _merge(primary, record, merging)
     except TaskError as refusal:
-        attempt.refused(refusal)
-        raise
+        raise attempt.refused(refusal) from None
     attempt.merged(after)
     merging = store.merged_at(primary, task_id, after)["merging"]
     return _check_and_close(primary, record, merging, attempt, waited, outside)
@@ -865,8 +880,7 @@ def _check_and_close(
     try:
         return _checked_close(primary, record, merging, attempt, waited, outside)
     except TaskError as refusal:
-        attempt.refused(refusal)
-        raise
+        raise attempt.refused(refusal) from None
 
 
 def _checked_close(
@@ -914,6 +928,8 @@ def _checked_close(
     warnings.extend(outside or [])
     if not merging["checks"]:
         warnings.append(NO_CHECK.format(registry=parts.REGISTRY))
+    # A checked commit the primary branch already held made no merge commit.
+    contained = after == before
     try:
         folder = attempt.folder
         closed = store.close_locked(
@@ -921,14 +937,17 @@ def _checked_close(
             task_id,
             "merged",
             again=f"`concorde task merge {task_id} --resume`",
-            before_move=lambda: attempt.end("ok", "merged"),
+            before_move=lambda: attempt.end(
+                "ok", "contained" if contained else "merged"
+            ),
             warnings=warnings,
             key=merging.get("history"),
             at=merging["since"],
             by="merge",
         )
     except TaskError as error:
-        if error.code in ("decision_log_failed", "decision_log_uncommitted"):
+        if _ended(primary, task_id):
+            # The record is closed: the close's own refusal says what finishes it.
             raise TaskError(
                 error.code,
                 f"task {task_id} was merged into {branch} at {after}, every check passed and "
@@ -948,12 +967,15 @@ def _checked_close(
     except Exception as error:  # noqa: BLE001 -- the merge stands whatever an Issue does
         resolved, unresolved = [], [store.unclosed(closed, error)]
     warnings.extend(unresolved)
+    # The attempt's node ended as the close moved the task's folder: its failed writes, if any.
+    warnings.extend(attempt.failures)
     return {
         "record": closed,
         "resolved": resolved,
         "merge": {
             "before": before,
             "after": after,
+            "contained": contained,
             "checks": results,
             "waited_seconds": waited,
             "log": (
@@ -963,6 +985,14 @@ def _checked_close(
         },
         "warnings": warnings + store.end_sessions(primary, closed),
     }
+
+
+def _ended(primary: Path, task_id: str) -> bool:
+    """Whether the current record of the task is ended, as a close that wrote it left it."""
+    try:
+        return store.load_task(primary, task_id)["state"] in store.ENDED
+    except TaskError:
+        return False
 
 
 def _diverged(primary: Path, record: dict, where: str) -> TaskError:
@@ -1013,26 +1043,14 @@ def _abort(primary: Path, record: dict, waited, reserved: Path | None = None) ->
     try:
         return _aborted(primary, record, attempt, waited)
     except TaskError as refusal:
-        attempt.refused(refusal)
-        raise
+        raise attempt.refused(refusal) from None
 
 
 def _aborted(primary: Path, record: dict, attempt: Attempt, waited) -> dict:
     merging = record["merging"]
     before = merging["before"]
-    in_progress = store._git(
-        primary, "rev-parse", "-q", "--verify", "MERGE_HEAD", check=False
-    )
-    if in_progress.returncode == 0:
-        aborted = store._git(primary, "merge", "--abort", check=False)
-        if aborted.returncode != 0:
-            raise TaskError(
-                "rollback_failed",
-                f"--abort found a merge in progress in {primary}, and git merge --abort "
-                f"exited {aborted.returncode}: {aborted.stderr.strip() or '(no output)'}; "
-                f"the primary branch is at {_head(primary)} and its worktree as Git left it"
-                + _stays_merging(record["id"]),
-            )
+    # Everything is checked before anything is touched: a merge in progress that is not the
+    # task's, or on another branch, is someone else's work.
     branch = store._git(primary, "symbolic-ref", "-q", "--short", "HEAD", check=False)
     if branch.returncode != 0 or branch.stdout.strip() != merging["branch"]:
         where = (
@@ -1041,6 +1059,27 @@ def _aborted(primary: Path, record: dict, attempt: Attempt, waited) -> dict:
             else f"has a detached HEAD at {_head(primary)}"
         )
         raise _diverged(primary, record, where)
+    in_progress = store._git(
+        primary, "rev-parse", "-q", "--verify", "MERGE_HEAD", check=False
+    )
+    if in_progress.returncode == 0:
+        merged, head = in_progress.stdout.strip(), _head(primary)
+        if merged != merging["checked"] or head != before:
+            raise _diverged(
+                primary,
+                record,
+                f"has a merge of {merged} into {head} in progress, which is not the task's",
+            )
+        aborted = store._git(primary, "merge", "--abort", check=False)
+        if aborted.returncode != 0:
+            raise TaskError(
+                "rollback_failed",
+                f"--abort found the task's merge in progress in {primary}, and git merge "
+                f"--abort exited {aborted.returncode}: "
+                f"{aborted.stderr.strip() or '(no output)'}; the primary branch is at "
+                f"{_head(primary)} and its worktree as Git left it"
+                + _stays_merging(record["id"]),
+            )
     head = _head(primary)
     undone = None
     if head != before:
@@ -1054,6 +1093,7 @@ def _aborted(primary: Path, record: dict, attempt: Attempt, waited) -> dict:
     ended["state"] = store.derived_state(primary, ended)
     return {
         "record": ended,
+        "warnings": attempt.failures,
         "abort": {
             "before": before,
             "undone": undone,

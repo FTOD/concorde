@@ -74,7 +74,11 @@ Task sessions SHALL write a task session's boundary before it starts the session
 
 Task sessions SHALL record a task session as a node of the task's [trace](../../glossary.json#concept.trace), through Tasks' record updates, only after Claude Code reported it started.
 
-A session that did not start leaves the task unchanged. The node's `main` names the main agent's
+A session that did not start leaves the task unchanged. A session Claude Code started whose record
+is refused, because the task was closed meanwhile or its node cannot be written, is removed with
+`claude rm`, which kills it, before the refusal is returned, since no end of the task would ever
+stop, keep or remove a session no node names; the refusal says whether it was removed, and names
+the `claude rm` that removes it by hand when it was not. The node's `main` names the main agent's
 session the task session was started for, as `--main` gave it, and the recorded session makes it
 the [task record](../../glossary.json#concept.task-record)'s `main`, the session the task session reports to until the main agent rebinds the
 task.

@@ -211,8 +211,8 @@ either: a `claude --bg` session in a trusted project shows it for each server of
 settings answer it beforehand, server by server, from what Claude Code itself would read:
 
 - The servers are those of every `.mcp.json` Claude Code loads for a session in the task worktree:
-  that of each folder from the task worktree up to the filesystem root, the primary worktree's
-  included when the task worktree lies inside it. A file that is missing, unreadable or without an
+  that of each folder from the task worktree up to, but not including, the filesystem root, the
+  primary worktree's included when the task worktree lies inside it. A file that is missing, unreadable or without an
   `mcpServers` object names no server, since Claude Code loads none from it and so asks about none;
   the session starts all the same.
 - The entry `concorde` is disabled (`disabledMcpjsonServers`): the `--mcp-config` server replaces
@@ -242,7 +242,8 @@ Claude Code settings file with a PreToolUse hook of its own on Edit, Write, Mult
 NotebookEdit, which lets them change the task worktree and the task's
 [decision log](../../glossary.json#concept.decision-log) and denies every other path, an
 [Issue](../../glossary.json#concept.issue) record among them, with a reason naming the task
-worktree. Once the task is closed its folder has moved to the
+worktree. It judges a symbolic link by the file it points to, since Edit and Write write through
+it: a link in the task worktree to a file outside it is denied like that file. Once the task is closed its folder has moved to the
 [history](../../glossary.json#concept.history), and the hook refuses every write to the decision
 log, whose folder no longer exists, rather than recreate it. Where the issues part is installed, the
 session writes Issues through the Issue command or the Issue tools, as the runs it starts do. The
@@ -281,7 +282,9 @@ the boundary's hook, which guards Edit and Write only, and so are the server's o
 task's record and take any lock, which the developer accepted, since it is a management tool and the guidance,
 not the boundary, says what a task session does with it.
 
-A run of the session's own, started with `concorde run`, `task-validation` or `delivery` in
+A run's [write audit](../../glossary.json#concept.write-audit) attributes every change of the worktree to the run's workers, so the guidance
+has the session edit and commit nothing in its worktree while a run of it runs. A run of the
+session's own, started with `concorde run`, `task-validation` or `delivery` in
 background Bash, lives as long as that background call. So the guidance has the session let its runs
 finish and stop every other background command before `task-validation` and `delivery`: a run that
 still runs holds the [workspace lock](../../glossary.json#concept.workspace-lock), which refuses

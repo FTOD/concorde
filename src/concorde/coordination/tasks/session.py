@@ -353,8 +353,41 @@ def start(
         "settings": path.as_posix(),
         "started_at": started_at,
     }
-    store.record_session(primary, task_id, session)
+    try:
+        store.record_session(primary, task_id, session)
+    except store.TaskError as error:
+        # A session no trace node names is never stopped, kept or removed by the task's end:
+        # remove the one just started rather than leave it working untracked.
+        raise store.TaskError(
+            error.code, f"{error}; {_unrecorded(found['id'], name, run)}"
+        ) from error
     return session
+
+
+def _unrecorded(short: str, name: str, run) -> str:
+    """Remove a session started but not recorded with ``claude rm``, which kills its job, and
+    say what became of it."""
+    command = f"claude rm {short}"
+    try:
+        result = run(
+            ["claude", "rm", short],
+            capture_output=True,
+            text=True,
+            timeout=CLAUDE_TIMEOUT,
+        )
+    except (OSError, subprocess.SubprocessError) as error:
+        problem = f"`{command}` could not run: {error}"
+    else:
+        if result.returncode == 0 or _gone(result):
+            return (
+                f"the Claude Code session {short} ({name}) it started was removed with "
+                f"`{command}`, so nothing of it runs"
+            )
+        problem = f"`{command}` exited {result.returncode}: {_said(result)}"
+    return (
+        f"the Claude Code session {short} ({name}) it started could not be removed and may "
+        f"still run, recorded nowhere: {problem}; remove it by hand with `{command}`"
+    )
 
 
 # --- the end of a task: stopping, keeping and removing its Claude Code sessions -------------
@@ -407,10 +440,7 @@ def _claude(*arguments: str) -> subprocess.CompletedProcess:
 
 
 def _said(result: subprocess.CompletedProcess) -> str:
-    return (
-        ESCAPES.sub("", f"{result.stdout}\n{result.stderr}").strip()[-2000:]
-        or "(no output)"
-    )
+    return ESCAPES.sub("", f"{result.stdout}\n{result.stderr}").strip() or "(no output)"
 
 
 def claude_sessions(run=None) -> dict[str, dict]:

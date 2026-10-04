@@ -3,8 +3,9 @@
 ``concorde task session`` copies this file next to the session's settings with the task's paths
 embedded in ``ALLOWED`` and registers it for Edit and Write. It reads the hook input on standard
 input and prints nothing for a path inside the task worktree or the task's decision log while the
-task's folder exists, so the permission mode decides as usual; for any other path it prints a ``deny`` decision whose reason
-tells the session why. Any failure denies.
+task's folder exists, so the permission mode decides as usual; for any other path, a symbolic link
+judged by the file it points to, it prints a ``deny`` decision whose reason tells the session why.
+Any failure denies.
 """
 
 import json
@@ -22,9 +23,10 @@ def decide(data: dict, allowed: dict) -> str | None:
         return "the hook could not decide: the tool call names no file"
     base = data.get("cwd") or os.getcwd()
     absolute = os.path.normpath(os.path.join(base, target))
-    # Resolve every directory, but not a final symbolic link: a link is judged by its own name.
-    parent = os.path.realpath(os.path.dirname(absolute))
-    resolved = os.path.join(parent, os.path.basename(absolute))
+    # Resolve the whole path, a final symbolic link included: Edit and Write write through a
+    # link, so a link is judged by the file it points to.
+    resolved = os.path.realpath(absolute)
+    parent = os.path.dirname(resolved)
     worktree = allowed["worktree"]
     if resolved == worktree or resolved.startswith(worktree + "/"):
         return None

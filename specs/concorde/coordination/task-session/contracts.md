@@ -189,8 +189,10 @@ session besides:
 
 - a PreToolUse hook on Edit, Write, MultiEdit and NotebookEdit, `session_hook.py` copied beside the
   settings with the task worktree and [decision log](../../glossary.json#concept.decision-log)
-  embedded, which allows a path inside the task worktree, or the decision log while its folder
-  exists, and denies any other with a reason naming the task worktree, or naming the closed task
+  embedded, which judges the path with every symbolic link resolved, a final link included, since
+  Edit and Write write through a link to the file it points to; it allows a path inside the task
+  worktree, or the decision log while its folder exists, and denies any other with a reason naming
+  the task worktree, or naming the closed task
   for the decision log of a task whose folder has moved to the history; any failure denies;
 - no `sandbox`: the session's Bash runs as the developer's own shell does, with every path,
   process, socket and host open to it;

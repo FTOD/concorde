@@ -91,9 +91,10 @@ developer; Tasks gives it only a fixed place and lifetime.
 **The [history](../../glossary.json#concept.history)** is where a task's folder goes when the task
 ends. While a task is current everything about it, its state and its traces alike, lives in
 `.concorde/tasks/<task-id>/`; closing it, merged or not, moves that whole folder to
-`.concorde/history/<history key>/`, where it stays as it was when the task ended. Nothing in the
-history is ever changed, apart from the merge that closed the task finishing the answer it writes
-into its attempt's node; it may be copied out. The organising axis is the task's lifecycle, not a
+`.concorde/history/<history key>/`, where it stays as it was when the task ended, but for
+`runtime/`, the configuration of its task sessions' boundary, which is no trace and which the close
+removes once the folder moved. Nothing in the history is ever changed, apart from the merge that
+closed the task finishing the answer it writes into its attempt's node; it may be copied out. The organising axis is the task's lifecycle, not a
 split between state and traces: a reader never joins a task's record, decision log, sessions and
 runs from several stores, and removing or exporting a task is one folder. Tasks registers the
 current task folders and the history with [Tracing](../../kernel/tracing/module.md) as two of its
@@ -601,7 +602,7 @@ refused: "A refusal such as not_merged, delivery_unverified, dirty_worktree, pri
 conflict: "merge_conflict: merge aborted, primary branch at its commit, task delivered"
 failed: "check_failed: primary branch at its commit, task delivered, left paths named"
 merged: "Task closed as merged on the checked merge commit"
-unlogged: "decision_log_failed: task closed as merged, close --merged appends the closing"
+unlogged: "decision_log_failed or record_unwritable after the record: task closed as merged, close --merged finishes"
 unchecked: "Task left merging: task commands refused with merge_incomplete"
 aborted: "Primary branch at the commit before, task delivered"
 locks -> preflight: both held
@@ -676,11 +677,13 @@ runner holds no [run lock](../../glossary.json#concept.run-lock), with how the r
 needs the execution part, and is refused with `part_missing` naming it where that part is not
 installed. Each
 answers at once when that is already so and prints one JSON value, and `--timeout` bounds the wait.
-A task reaches `delivered`, `merging`, `closed` and `failed` only while its workspace lock is held,
-by a delivery run, a merge or a close, so a task wait learns from the operating system of every new holder of
-that lock, blocks on the lock until that holder lets it go, and reads the state again; those four
-are the states it admits, and a task that ends in another state ends the wait with
-`wait_unreachable`. A rebind wait learns from the operating system of every write of the task's record, and
+A task reaches `delivered`, `closed` and `failed` only while its workspace lock is held, by a
+delivery run, a merge or a close, and keeps them once the lock is released, so a task wait learns
+from the operating system of every new holder of that lock, blocks on the lock until that holder
+lets it go, and reads the state again; those three are the states it admits, and a task that ends
+in another state ends the wait with `wait_unreachable`. `merging` is not among them: a merge holds
+the lock from storing it until it closes the task or returns it to delivered, so no wait would ever
+see it, and a wait for it is refused, pointing to `--merge`. A rebind wait learns from the operating system of every write of the task's record, and
 of its folder moving to the history, and reads the record again; a task that ended ends it with
 `wait_unreachable`. A lock, run or merge wait blocks on the lock itself, so a holder that dies
 wakes it as surely as one that ends. The project MCP server's `register_wait` runs the same waits for a
@@ -740,8 +743,11 @@ Several processes may change a task at once, a task session escalating while the
 the task, so every change of a task's record or trace is made while holding the task's lock,
 `locks/tasks/<task-id>.lock`, and every record write is one
 [file transaction](../../glossary.json#concept.file-transaction) bound to the digest it replaces: a
-change made meanwhile by a process that did not take the lock is detected, Tasks rereads and
-reapplies if preconditions still hold, and refuses with `record_conflict` after three attempts. Each
+change made before the transaction's digest check is detected, Tasks rereads and reapplies if
+preconditions still hold, and refuses with `record_conflict` after three attempts. A change between
+that check and the write is not detected, as the Kernel's
+[file transactions](../../kernel/contracts.md#file-transactions) leave it to their callers to
+exclude: the task's lock, which every writer of the record holds, excludes it. Each
 task has its own lock and folder, so tasks never contend. Every lock lies under `.concorde/locks/`,
 apart from the folders it protects, since a close must hold the task's workspace lock precisely
 while it moves the task's folder.

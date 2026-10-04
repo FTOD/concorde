@@ -38,8 +38,11 @@ Coordination owns no term of its own; it is built from terms its children and th
 A **[task](../glossary.json#concept.task)** is one unit of the main agent's work: a branch, a
 worktree bound as a workspace, a [task record](../glossary.json#concept.task-record) and a
 [decision log](../glossary.json#concept.decision-log), all provided by [Tasks](tasks/module.md).
-Every change of a [Spec](../glossary.json#concept.spec) or of code is a task, and only tasks whose
-Modules and shared files do not overlap run at once; the rest run one after another.
+Every change of a [Spec](../glossary.json#concept.spec)'s meaning or of code's behaviour is a task,
+except a small change the developer approved, which the main agent makes in the primary worktree
+itself ([Changes run in tasks](main-session/requirements.md#req.main-session.tasks-own-changes),
+which also names the housekeeping the primary worktree takes besides); only tasks whose Modules
+and shared files do not overlap run at once, and the rest run one after another.
 
 The **[main agent](../glossary.json#concept.main-agent)** and the
 **[task session](../glossary.json#concept.task-session)** are the two agents of this half. The task
@@ -49,7 +52,7 @@ session's level 1, is always played by a task session, never by the main agent i
 | | Main agent | Task session |
 | --- | --- | --- |
 | Works in | the primary worktree only | its task worktree only |
-| Write boundary | none: Concorde does not restrict the main agent | for its own file tools and shell: its task worktree and decision log, plus what its commits, runs and escalations write and package caches |
+| Write boundary | none: Concorde does not restrict the main agent | for its file tools (Edit, Write): its task worktree and decision log; its shell is not restricted, kept inside the task by its guidance and checked by the merge's audit of what changed outside the task worktree |
 | Asks | the developer, every open decision at once | the main agent, every decision its task needs together |
 | Lifecycle | the developer's session | started, answered and stopped by the main agent |
 | Merges | a delivered task into the primary branch | only the primary branch into its task branch, when asked after a merge conflict or a `concorde update` |
@@ -181,7 +184,10 @@ halves, so neither can leave the other with a state that disagrees with what hap
 
 The main agent may also start an [Operation](../glossary.json#concept.operation) that allows it as
 an [unbound run](../glossary.json#concept.unbound-run) in the primary worktree, for a question or a
-review that changes nothing; such a run has no workspace and belongs to no task.
+review that changes no Spec or code; a review may publish its findings as
+[Issues](../glossary.json#concept.issue) where the issues part is installed, its one lasting change
+besides its own record ([Execution](../execution/module.md#unbound-runs)). Such a run has no
+workspace and belongs to no task.
 
 ### The children and what they rely on
 
@@ -216,9 +222,11 @@ Tasks that run at once never mix their changes, because each has its own branch 
 only tasks whose Modules and shared files do not overlap run together; merges never interleave,
 because each is made from the primary worktree under the
 [merge lock](../glossary.json#concept.merge-lock), which one process holds at a time. Every task is
-worked by a task session, which gets a write boundary that keeps its mistakes inside its task while
-it runs beside others; Concorde places no permission limits on the main agent, which works no task
-itself.
+worked by a task session, whose [session boundary](../glossary.json#concept.session-boundary)
+keeps its file-tool writes inside its task while it runs beside others; its shell is not restricted
+([req.task-session.no-sandbox](task-session/requirements.md#req.task-session.no-sandbox)), and the
+merge refuses a task when anything outside the task worktree changed that nobody accounts for.
+Concorde places no permission limits on the main agent, which works no task itself.
 
 ### Escalations
 
