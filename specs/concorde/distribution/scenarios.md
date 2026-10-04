@@ -117,6 +117,15 @@ This illustrates [a guidance section standing without the parts it may lack](req
 - THEN the result is `failed` with `protocol_mismatch`, the configuration is bound to the tracked manifest and `.concorde/protocol/` is left as it was
 - AND when the developer then runs `protocol-manifest --write`, the tracked manifest is rewritten with the new digests, its result names the changed assets and the configuration's binding is unchanged
 
+### scenario.distribution.protocol-manifest-refused — Write nothing without a fresh build and a readable manifest
+
+- GIVEN a package whose Protocol source changed after its last build, or whose tracked Protocol manifest is not of the manifest's shape
+- WHEN the developer runs `protocol-manifest --write --bind-project`
+- THEN the result is `invalid` with `CONCORDE-PROTOCOL-MANIFEST-001` naming the problem
+- BUT nothing is written: neither the tracked manifest, the configuration's binding nor `.concorde/protocol/`
+
+This illustrates [the precondition of `protocol-manifest`](requirements.md#req.distribution.protocol-manifest-precondition).
+
 ### scenario.distribution.stale-copy-refused — Refuse to copy from a stale build
 
 - GIVEN a package whose Protocol source changed after its last build
@@ -489,7 +498,8 @@ This illustrates [the environment deciding the channel](requirements.md#req.dist
 
 - GIVEN a project in which Concorde was installed and then initialized, so that its installation realization binds the files installed then
 - WHEN the developer installs Concorde again, or runs `concorde update`, with a Concorde that installs more files, such as a workflow an older Concorde did not install
-- THEN every file the receipt names outside `.concorde/` that the install added is an exact entry of the installation realization
+- THEN every file listed under the receipt's `files` outside `.concorde/` that the install added, and that no other realization binds by its exact path, is an exact entry of the installation realization
+- BUT the files the receipt names as `amended` are not bound
 - AND once the files are committed, `concorde spec-validation` reports no `CHK.binds.unbound` for them
 - BUT a project that is not initialized gets no Spec, and installing again with nothing new leaves the Specs unchanged
 

@@ -34,6 +34,13 @@ The [Protocol copy](../glossary.json#concept.protocol-copy) writer SHALL refuse 
 from a package whose [build manifest](../glossary.json#concept.build-manifest) records a source that
 is missing or changed, or whose rendered asset differs from the tracked manifest.
 
+### req.distribution.protocol-manifest-precondition — protocol-manifest acts only on a fresh build and a readable manifest
+
+`protocol-manifest` SHALL write nothing and report `invalid` with `CONCORDE-PROTOCOL-MANIFEST-001`, whatever its flags, when the build is stale, or the tracked Protocol manifest is unreadable, is not of the [manifest's shape](../spec-tooling/spec/contracts.md#protocol-manifest) or names an asset the build lacks.
+
+What each combination of its flags writes once this holds is
+[explained with the command](module.md#reconciling-the-protocol-manifest).
+
 ## Command line
 
 ### req.distribution.one-envelope — One envelope per command
@@ -256,11 +263,13 @@ A `concorde spec-validation` of a Concorde-unvalidated project that finds no err
 
 It reports the removal as `CONCORDE-UPDATE-002`.
 
-### req.distribution.installer-fresh-guidance — Only current guidance is installed
+### req.distribution.installer-fresh-guidance — Only a fresh build is installed
 
-The installer SHALL refuse to install
-[main-session guidance](../glossary.json#concept.main-session-guidance) whose rendered output is
-missing or older than its sources.
+The installer SHALL refuse with `stale_build`, before writing anything, a package whose [build manifest](../glossary.json#concept.build-manifest) records a missing or changed source or output, or that lacks a render or file the installed parts place.
+
+Freshness is judged by the digests the build manifest records, never by file times. The rendered
+[main-session guidance](../glossary.json#concept.main-session-guidance) is one such render, so stale
+or missing guidance is never installed.
 
 ### req.distribution.installer-locked-pi-runtime — Only the locked pi runtime is installed
 

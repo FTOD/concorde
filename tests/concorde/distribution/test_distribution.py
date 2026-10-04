@@ -515,6 +515,62 @@ class ProtocolTests(unittest.TestCase):
             (root / ".concorde/protocol/principles.md").read_text(),
         )
 
+    @verifies("scenario.distribution.protocol-manifest-refused")
+    def test_protocol_manifest_writes_nothing_without_a_fresh_build_and_manifest(self):
+        root = package_copy(self)
+        (root / ".concorde").mkdir()
+        shutil.copy2(
+            REPOSITORY_ROOT / ".concorde/config.json", root / ".concorde/config.json"
+        )
+        manifest = root / "protocol/manifest.json"
+        tracked = manifest.read_text()
+        config = (root / ".concorde/config.json").read_text()
+        chapter = root / "protocol/views.md"
+        source = chapter.read_text()
+        cases = {
+            "stale build": (
+                lambda: chapter.write_text(source + "\nStale.\n"),
+                "changed since the last build",
+            ),
+            "not an object": (
+                lambda: manifest.write_text("[]"),
+                "not a Protocol manifest",
+            ),
+            "assets null": (
+                lambda: manifest.write_text('{"assets": null}'),
+                "not a Protocol manifest",
+            ),
+            "asset without path": (
+                lambda: manifest.write_text('{"assets": [{}]}'),
+                "not a Protocol manifest",
+            ),
+        }
+        for case, (damage, message) in cases.items():
+            with self.subTest(case=case):
+                damage()
+                damaged = manifest.read_text()
+                try:
+                    result = command(
+                        "--project-root",
+                        str(root),
+                        "protocol-manifest",
+                        "--write",
+                        "--bind-project",
+                    )
+                finally:
+                    after = manifest.read_text()
+                    chapter.write_text(source)
+                    manifest.write_text(tracked)
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                envelope = json.loads(result.stdout)
+                self.assertEqual("invalid", envelope["status"])
+                finding = envelope["findings"][0]
+                self.assertEqual("CONCORDE-PROTOCOL-MANIFEST-001", finding["rule_id"])
+                self.assertIn(message, finding["message"])
+                self.assertEqual(config, (root / ".concorde/config.json").read_text())
+                self.assertFalse((root / ".concorde/protocol").exists())
+                self.assertEqual(damaged, after)
+
     @verifies("scenario.distribution.stale-copy-refused")
     def test_a_stale_build_is_never_copied(self):
         package = package_copy(self)
@@ -1666,6 +1722,8 @@ class InstallTests(unittest.TestCase):
         )
         self.assertIn(added, placed)
         self.assertEqual(placed, installation())
+        self.assertIn("CLAUDE.md", receipt["amended"])
+        self.assertFalse(set(receipt["amended"]) & set(installation()))
         self.assertEqual(entry, (project / "specs/project/module.md").read_bytes())
         subprocess.run(["git", "add", "-A"], cwd=project, check=True)
         report = validate_repository(project, package_root=package)
