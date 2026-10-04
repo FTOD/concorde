@@ -12,24 +12,36 @@ concorde: deliver <workspace>
 <goal of the workspace>
 ```
 
-The commit uses the repository's configured author identity and runs the repository's commit hooks
-normally. Its parent is the head of the workspace's bound branch that the delivery validated, whose
-commits since the base commit the readiness examined. It contains every uncommitted change of the
-workspace that Git does not ignore, except the untracked paths Validation's
+The commit uses the repository's configured author identity. It runs the repository's commit hooks
+normally. Its parent is the head of the workspace's bound branch that the delivery validated. The
+readiness examined that branch's commits since the base commit.
+
+The commit contains every uncommitted change of the workspace that Git does not ignore, with one
+exception. It excludes the untracked paths Validation's
 [input measurement](../validation/contracts.md#input-measurement) leaves out as no content of the
-task; when every step was committed before, it changes nothing and is still made, as the mark of
-the delivery.
+task. When every step was committed before, the commit changes nothing. In that case, it is still
+made as the mark of the delivery.
 
 The [delivery commits](../../glossary.json#concept.delivery-commit) are the only record of a
-delivery. Which commit is a delivery commit of a workspace, and when one verifies, is the Kernel's
-convention ([Kernel contracts](../../kernel/contracts.md#delivery-commit)): Delivery reads its
-earlier deliveries by that rule, and every commit it creates has exactly one parent. Delivery reports a delivery commit it finds at the branch head only when it verifies and the
-workspace it holds is ready again, as a readiness the same run decided shows. A delivery commit
-Delivery creates verifies further when its only parent is the head it validated, its subject is
-exactly the subject above and its tree is the tree `git write-tree` recorded from the index after
-staging, so that no commit hook changed what was committed or its mark; one that does not, Delivery
-takes off the branch again in the same run. A commit message hook may add to the body, such as a
-trailer, since only the subject marks a delivery.
+delivery. The Kernel's convention defines which commit is a delivery commit of a workspace
+([Kernel contracts](../../kernel/contracts.md#delivery-commit)). It also defines when one verifies.
+Delivery reads its earlier deliveries by that rule. Every commit it creates has exactly one
+parent.
+
+Delivery reports a delivery commit it finds at the branch head only when both conditions hold:
+
+- The delivery commit verifies.
+- The workspace it holds is ready again, as a readiness the same run decided shows.
+
+A delivery commit Delivery creates verifies further when all of these conditions hold:
+
+- Its only parent is the head it validated.
+- Its subject is exactly the subject above.
+- Its tree is the tree `git write-tree` recorded from the index after staging.
+
+These conditions ensure that no commit hook changed what was committed or its mark. When such a
+commit does not verify, Delivery takes it off the branch again in the same run. Since only the
+subject marks a delivery, a commit message hook may add to the body, such as a trailer.
 
 ## Output
 
