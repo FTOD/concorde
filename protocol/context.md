@@ -1,15 +1,20 @@
 # Context
 
 Context is the information explicitly made available to a reader of one Module. Knowing that a
-document exists does not make it available; neither does linking to it or naming a word it
-explains. Only declared relations grant context, and a term link grants only the term's definition.
+document exists does not make it available. Neither does linking to it or naming a word it
+explains. Only declared relations grant context. A term link grants only the term's definition.
 
-This chapter defines the read side of the Protocol's boundary purpose: the four context
-channels, how a Module's context is selected, term selection, the reconciliation of what relations
-grant against
-what they require, and context identity. The write side is in [Boundaries](boundaries.md). Because
-the reconciliation guarantees that a Module's context holds every definition its own Spec relies
-on, the same selection is also what a human reader of the Module needs open beside it.
+This chapter defines the read side of the Protocol's boundary purpose:
+
+- The four context channels.
+- How a Module's context is selected.
+- Term selection.
+- The reconciliation of what relations grant against what they require.
+- Context identity.
+
+The write side is in [Boundaries](boundaries.md). The reconciliation guarantees that a Module's
+context holds every definition its own Spec relies on. Because of this guarantee, the same
+selection is also what a human reader of the Module needs open beside it.
 
 ## Four channels
 
@@ -21,9 +26,9 @@ on, the same selection is also what a human reader of the Module needs open besi
 | `external` | `includes` of kind `external` | pinned third-party material | read only |
 
 The channels stay separate so that "may read this Module's promises" never implies "may read or
-change its code", and knowing what a word means never implies reading how its owner works. Whether a
-task receives implementation contents, read-only or writable, is part of its task boundary; see
-[Boundaries](boundaries.md).
+change its code". Knowing what a word means never implies reading how its owner works.
+Whether a task receives implementation contents, read-only or writable, is part of its task
+boundary. See [Boundaries](boundaries.md).
 
 ## Expressions
 
@@ -62,17 +67,30 @@ selection(includes document U) = { U }
 ```
 
 Selection is one level. A selected Module contributes its owned documents, never the documents its
-own relations select. Parentage, dependency and inclusion of the target, term links,
-participation, other Markdown links, directory neighbourhood and implementation bindings add no
-document. Because
-expansion is not recursive, cycles among Modules are harmless, and every member of a read set is
-explained by the one declaration that selected it.
+own relations select. None of the following adds a document:
+
+- Parentage of the target.
+- Dependency of the target.
+- Inclusion of the target.
+- Term links.
+- Participation.
+- Other Markdown links.
+- Directory neighbourhood.
+- Implementation bindings.
+
+Because expansion is not recursive, cycles among Modules are harmless. Every member of a read set
+is explained by the one declaration that selected it.
 
 A scenario query resolves the scenario's owner and selects that owner's whole context. It never
-trims to the scenario, and never selects the consumer that happened to read it.
+trims to the scenario. A scenario query never selects the consumer that happened to read it.
 
-Every selected document contributes **both** members whole. No excerpt, summary, rendered view or
-diagram export substitutes for a complete document.
+Every selected document contributes **both** members whole. None of the following substitutes for
+a complete document:
+
+- An excerpt.
+- A summary.
+- A rendered view.
+- A diagram export.
 
 ## Term selection
 
@@ -89,18 +107,20 @@ Terms(M) = the least set containing Seeds(M) and closed under
 TermContext(M) = { entry(c) : c ∈ Terms(M) }
 ```
 
-Every selected document counts, including the provider documents a `uses` selects, because the
-reader reads them too. A Module always receives the definitions of its own concepts, since it is
-entitled to change them.
+Because the reader reads them too, every selected document counts, including the provider
+documents a `uses` selects. Since a Module is entitled to change its own concepts, it always
+receives their definitions.
 
-The closure is the Protocol's only recursive selection. It runs inside the glossary, adds one
-sentence per concept and never adds a document, so a reader whose definitions use further terms
-understands them without widening what it reads. `contrasts` adds nothing: the warning is in the
-entry that declares it.
+The closure is the Protocol's only recursive selection. It runs inside the glossary.
+The closure adds one sentence per concept and never adds a document. Thus, a reader whose
+definitions use further terms understands them without widening what it reads.
+`contrasts` adds nothing: the warning is in the entry that declares it.
 
 Each selected entry is available whole: identity, title, owner, definition and explanation
-reference. The explanation it references stays a document of the owner, readable only when
-`Spec(M)` selects it.
+reference.
+
+The explanation it references stays a document of the owner. Only when `Spec(M)` selects it is the
+explanation readable.
 
 ## Reconciliation
 
@@ -111,16 +131,25 @@ Requires(M) = ⋃ { r.context_requires : r declared in the metadata or reading
 CONFORMANCE:  ∀ q ∈ Requires(M) :  satisfied(q, Spec(M))
 ```
 
-A `relates` to a realization or a Module, and a `participates`, require the document that defines
-their target. A Module that declares one without having that document in its context fails
-`CHK.context.reconciled`. The repair is an explicit grant: a `uses` or `contains` that selects the
-document, or an `includes` that states a reason. Relations that target a concept require nothing,
-because they grant its definition themselves.
+The following relations require the document that defines their target:
 
-The check is exact, because a node has exactly one defining document. A `uses` or `contains` that
-narrows its grant with `relies_on` selects the documents defining the listed promises, so the
-narrowing is exact as well. What no check establishes is that the list names every promise the
-Module actually relies on; `CHK.relies-on.linked` catches every one the explanation links to.
+- A `relates` to a realization.
+- A `relates` to a Module.
+- A `participates`.
+
+A Module that declares one without having that document in its context fails
+`CHK.context.reconciled`. The repair is an explicit grant through one of these relations:
+
+- A `uses` that selects the document.
+- A `contains` that selects the document.
+- An `includes` that states a reason.
+
+Because relations that target a concept grant its definition themselves, they require nothing.
+
+Because a node has exactly one defining document, the check is exact. A `uses` or `contains` that
+narrows its grant with `relies_on` selects the documents defining the listed promises. Thus, the
+narrowing is exact as well. No check establishes that the list names every promise the Module
+actually relies on. `CHK.relies-on.linked` catches every one the explanation links to.
 
 ## Implementation context
 
@@ -134,8 +163,8 @@ Exact entries and files below directory prefixes resolve under an explicit deter
 rule. Every entry exists, so implementation context never names missing content.
 
 Document members never belong to implementation context. When another Module binds the same file,
-a change to it concerns that Module too; this adds neither that Module's Specs nor its code to this
-reader's context. A Module with no bindings has an empty implementation context, which does not
+a change to it concerns that Module too. This adds neither that Module's Specs nor its code to this
+reader's context. A Module with no bindings has an empty implementation context. This does not
 prove it has no realization.
 
 ## External context
@@ -144,44 +173,59 @@ prove it has no realization.
 ExternalContext(M) = ⋃ { readable files below M's external inclusions }
 ```
 
-Only the selecting Module's own external inclusions count; a selected Module does not bring its
-own. External material MUST be pinned by the project's version control, for example as a
-submodule at a fixed commit, so that its content is identified by the checkout rather than by a
-second declared revision. A tool MAY exclude media and archives by a documented deterministic rule.
+Only the selecting Module's own external inclusions count. A selected Module does not bring its
+own. External material MUST be pinned by the project's version control so that its content is
+identified by the checkout rather than by a second declared revision. For example, the material
+can be a submodule at a fixed commit. A tool MAY exclude media and archives by a documented
+deterministic rule.
 An undeclared network fetch or an installed dependency's sources MUST NOT substitute for declared
 material. External material supplies no promise absent from the Spec.
 
 ## Context identity
 
 A resolved context is identified by its selected sources, its selected terms and the declarations
-that selected them, so a harness can tell whether anything inside a boundary changed since a check.
-Every source record carries document identity, owner, path, member role (`reading` or `metadata`),
-an exact-byte SHA-256 digest, and every relation that selected it. Every term record carries the
-concept's whole entry and every declaration that selected it. External entries carry one tree
-digest each.
+that selected them. This lets a harness tell whether anything inside a boundary changed since a
+check.
+Every source record carries:
+
+- The document identity.
+- The owner.
+- The path.
+- The member role (`reading` or `metadata`).
+- An exact-byte SHA-256 digest.
+- Every relation that selected it.
+
+Every term record carries the concept's whole entry and every declaration that selected it.
+External entries carry one tree digest each.
 
 The identity changes, even when the set of paths is unchanged, on:
 
-- any byte change in either member of a selected document, including whitespace;
-- any change to a selected glossary entry, or a change of which entries are selected;
-- a change to the declarations that selected the context, including removing a redundant inclusion;
-- an ownership transfer;
-- a change to pinned external material.
+- Any byte change in either member of a selected document, including whitespace.
+- Any change to a selected glossary entry, or a change of which entries are selected.
+- A change to the declarations that selected the context, including removing a redundant inclusion.
+- An ownership transfer.
+- A change to pinned external material.
 
 What a tool does with evidence bound to a previous identity is the tool's policy.
 
 ## Visibility
 
-The resolved context is the exact visibility scope of a bounded reader: every selected source and
-every selected glossary entry is available whole, and no unselected source or entry is visible. The
+The resolved context is the exact visibility scope of a bounded reader. Every selected source and
+every selected glossary entry is available whole. No unselected source or entry is visible. The
 glossary file as a whole is not a source of any context. How a tool makes it available is not part
-of the Protocol. A tool MAY also supply task material such as changes since a baseline; such
+of the Protocol. A tool MAY also supply task material such as changes since a baseline. Such
 material adds no source and replaces none. A reader that opened only some granted files still
-received the complete context: missing meaning is judged against the full granted scope.
+received the complete context. Missing meaning is judged against the full granted scope.
 
 ## Gaps
 
-A missing definition is a semantic gap even after structural resolution succeeds. Record the needed
-promise, its owner when known, the selected Module, the context identity and the blocked step. Do
-not follow a selected Module's own relations or a prose link to repair it. An additional explicit
+A missing definition is a semantic gap even after structural resolution succeeds. Record:
+
+- The needed promise.
+- Its owner when known.
+- The selected Module.
+- The context identity.
+- The blocked step.
+
+Do not follow a selected Module's own relations or a prose link to repair it. An additional explicit
 selection is a new context, not a retrospective claim that the previous one was complete.

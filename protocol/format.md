@@ -2,14 +2,15 @@
 
 This is the structure and syntax part of [Spec writing guidelines](writing.md), covering the
 machine-checkable rules. Read it with [Writing guidance](module.md), which explains the content
-readers need and the judgments authors and reviewers must make. Semantic requirements still apply
-where they accompany a format rule; the [Checks](checks.md) chapter states what tools establish.
+readers need and the judgments authors and reviewers must make. Where semantic requirements
+accompany a format rule, they still apply.
+The [Checks](checks.md) chapter states what tools establish.
 
 This chapter defines how the [node types](model.md) and [relations](relations.md) are written.
 The fixed declaration syntax serves boundaries: a tool computes every set without interpreting
-prose. The reading itself has no fixed section structure: how an entry is organized is a writing
+prose. The reading itself has no fixed section structure. How an entry is organized is a writing
 judgment, which [Writing guidance](module.md#the-entry) explains. Satisfying the syntax establishes
-structural conformance only; it proves nothing about meaning.
+structural conformance only. It proves nothing about meaning.
 
 ## Documents
 
@@ -17,20 +18,35 @@ A registered document is a pair: an explicit project-relative Markdown reading p
 path with `.json` appended. `checkout/module.md` and `checkout/module.md.json` are **one** document.
 
 Reading files are nonempty UTF-8 Markdown. Metadata files are UTF-8 JSON with unique keys and no
-non-JSON numeric constants. Paths use canonical project-relative POSIX spelling: no absolute paths,
-backslashes, empty, dot or traversal components, control characters or symlink aliases.
+non-JSON numeric constants. Paths use canonical project-relative POSIX spelling, with none of the
+following:
 
-Both members always travel together: same owner, same identity, same selection provenance, both in
-context, both in source digests. Registering a reading path
-registers its exact companion. Tools MUST NOT discover documents from the filesystem or by
-following Markdown links; this is what lets every boundary set be enumerated from declarations
-alone.
+- Absolute paths.
+- Backslash characters.
+- Empty components.
+- Dot components.
+- Traversal components.
+- Control characters.
+- Symlink aliases.
+
+Both members always travel together:
+
+- They have the same owner.
+- They have the same identity.
+- They have the same selection provenance.
+- Both are in context.
+- Both are in source digests.
+
+Registering a reading path registers its exact companion. Tools MUST NOT discover documents from
+the filesystem or by following Markdown links. This lets every boundary set be enumerated from
+declarations alone.
 
 ## Module declaration
 
 A Module declares itself and its Module-level relations in a `module` block of its **entry's**
-metadata. This is the one declaration site of those relations: a task bound to the Module reads and
-writes it as part of its own documents, and learns who it relates to without any global file.
+metadata. This is the one declaration site of those relations. A task bound to the Module
+reads and writes it as part of its own documents. The task learns who it relates to without any
+global file.
 
 ```json
 {
@@ -62,26 +78,37 @@ writes it as part of its own documents, and learns who it relates to without any
 - The `module` block appears in the entry's metadata and in no other document. The Module's
   identity is the entry's `document.owner`.
 - `title` is required. Module titles are unique in the project.
-- `owns` lists reading paths, is nonempty and includes the entry itself.
-- `contains` and `uses` entries have `target` and `meaning`, and optionally a nonempty `relies_on`
-  list of identities of requirements, scenarios, contracts and concepts the target owns. Without
-  `relies_on` the whole target is selected.
-- `includes` entries have `kind` (`module`, `document` or `external`), `target` (a Module identity,
-  a document identity, or a project-relative path; a directory ends in `/`) and a nonempty `reason`.
+- `owns` lists reading paths. The list is nonempty. The list includes the entry itself.
+- `contains` and `uses` entries have `target` and `meaning`. They optionally have a nonempty
+  `relies_on` list of identities the target owns:
+  - Requirement identities.
+  - Scenario identities.
+  - Contract identities.
+  - Concept identities.
+
+  Without `relies_on` the whole target is selected.
+- `includes` entries have `kind`, `target` and a nonempty `reason`.
+  `kind` is `module`, `document` or `external`. The `target` is one of these:
+  - A Module identity.
+  - A document identity.
+  - A project-relative path.
+
+  For a directory, the path ends in `/`.
 - `participates` entries have `contract`, `version`, `role` (`provided` or `required`), `peer` (a
   Module identity or `external`) and `meaning`.
-- `glossary` is optional and appears only in the block of a Module without a parent: the
-  project-relative path of the project's [glossary](#glossary), a `.json` file. At most one Module
-  declares it.
-- `contains`, `uses`, `includes` and `participates` are explicit arrays and MAY be empty.
+- `glossary` is optional. It appears only in the block of a Module without a parent.
+  Its value is the project-relative path of the project's [glossary](#glossary), a `.json` file.
+  At most one Module declares it.
+- `contains`, `uses`, `includes` and `participates` are explicit arrays.
+  These arrays MAY be empty.
 - A relation `meaning` is a local `#anchor` into the entry, or a qualified `<reading path>#<anchor>`
   into another document the Module owns.
 
 ## Project registry
 
 The project registry is the index of all Modules and a **mirror** of their declarations. It gives
-a project-wide view, such as the one a coordinating session uses to plan work and set each task's
-boundary, without opening every Module. It is not a declaration site.
+a project-wide view without opening every Module. For example, a coordinating session uses this
+view to plan work and set each task's boundary. It is not a declaration site.
 
 ```json
 {
@@ -96,13 +123,13 @@ boundary, without opening every Module. It is not a declaration site.
 }
 ```
 
-- Every Module has exactly one registry record: `id`, `title`, `entry` (the entry's reading path)
-  and every field of its `module` block, equal to that block; `glossary` appears in the record
-  exactly when it appears in the block.
+- Every Module has exactly one registry record. The record contains `id`, `title`, `entry`
+  (the entry's reading path) and every field of its `module` block, equal to that block.
+  Exactly when `glossary` appears in the block, it appears in the record.
 - The registry lists which Modules exist. A tool MAY regenerate the mirrored fields from the
-  entries; adding or removing a Module is a deliberate registry change.
+  entries. Adding or removing a Module is a deliberate registry change.
 - A disagreement between the registry and an entry is a structural error
-  (`CHK.registry.mirror`). Neither side silently wins; the change that caused it is reconciled.
+  (`CHK.registry.mirror`). Neither side silently wins. The change that caused it is reconciled.
 
 The Protocol fixes the registry's content. Its serialization and location are a tool agreement.
 
@@ -126,69 +153,111 @@ The Protocol fixes the registry's content. Its serialization and location are a 
 
 - `schema_version` is the integer `3`.
 - `document` has exactly `id`, `owner` and `role`, agreeing with the owner's `owns`. `role` is
-  exactly `module` or `implementation` with no default; the entry `module.md` has role `module`.
-- `module` is present exactly in the entry; see [Module declaration](#module-declaration).
-- `defines` lists only `realization` records. Concepts are glossary entries, and requirements,
-  scenarios and contracts are located by their reading syntax below.
+  exactly `module` or `implementation` with no default. The entry `module.md` has role `module`.
+- `module` is present exactly in the entry. See [Module declaration](#module-declaration).
+- `defines` lists only `realization` records. Concepts are glossary entries. The reading syntax
+  below locates these nodes:
+  - Requirement nodes.
+  - Scenario nodes.
+  - Contract nodes.
 - `relations` lists only `relates`, each naming as `source` a realization this document defines
-  or the owning Module itself. A concept's relations are in its glossary entry; `mentions` is
-  declared by term links.
-- `defines` and `relations` are explicit arrays and MAY be empty.
-- `extensions`, if present, is an object keyed by stable names holding tool data. A tool MUST define
-  and validate the extension vocabulary it uses. An extension MUST NOT create a relation, change
-  ownership or selection, or hide essential meaning.
+  or the owning Module itself. A concept's relations are in its glossary entry.
+  Term links declare `mentions`.
+- `defines` and `relations` are explicit arrays. These arrays MAY be empty.
+- If present, `extensions` is an object keyed by stable names holding tool data.
+  A tool MUST define and validate the extension vocabulary it uses.
+  An extension MUST NOT do any of the following:
+  - Create a relation.
+  - Change ownership or selection.
+  - Hide essential meaning.
 
 ## Identities and anchors
 
-Module, document, concept, realization, requirement, scenario and contract identities are
-project-wide unique and match:
+The following identities are project-wide unique:
+
+- Module identities.
+- Document identities.
+- Concept identities.
+- Realization identities.
+- Requirement identities.
+- Scenario identities.
+- Contract identities.
+
+Each of these identities matches this pattern:
 
 ```text
 ^[a-z][a-z0-9]*(?:[.-][a-z0-9-]+)*$
 ```
 
-Requirement identities begin `req.`; scenario identities begin `scenario.`; concept identities begin
-`concept.`. Prefixes do not establish ownership. Stable identities let links survive renames and
-moves, and let boundaries, reviews and tests name exactly one thing.
+Requirement identities begin `req.`. Scenario identities begin `scenario.`.
+Concept identities begin `concept.`. Prefixes do not establish ownership.
+Stable identities let links survive renames and moves.
+They let boundaries, reviews and tests name exactly one thing.
 
 A readable anchor is one of three forms:
 
-- a **standalone** line of one or more `<a id="identity"></a>` before its explanation, which
-  extends to the next heading;
-- an **opening** group of one or more `<a id="identity"></a>` at the very start of a paragraph or of
-  a list item's text, which explains exactly that paragraph or list item: the paragraph ends at the
-  next blank line, heading or fence, and the list item also at the next list item that is not
-  indented deeper;
-- an ATX heading carrying a trailing `{#identity}`, which extends to the next heading of the same or
-  higher level. Requirement and scenario headings supply their identity directly.
+- A **standalone** line of one or more `<a id="identity"></a>` before its explanation.
+  The explanation extends to the next heading.
+- An **opening** group of one or more `<a id="identity"></a>` appears at the very start of a
+  paragraph or a list item's text. The group explains exactly that paragraph or list item.
+  The paragraph ends at whichever of these comes next:
+  - A blank line.
+  - A heading.
+  - A fence.
+
+  The list item also ends at the next list item that is not indented deeper.
+- An ATX heading carrying a trailing `{#identity}`.
+  Its explanation extends to the next heading of the same or higher level.
+  Requirement and scenario headings supply their identity directly.
 
 A standalone or heading anchor also ends at the next anchor group. Anchors are unique within their
-document and outside fences, and an anchor anywhere else, such as inside a sentence or a table, is
+document and outside fences. An anchor anywhere else, such as inside a sentence or a table, is
 not a readable anchor.
 
-Several anchors in one group identify several nodes explained together by the same prose, and that
-prose MUST explain all of them. The region of an anchor is the text a tool attributes to its nodes,
-for instance when it compares definitions between revisions, so an opening group is the precise
-choice for an item in a list of short explanations.
+Several anchors in one group identify several nodes explained together by the same prose.
+That prose MUST explain all of them. The region of an anchor is the text a tool attributes to its
+nodes, for instance when it compares definitions between revisions. For an item in a list of short
+explanations, an opening group is therefore the precise choice.
 
 ## Reading structure
 
-An entry `module.md` has no required sections: the Protocol checks no heading of an entry, and its
-level-2 sections, their titles and their order are the writer's choice. [Writing
+An entry `module.md` has no required sections. The Protocol checks no heading of an entry.
+The writer chooses the following for the entry:
+
+- Its level-2 sections.
+- Their titles.
+- Their order.
+
+[Writing
 guidance](module.md#the-entry) recommends an order, starting with the Module's purpose. Honest
 unknowns are stated explicitly.
 
 A `module`-role topic begins with a short orienting introduction. A document holds no table of
-term definitions: definitions live in the glossary, and a document links the terms it uses.
+term definitions. Definitions live in the glossary. A document links the terms it uses.
 
-`module` documents MUST NOT contain requirement or scenario definitions or canonical contract
-fences. `implementation` documents contain those definitions and MAY group them under headings
-that carry no identity. Both roles are reading content; role never filters context.
+`module` documents MUST NOT contain any of the following:
 
-Exact private APIs, wire fields, serialization rules, internal limits and executable topology belong
-in `implementation` reading regardless of the syntax used to write them. Conceptual design and
-safe-use explanation stay in `module` reading. A `module` document MUST NOT hide destructive
-defaults, security limits or known unfulfilled guarantees behind a link.
+- Requirement definitions.
+- Scenario definitions.
+- Canonical contract fences.
+
+`implementation` documents contain those definitions. These documents MAY group them under
+headings that carry no identity. Both roles are reading content. Role never filters context.
+
+Regardless of the syntax used to write them, the following belong in `implementation` reading:
+
+- Exact private APIs.
+- Wire fields.
+- Serialization rules.
+- Internal limits.
+- Executable topology.
+
+Conceptual design and safe-use explanation stay in `module` reading.
+A `module` document MUST NOT hide any of the following behind a link:
+
+- Destructive defaults.
+- Security limits.
+- Known unfulfilled guarantees.
 
 ## Glossary
 
@@ -212,16 +281,16 @@ field declares:
 }
 ```
 
-- `schema_version` is the integer `1`; `concepts` is an array of entries sorted by `id`.
+- `schema_version` is the integer `1`. `concepts` is an array of entries sorted by `id`.
 - An entry has exactly `id`, `title`, `owner`, `definition` and `explanation`, and optionally
   `retired`, `external_conflict`, `narrows`, `supersedes`, `contrasts` and `relates`.
-- `owner` is a registered Module identity. `definition` is one sentence; a term link inside it
+- `owner` is a registered Module identity. `definition` is one sentence. A term link inside it
   addresses another entry by fragment alone, `#concept.<identity>`.
 - `explanation` is `<reading path>#<anchor>`, naming a `module` document the owner owns and an
   anchor in it that resolves to nonempty prose.
-- `narrows` is an array of concept identities; `supersedes` is one concept identity; `contrasts`
-  is an array of `{target, reason}` with a concept or Module target; `relates` is an array of
-  `{verb, target}` with a concept, realization or Module target.
+- `narrows` is an array of concept identities. `supersedes` is one concept identity.
+  `contrasts` is an array of `{target, reason}` with a concept or Module target.
+  `relates` is an array of `{verb, target}` with a concept, realization or Module target.
 
 ## Term links
 
@@ -232,10 +301,15 @@ addresses the glossary file, relative to the document like any other link:
 A [hold](../glossary.json#concept.hold) expires unless the submission succeeds.
 ```
 
-A term link declares `mentions` of that concept. Its text is free: a plural, an inflection or a
-different letter case links the same term. A publisher sends every term link to the rendered
-glossary page. A document SHOULD link a term where it first uses it, so that a reader meets the
-definition before relying on it.
+A term link declares `mentions` of that concept. Its text is free. The following link the same term:
+
+- A plural.
+- An inflection.
+- A different letter case.
+
+A publisher sends every term link to the rendered glossary page.
+Where a document first uses a term, the document SHOULD link it.
+This lets a reader meet the definition before relying on it.
 
 ## Requirements
 
@@ -249,9 +323,9 @@ Checkout SHALL create at most one order for a successfully admitted request.
 ```
 
 The first paragraph is one sentence containing uppercase `SHALL` or `SHALL NOT` exactly once. The
-section ends at the next heading of any level and contains no nested heading. Later paragraphs,
-lists and fences explain the statement; a list item beginning with a requirement identity is
-invalid.
+section ends at the next heading of any level. It contains no nested heading.
+Later paragraphs, lists and fences explain the statement.
+A list item beginning with a requirement identity is invalid.
 
 ## Scenarios
 
@@ -269,45 +343,56 @@ In an `implementation` document, a scenario is a level-2 to level-5 ATX heading
 ```
 
 Every list item in the section is a step beginning with `GIVEN`, `WHEN`, `THEN`, `AND` or `BUT` and
-a space. The first step is `GIVEN` or `WHEN`; at least one `WHEN` and one `THEN` are required.
-`AND` and `BUT` continue the preceding kind, and the sequence never returns to an earlier kind. The
-section ends at the next heading of any level and has no nested heading. Prose may explain the
+a space. The first step is `GIVEN` or `WHEN`. At least one `WHEN` and one `THEN` are required.
+`AND` and `BUT` continue the preceding kind. The sequence never returns to an earlier kind.
+The section ends at the next heading of any level. It has no nested heading. Prose may explain the
 situation.
 
 ## Canonical contracts
 
 In an `implementation` document, a `concorde-contract` JSON fence defines exactly `id`, `version`,
-`schema`, `semantics`, `example`. The version is a positive integer, `semantics` is nonempty, and
-the example satisfies the schema. Schema references MUST NOT load Spec documents or remote
+`schema`, `semantics`, `example`. The version is a positive integer. `semantics` is nonempty.
+The example satisfies the schema. Schema references MUST NOT load Spec documents or remote
 resources. Publishers expose the contract identity as an anchor at the fence.
 
-A schema is checked offline and uses only these JSON Schema keywords: `$schema`, `$id`, `$defs`,
-`$ref` (only `#/$defs/<name>`), `title`, `description`, `examples`, `default`, `type`, `properties`,
-`required`, `additionalProperties`, `items`, `minItems`, `maxItems`, `uniqueItems`, `minLength`,
-`maxLength`, `pattern`, `minimum`, `maximum`, `enum`, `const`, `anyOf`, `oneOf`, `allOf` and
-`format`. Any other keyword, such as `propertyNames` or `patternProperties`, is an error; what it
-would express goes into `semantics`.
+A schema is checked offline. It uses only these JSON Schema keywords:
 
-No role or peer appears in a definition; those belong to `participates`. A behaviour or schema
-change increments the version, and every participant is reconciled in the same change. Editorial
-changes need no version increment.
+`$schema`, `$id`, `$defs`, `$ref` (only `#/$defs/<name>`), `title`, `description`, `examples`,
+`default`, `type`, `properties`, `required`, `additionalProperties`, `items`, `minItems`, `maxItems`, `uniqueItems`, `minLength`,
+`maxLength`, `pattern`, `minimum`, `maximum`, `enum`, `const`, `anyOf`, `oneOf`, `allOf` and
+`format`.
+
+Any other keyword, such as `propertyNames` or `patternProperties`, is an error.
+What it would express goes into `semantics`.
+
+No role or peer appears in a definition. Those belong to `participates`.
+When a behaviour or schema changes, the change increments the version.
+Every participant is reconciled in the same change.
+
+Editorial changes need no version increment.
 
 ## Diagrams
 
 Diagrams in reading are D2 blocks. A `d2` block is either a **checked diagram**, written in the
-semantic subset and allowed only in `module` reading, or marked `d2 illustrative`. A block in any
-other diagram language, such as Mermaid, is an error. The rules are in [Views](views.md).
+semantic subset and allowed only in `module` reading, or marked `d2 illustrative`.
+
+A block in any other diagram language, such as Mermaid, is an error. The rules are in
+[Views](views.md).
 
 ## Links
 
 Ordinary Markdown links navigate to readable definitions. A stable-identity fragment MUST name an
-actual definition in the addressed reading document; a concept fragment MUST address the glossary,
-as a [term link](#term-links). Other fragments use the renderer's slug rules. A link never adds a
-document to context; a term link adds the term's definition.
+actual definition in the addressed reading document.
+A concept fragment MUST address the glossary, as a [term link](#term-links).
+Other fragments use the renderer's slug rules. A link never adds a document to context.
+A term link adds the term's definition.
 
 ## Evidence declarations
 
 A test declares the scenario identities it verifies in the test source, in a syntax documented by
-the development tool. Tools read these declarations without executing tests and reject unknown
-identities. Reading content MUST NOT contain that syntax outside fences, list test locations or
-prescribe coverage declarations.
+the development tool. Tools read these declarations without executing tests.
+Tools reject unknown identities. Reading content MUST NOT do any of the following:
+
+- Contain that syntax outside fences.
+- List test locations.
+- Prescribe coverage declarations.

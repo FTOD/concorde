@@ -1,7 +1,7 @@
 # Views requirements
 
-The Module-wide obligations of [Views](module.md). The entry explains why they exist; the
-[pipeline](pipeline.md) explains how the publisher meets them.
+The Module-wide obligations of [Views](module.md). The entry explains why they exist.
+The [pipeline](pipeline.md) explains how the publisher meets them.
 
 ## Sources and pages
 
@@ -19,26 +19,32 @@ Publication SHALL NOT discover Spec documents by scanning directories or followi
 
 ### req.views.one-page-per-document — One canonical page per document
 
-Publication SHALL publish every registered document at exactly one canonical page, however many Modules select it.
+However many Modules select it, Publication SHALL publish every registered document at exactly
+one canonical page.
 
 ### req.views.navigation-follows-composition — Navigation follows composition
 
-The Spec navigation SHALL nest one [Module](../../glossary.json#concept.module) under another only where the other declares `contains` for it.
+The Spec navigation SHALL nest one [Module](../../glossary.json#concept.module) under another only
+where the other declares `contains` for it.
 
 ### req.views.reading-collections — Role selects the reading collection
 
 Publication SHALL place each document in the reading collection named by its declared role.
 
-A document with role `module` belongs to Module documents and one with role `implementation` to
-Implementation documents. The role is read from metadata and never inferred from a file name, a
-heading or the presence of definitions.
+A document with role `module` belongs to Module documents.
+A document with role `implementation` belongs to Implementation documents.
+The role is read from metadata. The role is never inferred from any of these:
+
+- A file name.
+- A heading.
+- The presence of definitions.
 
 ### req.views.implementation-documents-unlisted — Implementation documents are listed by their Module
 
 Publication SHALL list each implementation document on its owning Module's entry page and in no navigation tab or sidebar.
 
-The list is folded at the end of the entry. The page itself is published like any other, so its
-route and anchors stay addressable from links, term links and search.
+The list is folded at the end of the entry. The page itself is published like any other.
+Its route and anchors therefore stay addressable from links, term links and search.
 
 ### req.views.reading-collection-neutral — The reading collection changes nothing else
 
@@ -48,7 +54,8 @@ A document's reading collection SHALL NOT change its route, owner or selecting M
 
 ### req.views.stable-anchors — Identities are anchors
 
-Publication SHALL expose every concept, realization, requirement, scenario and contract identity as an anchor on the canonical page of the document that defines it.
+Publication SHALL expose every concept, realization, requirement, scenario and contract identity
+as an anchor on the canonical page of the document that defines it.
 
 ### req.views.glossary-page — The glossary is one published page
 
@@ -70,37 +77,52 @@ Publication SHALL NOT write rendered, enriched or rewritten content into any reg
 
 Publication SHALL render each D2 diagram from its fence in the containing document and from no other source.
 
-The rendered image is staged beside its page and derived only from the fence and the publisher's
-house style, so a diagram changes only when the document containing it or the house style changes.
+The rendered image is staged beside its page.
+The image is derived only from the fence and the publisher's house style.
+A diagram therefore changes only when the document containing it or the house style changes.
 
 ### req.views.diagram-look — The publisher decides how a diagram looks
 
 Publication SHALL choose how a checked D2 diagram looks from what each shape resolves to.
 
-A shape that names the page's Module, one of its descendants, another Module, a concept, a
-realization or a file each has one fixed look, and an edge between two Modules looks different
-from an edge that relates nodes.
+A shape has one fixed look for each of these cases:
+
+- The shape names the page's Module.
+- The shape names a descendant of the page's Module.
+- The shape names another Module.
+- The shape names a concept.
+- The shape names a realization.
+- The shape names a file.
+
+An edge between two Modules looks different from an edge that relates nodes.
 
 ### req.views.diagram-subset — A diagram that sets its own look is refused
 
-Publication SHALL refuse a checked D2 block that leaves the semantic subset, naming its document and line.
+When a checked D2 block leaves the semantic subset, Publication SHALL refuse it, naming its
+document and line.
 
 The semantic subset is the Protocol's. A reading that sets a style, shape, class or layout is
-refused because the look is the publisher's.
+refused, because the look is the publisher's.
 
 ### req.views.d2-program — Diagrams are rendered by the d2 program
 
-Publication SHALL render D2 with the `d2` program from github.com/d2lang/d2, taken from `CONCORDE_D2`, else from `.concorde/tools/d2`, else from `PATH`.
+Publication SHALL render D2 with the `d2` program from github.com/d2lang/d2, taken from the
+following sources in order:
 
-The Concorde installer places a pinned, checksum-verified release at `.concorde/tools/d2`, so an
-installed project needs no configuration; a source checkout uses `d2` on `PATH`.
+- From `CONCORDE_D2`.
+- Else from `.concorde/tools/d2`.
+- Else from `PATH`.
+
+The Concorde installer places a pinned, checksum-verified release at `.concorde/tools/d2`.
+An installed project therefore needs no configuration. A source checkout uses `d2` on `PATH`.
 
 ### req.views.d2-failure — A diagram that cannot be rendered fails the build
 
-Publication SHALL fail naming the diagram's document and line when the `d2` program is missing or rejects the diagram.
+When the `d2` program is missing or rejects the diagram, Publication SHALL fail naming the
+diagram's document and line.
 
-A missing program is reported with how to install it, and a rejected diagram with the program's own
-message.
+A missing program is reported with how to install it.
+A rejected diagram is reported with the program's own message.
 
 ### req.views.user-docs — User documents are published as they are
 
@@ -148,21 +170,22 @@ Views SHALL NOT supply a published page to any agent as context or as a substitu
 
 The build SHALL promote only a candidate in which every internal link resolves to an existing page and every requested fragment to an anchor on that page.
 
-Links to other origins, or outside the site's base URL, are not checked; publication does not
-promise that another website stays available.
+Links to other origins, or outside the site's base URL, are not checked.
+Publication does not promise that another website stays available.
 
 ### req.views.promote-requires-checked-candidate — Only checked candidates are promoted
 
-The build SHALL promote only a candidate whose site manifest, source digest and page inventory match the current sources.
+The build SHALL promote only a candidate whose site manifest, source digest and page inventory
+match the current sources.
 
 ### req.views.promote-atomic — Failed promotion restores the published site
 
-Promotion SHALL move the previous published site
-back into place when moving the candidate into place fails.
+When moving the candidate into place fails, Promotion SHALL move the previous published site
+back into place.
 
-Only a filesystem failure during that restoration itself can prevent it; the build then fails with
-that error and leaves the previous site in `docsite/.generated/previous-build/` for manual
-recovery.
+Only a filesystem failure during that restoration itself can prevent it.
+If that failure occurs, the build fails with that error.
+The build then leaves the previous site in `docsite/.generated/previous-build/` for manual recovery.
 
 ### req.views.production-preview-isolation — Production does not disturb the preview
 
@@ -170,10 +193,19 @@ A production build SHALL NOT clear or overwrite the generated files of the devel
 
 ### req.views.preview-follows-specs — The preview follows the Specs
 
-While `npm run start` runs, a change to the site identity, the configuration, the registry, either member of a registered document or the project's glossary SHALL stage the Specs again.
+While `npm run start` runs, a change to any of the following SHALL stage the Specs again:
 
-A staging that fails during the preview reports its error in full, no preview runs, and the
-command keeps waiting for the next change instead of exiting.
+- The site identity.
+- The configuration.
+- The registry.
+- Either member of a registered document.
+- The project's glossary.
+
+If a staging fails during the preview:
+
+- The staging reports its error in full.
+- No preview runs.
+- The command keeps waiting for the next change instead of exiting.
 
 ### req.views.preview-restart — A successful staging restarts the preview
 
@@ -185,7 +217,13 @@ Every content or source digest that publication records SHALL be `sha256:` follo
 
 ### req.views.safe-relative-paths — Safe source paths
 
-Publication SHALL read the configuration, the registry, every registered document with its metadata and the glossary only through relative POSIX paths without empty, `.` or `..` components, backslashes or symbolic links.
+Publication SHALL read the following sources only through relative POSIX paths without empty,
+`.` or `..` components, backslashes or symbolic links:
+
+- The configuration.
+- The registry.
+- Every registered document with its metadata.
+- The glossary.
 
 The directories of user documents and
 custom docs are configured relative to `docsite/` under
@@ -201,6 +239,7 @@ The scaffold SHALL NOT replace or delete any existing file.
 
 The scaffold and Distribution's installer SHALL select the packaged docsite template files by the one inventory rule Views defines.
 
-The scaffold proposes the selected files without `scaffold/`; the installer ships all of them,
-`scaffold/` included, into a project's `.concorde/framework/docsite/`, where the installed scaffold
-reads them, so the two never disagree on the template.
+The scaffold proposes the selected files without `scaffold/`.
+The installer ships all of them, `scaffold/` included, into a project's
+`.concorde/framework/docsite/`.
+The installed scaffold reads them there, so the two never disagree on the template.

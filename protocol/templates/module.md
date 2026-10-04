@@ -1,16 +1,33 @@
 # Module entry template
 
-A starter for `module.md`. Begin with [Spec writing guidelines](../writing.md) and use both parts:
+A starter for `module.md`. Begin with [Spec writing guidelines](../writing.md). Use both parts:
 [Required format](../format.md) for structure and syntax, and [Writing guidance](../module.md) for
 what the entry must explain. Satisfying this shape establishes nothing about meaning.
 
 The Protocol requires no section of an entry. The headings below follow the recommended reading
-order, purpose, core concepts, overview, then details; rename, merge or split them as the Module's
-reader needs, and give the details whatever headings suit the Module.
+order:
 
-Register the entry in the project registry and write its paired `.md.json` with
-`schema_version: 3`, `document.role: module`, the `module` block and explicit `defines` and
-`relations` arrays. Declare the Module's concepts as entries of the project glossary. The
+- Purpose.
+- Core concepts.
+- Overview.
+- Details.
+
+As the Module's reader needs, adapt the headings in any of these ways:
+
+- Rename them.
+- Merge them.
+- Split them.
+
+Give the details whatever headings suit the Module.
+
+Register the entry in the project registry. Write its paired `.md.json` with:
+
+- `schema_version: 3`.
+- `document.role: module`.
+- The `module` block.
+- Explicit `defines` and `relations` arrays.
+
+Declare the Module's concepts as entries of the project glossary. The
 [required format](../format.md) applies.
 
 ````markdown
@@ -84,24 +101,30 @@ diagrams; invent no promises to fill them.]
 ````
 
 The two term links declare that this document mentions `concept.example-record`, which Example
-owns, and `concept.thing`, which the provider owns: a reader of Example receives both definitions.
+owns, and `concept.thing`, which the provider owns. A reader of Example receives both definitions.
 The anchor `concept.example-record` holds the extended explanation the glossary entry names, in the
 entry of its owner rather than in a separate topic.
 
-The overview diagram is checked and answers one question: how Example is built and how it meets
-its provider. `Example` and `Provider` resolve to Module titles, `Example service` and `Example
-record` to this Module's nodes, and `src/example/` to the entry the service binds. Nesting asserts
-that Example owns both nodes and that the service binds its entry; the labelled edges match the
-`relates` declarations below and the unlabelled edge between the two Modules matches the `uses`. A
-Module with more structure may draw its inside and its outside in two diagrams. Checked diagrams
-use only the D2 semantic subset and declared static relations; the look is the publisher's.
+The overview diagram is checked. It answers one question: how Example is built and how it meets
+its provider. The labels resolve as follows:
 
-The workflow is `d2 illustrative`: its steps and progression explain behaviour, not declared
-static relations. Its lanes show who does each step, and an edge between lanes is a hand-off, which
+- `Example` and `Provider` resolve to Module titles.
+- `Example service` and `Example
+record` resolve to this Module's nodes.
+- `src/example/` resolves to the entry the service binds.
+
+Nesting asserts that Example owns both nodes. Nesting also asserts that the service binds its
+entry. The labelled edges match the `relates` declarations below. The unlabelled edge between the
+two Modules matches the `uses`. A Module with more structure may draw its inside and its outside
+in two diagrams. Checked diagrams use only the D2 semantic subset and declared static relations.
+The look is the publisher's.
+
+The workflow is `d2 illustrative`. Its steps and progression explain behaviour, not declared
+static relations. Its lanes show who does each step. An edge between lanes is a hand-off, which
 is why a process among several participants needs no sequence lifelines. Illustrative views carry
-no authority beyond the surrounding prose and never substitute for declaring load-bearing
-collaborations. How the Module fits with the rest is part of its explanation, not a separate list
-of relationships.
+no authority beyond the surrounding prose. Illustrative views never substitute for declaring
+load-bearing collaborations. How the Module fits with the rest is part of its explanation, not a
+separate list of relationships.
 
 ## Paired metadata
 
@@ -142,14 +165,14 @@ of relationships.
 }
 ````
 
-The `uses` entry selects the provider's entry and the document explaining `concept.thing`, which
-satisfies the context requirement of relating to `module.provider`. The `Provider` label in the
-diagram resolves because the provider Module's title is `Provider`.
+The `uses` entry selects the provider's entry and the document explaining `concept.thing`.
+This selection satisfies the context requirement of relating to `module.provider`. Because the
+provider Module's title is `Provider`, the `Provider` label in the diagram resolves.
 
 ## Glossary entry
 
-Example's concept is an entry of the project glossary, which names Example as its owner and the
-anchor above as its explanation:
+Example's concept is an entry of the project glossary. The glossary entry names Example as its
+owner and the anchor above as its explanation:
 
 ````json
 {

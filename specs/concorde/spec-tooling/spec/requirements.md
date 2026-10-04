@@ -1,7 +1,7 @@
 # Spec requirements
 
-The Module-wide obligations of the [Spec core](module.md)
-[Module](../../glossary.json#concept.module). The headings group them by subject; each requirement
+These are the Module-wide obligations of the [Spec core](module.md)
+[Module](../../glossary.json#concept.module). The headings group them by subject. Each requirement
 belongs to the Module as a whole.
 
 ## Independence
@@ -10,10 +10,14 @@ belongs to the Module as a whole.
 
 Spec core SHALL NOT import code of any other Concorde Module, the Kernel's included.
 
-Schemas, policies and file locations that other Modules own reach Spec core only as arguments of a
-call or, for a type of the spec part's own Modules, through its typed value registration. The
-utilities it shares in kind with the Kernel, typed values, file transactions, schema checking and
-digests, are its own copy, following the formats the
+Other Modules' schemas, policies and file locations reach Spec core only as call arguments or
+through a type's typed value registration.
+The registration route is for a type of the spec part's own Modules.
+
+The utilities Spec core shares in kind with the Kernel are its own copy: typed values, file
+transactions, schema checking and digests.
+
+These copies follow the formats the
 [Kernel's contracts](../../kernel/contracts.md#typed-values) define.
 
 ## Loading
@@ -23,19 +27,28 @@ digests, are its own copy, following the formats the
 The loader SHALL treat as documents only the reading paths listed in some Module's `owns`, each
 together with its exact `.json` companion.
 
-A Markdown file found on disk, a Markdown link or a directory neighbour never adds a document.
+None of the following adds a document:
+
+- A Markdown file found on disk.
+- A Markdown link.
+- A directory neighbour.
 
 ### req.spec.no-writes — Loading and queries never write
 
-Constructing a repository, querying it, computing a grant and validating a project SHALL NOT write
-any project file.
+The following activities SHALL NOT write any project file:
+
+- Constructing a repository.
+- Querying it.
+- Computing a grant.
+- Validating a project.
 
 ### req.spec.snapshot-reconstruct — A repository is a snapshot
 
 A repository SHALL answer every query from the sources as they were when it was constructed.
 
-A caller that needs to see a change constructs a new repository. Replacement bytes handed to the
-constructor for the registry or for documents stay in memory and are never written.
+A caller that needs to see a change constructs a new repository.
+Replacement bytes handed to the constructor for the registry or for documents stay in memory.
+These bytes are never written.
 
 ### req.spec.deterministic-order — Same input, same answer
 
@@ -43,27 +56,34 @@ Repeated queries against the same repository SHALL return equal results in the s
 
 ### req.spec.no-implementation-read — Boundary sets never read code
 
-Loading the Specs and computing [boundary sets](../../glossary.json#concept.boundary-set), grants
-and impact indexes SHALL NOT read the contents of implementation files.
+The following activities SHALL NOT read the contents of implementation files:
 
-Listing a directory to expand its entries is allowed; only paths are used. The `covered-by` index
-and validation's coverage scan, which parse bound test files for their verification declarations,
-are the exception, and neither feeds a boundary set or a grant.
+- Loading the Specs.
+- Computing [boundary sets](../../glossary.json#concept.boundary-set).
+- Computing grants.
+- Computing impact indexes.
+
+Listing a directory to expand its entries is allowed. Only paths are used.
+The `covered-by` index and validation's coverage scan are the exception.
+They parse bound test files for their verification declarations.
+Neither feeds a boundary set or a grant.
 
 ### req.spec.no-partial-repository — No partial repository
 
-The loader SHALL NOT return a repository for use by consumers when the project has a problem that
-makes a boundary untrustworthy.
+When the project has a problem that makes a boundary untrustworthy, the loader SHALL NOT return a
+repository for use by consumers.
 
 These problems are listed in the [interface definitions](contracts.md#loading-failures). The
 validator opens the repository so that the same problems become findings instead.
 
 ### req.spec.protocol-binding — Only the accepted Protocol is admitted
 
-The loader SHALL admit a project only when its configuration binds exactly the
-[Protocol copy](../../glossary.json#concept.protocol-copy) under `.concorde/protocol/`, that copy's
-assets match their recorded digests, and the copy's manifest equals the Protocol manifest of the
-running Concorde package.
+Only when all these conditions hold, the loader SHALL admit a project:
+
+- Its configuration binds exactly the
+  [Protocol copy](../../glossary.json#concept.protocol-copy) under `.concorde/protocol/`.
+- That copy's assets match their recorded digests.
+- The copy's manifest equals the Protocol manifest of the running Concorde package.
 
 ## Checks
 
@@ -73,19 +93,19 @@ Validation SHALL evaluate every check listed in the Protocol's Checks chapter.
 
 ### req.spec.check-finding-identity — A violation carries its check's identity and strictness
 
-Validation SHALL report each violation of a Protocol check as a finding whose rule identity is that
-check's identity and whose strictness is the strictness the Checks chapter gives it.
+Validation SHALL report each violation of a Protocol check as a finding with that check's rule
+identity and the strictness the Checks chapter gives it.
 
 ### req.spec.all-findings — One run reports everything it can
 
-Validation SHALL continue after a finding and report every further violation that the remaining
+After a finding, Validation SHALL continue and report every further violation that the remaining
 readable declarations and test files allow it to establish.
 
-A test file that cannot be parsed is reported, and the other bound test files are still scanned.
+When a test file cannot be parsed, it is reported, and the other bound test files are still scanned.
 
 ### req.spec.status-from-errors — Only errors make a result invalid
 
-The validation status SHALL be `invalid` exactly when at least one finding has strictness error.
+Exactly when at least one finding has strictness error, the validation status SHALL be `invalid`.
 
 ### req.spec.no-structural-proof — Structural checks are not semantic proof
 
@@ -101,31 +121,46 @@ Validation SHALL report as an error every link in Spec reading whose fragment ha
 requirement, scenario, realization or contract identity and does not name a definition in the
 linked document.
 
-A link whose fragment is a concept identity is a term link, which the Protocol's `CHK.term.link`
-checks against the project glossary instead.
+A link whose fragment is a concept identity is a term link.
+The Protocol's `CHK.term.link` checks it against the project glossary instead.
 
 ### req.spec.fixed-registry — The registry has one place
 
 Spec core SHALL read the registry only from `.concorde/specs.json`.
 
-A configuration that still names a registry, a field no current profile has, is refused.
+No current profile has a field naming a registry.
+A configuration that still names a registry is refused.
 
 
 ### req.spec.digest-per-assessment — Every result names what it assessed
 
-Every validation result SHALL carry a digest of the exact configuration, registry, document members, glossary and
-[Protocol binding](../../glossary.json#concept.protocol-binding) it assessed.
+Every validation result SHALL carry a digest of the exact inputs it assessed:
 
-The digest covers only those inputs. The files that Modules bind, the list of version-controlled
-files and the contents of the tests scanned for verification declarations are not in it, so findings
-about bindings, unbound files and scenario coverage can change while the digest stays the same.
+- The configuration.
+- The registry.
+- The document members.
+- The glossary.
+- The [Protocol binding](../../glossary.json#concept.protocol-binding).
+
+The digest covers only those inputs. It excludes the following:
+
+- The files that Modules bind.
+- The list of version-controlled files.
+- The contents of the tests scanned for verification declarations.
+
+While the digest stays the same, findings about bindings, unbound files and scenario coverage can
+change.
 
 ## Registry mirror
 
 ### req.spec.registry-mirror-only — Regeneration changes only mirrored fields
 
-Regenerating the registry SHALL rewrite only the mirrored fields of the Modules it already records,
-leaving each record's identity and entry path and the set of recorded Modules unchanged.
+Regenerating the registry SHALL do the following:
+
+- Rewrite only the mirrored fields of the Modules it already records.
+- Leave each record's identity unchanged.
+- Leave each record's entry path unchanged.
+- Leave the set of recorded Modules unchanged.
 
 The mirrored fields are every field of the entry's `module` block: `title`, `owns`, `contains`,
 `uses`, `includes` and `participates`, and `glossary` in the one block that declares it.
@@ -147,12 +182,15 @@ Sharing a bound file with another Module adds nothing to either Module's Spec co
 
 ### req.spec.term-selection — A context holds the definitions its documents use
 
-A Module's Spec context SHALL hold exactly the glossary entries of the concepts the Module owns, of
-the concepts the documents it selects link or relate to and of the concepts its `relies_on` names,
-closed over the concepts those entries' definitions link and their `narrows`, `supersedes` and
-`relates` target.
+A Module's Spec context SHALL hold exactly the glossary entries of the following concepts, closed
+over concepts those entries' definitions link and their `narrows`, `supersedes` and `relates` target:
 
-The closure stays inside the glossary: it adds definitions, never a document.
+- The concepts the Module owns.
+- The concepts the documents it selects link or relate to.
+- The concepts its `relies_on` names.
+
+The closure stays inside the glossary.
+The closure adds definitions, never a document.
 
 ### req.spec.both-members — Documents are selected whole
 
@@ -161,12 +199,17 @@ member.
 
 ### req.spec.write-sets-own-only — Write sets hold only the Module's own files
 
-A Module's Spec scope and implementation scope SHALL contain only the documents it owns, the
-project glossary and the files its own realizations cover.
+A Module's Spec scope and implementation scope SHALL contain only the following:
 
-Of the glossary, only the entries the Module owns, and new entries naming it as owner, are the
-Module's to change; the grant that makes the file writable names the Modules whose entries it
-covers, so a harness can hold the change to them.
+- The documents it owns.
+- The project glossary.
+- The files its own realizations cover.
+
+Of the glossary, only the entries the Module owns and new entries naming it as owner are the
+Module's to change.
+
+The grant that makes the file writable names the Modules whose entries it covers.
+A harness can therefore hold the change to those entries.
 
 A provider's documents therefore appear in a consumer's Spec context but never in the consumer's
 Spec scope.
@@ -192,11 +235,11 @@ scenario.
 Every [impact index](../../glossary.json#concept.impact-index) SHALL be computed from the loaded
 declarations and realization entries alone.
 
-No index reads implementation file contents, test results or recorded evidence, and no index
-query changes a boundary set. The one exception is `covered-by`, which reads the
+No index reads implementation file contents, test results or recorded evidence. No index query
+changes a boundary set. The one exception is `covered-by`, which reads the
 [verification declarations](../../glossary.json#concept.verification-declaration) of bound test
-sources as [req.spec.coverage-from-tests](#req.spec.coverage-from-tests) says, without importing,
-compiling or running them.
+sources as [req.spec.coverage-from-tests](#req.spec.coverage-from-tests) says. It reads them
+without importing, compiling or running them.
 
 ## Grants
 
@@ -206,7 +249,7 @@ A grant SHALL give each boundary set of each bound Module, and ProjectImplementa
 access level that the Protocol's [task-type](../../glossary.json#concept.task-type) table assigns
 to the grant's task type.
 
-The levels are serialized as `names`, `ro` and `rw`; the table is repeated in the
+The levels are serialized as `names`, `ro` and `rw`. The table is repeated in the
 [interface definitions](contracts.md#grants).
 
 ### req.spec.grant-highest-level — The highest level wins
@@ -225,30 +268,41 @@ Every path the list does not cover, directly or below a directory entry, is deni
 A grant SHALL contain no path outside the boundary sets of its bound Modules and, for the task
 types that assign them, ProjectImplementation and ProjectSpecification.
 
-Task material, shared files, impact indexes and the task's history add nothing.
+None of the following adds anything:
+
+- Task material.
+- Shared files.
+- Impact indexes.
+- The task's history.
 
 ### req.spec.grant-installed-read-only — An installed file is never writable
 
-A grant SHALL give an exact entry for a file that the installation record `.concorde/install.json`
-lists as the installer's own at most the level `ro`.
+For a file that the installation record `.concorde/install.json` lists as the installer's own,
+a grant SHALL give an exact entry at most the level `ro`.
 
-The cap applies after the highest level is chosen, so it overrides an `rw` that an implementation
-scope would give; a file the installer only amends is the project's and keeps its level. A
-directory entry covering an installed file is the `CHK.binds.installed` error, which only
-validation reports.
+The cap applies after the highest level is chosen.
+It therefore overrides an `rw` that an implementation scope would give.
+A file the installer only amends is the project's.
+Such a file keeps its level.
+A directory entry covering an installed file is the `CHK.binds.installed` error.
+Only validation reports this error.
 
 ### req.spec.grant-shared-write — Shared files need every binder
 
-Computing a grant SHALL fail when the grant would make writable a file that a Module outside the
-grant's Modules also binds.
+When a grant would make writable a file that a Module outside the grant's Modules also binds,
+computing the grant SHALL fail.
 
-The failure names every such file and Module, so the caller can bind the task to them or split the
-work.
+The failure names every such file and Module.
+The caller can therefore bind the task to them or split the work.
 
 ### req.spec.grant-one-worktree — One worktree answers
 
-A grant SHALL be computed only from the configuration, registry, documents and realization entries
-of the worktree named as its root.
+A grant SHALL be computed only from the following sources of the worktree named as its root:
+
+- The configuration.
+- The registry.
+- The documents.
+- The realization entries.
 
 ### req.spec.grant-deterministic — Same Specs, same grant
 
@@ -257,14 +311,21 @@ path.
 
 ### req.spec.context-identity-changes — The context identity tracks its sources
 
-The [context identity](../../glossary.json#concept.context-identity) SHALL change whenever a byte of
-a selected document member, a selected glossary entry, a selecting declaration, a document's owner
-or pinned external material changes, and, for a `review-architecture` grant, whenever a byte of any
-file of ProjectSpecification changes.
+The [context identity](../../glossary.json#concept.context-identity) SHALL change in any of these
+cases:
 
-It covers no implementation file contents, so a worker's writes to implementation files never
-change it. A task that writes Specs changes it with its own writes to the Module's documents or
-glossary entries, so an identity computed after them differs from the one frozen before.
+- A byte of a selected document member changes.
+- A byte of a selected glossary entry changes.
+- A byte of a selecting declaration changes.
+- A byte of a document's owner changes.
+- A byte of pinned external material changes.
+- For a `review-architecture` grant, a byte of any file of ProjectSpecification changes.
+
+The context identity covers no implementation file contents.
+A worker's writes to implementation files therefore never change it.
+A task that writes Specs changes the context identity with its own writes to the Module's documents
+or glossary entries.
+An identity computed after those writes therefore differs from the one frozen before.
 
 ## Coverage
 
@@ -272,20 +333,26 @@ glossary entries, so an identity computed after them differs from the one frozen
 
 Scenario coverage SHALL be read only from
 [verification declarations](../../glossary.json#concept.verification-declaration) in bound test
-sources, without importing, compiling or running the tests.
+sources, without any of these actions:
+
+- Importing the tests.
+- Compiling the tests.
+- Running the tests.
 
 ## Typed values
 
 ### req.spec.typed-closed — Typed values are closed and exactly versioned
 
-Checking a [typed value](../../glossary.json#concept.typed-value) SHALL reject an unknown type, a
-schema version other than the registered one, any field of the value itself other than `type_id`,
-`schema_version` and `data`, and any `data` its registered schema refuses as JSON Schema would,
-among them a missing required field and a field an object closed by `additionalProperties: false`
-does not name.
+Checking a [typed value](../../glossary.json#concept.typed-value) SHALL reject any of the following:
 
-Registering a type SHALL fail when its schema uses a keyword that checking its values would not
-evaluate.
+- An unknown type.
+- A schema version other than the registered one.
+- Any field of the value itself other than `type_id`, `schema_version` and `data`.
+- Any `data` its registered schema refuses as JSON Schema would, including a missing required field
+  and a field an object closed by `additionalProperties: false` does not name.
+
+When a type's schema uses a keyword that checking its values would not evaluate, registering the
+type SHALL fail.
 
 ### req.spec.typed-offline — Typed values are checked offline
 
@@ -294,56 +361,77 @@ those registered or defined in the checked schema itself.
 
 ### req.spec.typed-registration-unique — One registration per type
 
-Registering a type SHALL fail when its identity is already registered with a different version or
-schema.
+When a type's identity is already registered with a different version or schema, registering the
+type SHALL fail.
 
-Registering the identical version and schema again is accepted and changes nothing, so an owner's
-code may be loaded twice.
+Registering the identical version and schema again is accepted.
+This registration changes nothing.
+An owner's code may therefore be loaded twice.
 
 ## File transactions
 
 ### req.spec.transaction-all-or-nothing — A transaction applies completely or not at all
 
 A [file transaction](../../glossary.json#concept.file-transaction) SHALL either write every listed
-file with its new content or, when a write or its final check fails while the process runs, leave
-every listed file with its original bytes.
+file with its new content or, if a write or its final check fails during execution, leave every
+listed file with its original bytes.
 
-The guarantee covers only failures the process observes as an exception. A process that is killed,
-stopped by a signal or a keyboard interrupt, or loses its machine part-way leaves each listed file
-it had already replaced with the new content and every other listed file with its original bytes,
-and may leave `.concorde-write-` temporary files beside them. No listed file ever holds part of
-each, because every file is replaced by a rename.
+The guarantee covers only failures the process observes as an exception.
+If any of the following happens part-way, the process leaves the files in the state listed below:
+
+- The process is killed.
+- The process stops because of a signal or a keyboard interrupt.
+- The process loses its machine.
+
+In those cases, the files have this state:
+
+- Each listed file the process already replaced holds the new content.
+- Every other listed file holds its original bytes.
+- `.concorde-write-` temporary files may remain beside them.
+
+Every file is replaced by a rename.
+No listed file therefore ever holds part of each.
 
 ### req.spec.transaction-restore-reported — A failed restore is named
 
-When a file transaction fails and the operating system refuses to restore one of the files it had
-written, the transaction SHALL fail with a `system_error` that names every file it could not
-restore, carries the first failure and each refused restore as causes, and states that those files
-still hold the new content while every other written file was restored.
+When a file transaction fails and the operating system refuses to restore a file it wrote,
+the transaction SHALL fail with a `system_error` with these properties:
+
+- It names every file the transaction could not restore.
+- It carries the first failure and each refused restore as causes.
+- It states that those files still hold the new content.
+- It states that every other written file was restored.
 
 ### req.spec.transaction-system-errors — Refused writes are Spec errors
 
 A file transaction SHALL report an operating-system error from one of its writes as a `SpecError`
-with the code `system_error`, naming the file, whose cause is the `system_error` record of the
-operating system's error.
+with these properties:
 
-An exception raised by the caller's final check is the caller's own and propagates unchanged once
-every written file is restored.
+- Its code is `system_error`.
+- It names the file.
+- Its cause is the `system_error` record of the operating system's error.
+
+An exception raised by the caller's final check is the caller's own.
+Once every written file is restored, that exception propagates unchanged.
 
 ### req.spec.transaction-digest-bound — Stale input stops a transaction
 
-A file transaction SHALL refuse to write when any listed file's current bytes do not match the
-digest the transaction expects to replace.
+When any listed file's current bytes do not match the digest the transaction expects to replace,
+a file transaction SHALL refuse to write.
 
-A file expected to be absent has a null digest and must still be absent.
+A file expected to be absent has a null digest.
+Such a file must still be absent.
 
 ## Initialization
 
 ### req.spec.init-allowed-files — Initialization writes only its own files
 
-Applying an initial proposal SHALL write only
-`.concorde/config.json`, `.concorde/specs.json`, the members of the documents the proposed
-registry registers and the glossary the proposed root Module declares.
+Applying an initial proposal SHALL write only the following:
+
+- `.concorde/config.json`.
+- `.concorde/specs.json`.
+- The members of the documents the proposed registry registers.
+- The glossary the proposed root Module declares.
 
 ### req.spec.init-no-overwrite — Initialization never overwrites
 
@@ -351,53 +439,88 @@ Applying an initial proposal SHALL NOT replace a file that already exists.
 
 ### req.spec.init-explicit-envelope — Apply checks shape, integrity and freshness
 
-Applying SHALL accept an initial proposal only as a complete typed value of the proposal type in
-exactly the shape propose returns, together with a proposal digest that is the digest of that
-value, and only while its source digest is the project's current one.
+Only when all these conditions hold, applying SHALL accept an initial proposal:
 
-These checks establish the proposal's shape, its integrity and its freshness, not that propose
-produced it: the proposal digest is one any caller can compute. What else an applied proposal is
-held to is the allowed files, the rule that nothing is overwritten and a project that validates.
+- The proposal is a complete typed value of the proposal type in exactly the shape propose returns.
+- The proposal comes with a proposal digest that is the digest of that value.
+- The proposal's source digest is the project's current one.
+
+These checks establish the following, not that propose produced the proposal:
+
+- The proposal's shape.
+- The proposal's integrity.
+- The proposal's freshness.
+
+Any caller can compute the proposal digest.
+An applied proposal is also held to the following:
+
+- The allowed files.
+- The rule that nothing is overwritten.
+- A project that validates.
 
 ### req.spec.init-validated — The result must validate
 
-Applying SHALL keep the written files only if the resulting project validates without errors.
+Only if the resulting project validates without errors, applying SHALL keep the written files.
 
 ### req.spec.init-honest-stub — The first Spec invents nothing
 
-The initial Module stub SHALL state the project's purpose, behaviour and architecture as not yet
-specified rather than invent concepts, requirements, scenarios or relations.
+Rather than invent concepts, requirements, scenarios or relations, the initial Module stub SHALL
+state the following as not yet specified:
+
+- The project's purpose.
+- The project's behaviour.
+- The project's architecture.
 
 ### req.spec.init-binds-existing-files — Existing files are bound at once
 
-The initial Module stub SHALL bind every existing project file that version control tracks or
-does not ignore, apart from document members, control records and generated outputs, so that the
-new project validates without errors.
+The initial Module stub SHALL bind every existing project file that version control tracks or does
+not ignore, so that the new project validates without errors, apart from these files:
 
-The binding is one realization of the root Module, Existing project files. It locates files and
-promises nothing about them.
+- Document members.
+- Control records.
+- Generated outputs.
+
+The binding is one realization of the root Module, Existing project files.
+The realization locates files. It promises nothing about them.
 
 ### req.spec.init-installation-apart — Concorde's own files are bound apart
 
-The initial Module stub SHALL bind the files the installer's receipt names outside `.concorde/`, other than the files it lists as amended, in a realization of their own, Concorde installation, and not among the existing project files.
+Except for the files the installer's receipt lists as amended, the initial Module stub SHALL bind
+the receipt's files outside `.concorde/` in their own realization, Concorde installation, and not
+among the existing project files.
 
-The installer's skill and workflows configure the agents, not the project; the project's
-`.gitignore` and `CLAUDE.md`, which the installer only amends, stay the project's files.
+The installer's skill and workflows configure the agents, not the project.
+The project's `.gitignore` and `CLAUDE.md`, which the installer only amends, stay the project's files.
 
 ### req.spec.installation-follows-record — The installation realization follows the receipt
 
-Binding the installation of an initialized project SHALL add, as an exact entry of its Concorde
-installation realization, every file the installer's receipt names outside `.concorde/`, other than
-the amended ones, that exists and that no realization binds by its exact path, and remove from
-that realization every entry that no longer exists, writing nothing else.
+Binding the installation of an initialized project SHALL do the following:
 
-It never unbinds an existing file and never adds a directory entry, so `CHK.binds.installed` keeps
-holding. Without such a realization and with files to bind, it creates the realization in the root
-Module, with its explaining paragraph in the root entry, as initialization does. The metadata
-member, and the entry only when the realization is created, are written in one
-[file transaction](../../glossary.json#concept.file-transaction). A project without a configuration,
-or whose registry or metadata cannot be read, is left unchanged; a realization whose every entry is
-gone is left for validation to report.
+- Add as an exact entry of its Concorde installation realization every file that meets all these
+  conditions:
+  - The installer's receipt names the file outside `.concorde/`.
+  - The receipt does not name the file as amended.
+  - The file exists.
+  - No realization binds the file by its exact path.
+- Remove from that realization every entry that no longer exists.
+- Write nothing else.
+
+Installation binding never unbinds an existing file.
+Installation binding never adds a directory entry.
+Therefore, `CHK.binds.installed` keeps holding.
+Without such a realization and with files to bind, installation binding creates the realization
+in the root Module with its explaining paragraph in the root entry, as initialization does.
+
+The metadata member and, only when the realization is created, the entry are written in one
+[file transaction](../../glossary.json#concept.file-transaction).
+
+When any of these conditions holds, installation binding leaves a project unchanged:
+
+- The project has no configuration.
+- The project's registry cannot be read.
+- The project's metadata cannot be read.
+
+A realization whose every entry is gone is left for validation to report.
 
 ### req.spec.init-no-installer-files — Installer outputs are not initialization outputs
 
@@ -408,10 +531,11 @@ Protocol copy under `.concorde/protocol/`.
 
 ### req.spec.protocol-assets-projected — The bundle carries only the Protocol
 
-Every Protocol asset recorded in the tracked manifest SHALL be rendered only from the Protocol text.
+Every Protocol asset recorded in the tracked manifest SHALL be rendered only from the Protocol
+text.
 
-Concorde's own conventions are not part of the bundle; they are defined by the Modules that own
-them. Rendering the bundle is Distribution's build step.
+Concorde's own conventions are not part of the bundle.
+The Modules that own them define them. Rendering the bundle is Distribution's build step.
 
 ### req.spec.protocol-assets-digest — Each asset records its digest
 

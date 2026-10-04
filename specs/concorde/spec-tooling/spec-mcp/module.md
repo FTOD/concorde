@@ -119,8 +119,7 @@ For example, before opening a task the [main agent](../../glossary.json#concept.
 Before opening the task, the main agent also calls `impact(["src/checkout/cart.py"])`.
 This shows which other Modules share that file and must be bound too.
 When no other Module binds `cart.py`, `boundary` answers with the grant's context identity and its
-entries.
-The entries include `src/checkout/` at `rw` and the documents the checkout Module's Spec context
+entries, such as `src/checkout/` at `rw` and the documents the checkout Module's Spec context
 selects at `ro`. Any path the grant does not list is denied.
 
 When `impact` names a second Module for `cart.py`, `boundary` for the checkout Module alone is
@@ -146,8 +145,8 @@ variable.
 Rooting at one worktree keeps answers honest across concurrent tasks.
 A branch may bind a new file or declare a `uses` the primary lacks.
 Only its own server sees it.
-Unless the running Concorde package carries the Protocol the root binds, calls fail with
-`protocol_mismatch`. `validate` alone does not fail then.
+The running Concorde package must still carry the Protocol the root binds.
+Otherwise, calls fail with `protocol_mismatch`. `validate` alone does not fail then.
 The `validate` tool loads through the validator, which reports Specs it cannot load as a finding.
 For this mismatch, its answer is Spec core's validation result with status `invalid`.
 That answer has one error finding that describes the mismatch.

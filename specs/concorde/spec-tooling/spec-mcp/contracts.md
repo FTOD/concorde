@@ -1,23 +1,30 @@
 # Spec MCP server contracts
 
-The exact tools and results of the [Spec MCP server](module.md). Every path in an argument or a
-result is a canonical project-relative POSIX path unless stated otherwise; an absolute path argument
-is accepted only when it lies inside the server root and
+The exact tools and results of the [Spec MCP server](module.md). Unless stated otherwise, every
+path in an argument or a result is a canonical project-relative POSIX path. Only when an absolute
+path argument lies inside the server root is it accepted. An accepted absolute path argument
 is answered in its project-relative form.
 
 ## Session
 
-The server is started as `concorde spec-mcp` and speaks MCP over standard input and output. It
-declares the tools capability and no resources or prompts. It resolves its root once, after the
-client's first `initialized` notification: `CLAUDE_PROJECT_DIR` when set, otherwise the single
-`file://` root from `roots/list`. The root is the real path of that directory and does not change
-for the life of the process. A malformed message never ends the session: a request the server
-cannot answer is answered with a JSON-RPC error and the next message is read.
+The server is started as `concorde spec-mcp`. The server speaks MCP over standard input and output.
+It declares the tools capability and no resources or prompts. After the client's first
+`initialized` notification, the server resolves its root once. When set, `CLAUDE_PROJECT_DIR`
+provides the root. Otherwise, the single `file://` root from `roots/list` provides it. The root is
+the real path of that directory. The root does not change for the life of the process. A malformed
+message never ends the session. When the server cannot answer a request, it answers with a
+JSON-RPC error and reads the next message.
 
-Every tool returns one text content item holding canonical JSON. A failure sets `isError: true`,
-and its JSON is `{"error": <record>}`, where the record is Spec tooling's
-[error record](../spec/errors.md#the-error-record): the code, a concrete message, the location (the
-argument as `field`, the path or identity concerned), the reason, the remediation and every cause.
+Every tool returns one text content item holding canonical JSON. A failure sets `isError: true`.
+Its JSON is `{"error": <record>}`, where the record is Spec tooling's
+[error record](../spec/errors.md#the-error-record). The record contains:
+
+- The code.
+- A concrete message.
+- The location (the argument as `field`, the path or identity concerned).
+- The reason.
+- The remediation.
+- Every cause.
 
 | Code | When |
 | --- | --- |
@@ -39,9 +46,13 @@ argument as `field`, the path or identity concerned), the reason, the remediatio
 | `impact` | `paths`: nonempty array of paths | `{"paths": [{"path", "modules"}], "modules"}`: for a document member the Modules whose [Spec context](../../glossary.json#concept.spec-context) contains it, for the glossary the Modules that have terms, for any other path the Modules that bind it, and their union |
 | `validate` | optional `target`: a Module identity | Spec core's [validation result](../spec/contracts.md#validation-result), as `validate_repository` returns it, with `tool` `spec-validation`: without the update findings the `spec-validation` command adds in a project a `concorde update` marked, whose mark it never touches; Specs that cannot be loaded, such as a `protocol_mismatch`, give status `invalid` with one error finding describing the failure and its record as `result.load_error`, not a tool error |
 
-`boundary` returns exactly the `context_identity` and `entries` of Spec core's grant for the
-server root, the given Modules and the task type. `context` computes its `context_identity` the
-same way for its one Module.
+`boundary` returns exactly the `context_identity` and `entries` of Spec core's grant for:
+
+- The server root.
+- The given Modules.
+- The task type.
+
+`context` computes its `context_identity` the same way for its one Module.
 
 ```concorde-contract
 {
@@ -83,6 +94,6 @@ same way for its one Module.
 <a id="boundary-participation"></a>
 
 **Participation.** The server provides this contract, version 1, to external callers: the
-[main agent](../../glossary.json#concept.main-agent) and agents of other projects. It keeps the
-result equal to Spec core's grant for the same root, Modules and task type, and a change to the
-grant's shape increments the version.
+[main agent](../../glossary.json#concept.main-agent) and agents of other projects. The server keeps
+the result equal to Spec core's grant for the same root, Modules and task type.
+A change to the grant's shape increments the version.
