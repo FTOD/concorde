@@ -113,8 +113,8 @@ Shared memory is backed by the scratch. The runner starts only a bubblewrap with
 and root-owned parent directories, all writable by neither group nor others. Because the check's
 namespace cannot map root, a check inside another check's boundary sees root as the operating
 system's overflow user. There, only for a file on a read-only mount, the runner accepts that owner
-in place of root. A nested check can still use the system bubblewrap. A file the checking user
-owns is never trusted. The host performs these actions:
+in place of root. So a nested check can still use the system bubblewrap, while a file the checking
+user owns is never trusted. The host performs these actions:
 
 - closes inherited descriptors
 - gives the command a null standard input
