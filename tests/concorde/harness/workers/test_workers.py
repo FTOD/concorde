@@ -550,6 +550,44 @@ class SettingsTests(unittest.TestCase):
         )
         self.assertEqual([], plain["denyWrite"])
 
+    @verifies("scenario.workers.bash-confined")
+    def test_the_bash_sandbox_denies_reads_of_names_listed_below_a_readable_directory(
+        self,
+    ):
+        root = self.project.root
+        grant_value = {
+            **self.project.grant,
+            "entries": [
+                *self.project.grant["entries"],
+                {"path": "src/bmod/", "level": "ro"},
+                {"path": "src/a/notes.txt", "level": "names"},
+                {"path": "src/bmod/secret.py", "level": "names"},
+                {"path": "src/bmod/inner/", "level": "names"},
+                {"path": "src/bmod/inner/back.py", "level": "ro"},
+            ],
+        }
+        lists = sandbox_filesystem(root, grant_value, self.run, home=self.project.home)
+        # A narrower denyRead wins inside the wider allowRead, so Bash cannot read a names path
+        # below a ro or rw directory, while a ro path listed below a names directory stays
+        # readable, the narrower allowRead winning in turn.
+        for path in ("src/a/notes.txt", "src/bmod/secret.py", "src/bmod/inner"):
+            self.assertIn(f"{root}/{path}", lists["denyRead"])
+        for path in ("src/a", "src/bmod", "src/bmod/inner/back.py"):
+            self.assertIn(f"{root}/{path}", lists["allowRead"])
+        # The Claude Code backend's sandbox carries the same lists.
+        settings = worker_settings(
+            root, grant_value, self.run, python=sys.executable, home=self.project.home
+        )
+        self.assertEqual(lists, settings["sandbox"]["filesystem"])
+        # A grant that lists no names path below a readable directory denies nothing more.
+        plain = sandbox_filesystem(
+            root, self.project.grant, self.run, home=self.project.home
+        )
+        self.assertFalse(
+            any(path.startswith(f"{root}/") for path in plain["denyRead"]),
+            plain["denyRead"],
+        )
+
     def test_a_rw_directory_below_a_ro_directory_stays_writable(self):
         grant_value = {
             **self.project.grant,

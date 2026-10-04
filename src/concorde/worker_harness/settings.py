@@ -219,6 +219,17 @@ class GrantView:
             and any(path != above and path.startswith(above) for above in writable)
         )
 
+    def names_below_readable(self) -> list[str]:
+        """Every path the grant lists at ``names`` strictly below an ``ro`` or ``rw`` directory
+        entry, which the most specific entry keeps from being read."""
+        readable = [path for path, level in self.directories if level in ("ro", "rw")]
+        return sorted(
+            path
+            for path, level in [*self.exact.items(), *self.directories]
+            if level == "names"
+            and any(path != above and path.startswith(above) for above in readable)
+        )
+
     def directory_level(self, directory: str) -> str | None:
         """The level the longest directory entry at or above ``directory`` gives, if any."""
         covering = [
@@ -406,9 +417,11 @@ def sandbox_filesystem(
     grant's ``ro`` and ``rw`` paths, the runtime paths and the run's own directories; only ``rw``
     paths and the run's own directories are writable; the run's ``control/`` and ``config/`` and
     every Git administrative path are hidden. A Git path inside a re-allowed ``ro`` or ``rw``
-    directory stays hidden, since a narrower ``denyRead`` wins inside a wider ``allowRead``. A
-    path the grant lists apart at ``ro`` or ``names`` below an ``rw`` directory is in
-    ``denyWrite``, which wins inside a wider ``allowWrite``, so Bash cannot write it either.
+    directory stays hidden, since a narrower ``denyRead`` wins inside a wider ``allowRead``, and so
+    does a path the grant lists apart at ``names`` below an ``ro`` or ``rw`` directory, so Bash
+    cannot read it either. A path the grant lists apart at ``ro`` or ``names`` below an ``rw``
+    directory is in ``denyWrite``, which wins inside a wider ``allowWrite``, so Bash cannot write it
+    either.
     """
     worktree = Path(os.path.realpath(worktree))
     home = Path(os.path.realpath(home or Path.home()))
@@ -428,6 +441,10 @@ def sandbox_filesystem(
                     *(path.as_posix() for path in git),
                     run.control.as_posix(),
                     run.config.as_posix(),
+                    *(
+                        (worktree / path.rstrip("/")).as_posix()
+                        for path in view.names_below_readable()
+                    ),
                 ]
             )
         ),
