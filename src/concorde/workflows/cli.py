@@ -2,8 +2,11 @@
 
 Both work in the bound workspace they are started in, whose binding names it; a workflow never
 names a task. ``step`` prints the step outcome and exits 0 once the run has finished, 3 while it
-still runs and 1 when the step is lost, refused or rejected. ``report`` prints the workflow result and exits 0 when its status is ``ok`` and
-1 otherwise. A malformed command line or request prints ``{"error": <link>}`` and exits 2.
+still runs and 1 when the step is lost, refused or rejected. ``report`` prints the workflow result
+and exits 0 when its status is ``ok`` and 1 otherwise; ``--workflow`` and ``--mode`` name the
+script's workflow and mode, from which a workspace whose first step was lost before anything was
+recorded still gets a result. A malformed command line or request prints ``{"error": <link>}`` and
+exits 2.
 """
 
 from __future__ import annotations
@@ -44,6 +47,8 @@ def parser() -> argparse.ArgumentParser:
     step.add_argument("--json", dest="request")
     step.add_argument("argv", nargs="*")
     report_ = sub.add_parser("report")
+    report_.add_argument("--workflow")
+    report_.add_argument("--mode", choices=["interactive", "no-ask"])
     report_.add_argument("--lost", action="append", default=[])
     return command
 
@@ -135,7 +140,7 @@ def main(argv, cwd: Path | None = None) -> int:
         return refused(error, arguments.command)
     if arguments.command == "report":
         try:
-            result = report(space, arguments.lost)
+            result = report(space, arguments.lost, arguments.workflow, arguments.mode)
         except WorkflowError as error:
             return refused(error, "report")
         except Exception as error:  # noqa: BLE001 -- say why instead of a traceback

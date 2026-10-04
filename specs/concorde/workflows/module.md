@@ -106,7 +106,8 @@ or with new answers, **supersedes** that earlier step and every step recorded af
 superseded step stays in the record but is never found again, so the procedure runs its later steps
 anew on the changed workspace and nothing validated or delivered before the change is taken as
 current. An answered step's `--input` is the latest `ok` run of its base key even when a rerun
-superseded that run, since the answers still refer to its questions.
+superseded that run, since the answers still refer to its questions, and it has none when that
+base key has no `ok` run.
 
 ### The record and the result
 
@@ -115,32 +116,42 @@ superseded that run, since the answers still refer to its questions.
 The **[workflow record](../glossary.json#concept.workflow-record)** of a workspace is the
 `trace.json` of the workflow's [trace node](../glossary.json#concept.trace-node), `workflow/` of
 the workspace folder its binding names, beside the answers passed to steps (`answers/`), the saved
-reports (`reports/`) and the step nodes (`steps/`). It names the workflow and its mode once, at its
-first step, and its content lists every step with its key, the name of its Operation or command,
-its run or refusal, its mode, its node and whether it was superseded, and every report. Each step's
-node records when the step started and, once a step or report command saw its run end, when it
-ended and how; the run's own node lies inside it. A workspace runs at most one workflow. Only the
+reports (`reports/`) and the step nodes (`steps/`). It names the workflow once, at its first step or,
+for a workflow whose first step was lost before anything was recorded, at its first report, and
+carries the mode of the latest recorded step; its content lists every step with its key, the name of
+its Operation or command, its run (none yet while the step is starting) or refusal, its mode, its
+node and whether it was superseded, and every report. Each step records its own mode, so a relaunch
+may change the mode: the script stops by its own mode, and the report judges pending points by the
+latest recorded step's mode. Each step's node records when the step started and, once a step or
+report command saw its run end, when it ended and how; the run's own node lies inside it. A workspace runs at most one workflow. Only the
 step and report commands write the record and the step nodes, and only while they hold the workflow
 lock. Whoever prepared the workspace finds the workflow in the workspace folder, next to the runs
 started directly, and a task's [trace](../glossary.json#concept.trace) holds it.
 
 <a id="concept.workflow-result"></a>
 
-The script ends by running `concorde workflow report [--lost <key>]`, which builds the **[workflow
-result](../glossary.json#concept.workflow-result)** ([contract](contracts.md#contract.workflows.result))
-from the workflow record and the saved [run results](../glossary.json#concept.run-result), never
-from what a step agent relayed. Its status is, in this order of precedence:
+The script ends by running `concorde workflow report --workflow <name> --mode <mode> [--lost <key>]`,
+which builds the **[workflow result](../glossary.json#concept.workflow-result)**
+([contract](contracts.md#contract.workflows.result)) from the workflow record and the saved
+[run results](../glossary.json#concept.run-result), never from what a step agent relayed. The report
+cannot see where the procedure stopped, only what was recorded, so the step it judges is the
+**latest current step** in recorded order. Its status is, in this order of precedence:
 
-- `running` when a current step's run is still running, for a report taken before the end;
-- `failed` when the procedure stopped at a step that ended `failed`, was refused or was lost;
-- `blocked` when it stopped at a step that ended `blocked`, or at a step whose output declared it
-  blocking, such as a task validation that found the workspace not ready;
-- `awaiting_decision` when an interactive run ended at decision points;
-- `ok` when the procedure's last step, which the workflow names, such as `delivery` in the
-  brownfield workflow, ended `ok`, even if earlier steps reported problems the procedure could go
-  past;
-- `failed`, with the code `incomplete`, when the recorded steps end before the procedure's last
-  step without any of the stops above, such as a report taken after a script ended early.
+- `running` when any current step's run is still running, or a step still starting may yet get its
+  run, for a report taken before the end;
+- `failed`, with the code `step_lost`, when the script reported a key lost whose base key has no
+  current step;
+- `failed` when the latest current step ended `failed`, was refused or was lost;
+- `blocked` when it ended `blocked`, or its output declared it blocking, such as a task validation
+  that found the workspace not ready;
+- `awaiting_decision` when the latest recorded step ran in interactive mode and the latest current
+  step's output has decision points its answers did not settle;
+- `ok` when the latest current step is the procedure's last step, which the workflow names, such as
+  `delivery` in the brownfield workflow, and ended `ok`, even if earlier steps reported problems the
+  procedure could go past;
+- `failed`, with the code `incomplete`, otherwise: when the recorded steps end before the
+  procedure's last step, such as a report taken after a script ended early, or no installed part
+  registers the workflow.
 
 Every result lists, from the current steps, every decision, decision point, deviation and note the
 runs declared, as they declared them, with its step and run, such as a review's verdict or the
@@ -155,7 +166,10 @@ Decisions a no-ask workflow took without the developer belong in the decision lo
 started it, so the task level copies them from the rendering into the task's log itself. When a
 step agent returned nothing, the script reports with `--lost <key>`: a key whose base key has a
 current step keeps what that step's run shows, finished, still running or lost, since the record
-wins, and any other is reported lost.
+wins, and any other is reported lost. A workspace whose first step was lost before anything was
+recorded has no record: the report then builds its result from `--workflow`, `--mode` and the lost
+key, and creates the workflow's node to save it in
+([req.workflows.lost-first](requirements.md#req.workflows.lost-first)).
 Anyone can run the report command in the workspace again at any time.
 
 ### Scripts and step agents
@@ -175,8 +189,10 @@ whose step function's **[step agent](../glossary.json#concept.step-agent)** is a
 the tool `workflow_step`, which the workflow part registers with the
 [project MCP server](../glossary.json#concept.project-mcp-server), once
 with the step request, waiting at most 100 seconds, and returns the step outcome it answered, while
-the step function itself asks again as long as the run is still running and treats an outcome that
-names another step or no real run as no answer. The server runs the step command as a process of its
+the step function itself asks again as long as the run is still running, up to 200 calls for one
+step as a guard against a run that never ends, leaves `retry` out once an outcome names the step's
+run, and treats an outcome that names another step key, or a finished or lost step without a
+well-formed run, as no answer. The server runs the step command as a process of its
 own, as [Steps in Claude Code](#steps-in-claude-code) explains. A model copies
 the request, and a live headless run showed one dropping a field of it,
 which the step command then refused as `invalid_request`; so the step function asks again after an
@@ -365,27 +381,36 @@ concorde workflow step --json '<step request>' [--wait <seconds>]
 ```
 
 The step's key is the base key, followed by `#` and the generation label when `--restart` names one,
-and with `--answers` by `@` and the first eight hexadecimal digits of the SHA-256 of the answers
-list in canonical JSON (keys sorted, no whitespace), so a restarted or answered rerun is a new step
-while the same label and answers find the same step again. Holding the workspace's **workflow lock**,
-`locks/workflows/<workspace>.lock` of the binding's `.concorde`, which only the step and report
-commands take and which is distinct from the [workspace lock](../glossary.json#concept.workspace-lock)
-a run holds, the command looks
-the key up among the **current steps** of the workspace's workflow record, those no later rerun has
-superseded. When it is not there, it creates the step's node `steps/<n>-<key>/`, `<n>` counting every
-step the workflow recorded from 1 and the key written with every character other than a lower-case
-letter, digit, `.` or `-` as `_`, and starts the run detached with the workspace's own `concorde`,
-placing the run's node inside the step's with `--trace-at <step node>/run`:
-`concorde run <operation> … --detach` for an Operation and `concorde <command> … --detach` for an
-execution command such as `task-validation`, `delivery` or `scaffold`, telling the two apart by
-Execution's catalogs of the installed parts' definitions. For an answered step it adds
-`--answers` with the answers written next to the workflow record and `--input` naming the latest
-`ok` run of the same base key, whose decision points the answers settle; then it records the key and run
-in the workflow's node and writes the step's node.
-It waits for the result at most `--wait` seconds (default 540). Asked again, it finds the recorded
-run and only waits for it. `--retry` starts a new run for a key whose recorded run did not end `ok`.
-`--json` takes the same request as one [step request](contracts.md#contract.workflows.step-request),
-as the [step agent](../glossary.json#concept.step-agent) passes it.
+and with `--answers` by `@` and a short digest of the answers
+([req.workflows.answers-new-key](requirements.md#req.workflows.answers-new-key)), so a restarted or
+answered rerun is a new step while the same label and answers find the same step again. Holding the
+workspace's **workflow lock**, `locks/workflows/<workspace>.lock` of the binding's `.concorde`, which
+only the step and report commands take and which is distinct from the
+[workspace lock](../glossary.json#concept.workspace-lock) a run holds, the command looks the key up
+among the **current steps** of the workspace's workflow record, those no later rerun has superseded.
+When it is not there, it records the step as **starting**, with its node `steps/<n>-<key>/`
+([the folder's exact name](contracts.md#contract.workflows.workflow-trace)) and no run yet, and starts
+the run detached with the workspace's own `concorde`, placing the run's node inside the step's with
+`--trace-at <step node>/run`: `concorde run <operation> … --detach` for an Operation and
+`concorde <command> … --detach` for an execution command such as `task-validation`, `delivery` or
+`scaffold`, telling the two apart by Execution's catalogs of the installed parts' definitions. For an
+answered step it adds `--answers` with the answers written next to the workflow record and `--input`
+naming the latest `ok` run of the same base key, whose decision points the answers settle, or no
+`--input` when that base key has none. Once the run is announced, it writes the run into the step,
+or the refusal of a run that did not start. It waits for the result at most `--wait` seconds
+(default 540). Asked again, it finds the recorded run and only waits for it. `--retry` starts a new
+run for a key whose recorded run did not end `ok`. `--json` takes the same request as one
+[step request](contracts.md#contract.workflows.step-request), as the
+[step agent](../glossary.json#concept.step-agent) passes it.
+
+A step a later call finds still starting is one whose step command ended between recording it and
+writing its run, killed meanwhile or unable to write the record (`step_unrecorded`). That call adopts
+the run whose node lies in the step's node and writes it into the step. While no run lies there but a
+run of the workspace holds the workspace lock or waits in the lobby for it, the call waits as it
+waits for the workspace lock below, since that run may be the step's. Otherwise the step's run never
+started: the call ends the step's node lost and starts the run anew under the same key, the new
+attempt superseding the starting one
+([req.workflows.key-idempotent](requirements.md#req.workflows.key-idempotent)).
 
 The command prints the [step outcome](contracts.md#contract.workflows.step) and exits with status 0
 once the run has finished, 3 while it is still running, so a caller that must not block longer than
@@ -395,14 +420,20 @@ Before it starts a run, the command waits, within the same bound, until the work
 since a workspace runs one run at a time. It waits without holding the workflow lock, then takes it
 again and looks the key up again. When the bound ends while the lock is still held, it
 starts and records nothing and prints an outcome with state `running`, no run and no error, exiting
-with status 3; asking again waits for the lock again. A step is **lost** when its recorded run has
-no result and no living runner. A step is **refused** when the runner rejected the command line or
-the detached runner did not start: the step is then recorded without a run and with that error. A
+with status 3; asking again waits for the lock again. The workflow lock itself is waited for only
+within the bound too, with the same outcome when another step or report command still holds it;
+only the launch of a run may outlast the bound, by at most 90 seconds
+([req.workflows.bounded-wait](requirements.md#req.workflows.bounded-wait)). A step is **lost** when
+its recorded run has no result and no living runner. A step is **refused** when the runner rejected
+the command line or the detached runner did not start, a launcher that could not be run or gave no
+answer within 90 seconds included: the step is then recorded without a run and with that error. A
 step for another workflow than the workspace's, or a key recorded for another Operation or command,
 is refused by the workflow record before anything is recorded or started, with a `step_rejected`
-link over that refusal; if the record refuses a run already started, the link is `step_unrecorded`
-and names the run. Such a step is in no record, so the script returns its outcome with the report,
-as [the script's result](contracts.md#contributing-a-workflow) requires.
+link over that refusal; if the record cannot record a run already started, the link is
+`step_unrecorded`, names the run and leaves the step starting, for the next call to adopt. A
+`step_rejected` step is in no record and a `step_unrecorded` one is recorded without its run, so the
+script returns its outcome with the report, as
+[the script's result](contracts.md#contributing-a-workflow) requires.
 
 <a id="retired-workspace"></a>
 
@@ -420,8 +451,9 @@ A step whose run had started and ended before the workspace was retired is refus
 it comes to end the step's node, naming the run, whose own records went with the folder. The report
 command in a retired workspace is refused with a `component` link `workspace_retired`.
 
-The workflow lock is a leaf: neither command waits for another lock while holding it, which is why a
-step waits for the workspace lock without it. A close holding the workspace lock, and the [merge lock](../glossary.json#concept.merge-lock)
+The workflow lock is a leaf: neither command waits for another lock while holding it
+([req.workflows.workflow-lock-leaf](requirements.md#req.workflows.workflow-lock-leaf)), which is why
+a step waits for the workspace lock without it. A close holding the workspace lock, and the [merge lock](../glossary.json#concept.merge-lock)
 when it merges, therefore always gets the workflow lock soon, and nothing waits in a circle: a step
 that holds the workflow lock before the close does finishes its writes before the folder moves, and
 one that waits for it until after the close is refused.
