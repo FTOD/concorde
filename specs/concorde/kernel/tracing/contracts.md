@@ -432,7 +432,9 @@ directory for the top nodes of a [trace root](#trace-roots).
 
 A workspace folder, `workspace/` of a task, is no node of its own: the reading command shows it as
 a `workspace` node whose children are its workflow and its runs, named after the workspace its runs
-record. A node lists in `metadata` only the dimensions its row names; a producer's own [Spec](../../glossary.json#concept.spec) defines
+record. Having no record, it has no status of its own: it is shown `running` while any of its
+children runs, otherwise with the status of its most recently started child, `lost` included, and
+`unknown` without children. A node lists in `metadata` only the dimensions its row names; a producer's own [Spec](../../glossary.json#concept.spec) defines
 its content type.
 
 ### Metadata dimensions
@@ -458,7 +460,10 @@ its content type.
 - The producer writes `trace.json` when the node starts, before the work it records begins, with
   `status` `running`, and again when the node ends, with its end, status, outcome, usage, error,
   artifacts and content. It may rewrite it in between, such as a worker run after each round. Every
-  write replaces the file atomically, so a reader never finds half a record.
+  write replaces the file atomically, so a reader never finds half a record. A write the operating
+  system refuses never changes the work the node records: the library keeps an account of each
+  such failure, naming the file, the moment (start, update or end) and the error, and the producer
+  reports every one in its own result, as evidence or a warning.
 - The parent creates the child's folder, or names it to the child's process before starting it,
   before the child's first write. A child never records its parent's identity.
 - Every artifact path is relative to the node's folder; every other node is named by identity.
@@ -699,20 +704,27 @@ concorde trace prune [--dry-run]
   covers the whole subtree.
 - `list` lists the top nodes of the registered roots each root's registration lists always, with
   `--history` also those it lists with that option and with `--unbound` also those it lists with
-  that one, in that order, each as a node without its children, under the same `.concorde`
-  directories and by the same places as `show`; in Concorde these are the current
+  that one, in that order whichever `.concorde` directory each lies in, each as a node without its
+  children, under the same `.concorde` directories and by the same places as `show`; in Concorde these are the current
   tasks, the history and the unbound runs. An option whose roots no installed part registers lists
   nothing.
-- `prune` removes what the retention allows and prints the paths it removed, folders and
-  conversation records alike; `--dry-run` prints them without removing anything.
-- Output is one JSON value as the view contract defines; `--format tree` prints the same as an
-  indented text tree instead. Exit status 0 on success, 1 for a refusal, printed as
+- `prune` removes what the retention allows under the same `.concorde` directories and by the same
+  places as `show`, by the [Tracing configuration](#tracing-configuration) of the primary worktree,
+  so that an unbound run is pruned from the worktree it started in. It prints
+  `{"removed": [<path>…], "failed": [{"path": <path>, "error": <text>}…], "dry_run": <boolean>}`:
+  the paths it removed, folders and conversation records alike, and each path the operating system
+  did not let it remove wholly, with the error, which the next prune tries again; `--dry-run`
+  prints what it would remove without removing anything.
+- Output is one JSON value as the view contract defines; `--format tree` prints instead a summary
+  of it as an indented text tree, one line per node with its kind, identity, status, outcome,
+  duration, rolled-up cost and tokens, the metadata naming what ran and its error's code, the JSON
+  output alone carrying every field. Exit status 0 on success, 1 for a refusal, printed as
   `{"error": <link>}`, and 2 for a malformed command line.
 
 ```concorde-contract
 {
   "id": "contract.tracing.view",
-  "version": 1,
+  "version": 2,
   "schema": {
     "$ref": "#/$defs/view",
     "$defs": {
@@ -871,7 +883,7 @@ concorde trace prune [--dry-run]
       }
     }
   },
-  "semantics": "What concorde trace show prints for a node, and list for each node it lists (with children empty). path is the node's folder, absolute, for the reader to open. status is the node's own, except lost for a node that says running whose producing process has ended: a run whose run lock is not held, and every running node below it. duration_seconds is the node's own duration, or for a running node the time since it started. usage is the node's own usage as recorded; rolled_up sums tokens, cost and turns over the node and every node below it, counting a null as zero. metadata, references and error are the node's own. children are the nodes one level below, in the order they started, cut at the requested depth. A behaviour or field change increments the version.",
+  "semantics": "What concorde trace show prints for a node, and list for each node it lists (with children empty). path is the node's folder, absolute, for the reader to open. status is the node's own, except lost for a node that says running whose producing process has ended: a run whose run lock is not held, and every running node below it, whether it is shown below that run or addressed directly; a workspace node, which has no record, is running while any of its children runs, otherwise has the status of its most recently started child, and unknown without children. duration_seconds is the node's own duration, or for a running node the time since it started. usage is the node's own usage as recorded; rolled_up sums tokens, cost and turns over the node and every node below it, counting a null as zero. metadata, references and error are the node's own. children are the nodes one level below, in the order they started, cut at the requested depth. A behaviour or field change increments the version.",
   "example": {
     "id": "retry",
     "kind": "task",
@@ -1143,6 +1155,13 @@ analysis of that level starts.
 | `{"error": …}` printed by a refused `concorde task`, `concorde trace` or `concorde issues` command | the refusing component (`component`) |
 | an escalation recorded with `concorde task escalate` (`--by main-agent`, the default) | the main agent (`main-agent`) |
 | an escalation recorded with `concorde task escalate --by task-session` | the [task session](../../glossary.json#concept.task-session) (`task-session`) |
+
+A component that reports an exception it has no recovery for writes, through Tracing's library, a
+`component` link whose detail is the exception's type and message and, for a command that failed,
+its exit status and both its standard output and its standard error, each named; a stream longer
+than 20,000 characters is quoted from its end, saying how many characters it leaves out. When the
+component keeps a traceback file, named in the link's evidence, that file holds the whole streams
+too.
 
 Spec tooling is the exception: it depends on no other Module and reports with its
 [own error record](../../spec-tooling/spec/errors.md). A Module that receives a Spec tooling error and

@@ -196,7 +196,7 @@ task's folder moves when the task ends.
 
 ```text
 concorde trace show [<node>] [--depth <n>] [--format json|tree]
-concorde trace list [--history] [--unbound]
+concorde trace list [--history] [--unbound] [--format json|tree]
 concorde trace prune [--dry-run]
 ```
 
@@ -206,7 +206,8 @@ subtree, so the cost of a whole task, of one of its workflows or of one run is r
 finds a node among the registered roots of the worktree it runs in and of the primary worktree: in
 Concorde the current tasks, the [history](../../glossary.json#concept.history), the unbound runs and
 the lobby. A node that says it is still running although the process that writes it has ended is
-shown `lost`. `list` lists the current tasks, and with its options the history and the unbound runs,
+shown `lost`, whether it is shown below its run or addressed directly, as a worker run is by its
+identity. `list` lists the current tasks, and with its options the history and the unbound runs,
 with their status and rolled-up usage; a root whose part is not installed is simply not searched or
 listed. Tracing registers `concorde trace` as a command of the kernel part.
 A result's error chain names the node that reported it, as evidence of kind `trace` whose reference
@@ -257,7 +258,10 @@ configures it, each history folder of a task closed longer ago than that, whole.
 of the history is kept. A project changes the three periods in its tracked
 [Tracing configuration](contracts.md#contract.tracing.configuration), `.concorde/tracing.json`; a
 period of a root no installed part registers is ignored. A node still running is never removed, and
-nothing of a current folder is.
+nothing of a current folder is. `concorde trace prune` prunes the `.concorde` directories `show`
+searches, so the unbound runs of a linked worktree go when it runs there, and prints every path it
+could not remove with the operating system's error; such a folder keeps its `trace.json` until the
+rest of it is gone, so the next prune finds it and tries again.
 What a task decided outlives this retention: Tasks commits each ended task's
 [decision log](../../glossary.json#concept.decision-log) to Git, where it travels with the code.
 

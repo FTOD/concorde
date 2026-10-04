@@ -2,9 +2,9 @@
 
 ``show`` and ``list`` write nothing, and all three work only over the registered trace roots: the
 process that runs the command loads the parts that register them first. Each prints one JSON value
-(``contract.tracing.view``), or with ``--format tree`` the same as an indented text tree; ``prune``
-prints the paths it removed. Exit status 0 on success, 1 for a refusal printed as
-``{"error": <link>}``, 2 for a malformed command line.
+(``contract.tracing.view``), or with ``--format tree`` a summary of it as an indented text tree;
+``prune`` prints the paths it removed and those it could not remove. Exit status 0 on success, 1
+for a refusal printed as ``{"error": <link>}``, 2 for a malformed command line.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 from .. import errors
-from . import layout, reader, retention
+from . import layout, reader, retention, roots
 
 ACTOR = "Tracing (concorde trace)"
 
@@ -119,16 +119,11 @@ def _print(value, text: str) -> None:
 
 
 def listing(arguments, here: Path) -> int:
-    searched = reader.concorde_directories(here)
-    nodes = []
-    seen = set()
-    for root in searched:
-        for item in reader.listing(
-            root, history=arguments.history, unbound=arguments.unbound
-        ):
-            if item["path"] not in seen:
-                seen.add(item["path"])
-                nodes.append(item)
+    nodes = reader.listing(
+        reader.concorde_directories(here),
+        history=arguments.history,
+        unbound=arguments.unbound,
+    )
     if arguments.format == "json":
         _print(nodes, "")
     else:
@@ -137,10 +132,11 @@ def listing(arguments, here: Path) -> int:
 
 
 def prune(arguments, here: Path) -> int:
+    """Prune every ``.concorde`` the reader looks in, by the primary worktree's configuration."""
     primary = layout.primary_worktree(here)
     concorde = layout.concorde_of(primary or here)
     try:
-        removed = retention.prune(concorde, dry_run=arguments.dry_run)
+        periods = retention.configuration(concorde)
     except retention.ConfigError as error:
         return _refuse(
             error.code,
@@ -149,7 +145,18 @@ def prune(arguments, here: Path) -> int:
             "retention reads only a Tracing configuration that satisfies its contract",
             [f"correct or remove {concorde / layout.CONFIGURATION}"],
         )
-    _print({"removed": removed, "dry_run": arguments.dry_run}, "")
+    removed: list[str] = []
+    failed: list[dict] = []
+    for directory in reader.concorde_directories(here):
+        pruned = retention.prune(
+            directory,
+            dry_run=arguments.dry_run,
+            roots=reader._placed(roots.registered(), directory),
+            periods=periods,
+        )
+        removed.extend(pruned["removed"])
+        failed.extend(pruned["failed"])
+    _print({"removed": removed, "failed": failed, "dry_run": arguments.dry_run}, "")
     return 0
 
 
