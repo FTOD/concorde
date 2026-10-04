@@ -16,9 +16,9 @@ is in [Workers](../worker-harness/workers/module.md).
 
 ## Worker limits {#worker-limits}
 
-The run reads the [worker configuration](../glossary.json#concept.worker-configuration)
-`.concorde/workers.json` from the worktree it works in. Under `limits`, the configuration sets these
-limits for every worker launch:
+The [worker configuration](../glossary.json#concept.worker-configuration) `.concorde/workers.json`
+is read from the worktree the run works in. Under `limits`, the configuration sets these limits for
+every worker launch:
 
 - `timeout_seconds` per round (default 1800).
 - `max_turns` (default 200).
@@ -63,9 +63,9 @@ the worker harness cannot do:
   Operation, Method's or another part's, the step refuses an entry for a misspelled or removed worker.
   An entry for an Operation another installed part registers stays valid.
 - Every worker the Operation may launch can be resolved. The step asks the worker harness's
-  configuration reader to check the whole file's structure and limits. It also asks the reader to
-  check all those workers against the machine's [model map](../glossary.json#concept.model-map) at
-  once ([Workers](../worker-harness/workers/module.md)).
+  configuration reader to check, at once, the whole file's structure and limits and every one of
+  those workers against the machine's [model map](../glossary.json#concept.model-map)
+  ([Workers](../worker-harness/workers/module.md)).
 
 When any of these conditions holds, the run stops `failed` with `worker_model_unavailable` before
 its first worker launches:
@@ -147,11 +147,8 @@ The worker-backed provider step does the following:
 - Composes the task instructions.
 - Supplies the round validation.
 
-Workers, in the worker harness, performs the rest. The worker harness never does the following:
-
-- Computes a grant.
-- Reads a Spec.
-- Runs a check of its own.
+Workers, in the worker harness, performs the rest. Workers never computes a grant, reads a Spec or
+runs a check of its own.
 
 The step hands Workers these inputs:
 
@@ -195,12 +192,13 @@ validation also checks the worker result the round returned. It checks in this o
    Module outside the grant, an entry violates ownership. The validation reports the violation as
    `<glossary>#<concept>`. Like an audit violation, this ends the run `failed`. The validation checks
    the glossary by entry because every Module's concepts share that one file.
-2. **Configured checks.** When the step asks for checks, the step computes them from the
-   workspace's Specs through Spec core. These [configured checks](../glossary.json#concept.configured-check) belong to
-   the bound Modules and every Module that uses one of them, directly or through further uses.
-   Check execution runs them outside the worker. The validation places their logs in nodes in the
-   round's folder. Their [check results](../glossary.json#concept.check-result), with those logs, are
-   the round's evidence. Every failing check is something to repair.
+2. **Configured checks.** When the step asks for them, the step computes the [configured
+   checks](../glossary.json#concept.configured-check) from the workspace's Specs through Spec core,
+   and Check execution runs them outside the worker. These checks belong to the bound Modules and
+   every Module that uses one of them, directly or through further uses. The validation places their
+   logs in nodes in the round's folder. Their [check
+   results](../glossary.json#concept.check-result), with those logs, are the round's evidence. Every
+   failing check is something to repair.
 3. **The step's own validation**, when the provider has one and every check passed or none ran.
    Examples include:
 
@@ -390,5 +388,5 @@ becomes the explanation of why Spec core could not handle it. The link's reason 
 - For an `unexpected_error`, the reason is `capability`.
 - Otherwise, the reason is `input`.
 
-Its remediation becomes the option and recommendation. Each of its causes becomes a nested link
-the same way. That link is the cause the step keeps under the run's own link.
+The record's remediation becomes the option and recommendation. Each of the record's causes becomes
+a nested link the same way. That link is the cause the step keeps under the run's own link.
