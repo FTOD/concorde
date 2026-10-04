@@ -193,8 +193,10 @@ def _delivered(
         metadata={"task": task_id, "branch": record["branch"]},
         content=data,
     ).start()
+    # The refused writes of the trace nodes of its checks.
+    failures: list[str] = []
     try:
-        answer = _deliver(primary, worktree, record, commands, data, node)
+        answer = _deliver(primary, worktree, record, commands, data, node, failures)
     except TaskError as refusal:
         node.finish(
             "failed",
@@ -211,7 +213,7 @@ def _delivered(
             ),
             content=data,
         )
-        raise
+        raise checks.with_failures(refusal, [*node.failures, *failures]) from None
     shown = store.load_task(primary, task_id)
     shown["state"] = store.derived_state(primary, shown)
     return {
@@ -223,6 +225,7 @@ def _delivered(
             "waited_seconds": data["waited_seconds"],
             "log": folder.as_posix(),
         },
+        "warnings": [*node.failures, *failures],
     }
 
 
@@ -233,6 +236,7 @@ def _deliver(
     commands: list[list[str]],
     data: dict,
     node: Node,
+    failures: list[str],
 ) -> list[dict]:
     task_id, before = record["id"], data["before"]
     found = store.deliveries(primary, record)
@@ -255,6 +259,7 @@ def _deliver(
             identity=f"check-{number}",
             kind="delivery-check",
             content_type=DELIVERY_CHECK_TRACE,
+            failures=failures,
         )
         results.append(result)
         if problem:

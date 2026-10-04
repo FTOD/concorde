@@ -503,6 +503,13 @@ This illustrates [a merge running the Concorde it started with](requirements.md#
 This illustrates [a delivery following its checks](requirements.md#req.tasks.deliver-checked) and
 [the Kernel's convention](requirements.md#req.tasks.deliver-convention).
 
+### scenario.tasks.trace-write-reported — A refused trace write is reported, never fatal
+
+- GIVEN a task whose worktree holds a change, on a file system that refuses every write of a check's [trace node](../../glossary.json#concept.trace-node)
+- WHEN the task is delivered with `concorde task deliver` and merged with `concorde task merge`, each with one check that passes
+- THEN both succeed as they would otherwise, and each answer's `warnings` names the check node's `trace.json` and the file system's error
+- AND a delivery whose check fails is refused with `check_failed` whose detail names the incomplete trace the same way
+
 ### scenario.tasks.deliver-check-failed — A failed check delivers nothing
 
 - GIVEN a project without the method part and a task whose worktree holds a change

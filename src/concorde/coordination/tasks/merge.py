@@ -245,6 +245,8 @@ class Attempt:
         self.task_id = task_id
         self.folder = parent / str(number)
         self.checks = 0
+        # The refused writes of the trace nodes of its checks.
+        self.check_failures: list[str] = []
         self.data = {
             "attempt": kind,
             "branch": merging["branch"],
@@ -271,6 +273,11 @@ class Attempt:
         self.data["after"] = after
         self.node.update(content=self.data, commit=after)
 
+    @property
+    def failures(self) -> list[str]:
+        """Every write of the attempt's or its checks' ``trace.json`` the file system refused."""
+        return [*self.node.failures, *self.check_failures]
+
     def check_folder(self) -> Path:
         self.checks += 1
         return self.folder / "checks" / str(self.checks)
@@ -279,7 +286,9 @@ class Attempt:
         if self.node.record["status"] == "running" and self.folder.is_dir():
             self.node.finish(status, outcome=outcome, error=error, content=self.data)
 
-    def refused(self, refusal: TaskError) -> None:
+    def refused(self, refusal: TaskError) -> TaskError:
+        """End the node with ``refusal``; the refusal to raise, naming the trace writes that
+        failed."""
         self.end(
             "failed",
             REFUSED.get(refusal.code, "refused"),
@@ -294,6 +303,7 @@ class Attempt:
                 explanation="the merge attempt ended with this refusal",
             ),
         )
+        return checks.with_failures(refusal, self.failures)
 
 
 # A check that runs longer than this is stopped and counts as failed, so the lock is not held
@@ -692,6 +702,7 @@ def _check(
         kind="merge-check",
         content_type=MERGE_CHECK_TRACE,
         environment=_environment(),
+        failures=attempt.check_failures,
     )
 
 
@@ -818,7 +829,11 @@ def _refused_early(
         "before": head.stdout.strip(),
         "checks": commands if kind == "merge" else [],
     }
-    Attempt(primary, task_id, kind, merging, waited, reserved).refused(refusal)
+    reported = Attempt(primary, task_id, kind, merging, waited, reserved).refused(
+        refusal
+    )
+    if reported is not refusal:
+        raise reported from None
 
 
 def _merge_new(
@@ -847,8 +862,7 @@ def _merge_new(
     try:
         after = _merge(primary, record, merging)
     except TaskError as refusal:
-        attempt.refused(refusal)
-        raise
+        raise attempt.refused(refusal) from None
     attempt.merged(after)
     merging = store.merged_at(primary, task_id, after)["merging"]
     return _check_and_close(primary, record, merging, attempt, waited, outside)
@@ -866,8 +880,7 @@ def _check_and_close(
     try:
         return _checked_close(primary, record, merging, attempt, waited, outside)
     except TaskError as refusal:
-        attempt.refused(refusal)
-        raise
+        raise attempt.refused(refusal) from None
 
 
 def _checked_close(
@@ -954,6 +967,8 @@ def _checked_close(
     except Exception as error:  # noqa: BLE001 -- the merge stands whatever an Issue does
         resolved, unresolved = [], [store.unclosed(closed, error)]
     warnings.extend(unresolved)
+    # The attempt's node ended as the close moved the task's folder: its failed writes, if any.
+    warnings.extend(attempt.failures)
     return {
         "record": closed,
         "resolved": resolved,
@@ -1028,8 +1043,7 @@ def _abort(primary: Path, record: dict, waited, reserved: Path | None = None) ->
     try:
         return _aborted(primary, record, attempt, waited)
     except TaskError as refusal:
-        attempt.refused(refusal)
-        raise
+        raise attempt.refused(refusal) from None
 
 
 def _aborted(primary: Path, record: dict, attempt: Attempt, waited) -> dict:
@@ -1079,6 +1093,7 @@ def _aborted(primary: Path, record: dict, attempt: Attempt, waited) -> dict:
     ended["state"] = store.derived_state(primary, ended)
     return {
         "record": ended,
+        "warnings": attempt.failures,
         "abort": {
             "before": before,
             "undone": undone,
