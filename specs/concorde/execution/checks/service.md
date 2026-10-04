@@ -1,21 +1,26 @@
 # The check service
 
-The exact declaration of configured checks, the call that runs them and the
-[check result](../../glossary.json#concept.check-result), and the requirements and scenarios they
-serve. The [entry](../../glossary.json#concept.configured-check) explains why it is shaped this way;
-[the boundary](boundary.md) gives the runner it uses.
+This document gives the following exact declarations:
+
+- the declaration of configured checks
+- the call that runs them
+- the [check result](../../glossary.json#concept.check-result)
+
+It also gives the requirements and scenarios they serve. The
+[entry](../../glossary.json#concept.configured-check) explains why the service is shaped this way.
+[The boundary](boundary.md) gives the runner it uses.
 
 ## Declaring a configured check
 
 <a id="checks-files"></a>
 
 Each [Module](../../glossary.json#concept.module)'s checks are listed under `checks` in its own
-**checks file**, `.concorde/checks/<module id>.json`, a Git-tracked file of Check execution's; the
-file's name is the Module the checks belong to, so an entry has no `module` field. For Check
-execution a Module identity is a label that names a checks file, never checked against a registry.
+**checks file**, `.concorde/checks/<module id>.json`. This is a Git-tracked file of Check execution's.
+The file's name is the Module the checks belong to, so an entry has no `module` field. For Check execution, a Module identity is a label that names a checks file. Check execution never
+checks it against a registry.
 The configuration order of the checks is the byte order of the file names, then the order of the
 entries in each file. A checks file is a JSON object with exactly one field, `checks`, a list of
-entries; each entry has:
+entries. Each entry has the fields in this table:
 
 | Field | Meaning |
 | --- | --- |
@@ -26,110 +31,190 @@ entries; each entry has:
 | `timeout_seconds` | A positive, finite time limit |
 | `inputs` | Project-relative files or directories the result depends on, beyond the Module's own implementation files |
 
-Check execution validates every checks file it reads: a file that is not
-valid JSON, which includes a repeated field and the constants `NaN` and `Infinity`, holds another field or an entry with a field the table does not name, a file whose name
-is not a Module identity, an `id` used twice in the project, an input that is not a canonical
-project-relative path or one that escapes the worktree, through a directory that is a symbolic link,
-is refused with `invalid_check`, naming the
-file and the entry; its `validate_checks(worktree)` does the same alone, for a caller that wants
-the checks files judged before any check runs, as Method's `task-validation` does. A call of
-`run_checks` narrowed to the ordinary checks (`kinds` `module`) reads only the checks files of the
-selected Modules, and the measurement after a check only the file of the check's own Module, so that
-a malformed checks file of another Module never stops their checks; an `id` used twice is then found
-only when both files are read, as `validate_checks` reads them all. The service
-validates `argv`, `env`, `when` and `timeout_seconds` of every check it keeps, before it runs the
-first command. An input names a
-regular file or a directory; below a directory the service measures every regular file outside
-`__pycache__` directories. An input that is missing, is itself a symbolic link or is neither a
-regular file nor a directory stops the run before any command and names the check, its Module and
-the path.
+Check execution validates every checks file it reads. When any of these conditions holds, Check
+execution refuses the file or entry with `invalid_check`, naming the file and the entry:
 
-A **selective** check, one whose `argv` holds `{tests}`, runs at most once per call for the whole
-set of selected Modules, whichever Module it belongs to, with the tests its caller names, those whose
-[verification declarations](../../glossary.json#concept.verification-declaration) name a scenario of
-any of them, and is skipped when there are none. Tests and scenarios are many-to-many: the tests a
-Module's change runs are those verifying its scenarios, wherever their files are bound, so the
-Module that owns a test file only decides who may change it. A Python test is passed as
-`path::Class::name`, a TypeScript test by its file, and the log of a selective check begins with the
-tests it selected. Because the same check runs other tests for another selection, its measured
-digest also covers the selected Modules and the selected tests.
+- The file is not valid JSON. This includes a repeated field and these constants: `NaN` and
+  `Infinity`.
+- The file holds another field or an entry with a field the table does not name.
+- The file's name is not a Module identity.
+- An `id` is used twice in the project.
+- An input is not a canonical project-relative path or escapes the worktree through a directory
+  that is a symbolic link.
 
-The project's interpreter is the one the caller names, in Concorde the project configuration's
-`python`, which Method's steps pass: an absolute path as it is, a relative one in the worktree the
-check runs in or, when that has none, in the primary worktree, since a
-task worktree rarely has an environment of its own. It is never Concorde's interpreter, which runs
-in its own environment. A check that uses `{python}` without one, or with one that is not an
-executable file there, stops with `project_python_missing`, naming every place looked at. A check
-runs with the host's `PATH` and `LANG`, the transport variables below when present, and its own
-`env`. No other host variable is inherited, so nothing of Concorde's runtime enters the check: a
-relative `PYTHONPATH` such as `src` explicitly set in the check's `env` is resolved in the worktree
-the check runs in, so an installed copy of the project's code does not stand in for code under test.
+For a caller that wants the checks files judged before any check runs, `validate_checks(worktree)`
+does the same alone. Method's `task-validation` does this. When `kinds` is `module`, a call of
+`run_checks` narrowed to the ordinary checks reads only the checks files of the selected Modules.
+The measurement after a check reads only the file of the check's own Module. Thus, a malformed
+checks file of another Module never stops their checks. Only when both files are read is an `id`
+used twice then found. `validate_checks` reads them all. Before it runs the first command, the
+service validates these fields of every check it keeps:
+
+- `argv`
+- `env`
+- `when`
+- `timeout_seconds`
+
+An input names a regular file or a directory. Below a directory, the service measures every regular
+file outside `__pycache__` directories. When any of these conditions holds, an input stops the run
+before any command:
+
+- The input is missing.
+- The input is itself a symbolic link.
+- The input is neither a regular file nor a directory.
+
+The stopped run names the following:
+
+- the check
+- its Module
+- the path
+
+A **selective** check is one whose `argv` holds `{tests}`. For the whole set of selected Modules,
+such a check runs at most once per call, whichever Module it belongs to. When there are no tests,
+the selective check is skipped. Otherwise, it runs with the tests its caller names. These are the
+tests whose [verification declarations](../../glossary.json#concept.verification-declaration) name
+a scenario of any of the selected Modules. Tests and scenarios are many-to-many. A Module's change
+runs the tests verifying its scenarios, wherever their files are bound. Thus, the Module that owns
+a test file only decides who may change it. A Python test is passed as `path::Class::name`. A
+TypeScript test is passed by its file. The log of a selective check begins with the tests it
+selected. Because the same check runs other tests for another selection, its measured digest also
+covers the selected Modules and the selected tests.
+
+The project's interpreter is the one the caller names. In Concorde, this is the project
+configuration's `python`, which Method's steps pass. The service resolves that interpreter as
+follows:
+
+- An absolute path is used as it is.
+- A relative path is resolved in the worktree the check runs in.
+- When that worktree has none, a relative path is resolved in the primary worktree, since a task
+  worktree rarely has an environment of its own.
+
+The project's interpreter is never Concorde's interpreter, which runs in its own environment.
+When a check uses `{python}` without one, or with one that is not an executable file there, the
+check stops with `project_python_missing`. The error names every place looked at. A check runs
+with these environment variables:
+
+- the host's `PATH` and `LANG`
+- the transport variables below when present
+- its own `env`
+
+No other host variable is inherited, so nothing of Concorde's runtime enters the check. A relative
+`PYTHONPATH` such as `src` explicitly set in the check's `env` is resolved in the worktree the check
+runs in. Thus, an installed copy of the project's code does not stand in for code under test.
 
 | Inherited transport variables | Purpose |
 | --- | --- |
 | `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY`, `NO_PROXY`, `http_proxy`, `https_proxy`, `all_proxy`, `no_proxy` | Preserve the enclosing host or sandbox's proxy route and bypass list |
 | `SSL_CERT_FILE`, `SSL_CERT_DIR`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`, `NODE_EXTRA_CA_CERTS` | Preserve standard TLS trust file and directory locations |
 
-Names are matched exactly; upper and lower case values remain independent, including empty
-values, and each client applies its own precedence. The check's `env` overrides inherited values
-by exact name, including with an empty string. The executor then replaces temporary, cache and
-report variables with its own scratch paths as specified in [the boundary](boundary.md). Runtime
-injection settings such as `PYTHONPATH`, `PYTHONHOME`, `VIRTUAL_ENV`, `NODE_OPTIONS` and Concorde or
-agent session variables are not inherited. Transport values are passed as environment data, never
-added to the command line or diagnostic messages.
+Names are matched exactly. Upper and lower case values remain independent, including empty
+values. Each client applies its own precedence. The check's `env` overrides inherited values by
+exact name, including with an empty string. As specified in [the boundary](boundary.md), the
+executor then replaces these variables with its own scratch paths:
+
+- temporary variables
+- cache variables
+- report variables
+
+Runtime injection settings such as the following are not inherited:
+
+- `PYTHONPATH`
+- `PYTHONHOME`
+- `VIRTUAL_ENV`
+- `NODE_OPTIONS`
+- Concorde or agent session variables
+
+Transport values are passed as environment data, never added to the command line or diagnostic
+messages.
 
 ## Running checks
 
 `run_checks(worktree, *, modules, trace_directory, measured=None, tests=None, python=None,
-stage="work", kinds="all")` in `src/concorde/execution/checks/checks.py`:
+stage="work", kinds="all")` in `src/concorde/execution/checks/checks.py` runs these steps:
 
-1. takes the Modules to check from `modules`, as labels that select checks files. Which Modules a
-   change concerns, and which Modules use one of them, is the caller's to decide, since it needs
-   the Specs: Method's steps select the Modules a change concerns together with every Module that
-   uses one of them, directly or through further uses, through the Spec tooling
-   ([Method](../../method/module.md#the-standard-worker-sequence)), so a Module's checks run whenever
-   code it uses changes;
-2. goes through the configured checks in configuration order and keeps a check marked
-   `"when": "readiness"` only when `stage` is `readiness`, which `task-validation` and `delivery`
-   pass; every other caller leaves the default `work`;
-3. keeps an ordinary check when its own Module is selected, and a selective check once, when
-   `tests` names some test for the selected Modules, which the caller computes from the tests'
-   [verification declarations](../../glossary.json#concept.verification-declaration); `kinds`
-   narrows the call to the ordinary checks (`module`) or to the selective ones (`selective`), so
-   that a caller can run each Module's own checks separately and the selective checks once for the
-   whole selection. A check whose `argv` is not a list is no selective check, and is refused with
-   `invalid_check` like every malformed `argv`;
-4. before running any command, validates the `argv`, `env` and `timeout_seconds` of every kept
-   check, replaces `{python}` and `{tests}`, and finds every declared input of every kept check,
-   so that an invalid check, a missing interpreter or a missing input of any kept check, whichever
-   Module it belongs to, stops the call before the first command;
-5. for each kept check, computes its measured digest with `measured_digest`, in the same file. For
-   an ordinary check it is `check_revision` of the check's own Module: the digest of the files the
-   caller names for that Module in `measured`, in Concorde its implementation files, each of its
-   checks' definitions, the digest of every file below their inputs, and `CHECK_POLICY`. For a
-   selective check it is the digest of that `check_revision` together with the sorted selected
-   Modules, the tests it selected and the digest of every file holding one of them;
-6. creates the check's [trace node](../../glossary.json#concept.trace-node)
-   `<trace_directory>/<check id>/`, with `trace_directory` made absolute, writes its `trace.json`
-   with status `running`, runs the check through `execute_check` with `worktree` as project root and
-   the default boundary, writes `<stdout>\n<stderr>` to `output.log` of the node, preceded for a
-   selective check by the tests it selected, and writes `trace.json` again with the check's end;
-   when the boundary refused the command, the log holds what it reported, the node ends `failed`
-   with the service's error and the call fails with `check_sandbox_unavailable`. When a
-   cancellation, an interrupt or an unexpected error ends the call before the node ended, the log
-   holds the output the boundary drained, the node ends `failed` with the outcome and status
-   `interrupted`, and the error goes on to the caller unchanged. A write of `trace.json` that the
-   operating system refuses never changes the check or the call: the check result names it in
-   `trace_failures`, and an error the call fails with names those of every check it ran
-   ([Errors](#errors));
-7. computes the measured digest again, over the same named files and selected tests, and fails the
-   whole call with `stale_evidence` when it differs or can no longer be computed, because a
-   measured file, selected test file or input is gone or became a symbolic link;
-8. returns one check result per check it ran, in configuration order.
+1. The service takes the Modules to check from `modules`, as labels that select checks files.
+  The caller decides which Modules a change concerns and which Modules use one of them. This
+  decision needs the Specs. Through the Spec tooling, Method's steps select the Modules a change
+  concerns together with every Module that uses one of them, directly or through further uses
+  ([Method](../../method/module.md#the-standard-worker-sequence)). Thus, whenever code a Module
+  uses changes, that Module's checks run.
+2. The service goes through the configured checks in configuration order. Only when `stage` is
+  `readiness`, the service keeps a check marked `"when": "readiness"`. `task-validation` and
+  `delivery` pass this stage. Every other caller leaves the default `work`.
+3. When its own Module is selected, the service keeps an ordinary check. When `tests` names some
+  test for the selected Modules, the service keeps a selective check once. The caller computes
+  `tests` from the tests'
+  [verification declarations](../../glossary.json#concept.verification-declaration).
+  `kinds` narrows the call to the ordinary checks (`module`) or to the selective ones (`selective`).
+  Thus, a caller can run each Module's own checks separately and the selective checks once for the
+  whole selection. A check whose `argv` is not a list is no selective check. Like every malformed
+  `argv`, the service refuses it with `invalid_check`.
+4. Before running any command, the service validates these fields of every kept check:
+
+  - `argv`
+  - `env`
+  - `timeout_seconds`
+
+  The service replaces `{python}` and `{tests}`. The service finds every declared input of every
+  kept check. Whichever Module the kept check belongs to, any of these problems stops the call
+  before the first command:
+
+  - an invalid check
+  - a missing interpreter
+  - a missing input
+
+5. For each kept check, the service computes its measured digest with `measured_digest`, in the
+  same file. For an ordinary check, the digest is `check_revision` of the check's own Module.
+  This is the digest of the following:
+
+  - the files the caller names for that Module in `measured`, in Concorde its implementation files
+  - each of its checks' definitions
+  - the digest of every file below their inputs
+  - `CHECK_POLICY`
+
+  For a selective check, the measured digest is the digest of the following together:
+
+  - that `check_revision`
+  - the sorted selected Modules
+  - the tests it selected
+  - the digest of every file holding one of them
+
+6. The service makes `trace_directory` absolute. The service performs these steps:
+
+  - creates the check's [trace node](../../glossary.json#concept.trace-node)
+    `<trace_directory>/<check id>/`
+  - writes the node's `trace.json` with status `running`
+  - runs the check through `execute_check` with `worktree` as project root and the default boundary
+  - writes `<stdout>\n<stderr>` to `output.log` of the node, preceded for a selective check by the
+    tests it selected
+  - writes `trace.json` again with the check's end
+
+  When the boundary refused the command, the log holds what the boundary reported. Under this
+  condition, the node ends `failed` with the service's error. The call fails with
+  `check_sandbox_unavailable`.
+
+  Before the node ended, any of these events can end the call:
+
+  - a cancellation
+  - an interrupt
+  - an unexpected error
+
+  When one of these events ends the call before the node ended, the log holds the output the
+  boundary drained. Under this condition, the node ends `failed` with the outcome and status
+  `interrupted`. The error goes on to the caller unchanged.
+
+  When the operating system refuses a write of `trace.json`, that write never changes the check
+  or the call. The check result names the refused write in `trace_failures`. An error the call
+  fails with names those of every check it ran ([Errors](#errors)).
+7. The service computes the measured digest again, over the same named files and selected tests.
+  When the digest differs or can no longer be computed, the service fails the whole call with
+  `stale_evidence`. This happens because a measured file, selected test file or input is gone or
+  became a symbolic link.
+8. The service returns one check result per check it ran, in configuration order.
 
 A failure in any step ends the call without results, including those of checks that already ran.
-A selected Module without configured checks contributes no result; the caller decides whether that
-is acceptable.
+A selected Module without configured checks contributes no result. The caller decides whether
+that is acceptable.
 
 ### Check result
 
@@ -145,7 +230,8 @@ is acceptable.
 | `trace_failures` | Each write of the check node's `trace.json` that the operating system refused, naming the node's file, the moment (`start` or `end`) and the error; empty when every write succeeded |
 
 Every check the service runs is also a trace node of kind `check`, as
-[Tracing](../../kernel/tracing/contracts.md#contract.tracing.node) defines it, whose content is this value:
+[Tracing](../../kernel/tracing/contracts.md#contract.tracing.node) defines it. Its content is this
+value:
 
 ```concorde-contract
 {
@@ -217,37 +303,71 @@ Every check the service runs is also a trace node of kind `check`, as
 ```
 
 A consumer decides whether a stored check result is still current by recomputing `measured_digest`
-for the same check and, for a selective check, the same selected Modules, and comparing it with
-`source_digest`.
+for the same check. For a selective check, the consumer uses the same selected Modules too. The
+consumer compares the recomputed digest with `source_digest`.
 
 ### Errors
 
-Check execution raises its own `CheckError`, whose record carries a code, a message, a reason, a
-location, a remediation and causes, with these codes: `invalid_check` (a checks file or entry that
-breaks [the format](#checks-files), or a check without a nonempty argv or a positive timeout, with an
-`env` that is not an object of variable names to strings, or with a `when` other than `always` or
-`readiness`),
-`check_input_missing`, `project_python_missing` (a check uses `{python}` but the configuration
-names no project interpreter, or none that is an executable file where it was looked for),
-`check_sandbox_unavailable` (the read-only boundary cannot be established), `stale_evidence` (an
-input changed while the check ran) and `system_error` (an operating-system error). Each carries a
-message naming the check or Module concerned, the code's reason, its location, remediation and
-causes. A `CheckError` that ends a call after checks ran also carries in `trace_failures` each write
-of their nodes' `trace.json` that the operating system refused, since the call returns no result
-that could name them. Check execution depends on no part but the kernel, so its error type is its
-own; a caller never needs to translate it, since `service_error` makes the link.
+Check execution raises its own `CheckError`. Its record carries these fields:
+
+- a code
+- a message
+- a reason
+- a location
+- a remediation
+- causes
+
+The record uses these codes:
+
+- `invalid_check`: a checks file or entry that breaks [the format](#checks-files), or a check with
+  any of these defects:
+  - no nonempty argv
+  - no positive timeout
+  - an `env` that is not an object of variable names to strings
+  - a `when` other than `always` or `readiness`
+- `check_input_missing`
+- `project_python_missing`: a check uses `{python}` but the configuration names no project
+  interpreter, or none that is an executable file where it was looked for
+- `check_sandbox_unavailable`: the read-only boundary cannot be established
+- `stale_evidence`: an input changed while the check ran
+- `system_error`: an operating-system error
+
+Each carries the following:
+
+- a message naming the check or Module concerned
+- the code's reason
+- its location
+- remediation
+- causes
+
+When a `CheckError` ends a call after checks ran, it also carries each refused trace write in
+`trace_failures`. These are writes of those checks' nodes' `trace.json` that the operating system
+refused. It carries them because the call returns no result that could name them. Check execution depends on no part but
+the kernel, so its error type is its own. Since `service_error` makes the link, a caller never
+needs to translate the error type.
 
 ### Check execution's error as a link
 
 `service_error(error)` turns an error `run_checks` raised into this Module's own link of the
-Framework's [error chain](../../kernel/tracing/contracts.md#contract.tracing.error), which every caller keeps
-unchanged as a cause under its own link: a run's stop for checks that could not run, the round
-validation that runs a worker's checks, and Validation's blocking `check` finding and its
-`inputs_changed` stop. The link has the level `component`, the actor `Check execution`, the error's
-code, a detail with its message and location, the location and each refused trace write of the
-error as `trace-write` evidence, the code's reason as explanation, its remediation as option and
-recommendation, and the error's own causes nested the same way. Its unhandled reason
-depends on the code:
+Framework's [error chain](../../kernel/tracing/contracts.md#contract.tracing.error). Every caller
+keeps this link unchanged as a cause under its own link. These callers include:
+
+- a run's stop for checks that could not run
+- the round validation that runs a worker's checks
+- Validation's blocking `check` finding and its `inputs_changed` stop
+
+The link has the following:
+
+- the level `component`
+- the actor `Check execution`
+- the error's code
+- a detail with its message and location
+- the location and each refused trace write of the error as `trace-write` evidence
+- the code's reason as explanation
+- its remediation as option and recommendation
+- the error's own causes nested the same way
+
+The link's unhandled reason depends on the code:
 
 | Code | Reason |
 | --- | --- |
@@ -259,11 +379,21 @@ depends on the code:
 ### A check that did not pass as an error link
 
 `check_error(result)` turns a check result whose status is not `passed` into the check's link of
-the Framework's [error chain](../../kernel/tracing/contracts.md#contract.tracing.error), so every consumer reports
-a failing check the same way: the level `check`, the check's identity as actor, the code
-`check_failed` or `check_timed_out`, a detail naming the Module, the exit code (`-1` for a
-timeout), the log path and the last 3,000 bytes of the log, the log as evidence, and the reason `capability`, because a check only
-measures the code it runs against.
+the Framework's [error chain](../../kernel/tracing/contracts.md#contract.tracing.error). Thus, every
+consumer reports a failing check the same way. The link has the following:
+
+- the level `check`
+- the check's identity as actor
+- the code `check_failed` or `check_timed_out`
+- a detail naming the following:
+  - the Module
+  - the exit code (`-1` for a timeout)
+  - the log path
+  - the last 3,000 bytes of the log
+- the log as evidence
+- the reason `capability`
+
+The reason is `capability` because a check only measures the code it runs against.
 
 ## Requirements
 
@@ -274,15 +404,22 @@ The service SHALL replace `{python}` with the project's interpreter named by the
 
 ### req.checks.no-concorde-runtime — A check inherits nothing of Concorde's runtime
 
-The service SHALL NOT give a check any host environment variable other than `PATH`, `LANG` and the
-inherited transport variables.
+The service SHALL NOT give a check any host environment variable other than these:
+
+- `PATH`
+- `LANG`
+- the inherited transport variables
 
 The check's own `env` and the scratch settings of [the boundary](boundary.md) are added to these.
 
 ### req.checks.measured-input-unchanged — A check cannot vouch for input that changed
 
-A configured check run SHALL fail with `stale_evidence` when the implementation files, check
-inputs or selected tests it measured differ after the run from before it.
+When any of the following measured inputs differ after the run from before it, the service SHALL
+fail the configured check run with `stale_evidence`:
+
+- implementation files
+- check inputs
+- selected tests
 
 ### req.checks.selection-measured — A selective result names its selection
 
@@ -301,13 +438,20 @@ inside the trace directory its caller named.
 
 ### req.checks.failure-link — A failing check explains itself
 
-The check service SHALL describe a check result that did not pass, when a consumer reports it as an error, with its Module, exit code, log path and the end of its log.
+When a consumer reports a check result that did not pass as an error, the check service SHALL
+describe the result with the following:
+
+- its Module
+- its exit code
+- its log path
+- the end of its log
 
 ### req.checks.trace-write-reported — A refused trace write is in the check's result
 
-The check service SHALL report every write of a check node's `trace.json` that the operating system
-refused in that check's result, or in the error of a call that returns no result, without changing
-the check's status or the call's outcome for it.
+The check service SHALL report every write of a check node's `trace.json` that the operating system refused, without changing the check's status or the call's outcome for it, in one of these places:
+
+- that check's result
+- the error of a call that returns no result
 
 Tracing is best-effort for the check, never silent
 ([req.tracing.written-at-start](../../kernel/tracing/requirements.md#req.tracing.written-at-start)).
@@ -325,7 +469,9 @@ start.
 - WHEN Check execution reads the configured checks
 - THEN it holds the check of `module.a` first and then those of `module.b` in file order, each carrying the Module its file is named after
 - AND a file named after a Module no registry registers is read like any other, since the identity is a label
-- BUT a check entry with a `module` field or another field the format does not name, an `id` another file already uses, an input that is not a canonical project-relative path, a file that is not valid JSON or holds another field, or a file not named `<module id>.json` is refused with `invalid_check`, naming the file and what to change
+- BUT a check entry with a `module` field or another field the format does not name is refused with `invalid_check`, naming the file and what to change
+- AND so is an `id` another file already uses, or an input that is not a canonical project-relative path
+- AND so is a file that is not valid JSON or holds another field, or a file not named `<module id>.json`
 
 ### scenario.checks.check-input-missing — A configured check names a missing input
 
