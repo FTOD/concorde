@@ -311,8 +311,10 @@ class GuidanceTests(unittest.TestCase):
     @verifies("scenario.main-session.task-session-workflow")
     def test_a_task_session_runs_workflows_in_the_mode_of_its_brief(self):
         session = self.session
-        self.assertIn("in the mode the task brief names", session)
-        self.assertIn("`interactive`, also when the task brief names no mode", session)
+        self.assertIn("the mode the task brief names", session)
+        self.assertIn(
+            "`interactive` also applies when the task brief names no mode", session
+        )
         self.assertIn(
             "escalate every point in `pending` at once, with `--error-file` naming "
             "its workflow result",
@@ -333,17 +335,18 @@ class GuidanceTests(unittest.TestCase):
             "primary worktree",
             session,
         )
-        self.assertIn("copy its decisions and problems into the decision log", session)
-        self.assertIn("give its decisions in your report to the main agent", session)
+        self.assertIn("Copy its decisions and problems into the decision log", session)
+        self.assertIn("Give its decisions in your report to the main agent", session)
         self.assertIn(
-            "Escalate a result that is not `ok` and that you cannot repair within the "
-            "task with `--error-file` naming that report",
+            "When a result is not `ok` and you cannot repair it within the task, "
+            "escalate it with `--error-file` naming that report",
             session,
         )
         self.assertIn(
-            "Escalate a decision of major impact among those the workflow took, which "
-            "carries no error, naming no run or file, so that your link, with its "
-            "step, its options and your recommendation, is the whole chain",
+            "Among the decisions the workflow took, escalate a decision of major impact, "
+            "which carries no error. Name no run or file, so that your link is the whole "
+            "chain for the main agent to put to the developer. Your link includes: - The "
+            "decision's step. - The decision's options. - Your recommendation.",
             session,
         )
         self.assertIn("with every decision of a workflow you ran", self.session)
@@ -537,33 +540,36 @@ class GuidanceTests(unittest.TestCase):
             self.skill,
         )
         self.assertIn("open a task bound to it and have its task", self.skill)
-        self.assertIn("the task's session starts it", self.skill)
+        self.assertIn("The task's session starts the workflow", self.skill)
         self.assertIn("never names a task", self.skill)
         self.assertIn(
-            "Without the coordination part nothing in Concorde binds a worktree",
+            "Without the coordination part, nothing in Concorde binds a worktree",
             self.skill,
         )
         self.assertIn(
-            "Ask the developer which mode to use unless they already said", self.skill
-        )
-        self.assertIn(
-            "put the rest to the developer at once, with their options and recommendations",
+            "Unless the developer already said which mode to use, ask the developer which "
+            "mode to use",
             self.skill,
         )
-        self.assertIn("the same workflow is started again with them", self.skill)
+        self.assertIn(
+            "Put the rest to the developer at once, with their options and recommendations",
+            self.skill,
+        )
+        self.assertIn("The same workflow starts again with those answers", self.skill)
         self.assertIn(
             ".concorde/tasks/<task>/workspace/workflow/reports/<n>.json", self.skill
         )
         self.assertIn(
-            "Where the coordination part is installed, the task session copies its decisions "
-            "and problems into the task's decision log",
+            "Where the coordination part is installed, the task session does the following: "
+            "- It copies its decisions and problems into the task's decision log",
             self.skill,
         )
-        self.assertIn("treat it like an Operation result", self.skill)
+        self.assertIn("Treat the rendering like an Operation result", self.skill)
         self.assertIn("never configured automatically", self.skill)
         self.assertIn("`survey`", self.skill)
         self.assertIn(
-            "Run work that follows a known procedure as its workflow", self.block
+            "When work follows a known procedure, run that work: - As its workflow.",
+            self.block,
         )
         self.assertIn("describe that code with the `brownfield` workflow", self.block)
 
@@ -688,22 +694,22 @@ class GuidanceTests(unittest.TestCase):
     def test_sessions_inspect_before_they_record_through_the_server(self):
         skill, session = (" ".join(text.split()) for text in self.issues())
         for text, instruction in (
-            (skill, "with `issue_list` filtered by `module` and `status` `open`"),
-            (session, "with `issue_list` filtered by `module` and `status` `open`"),
-            (skill, "never the whole project's list"),
-            (session, "never the whole project's list"),
-            (skill, "and `issue_show` for a possible match"),
-            (skill, "reopen a closed match before appending"),
+            (skill, "`issue_list` filtered by `module` and `status` `open`"),
+            (session, "`issue_list` filtered by `module` and `status` `open`"),
+            (skill, "never read the whole project's list"),
+            (session, "Never read the whole project's list"),
+            (skill, "Use `issue_show` for a possible match"),
+            (skill, "Before appending a new observation to a closed match, reopen it"),
             (skill, "Repeating a creation creates another Issue"),
-            (skill, "`description`, `impact`, `basis` and `evidence`"),
+            (skill, "- `description` - `impact` - `basis` - `evidence`"),
             (
                 skill,
-                "A task session reaches the same Issues, through these tools or the "
-                "`concorde issues` command",
+                "A task session reaches the same Issues as the runs it starts do, through "
+                "these tools or the `concorde issues` command",
             ),
-            (session, "the `concorde issues` command does the same from your shell"),
-            (session, "read and write them with the project MCP server's"),
-            (session, "append to the Issue that already tracks it"),
+            (session, "The `concorde issues` command does the same from your shell"),
+            (session, "Read and write them with these tools of the project MCP server"),
+            (session, "append to that Issue rather than create another"),
             (session, "carries its `tier`"),
         ):
             with self.subTest(instruction=instruction):
@@ -713,13 +719,14 @@ class GuidanceTests(unittest.TestCase):
     def test_the_tier_decides_who_fixes_an_issue(self):
         skill, session = self.issues()
         for text, instruction in (
-            (skill, "a review Operation only reports"),
-            (skill, "it fixes `obvious-fix` and `preferred-fix` Issues itself"),
-            (skill, "escalates a `decision-needed` Issue, naming it by its identity"),
+            (skill, "A review Operation only reports"),
+            (skill, "It fixes `obvious-fix` Issues itself"),
+            (skill, "It fixes `preferred-fix` Issues itself"),
+            (skill, "It escalates a `decision-needed` Issue by its identity"),
             (skill, "it blocks nothing"),
-            (session, "fix an `obvious-fix` Issue yourself"),
-            (session, "say in your report which fix you chose and why"),
-            (session, "never settle a `decision-needed` Issue: escalate it"),
+            (session, "Fix an `obvious-fix` Issue yourself"),
+            (session, "Say in your report which fix you chose and why"),
+            (session, "Never settle a `decision-needed` Issue. Escalate it"),
         ):
             with self.subTest(instruction=instruction):
                 self.assertIn(instruction, text)
@@ -734,11 +741,15 @@ class GuidanceTests(unittest.TestCase):
         for text, instruction in (
             (
                 skill,
-                "and its `severity`, how much the problem matters whoever handles it",
+                "The report also carries its `severity`. This says how much the problem "
+                "matters whoever handles it",
             ),
-            (session, "and its `severity`, how much it matters"),
+            (
+                session,
+                "Every report also carries its `severity`, which says how much it matters",
+            ),
             (skill, "`issue_list` with `status` `open` and `sort` `severity`"),
-            (skill, "which puts the most severe Issues first"),
+            (skill, "This puts the most severe Issues first"),
         ):
             with self.subTest(instruction=instruction):
                 self.assertIn(instruction, text)
@@ -748,23 +759,29 @@ class GuidanceTests(unittest.TestCase):
         skill, session = self.issues()
         for text, instruction in (
             (session, "**After a review.**"),
-            (session, "report every finding themselves, as an Issue"),
+            (session, "these tools report every finding themselves"),
+            (session, "each finding is an Issue of the Module it concerns"),
             (session, "(`earlier_issues.carried`)"),
             (session, "(`earlier_issues.resolved`)"),
             (session, "`implement` work of your task, never the review's"),
-            (session, "`concorde task resolve` when your task fixed it"),
-            (session, "close with `issue_close` as `resolved`"),
+            (
+                session,
+                "When your task fixed it, add it to your task with `concorde task resolve`",
+            ),
+            (session, "close it with `issue_close` as `resolved`"),
             (
                 session,
                 "`spec_review`, `spec_panel` and `code_review` report every finding",
             ),
             (session, "of kind `spec-challenge` says the Spec, not the code, is wrong"),
             (session, "so escalate it rather than change the promise"),
-            (skill, "reports each of its findings as an Issue"),
+            (skill, "these reviews report each finding as an Issue"),
             (skill, "(`spec_review`, `spec_panel`, `code_review`)"),
+            (skill, "the task session closes the resolved Issues"),
             (
                 skill,
-                "closes the resolved ones, through its task when the task fixed them",
+                "When the method part is installed and the task fixed them, the session "
+                "closes them through its task",
             ),
         ):
             with self.subTest(instruction=instruction):
@@ -798,9 +815,15 @@ class GuidanceTests(unittest.TestCase):
         self.assertIn("--resolves <issue>[,<issue>…]", skill)
         self.assertIn("`task_resolve`", skill)
         self.assertIn(
-            "the merge closes each Issue the task resolves as `resolved`", skill
+            "the merge does the following: - It closes each Issue the task resolves as "
+            "`resolved`",
+            skill,
         )
-        self.assertIn("Starting, fixing or delivering the task changes no Issue", skill)
+        self.assertIn(
+            "None of these steps changes an Issue: - Starting the task. - Fixing the task. "
+            "- Delivering the task.",
+            skill,
+        )
         self.assertIn("Never close an Issue you fixed", session)
         self.assertIn("concorde task resolve <task> <issue>…", session)
 
@@ -812,7 +835,8 @@ class GuidanceTests(unittest.TestCase):
             "its error chain in the task's decision log and escalation", skill
         )
         self.assertIn(
-            "is a failure of the Issue system itself: never report it as an Issue",
+            "Never report such a refusal as an Issue because it is a failure of the Issue "
+            "system itself",
             session,
         )
 
@@ -821,10 +845,11 @@ class GuidanceTests(unittest.TestCase):
         skill, _ = self.issues()
         self.assertIn("`commit_failed`", skill)
         self.assertIn(
-            "When you met the failure for no task, such as on an Issue you recorded while "
-            "discussing the project, there is no decision log or escalation to carry it: show "
-            "the developer its whole error chain at once, as rendered, never a summary of it, "
-            "and open a task only when the failure leads to work",
+            "When you met the failure for no task, there is no decision log or escalation "
+            "to carry it. One such case is an Issue you recorded while discussing the "
+            "project. When you met the failure for no task, show the developer its whole "
+            "error chain at once, as rendered, never a summary of it. Open a task only when "
+            "the failure leads to work",
             skill,
         )
         self.assertIn("Never record a failure of the Issue system itself", skill)
@@ -835,7 +860,10 @@ class GuidanceTests(unittest.TestCase):
         merging = " ".join(self.skill.split())
         for text, instruction in (
             (skill, "`recovery_failed` means a record an Issue write published"),
-            (skill, "then run `concorde issues recover` (it has no MCP tool)"),
+            (
+                skill,
+                "Then run `concorde issues recover`, which puts the record back. The recover command has no MCP tool",
+            ),
             (skill, "`uncommitted_change` means the record of the Issue you wrote"),
             (skill, "Never commit such a record by hand."),
             (
@@ -847,8 +875,14 @@ class GuidanceTests(unittest.TestCase):
                 merging,
                 "then run `concorde issues recover`, which puts the records back",
             ),
-            (session, "`recovery_failed` or `uncommitted_change`, is a failure"),
-            (session, "never run that recovery or touch the record yourself"),
+            (
+                session,
+                "- `recovery_failed` - `uncommitted_change` Never report such a refusal as an Issue because it is a failure",
+            ),
+            (
+                session,
+                "Never run that recovery yourself. Never touch that record yourself",
+            ),
         ):
             with self.subTest(instruction=instruction):
                 self.assertIn(instruction, text)

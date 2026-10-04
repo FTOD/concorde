@@ -1,11 +1,17 @@
 # Kernel contracts
 
-The canonical formats of the [Kernel](module.md): the
-[workspace binding](../glossary.json#concept.workspace-binding), the
-[delivery commit](../glossary.json#concept.delivery-commit), and the
-[typed values](../glossary.json#concept.typed-value) and
-[file transactions](../glossary.json#concept.file-transaction) parts exchange and write.
-[Trace nodes](../glossary.json#concept.trace-node), locks and error links are its child [Tracing](tracing/contracts.md)'s.
+The [Kernel](module.md) defines the canonical formats that parts exchange and write:
+
+- The [workspace binding](../glossary.json#concept.workspace-binding).
+- The [delivery commit](../glossary.json#concept.delivery-commit).
+- The [typed values](../glossary.json#concept.typed-value).
+- The [file transactions](../glossary.json#concept.file-transaction).
+
+Its child [Tracing](tracing/contracts.md) owns these formats:
+
+- [Trace nodes](../glossary.json#concept.trace-node).
+- Locks.
+- Error links.
 
 ## Workspace binding
 
@@ -86,13 +92,16 @@ The canonical formats of the [Kernel](module.md): the
 }
 ```
 
-A binding that breaks this contract is refused by every part that reads it, never read in part, and
-by the library before it writes one. A binding whose `root` is not the real path of the worktree it
-lies in is refused too, since a copied binding would bind the wrong workspace: a `root` that is not
-an absolute real path, such as a symbolic link to the worktree or a path ending in `/.`, breaks the
-contract, and the real path of another worktree is a misplaced binding. Git ignores the file. The [Modules](../glossary.json#concept.module) it names are Module
-identities as text: a part that knows the project's Specs checks them against the registry, and a
-part that does not treats them as labels.
+When a binding breaks this contract, every part that reads it refuses it.
+No part reads such a binding in part. Before writing a binding that breaks this contract, the
+library refuses it. When a binding's `root` is not the real path of the worktree it lies in,
+the binding is refused too. The reason is that a copied binding would bind the wrong workspace.
+When a `root` is not an absolute real path, it breaks the contract.
+Examples are a symbolic link to the worktree or a path ending in `/.`.
+The real path of another worktree is a misplaced binding. Git ignores the file.
+The [Modules](../glossary.json#concept.module) it names are Module identities as text.
+When a part knows the project's Specs, it checks those identities against the registry.
+When a part does not know the project's Specs, it treats those identities as labels.
 
 ## Delivery commit
 
@@ -102,194 +111,330 @@ concorde: deliver <workspace>
 <goal of the workspace>
 ```
 
-A commit is a **delivery commit** of a workspace when it lies on the first-parent history of the
-workspace's branch since the binding's base commit and its subject is exactly
-`concorde: deliver <workspace>`, with the workspace's name. Its body is the workspace's goal. The
-delivery commits are the only record of a delivery: anyone who needs to know whether and how often a
-workspace was delivered reads them from the branch this way, and no part keeps a list of its own.
+When both conditions hold, a commit is a **delivery commit** of a workspace:
 
-A delivery commit **verifies** when it has exactly one parent. A delivery commit with another number
-of parents, such as a merge commit given the subject, does not verify: every part that reads
-delivery commits refuses to take the workspace as delivered by it and names the mismatch. A delivery
-commit is made with the repository's configured author identity and its commit hooks, and is never
-amended: a workspace delivered again gets a new delivery commit on top, so the first-parent history
-keeps every delivery.
+- It lies on the first-parent history of the workspace's branch since the binding's base commit.
+- Its subject is exactly `concorde: deliver <workspace>`, with the workspace's name.
 
-This convention says what a delivery commit is, not who makes one. Which command may make it, what
-it checks before, and which of the workspace's changes it holds, such as every change Git does not
-ignore less the untracked paths its own validation leaves out, are the delivering command's own
-rules, stated in its [Spec](../glossary.json#concept.spec): in Concorde, Method's
-[`delivery`](../method/delivery/contracts.md#delivery-commit) and, where the method part is not
-installed, Coordination's [`task deliver`](../coordination/tasks/module.md). Nothing here relies on
-either.
+Its body is the workspace's goal. The delivery commits are the only record of a delivery.
+To know whether and how often a workspace was delivered, anyone reads its delivery commits from
+the branch this way. No part keeps a list of its own.
+
+When a delivery commit has exactly one parent, it **verifies**.
+When a delivery commit has another number of parents, it does not verify.
+A merge commit given the subject is an example.
+For such a delivery commit, every part that reads delivery commits refuses to take the workspace
+as delivered by that commit. Every such part names the mismatch.
+A delivery commit is made with the repository's configured author identity.
+A delivery commit is made with the repository's commit hooks.
+A delivery commit is never amended.
+When a workspace is delivered again, it gets a new delivery commit on top.
+Thus, the first-parent history keeps every delivery.
+
+This convention says what a delivery commit is, not who makes one.
+The delivering command's own rules state these matters in its [Spec](../glossary.json#concept.spec):
+
+- Which command may make the delivery commit.
+- What the command checks before making the delivery commit.
+- Which of the workspace's changes the delivery commit holds.
+
+An example of the last matter is every change Git does not ignore less the untracked paths the
+command's own validation leaves out. In Concorde, Method's
+[`delivery`](../method/delivery/contracts.md#delivery-commit) states these rules.
+Where the method part is not installed, Coordination's
+[`task deliver`](../coordination/tasks/module.md) states these rules. Nothing here relies on either.
 
 ## Typed values
 
 A **typed value** is a closed JSON object `{"type_id": ..., "schema_version": ..., "data": ...}`.
-`type_id` is a nonblank name such as `concorde-run-trace`, `schema_version` a positive integer, and
-`data` the value's content, checked against the schema the type's owner registered for that version.
-Only a value its owner's contract designates as typed carries the envelope, such as a trace node's
-`content`; a record whose contract defines its own representation, such as the
-workspace binding above, a [run result](../glossary.json#concept.run-result) or a grant, is checked against that contract's schema as it
-is.
+Its fields have these meanings:
 
-- **Registration.** The part that owns a type registers one schema for it when its code is loaded,
-  under the type's identity and one version. Registering an identity already registered with the
-  same version and an equal schema changes nothing; another version or schema for the same identity
-  is refused as `duplicate_type`, and the existing registration stays in force. The Kernel registers
-  no type of any part and imports no part, so whoever checks a value must have loaded the code of the
-  value's owner.
+- `type_id` is a nonblank name such as `concorde-run-trace`.
+- `schema_version` is a positive integer.
+- `data` is the value's content.
+
+The content is checked against the schema the type's owner registered for that version.
+Only when its owner's contract designates a value as typed does the value carry the envelope.
+A trace node's `content` is an example.
+When a record's contract defines its own representation, the record is checked against that
+contract's schema as it is. Examples are:
+
+- The workspace binding above.
+- A [run result](../glossary.json#concept.run-result).
+- A grant.
+
+- **Registration.** When its code is loaded, the part that owns a type registers one schema under
+  the type's identity and one version.
+  Registering an identity already registered with the same version and an equal schema changes
+  nothing. For the same identity, another version or schema is refused as `duplicate_type`.
+  In that case, the existing registration stays in force.
+  The Kernel registers no type of any part. The Kernel imports no part.
+  Thus, whoever checks a value must have loaded the code of the value's owner.
 - **Embedding.** A registered schema embeds a whole typed value of another owner's type with the
-  reference `{"$ref": "<type_id>"}`, a bare type identity rather than a JSON pointer, which stands
-  alone: a schema holding such a `$ref` has no other keyword. The reference
-  is resolved when a value is checked, against the registration in force then, and matches the whole
-  envelope: `type_id` equal to that identity, `schema_version` equal to its registered version, and
-  `data` against its registered schema. So one part's record holds another part's value without
-  importing it, and a reference to a type still unregistered at check time fails with
-  `unknown_type`. For example, a type `example-batch` whose schema is
+  reference `{"$ref": "<type_id>"}`. This reference is a bare type identity rather than a JSON
+  pointer. The reference stands alone.
+  A schema holding such a `$ref` has no other keyword.
+  When a value is checked, the reference is resolved against the registration in force then.
+  The reference matches the whole envelope:
+
+  - `type_id` equals that identity.
+  - `schema_version` equals its registered version.
+  - `data` matches its registered schema.
+
+  So one part's record holds another part's value without importing it.
+  When a type is still unregistered at check time, a reference to that type fails with
+  `unknown_type`. For example, a type `example-batch` has this schema:
   `{"type": "object", "additionalProperties": false, "required": ["runs"], "properties": {"runs":
-  {"type": "array", "items": {"$ref": "concorde-run-trace"}}}}` checks each element of `runs` as a
-  whole `concorde-run-trace` value, and fails with `unknown_type` at `/data/runs/0` while that type
-  is not registered.
-- **Checking.** A value of another version fails with `unsupported_version`, an unregistered type
-  with `unknown_type`, a value of the wrong type where one is expected with `incompatible_handoff`,
-  and any other mismatch with `invalid_field`, naming the JSON pointer of the offending field. A
-  checked value is returned as a copy, never shared with its caller.
-- **Paths and artifacts.** A field whose registered schema gives it `"format": "project-path"` is a
-  canonical project-relative POSIX path: nonempty, no leading `/`, no backslash, colon or control
-  character, no empty, `.` or `..` component. An **artifact** is an object with exactly the keys
-  `id`, `path` and `digest`: its `path` a project path relative to a root, its digest `sha256:` and
-  64 lowercase hexadecimal digits of the file's bytes. Checking a typed value never reads a file:
-  artifacts are made and verified by operations of their own over a root the caller chooses, since
-  only the caller knows in which worktree its record lives. Making one digests a file that must
-  exist below the root, and verifying a value walks it whole, treats every object with exactly
-  those three keys as an artifact and refuses as `stale_reference` one whose file is missing or
-  whose bytes changed ([Library](#library)). An array whose `items` schema is the library's
-  artifact schema, which requires those three keys and admits no other, lists each artifact once:
-  two of its artifacts with the same `id` or the same `path` are refused with `invalid_field`.
-  The file an artifact or a [file transaction](#file-transactions) names is reached below its root
-  only through real directories: a path any of whose components is a symbolic link is refused,
-  naming the path and the link, with `invalid_field` for an artifact and as a malformed list
-  (`invalid_proposal`) of a file transaction.
-  Every other path is what its owner's schema says, an absolute location included: a task trace's
-  worktree or the evidence a run result keeps are never rewritten.
+  {"type": "array", "items": {"$ref": "concorde-run-trace"}}}}`.
+  The type checks each element of `runs` as a whole `concorde-run-trace` value.
+  While the referenced type is not registered, the check fails with `unknown_type` at `/data/runs/0`.
+- **Checking.** Checking fails as follows, naming the JSON pointer of the offending field:
+
+  - A value of another version fails with `unsupported_version`.
+  - An unregistered type fails with `unknown_type`.
+  - Where one type is expected, a value of the wrong type fails with `incompatible_handoff`.
+  - Any other mismatch fails with `invalid_field`.
+
+  A checked value is returned as a copy. The checked value is never shared with its caller.
+- **Paths and artifacts.** When a field's registered schema gives it `"format": "project-path"`,
+  the field is a canonical project-relative POSIX path. Such a path has these properties:
+
+  - It is nonempty.
+  - It has no leading `/`.
+  - It has no backslash.
+  - It has no colon.
+  - It has no control character.
+  - It has no empty component.
+  - It has no `.` component.
+  - It has no `..` component.
+
+  An **artifact** is an object with exactly these keys:
+
+  - `id`.
+  - `path`.
+  - `digest`.
+
+  Its `path` is a project path relative to a root.
+  Its digest is `sha256:` and 64 lowercase hexadecimal digits of the file's bytes.
+  Checking a typed value never reads a file.
+  Artifacts are made and verified by operations of their own over a root the caller chooses.
+  The reason is that only the caller knows in which worktree its record lives.
+  Making an artifact digests a file that must exist below the root.
+  Verifying a value walks the whole value.
+  Verification treats every object with exactly those three keys as an artifact.
+  When an artifact's file is missing or its bytes changed, verification refuses the artifact as
+  `stale_reference` ([Library](#library)).
+  When an array's `items` schema is the library's artifact schema, the array lists each artifact
+  once. That schema requires those three keys. That schema admits no other key.
+  In such an array, two artifacts with the same `id` or the same `path` are refused with
+  `invalid_field`.
+  Below its root, the file an artifact or a [file transaction](#file-transactions) names is reached
+  only through real directories.
+  When any path component is a symbolic link, the path is refused.
+  That refusal names the path and the link.
+  For an artifact, that refusal uses `invalid_field`.
+  For a file transaction, that refusal treats the list as malformed (`invalid_proposal`).
+  Every other path is what its owner's schema says, an absolute location included.
+  A task trace's worktree or the evidence a run result keeps are never rewritten.
 
 ### Registered schemas
 
-A registered schema is written in the following dialect of JSON Schema, which needs no network and
-loads no document. A schema is an object or a boolean. Its keywords are `title`, `description`,
-`examples`, `default`, `type` with one type name, `properties`, `required`, `additionalProperties`
-(a boolean or a schema), `items`, `minItems`, `maxItems`, `uniqueItems`, `minLength`,
-`maxLength`, `pattern`, `minimum`, `maximum`, `enum`, `const`, `anyOf`, `format` with the one
-format `project-path`, and `$ref` with a bare type identity as above. Any other keyword, a list of
-types, a `$ref` of another form, an invalid bound or nesting deeper than 100 levels is refused when
-the schema is registered (`invalid_input`), so that no registered type promises more than its values
-are checked for. Two schemas are equal, for a repeated registration, when they are equal as JSON
-values, as below.
+A registered schema is written in the following dialect of JSON Schema. The dialect needs no
+network. It loads no document. A schema is an object or a boolean. Its keywords are:
 
-A value is checked as JSON Schema checks it, for these keywords: an object admits keys its
-`properties` do not name unless its `additionalProperties` is `false`, and checks them against
-`additionalProperties` when that is a schema, so a closed object spells
-`additionalProperties: false`; `number` admits integers and finite non-integral numbers and
-`integer` only integers, neither a boolean, and `minimum` and `maximum` bound both; `pattern`
-matches anywhere in the string unless it is anchored; `const`, `enum` and `uniqueItems` compare
-values as JSON values: numbers by value, so `1` equals `1.0`, a boolean only with a boolean, so
-`true` is not `1`, and arrays and objects item by item and field by field under the same rule; each
-keyword applies to the kind of value it constrains, whether the schema names a `type` or not; and a
-string whose schema sets `minLength` must not consist of whitespace only, though `minLength` `0`
-still admits the empty string. A number is finite: a JSON text holding a number too large for a
-finite floating-point value is no JSON value (`invalid_json`), while an integer of any size is
-checked by its value. Checking a value descends at most 100 levels: each field of an object, item of an
-array, `anyOf` alternative tried, `$ref` followed and `data` of an embedded typed value counts one
-level, and a value whose checking would go deeper is refused with `invalid_field` at the field
-reached.
+- `title`
+- `description`
+- `examples`
+- `default`
+- `type` with one type name
+- `properties`
+- `required`
+- `additionalProperties` (a boolean or a schema)
+- `items`
+- `minItems`
+- `maxItems`
+- `uniqueItems`
+- `minLength`
+- `maxLength`
+- `pattern`
+- `minimum`
+- `maximum`
+- `enum`
+- `const`
+- `anyOf`
+- `format` with the one format `project-path`
+- `$ref` with a bare type identity as above
+
+When the schema is registered, the Kernel refuses any of the following with `invalid_input`:
+
+- Any other keyword.
+- A list of types.
+- A `$ref` of another form.
+- An invalid bound.
+- Nesting deeper than 100 levels.
+
+Thus, no registered type promises more than its values are checked for. For a repeated registration,
+two schemas are equal when they are equal as JSON values, as below.
+
+For these keywords, a value is checked as JSON Schema checks it. Unless its
+`additionalProperties` is `false`, an object admits keys its `properties` do not name. When
+`additionalProperties` is a schema, the object checks those keys against that schema. Thus, a
+closed object spells `additionalProperties: false`. `number` admits integers and finite
+non-integral numbers. `integer` admits only integers. Neither admits a boolean. `minimum` and
+`maximum` bound both. Unless it is anchored, `pattern` matches anywhere in the string. The
+following keywords compare values as JSON values:
+
+- `const`
+- `enum`
+- `uniqueItems`
+
+The comparison follows these rules:
+
+- Numbers compare by value. Thus, `1` equals `1.0`.
+- A boolean compares only with a boolean. Thus, `true` is not `1`.
+- Arrays and objects compare item by item and field by field under the same rule.
+
+Whether the schema names a `type` or not, each keyword applies to the kind of value it constrains.
+When a string's schema sets `minLength`, the string must not consist of whitespace only.
+However, `minLength` `0` still admits the empty string. A number is finite. When a JSON text holds
+a number too large for a finite floating-point value, the JSON text is no JSON value (`invalid_json`). An
+integer of any size is checked by its value. Checking a value descends at most 100 levels. Each of
+the following counts one level:
+
+- Each field of an object.
+- Each item of an array.
+- Each `anyOf` alternative tried.
+- Each `$ref` followed.
+- Each `data` of an embedded typed value.
+
+When checking a value would go deeper, the Kernel refuses the value with `invalid_field` at the
+field reached.
 
 ### Contract schemas
 
-A record whose own contract defines its representation, such as a workspace binding, a
-[run result](../glossary.json#concept.run-result) or an error link, carries no envelope: the part
-that owns it checks it against a **contract schema**, the schema its contract gives, as code. A
-contract schema is written in the registered dialect with one addition: an object `$defs` of named
-schemas at its top, referred to anywhere in it as `{"$ref": "#/$defs/<name>"}`, so that a recursive
-record such as an error link with its causes can be described; a `$defs` anywhere else is refused,
-naming its JSON pointer. A local reference must name an entry of `$defs`; a bare type identity
-embeds a typed value as above. A contract schema is checked against
-the dialect when it is first used (`invalid_input`) and a record that breaks it is refused with
-`invalid_field`, naming the JSON pointer of the offending field. It is never registered.
+A record whose own contract defines its representation carries no envelope. Such records include:
+
+- A workspace binding.
+- A [run result](../glossary.json#concept.run-result).
+- An error link.
+
+The part that owns the record checks it against a **contract schema** as code. A contract schema
+is the schema the record's contract gives. A contract schema is written in the registered dialect
+with one addition. At its top, it admits an object `$defs` of named schemas. Anywhere in the
+contract schema, `{"$ref": "#/$defs/<name>"}` refers to these named schemas. This permits the
+description of a recursive record such as an error link with its causes. When a `$defs` occurs
+anywhere else, the Kernel refuses it, naming its JSON pointer. A local reference must name an
+entry of `$defs`. A bare type identity embeds a typed value as above. When a contract schema is
+first used, the Kernel checks it against the dialect (`invalid_input`). When a record breaks the
+contract schema, the Kernel refuses it with `invalid_field`, naming the JSON pointer of the
+offending field. The contract schema is never registered.
 
 The `concorde-contract` fences of the Specs use a wider dialect of their own, with `oneOf` and
-`allOf` besides, which belongs to the Spec tooling that checks the fences; neither a registered nor
-a contract schema of the Kernel uses those. The Spec tooling keeps its own copy of this registered
-dialect and of the typed value format in its own code, so that the spec part installs alone
-([Spec core](../spec-tooling/spec/contracts.md#typed-values)); the two agree on this text, not on
-code.
+`allOf` besides. This wider dialect belongs to the Spec tooling that checks the fences. Neither
+a registered nor a contract schema of the Kernel uses those keywords. The Spec tooling keeps its
+own copy of this registered dialect and of the typed value format in its own code. Thus, the spec
+part installs alone ([Spec core](../spec-tooling/spec/contracts.md#typed-values)). The two agree
+on this text, not on code.
 
 ## File transactions
 
-A **file transaction** writes a set of whole files below a root its caller names, each bound to the
-bytes it replaces. It takes a nonempty list of changes, each
+A **file transaction** writes a set of whole files below a root its caller names. Each file is
+bound to the bytes it replaces. It takes a nonempty list of changes, each with this form:
 
 ```json
 {"path": "<project-relative path below the root>", "before_digest": "sha256:<64 hex digits> or null", "content": "<the file's new text>"}
 ```
 
-where `path` follows the `project-path` rule above and names a file once in the list, `content` is
-the whole new file as text written in UTF-8, and `before_digest` is the digest of the file's current
-bytes, `sha256:` and 64 lowercase hexadecimal digits, or `null` when the file must not exist; a
-`before_digest` of any other form makes the list malformed. The caller also names the paths it
-allows and, optionally, a final check to run after the writes.
+The fields follow these rules:
 
-1. A malformed list (`invalid_proposal`), a path outside the allowed ones (`permission_denied`) or a
-   file whose current bytes, or existence, do not match its `before_digest` (`stale_proposal`)
-   refuses the transaction before any write; the match is checked again just before each write.
-2. Each file is written to a temporary file named `.concorde-write-` and a random suffix in its own
-   directory, flushed and renamed into place.
-3. After the last write the final check runs. On success the transaction returns the written paths
+- `path` follows the `project-path` rule above. It names a file once in the list.
+- `content` is the whole new file as text written in UTF-8.
+- `before_digest` is the digest of the file's current bytes: `sha256:` and 64 lowercase hexadecimal
+  digits. When the file must not exist, `before_digest` is `null`.
+
+When a `before_digest` has any other form, the list is malformed. The caller also names the paths
+it allows. Optionally, the caller names a final check to run after the writes.
+
+1. Before any write, the transaction refuses any of the following:
+   - A malformed list (`invalid_proposal`).
+   - A path outside the allowed ones (`permission_denied`).
+   - A file whose current bytes, or existence, do not match its `before_digest` (`stale_proposal`).
+
+   Just before each write, the transaction checks the match again.
+2. The transaction writes each file to a temporary file in its own directory. The temporary file's
+   name is `.concorde-write-` and a random suffix. The transaction flushes the temporary file.
+   It then renames the temporary file into place.
+3. After the last write, the final check runs. On success, the transaction returns the written paths
    in order.
-4. When a write or the final check fails, every file written so far is restored to its original
-   bytes, or removed when it did not exist, through the same temporary file and rename.
+4. When a write or the final check fails, the transaction restores every file written so far
+   through the same temporary file and rename. When a file originally exists, the transaction
+   restores its original bytes. When a file originally does not exist, the transaction removes it.
 
 What the caller then receives:
 
-- when every restoration succeeded, the failure of the final check exactly as the check raised it;
-  a refusal of step 1 or a `stale_proposal` of a later write as such; and an operating-system error
-  of a write as `system_error`, naming the file and saying that every file written so far was
-  restored, with the operating system's error as its cause;
-- when the operating system refuses a restoration, the other restorations are still attempted and
-  the transaction fails with `system_error`, naming every file not restored and saying each still
-  holds its new content, with the first failure as its first cause and one cause per refused
-  restoration. The caller must not treat that outcome as restored: it recovers the named files by
-  its own records' rule, as it does after a killed process.
+- When every restoration succeeds, the caller receives the applicable failure:
+  - The failure of the final check exactly as the check raises it.
+  - A refusal of step 1 or a `stale_proposal` of a later write as such.
+  - An operating-system error of a write as `system_error`.
 
-These guarantees hold for failures the process observes, an interruption it receives, such as
-`KeyboardInterrupt` or `SystemExit`, included: the interruption is raised again unchanged once every
-file is restored. A killed process restores nothing: each
-file already renamed into place keeps its new content, every other file its original bytes, and
-`.concorde-write-` temporary files may remain beside them, which a writer's recovery may remove.
+  For that `system_error`, the transaction names the file. It says that every file written so far
+  is restored. It gives the operating system's error as its cause.
+- When the operating system refuses a restoration, the transaction still attempts the other
+  restorations. In that case, the transaction fails with `system_error`. The error names every
+  file not restored. It says each such file still holds its new content. It has the first failure
+  as its first cause. It has one cause per refused restoration. The caller must not treat that
+  outcome as restored. The caller recovers the named files by its own records' rule, as it does after a
+  killed process.
 
-**Concurrency.** The digest checks catch a change that happened before the transaction, not one made
-during it: a writer that changes a target file between a check and its rename, or before a
-restoration, is overwritten. A transaction therefore assumes that its caller excludes every other
-writer of its target files for the whole transaction, by holding the lock its records require, such
-as the [merge lock](../glossary.json#concept.merge-lock) every [Issue](../glossary.json#concept.issue) write holds; the Kernel takes no
-lock for it.
+These guarantees hold for failures the process observes. They include an interruption the process
+receives, such as `KeyboardInterrupt` or `SystemExit`. Once every file is restored, the process
+raises the interruption again unchanged. A killed process restores nothing. After a killed
+process, the files have these states:
+
+- Each file already renamed into place keeps its new content.
+- Every other file keeps its original bytes.
+- `.concorde-write-` temporary files may remain beside them.
+
+A writer's recovery may remove those temporary files.
+
+**Concurrency.** The digest checks catch a change that happened before the transaction. They do not
+catch a change made during it. When a writer changes a target file between a check and its rename,
+or before a restoration, the transaction overwrites that change. A transaction therefore assumes
+that its caller excludes every other writer of its target files for the whole transaction. The
+caller does so by holding the lock its records require. One such lock is the
+[merge lock](../glossary.json#concept.merge-lock) every [Issue](../glossary.json#concept.issue)
+write holds. The Kernel takes no lock for the transaction.
 
 The Spec tooling keeps its own copy of this mechanism, with its own error types
 ([Spec core](../spec-tooling/spec/contracts.md#file-transactions)).
 
 ## Library
 
-The Kernel's library gives every part the same operations on these contracts. Each refuses with a
-Kernel error carrying a stable `code`, the JSON pointer of the offending value or the path of the
-offending file, empty when the refusal concerns the whole input, and a message; it never
-writes an error link itself, since the level that called it decides why it cannot handle the
-refusal and builds its own link in the
-[error contract](tracing/contracts.md#contract.tracing.error), keeping the code and message as its
-detail. An operation that reads or writes a file, or takes a lock, and that the operating system
-refuses fails with `system_error`, naming the path and with the operating system's error as its
-cause, unless the table gives that failure a code of its own; a caller's own exception raised while
-it holds a lock passes unchanged. Tracing's operations on trace nodes and locks are its child's
-([Tracing contracts](tracing/contracts.md)).
+The Kernel's library gives every part the same operations on these contracts. Each operation refuses
+with a Kernel error carrying these fields:
+
+- A stable `code`.
+- The JSON pointer of the offending value or the path of the offending file.
+- A message.
+
+When the refusal concerns the whole input, the JSON pointer or path is empty. An operation never
+writes an error link itself. The reason is that the level that called the operation has these responsibilities:
+
+- It decides why it cannot handle the refusal.
+- It builds its own link in the [error contract](tracing/contracts.md#contract.tracing.error).
+
+The link keeps the code and message
+as its detail. Unless the table gives the failure its own code, an operating-system refusal fails
+with `system_error` for any of these operations:
+
+- Reading a file.
+- Writing a file.
+- Taking a lock.
+
+For such a `system_error`, the operation names the path. The error carries the operating system's
+error as its cause. When a caller raises its own exception while it holds a lock, that exception
+passes unchanged. Tracing's operations on trace nodes and locks belong to the Kernel's child
+Tracing ([Tracing contracts](tracing/contracts.md)).
 
 | Operation | Takes | Returns | Refuses with |
 | --- | --- | --- | --- |
@@ -308,7 +453,7 @@ it holds a lock passes unchanged. Tracing's operations on trace nodes and locks 
 | Take the merge lock | the primary worktree's `.concorde`, the holder, the task when there is one and how long to wait, 300 seconds by default | holds it until released | `merge_busy` naming the holder, `system_error` |
 | Read a lock's holder | the workspace lock or the merge lock | its holder line, or none when nobody holds it | nothing |
 
-A run of Execution, for example, reads the binding of the worktree it starts in: a binding copied
-from another workspace is refused with `binding_misplaced`, and the runner records the run as
-refused with its own link, of level `operation` or `command`, whose code and detail name that
-refusal and the file.
+A run of Execution, for example, reads the binding of the worktree it starts in. When the binding
+is copied from another workspace, the binding is refused with `binding_misplaced`. In that case,
+the runner records the run as refused with its own link. The link has level `operation` or
+`command`. The link's code and detail name that refusal and the file.

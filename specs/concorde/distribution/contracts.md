@@ -1,21 +1,28 @@
 # Distribution contracts
 
-The [part registration](../glossary.json#concept.part-registration) every part gives Distribution,
-the parts index and the [build manifest](../glossary.json#concept.build-manifest) the build
-records, the session and call protocol of the
-[project MCP server](../glossary.json#concept.project-mcp-server), and the exact results that
-[Distribution](module.md)'s installer and `concorde update` print when they succeed. Both print one
-JSON object on standard output and exit with status 0; every refusal instead prints
-`{"error": <link>}` and exits with status 1, as [Refusals](module.md#refusals) describes. Paths are
+This document describes:
+
+- The [part registration](../glossary.json#concept.part-registration) every part gives Distribution.
+- The parts index the build records.
+- The [build manifest](../glossary.json#concept.build-manifest) the build records.
+- The session and call protocol of the
+  [project MCP server](../glossary.json#concept.project-mcp-server).
+- The exact results that [Distribution](module.md)'s installer and `concorde update` print when
+  they succeed.
+
+When they succeed, both print one JSON object on standard output. Both then exit with status 0.
+Every refusal instead prints `{"error": <link>}`, as [Refusals](module.md#refusals) describes.
+Every refusal exits with status 1. Paths are
 relative to the project root unless stated otherwise.
 
 ## Part registration
 
-Every part declares one registration, plain data in the file `registration.json` of its own
-directory of `src/concorde/`, which Distribution reads without importing anything. An entry is a
-Python attribute named `<module>:<attribute>`, the module relative to the part's own package, so
-that an entry never leaves its part; Distribution imports a part's code only through the entries of
-an installed part's registration. What each kind of entry is called with and answers:
+Every part declares one registration. The registration is plain data in the file `registration.json`
+of the part's own directory of `src/concorde/`. Distribution reads the registration without importing
+anything. An entry is a Python attribute named `<module>:<attribute>`. The module is relative to the
+part's own package, so that an entry never leaves its part. Distribution imports a part's code only
+through the entries of an installed part's registration. The table describes what each kind of entry
+is called with and answers:
 
 | Entry | Called with | Answers |
 | --- | --- | --- |
@@ -149,144 +156,260 @@ an installed part's registration. What each kind of entry is called with and ans
 }
 ```
 
-The installer resolves the parts to install by following `depends_on` from the parts named, and
-refuses before any write a name no registration of the package carries, or a set whose
-dependencies name a part the package does not build. Two parts registering the same command or tool
+The installer resolves the parts to install by following `depends_on` from the parts named.
+Before any write, the installer refuses:
+
+- A name no registration of the package carries.
+- A set whose dependencies name a part the package does not build.
+
+Two parts registering the same command or tool
 name are a build error, never resolved by order.
 
-An `idle_check` or `after_update` entry that cannot be imported, raises, or answers anything but
-the list its row names is refused with `part_failed`, reason `environment`, whose detail names the
-part, the entry and what went wrong and whose cause, when the entry raised, is the link of its
-exception. A failing `idle_check` refuses the install before any write, so the project is left as
-it was; a failing `after_update` refuses the update after it installed, rebound the
-[Protocol binding](../glossary.json#concept.protocol-binding) and wrote its mark, which stay, so only the update result is lost.
+When any of these conditions holds, an `idle_check` or `after_update` entry is refused with
+`part_failed`, reason `environment`:
+
+- The entry cannot be imported.
+- The entry raises.
+- The entry answers anything but the list its row names.
+
+The refusal's detail names:
+
+- The part.
+- The entry.
+- What went wrong.
+
+When the entry raised, the refusal's cause is the link of the entry's exception.
+A failing `idle_check` refuses the install before any write, so the project is left as it was.
+A failing `after_update` refuses the update after these steps:
+
+- The update installed.
+- The update rebound the [Protocol binding](../glossary.json#concept.protocol-binding).
+- The update wrote its mark.
+
+The installation, the binding and the mark stay, so only the update result is lost.
 
 The build records what every part of the package registers in the **parts index**
-`generated/parts.json`, `{"schema_version": 1, "parts": {<part>: {"module", "depends_on",
-"commands", "mcp_tools"}}}`, so that a project's `concorde` and [project MCP server](../glossary.json#concept.project-mcp-server) name the part of a
-command or tool that is not installed without reading that part's registration. The installed parts
-are, in a source checkout, every part the package builds, and in a project the parts the receipt
-names under `parts`, an object whose keys are the part names, every part when the receipt names
-none; Distribution is installed with any part.
+`generated/parts.json`. The parts index has this form:
+`{"schema_version": 1, "parts": {<part>: {"module", "depends_on",
+"commands", "mcp_tools"}}}`.
+This lets a project's `concorde` and [project MCP server](../glossary.json#concept.project-mcp-server)
+name the part of a command or tool that is not installed.
+They can do this without reading that part's registration.
+In a source checkout, the installed parts are every part the package builds.
+In a project, the installed parts are the parts the receipt names under `parts`.
+That field is an object whose keys are the part names.
+When the receipt names none, every part is installed. Distribution is installed with any part.
 
 ## Project MCP server
 
-The host of the [project MCP server](../glossary.json#concept.project-mcp-server): its session with
-Claude Code and the protocol between it and the process that answers each call.
+This section describes the host of the [project MCP server](../glossary.json#concept.project-mcp-server).
+It covers the host's session with Claude Code and the protocol between the host and the process
+that answers each call.
 [Serving a call](module.md#serving-a-call) explains why it works this way.
 
 ### Session
 
-The server is started as `concorde project-mcp [--name <name>]`, `<name>` being the name it is
-registered under, `concorde` by default, and speaks MCP over standard input and output:
-newline-delimited JSON-RPC 2.0, one message per line. It answers the requests `initialize`, `ping`,
-`tools/list` and `tools/call`, any other request with the JSON-RPC error `-32601`, and a line that
-is no JSON with the error `-32700` and a `null` identity; it answers no notification or response. It
-answers `initialize` with the client's `protocolVersion` when it is one of `2025-06-18`,
-`2025-03-26` and `2024-11-05`, and with `2025-06-18` otherwise, with the `serverInfo`
-`{"name": "concorde", "version": "1"}`, the capabilities
-`{"tools": {"listChanged": true}, "experimental": {"claude/channel": {}}}` and its instructions: its
-own paragraph followed by the `mcp_instructions` of every installed part in the order of the parts
-table, as the current code gives them at that moment, which stay the session's instructions until
-it ends.
+The server is started as `concorde project-mcp [--name <name>]`.
+The `<name>` is the name it is registered under, `concorde` by default.
+The server speaks MCP over standard input and output as newline-delimited JSON-RPC 2.0.
+Each line holds one message. The server answers these requests:
 
-At start it finds, once:
+- `initialize`
+- `ping`
+- `tools/list`
+- `tools/call`
 
-- **The project**: the primary worktree, the parent of the Git common directory of the folder
-  `CLAUDE_PROJECT_DIR` names, or of its working directory when that variable is unset. Outside a Git
-  repository it has none: `tools/list` answers no tool and every call is refused with `no_project`.
-- **The session** it serves: `CLAUDE_CODE_SESSION_ID`, or none when it is unset.
-- **The session's folder**, `CLAUDE_PROJECT_DIR` or else its working directory, and the
-  **session's worktree**, the Git worktree that folder lies in, or the primary worktree when it
-  lies in none: a task worktree for a [task session](../glossary.json#concept.task-session).
-- **Whether the session listens to it as a channel**: `CONCORDE_CHANNEL` decides when it is `1` or
-  `0`. Otherwise it does when one of its ancestor processes, up to eight levels up, is an
-  interactive Claude Code: a process whose program, the file name of the first word of its command
-  line, is `claude` or `claude.exe`, whose standard input is a terminal (`/dev/pts/…` or
-  `/dev/tty…`), and whose command line has `server:<name>` among the whitespace-separated entries of
-  a word after `--dangerously-load-development-channels` or `--channels` and before the next word
-  starting with `--`. Claude Code tells a server neither whether it loaded it as a channel nor
-  whether an event was delivered, so this is the server's only knowledge of it, and an organization
-  that disables channels leaves it believing it has one.
+For any other request, the server answers with the JSON-RPC error `-32601`.
+For a line that is no JSON, it answers with the error `-32700` and a `null` identity.
+It answers no notification or response.
+When the client's `protocolVersion` is one of these values, the server answers `initialize` with
+that value:
 
-Every tool result is one `text` content item holding one JSON value: the answer's `value`, or
-`{"error": <link>}` with `isError` true for a refusal.
+- `2025-06-18`
+- `2025-03-26`
+- `2024-11-05`
+
+Otherwise, it answers with `2025-06-18`. The answer also contains:
+
+- The `serverInfo` `{"name": "concorde", "version": "1"}`.
+- The capabilities `{"tools": {"listChanged": true}, "experimental": {"claude/channel": {}}}`.
+- The server's instructions.
+
+The instructions are the server's own paragraph followed by the `mcp_instructions` of every
+installed part in the order of the parts table. The current code gives these instructions at that
+moment. They stay the session's instructions until the session ends.
+
+At start the server finds these once:
+
+- **The project** is the primary worktree. It is the parent of the Git common directory of the
+  folder `CLAUDE_PROJECT_DIR` names. When that variable is unset, the server uses its working
+  directory instead. Outside a Git repository, the server has no project. In that case,
+  `tools/list` answers no tool. The server refuses every call with `no_project`.
+- **The session** it serves is `CLAUDE_CODE_SESSION_ID`. When that variable is unset, the server
+  serves no session.
+- **The session's folder** is `CLAUDE_PROJECT_DIR` or else the server's working directory.
+  **The session's worktree** is the Git worktree that folder lies in. When the folder lies in no
+  Git worktree, the session's worktree is the primary worktree. For a
+  [task session](../glossary.json#concept.task-session), it is a task worktree.
+- **Whether the session listens to it as a channel** depends on `CONCORDE_CHANNEL` when that
+  variable is `1` or `0`. Otherwise, when one of the server's ancestor processes up to eight
+  levels up is an interactive Claude Code, the session listens as a channel.
+  Such a process meets these conditions:
+  - Its program is `claude` or `claude.exe`. The program is the file name of the first word of
+    its command line.
+  - Its standard input is a terminal (`/dev/pts/…` or `/dev/tty…`).
+  - Its command line has `server:<name>` among the whitespace-separated entries of a word after
+    `--dangerously-load-development-channels` or `--channels` and before the next word starting
+    with `--`.
+  Claude Code tells a server neither whether it loaded the server as a channel nor whether an
+  event was delivered. Because Claude Code gives neither fact, this detection is the server's
+  only knowledge of whether the session listens as a channel. An organization that disables
+  channels leaves the server believing it has one.
+
+Every tool result is one `text` content item holding one JSON value.
+The JSON value is the answer's `value`, or `{"error": <link>}` for a refusal.
+For a refusal, `isError` is true.
 
 ### Calls
 
-The server runs none of its tools itself. It runs the `concorde` of a worktree, that worktree's
-`.concorde/bin/concorde` when it exists, else its `scripts/concorde.py` with the server's Python,
-else the server's own package as `python -m concorde`, from that worktree and with the server's
-environment, in two ways that are its own interface with the Concorde it presents, never commands
-for anyone else:
+The server runs none of its tools itself. It runs the `concorde` of a worktree.
+It chooses the program in this order:
 
-- `concorde project-mcp --tools` of the primary worktree prints one JSON object: `tools`, each
-  `{name, description, inputSchema}` as `tools/list` gives it, for every tool the installed parts
-  register whose `requires` are all installed, in the order of the parts table; `digest`, `sha256:`
-  followed by the hexadecimal SHA-256 of `tools` written as compact JSON with sorted keys; `serving`,
-  each tool's `worktree`, `long_work` and `threaded` from its registration; and `instructions`.
-  The server answers `tools/list` with it, and with no tool when it prints no such object. It also
-  fetches it when a call names a tool its last listing lacks, to learn how the tool is served, and
-  then gives the session nothing.
-- `concorde project-mcp --call <tool>` of the worktree the tool is served in, the primary worktree
-  for `primary` and the session's worktree for `session`, answers one call. It reads the
-  [call object](#contract.distribution.mcp-call) without `tool` as one JSON object on its standard
-  input, loads the installed parts' registering code, calls the tool's entry with the call object
-  and prints one JSON line on its standard output: the entry's
-  [answer](#contract.distribution.mcp-answer) without `handover`, with `tools`, the digest of this
-  code's tools. The server reads the last line of the output that is a JSON object with `value`,
-  `error` or `reroute`.
+- When the worktree's `.concorde/bin/concorde` exists, it runs that program.
+- Otherwise, when the worktree's `scripts/concorde.py` exists, it runs that script with the
+  server's Python.
+- Otherwise, it runs the server's own package as `python -m concorde`.
 
-The server routes a call as its last listing says the tool is served, a tool it does not find there
-in the primary worktree, without long work and on the session's thread. The call's process compares
-the call object's `served` with its own registration of the tool; when they differ it runs nothing
-and prints `{"reroute": <serving>, "tools": <digest>}`, `serving` as `--tools` gives it, and the
-server takes that serving as its own and routes the call again, once, on a thread of its own when
-the tool is now served `threaded`.
+The server runs the program from that worktree with the server's environment.
+It uses the program in two ways. These are its own interface with the Concorde it presents,
+never commands for anyone else:
 
-A call of a tool served `threaded` is answered on a thread of its own; every other call is answered
-on the thread that reads the session, in the order it arrives. The `--tools` process and the
-process of every call but long work may take 300 seconds, after which it is stopped and the call
-refused with `call_failed`; a `workflow_step` call, which waits at most 100 seconds, fits in it.
+- `concorde project-mcp --tools` of the primary worktree prints one JSON object with these fields:
+  - `tools` lists every tool the installed parts register whose `requires` are all installed,
+    in the order of the parts table. Each tool is `{name, description, inputSchema}` as
+    `tools/list` gives it.
+  - `digest` is `sha256:` followed by the hexadecimal SHA-256 of `tools` written as compact JSON
+    with sorted keys.
+  - `serving` gives these fields from each tool's registration:
+    - `worktree`
+    - `long_work`
+    - `threaded`
+  - `instructions` gives the instructions.
+  The server answers `tools/list` with this object. When the process prints no such object,
+  the server answers with no tool. When a call names a tool its last listing lacks, the server
+  also fetches the object to learn how the tool is served. It then gives the session nothing.
+- `concorde project-mcp --call <tool>` of the worktree the tool is served in answers one call.
+  For `primary`, this is the primary worktree. For `session`, this is the session's worktree.
+  The process performs these steps:
+  - It reads the [call object](#contract.distribution.mcp-call) without `tool` as one JSON object
+    on its standard input.
+  - It loads the installed parts' registering code.
+  - It calls the tool's entry with the call object.
+  - It prints one JSON line on its standard output.
+  The line holds the entry's [answer](#contract.distribution.mcp-answer) without `handover`,
+  with `tools`, the digest of this code's tools. The server reads the last output line that is
+  a JSON object with any of these fields:
+  - `value`
+  - `error`
+  - `reroute`
+
+The server routes a call as its last listing says the tool is served.
+When the server does not find the tool there, it routes the call with these settings:
+
+- In the primary worktree.
+- Without long work.
+- On the session's thread.
+
+The call's process compares the call object's `served` with its own registration of the tool.
+When they differ, the process runs nothing. Instead, it prints
+`{"reroute": <serving>, "tools": <digest>}`, with `serving` as `--tools` gives it.
+For that reroute, the server takes that serving as its own. It routes the call again, once.
+When the tool is now served `threaded`, the server routes the call on a thread of its own.
+
+A call of a tool served `threaded` is answered on a thread of its own.
+Every other call is answered on the thread that reads the session, in the order it arrives.
+The `--tools` process and the process of every call but long work may take 300 seconds.
+After 300 seconds, the process is stopped. The call is then refused with `call_failed`.
+A `workflow_step` call waits at most 100 seconds, so it fits in that time limit.
 When an answer's `tools` differs from the digest of the listing the server last gave its session,
-the server sends `notifications/tools/list_changed` and takes that digest as listed, and its next
-`tools/list` answers with the current tools.
+the server performs these actions:
+
+- It sends `notifications/tools/list_changed`.
+- It takes that digest as listed.
+- It answers its next `tools/list` with the current tools.
 
 ### Waits and long work
 
 An answer's `watch` asks the server to run `concorde <words>` of the primary worktree, from the
-primary worktree, as a process tied to the server, which the operating system ends when the server
-ends. The tool's value gains `wait`, the server's identity of that wait, a decimal string counted from 1
-in each server. When the process ends, and the server has not begun to end, it sends a channel event
-whose `meta` is the watch's `meta` with `wait` and `event`: `wait_done` with the printed answer when
-the process printed one JSON value and exited with status 0, `wait_failed` with the refusal and its
-`code` when it printed `{"error": <link>}`, and otherwise `wait_failed` with a `call_failed` link.
+primary worktree. The process is tied to the server. When the server ends, the operating system
+ends the process. The tool's value gains `wait`, the server's identity of that wait. This identity
+is a decimal string counted from 1 in each server. When the process ends and the server has not
+begun to end, the server sends a channel event. The event's `meta` is the watch's `meta` with
+`wait` and `event`. The event follows these cases:
 
-The process of a call of a `long_work` tool runs in a process session of its own, with its standard
-error going to a file of a private temporary directory of the server, which the call object's
-`long_work` names under `call`. Having taken the locks the work needs without waiting, its entry
-answers with `handover` and `work`. The process then writes its answer line through a copy of its
-standard output that the change of program closes, sends its standard output to the handover's
-`output` and its standard error to its `messages`, reads standard input from the null device, leaves
-the handover's `descriptors` open across the change of program, as
-[Handing a lock on](../kernel/tracing/contracts.md#handing-a-lock-on) states, and replaces itself
-with the handover's `argv` in its `environment`. When the operating system refuses that, it removes
-the `output` and `messages` files and the handover's `folder` again, prints a second line refusing
-the call with `start_failed`, and exits, which releases the locks. The server never holds a lock.
+- When the process printed one JSON value and exited with status 0, the event is `wait_done`
+  with the printed answer.
+- When the process printed `{"error": <link>}`, the event is `wait_failed` with the refusal and
+  its `code`.
+- Otherwise, the event is `wait_failed` with a `call_failed` link.
 
-The server reads the long-work call's output until it ends, which the change of program makes, and
-then watches the work's process. When it ends, and the session has a channel and the server has not
-begun to end, the server sends a channel event whose content names the work's `command` and exit
-status and carries the work's `output`, at most 6000 characters of it, and whose `meta` is the
-work's `meta` with `event`, the work's `event` or `work_ended`, `exit_code` and `status`: `refused`
-when the output is `{"error": <link>}`, otherwise `ok` for exit status 0 and `failed` for any
-other. When the `output` file is gone and the work names `locate`, the server runs
-`concorde <locate>` of the primary worktree, for at most 60 seconds, and reads the work's files
-where its answer's `attempt` names them, `output` and `messages`.
+The process of a call of a `long_work` tool runs in a process session of its own. Its standard
+error goes to a file in a private temporary directory of the server. The call object's
+`long_work` names that file under `call`. Once the entry has taken the locks the work needs without
+waiting, the entry answers with `handover` and `work`. The process then takes these steps:
+
+- It writes its answer line through a copy of its standard output that the change of program
+  closes.
+- It sends its standard output to the handover's `output`.
+- It sends its standard error to the handover's `messages`.
+- It reads standard input from the null device.
+- It leaves the handover's `descriptors` open across the change of program, as
+  [Handing a lock on](../kernel/tracing/contracts.md#handing-a-lock-on) states.
+- It replaces itself with the handover's `argv` in its `environment`.
+
+When the operating system refuses that replacement, the process takes these steps:
+
+- It removes these files and folder again:
+  - The `output` file.
+  - The `messages` file.
+  - The handover's `folder`.
+- It prints a second line refusing the call with `start_failed`.
+- It exits. This releases the locks.
+
+The server never holds a lock.
+
+The server reads the long-work call's output until the output ends. The change of program makes
+the output end. The server then watches the work's process. When all these conditions hold,
+the server sends a channel event:
+
+- The work's process ends.
+- The session has a channel.
+- The server has not begun to end.
+
+The event's content names the work's `command` and exit status. The content carries at most 6000
+characters of the work's `output`. The event's `meta` is the work's `meta` with these attributes:
+
+- `event`, the work's `event` or `work_ended`.
+- `exit_code`.
+- `status`, as follows:
+  - When the output is `{"error": <link>}`, the status is `refused`.
+  - Otherwise, for exit status 0, the status is `ok`.
+  - Otherwise, for any other exit status, the status is `failed`.
+
+When the `output` file is gone and the work names `locate`, the server takes these steps:
+
+- It runs `concorde <locate>` of the primary worktree for at most 60 seconds.
+- It reads the work's files, `output` and `messages`, where the command's answer's `attempt`
+  names them.
 
 A channel event is the notification `notifications/claude/channel` with `params`
-`{"content": <text>, "meta": {<name>: <string>}}`. When its session ends, the server ends every wait
-it still watches and sends no further event; long work goes on and keeps its locks until it ends.
+`{"content": <text>, "meta": {<name>: <string>}}`. When its session ends, the server takes these
+steps:
+
+- It ends every wait it still watches.
+- It sends no further event.
+
+Long work goes on and keeps its locks until it ends.
 
 ```concorde-contract
 {
@@ -414,9 +537,13 @@ links of the [error contract](../kernel/tracing/contracts.md#contract.tracing.er
 
 ## Build manifest
 
-The [build manifest](../glossary.json#concept.build-manifest) `generated/build-manifest.json`, which
-the build writes after every other output, so that the build, `build --check` and the installer can
-tell what is stale, and the spec part can tell which files are generated.
+The build writes the [build manifest](../glossary.json#concept.build-manifest)
+`generated/build-manifest.json` after every other output. It does so to let:
+
+- the build tell what is stale.
+- `build --check` tell what is stale.
+- the installer tell what is stale.
+- the spec part tell which files are generated.
 
 ```concorde-contract
 {
@@ -466,8 +593,8 @@ tell what is stale, and the spec part can tell which files are generated.
 ## Install result
 
 `python3 scripts/install-concorde.py <project>` prints the receipt it wrote to
-`.concorde/install.json`, field for field. Only a binding of the installed files that Spec core
-refused adds `binding_error`, which the receipt file never holds.
+`.concorde/install.json`, field for field. When Spec core refuses a binding of the installed files,
+and only then, the printed result adds `binding_error`. The receipt file never holds this field.
 
 ```concorde-contract
 {
@@ -626,8 +753,9 @@ refused adds `binding_error`, which the receipt file never holds.
 ## Update result
 
 `concorde update`, and `python3 <checkout>/scripts/install-concorde.py <project> --update`, print
-what the update did. Its `update` is the mark it wrote to `.concorde/update.json`, field for field,
-or `null` where the spec part is not installed, since the mark waits for a `spec-validation`.
+what the update did. Where the spec part is installed, the result's `update` is the mark the update
+wrote to `.concorde/update.json`, field for field. Where the spec part is not installed, that field
+is `null`, since the mark waits for a `spec-validation`.
 
 ```concorde-contract
 {

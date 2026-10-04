@@ -1,10 +1,15 @@
 # Tracing contracts
 
-The canonical values and layout of [Tracing](module.md): the
-[trace node](../../glossary.json#concept.trace-node) record `trace.json`, the trace roots and where
-every node and lock lies, the Tracing configuration, what `concorde trace` prints, and the error link
-every level reports with. The [requirements](requirements.md) state the obligations; the
-[scenarios](scenarios.md) show them at work.
+The canonical values and layout of [Tracing](module.md) include:
+
+- The [trace node](../../glossary.json#concept.trace-node) record `trace.json`.
+- The trace roots and where every node and lock lies.
+- The Tracing configuration.
+- What `concorde trace` prints.
+- The error link every level reports with.
+
+The [requirements](requirements.md) state the obligations.
+The [scenarios](scenarios.md) show them at work.
 
 ## Trace node
 
@@ -405,15 +410,20 @@ every level reports with. The [requirements](requirements.md) state the obligati
 
 ### Node kinds
 
-Each kind has one producer, which writes its nodes' records and chooses their content, and one place
-below its parent. The part a producer belongs to registers its kinds with Tracing's library when its
-code loads, each with its content type and the metadata dimensions it provides, as it registers the
-types of its [typed values](../../glossary.json#concept.typed-value); Tracing names no kind itself. Writing a node of a kind no installed part
-registered, with a metadata dimension its kind does not provide or with content of another type
-than its kind's is refused with `node_invalid`, or `content_invalid` for the content, as a defect
-of its producer. The table lists the kinds of Concorde's parts, and a kind whose part is not
-installed simply never occurs. The folders are relative to the parent node's folder, or to the `.concorde`
-directory for the top nodes of a [trace root](#trace-roots).
+Each kind has one producer. The producer writes its nodes' records. The producer chooses their
+content. Each kind has one place below its parent. When its code loads, the part a producer belongs
+to registers its kinds with Tracing's library. It registers them as it registers the types of its
+[typed values](../../glossary.json#concept.typed-value). Each kind's registration includes its
+content type and the metadata dimensions it provides. Tracing names no kind itself. A write is
+refused as a defect of its producer in these cases:
+
+- When no installed part registers the node's kind, the write is refused with `node_invalid`.
+- When a metadata dimension is not one its kind provides, the write is refused with `node_invalid`.
+- When the content is of another type than its kind's, the write is refused with `content_invalid`.
+
+The table lists the kinds of Concorde's parts. When a kind's part is not installed, that kind simply
+never occurs. For the top nodes of a [trace root](#trace-roots), the folders are relative to the
+`.concorde` directory. For other nodes, the folders are relative to the parent node's folder.
 
 | Kind | Producer | Folder | Identity | Metadata it provides | Content type |
 | --- | --- | --- | --- | --- | --- |
@@ -430,12 +440,18 @@ directory for the top nodes of a [trace root](#trace-roots).
 | `worker-run` | [Workers](../../worker-harness/workers/module.md) | `workers/<worker run>/` of a run | the worker run identity | `modules`, `operation`, `worker`, `task_type`, `backend`, `model`, `reasoning`, `context_identity`, `grant_digest`, `brief_digest`, `settings_digest` | `concorde-worker-run-trace` |
 | `worker-round` | Workers | `rounds/<n>/` of a worker run | the round number | `backend`, `model` | `concorde-worker-round-trace` |
 
-A workspace folder, `workspace/` of a task, is no node of its own: the reading command shows it as
-a `workspace` node whose children are its workflow and its runs, named after the workspace its runs
-record. Having no record, it has no status of its own: it is shown `running` while any of its
-children runs, otherwise with the status of its most recently started child, `lost` included, and
-`unknown` without children. A node lists in `metadata` only the dimensions its row names; a producer's own [Spec](../../glossary.json#concept.spec) defines
-its content type.
+A workspace folder, `workspace/` of a task, is no node of its own. The reading command shows the
+folder as a `workspace` node. That node's children are its workflow and its runs. The reading command
+names that node after the workspace its runs record. Because the folder has no record, it has no
+status of its own. The reading command shows its status as follows:
+
+- While any of its children runs, it shows `running`.
+- When it has children but none runs, it shows the status of its most recently started child,
+  `lost` included.
+- Without children, it shows `unknown`.
+
+A node lists in `metadata` only the dimensions its row names. A producer's own
+[Spec](../../glossary.json#concept.spec) defines its content type.
 
 ### Metadata dimensions
 
@@ -457,35 +473,65 @@ its content type.
 
 ### Writing a node
 
-- The producer writes `trace.json` when the node starts, before the work it records begins, with
-  `status` `running`, and again when the node ends, with its end, status, outcome, usage, error,
-  artifacts and content. It may rewrite it in between, such as a worker run after each round. Every
-  write replaces the file atomically, so a reader never finds half a record. A write the operating
-  system refuses never changes the work the node records: the library keeps an account of each
-  such failure, naming the file, the moment (start, update or end) and the error, and the producer
-  reports every one in its own result, as evidence or a warning.
-- The parent creates the child's folder, or names it to the child's process before starting it,
-  before the child's first write. A child never records its parent's identity.
-- Every artifact path is relative to the node's folder; every other node is named by identity.
-- A file that grows while the node runs, such as a transcript or a log, is an artifact of
-  the node; its content is never copied into `trace.json`.
+- When the node starts, before the work it records begins, the producer writes `trace.json` with
+  `status` `running`. When the node ends, the producer writes `trace.json` again with the following:
+  - Its end.
+  - Its status.
+  - Its outcome.
+  - Its usage.
+  - Its error.
+  - Its artifacts.
+  - Its content.
+
+  The producer may rewrite `trace.json` in between, such as a worker run after each round. Every
+  write replaces the file atomically. Because of this atomic replacement, a reader never finds half
+  a record. When the operating system
+  refuses a write, that refusal never changes the work the node records. The library keeps an
+  account of each such failure. Each account names the following:
+  - The file.
+  - The moment: start, update or end.
+  - The error.
+
+  The producer reports every such failure in its own result, as evidence or a warning.
+- Before starting the child's process, the parent creates the child's folder or names it to that
+  process. This happens before the child's first write. A child never records its parent's identity.
+- Every artifact path is relative to the node's folder. Every other node is named by identity.
+- A file that grows while the node runs, such as a transcript or a log, is an artifact of the node.
+  The file's content is never copied into `trace.json`.
 - The live [progress file](../../glossary.json#concept.progress-file) `status.json` of a run or worker
-  run, and a [run result](../../glossary.json#concept.run-result) `result.json`, stay
-  separate files of the node's folder, listed among its artifacts.
+  run stays a separate file of the node's folder. A
+  [run result](../../glossary.json#concept.run-result) `result.json` also stays a separate file of
+  the node's folder. Both files are listed among the node's artifacts.
 
 ## Trace roots
 
 A part that keeps the top nodes of traces registers each **trace root** with Tracing in its
-[part registration](../../glossary.json#concept.part-registration): its name, its folder relative to a `.concorde` directory, whether that directory is the
-primary worktree's or the one of the worktree a node started in, the kind of its top nodes, whether
-its folders are **current** (still written) or **closed** (never changed again), which option of
-`concorde trace list` lists its top nodes (always, `--history`, `--unbound` or none), the node's
-field that dates its end, the retention periods that apply to it, the kind of lock, named after a
-top node's identity, whose holder says the node is still written, and the files that count as its
-**conversation records**. Tracing searches, lists and prunes the registered roots of the installed
-parts and no other folder. A part registers its roots with Tracing's library when its code loads,
-from a module its part registration names among those Distribution loads before it routes any
-command of a part, `concorde trace` included. Concorde's parts register these:
+[part registration](../../glossary.json#concept.part-registration). Each registration names the
+following:
+
+- The trace root's name.
+- The trace root's folder relative to a `.concorde` directory.
+- Whether that directory is the primary worktree's or the one of the worktree a node started in.
+- The kind of the trace root's top nodes.
+- Whether the trace root's folders are **current** (still written) or **closed** (never changed again).
+- Which option of `concorde trace list` lists the trace root's top nodes: always, `--history`,
+  `--unbound` or none.
+- The node's field that dates its end.
+- The retention periods that apply to the trace root.
+- The kind of lock whose holder says the node is still written. The lock is named after a top node's identity.
+- The files that count as the trace root's **conversation records**.
+
+Tracing performs the following actions on the registered roots of the installed parts and no other
+folder:
+
+- Searches.
+- Lists.
+- Prunes.
+
+When its code loads, a part registers its roots with Tracing's library. The registration comes from
+a module its part registration names among those Distribution loads. Before Distribution routes
+any command of a part, including `concorde trace`, Distribution loads those modules.
+Concorde's parts register these:
 
 | Root | Folder | Registered by | Top nodes | State | Listed | Retention |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -496,13 +542,20 @@ command of a part, `concorde trace` included. Concorde's parts register these:
 
 ## Layout
 
-Everything below is the union of the registered roots and Tracing's own `locks/` and
-`tracing.json`, under the `.concorde` directory of the project's primary worktree, except the
-unbound runs and their [run locks](../../glossary.json#concept.run-lock), which are under the
+The layout below combines the registered roots with Tracing's own `locks/` and `tracing.json`.
+Except for unbound runs and their [run locks](../../glossary.json#concept.run-lock), these lie under
+the `.concorde` directory of the project's primary worktree. The exceptions lie under the
 `.concorde` of the worktree they started in. Every write of an [Issue](../../glossary.json#concept.issue) takes the
-primary worktree's [merge lock](../../glossary.json#concept.merge-lock), as [Locks](#locks) says. Git
-ignores `locks/` and every root's folder: `tasks/`, `history/`, `unbound/` and `lobby/`. What lies
-inside a task's folder is Coordination's to decide; the tree shows it as Concorde's parts lay it out.
+primary worktree's [merge lock](../../glossary.json#concept.merge-lock), as [Locks](#locks) says.
+Git ignores `locks/` and every root's folder:
+
+- `tasks/`
+- `history/`
+- `unbound/`
+- `lobby/`
+
+Coordination decides what lies inside a task's folder. The tree shows that content as Concorde's
+parts lay it out.
 
 ```text
 .concorde/
@@ -526,42 +579,72 @@ inside a task's folder is Coordination's to decide; the tree shows it as Concord
                                  refused before they held it
 ```
 
-A bound run's node lies in the **lobby** until the run holds its workspace's lock, and then moves,
-whole, to its place in the workspace folder, so that nothing of a run that may never be admitted is
-written into a workspace folder, which a close moves to the history while it holds that lock
+Until a bound run holds its workspace's lock, its node lies in the **lobby**. Once the run holds
+the lock, its node moves whole to its place in the workspace folder. This prevents writing anything
+of a run that may never be admitted into a workspace folder. While a close holds that lock, it
+moves the workspace folder to the history
 ([Execution's lobby](../../execution/runner.md#the-lobby)). A run refused or cancelled before it held
-the lock keeps its node in the lobby; it is no run of the workspace's folder and is found by its
-identity.
+the lock keeps its node in the lobby. That run is no run of the workspace's folder. It is found by
+its identity.
 
-A run's folder holds `trace.json`, `status.json`, `result.json`, for a [detached run](../../glossary.json#concept.detached-run) the runner's
-output `host.out`, what its steps keep (such as `readiness.json` of `task-validation` and `delivery`
-or a traceback), `checks/<check>/` and `workers/<worker run>/`. A worker run's folder holds
-`trace.json`, `status.json`, `grant.json`, `brief.md`, `transcript.jsonl` once a session exists and
-`rounds/<n>/` with each round's `trace.json`, `stderr.log` and `checks/<check>/`. A check's folder
-holds `trace.json` and `output.log`. A merge attempt's folder holds `trace.json`, `checks/<n>/`
-and, for a merge the project MCP server started, the merge's standard output `output.json` and
-standard error `messages.log`, which the merge that closed the task finishes after the close moved
-the folder to the history.
+A run's folder holds:
 
-The history key of a closed task, which Tasks chooses, is its name, or `<task>.<n>` with the smallest `n` from 2 that is
-free when that name is taken: when the history already holds a task of that name or a
-[decision log](../../glossary.json#concept.decision-log) `decisions/<name>.md` exists, so no closed task ever replaces another, in the history or in Git.
+- `trace.json`
+- `status.json`
+- `result.json`
+- For a [detached run](../../glossary.json#concept.detached-run), the runner's output `host.out`
+- What its steps keep (such as `readiness.json` of `task-validation` and `delivery` or a traceback)
+- `checks/<check>/`
+- `workers/<worker run>/`
 
-The **conversation records** of a task, as Coordination registers them for its history, are the
-transcripts of its task sessions and worker runs: every file `transcript.jsonl` and every folder
-`transcript/` in its folder, at any depth.
+A worker run's folder holds:
+
+- `trace.json`
+- `status.json`
+- `grant.json`
+- `brief.md`
+- Once a session exists, `transcript.jsonl`
+- `rounds/<n>/`
+
+Each round's folder holds:
+
+- `trace.json`
+- `stderr.log`
+- `checks/<check>/`
+
+A check's folder holds `trace.json` and `output.log`. A merge attempt's folder holds `trace.json`
+and `checks/<n>/`. For a merge the project MCP server started, the folder also holds:
+
+- The merge's standard output `output.json`
+- The merge's standard error `messages.log`
+
+After the close moves the folder to the history, the merge that closed the task finishes these
+output files.
+
+Tasks chooses the history key of a closed task. When the task's name is free, the key is its name.
+When that name is taken, the key is `<task>.<n>` with the smallest free `n` from 2.
+The name is taken when either condition holds:
+
+- The history already holds a task of that name.
+- A [decision log](../../glossary.json#concept.decision-log) `decisions/<name>.md` exists.
+
+Thus, no closed task ever replaces another in the history or in Git.
+
+Coordination registers a task's **conversation records** for its history. These are the transcripts
+of its task sessions and worker runs. They comprise every file `transcript.jsonl` and every folder
+`transcript/` in the task's folder, at any depth.
 
 ## Locks
 
-Every lock is a file under `locks/` locked with `flock`, which the operating system releases however its
-holder ends. While a process holds it, the file holds one line of JSON naming the holder,
-`{"holder": "<what holds it>", "pid": <process>, "since": "<UTC time>"}`, with
-`"session": "<Claude Code session>"` when the holder's environment names one in
-`CLAUDE_CODE_SESSION_ID` and `"task": "<task>"` when the taker names the task it works for, and it
-is emptied before it is released; a waiter that gives up names the holder from it, with its session
-and task. No lock file holds anything else. Execution never names a task: the holder lines of its
-runs name the workspace in `holder` only, and a task is named only by Tasks and by the
-[project MCP server](../../glossary.json#concept.project-mcp-server).
+Every lock is a file under `locks/` locked with `flock`. However its holder ends, the operating
+system releases the lock. While a process holds the lock, the file holds one line of JSON naming
+the holder: `{"holder": "<what holds it>", "pid": <process>, "since": "<UTC time>"}`.
+When the holder's environment names a session in `CLAUDE_CODE_SESSION_ID`, the line includes
+`"session": "<Claude Code session>"`. When the taker names the task it works for, the line includes
+`"task": "<task>"`. Before the lock is released, the file is emptied. A waiter that gives up names
+the holder from the file, with its session and task. No lock file holds anything else. Execution
+never names a task. The holder lines of Execution's runs name the workspace in `holder` only.
+Only Tasks and the [project MCP server](../../glossary.json#concept.project-mcp-server) name a task.
 
 | Lock | File | Taken by | Lifetime |
 | --- | --- | --- | --- |
@@ -574,32 +657,56 @@ runs name the workspace in `holder` only, and a task is named only by Tasks and 
 
 <a id="handing-a-lock-on"></a>
 
-**Handing a lock on.** A process that holds a lock may hand it to a process it starts, or to the
-program it replaces itself with by `exec`: it passes the locked descriptor to that process, which
-inherits the same open file description and with it the `flock`, and names it in that process's
-environment variable `CONCORDE_INHERITED_LOCKS`, a JSON object `{"<lock file>": <descriptor>}`. The library in that process reads and removes the variable
-once, so that no process it starts in turn believes it inherited the locks; when it takes a lock
-named there, it adopts the descriptor without waiting, provided the descriptor refers to the lock
-file there now and holds its lock, marks it not inherited by the processes it starts, and writes
-its own holder line; otherwise it closes it and takes the lock as usual. Once the process that
-handed the lock on closes its own descriptor, or replaced itself, the lock is released exactly when
-the process it started, or became, ends. The operating system's lock table keeps naming the process that
-first took the lock, so the holder line, not `/proc/locks`, says who holds a handed lock.
+**Handing a lock on.** A process that holds a lock may hand it to a process it starts or to the
+program it replaces itself with by `exec`. It passes the locked descriptor to that process.
+The receiving process inherits the same open file description and, with it, the `flock`.
+The handing process names the descriptor in the receiving process's environment variable
+`CONCORDE_INHERITED_LOCKS`, a JSON object `{"<lock file>": <descriptor>}`. The library in the
+receiving process reads and removes the variable once. This prevents any process it starts in turn
+from believing it inherited the locks. When the library takes a lock named there, it checks both
+conditions:
 
-**Waiting for a release.** A process that waits for a lock to be released opens its file and asks
-for a shared `flock`, blocking, in a thread of its own, and lets go of it at once; the operating system grants
-it when the holder releases the lock or dies. A lock whose file is missing is free, and a lock file
-removed while its holder held it, such as a run lock, is released when that holder lets go. To learn
-when a lock is next taken, a process watches the lock's directory through the operating system's file change
-notification: taking a lock writes its holder line, releasing it empties the file and a close
-removes it.
+- The descriptor refers to the lock file there now.
+- The descriptor holds that file's lock.
 
-A run is running exactly when its run lock file exists and a process holds it. An observer tries it
-shared and without waiting, or reads the operating system's lock table `/proc/locks` for the file's device
-and inode, since an inode number is unique only within its filesystem, from any PID namespace; it
-never decides by a recorded process identifier. The run lock of a bound run lies under `locks/` of
-the `.concorde` its binding names, that of an unbound run under the `.concorde` of the worktree it
-started in.
+When both conditions hold, the library performs these steps:
+
+- It adopts the descriptor without waiting.
+- It marks the descriptor not inherited by the processes it starts.
+- It writes its own holder line.
+
+Otherwise, it closes the descriptor and takes the lock as usual.
+Once the handing process closes its own descriptor or replaces itself, the lock is released
+exactly when the receiving process ends. The operating system's lock table keeps naming the
+process that first took the lock. Therefore, the holder line, not `/proc/locks`, says who holds a
+handed lock.
+
+**Waiting for a release.** A process that waits for a lock to be released performs these steps:
+
+- It opens the lock's file.
+- It asks for a shared `flock`, blocking, in a thread of its own.
+- It lets go of the shared lock at once.
+
+When the holder releases the lock or dies, the operating system grants the shared lock. A lock
+whose file is missing is free. When a holder lets go, a lock whose file was removed while that
+holder held it, such as a run lock, is released.
+To learn when a lock is next taken, a process watches the lock's directory through the operating
+system's file change notification. The file changes are:
+
+- Taking a lock writes its holder line.
+- Releasing a lock empties the file.
+- A close removes the file.
+
+A run is running exactly when its run lock file exists and a process holds it.
+From any PID namespace, an observer uses either method:
+
+- It tries the lock shared and without waiting.
+- It reads the operating system's lock table `/proc/locks` for the file's device and inode.
+
+It uses both the device and inode since an inode number is unique only within its filesystem.
+The observer never decides by a recorded process identifier. The run lock
+of a bound run lies under `locks/` of the `.concorde` its binding names. The run lock of an unbound
+run lies under the `.concorde` of the worktree it started in.
 
 ## Tracing configuration
 
@@ -675,13 +782,19 @@ started in.
 }
 ```
 
-Retention removes only what has ended, root by root as each was registered: an unbound run or a run
-of the lobby whose run lock is not held and whose node has an end, after `unbound_days`, a history
-folder whose task node has one, and the conversation records of such a history folder. Each period
-applies to the roots that name it; a period of a root no installed part registers is read and
-ignored. Retention runs when `concorde trace prune` is run and whenever a part that registers a root
-asks for it, as Tasks does at the start of every `task open` and `task close`, and never removes
-anything of a current folder.
+Retention removes only what ended, root by root as each was registered:
+
+- When all these conditions hold, retention removes an unbound run or a run of the lobby:
+  - The period `unbound_days` after the run's end is over.
+  - The run's run lock is not held.
+  - The run's node has an end.
+- A history folder whose task node has an end.
+- The conversation records of such a history folder.
+
+Each period applies to the roots that name it. A period of a root no installed part registers is
+read and ignored. When `concorde trace prune` runs, retention runs. Whenever a part that registers
+a root asks for retention, retention runs. Tasks asks for retention at the start of every
+`task open` and `task close`. Retention never removes anything of a current folder.
 
 ## Reading traces
 
@@ -691,35 +804,69 @@ concorde trace list [--history] [--unbound] [--format json|tree]
 concorde trace prune [--dry-run]
 ```
 
-- `<node>` is a task name, a history key, a run identity, a worker run identity or the path of a
-  node's folder, absolute or relative to a `.concorde` directory. Without it, `show` shows the task
-  whose [workspace binding](../../glossary.json#concept.workspace-binding) the current worktree holds. The command looks in the `.concorde` of the
-  worktree it runs in, the `.concorde` its workspace binding names and the `.concorde` of the
-  primary worktree, in that order, and in each among the registered roots by the place each was
-  registered with: a root of the primary worktree's `.concorde` is never looked for under a linked
-  worktree's, a root of the worktree a node started in under any. In Concorde these are the current
-  tasks, the history, the unbound runs and the lobby. A node it cannot find is refused with
-  `unknown_node`, naming what it searched.
-- `--depth` limits how many levels below the node are shown (default: all); the roll-up always
+- `<node>` is one of the following:
+  - A task name.
+  - A history key.
+  - A run identity.
+  - A worker run identity.
+  - The path of a node's folder, absolute or relative to a `.concorde` directory.
+
+  Without `<node>`, `show` shows the task whose
+  [workspace binding](../../glossary.json#concept.workspace-binding) the current worktree holds.
+  The command looks in these directories, in this order:
+  - The `.concorde` of the worktree it runs in.
+  - The `.concorde` its workspace binding names.
+  - The `.concorde` of the primary worktree.
+
+  In each directory, the command looks among the registered roots by the place each was registered
+  with. The command never looks for a root of the primary worktree's `.concorde` under a linked
+  worktree's `.concorde`. The command looks for a root of the worktree a node started in under any
+  of these directories. In Concorde these roots are:
+  - The current tasks.
+  - The history.
+  - The unbound runs.
+  - The lobby.
+
+  When the command cannot find a node, it refuses the node with `unknown_node`. The refusal names
+  what the command searched.
+- `--depth` limits how many levels below the node are shown (default: all). The roll-up always
   covers the whole subtree.
-- `list` lists the top nodes of the registered roots each root's registration lists always, with
-  `--history` also those it lists with that option and with `--unbound` also those it lists with
-  that one, in that order whichever `.concorde` directory each lies in, each as a node without its
-  children, under the same `.concorde` directories and by the same places as `show`; in Concorde these are the current
-  tasks, the history and the unbound runs. An option whose roots no installed part registers lists
-  nothing.
+- `list` lists the top nodes of the registered roots in this order:
+  - Those each root's registration lists always.
+  - With `--history`, also those each root's registration lists with that option.
+  - With `--unbound`, also those each root's registration lists with that option.
+
+  This order applies whichever `.concorde` directory each root lies in. Each top node appears as a
+  node without its children. `list` uses the same `.concorde` directories and the same places as
+  `show`. In Concorde these roots are:
+  - The current tasks.
+  - The history.
+  - The unbound runs.
+
+  An option whose roots no installed part registers lists nothing.
 - `prune` removes what the retention allows under the same `.concorde` directories and by the same
-  places as `show`, by the [Tracing configuration](#tracing-configuration) of the primary worktree,
-  so that an unbound run is pruned from the worktree it started in. It prints
-  `{"removed": [<path>…], "failed": [{"path": <path>, "error": <text>}…], "dry_run": <boolean>}`:
-  the paths it removed, folders and conversation records alike, and each path the operating system
-  did not let it remove wholly, with the error, which the next prune tries again; `--dry-run`
-  prints what it would remove without removing anything.
-- Output is one JSON value as the view contract defines; `--format tree` prints instead a summary
-  of it as an indented text tree, one line per node with its kind, identity, status, outcome,
-  duration, rolled-up cost and tokens, the metadata naming what ran and its error's code, the JSON
-  output alone carrying every field. Exit status 0 on success, 1 for a refusal, printed as
-  `{"error": <link>}`, and 2 for a malformed command line.
+  places as `show`. It uses the [Tracing configuration](#tracing-configuration) of the primary
+  worktree. Thus, an unbound run is pruned from the worktree it started in. It prints
+  `{"removed": [<path>…], "failed": [{"path": <path>, "error": <text>}…], "dry_run": <boolean>}`.
+  The output names the paths it removed, folders and conversation records alike. It also names
+  each path the operating system did not let it remove wholly, with the error. The next prune
+  tries each such path again. With `--dry-run`, `prune` prints what it would remove without
+  removing anything.
+- Output is one JSON value as the view contract defines. With `--format tree`, output is instead
+  a summary of that value as an indented text tree. Each node occupies one line with:
+  - Its kind.
+  - Its identity.
+  - Its status.
+  - Its outcome.
+  - Its duration.
+  - Its rolled-up cost and tokens.
+  - Its metadata naming what ran.
+  - Its error's code.
+
+  The JSON output alone carries every field. Exit status is:
+  - 0 on success.
+  - 1 for a refusal, printed as `{"error": <link>}`.
+  - 2 for a malformed command line.
 
 ```concorde-contract
 {
@@ -925,14 +1072,14 @@ concorde trace prune [--dry-run]
 
 ## Error link
 
-An [error chain](../../glossary.json#concept.error-chain) is a tree of links read from the top. The top
-link is written by the actor that reports to the reader, such as the
+An [error chain](../../glossary.json#concept.error-chain) is a tree of links read from the top. The actor
+that reports to the reader writes the top link. Examples are the
 [Operation](../../glossary.json#concept.operation) in its
 [run result](../../glossary.json#concept.run-result) or the
-[main agent](../../glossary.json#concept.main-agent) in an escalation; each link's `causes` are the
-errors of its children that it could not handle. The order of reading is therefore the order of
-responsibility: the reader first learns what the level directly below it could not do and why, then
-what that level received, down to where the error started.
+[main agent](../../glossary.json#concept.main-agent) in an escalation. Each link's `causes` are the
+errors of its children that the link's writer could not handle. The order of reading is therefore the order
+of responsibility. The reader first learns what the level directly below it could not do and why.
+The reader then learns what that level received, down to where the error started.
 
 ```concorde-contract
 {
@@ -1135,13 +1282,23 @@ what that level received, down to where the error started.
 
 ## Reading an error chain
 
-Read a chain from the top: first the account of the actor reporting to you, then the errors it
-received as causes. Each level adds its own detailed link and keeps those causes unchanged, so the
-account leads back to the failure without losing what earlier levels observed or tried. A link
-records the failure, the evidence and attempts, the specific reason that level cannot handle it, and
-any options and recommendation it offers. Worker links are claims; the links of runs, commands and
-components record observations. Evidence of kind `trace` names the trace node where a deeper
-analysis of that level starts.
+Read a chain from the top. First read the account of the actor reporting to you, then the errors it
+received as causes. Each level adds its own detailed link. Each level keeps those causes unchanged.
+The account therefore leads back to the failure without losing what earlier levels observed or
+tried. A link records:
+
+- The failure.
+- The evidence and attempts.
+- The specific reason that level cannot handle the failure.
+- Any options and recommendation it offers.
+
+Worker links are claims. The links of these actors record observations:
+
+- Runs.
+- Commands.
+- Components.
+
+Evidence of kind `trace` names the trace node where a deeper analysis of that level starts.
 
 ### Where links appear
 
@@ -1156,16 +1313,22 @@ analysis of that level starts.
 | an escalation recorded with `concorde task escalate` (`--by main-agent`, the default) | the main agent (`main-agent`) |
 | an escalation recorded with `concorde task escalate --by task-session` | the [task session](../../glossary.json#concept.task-session) (`task-session`) |
 
-A component that reports an exception it has no recovery for writes, through Tracing's library, a
-`component` link whose detail is the exception's type and message and, for a command that failed,
-its exit status and both its standard output and its standard error, each named; a stream longer
-than 20,000 characters is quoted from its end, saying how many characters it leaves out. When the
-component keeps a traceback file, named in the link's evidence, that file holds the whole streams
-too.
+When a component reports an exception it has no recovery for, it writes a `component` link through
+Tracing's library. The link's detail is the exception's type and message. For a command that failed,
+the detail also includes these, each named:
 
-Spec tooling is the exception: it depends on no other Module and reports with its
-[own error record](../../spec-tooling/spec/errors.md). A Module that receives a Spec tooling error and
-cannot handle it translates it into a `component` link and keeps its causes as nested links.
+- Its exit status.
+- Its standard output.
+- Its standard error.
+
+When a stream is longer than 20,000 characters, the link quotes the stream from its end. The quote
+says how many characters it leaves out. When the component keeps a traceback file, named in the
+link's evidence, that file holds the whole streams too.
+
+Spec tooling is the exception. It depends on no other Module. It reports with its
+[own error record](../../spec-tooling/spec/errors.md). When a Module receives a Spec tooling error and
+cannot handle it, the Module translates the error into a `component` link. The Module keeps the
+error's causes as nested links.
 
 ### Reasons
 

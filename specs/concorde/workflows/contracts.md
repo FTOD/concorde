@@ -1,18 +1,22 @@
 # Workflows contracts
 
-The exact shapes of [Workflows](module.md): what one step prints, the step request a
-[step agent](../glossary.json#concept.step-agent) passes with `--json`, the step output
-convention through which a run's output declares what a workflow must know, the
-[workflow result](../glossary.json#concept.workflow-result), how a part contributes a workflow and
-what its script calls and returns, the MCP tools the workflow part
-registers, the error codes of the workflow's own links, and the content of the workflow's and each
-step's trace node. Error links
-follow the Framework's
+The exact shapes of [Workflows](module.md) cover:
+
+- What one step prints.
+- The step request a [step agent](../glossary.json#concept.step-agent) passes with `--json`.
+- The step output convention through which a run's output declares what a workflow must know.
+- The [workflow result](../glossary.json#concept.workflow-result).
+- How a part contributes a workflow and what its script calls and returns.
+- The MCP tools the workflow part registers.
+- The error codes of the workflow's own links.
+- The content of the workflow's and each step's trace node.
+
+Error links follow the Framework's
 [error contract](../kernel/tracing/contracts.md#contract.tracing.error), copied here as `$defs`.
 
 ## Step outcome
 
-Printed by `concorde workflow step`, from the workspace's
+`concorde workflow step` prints the outcome from the workspace's
 [workflow record](../glossary.json#concept.workflow-record) and the saved
 [run result](../glossary.json#concept.run-result).
 
@@ -298,7 +302,7 @@ Printed by `concorde workflow step`, from the workspace's
 
 ## Step request
 
-What `concorde workflow step --json` takes, as the
+`concorde workflow step --json` takes the request as the
 [step agent](../glossary.json#concept.step-agent) passes it.
 
 ```concorde-contract
@@ -421,8 +425,8 @@ What `concorde workflow step --json` takes, as the
 ## Step output convention
 
 What a run's output declares for a workflow. Any [Operation](../glossary.json#concept.operation) or
-[execution command](../glossary.json#concept.execution-command) may fill it; Workflows reads nothing
-else of a run's output, and the step command and the report read it from the saved
+[execution command](../glossary.json#concept.execution-command) may fill it. Workflows reads nothing
+else of a run's output. The step command and the report read it from the saved
 [run result](../glossary.json#concept.run-result)'s `output`. The producing Operation's or
 command's own [Spec](../glossary.json#concept.spec) says which of its items it declares here.
 
@@ -717,8 +721,10 @@ command's own [Spec](../glossary.json#concept.spec) says which of its items it d
 
 ## Workflow result
 
-Printed by `concorde workflow report` and saved in the workflow's trace node, at
-`<workspace folder>/workflow/reports/<n>.json` with its Markdown rendering at `<n>.md`.
+`concorde workflow report` prints the workflow result.
+The result is saved in the workflow's trace node at
+`<workspace folder>/workflow/reports/<n>.json`.
+Its Markdown rendering is saved at `<n>.md`.
 
 ```concorde-contract
 {
@@ -1574,11 +1580,19 @@ Printed by `concorde workflow report` and saved in the workflow's trace node, at
 
 ## Contributing a workflow
 
-A part that owns a procedure contributes it as a workflow in two pieces: a
-[workflow script](../glossary.json#concept.workflow-script) in its own package, and a registration
-of that script with Workflows' catalog, `catalog.register(catalog.Workflow(...))` in
-`src/concorde/workflows/catalog.py`, made when the part's registering module loads, which
-Distribution does for every installed part before a step, a report or the build reads the catalog.
+A part that owns a procedure contributes it as a workflow in two pieces:
+
+- A [workflow script](../glossary.json#concept.workflow-script) in its own package.
+- A registration of that script with Workflows' catalog, `catalog.register(catalog.Workflow(...))`
+  in `src/concorde/workflows/catalog.py`.
+
+When the part's registering module loads, it makes the registration. Before any of these reads the
+catalog, Distribution loads the registering module for every installed part:
+
+- A step.
+- A report.
+- The build.
+
 Method's [brownfield workflow](../glossary.json#concept.brownfield-workflow) is contributed this way.
 
 ### The registration
@@ -1593,18 +1607,23 @@ Method's [brownfield workflow](../glossary.json#concept.brownfield-workflow) is 
 | `last_step` | the base key of the step whose `ok` makes the [workflow result](#contract.workflows.result) `ok` |
 | `registered_in` | the path of the module that registers it, relative to the package root, which the build counts among the render's sources |
 
-Registering the same definition again changes nothing; registering a different definition under a
-name already registered is refused, naming the module that registered the name first. A
-registration whose script is missing makes the build refuse the render with `invalid_workflow`.
+Registering the same definition again changes nothing. When a name is already registered,
+registering a different definition under that name is refused. The refusal names the module that
+registered the name first. When a registration's script is missing, the build refuses the render
+with `invalid_workflow`.
 
 ### What the script is given
 
-The build renders the workflow as one Claude Code workflow: a `meta` block named
-`concorde-<name>`, the constants `WORKFLOW`, the workflow's name, and `LAST_STEP`, its registered
-last step, then Workflows' step adapter `src/concorde/workflows/scripts/claude.js`, then the
-procedure. The procedure is plain JavaScript at the top level, which may `await`, with no
-asynchronous helper functions of its own. Claude Code hands it `args`, the JSON object the workflow
-was started with:
+The build renders the workflow as one Claude Code workflow with these pieces in order:
+
+- A `meta` block named `concorde-<name>`.
+- The constants `WORKFLOW`, the workflow's name, and `LAST_STEP`, its registered last step.
+- Workflows' step adapter `src/concorde/workflows/scripts/claude.js`.
+- The procedure.
+
+The procedure is plain JavaScript at the top level. It may `await`. It has no asynchronous helper
+functions of its own. Claude Code hands the procedure `args`, the JSON object the workflow was
+started with:
 
 | Argument | Meaning |
 | --- | --- |
@@ -1617,22 +1636,39 @@ was started with:
 
 The adapter defines three functions for the procedure:
 
-- `step(key, argv)` asks for one [workflow step](../glossary.json#concept.workflow-step): `key` is
-  its base key, as the [step request](#contract.workflows.step-request) restricts it, and `argv`
-  the name of an Operation or execution command followed by its arguments. The adapter adds the
-  step's `answers`, `retry` and `restart` from `args`, leaves `retry` out once an outcome names a
-  run, and relays the request until the run has finished, so the promise it returns resolves to a
-  [step outcome](#contract.workflows.step) whose state is `finished`, `lost` or `refused`, or
-  `running` only after 200 calls for the step, a guard against a run that never ends, when it
-  resolves to the last outcome that said the run was running. It resolves to `null` when three
-  relays in a row brought no answer: an outcome that names the
-  [step key](../glossary.json#concept.step-key) asked for (its base key, its restart label and,
-  for an answered step, an answers digest checked by its shape), a step outcome's state and a
-  well-formed run identity, or none only for a refused or running step. Asking again for the same
-  key never starts a second run.
-- `report(lost)` runs `concorde workflow report --workflow <WORKFLOW> --mode <args.mode>`, with
-  `--lost <key>` when `lost` names a key, and returns a promise of the script's result.
-- `note(text)` shows progress and records nothing.
+- `step(key, argv)` asks for one [workflow step](../glossary.json#concept.workflow-step).
+  Its base key is `key`, as the [step request](#contract.workflows.step-request) restricts it.
+  The name of an Operation or execution command followed by its arguments is `argv`.
+  The adapter adds these values for the step from `args`:
+  - `answers`.
+  - `retry`.
+  - `restart`.
+
+  Once an outcome names a run, the adapter leaves `retry` out. The adapter relays the request until
+  the run finishes, so its returned promise resolves to a [step outcome](#contract.workflows.step).
+  The outcome's state is one of these:
+  - `finished`.
+  - `lost`.
+  - `refused`.
+  - `running`, only after 200 calls for the step.
+
+  The 200-call limit guards against a run that never ends. At that limit, the promise resolves to
+  the last outcome that said the run was running. When three relays in a row bring no answer, the
+  promise resolves to `null`. An answer is an outcome with these details:
+  - The [step key](../glossary.json#concept.step-key) asked for.
+  - A step outcome's state.
+  - A well-formed run identity, or none only for a refused or running step.
+
+  The step key includes these parts:
+  - Its base key.
+  - Its restart label.
+  - For an answered step, an answers digest checked by its shape.
+
+  Asking again for the same key never starts a second run.
+- `report(lost)` runs `concorde workflow report --workflow <WORKFLOW> --mode <args.mode>`.
+  When `lost` names a key, the command includes `--lost <key>`. The function returns a promise of
+  the script's result.
+- `note(text)` shows progress. It records nothing.
 
 ### The script's result
 
@@ -1645,49 +1681,73 @@ Every path of the procedure ends by returning what `report` resolved to, which i
 | `relayed` | present only when `report` was given a key whose last relays brought no answer: `{key, attempts, outcome}`, that key, the number of relays in a row that were no answer and the last thing they relayed, unverified, so that a refusal of the step command, such as a mistyped request, stays in sight |
 | `rejected` | added by the procedure, as below |
 
-The workflow result itself is the saved report, which the script's result only points at. A procedure
-stops at a step whose outcome is `null` and reports that step's key as lost. A step whose outcome
-carries a `step_rejected` or `workspace_retired` link is in no workflow record, and one with
-`step_unrecorded` is recorded without its run, so the report cannot see what it ran: the procedure
-stops there, reports its key as lost and returns that
-outcome, unchanged, as `rejected` beside the fields above, as Method's brownfield workflow does.
+The workflow result itself is the saved report. The script's result only points at the workflow
+result. A procedure stops at a step whose outcome is `null`. It reports that step's key as lost.
+A step whose outcome carries a `step_rejected` or `workspace_retired` link is in no workflow record.
+A step with `step_unrecorded` is recorded without its run. Because of these recording limits, the
+report cannot see what the step ran. For this reason, the procedure does the following, as Method's
+brownfield workflow does:
+
+- Stops there.
+- Reports the step's key as lost.
+- Returns that outcome, unchanged, as `rejected` beside the fields above.
 
 ## MCP tools
 
 The workflow part registers two tools with the
 [project MCP server](../glossary.json#concept.project-mcp-server) through its
-[part registration](../glossary.json#concept.part-registration); where the workflow part is not
-installed, neither exists. The server runs each call as it runs every registered tool, with a
-process of its own of the current Concorde, and returns its answer or refusal unchanged.
+[part registration](../glossary.json#concept.part-registration). Where the workflow part is not
+installed, neither tool exists. The server runs each call as it runs every registered tool, with a
+process of its own of the current Concorde. The server returns the call's answer or refusal
+unchanged.
 
 | Tool | Arguments | Result |
 | --- | --- | --- |
 | `workflow_step` | `request`, a [step request](#contract.workflows.step-request) as an object; optional `wait`, whole seconds from 0 to 100 (default 100) | the [step outcome](#contract.workflows.step), as [Starting a workflow step](#starting-a-workflow-step) says |
 | `workflow_report` | optional `folder`, the absolute workspace folder a [workspace binding](../glossary.json#concept.workspace-binding) names as its `traces` (default: the folder the binding of the session's worktree names); optional `number` ≥ 1 | `{"folder", "number", "path", "report": <workflow result>}`, the saved [workflow result](#contract.workflows.result) of that number, the latest when no number is given |
 
-`workflow_report` reads a saved report and builds none; it knows no task, so whoever knows a task's
-workspace folder, such as the task level, which [Tasks](../coordination/tasks/module.md) shows it,
-passes that folder, wherever the folder lies now.
+`workflow_report` reads a saved report. It builds none. It knows no task, so whoever knows a task's
+workspace folder passes that folder, wherever the folder lies now. One such caller is the task
+level, to which [Tasks](../coordination/tasks/module.md) shows the folder.
 
 ### Starting a workflow step
 
 `workflow_step` works on the session's worktree. When that worktree has no workspace binding, or
-one that cannot be read, it is refused with `unbound_worktree` and runs nothing. Otherwise it runs
-that worktree's own `concorde`, its `.concorde/bin/concorde` or, in Concorde's source checkout,
-its `scripts/concorde.py` with the server's Python, as
-`concorde workflow step --json <request> --wait <wait>` from the worktree's root, as a child of the
-call's process with the server's environment and no standard input, and waits for it at most
-`wait` plus 60 seconds. The command is a process of the server's, so the
-[detached run](../glossary.json#concept.detached-run) it starts for a new step is a process of
-its own and lives until its run ends, whatever becomes of the calls that asked for it or of the
-session and its server. The server answers these calls each on a thread of its own, so a waiting
-step never holds up the session's other calls, and allows a call's process `wait` plus 120 seconds
-before it stops it.
+one that cannot be read, `workflow_step` is refused with `unbound_worktree`. In that case, it runs
+nothing. Otherwise, it runs that worktree's own `concorde` as
+`concorde workflow step --json <request> --wait <wait>`. This is the worktree's
+`.concorde/bin/concorde` or, in Concorde's source checkout, its `scripts/concorde.py` with the server's
+Python. The command runs with these settings:
 
-The answer is the JSON object the command printed, unchanged, whatever its exit status: a
-[step outcome](#contract.workflows.step), finished, running, lost or refused. An object without a
-step outcome's `key` whose `error` is a link is the step command's refusal and is returned as the
-tool's refusal, that link unchanged; output that is no JSON object is refused with `step_failed`.
+- From the worktree's root.
+- As a child of the call's process.
+- With the server's environment.
+- With no standard input.
+
+The tool waits for the command at most `wait` plus 60 seconds. The command is a process of the
+server's, so the [detached run](../glossary.json#concept.detached-run) it starts for a new step is a
+process of its own. Since the command is a process of the server's, that detached run lives until
+its run ends, whatever becomes of these:
+
+- The calls that asked for it.
+- The session.
+- The session's server.
+
+The server answers these calls each on a thread of its own, so a waiting step never holds up the
+session's other calls. The server allows a call's process `wait` plus 120 seconds before it stops
+that process.
+
+Whatever the command's exit status, the answer is the JSON object the command printed, unchanged.
+It is a [step outcome](#contract.workflows.step) in one of these states:
+
+- Finished.
+- Running.
+- Lost.
+- Refused.
+
+An object without a step outcome's `key` whose `error` is a link is the step command's refusal.
+That object is returned as the tool's refusal, with that link unchanged. When output is no JSON
+object, it is refused with `step_failed`.
 
 ### Refusals of the tools
 
@@ -1700,9 +1760,10 @@ tool's refusal, that link unchanged; output that is no JSON object is refused wi
 
 ## Workflow trace
 
-The workflow of a workspace is a [trace node](../glossary.json#concept.trace-node) of kind `workflow`, `workflow/` of the
-workspace folder, and each step one of kind `step` below it, as
-[Tracing](../kernel/tracing/contracts.md#contract.tracing.node) defines them; their contents are these values.
+The workflow of a workspace is a [trace node](../glossary.json#concept.trace-node) of kind `workflow`.
+Its node is `workflow/` of the workspace folder. Each step is a node of kind `step` below the
+workflow's node. [Tracing](../kernel/tracing/contracts.md#contract.tracing.node) defines these
+nodes. Their contents are these values.
 
 ```concorde-contract
 {
@@ -1931,7 +1992,7 @@ workspace folder, and each step one of kind `step` below it, as
 
 ## Errors
 
-The codes of links whose level is `workflow`, with the actor `workflow <name> (workspace
+These codes belong to links whose level is `workflow`, with the actor `workflow <name> (workspace
 <workspace>)`. The refusals of the workflow record and of the runner keep their own codes as
 causes.
 
@@ -1949,20 +2010,39 @@ causes.
 | `incomplete` | result | `capability` | the recorded steps end before the procedure's last step without any of the stops above, such as a script that ended early |
 | `report_failed` | report command | `capability` | the report could not be built for a reason of its own, such as a recorded result the report's contract refuses; the detail names the reason, instead of the command ending in a traceback |
 
-The step and report commands also answer with a `component` link of the actor
-`Workflows (concorde [workflow step](../glossary.json#concept.workflow-step))` or
-`Workflows (concorde workflow report)`, printed as `{"error": <link>}` with exit status 1, when they
-cannot work at all: `binding_required` when the worktree they start in has no
-[workspace binding](../glossary.json#concept.workspace-binding), `binding_unreadable`,
-`binding_invalid` or `binding_misplaced` when its binding is refused, `invalid_step_output` with
-reason `input` when a finished run's output carries a `workflow` object that breaks the
-[step output convention](#contract.workflows.step-output), which a report answers as
-`report_failed`, and, for the report,
-`no_workflow` when the workspace ran no [workflow step](../glossary.json#concept.workflow-step)
-and the report was not given both `--workflow` and a `--lost` key, `workflow_conflict` when
-`--workflow` names another workflow than the one recorded, and `record_unreadable` when its
-workflow record cannot be read or breaks its contract, and, for the report, `workspace_retired` with reason `environment` when the workspace was retired while it waited for the workflow lock, as for a step. A command line that breaks the
-[step request](#contract.workflows.step-request) contract, or a malformed report command line, is
-answered with a `component` link of
-the actor `Workflows (concorde workflow)`, code `invalid_request`, reason `input`, and exit status
-2.
+When they cannot work at all, the step and report commands also answer with a `component` link.
+The actor is `Workflows (concorde [workflow step](../glossary.json#concept.workflow-step))` or
+`Workflows (concorde workflow report)`. The commands print the link as `{"error": <link>}` with
+exit status 1. The codes apply in these cases:
+
+- When the worktree they start in has no
+  [workspace binding](../glossary.json#concept.workspace-binding), the commands answer with
+  `binding_required`.
+- When the worktree's binding is refused, the commands answer with one of these codes:
+  - `binding_unreadable`.
+  - `binding_invalid`.
+  - `binding_misplaced`.
+- When a finished run's output carries a `workflow` object that breaks the
+  [step output convention](#contract.workflows.step-output), the step command answers with
+  `invalid_step_output` with reason `input`. A report answers this case as `report_failed`.
+- When both these conditions hold, the report answers with `no_workflow`:
+  - The workspace ran no [workflow step](../glossary.json#concept.workflow-step).
+  - The report was not given both `--workflow` and a `--lost` key.
+- When `--workflow` names another workflow than the one recorded, the report answers with
+  `workflow_conflict`.
+- When its workflow record cannot be read or breaks its contract, the report answers with
+  `record_unreadable`.
+- When the workspace was retired while the report waited for the workflow lock, the report
+  answers with `workspace_retired` with reason `environment`, as for a step.
+
+When either of these conditions holds, the command line is answered with the response below:
+
+- The command line breaks the [step request](#contract.workflows.step-request) contract.
+- The report command line is malformed.
+
+The response has these details:
+
+- A `component` link of the actor `Workflows (concorde workflow)`.
+- The code `invalid_request`.
+- The reason `input`.
+- Exit status 2.
