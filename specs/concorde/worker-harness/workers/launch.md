@@ -100,8 +100,8 @@ caller names the files its worker should read in its task instructions. The work
 their absolute paths, like any `ro` file.
 
 The project interpreter is the one other thing a caller may give. On both backends, Workers puts
-its directory first on every round's `PATH`, ahead of the host's own `PATH`. The brief names the
-project interpreter, so that `python` is the project's interpreter. The host's own environment is
+its directory first on every round's `PATH`, ahead of the host's own `PATH`. The brief also names
+the project interpreter. Both make `python` the project's interpreter. The host's own environment is
 never changed. Workers never resolves the interpreter itself. Running the interpreter needs its
 environment and the installation it links to readable. The caller therefore lists them among the
 runtime paths.
@@ -157,8 +157,8 @@ file. The audit covers these entries:
 - entries the round changed
 - entries the round removed
 
-A Module outside the grant may own such an entry before or after the round. The round validation
-then answers a violation `audit_violation`. The violation names
+When a Module outside the grant owns such an entry before or after the round, the round validation
+answers a violation `audit_violation`. The violation names
 `<glossary>#<concept> (owner before: <Module>, after: <Module>)` for every such entry
 ([How an Operation runs its workers](../../method/workers.md)).
 
@@ -730,16 +730,11 @@ with no allowed network domain.
 
 ### req.workers.bash-strict-network — An unlisted host is denied, never approved
 
-On the Claude Code backend, the Bash sandbox SHALL use a strict network allowlist.
-
-A request to a host that the allowlist does not list is therefore denied. The permission mode never
-approves it.
+On the Claude Code backend, the Bash sandbox SHALL use a strict network allowlist, so that a request to a host it does not list is denied rather than approved by the permission mode.
 
 ### req.workers.bash-no-unsandboxed — No Bash command runs outside the sandbox
 
-On the Claude Code backend, the worker settings SHALL disable unsandboxed commands.
-
-For a request to run a command outside the sandbox, the command still runs sandboxed.
+On the Claude Code backend, the worker settings SHALL disable unsandboxed commands, so that a request to run a command outside the sandbox still runs it sandboxed.
 
 ### req.workers.working-directory — The worker never works in the worktree
 
@@ -827,7 +822,10 @@ the exact entry to add to the map in the refusal.
 
 ### req.workers.model-map-whole-operation — An Operation's workers are checked against the map at once
 
-When asked to check one Operation's workers against the model map, the configuration reader SHALL refuse with one `model_unmapped` that names every model and backend the map lacks, with the workers that would take each.
+When asked to check one Operation's workers against the model map, the configuration reader SHALL refuse with one `model_unmapped` that names all of these:
+
+- every model and backend the map lacks for those workers
+- the workers that would take each
 
 ### req.workers.refusal-reason — Every refusal before a run has its fixed reason
 
