@@ -114,6 +114,23 @@ class ErrorChainTests(unittest.TestCase):
         self.assertEqual(["traceback", "raised-at"], kinds)
         validate(link, errors.ERROR_SCHEMA)
 
+    def test_an_exception_link_keeps_both_streams_and_says_what_it_cuts(self):
+        long = "x" * (errors.OUTPUT_LIMIT + 5) + "the end"
+        error = subprocess.CalledProcessError(
+            1, ["make"], output=b"the failure on stdout\n", stderr="a warning\n"
+        )
+        detail = errors.exception_detail(error)
+        self.assertIn("stdout: the failure on stdout", detail)
+        self.assertIn("stderr: a warning", detail)
+        error = subprocess.CalledProcessError(1, ["make"], output=long)
+        detail = errors.exception_detail(error)
+        self.assertIn("[12 earlier characters left out]", detail)
+        self.assertTrue(detail.endswith("the end"))
+        with tempfile.TemporaryDirectory() as directory:
+            trace = Path(directory) / "trace.txt"
+            errors.from_exception("make", error, trace=trace)
+            self.assertIn(long, trace.read_text())
+
     def test_the_rendering_shows_every_level_and_reason(self):
         text = errors.render(self.chain())
         for fragment in (

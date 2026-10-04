@@ -13,6 +13,7 @@ from contextlib import redirect_stdout
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from unittest.mock import patch
 
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
@@ -204,6 +205,24 @@ class TracingTests(unittest.TestCase):
         self.assertEqual("output.log", finished["artifacts"][0]["path"])
         self.assertRegex(finished["artifacts"][0]["digest"], r"^sha256:[0-9a-f]{64}$")
 
+    def test_a_failed_write_never_stops_the_work_and_is_kept_for_its_producer(self):
+        folder = self.root / "node"
+        node = Node(
+            folder, "7", "check", metadata={"check": "check.a", "module": "module.a"}
+        )
+        failure = PermissionError(13, "Permission denied")
+        with patch.object(trace, "write", side_effect=failure):
+            node.start()
+        self.assertIs(failure, node.failure)
+        [account] = node.failures
+        self.assertIn(str(folder / layout.TRACE), account)
+        self.assertIn("at its start", account)
+        self.assertIn("Permission denied", account)
+        node.finish("ok")
+        self.assertIsNone(node.failure)
+        self.assertEqual([account], node.failures)
+        self.assertEqual("ok", trace.read(folder)["status"])
+
     def test_a_node_refuses_an_unknown_metadata_dimension_and_an_absolute_artifact(
         self,
     ):
@@ -338,9 +357,21 @@ class TracingTests(unittest.TestCase):
         value = reader.view(task.run, self.concorde)
         self.assertEqual("lost", value["status"])
         self.assertEqual("lost", value["children"][0]["status"])
+        # A worker run or round addressed directly is lost as well.
+        round_folder = layout.round_folder(task.worker, 3)
+        ended(round_folder, "3", "worker-round", status="running", ended_at=None)
+        self.assertEqual("lost", reader.view(task.worker, self.concorde)["status"])
+        self.assertEqual("lost", reader.view(round_folder, self.concorde)["status"])
+        output = io.StringIO()
+        with redirect_stdout(output):
+            command.main(["show", task.worker.name], here=self.root)
+        self.assertEqual("lost", json.loads(output.getvalue())["status"])
         lock = layout.lock_file(self.concorde, "run", task.run.name)
         with locks.hold(lock, "a runner", remove=True):
             self.assertEqual("running", reader.view(task.run, self.concorde)["status"])
+            self.assertEqual(
+                "running", reader.view(task.worker, self.concorde)["status"]
+            )
         self.assertFalse(lock.exists())
 
     @verifies("scenario.tracing.list")
@@ -459,10 +490,11 @@ class TracingTests(unittest.TestCase):
             *(str(conversations[index]) for index in (0, 2)),
         ]
         dry = retention.prune(self.concorde, dry_run=True, moment=now)
-        self.assertEqual(sorted(removed), sorted(dry))
+        self.assertEqual((sorted(removed), []), (sorted(dry["removed"]), dry["failed"]))
         self.assertTrue(old.exists() and conversations[0].exists())
+        pruned = retention.prune(self.concorde, moment=now)
         self.assertEqual(
-            sorted(removed), sorted(retention.prune(self.concorde, moment=now))
+            (sorted(removed), []), (sorted(pruned["removed"]), pruned["failed"])
         )
         self.assertFalse(old.exists())
         self.assertFalse(any(path.exists() for path in conversations))
@@ -478,10 +510,149 @@ class TracingTests(unittest.TestCase):
                 }
             )
         )
-        self.assertEqual([str(history)], retention.prune(self.concorde, moment=now))
+        self.assertEqual(
+            [str(history)], retention.prune(self.concorde, moment=now)["removed"]
+        )
         (self.concorde / "tracing.json").write_text('{"schema_version": 1}')
         with self.assertRaises(retention.ConfigError):
             retention.prune(self.concorde, moment=now)
+
+    @verifies("scenario.tracing.prune")
+    def test_a_folder_prune_cannot_remove_is_reported_with_its_error(self):
+        run = Path(self.concorde) / "unbound" / "r-20260101T000000-understand-00000001"
+        ended(run, run.name, "run", ended_at="2026-01-01T00:00:00.000000Z")
+        (run / "kept").mkdir()
+
+        def refused(*arguments, **keywords):
+            raise PermissionError(13, "Permission denied", str(arguments[0]))
+
+        with patch("os.rmdir", refused):
+            pruned = retention.prune(self.concorde)
+        self.assertEqual([], pruned["removed"])
+        [failed] = pruned["failed"]
+        self.assertEqual(str(run), failed["path"])
+        self.assertIn("Permission denied", failed["error"])
+        self.assertTrue(run.exists())
+        self.assertEqual([str(run)], retention.prune(self.concorde)["removed"])
+
+    def test_the_prune_command_reaches_a_linked_worktree_s_unbound_runs(self):
+        identity = ("-c", "user.name=t", "-c", "user.email=t@t")
+        subprocess.run(
+            [
+                "git",
+                *identity,
+                "-C",
+                str(self.root),
+                "commit",
+                "-q",
+                "--allow-empty",
+                "-m",
+                "start",
+            ],
+            check=True,
+        )
+        linked = Path(self.temporary.name) / "linked"
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                str(self.root),
+                "worktree",
+                "add",
+                "-q",
+                "--detach",
+                str(linked),
+            ],
+            check=True,
+        )
+        old = linked / ".concorde" / "unbound" / "r-20260101T000000-understand-00000001"
+        ended(old, old.name, "run", ended_at="2026-01-01T00:00:00.000000Z")
+        primary = self.concorde / "unbound" / "r-20260101T000000-understand-00000002"
+        ended(primary, primary.name, "run", ended_at="2026-01-01T00:00:00.000000Z")
+        (self.concorde / "tracing.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "retention": {"unbound_days": None, "history_days": None},
+                }
+            )
+        )
+        output = io.StringIO()
+        with redirect_stdout(output):
+            self.assertEqual(0, command.main(["prune"], here=linked))
+        self.assertEqual(
+            {"removed": [], "failed": [], "dry_run": False},
+            json.loads(output.getvalue()),
+        )
+        (self.concorde / "tracing.json").unlink()
+        output = io.StringIO()
+        with redirect_stdout(output):
+            self.assertEqual(0, command.main(["prune", "--dry-run"], here=linked))
+        self.assertEqual(
+            sorted([str(old), str(primary)]),
+            sorted(json.loads(output.getvalue())["removed"]),
+        )
+        output = io.StringIO()
+        with redirect_stdout(output):
+            self.assertEqual(0, command.main(["prune"], here=linked))
+        self.assertFalse(old.exists() or primary.exists())
+
+    def test_a_workspace_node_shows_its_running_or_latest_child_s_status(self):
+        task = TaskTrace(self.concorde)
+        workspace = Path(task.folder) / "workspace"
+
+        def status() -> str:
+            return reader.view(workspace, self.concorde)["status"]
+
+        self.assertEqual("ok", status())
+        ended(
+            task.delivery,
+            task.delivery.name,
+            "run",
+            status="failed",
+            started_at="2026-09-27T10:09:00.000000Z",
+        )
+        self.assertEqual("failed", status())
+        ended(task.run, task.run.name, "run", status="running", ended_at=None)
+        lock = layout.lock_file(self.concorde, "run", task.run.name)
+        with locks.hold(lock, "a runner", remove=True):
+            self.assertEqual("running", status())
+        # A lost run is no running child: the latest child's status stands.
+        self.assertEqual("failed", status())
+        empty = Path(self.temporary.name) / "empty-workspace"
+        (empty / "runs").mkdir(parents=True)
+        self.assertEqual("unknown", reader.view(empty, self.concorde)["status"])
+
+    def test_listing_orders_roots_before_directories(self):
+        linked = Path(self.temporary.name) / "linked"
+        linked.mkdir()
+        (linked / ".git").write_text("gitdir: elsewhere\n")
+        unbound = (
+            linked / ".concorde" / "unbound" / "r-20260927T100300-understand-00000005"
+        )
+        ended(unbound, unbound.name, "run")
+        TaskTrace(self.concorde, "current")
+        closed = TaskTrace(self.concorde, "old")
+        shutil.move(closed.folder, Path(self.concorde) / "history" / "old")
+        listed = reader.listing(
+            [linked / ".concorde", self.concorde], history=True, unbound=True
+        )
+        self.assertEqual(
+            ["current", "old", unbound.name], [item["id"] for item in listed]
+        )
+
+    def test_the_tree_names_a_node_s_error_code(self):
+        task = TaskTrace(self.concorde)
+        ended(
+            task.delivery,
+            task.delivery.name,
+            "run",
+            status="failed",
+            error={"code": "checks_failed"},
+            started_at="2026-09-27T10:09:00.000000Z",
+        )
+        tree = reader.render(reader.view(task.folder, self.concorde))
+        self.assertIn("error checks_failed", tree)
 
     def test_a_workspace_folder_without_a_task_is_shown(self):
         workspace = self.root / "elsewhere" / "workspace-folder"

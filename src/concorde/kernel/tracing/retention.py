@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Iterable
@@ -106,11 +107,13 @@ def removable(
     concorde: Path,
     moment: datetime | None = None,
     roots: Iterable[TraceRoot] | None = None,
+    periods: dict | None = None,
 ) -> list[Path]:
     """What retention may remove now under ``concorde``: whole top folders, root by root, then the
-    conversation records of the top folders it keeps. ``roots`` default to the registered ones."""
+    conversation records of the top folders it keeps. ``roots`` default to the registered ones,
+    ``periods`` to the configuration of ``concorde``."""
     moment = moment or datetime.now(UTC)
-    periods = configuration(concorde)
+    periods = configuration(concorde) if periods is None else periods
     found: list[Path] = []
     kept: list[tuple[TraceRoot, Path]] = []
     for root in registered() if roots is None else roots:
@@ -135,23 +138,67 @@ def removable(
     return found
 
 
+def _remove(path: Path) -> str | None:
+    """Remove ``path``, a folder with its content; what the operating system refused, if any.
+
+    A folder's own ``trace.json`` goes last, so that a folder not removed wholly is still a node
+    the next prune finds and tries again.
+    """
+    refused: list[str] = []
+
+    def failed(function, name, problem) -> None:
+        error = problem[1] if isinstance(problem, tuple) else problem
+        refused.append(f"{name}: {error}")
+
+    def remove(target: Path) -> None:
+        try:
+            if target.is_dir() and not target.is_symlink():
+                if sys.version_info >= (3, 12):
+                    shutil.rmtree(target, onexc=failed)
+                else:
+                    shutil.rmtree(target, onerror=failed)
+            else:
+                target.unlink(missing_ok=True)
+        except OSError as error:
+            refused.append(f"{target}: {error}")
+
+    if path.is_dir() and not path.is_symlink():
+        try:
+            entries = sorted(path.iterdir())
+        except OSError as error:
+            entries = []
+            refused.append(f"{path}: {error}")
+        for entry in entries:
+            if entry.name != layout.TRACE:
+                remove(entry)
+    if not refused:
+        remove(path)
+    if not refused:
+        return None
+    more = f" and {len(refused) - 1} more" if len(refused) > 1 else ""
+    return refused[0] + more
+
+
 def prune(
     concorde: Path,
     *,
     dry_run: bool = False,
     moment: datetime | None = None,
     roots: Iterable[TraceRoot] | None = None,
-) -> list[str]:
-    """Remove what ``removable`` names, unless ``dry_run``; the removed paths."""
-    removed = []
-    for path in removable(concorde, moment, roots):
-        if not dry_run:
-            if path.is_dir() and not path.is_symlink():
-                shutil.rmtree(path, ignore_errors=True)
-            else:
-                path.unlink(missing_ok=True)
-        removed.append(path.as_posix())
-    return removed
+    periods: dict | None = None,
+) -> dict:
+    """Remove what ``removable`` names, unless ``dry_run``: ``{"removed": [<path>…], "failed":
+    [{"path", "error"}…]}``, a path the operating system did not let go wholly being failed, and
+    tried again at the next prune."""
+    removed: list[str] = []
+    failed: list[dict] = []
+    for path in removable(concorde, moment, roots, periods):
+        problem = None if dry_run else _remove(path)
+        if problem is None:
+            removed.append(path.as_posix())
+        else:
+            failed.append({"path": path.as_posix(), "error": problem})
+    return {"removed": removed, "failed": failed}
 
 
 __all__ = [

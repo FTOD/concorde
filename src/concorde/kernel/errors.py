@@ -42,6 +42,9 @@ REASONS = {
     "input": "the input the actor received is invalid and only its sender can correct it",
 }
 
+# How much of each stream of a failed command a link's detail quotes, from its end.
+OUTPUT_LIMIT = 20000
+
 CODE = {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}
 TEXT = {"type": "string", "minLength": 1}
 STRINGS = {"type": "array", "items": TEXT}
@@ -182,15 +185,29 @@ def link(
     }
 
 
+def _streams(error: BaseException) -> list[tuple[str, str]]:
+    """The nonblank standard output and standard error of a failed command, in that order."""
+    if not isinstance(error, subprocess.CalledProcessError):
+        return []
+    found = []
+    for name, value in (("stdout", error.stdout), ("stderr", error.stderr)):
+        if isinstance(value, bytes):
+            value = value.decode("utf-8", "replace")
+        if isinstance(value, str) and value.strip():
+            found.append((name, value.strip()))
+    return found
+
+
 def exception_detail(error: BaseException) -> str:
-    """The type and message of an exception, with a failed command's exit status and output."""
+    """The type and message of an exception and, for a failed command, its exit status and both
+    its output streams, each quoted whole or, beyond ``OUTPUT_LIMIT`` characters, from its end
+    with the number of characters left out."""
     text = f"{type(error).__name__}: {error}"
-    if isinstance(error, subprocess.CalledProcessError):
-        output = error.stderr or error.output or b""
-        if isinstance(output, bytes):
-            output = output.decode("utf-8", "replace")
-        if output.strip():
-            text += f"; output: {output.strip()[-2000:]}"
+    for name, output in _streams(error):
+        omitted = len(output) - OUTPUT_LIMIT
+        if omitted > 0:
+            output = f"[{omitted} earlier characters left out] {output[-OUTPUT_LIMIT:]}"
+        text += f"; {name}: {output}"
     return text
 
 
@@ -203,11 +220,15 @@ def from_exception(
     explanation: str = "",
     trace: Path | None = None,
 ) -> dict:
-    """A component link for an exception; ``trace`` receives the full traceback."""
+    """A component link for an exception; ``trace`` receives the full traceback and a failed
+    command's whole output streams."""
     found = []
     if trace is not None:
         trace.write_text(
             "".join(traceback.format_exception(type(error), error, error.__traceback__))
+            + "".join(
+                f"\n--- {name} ---\n{output}\n" for name, output in _streams(error)
+            )
         )
         found.append(evidence("traceback", trace.as_posix(), "full traceback"))
     frames = traceback.extract_tb(error.__traceback__)
@@ -273,6 +294,7 @@ __all__ = [
     "ERROR_SCHEMA",
     "LEVELS",
     "LINK_SCHEMA",
+    "OUTPUT_LIMIT",
     "REASONS",
     "WORKER_ERROR_SCHEMA",
     "codes",

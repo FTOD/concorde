@@ -17,7 +17,10 @@ The producer of a trace node SHALL write its `trace.json` before the work the no
 and write it again when that work ends.
 
 A node whose process dies therefore still says what it was and when it started, and the reading
-command shows it `lost` when its run lock tells that nobody writes it any more.
+command shows it `lost` when its run lock tells that nobody writes it any more. Tracing is
+best-effort for the work, never silent: a write of `trace.json` that the operating system refuses
+never changes the work the node records, and the producer reports every such failed write in its
+own result, as evidence or a warning naming the node's file and the error.
 
 ### req.tracing.own-usage — A node records only its own consumption
 
