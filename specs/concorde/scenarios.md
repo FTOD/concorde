@@ -2,7 +2,7 @@
 
 These scenarios describe whole flows that cross several Modules, seen from the developer, the
 [main agent](glossary.json#concept.main-agent) and its [task sessions](glossary.json#concept.task-session). The precise behaviour of every step belongs to the
-[Module](glossary.json#concept.module) that performs it; a scenario here promises only what the
+[Module](glossary.json#concept.module) that performs it. A scenario here promises only what the
 Modules achieve together.
 
 ## Adopting Concorde
@@ -28,8 +28,8 @@ Modules achieve together.
 - AND the [workflow result](glossary.json#concept.workflow-result) lists every decision the workflow took and every [open question](glossary.json#concept.open-question) about intent it did not write as a promise
 - AND the main agent can merge the task branch into the primary branch
 
-A no-ask run in which a `code_to_spec` run did not end `ok` goes on as well, and may deliver a
-Module whose entry is still a stub or a partial description; its workflow result names that step's
+A no-ask run in which a `code_to_spec` run did not end `ok` goes on as well. It may deliver a
+Module whose entry is still a stub or a partial description. Its workflow result names that step's
 problem ([Workflows](workflows/requirements.md#req.workflows.no-ask-describe-continues)).
 
 ## Installing some of the parts
@@ -39,13 +39,18 @@ problem ([Workflows](workflows/requirements.md#req.workflows.no-ask-describe-con
 - GIVEN a project in which Concorde has never been installed
 - WHEN the developer runs the installer with `--parts spec`
 - AND initialization proposes a first [Spec](glossary.json#concept.spec) and then applies that exact proposal
-- THEN the project's `concorde` checks, serves and publishes its Specs: `spec-validation` finds no error, `registry --check` finds the mirror current, `grant` computes a grant, the Spec MCP server `concorde spec-mcp` answers a tool call, and `docsite` proposes a site and applies that proposal
+- THEN the project's `concorde` checks, serves and publishes its Specs
+- AND `spec-validation` finds no error and `registry --check` finds the mirror current
+- AND `grant` computes a grant
+- AND the Spec MCP server `concorde spec-mcp` answers a tool call
+- AND `docsite` proposes a site and applies that proposal
 - AND `task`, `run` and `issues` are refused with `part_missing`, each naming its part and the `--parts` that installs it
 - AND the project holds the code, guidance sections, workflows and ignore rules of the spec part and of Distribution, the installation host, and of no other part
 
 ### scenario.concorde.coordination-without-method — A task delivered and merged without Method
 
-- GIVEN a project without Specs in which the coordination part is installed alone, with the kernel it depends on and Distribution, the installation host, so that the spec, execution, workflow, issues and method parts are absent
+- GIVEN a project without Specs in which the coordination part is installed alone, with the kernel it depends on and Distribution, the installation host
+- AND so the spec, execution, workflow, issues and method parts are absent
 - WHEN the main agent opens a task naming its Modules by plain labels, the task session delivers it with `concorde task deliver --check "<command>"`, and the main agent merges and closes it
 - THEN the task branch carries the delivery commit and the primary branch the task's change
 - AND no step asked for `spec-validation`, a run or an [Issue](glossary.json#concept.issue), whose parts are absent
