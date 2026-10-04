@@ -28,11 +28,11 @@ A span is a JSON object. All of these fields are present:
 | `status` | `ok`, `error`, `cancelled` or `incomplete` |
 | `metadata` | only the counts `prompt_bytes`, `context_bytes`, `items`, `returncode`, `probe_index`, and the labels `stage`, `target_id`, `change_id`, `context_id`; any other key is dropped |
 
-Except for `returncode`, a count must meet all of these conditions:
+A count must meet all of these conditions:
 
 - be a finite number
 - be below 10^18
-- be nonnegative
+- be nonnegative, except for `returncode`
 
 Otherwise, the count is null. Only when a label is a host-issued identifier of at most 160
 characters drawn from these characters is it kept:
