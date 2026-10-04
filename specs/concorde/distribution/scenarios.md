@@ -271,6 +271,15 @@ This illustrates [refusing a part the package does not build](requirements.md#re
 
 This illustrates [serving a call as the current code registers its tool](requirements.md#req.distribution.mcp-current-serving).
 
+### scenario.distribution.mcp-call-failed — A call without an answer keeps what its process printed
+
+- GIVEN a call whose process prints on standard output and standard error but no answer
+- WHEN the process exits, exceeds its time and is stopped, or, as the process of a long-work tool, exits before answering
+- THEN the server refuses the call with `call_failed`, naming the command
+- AND the link's detail holds the end of what the process printed on each of the two streams
+
+This illustrates [refusing a call without an answer](requirements.md#req.distribution.mcp-call-failed).
+
 ### scenario.distribution.mcp-tools-changed-after-refresh — Learning how a tool is served lists nothing to the session
 
 - GIVEN a server that listed its tools to the session
@@ -371,9 +380,9 @@ This illustrates [the environment deciding the channel](requirements.md#req.dist
 
 ### scenario.distribution.install-refusal-link — A refused install answers with an error link
 
-- GIVEN an installer run on a directory that does not exist, or `concorde update` in a project whose receipt names no checkout
+- GIVEN an installer run on a directory that does not exist or without a project, or `concorde update` in a project whose receipt names no checkout or with `--from` lacking its value
 - WHEN the command refuses
-- THEN it prints `{"error": <link>}` with a link of the Framework's error contract, whose actor is the installer or `concorde update`, whose code is `invalid_project` or `update_source_missing`, and whose reason is `input`
+- THEN it prints `{"error": <link>}` with a link of the Framework's error contract, whose actor is the installer or `concorde update`, whose code is `invalid_project`, `update_source_missing` or `invalid_arguments`, and whose reason is `input`
 - AND it exits with status 1
 
 ### scenario.distribution.install-write-failed — A write that fails after the first write is refused

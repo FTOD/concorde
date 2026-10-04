@@ -357,3 +357,6 @@ background session with channel events, so the waits it registers must name thei
 ### req.distribution.mcp-call-failed — A call without an answer is refused
 
 When the process of a call ends, or exceeds its time, without an answer, the project MCP server SHALL refuse the call with its own `call_failed` link naming the command and the end of what it printed.
+
+What it printed is the end of each of its two streams, standard output and standard error, those
+of a process stopped at its time limit included.

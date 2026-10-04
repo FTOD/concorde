@@ -24,7 +24,13 @@ from concorde.distribution.build import (
     write_build,
 )
 from concorde.distribution import guidance, parts
-from concorde.distribution.install import InstallError, install, refusal, update
+from concorde.distribution.install import (
+    InstallError,
+    _amend,
+    install,
+    refusal,
+    update,
+)
 from concorde.distribution.project_defaults import CopyError, write_protocol_copy
 from concorde.spec.views.docsite_template import DocsiteTemplateError
 from concorde.distribution.tools import platform_key
@@ -718,6 +724,17 @@ class PartsTests(unittest.TestCase):
 
 
 class InstallTests(unittest.TestCase):
+    def test_replacing_the_block_keeps_what_follows_its_end_marker(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        project = Path(directory.name)
+        text = "# Mine\n\n<!-- concorde:start -->\nold\n<!-- concorde:end -->\n\n\nAfter.\n"
+        (project / "CLAUDE.md").write_text(text)
+        _amend(project, "CLAUDE.md", "new")
+        self.assertEqual(
+            text.replace("\nold\n", "\nnew\n"), (project / "CLAUDE.md").read_text()
+        )
+
     @verifies(
         "scenario.distribution.install",
         "scenario.distribution.install-repeat",
@@ -1447,15 +1464,26 @@ class InstallTests(unittest.TestCase):
         self.assertNotIn("Workflow(concorde-retired)", allow)
         self.assertIn("Bash(ls:*)", allow)
         self.assertIn(mine, allow)
-        # Settings that are not a JSON object are refused before anything is written.
-        settings.write_text("[1, 2]")
+        # Settings that are not a JSON object, or whose permissions is present but no object,
+        # even a falsy one, are refused before anything is written.
         (project / ".claude/workflows/concorde-brownfield.js").unlink()
-        with self.assertRaises(InstallError) as raised:
-            install(project, package, pi_runtime=False, d2=False, dependencies=False)
-        self.assertEqual("settings_invalid", raised.exception.code)
-        self.assertFalse(
-            (project / ".claude/workflows/concorde-brownfield.js").exists()
-        )
+        for text in (
+            "[1, 2]",
+            '{"permissions": null}',
+            '{"permissions": []}',
+            '{"permissions": 0}',
+        ):
+            with self.subTest(settings=text):
+                settings.write_text(text)
+                with self.assertRaises(InstallError) as raised:
+                    install(
+                        project, package, pi_runtime=False, d2=False, dependencies=False
+                    )
+                self.assertEqual("settings_invalid", raised.exception.code)
+                self.assertFalse(
+                    (project / ".claude/workflows/concorde-brownfield.js").exists()
+                )
+                self.assertEqual(text, settings.read_text())
 
     @verifies("scenario.distribution.install-defaults-kept")
     def test_a_default_stays_once_no_part_or_package_declares_it(self):
@@ -1851,6 +1879,20 @@ class InstallTests(unittest.TestCase):
                 [sys.executable, str(package / "scripts/concorde.py"), "update"]
                 + ["--project-root", str(project)],
                 "update_source_missing",
+                "input",
+                "concorde update",
+            ),
+            # A malformed command line is a refusal too, not argparse's usage and status 2.
+            (
+                [sys.executable, str(package / "scripts/install-concorde.py")],
+                "invalid_arguments",
+                "input",
+                "Installer (install-concorde)",
+            ),
+            (
+                [sys.executable, str(package / "scripts/concorde.py"), "update"]
+                + ["--project-root", str(project), "--from"],
+                "invalid_arguments",
                 "input",
                 "concorde update",
             ),

@@ -751,6 +751,7 @@ something:
 
 | Code | Refused when | Reason | After a write |
 | --- | --- | --- | --- |
+| `invalid_arguments` | the installer's or `concorde update`'s command line is malformed, such as a missing project or an option without its value | `input` | no |
 | `invalid_project` | the project is not a directory | `input` | no |
 | `unknown_part` | `--parts`, or the receipt an update reads, names a part the package does not build, or a part depends on one | `input` | no |
 | `stale_build` | the build is stale, or a render or file the install places, such as the guidance or a file an installed part ships, is missing | `input` | no |
