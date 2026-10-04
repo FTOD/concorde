@@ -449,8 +449,10 @@ When the server does not know its session to listen to it as a channel, `task_me
 A `register_wait` for something that already happened answers at once with that answer, channel or
 not ([`register_wait` answers with its registration](#req.main-session.project-mcp-wait-answer)).
 
-For `task_merge` that is the wait for the task's
-[workspace lock](../../glossary.json#concept.workspace-lock), which the merge holds until it ends.
+For `task_merge` that is `concorde task wait <task> --merge`, the merge-end wait, which returns
+once the merge has written its whole answer, not the wait for the task's
+[workspace lock](../../glossary.json#concept.workspace-lock), which the close that ends the merge
+removes before then ([A merge's output stays with its attempt](#req.main-session.project-mcp-merge-output)).
 
 ### req.main-session.project-mcp-errors — Every refusal is an error link
 

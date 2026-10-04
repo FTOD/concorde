@@ -698,6 +698,7 @@ This illustrates [the parts Coordination does without](../module.md#optional-int
 - WHEN the task is closed as completed
 - THEN the wait ends with `wait_unreachable`, an error link naming the state the task ended in
 - AND a wait for a state a task reaches without its workspace lock, such as `active`, is refused with `invalid_input`
+- AND so is a wait for `merging`, which lasts only while a merge holds the lock, the refusal naming `--merge`, which waits for the merge itself
 
 ### scenario.tasks.wait-lock — A lock wait returns when its holder dies
 

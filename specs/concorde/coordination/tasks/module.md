@@ -677,11 +677,13 @@ runner holds no [run lock](../../glossary.json#concept.run-lock), with how the r
 needs the execution part, and is refused with `part_missing` naming it where that part is not
 installed. Each
 answers at once when that is already so and prints one JSON value, and `--timeout` bounds the wait.
-A task reaches `delivered`, `merging`, `closed` and `failed` only while its workspace lock is held,
-by a delivery run, a merge or a close, so a task wait learns from the operating system of every new holder of
-that lock, blocks on the lock until that holder lets it go, and reads the state again; those four
-are the states it admits, and a task that ends in another state ends the wait with
-`wait_unreachable`. A rebind wait learns from the operating system of every write of the task's record, and
+A task reaches `delivered`, `closed` and `failed` only while its workspace lock is held, by a
+delivery run, a merge or a close, and keeps them once the lock is released, so a task wait learns
+from the operating system of every new holder of that lock, blocks on the lock until that holder
+lets it go, and reads the state again; those three are the states it admits, and a task that ends
+in another state ends the wait with `wait_unreachable`. `merging` is not among them: a merge holds
+the lock from storing it until it closes the task or returns it to delivered, so no wait would ever
+see it, and a wait for it is refused, pointing to `--merge`. A rebind wait learns from the operating system of every write of the task's record, and
 of its folder moving to the history, and reads the record again; a task that ended ends it with
 `wait_unreachable`. A lock, run or merge wait blocks on the lock itself, so a holder that dies
 wakes it as surely as one that ends. The project MCP server's `register_wait` runs the same waits for a

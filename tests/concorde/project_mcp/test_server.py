@@ -672,7 +672,26 @@ class ProjectMcpTests(unittest.TestCase):
         # Already reached: answered at once, nothing registered.
         now, error = client.call("register_wait", task="t1", until=["delivered"])
         self.assertEqual(
-            {"registered": False, "already": {"task": "t1", "state": "delivered"}}, now
+            {
+                "registered": False,
+                "already": {"task": "t1", "state": "delivered", "waited_seconds": 0.0},
+            },
+            now,
+        )
+        # A free lock answers what `concorde task wait --lock` prints, field for field.
+        free, error = client.call("register_wait", lock="merge")
+        self.assertFalse(error, free)
+        printed = wait.wait_lock(self.root, "merge")
+        self.assertEqual(set(printed), set(free["already"]))
+        self.assertEqual(
+            {
+                "lock": "merge",
+                "task": None,
+                "released": True,
+                "held_by": None,
+                "waited_seconds": 0.0,
+            },
+            free["already"],
         )
         # A wait still watched ends with its server, however the server ends.
         holder = holding(self.workspace_lock(), "session-other", "t1")
@@ -712,6 +731,10 @@ class ProjectMcpTests(unittest.TestCase):
         self.assertEqual(
             "concorde task wait t1 --until closed,failed", answer["command"]
         )
+        refused, error = client.call("register_wait", task="t1", until=["merging"])
+        self.assertTrue(error, refused)
+        self.assertEqual("invalid_input", refused["error"]["code"])
+        self.assertIn("cannot wait for merging", refused["error"]["detail"])
         store.rebind(self.root, "t1", "concorde-7d")
         answer, _ = client.call("register_wait", task="t1", rebound="concorde-7d")
         self.assertEqual(
@@ -719,7 +742,12 @@ class ProjectMcpTests(unittest.TestCase):
         )
         answer, _ = client.call("register_wait", task="t1", rebound="concorde-6c")
         self.assertEqual(
-            {"task": "t1", "main": "concorde-7d", "former": "concorde-6c"},
+            {
+                "task": "t1",
+                "main": "concorde-7d",
+                "former": "concorde-6c",
+                "waited_seconds": 0.0,
+            },
             answer["already"],
         )
 

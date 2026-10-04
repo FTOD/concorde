@@ -242,7 +242,8 @@ TOOLS: dict[str, dict] = {
     },
     "register_wait": {
         "description": "Ask to be woken, through this server's Claude Code channel, when a task "
-        "reaches one of the states `until` (delivered, merging, closed, failed), when a task's "
+        "reaches one of the states `until` (delivered, closed, failed; never merging, which "
+        "no wait sees), when a task's "
         "record names a main agent's session other than `rebound` (with `task`), when a run ends "
         "(`run`), or when a lock is released (`lock` merge, or workspace with `task`). Answers at "
         "once when it already happened. Only notifies: it never takes a lock for you. Without a "
@@ -253,7 +254,8 @@ TOOLS: dict[str, dict] = {
                 "task": TASK,
                 "until": {
                     "type": "array",
-                    "items": {"enum": list(wait.AWAITABLE)},
+                    # Checked by the wait itself, which explains why merging is refused.
+                    "items": {"type": "string", "minLength": 1},
                     "minItems": 1,
                 },
                 "run": TEXT,
@@ -602,6 +604,11 @@ def task_merge(call: Call, arguments: dict):
 # --- waits ----------------------------------------------------------------------------------
 
 
+def _already(answer: dict) -> dict:
+    """The answer of a wait that already happened, as `concorde task wait` prints it at once."""
+    return {"registered": False, "already": {**answer, "waited_seconds": 0.0}}
+
+
 def register_wait(call: Call, arguments: dict):
     tool = "register_wait"
     task, until = arguments.get("task"), arguments.get("until")
@@ -645,14 +652,14 @@ def register_wait(call: Call, arguments: dict):
         words = [task, "--until", ",".join(until)]
         now = wait.reached(call.primary, task, wait.check_until(until))
         if now is not None:
-            return {"registered": False, "already": now}
+            return _already(now)
         meta = {"kind": "task", "task": task}
     elif former:
         description = f"task {task} naming a main agent's session other than {former}"
         words = [task, "--rebound", former]
         now = wait.rebound(call.primary, task, former)
         if now is not None:
-            return {"registered": False, "already": now}
+            return _already(now)
         meta = {"kind": "rebound", "task": task}
     elif run:
         task_cli.require_execution(call.primary)
@@ -660,7 +667,7 @@ def register_wait(call: Call, arguments: dict):
         words = ["--run", run]
         now = wait.run_answer(call.primary, run)
         if now is not None:
-            return {"registered": False, "already": now}
+            return _already(now)
         meta = {"kind": "run", "run": run}
     else:
         if task:
@@ -671,7 +678,9 @@ def register_wait(call: Call, arguments: dict):
         words = [*([task] if task else []), "--lock", lock]
         now = wait.lock_answer(call.primary, lock, task)
         if now["holder"] is None:
-            return {"registered": False, "already": {**now, "released": True}}
+            return _already(
+                {"lock": lock, "task": task, "released": True, "held_by": None}
+            )
         # The wait command may start after the holder is gone and then names none; the
         # registration and the event still name the holder it was registered for.
         description += f", held by {json.dumps(now['holder'], ensure_ascii=False)}"

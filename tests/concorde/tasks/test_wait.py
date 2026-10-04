@@ -92,6 +92,10 @@ class WaitTests(unittest.TestCase):
         self.assertEqual("wait_unreachable", value["error"]["code"])
         status, value = self.command("wait", "t1", "--until", "active")
         self.assertEqual("invalid_input", value["error"]["code"])
+        # merging lasts only while a merge holds the lock, so no wait would see it.
+        status, value = self.command("wait", "t1", "--until", "merging,closed")
+        self.assertEqual("invalid_input", value["error"]["code"])
+        self.assertIn("--merge", value["error"]["detail"])
 
     @verifies("scenario.tasks.wait-rebound")
     def test_a_rebind_wait_returns_the_new_main(self):

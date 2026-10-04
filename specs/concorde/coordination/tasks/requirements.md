@@ -340,8 +340,10 @@ A wait SHALL end with `wait_unreachable` when the task ended in a state it does 
 at all while it waits for a rebind, and with `wait_timeout` when its `--timeout` passes first,
 changing nothing.
 
-A task wait admits only `delivered`, `merging`, `closed` and `failed`, the states a task reaches
-while its workspace lock is held.
+A task wait admits only `delivered`, `closed` and `failed`, the states a task reaches while its
+workspace lock is held and keeps once it is released. It refuses `merging` with `invalid_input`,
+explaining that a merge holds the lock for as long as the task is `merging`, so no wait sees that
+state, and naming `--merge`, which waits for the merge itself.
 
 ### req.tasks.merge-all-or-nothing — A merge is checked or undone
 

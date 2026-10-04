@@ -127,8 +127,10 @@ installed, as `concorde task wait --run` is. It then checks whether what it wait
 is one of `until`, the task's record names a main agent's session other than `rebound`, the run's
 runner holds no [run lock](../../glossary.json#concept.run-lock), or
 nobody holds the lock. Then it answers `{"registered": false, "already": <answer>}`, the value the
-matching `concorde task wait` would print, and registers nothing. `until` admits `delivered`,
-`merging`, `closed` and `failed` only, the states a task reaches while its workspace lock is held.
+matching `concorde task wait` would print, with the same fields and `waited_seconds` 0, and registers
+nothing. `until` admits `delivered`, `closed` and `failed` only, the states a task reaches while its
+workspace lock is held and keeps once it is released; `merging` is refused with `invalid_input`, as
+`concorde task wait` refuses it.
 
 Otherwise, without a channel, it answers
 `{"registered": false, "channel": false, "command": "<concorde task wait …>", "explanation": …}`,
