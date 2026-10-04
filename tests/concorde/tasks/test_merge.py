@@ -24,7 +24,7 @@ from concorde.spec.schema import validate
 from concorde.kernel.refusal import KernelError
 from concorde.kernel.schema import validate_typed
 from concorde.spec.verification import verifies
-from concorde.coordination.tasks import cli, merge, parts, store
+from concorde.coordination.tasks import checks, cli, merge, parts, store
 from concorde.kernel.tracing import node as trace
 from tests.concorde.support.operation_project import OperationProject, commit
 from tests.concorde.support.paths import REPOSITORY_ROOT
@@ -588,6 +588,29 @@ class MergeTests(unittest.TestCase):
                 trace.read(self.root / ".concorde/tasks/t1/merges/1")
             ),
         )
+
+    @verifies("scenario.tasks.merge-check-failed")
+    def test_a_check_stopped_after_its_time_keeps_its_output(self):
+        folder = Path(tempfile.mkdtemp()) / "check"
+        self.addCleanup(shutil.rmtree, folder.parent, True)
+        argv = [
+            sys.executable,
+            "-c",
+            "import sys, time; print('diagnostic', flush=True); time.sleep(30)",
+        ]
+        with patch.object(checks, "TIMEOUT", 1):
+            result, problem = checks.run(
+                self.root,
+                argv,
+                folder,
+                identity="check-1",
+                kind="merge-check",
+                content_type=merge.MERGE_CHECK_TRACE,
+            )
+        self.assertEqual(-1, result["exit_code"])
+        self.assertIn("was stopped after 1 s", problem)
+        self.assertIn("diagnostic", problem)
+        self.assertIn("diagnostic", (folder / "output.log").read_text())
 
     @verifies("scenario.tasks.merge-check-failed")
     def test_checks_that_leave_changes_undo_the_merge(self):

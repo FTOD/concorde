@@ -56,7 +56,12 @@ def run(
         code, output = ran.returncode, ran.stdout or ""
         problem = None if code == 0 else f"exited {code}"
     except subprocess.TimeoutExpired as error:
-        code, output = -1, error.stdout if isinstance(error.stdout, str) else ""
+        # What it printed before it was stopped comes as bytes, whatever ``text`` says.
+        printed = error.stdout or b""
+        code = -1
+        output = (
+            printed.decode("utf-8", "replace") if isinstance(printed, bytes) else printed
+        )
         problem = f"was stopped after {TIMEOUT} s"
     except OSError as error:
         code, output = -1, ""

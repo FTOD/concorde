@@ -374,6 +374,7 @@ This illustrates [a merge running the Concorde it started with](requirements.md#
 - THEN the command fails with `check_failed`, naming for a failing check the check, its exit status, the log and the end of its output, and for checks that left paths those paths and the log
 - AND the primary branch is back at the commit it had before the merge, without the decision log the merge commit added, clean apart from the paths the checks created, which stay
 - AND the task is still delivered with its worktree
+- AND a check stopped after its time limit fails the same way, its log and the refusal keeping what it printed before it was stopped
 
 ### scenario.tasks.merge-commit-refused — A refused merge commit is undone
 
