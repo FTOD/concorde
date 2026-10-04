@@ -11,12 +11,17 @@ import unittest
 from pathlib import Path
 from types import SimpleNamespace
 
-from concorde.method.delivery.command import OUTPUT_SCHEMA
-from concorde.method.delivery.command import DELIVERY, IndexRecord, State, undo
 from concorde.kernel.errors import codes
+from concorde.method.delivery.command import (
+    DELIVERY,
+    OUTPUT_SCHEMA,
+    IndexRecord,
+    State,
+    undo,
+)
+from concorde.method.validation.measurement import measure
 from concorde.spec.repository import SpecRepository
 from concorde.spec.verification import verifies
-from concorde.method.validation.measurement import measure
 from tests.concorde.support.paths import REPOSITORY_ROOT
 from tests.concorde.support.spec_project import write_checks
 from tests.concorde.validation.project import (
@@ -102,7 +107,9 @@ class DeliveryTests(unittest.TestCase):
     def assert_undone(self, envelope: dict, index: tuple[str, ...]):
         """Nothing was committed and the workspace is again what the readiness examined."""
         self.assertIn(
-            "were restored as the readiness examined them", envelope["summary"]
+            "the index was restored as the readiness examined it; the worktree is as the "
+            "readiness examined it",
+            envelope["summary"],
         )
         self.assertEqual(self.index_state(), index)
         self.assertEqual(self.head(), self.base)
@@ -434,24 +441,151 @@ class DeliveryTests(unittest.TestCase):
         # validated head; Delivery takes off the branch only its own commit, so nothing moves.
         hook = self.project.root / ".git/hooks/post-commit"
         hook.write_text(
-            '#!/bin/sh\n[ -n "$AGAIN" ] && exit 0\n'
-            "AGAIN=1 git commit -q --allow-empty -m 'A hook step'\n"
+            '#!/bin/sh\n[ -n "$AGAIN" ] && exit 0\necho "hook output"\n'
+            "AGAIN=1 git commit --allow-empty -m 'A hook step'\n"
         )
         hook.chmod(0o755)
         (self.worktree / "src/a/calc.py").write_text(FIXED)
         status, envelope = self.project.deliver()
         self.assertEqual((status, envelope["status"]), (1, "failed"), envelope)
         error = envelope["error"]
-        self.assertEqual(["commit_unverified"], codes(error))
+        self.assertEqual(["commit_unverified", "git_failed"], codes(error))
         self.assertIn("the commit stays", error["detail"])
         self.assertIn("stays on concorde/t1", envelope["summary"])
         # Neither the hook's commit nor the delivery commit below it was taken off.
         self.assertEqual(git(self.worktree, "log", "-1", "--format=%s"), "A hook step")
+        delivered = git(self.worktree, "rev-parse", "HEAD~1")
         self.assertEqual(
-            git(self.worktree, "log", "-1", "--format=%s", "HEAD~1"),
+            git(self.worktree, "log", "-1", "--format=%s", delivered),
             "concorde: deliver t1",
         )
         self.assertEqual(git(self.worktree, "rev-parse", "HEAD~2"), self.base)
+        # The run names the commit it created, not the hook's on top of it.
+        self.assertEqual(self.commit_references(envelope), [("commit", delivered)])
+        self.assertIn(
+            f"the delivery commit {delivered} on concorde/t1", error["detail"]
+        )
+        self.assertIn(f"no longer points at it but at {self.head()}", error["detail"])
+        self.assertIn("the new commit is not the branch head", error["detail"])
+
+    def test_a_refused_move_of_the_branch_says_it_still_points_at_the_commit(self):
+        # A content-changing hook makes the commit fail to verify, and a stale lock of the
+        # branch, left by a post-commit hook, makes Git refuse to move the branch back.
+        lock = self.project.root / ".git/refs/heads/concorde/t1.lock"
+        for name, body in (
+            (
+                "pre-commit",
+                (
+                    "printf 'def add(a, b):\\n    return 0\\n' > src/a/calc.py\n"
+                    "git add src/a/calc.py\n"
+                ),
+            ),
+            ("post-commit", f"touch '{lock}'\n"),
+        ):
+            hook = self.project.root / ".git/hooks" / name
+            hook.write_text("#!/bin/sh\n" + body)
+            hook.chmod(0o755)
+        (self.worktree / "src/a/calc.py").write_text(FIXED)
+        try:
+            status, envelope = self.project.deliver()
+        finally:
+            lock.unlink(missing_ok=True)
+        self.assertEqual((status, envelope["status"]), (1, "failed"), envelope)
+        error = envelope["error"]
+        self.assertEqual(["commit_unverified", "git_failed"], codes(error))
+        [(_, commit)] = self.commit_references(envelope)
+        self.assertEqual(self.head(), commit)
+        self.assertIn("since Git refused to move the branch back", envelope["summary"])
+        self.assertIn(
+            "Git refused to move concorde/t1, which still points at it", error["detail"]
+        )
+        self.assertNotIn("no longer points", error["detail"])
+        self.assertEqual(error["causes"][0]["actor"], "git update-ref")
+        self.assertIn(".lock", error["causes"][0]["detail"])
+
+    @verifies("scenario.delivery.hook-changed-message")
+    def test_a_commit_message_hook_that_changes_the_subject_is_caught(self):
+        hook = self.project.root / ".git/hooks/commit-msg"
+        hook.write_text("#!/bin/sh\nsed -i '1s/^/[T-1] /' \"$1\"\n")
+        hook.chmod(0o755)
+        (self.worktree / "src/a/calc.py").write_text(FIXED)
+        status, envelope = self.project.deliver()
+        self.assertEqual((status, envelope["status"]), (1, "failed"), envelope)
+        error = envelope["error"]
+        self.assertEqual(["commit_unverified"], codes(error))
+        self.assertIn(
+            "it is '[T-1] concorde: deliver t1' instead of 'concorde: deliver t1'",
+            error["detail"],
+        )
+        [(_, commit)] = self.commit_references(envelope)
+        self.assertIn(commit, error["detail"])
+        self.assertIn("taken off", envelope["summary"])
+        self.assertEqual(self.head(), self.base)
+        self.assertEqual(status_lines(self.worktree), "M  src/a/calc.py\n")
+        self.assertEqual(self.project.deliveries(), [])
+
+    def test_a_commit_message_hook_that_adds_a_trailer_is_accepted(self):
+        hook = self.project.root / ".git/hooks/commit-msg"
+        hook.write_text("#!/bin/sh\nprintf '\\nChange-Id: I1\\n' >> \"$1\"\n")
+        hook.chmod(0o755)
+        (self.worktree / "src/a/calc.py").write_text(FIXED)
+        status, envelope = self.project.deliver()
+        self.assertEqual((status, envelope["status"]), (0, "ok"), envelope)
+        message = subprocess.run(
+            ["git", "log", "-1", "--format=%B"],
+            cwd=self.worktree,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+        self.assertTrue(message.startswith("concorde: deliver t1\n"), message)
+        self.assertIn("Change-Id: I1", message)
+
+    @verifies("scenario.delivery.hook-edits-kept")
+    def test_a_failing_hooks_worktree_edits_are_kept_and_named(self):
+        # Like a formatter hook: it rewrites a file and then rejects the commit.
+        hook = self.project.root / ".git/hooks/pre-commit"
+        hook.write_text(
+            "#!/bin/sh\nprintf 'def add(a, b):\\n    return a+b\\n' > src/a/calc.py\n"
+            "echo 'files were reformatted' >&2\nexit 1\n"
+        )
+        hook.chmod(0o755)
+        (self.worktree / "src/a/calc.py").write_text(FIXED)
+        index = self.index_state()
+        status, envelope = self.project.deliver()
+        self.assertEqual((status, envelope["status"]), (1, "failed"), envelope)
+        self.assertEqual(["commit_failed", "git_failed"], codes(envelope["error"]))
+        told = (
+            "the index was restored as the readiness examined it; the worktree files "
+            "src/a/calc.py are not as the readiness examined them"
+        )
+        self.assertIn(told, envelope["summary"])
+        self.assertIn(told, envelope["error"]["detail"])
+        self.assertIn("Delivery kept them", envelope["summary"])
+        # The index is given back; the hook's edit stays in the worktree.
+        self.assertEqual(index[1:], self.index_state()[1:])
+        self.assertEqual(
+            (self.worktree / "src/a/calc.py").read_text(),
+            "def add(a, b):\n    return a+b\n",
+        )
+        self.assertEqual(self.head(), self.base)
+        self.assertEqual(self.project.deliveries(), [])
+
+    def test_the_scenario_gate_reads_paths_git_would_quote(self):
+        # A code path Git quotes without -z still counts as changed code.
+        obligations = self.worktree / "specs/a/obligations.md"
+        obligations.write_text(
+            obligations.read_text()
+            + "\n### scenario.a.sum — A sums\n\n- GIVEN two numbers\n- WHEN A adds them\n"
+            "- THEN it returns their sum\n"
+        )
+        (self.worktree / "src/a/\u00e9t\u00e9 calc.py").write_text("SUM = 1\n")
+        _, envelope = self.project.deliver()
+        self.assert_inert(envelope, "unverified_scenarios")
+        self.assertIn("src/a/\u00e9t\u00e9 calc.py", envelope["error"]["detail"])
+        self.assertIn(
+            "scenario.a.sum (specs/a/obligations.md)", envelope["error"]["detail"]
+        )
 
     @verifies("scenario.delivery.stage-refused")
     def test_git_refuses_to_stage_a_change(self):
@@ -483,14 +617,19 @@ class DeliveryTests(unittest.TestCase):
             )
             undone = undo(ctx)
         self.assertEqual([name for name, _ in undone.failed], ["the index"])
+        # Entries apply only to an index that was read back, so none was attempted.
+        self.assertEqual(undone.skipped, ["the intent-to-add entries"])
         self.assertEqual(
             [(link["actor"], link["code"]) for link in undone.causes],
             [(f"git read-tree {'0' * 40}", "git_failed")],
         )
         self.assertIn(
-            "restoring the index failed, so the workspace is not as the readiness examined it",
+            "restoring the index failed, so the index is not as the readiness examined it "
+            "(see the causes); the intent-to-add entries were not restored, since they apply "
+            "only to an index that was read back",
             str(undone),
         )
+        self.assertNotIn("the rest of the index was restored", str(undone))
 
     @verifies("scenario.delivery.unmerged-index")
     def test_an_unmerged_index_is_refused_before_anything_changes(self):

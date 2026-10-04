@@ -25,9 +25,11 @@ delivery. Which commit is a delivery commit of a workspace, and when one verifie
 convention ([Kernel contracts](../../kernel/contracts.md#delivery-commit)): Delivery reads its
 earlier deliveries by that rule, and every commit it creates has exactly one parent. Delivery reports a delivery commit it finds at the branch head only when it verifies and the
 workspace it holds is ready again, as a readiness the same run decided shows. A delivery commit
-Delivery creates verifies further when its only parent is the head it validated and its tree is the
-tree `git write-tree` recorded from the index after staging, so that no commit hook changed what was
-committed; one that does not, Delivery takes off the branch again in the same run.
+Delivery creates verifies further when its only parent is the head it validated, its subject is
+exactly the subject above and its tree is the tree `git write-tree` recorded from the index after
+staging, so that no commit hook changed what was committed or its mark; one that does not, Delivery
+takes off the branch again in the same run. A commit message hook may add to the body, such as a
+trailer, since only the subject marks a delivery.
 
 ## Output
 

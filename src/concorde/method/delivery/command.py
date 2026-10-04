@@ -12,10 +12,13 @@ bound branch are its only record: their subject names the workspace.
 6. Stop ``ok``, ``recovered``, when step 2 noted a delivery commit: it validated again.
 7. Record the index with Git (its tree, intent-to-add paths and skip-worktree and
    assume-unchanged flags).
-8. Stage everything, record the staged tree and create the delivery commit; when staging or the
-   commit fails, give the recorded index back.
+8. Stage everything, record the staged tree and create the delivery commit, taking the commit
+   Git names as the one it created; when staging or the commit fails, give the recorded index
+   back and name the worktree files that are not as the readiness examined them, such as a
+   failing commit hook's edits, which stay.
 9. Verify the new head, its tree (the staged one, which a commit hook may have changed), its
-   parent and a clean worktree; take a commit that does not verify off the branch again.
+   subject (which a commit message hook may have changed), its parent and a clean worktree;
+   take a commit that does not verify off the branch again.
 10. Return the delivery commit as the output.
 """
 
@@ -34,6 +37,8 @@ from ...execution.context import (
     component,
     evidence,
 )
+from ...kernel import delivery as delivery_commit
+from ...kernel.refusal import KernelError
 from ..specs import admission
 from ..validation.command import (
     READINESS_STEPS,
@@ -46,10 +51,9 @@ from ..validation.measurement import (
     MeasurementError,
     has_uncommitted,
     head_commit,
+    measure,
     special_paths,
 )
-from ...kernel import delivery as delivery_commit
-from ...kernel.refusal import KernelError
 
 COMMIT = {"type": "string", "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"}
 
@@ -88,27 +92,64 @@ class _IndexRefused(Exception):
         self.link = link
 
 
+def _listed(names: list[str]) -> str:
+    return ", ".join(names[:-1]) + " and " + names[-1] if len(names) > 1 else names[0]
+
+
 @dataclass
 class Undone:
-    """What undoing a failed delivery could not restore: a short name and a cause for each."""
+    """What undoing a failed delivery restored and what it did not.
 
+    Undoing gives the index back; it never undoes an edit of the worktree, such as a failing
+    commit hook's, which the developer may want, but names every worktree path such an edit left
+    not as the readiness examined it.
+    """
+
+    # Each part of the index Git refused to restore, with its cause.
     failed: list[tuple[str, dict]] = field(default_factory=list)
+    # The parts of the index not attempted, since the index itself was not read back.
+    skipped: list[str] = field(default_factory=list)
+    # The worktree paths whose mode or content is not what the readiness examined.
+    kept: list[str] = field(default_factory=list)
+    # The cause when the worktree could not be compared with what the readiness examined.
+    unmeasured: dict | None = None
 
     @property
     def causes(self) -> list[dict]:
-        return [link for _, link in self.failed]
+        return [link for _, link in self.failed] + (
+            [self.unmeasured] if self.unmeasured else []
+        )
 
     def __str__(self) -> str:
         if not self.failed:
-            return "the workspace and its index were restored as the readiness examined them"
-        names = [name for name, _ in self.failed]
-        listed = (
-            ", ".join(names[:-1]) + " and " + names[-1] if len(names) > 1 else names[0]
-        )
-        return (
-            f"restoring {listed} failed, so the workspace "
-            "is not as the readiness examined it (see the causes); everything else was restored"
-        )
+            told = ["the index was restored as the readiness examined it"]
+        else:
+            told = [
+                (
+                    f"restoring {_listed([name for name, _ in self.failed])} failed, so the "
+                    "index is not as the readiness examined it (see the causes)"
+                )
+            ]
+            told.append(
+                f"{_listed(self.skipped)} were not restored, since they apply only to an "
+                "index that was read back"
+                if self.skipped
+                else "the rest of the index was restored"
+            )
+        if self.unmeasured:
+            told.append(
+                "the worktree could not be compared with what the readiness examined (see "
+                "the causes)"
+            )
+        elif self.kept:
+            told.append(
+                f"the worktree files {', '.join(self.kept)} are not as the readiness "
+                "examined them, as a failing commit hook may leave them, and Delivery kept "
+                "them"
+            )
+        else:
+            told.append("the worktree is as the readiness examined it")
+        return "; ".join(told)
 
 
 @dataclass
@@ -121,6 +162,8 @@ class State:
     commit: str = ""
     # ``git write-tree`` of the index once everything was staged, which the commit must hold.
     staged_tree: str = ""
+    # The delivery message given to ``git commit``, which the commit must carry.
+    message: str = ""
     # The workspace's earlier delivery commits, read once from Git.
     previous: list[dict] | None = None
     # The delivery commit found at the head with nothing waiting, reported once it validates.
@@ -256,14 +299,11 @@ def record_index(worktree: Path) -> IndexRecord:
     )
 
 
-def restore_index(worktree: Path, record: IndexRecord) -> list[tuple[str, dict]]:
-    """Give the recorded index back; name and explain each part Git refused to restore."""
-    try:
-        _index_git(worktree, "read-tree", record.tree)
-    except _IndexRefused as error:
-        # Nothing further applies to an index that was not read back.
-        return [("the index", error.link)]
-    failed = []
+def restore_index(
+    worktree: Path, record: IndexRecord
+) -> tuple[list[tuple[str, dict]], list[str]]:
+    """Give the recorded index back; name and explain each part Git refused to restore, and
+    name the parts not attempted."""
     parts = [
         (
             "the intent-to-add entries",
@@ -282,6 +322,12 @@ def restore_index(worktree: Path, record: IndexRecord) -> list[tuple[str, dict]]
             ["update-index", "--assume-unchanged", "-z", "--stdin"],
         ),
     ]
+    try:
+        _index_git(worktree, "read-tree", record.tree)
+    except _IndexRefused as error:
+        # Entries and flags apply only to an index that was read back, so none is attempted.
+        return [("the index", error.link)], [name for name, paths, _ in parts if paths]
+    failed = []
     for name, paths, arguments in parts:
         if not paths:
             continue
@@ -292,7 +338,7 @@ def restore_index(worktree: Path, record: IndexRecord) -> list[tuple[str, dict]]
     # read-tree drops the cached file stats; refreshing them lets Git see unchanged files as
     # such. It exits non-zero whenever a file differs from the index, which is expected here.
     _git(worktree, "update-index", "-q", "--refresh")
-    return failed
+    return failed, []
 
 
 def _previous(ctx: RunContext) -> list[dict]:
@@ -461,14 +507,9 @@ def require_verified_scenarios(ctx: RunContext):
             ]
         )
     base = ctx.base_commit or ""
-    changed = sorted(
-        {
-            *_git(ctx.worktree, "diff", "--name-only", base).stdout.split(),
-            *_git(
-                ctx.worktree, "ls-files", "--others", "--exclude-standard"
-            ).stdout.split(),
-        }
-    )
+    # The paths the readiness measured, which Git gave NUL-separated, so that no path is split
+    # on whitespace or arrives quoted.
+    changed = [item["path"] for item in _state(ctx).readiness["inputs"]["changed"]]
     repository = SpecRepository(ctx.worktree)
     entries = [
         entry
@@ -526,8 +567,10 @@ def require_verified_scenarios(ctx: RunContext):
         + ") while no test declares that it verifies these scenarios it added or changed: "
         + listing,
         [
-            "run implement to add a test for each named scenario, in a file its Module binds, "
-            "declaring the scenario it verifies",
+            (
+                "run implement to add a test for each named scenario, in a file its Module "
+                "binds, declaring the scenario it verifies"
+            ),
             "if a scenario should not change, restore it with specify",
         ],
         explanation="delivery accepts a code change only when every promise the workspace added or "
@@ -615,7 +658,8 @@ def _index_unrecorded(ctx: RunContext, cause: dict) -> Stop:
 
 
 def undo(ctx: RunContext) -> Undone:
-    """Give the recorded index back.
+    """Give the recorded index back and name the worktree paths not as the readiness examined
+    them, which it keeps.
 
     A failure is named with its cause, so the caller's result says exactly what is not as the
     readiness examined it.
@@ -623,8 +667,41 @@ def undo(ctx: RunContext) -> Undone:
     state = _state(ctx)
     undone = Undone()
     if state.index is not None:
-        undone.failed.extend(restore_index(ctx.worktree, state.index))
+        undone.failed, undone.skipped = restore_index(ctx.worktree, state.index)
+    examined = state.readiness.get("inputs")
+    if examined:
+        try:
+            now = measure(ctx.worktree, ctx.base_commit)
+        except MeasurementError as error:
+            undone.unmeasured = component(
+                "Validation measurement",
+                error.code,
+                str(error),
+                "environment",
+                "Git or the configuration could not be read",
+            )
+        else:
+            undone.kept = _differing(examined["changed"], now["changed"])
     return undone
+
+
+def _differing(examined: list[dict], now: list[dict]) -> list[str]:
+    """The paths whose mode or digest differs between two measurements, in Git's order."""
+    before = {item["path"]: (item["mode"], item["digest"]) for item in examined}
+    after = {item["path"]: (item["mode"], item["digest"]) for item in now}
+    return sorted(
+        (
+            path
+            for path in before.keys() | after.keys()
+            if before.get(path) != after.get(path)
+        ),
+        key=lambda path: path.encode("utf-8", "surrogateescape"),
+    )
+
+
+# The first line ``git commit`` prints, after its post-commit hook ran, names the commit it
+# created: ``[<branch> <commit>] <subject>`` with ``core.abbrev=no``.
+CREATED = re.compile(r"\b([0-9a-f]{64}|[0-9a-f]{40})\]")
 
 
 def commit(ctx: RunContext):
@@ -672,11 +749,20 @@ def commit(ctx: RunContext):
             causes=[_git_link("write-tree", tree), *undone.causes],
         )
     state.staged_tree = tree.stdout.strip()
-    message = delivery_commit.message(ctx.workspace_name, ctx.workspace["goal"])
+    state.message = delivery_commit.message(ctx.workspace_name, ctx.workspace["goal"])
     result = subprocess.run(
-        ["git", "commit", "-q", "--allow-empty", "--cleanup=verbatim", "-F", "-"],
+        [
+            "git",
+            "-c",
+            "core.abbrev=no",
+            "commit",
+            "--allow-empty",
+            "--cleanup=verbatim",
+            "-F",
+            "-",
+        ],
         cwd=ctx.worktree,
-        input=message,
+        input=state.message,
         capture_output=True,
         text=True,
         check=False,
@@ -697,7 +783,25 @@ def commit(ctx: RunContext):
             ["fix the commit hook or the author identity, then run delivery again"],
             causes=[_git_link("commit", result), *undone.causes],
         )
-    state.commit = head_commit(ctx.worktree)
+    # Git names the commit it created on its standard output once its post-commit hook ran, and
+    # gives every hook's standard output to its standard error, so this names the run's own
+    # commit even when a post-commit hook committed again on top, where the branch head would
+    # name the hook's commit. The branch's reflog could be switched off, and the first commit on
+    # top of the validated head could be a hook's amended copy.
+    created = CREATED.search(result.stdout.split("\n", 1)[0])
+    if created is None:
+        head = head_commit(ctx.worktree)
+        return _unverified(
+            ctx,
+            f"Git did not name the delivery commit it created (commit_unverified); the head "
+            f"of {ctx.branch} stays {head}.",
+            f"git commit exited 0 in {ctx.worktree} but its output names no commit, so "
+            f"Delivery cannot tell its own commit and moves nothing; the head of {ctx.branch} "
+            f"is {head}: {result.stdout.strip()[-1000:] or '(no output)'}",
+            ["git commit did not name the commit it created"],
+            head,
+        )
+    state.commit = created.group(1)
     # The run's trace node leads to what was committed.
     ctx.references.append(("commit", state.commit))
     return Continue(evidence=[evidence("commit", state.commit, f"parent {state.head}")])
@@ -717,6 +821,15 @@ def verify(ctx: RunContext):
     committed = _git(
         ctx.worktree, "rev-parse", f"{state.commit}^{{tree}}"
     ).stdout.strip()
+    # Only the subject marks a delivery; a hook may add to the body, such as a Change-Id trailer.
+    raw = _git(ctx.worktree, "cat-file", "commit", state.commit).stdout
+    subject = raw.partition("\n\n")[2].split("\n", 1)[0]
+    expected = state.message.split("\n", 1)[0]
+    if subject != expected:
+        problems.append(
+            "a commit message hook changed its subject, which alone marks a delivery: it is "
+            f"{subject!r} instead of {expected!r}"
+        )
     if committed != state.staged_tree:
         changed = _git(
             ctx.worktree,
@@ -776,18 +889,37 @@ def verify(ctx: RunContext):
             problems,
             state.commit,
             options=[
-                "inspect the staged changes, which hold what the commit held, and the commit "
-                "hook that changed them",
+                (
+                    "inspect the staged changes, which hold what the commit held, and the "
+                    "commit hook that changed them"
+                ),
                 "repair the hook or the changes, then run delivery again",
             ],
+        )
+    # update-ref compares and swaps, so it refuses both a branch that moved and one Git could
+    # not lock or write; the branch as it is now tells which.
+    now = _git(
+        ctx.worktree, "rev-parse", "-q", "--verify", f"refs/heads/{ctx.branch}"
+    ).stdout.strip()
+    if now == state.commit:
+        return _unverified(
+            ctx,
+            f"The delivery commit {state.commit} does not verify (commit_unverified); it stays "
+            f"on {ctx.branch}, since Git refused to move the branch back.",
+            detail
+            + f"; the commit stays, since Git refused to move {ctx.branch}, which still points "
+            f"at it, back to the validated head {state.head} (see the cause)",
+            problems,
+            state.commit,
+            causes=[_git_link("update-ref", removed)],
         )
     return _unverified(
         ctx,
         f"The delivery commit {state.commit} does not verify (commit_unverified); it stays on "
         f"{ctx.branch}, which no longer points at it.",
         detail
-        + f"; the commit stays, since {ctx.branch} no longer points at it and Delivery moves "
-        "the branch back only from its own commit",
+        + f"; the commit stays, since {ctx.branch} no longer points at it but at "
+        f"{now or 'nothing'} and Delivery moves the branch back only from its own commit",
         problems,
         state.commit,
         causes=[_git_link("update-ref", removed)],
