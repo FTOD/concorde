@@ -4,7 +4,7 @@
 {
   "schema_version": 4,
   "id": "I-fbdad9e5f3825fb69c23bfd745dac37a",
-  "status": "open",
+  "status": "closed",
   "reports": [
     {
       "id": "sha256:0145fd5d7a99625ea126e526f695631710d9859a8e8b47983cd7ac95230bc595",
@@ -81,6 +81,18 @@
       }
     }
   ],
-  "dispositions": []
+  "dispositions": [
+    {
+      "reason": "resolved",
+      "note": "Fixed by task fix-open-method, merged into the primary branch at 969e5e85b7aa339d69a6f1faf26a12a8b44a7b72.",
+      "evidence": [
+        "merge commit 969e5e85b7aa339d69a6f1faf26a12a8b44a7b72",
+        "task fix-open-method"
+      ],
+      "duplicate_of": null,
+      "actor": "main-agent",
+      "created_at": "2026-10-04T03:16:13.824108+00:00"
+    }
+  ]
 }
 ```
