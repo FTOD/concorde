@@ -2,8 +2,9 @@
 
 The exact shapes of what [Implementation](module.md) returns. Each is the `output` of the
 [run result](../../glossary.json#concept.run-result). Fields computed by the
-[Operation](../../glossary.json#concept.operation) are facts it observed; fields the worker
-supplies as the Operation-specific part of its answer are its claims and are passed on unchanged.
+[Operation](../../glossary.json#concept.operation) are facts it observed. Fields the worker
+supplies as the Operation-specific part of its answer are its claims. These fields are passed on
+unchanged.
 
 ## Code change
 
