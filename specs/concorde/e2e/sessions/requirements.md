@@ -15,15 +15,22 @@ command line.
 
 ### req.headless-sessions.claude-works-tasks — A headless main session works its tasks itself
 
-Every round of a headless [main agent](../../glossary.json#concept.main-agent) SHALL
-be granted EnterWorktree and ExitWorktree and carry, after its headless note, the test procedure,
-which overrides for that session only the rule to hand every task to a
-[task session](../../glossary.json#concept.task-session) and states that the session opens each
-task, enters its worktree with EnterWorktree, works it running Concorde commands in the
-foreground, validates and delivers it, leaves with ExitWorktree keeping the worktree, merges it
-from the primary worktree and records in the task's
-[decision log](../../glossary.json#concept.decision-log) each decision it would otherwise
-ask about, because a task session's report would have no receiver once the round's process has
+Every round of a headless [main agent](../../glossary.json#concept.main-agent) SHALL be granted
+EnterWorktree and ExitWorktree and carry, after its headless note, a test procedure with these
+contents:
+
+- It overrides, for that session only, the rule to hand every task to a
+  [task session](../../glossary.json#concept.task-session).
+- It states that the session opens each task and enters its worktree with EnterWorktree.
+- It states that the session works the task running Concorde commands in the foreground, then
+  validates and delivers it.
+- It states that the session leaves with ExitWorktree keeping the worktree and merges the task from
+  the primary worktree.
+- It states that the session records in the task's
+  [decision log](../../glossary.json#concept.decision-log) each decision it would otherwise ask
+  about.
+
+The reason is that a task session's report would have no receiver once the round's process has
 ended.
 
 ### req.headless-sessions.guidance-untouched — The headless note stays out of the guidance
@@ -34,12 +41,13 @@ get.
 
 ### req.headless-sessions.wake — A run left behind wakes the session
 
-When a round other than the session's last ends with a run of an
-[Operation](../../glossary.json#concept.operation) or
-[execution command](../../glossary.json#concept.execution-command) of the session still running, or
-stopped by the round's end, the driver SHALL resume the same session with a
-wake message naming it once every such run has finished
-or its runner has gone.
+When both of these conditions hold, the driver SHALL resume the same session with a wake message
+naming each such run, once every such run has finished or its runner has gone:
+
+- A round other than the session's last ends.
+- A run of an [Operation](../../glossary.json#concept.operation) or
+  [execution command](../../glossary.json#concept.execution-command) of the session is still
+  running at that end, or was stopped by it.
 
 The wait is bounded by [its own requirement](#req.headless-sessions.wait-bounded).
 
@@ -47,8 +55,8 @@ The wait is bounded by [its own requirement](#req.headless-sessions.wait-bounded
 
 A live session SHALL be woken only by its own program, never by the tool.
 
-Every event it printed is kept with its arrival time, so that a wake is told from a turn the tool
-prompted.
+Every event it printed is kept with its arrival time so that a wake is distinguished from a turn
+the tool prompted.
 
 ### req.headless-sessions.wake-once — A run wakes the session once
 
@@ -61,13 +69,17 @@ The driver SHALL start no more rounds of a session than the session was allowed.
 
 ### req.headless-sessions.wait-bounded — Waiting for a run is bounded
 
-When a run a round left behind is still running after the wait limit, the driver SHALL fail the
-session with `wait_exceeded`, naming that run's
-[run progress file](../../glossary.json#concept.run-progress-file) and the session's record.
+When a run a round left behind still runs after the wait limit, the driver SHALL fail the session
+with `wait_exceeded`, naming:
+
+- That run's [run progress file](../../glossary.json#concept.run-progress-file).
+- The session's record.
 
 ### req.headless-sessions.logs-kept — Every round is kept
 
-The driver SHALL keep each round's output and standard error and the session's record in the
-session directory, including for a session that ends with a failed round or fails with
-`wait_exceeded`, whose record ends `wait_exceeded` and names the run progress file of the run that
-outlived the wait.
+The driver SHALL keep these in the session directory, also for a session that ends with a failed
+round or fails with `wait_exceeded`:
+
+- Each round's output and standard error.
+- The session's record. For a session that fails with `wait_exceeded`, the record ends
+  `wait_exceeded` and names the run progress file of the run that outlived the wait.
