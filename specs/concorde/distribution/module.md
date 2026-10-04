@@ -3,22 +3,30 @@
 ## Purpose
 
 Distribution is the distribution [part](../glossary.json#concept.part), the one present in every
-installation: it turns the Concorde checkout into packages a developer can install, installs into a
-project the parts the developer chooses, with the parts they depend on, records which are installed
-and updates them, and composes from the installed parts the one `concorde` command and the one
-[project MCP server](../glossary.json#concept.project-mcp-server) a project's sessions use. It also
-builds the generated files and writes the [Protocol copy](../glossary.json#concept.protocol-copy) a
-project carries where the spec part is installed, and installs the
-[main-session guidance](../glossary.json#concept.main-session-guidance) for Claude Code, on which the
+installation. It turns the Concorde checkout into packages a developer can install. It installs
+into a project the parts the developer chooses, with the parts they depend on. It records which
+parts are installed. It updates them. From the installed parts, it composes these two things that
+a project's sessions use:
+
+- The one `concorde` command.
+- The one [project MCP server](../glossary.json#concept.project-mcp-server).
+
+It also builds the generated files. Where the spec part is installed, it writes the
+[Protocol copy](../glossary.json#concept.protocol-copy) a project carries. It installs the
+[main-session guidance](../glossary.json#concept.main-session-guidance) for Claude Code. The
 [main agent](../glossary.json#concept.main-agent) and its
-[task sessions](../glossary.json#concept.task-session) run for now, composed from the guidance each
-installed part contributes.
+[task sessions](../glossary.json#concept.task-session) run on Claude Code for now. The main-session
+guidance is composed from the guidance each installed part contributes.
 
 Distribution reaches the parts only through their
-[part registrations](../glossary.json#concept.part-registration), plain data each part gives it,
-and no part imports Distribution's code. It does not decide what a command or an MCP tool does, what
-the main agent is told, or a project's Specs and configuration — the installer writes no Spec but
-the realization that keeps its own installed files bound.
+[part registrations](../glossary.json#concept.part-registration). These are plain data each part
+gives it. No part imports Distribution's code. Distribution does not decide any of these things:
+
+- What a command or an MCP tool does.
+- What the main agent is told.
+- A project's Specs and configuration.
+
+The installer writes no Spec but the realization that keeps its own installed files bound.
 
 ## Core concepts
 
@@ -27,52 +35,88 @@ the realization that keeps its own installed files bound.
 <a id="concept.build-manifest"></a>
 
 The **[build manifest](../glossary.json#concept.build-manifest)**, `generated/build-manifest.json`,
-is the build's record of the digest of every source it read and of every output it wrote, in the
-shape its [contract](contracts.md#contract.distribution.build-manifest) fixes. It lets the build
-tell what is stale, which `build --check` reports and the installer refuses, and remove a leftover
-output only while its bytes still match the previous manifest.
+is the build's record of the digest of every source it read and of every output it wrote.
+Its [contract](contracts.md#contract.distribution.build-manifest) fixes its shape. It lets the
+build tell what is stale. `build --check` reports what is stale. The installer refuses what is
+stale. Only while a leftover output's bytes still match the previous manifest, the manifest lets
+the build remove that output.
 
 ### The Protocol copy
 
 <a id="concept.protocol-copy"></a>
 
-The **[Protocol copy](../glossary.json#concept.protocol-copy)** is the rendered Spec Protocol bundle
-the installer writes under `.concorde/protocol/`, built from the tracked manifest and rendered
-assets so that a project receives exactly the Protocol the manifest names. The project's
-configuration accepts it through its [Protocol binding](../glossary.json#concept.protocol-binding):
-after a plain install the developer updates the binding, while `concorde update` rebinds it itself.
+The **[Protocol copy](../glossary.json#concept.protocol-copy)** is the rendered Spec Protocol
+bundle the installer writes under `.concorde/protocol/`. It is built from the tracked manifest and
+rendered assets so that a project receives exactly the Protocol the manifest names. The project's
+configuration accepts it through its [Protocol binding](../glossary.json#concept.protocol-binding).
+After a plain install, the developer updates the binding. `concorde update` rebinds it itself.
 
 ### Parts and their registrations
 
 <a id="concept.part-registration"></a>
 
-Every part of Concorde is a package of its own in the one repository, carrying the repository's one
-version number, and each gives Distribution a
-**[part registration](../glossary.json#concept.part-registration)**: plain data, in the shape the
-[registration contract](contracts.md#contract.distribution.part-registration) fixes, naming the
-part, the parts it depends on, its `concorde` commands, its MCP tools, the
-[typed value](../glossary.json#concept.typed-value) types it registers, its guidance, its install
-contributions — the files it ships beside its code, the `.gitignore` lines, the permission rules,
-the programs it needs, such as the worker harness's pi runtime, and the Python dependencies its code
-imports, such as Method's LangGraph — and its idle check, which says whether work of the
-part is running in the project. The registration is data, not an interface a part implements against
-Distribution's code, so a part that depends on nothing, such as the spec part, registers without
-importing anything, and Distribution loads only the registrations of the installed parts. What a
-part does not register does not exist in the project: a command, a tool, a guidance section or a
-file of a part that is not installed is simply absent.
+Every part of Concorde is a package of its own in the one repository. Each part carries the
+repository's one version number. Each gives Distribution a
+**[part registration](../glossary.json#concept.part-registration)**. This is plain data in the shape
+the [registration contract](contracts.md#contract.distribution.part-registration) fixes. It names:
+
+- The part.
+- The parts it depends on.
+- Its `concorde` commands.
+- Its MCP tools.
+- The [typed value](../glossary.json#concept.typed-value) types it registers.
+- Its guidance.
+- Its install contributions.
+- Its idle check, which says whether work of the part currently runs in the project.
+
+Its install contributions are:
+
+- The files it ships beside its code.
+- The `.gitignore` lines.
+- The permission rules.
+- The programs it needs, such as the worker harness's pi runtime.
+- The Python dependencies its code imports, such as Method's LangGraph.
+
+The registration is data, not an interface a part implements against Distribution's code.
+So a part that depends on nothing, such as the spec part, registers without importing anything.
+Distribution loads only the registrations of the installed parts. What a part does not register
+does not exist in the project. These items of a part that is not installed are simply absent:
+
+- A command.
+- A tool.
+- A guidance section.
+- A file.
 
 Each part keeps its registration as `registration.json` in its own directory of `src/concorde/`.
-Every entry it names, a command, a tool, an install service, an idle check, is an attribute of a
-module of that part's own package, so Distribution, the only code that imports a part by such a
-name, never reaches one part's code through another's registration. A registration also names the
-part's modules that register what its code provides when they load, such as typed value types,
-trace roots, Operation definitions and workflows; Distribution loads them for every installed part
-before it routes a part's command, answers a tool or renders the build. The installed parts are,
-in a source checkout, every part the package builds, and in a project the parts its receipt names.
-The build records what every part of the package registers in the **parts index**
-`generated/parts.json` ([contract](contracts.md#part-registration)), from which a project's
-`concorde` and project MCP server name the part of a command or tool the project lacks without
-reading that part's registration.
+Every entry it names is an attribute of a module of that part's own package.
+Examples of these entries are:
+
+- A command.
+- A tool.
+- An install service.
+- An idle check.
+
+Distribution is the only code that imports a part by such a name. Because each entry belongs to
+the part's own package, Distribution never reaches one part's code through another's registration.
+A registration also names the part's modules that register what its code provides when they load.
+Examples of what they register are:
+
+- Typed value types.
+- Trace roots.
+- Operation definitions.
+- Workflows.
+
+For every installed part, Distribution loads those modules before it does any of these things:
+
+- Routes a part's command.
+- Answers a tool.
+- Renders the build.
+
+In a source checkout, the installed parts are every part the package builds. In a project, the
+installed parts are the parts its receipt names. The build records what every part of the package
+registers in the **parts index** `generated/parts.json` ([contract](contracts.md#part-registration)).
+From this index, a project's `concorde` and project MCP server name the part of a command or tool
+the project lacks. They do so without reading that part's registration.
 
 | Part | Its [Module](../glossary.json#concept.module) | It registers, among others |
 | --- | --- | --- |
@@ -88,14 +132,35 @@ reading that part's registration.
 
 ### Commands named by their owner
 
-A command is named after the part that registers it, as the table above lists: `task` gives the
-coordination commands, `spec-validation`, `registry`, `docsite`, `grant`, `spec-mcp` and `init` the
-Spec tooling commands, `issues` the Issues commands, `trace` the Tracing commands, `run` an
-Operation and `workflow` a workflow step, and `build`, `protocol-manifest`, `update` and
-`project-mcp` the **distribution commands**, the only ones Distribution owns itself. The
-[execution commands](../glossary.json#concept.execution-command), runs without a worker, are named
-and registered by the part that provides them, such as Method's `task-validation`, `delivery` and
-`scaffold`, whose entries run them through the Execution runner
+A command is named after the part that registers it, as the table above lists:
+
+- `task` gives the coordination commands.
+- The Spec tooling commands are:
+  - `spec-validation`.
+  - `registry`.
+  - `docsite`.
+  - `grant`.
+  - `spec-mcp`.
+  - `init`.
+- `issues` gives the Issues commands.
+- `trace` gives the Tracing commands.
+- `run` gives an Operation.
+- `workflow` gives a workflow step.
+- The **distribution commands** are:
+  - `build`.
+  - `protocol-manifest`.
+  - `update`.
+  - `project-mcp`.
+
+The distribution commands are the only ones Distribution owns itself. The
+[execution commands](../glossary.json#concept.execution-command) are runs without a worker. The
+part that provides them names them. That part registers them. Method's examples are:
+
+- `task-validation`.
+- `delivery`.
+- `scaffold`.
+
+Their entries run them through the Execution runner
 ([Commands](../execution/commands/module.md)).
 
 ### The project MCP server
@@ -103,30 +168,55 @@ and registered by the part that provides them, such as Method's `task-validation
 <a id="concept.project-mcp-server"></a>
 
 The **[project MCP server](../glossary.json#concept.project-mcp-server)** is the project's one stdio
-MCP server, `concorde project-mcp` registered as `concorde` in the project's `.mcp.json`, of which
-each Claude Code session runs its own process. It is a host: it presents the MCP tools the installed
-parts register, answering none of them itself, so a project with the coordination part has the task
-tools, one with the [issues](../glossary.json#concept.issue) part the Issue tools, one with the workflow part the `workflow_step` tool
-its workflows' step agents call, and a tool of a part that is not installed is absent. Each tool's
-behaviour, arguments and refusals are its part's: each call's process loads the installed parts'
-registering code and passes the call, with the session's provenance, to the entry the tool's
-registration names, whose answer or refusal is the tool's. A tool of a part the project has not
-installed is refused with `part_missing` naming the part, as a command is, and a tool whose
-registration requires a part that is not installed, such as Coordination's `run_result` without the
-execution part, is not presented. How the server serves a call, keeps it on the current code,
-hands locks to long work and wakes its session is described in [Serving a
-call](#serving-a-call), and its exact session and call protocol in its
-[contract](contracts.md#project-mcp-server).
+MCP server. It is `concorde project-mcp`, registered as `concorde` in the project's `.mcp.json`.
+Each Claude Code session runs its own process of the server. The server is a host. It presents the
+MCP tools the installed parts register. It answers none of them itself. So the project's tools
+depend on its installed parts:
+
+- With the coordination part, a project has the task tools.
+- With the [issues](../glossary.json#concept.issue) part, a project has the Issue tools.
+- With the workflow part, a project has the `workflow_step` tool its workflows' step agents call.
+- When a part is not installed, its tool is absent.
+
+Each tool's part owns these aspects of the tool:
+
+- Its behaviour.
+- Its arguments.
+- Its refusals.
+
+Each call's process loads the installed parts' registering code. It passes the call, with the
+session's provenance, to the entry the tool's registration names. That entry's answer or refusal
+is the tool's. When the project has not installed a tool's part, the tool is refused with
+`part_missing` naming the part, as a command is. When a tool's registration requires a part that
+is not installed, the tool is not presented. Coordination's `run_result` without the execution
+part is an example. [Serving a call](#serving-a-call) describes how the server does these things:
+
+- Serves a call.
+- Keeps it on the current code.
+- Hands locks to long work.
+- Wakes its session.
+
+Its [contract](contracts.md#project-mcp-server) describes its exact session and call protocol.
 
 ## Overview
 
 ### From checkout to project
 
-Distribution works in two stages. The build renders every part's prompts, the Protocol and the
-workflow scripts into `generated/` and records the build manifest; the installer, run for a first
-install or by `concorde update`, refuses a stale build, resolves the parts to install with the parts
-they depend on, and places each one's files, the environment and the command, and the guidance and
-workflows of the installed parts in the project.
+Distribution works in two stages. The build renders these items into `generated/`:
+
+- Every part's prompts.
+- The Protocol.
+- The workflow scripts.
+
+The build records the build manifest. The installer runs for a first install or by
+`concorde update`. It refuses a stale build. It resolves the parts to install with the parts they
+depend on. It places these items in the project:
+
+- Each one's files.
+- The environment.
+- The command.
+- The guidance of the installed parts.
+- The workflows of the installed parts.
 
 ```d2 illustrative
 direction: right
@@ -163,10 +253,10 @@ installer -> project: places
 
 ### An install, step by step
 
-The installer makes its checks and the pinned download before its first write, so a refusal at one
-of them leaves the project as it was. Not every refusal does: the steps drawn dashed run programs
-and can fail after something was written, as any write can, which [When an install fails
-halfway](#when-an-install-fails-halfway) explains.
+The installer makes its checks and the pinned download before its first write. So a refusal at
+one of them leaves the project as it was. Not every refusal does. The steps drawn dashed run
+programs. Like any write, these steps can fail after something was written.
+[When an install fails halfway](#when-an-install-fails-halfway) explains this.
 
 ```d2 illustrative
 direction: down
@@ -216,59 +306,92 @@ distribution: Distribution {
 ```
 
 Python sources are under `src/concorde/distribution/` except `src/concorde/__main__.py` and the
-`scripts/` entry points; each realization's exact files are its metadata's `entries`. The
-[build manifest](../glossary.json#concept.build-manifest) and
-[Protocol copy](../glossary.json#concept.protocol-copy) are recorded and written but bind no file of
-their own.
+`scripts/` entry points. Each realization's exact files are its metadata's `entries`.
+The [build manifest](../glossary.json#concept.build-manifest) and
+[Protocol copy](../glossary.json#concept.protocol-copy) are recorded. They are also written.
+Neither binds a file of its own.
 
 ## Using Distribution
 
 ### The package
 
-`concorde.json` is the package's identity: name, version, licence, the roots the
-installer ships, install locations, the client `claude-code` the build renders workflows for, the
-pinned third-party programs under `tools` (today `d2`, by release, URL and
-per-platform SHA-256), and under `develop.check` the entry of [Dogfooding's](#uses-dogfooding)
-develop source check. The build reads it too, so a changed descriptor makes every render stale.
+`concorde.json` is the package's identity. It names:
+
+- The name.
+- The version.
+- The licence.
+- The roots the installer ships.
+- The install locations.
+- The client `claude-code` the build renders workflows for.
+- The pinned third-party programs under `tools` (today `d2`).
+- The entry of [Dogfooding's](#uses-dogfooding) develop source check under `develop.check`.
+
+The programs are pinned by:
+
+- Release.
+- URL.
+- Per-platform SHA-256.
+
+The build reads it too, so a changed descriptor makes every render stale.
 
 ### Building
 
 `python3 scripts/concorde.py build` expands every prompt root into `generated/`
-([requirements](requirements.md#req.distribution.build-reachable)), `{{name}}` becoming the literal
-text `{name}` so that a prompt can show a placeholder such as a check's `{python}`, and wraps every
+([requirements](requirements.md#req.distribution.build-reachable)). `{{name}}` becomes the literal
+text `{name}` so that a prompt can show a placeholder such as a check's `{python}`.
+Once every part's registering code is loaded, the build wraps every
 [workflow script](../glossary.json#concept.workflow-script) the parts contribute to the workflow
-catalog as
-`generated/workflows/claude/concorde-<name>.js` with its `meta` block and Claude Code step adapter,
-through the workflow part's `renders` entry once every part's registering code is loaded, writes
-the [parts index](contracts.md#part-registration) `generated/parts.json` from the parts'
-registrations, and writes `generated/build-manifest.json` with every source's and output's digest.
-It refuses a registration that breaks the [registration
-contract](contracts.md#contract.distribution.part-registration) and a command or MCP tool name two
-parts register ([requirements](requirements.md#req.distribution.unique-names)). The prompt
-roots are the Protocol's `prompts/protocol/principles.md` and `prompts/protocol/kinds/module.md`
-every file directly in `prompts/workers/`, `prompts/main-session/`, `prompts/dogfooding/` and
-`prompts/development/`, and the prompt of every guidance section a part registers, `prompts/<path>`
-for its `generated/<path>`, each rendered to the same path under `generated/`. The build then
-[composes the guidance](#guidance-composition) of every part of the package, the `concorde` skill
-`generated/skills/concorde/SKILL.md` and the task-session prompt
-`generated/guidance/task-session.md`, and renders the development skill from its prompt root
-([skills](#realization.distribution.build)). `build --check` only
-reports what is stale, writing nothing
-([requirements](requirements.md#req.distribution.build-check-read-only)). `generated/` is
-Git-ignored, so a checkout always rebuilds. `protocol-manifest --write --bind-project` accepts a
-Protocol change's fresh digests, binds the configuration and refreshes this checkout's own copy, as
-described next.
+catalog. It does this through the workflow part's `renders` entry. Each wrapped script becomes
+`generated/workflows/claude/concorde-<name>.js`. Each wrapped script includes its `meta` block and
+Claude Code step adapter.
+The build writes the [parts index](contracts.md#part-registration) `generated/parts.json` from the
+parts' registrations. It writes `generated/build-manifest.json` with every source's and output's
+digest. It refuses a registration that breaks the [registration
+contract](contracts.md#contract.distribution.part-registration). It also refuses a command or MCP
+tool name two parts register ([requirements](requirements.md#req.distribution.unique-names)).
+The prompt roots are:
+
+- The Protocol's `prompts/protocol/principles.md`.
+- The Protocol's `prompts/protocol/kinds/module.md`.
+- Every file directly in `prompts/workers/`.
+- Every file directly in `prompts/main-session/`.
+- Every file directly in `prompts/dogfooding/`.
+- Every file directly in `prompts/development/`.
+- The prompt of every guidance section a part registers, `prompts/<path>` for its `generated/<path>`.
+
+Each root renders to the same path under `generated/`. The build then
+[composes the guidance](#guidance-composition) of every part of the package into:
+
+- The `concorde` skill `generated/skills/concorde/SKILL.md`.
+- The task-session prompt `generated/guidance/task-session.md`.
+
+It renders the development skill from its prompt root
+([skills](#realization.distribution.build)). `build --check` only reports what is stale.
+It writes nothing ([requirements](requirements.md#req.distribution.build-check-read-only)).
+`generated/` is Git-ignored, so a checkout always rebuilds.
+`protocol-manifest --write --bind-project` does the following, as described next:
+
+- Accepts a Protocol change's fresh digests.
+- Binds the configuration.
+- Refreshes this checkout's own copy.
 
 ### Reconciling the Protocol manifest
 
-`protocol-manifest` compares the digests the tracked manifest `protocol/manifest.json`, whose shape
-[Spec core](../spec-tooling/spec/contracts.md#protocol-manifest) defines, records for the rendered
-Protocol assets with those of the current build. It first requires a fresh build and a readable
-tracked manifest of the manifest's shape whose every asset the build holds; otherwise it reports
-`invalid` with `CONCORDE-PROTOCOL-MANIFEST-001` naming the problem and writes nothing, whatever its
-flags ([requirements](requirements.md#req.distribution.protocol-manifest-precondition)). Then
-each combination of its two flags does the following, its result's `differences` naming the assets
-whose digests differed from the build's and its `artifacts` what it wrote:
+`protocol-manifest` compares the tracked manifest's digests for the rendered Protocol assets with
+those of the current build. The tracked manifest is `protocol/manifest.json`.
+[Spec core](../spec-tooling/spec/contracts.md#protocol-manifest) defines its shape.
+`protocol-manifest` first requires:
+
+- A fresh build.
+- A readable tracked manifest of the manifest's shape.
+- Every asset of that manifest to be held by the build.
+
+When any precondition fails, it reports `invalid` with `CONCORDE-PROTOCOL-MANIFEST-001` naming the
+problem. In that case, it writes nothing, whatever its flags
+([requirements](requirements.md#req.distribution.protocol-manifest-precondition)).
+Then each combination of its two flags does what the following table shows.
+The result's `differences` names the assets whose digests differed from the build's.
+Its `artifacts` names what it wrote:
 
 | Flags | Writes | Status |
 | --- | --- | --- |
@@ -277,23 +400,32 @@ whose digests differed from the build's and its `artifacts` what it wrote:
 | `--bind-project` | the configuration's [Protocol binding](../glossary.json#concept.protocol-binding), set to the tracked manifest's version and the digest of its bytes, then this checkout's Protocol copy under `.concorde/protocol/` | `success` when no digest differs; otherwise the binding is written and the copy, which would no longer match the build, is refused with `protocol_mismatch` in a `failed` result, the copy left as it was |
 | `--write --bind-project` | the tracked manifest when a digest differs, then the binding to it and the Protocol copy | `success` |
 
-A Protocol change in this checkout is therefore accepted with both flags; `--write` alone suits a
-checkout whose own configuration is bound otherwise, such as a package a project installs from.
+A Protocol change in this checkout is therefore accepted with both flags. For a checkout whose own
+configuration is bound otherwise, `--write` alone suits, such as a package a project installs from.
 
 ### The command line
 
-`scripts/concorde.py` (or the `concorde.sh`/`concorde.ps1` wrappers) takes a
-global `--project-root` and one subcommand. In a source checkout that `uv sync` prepared, it runs
-itself again on the checkout's own `.venv` interpreter, which holds Concorde's Python
-dependencies; an installed copy has no `.venv` and runs on Concorde's own environment:
+The following entry points take a global `--project-root` and one subcommand:
 
-Each row's command exists in a project only when the part that registers it is installed; a command
-of a part that is not installed is refused naming that part and how to install it, printing
-`{"error": <link>}` whose code is `part_missing` and exiting with status 1, the one refusal by which
-another part tells that a part is absent
-([requirements](requirements.md#req.distribution.absent-part-named)). A command line naming no
-command of the package is answered with one `failed` envelope, and `concorde --help` lists the
-commands of the installed parts.
+- `scripts/concorde.py`.
+- The `concorde.sh` wrapper.
+- The `concorde.ps1` wrapper.
+
+In a source checkout that `uv sync` prepared, the entry point runs
+itself again on the checkout's own `.venv` interpreter. That interpreter holds Concorde's Python
+dependencies. An installed copy has no `.venv`. It runs on Concorde's own environment.
+
+For each row's command to exist in a project, the part that registers it must be installed.
+When a command's part is not installed, the command is refused
+([requirements](requirements.md#req.distribution.absent-part-named)). This refusal:
+
+- Names that part and how to install it.
+- Prints `{"error": <link>}` whose code is `part_missing`.
+- Exits with status 1.
+
+This is the one refusal by which another part tells that a part is absent.
+When a command line names no command of the package, it receives one `failed` envelope.
+`concorde --help` lists the commands of the installed parts.
 
 | Command | Does | Part, Module |
 | --- | --- | --- |
@@ -314,34 +446,49 @@ commands of the installed parts.
 | `protocol-manifest [--write] [--bind-project]` | [reconciles the Protocol manifest](#reconciling-the-protocol-manifest) | distribution |
 | `update [--from <checkout>] [--parts <part>[,<part>…]]` | updates the installed Concorde, adding the parts `--parts` names, as described below; prints its [update result](contracts.md#contract.distribution.update-result) | distribution |
 
-A command registered with `output` `envelope`, today every distribution and Spec tooling command
-but `spec-mcp`, `project-mcp` and `update`, prints exactly one JSON envelope and exits with its
-status, even when refused ([requirements](requirements.md#req.distribution.one-envelope)). A
-command registered with `own`, such as `task`, `run`, the execution commands, `workflow`, `issues`
-and `trace`, prints what its owner defines, with its owner's exit codes, and `update` prints its
-[update result](contracts.md#contract.distribution.update-result) or its
+A command registered with `output` `envelope` prints exactly one JSON envelope, even when refused
+([requirements](requirements.md#req.distribution.one-envelope)). It exits with the envelope's status.
+Today this applies to every distribution and Spec tooling command except:
+
+- `spec-mcp`.
+- `project-mcp`.
+- `update`.
+
+A command registered with `own` prints what its owner defines. It uses its owner's exit codes.
+Examples are:
+
+- `task`.
+- `run`.
+- The execution commands.
+- `workflow`.
+- `issues`.
+- `trace`.
+
+`update` prints its [update result](contracts.md#contract.distribution.update-result) or its
 [error link](requirements.md#req.distribution.installer-error-links).
 
-The worker harness part's standalone Workers entry point
-`scripts/available_models.py --backend pi|claude [--json]` is shipped, as that part's install
-contribution, under `.concorde/framework/scripts/available_models.py` with the runtime. It resolves
-its imports relative to itself and works outside a Git worktree; it lists advisory configured
-candidates, with the project model names the user's [model
-map](../glossary.json#concept.model-map) gives each, without probing inference API access.
+The worker harness part's standalone Workers entry point is
+`scripts/available_models.py --backend pi|claude [--json]`. As that part's install contribution, it
+ships under `.concorde/framework/scripts/available_models.py` with the runtime. It resolves
+its imports relative to itself. It works outside a Git worktree. It lists advisory configured
+candidates without probing inference API access. Each candidate has the project model names the
+user's [model map](../glossary.json#concept.model-map) gives it.
 Configuration validation does not call it. The installer writes neither the worker configuration
-nor the model map, which belongs to the user and lies outside every project.
+nor the model map. The model map belongs to the user. It lies outside every project.
 
-The command runs the Framework copy of the worktree it belongs to; a task worktree has none of its
-own, since Git ignores it, unless the task reinstalled Concorde there, so its command runs the
-primary worktree's copy, found through Git's common directory.
+The command runs the Framework copy of the worktree it belongs to. Unless the task reinstalled
+Concorde there, a task worktree has none of its own, since Git ignores the Framework copy. The task
+worktree's command then runs the primary worktree's copy, found through Git's common directory.
 
 ### Serving a call
 
 The [project MCP server](#the-project-mcp-server) is a host for the tools of the installed parts.
-A call travels from the session through the server to a fresh process of the current Concorde,
-which calls the entry the tool's registration names and answers; a tool that starts long work
-becomes that work, and the server watches what outlives the call and wakes the session when it
-ends. [The contract](contracts.md#project-mcp-server) fixes every message exactly.
+A call travels from the session through the server to a fresh process of the current Concorde.
+That process calls the entry the tool's registration names and answers.
+When a tool starts long work, the tool becomes that work.
+The server watches what outlives the call.
+When the watched process ends, the server wakes the session.
+[The contract](contracts.md#project-mcp-server) fixes every message exactly.
 
 ```d2 illustrative
 direction: right
@@ -366,57 +513,100 @@ server -> session: "channel event"
 
 The host's own promises are these:
 
-- **Current code.** The server process lives as long as its Claude Code session, which may be hours,
-  while Concorde itself changes under it: a task merge in Concorde's own checkout, or
-  `concorde update` in an installed project. Code loaded once would then keep answering with the
-  rules and record formats it started with, and refuse the records the new code writes. So the
-  server runs none of its tools itself. Each call runs `concorde project-mcp --call <tool>` with the
-  `concorde` of the primary worktree as it is when the call arrives, its `.concorde/bin/concorde`
-  or, in Concorde's source checkout, its `scripts/concorde.py`, as a process of its own, unless the
-  tool's registration names the session's own worktree instead, as `workflow_step` does; the call's
-  arguments and the session's provenance go to it as one JSON object, and its answer or refusal is
-  the tool's. A call whose process gives no answer, or none within its time, is refused with the
-  server's own `call_failed` link, naming the command and what it printed. The tools, how each is served and the server's
-  instructions, its own followed by the sentence each installed part registers, come from
-  `concorde project-mcp --tools` of the current code. The server routes a call as the last such
-  listing says how the tool is served: in which worktree its process runs, whether it hands on
-  long work and whether it is answered on a thread of its own. The call's process, the current
-  code, checks that routing against its own registration of the tool first and, when they differ,
-  answers how it serves every tool instead of running anything, and the server routes the call
-  again that way, so an update that changes only how a tool is served takes effect at the next
-  call. Each answer also says which tools the current code has; when they differ from those the
-  server last listed to the session, the server tells its session that its tools changed, and
-  Claude Code lists them again: a listing the server fetches only to learn how a tool is served is
-  not one the session was given. Only the server's own session code, its few
-  protocol messages and its instructions, stays what the session started with until the next
-  session.
-- **Locks handed to the work.** A tool whose registration says it starts long work, such as
-  Coordination's `task_merge`, never waits for a lock: the call's process takes the locks the work
-  needs at once or is refused at once naming the holder, and when it gets them it replaces itself
-  with the command doing the work, which keeps them, since a `flock` belongs to the open file
-  description that survives the change of program
-  ([Handing a lock on](../kernel/tracing/contracts.md#handing-a-lock-on)). The server never holds a
-  lock, so a lock belongs to the work and is released when the work ends, however it ends, even
-  when the session and its server end first.
-- **Watching and waking.** A tool may ask the server to watch a process, such as a wait for a task,
-  a run or a lock that Coordination's `register_wait` registers, or the long work a tool started;
-  the server wakes its session with a Claude Code channel event carrying that process's answer when
-  it ends. A wait ends with the server; long work goes on and keeps its locks until it ends, the
-  server only ceasing to watch it. Claude Code delivers a server's
-  `notifications/claude/channel` only to an interactive session started with that server as a
-  channel, a research preview that needs `--dangerously-load-development-channels server:concorde`,
-  Anthropic authentication and an organization that has not disabled channels; a background session
-  is never woken by them. A server cannot learn from Claude Code whether it is a channel, so it reads
-  it from the command line of the interactive `claude` above it, one whose standard input is a
-  terminal, unless the environment variable `CONCORDE_CHANNEL` is `1` or `0`, which then decides,
-  as the configuration a task session's server is started with sets it to `0`; when it has none,
-  the tool returns the equivalent blocking `concorde` command for the session's background Bash
-  instead, which wakes the session when it ends.
+- **Current code.** The server process lives as long as its Claude Code session, which may be hours.
+  Meanwhile, Concorde itself changes under the server through a task merge in Concorde's own
+  checkout or `concorde update` in an installed project.
+  Code loaded once would then keep answering with the rules and record formats it started with.
+  That code would refuse the records the new code writes.
+  So the server runs none of its tools itself.
+  Each call runs `concorde project-mcp --call <tool>` in a process of its own.
+  Unless the tool's registration names the session's own worktree instead, the call uses the
+  primary worktree's `concorde` as it is when the call arrives.
+  That command is its `.concorde/bin/concorde` or, in Concorde's source checkout, its
+  `scripts/concorde.py`.
+  The `workflow_step` registration names the session's own worktree instead.
+  The call's arguments and the session's provenance go to the call process as one JSON object.
+  The call process's answer or refusal is the tool's.
+  When a call's process gives no answer, or none within its time, the server refuses the call with
+  its own `call_failed` link.
+  The link names the command and what it printed.
+  The following come from `concorde project-mcp --tools` of the current code:
+
+  - The tools.
+  - How each tool is served.
+  - The server's instructions, its own followed by the sentence each installed part registers.
+
+  The server routes a call as the last such listing says how the tool is served.
+  That listing specifies:
+
+  - In which worktree the tool's process runs.
+  - Whether the tool hands on long work.
+  - Whether the tool is answered on a thread of its own.
+
+  The call's process, the current code, first checks that routing against its own registration
+  of the tool.
+  When the routing and registration differ, the call's process answers how it serves every tool
+  instead of running anything.
+  The server then routes the call again that way.
+  So an update that changes only how a tool is served takes effect at the next call.
+  Each answer also says which tools the current code has.
+  When those tools differ from those the server last listed to the session, the server tells its
+  session that its tools changed.
+  Claude Code then lists the tools again.
+  A listing the server fetches only to learn how a tool is served is not one the session was given.
+  Until the next session, only these stay what the session started with:
+
+  - The server's own session code.
+  - Its few protocol messages.
+  - Its instructions.
+
+- **Locks handed to the work.** When a tool's registration says it starts long work, the tool never
+  waits for a lock.
+  Coordination's `task_merge` is such a tool.
+  For such a tool, the call's process takes the locks the work needs at once or is refused at once naming the holder.
+  When such a tool's call process gets the locks, it replaces itself with the command doing the work.
+  That command keeps the locks, since a `flock` belongs to the open file description that survives
+  the change of program ([Handing a lock on](../kernel/tracing/contracts.md#handing-a-lock-on)).
+  The server never holds a lock, so a lock belongs to the work.
+  Whenever the work ends, however it ends, the lock is released, even when the session and its
+  server end first.
+- **Watching and waking.** A tool may ask the server to watch a process.
+  Examples are:
+
+  - A wait for a task that Coordination's `register_wait` registers.
+  - A wait for a run that Coordination's `register_wait` registers.
+  - A wait for a lock that Coordination's `register_wait` registers.
+  - The long work a tool started.
+
+  When the watched process ends, the server wakes its session with a Claude Code channel event
+  carrying that process's answer.
+  A wait ends with the server.
+  When the server ends, long work goes on and keeps its locks until the work ends.
+  The server only ceases to watch the long work.
+  Claude Code delivers a server's `notifications/claude/channel` only to an interactive session
+  started with that server as a channel.
+  This research preview needs:
+
+  - `--dangerously-load-development-channels server:concorde`.
+  - Anthropic authentication.
+  - An organization that has not disabled channels.
+
+  A background session is never woken by these notifications.
+  A server cannot learn from Claude Code whether it is a channel.
+  So, unless the environment variable `CONCORDE_CHANNEL` is `1` or `0`, the server identifies the interactive `claude` above it whose standard input is a terminal.
+  It then reads its channel status from that process's command line.
+  When the variable is `1` or `0`, the variable decides the server's channel status instead.
+  The configuration a task session's server starts with sets the variable to `0`.
+  When the server has no channel, the tool instead returns the equivalent blocking `concorde`
+  command for the session's background Bash.
+  When that command ends, it wakes the session.
 
 The server answers calls that wait, each on a thread of its own, so the session's other calls are
-not held up meanwhile. Using it is recommended, not enforced: the `concorde` command and the server
-take the same locks, so both paths see each other's holders. [Workers](../glossary.json#concept.worker)
-never receive it: they launch with an empty MCP configuration.
+not held up meanwhile. Using it is recommended, not enforced.
+The reason is that the `concorde` command and the server take the same locks.
+So both paths see each other's holders.
+[Workers](../glossary.json#concept.worker) never receive the server.
+They launch with an empty MCP configuration.
 
 ### Installing into a project
 
@@ -428,274 +618,392 @@ python3 scripts/install-concorde.py <project> [--parts <part>[,<part>…]] [--de
 ```
 
 `--parts` names the parts to install, by the names of the
-[parts table](#parts-and-their-registrations); the installer adds every part they depend on, and
-installs every part when the option is left out. Distribution itself is installed with any part.
-`--develop` makes a [develop install](#uses-dogfooding); `--without-d2`, `--without-pi-runtime`
-and `--without-dependencies` leave out the pinned `d2`, the [pi runtime](#the-pi-runtime) and
-Concorde's Python dependencies, as steps 2 and 4 below describe; and `--update` runs the installer
-in [update mode](#updating-an-installed-concorde), as `concorde update` does.
-The installer first decides everything that could refuse the install and only then writes, so a refusal among these checks leaves the project as it was. On a
-project where every check passes, it goes through these steps in order:
+[parts table](#parts-and-their-registrations). The installer adds every part they depend on.
+When the option is left out, the installer installs every part. Distribution itself is installed
+with any part. `--develop` makes a [develop install](#uses-dogfooding).
+As steps 2 and 4 below describe, these options leave out the corresponding components:
 
-1. **It checks, writing nothing.** It refuses a directory that is not a project
-   (`invalid_project`); a part name the package does not build, among those asked for or those
-   they depend on (`unknown_part`,
-   [requirements](requirements.md#req.distribution.unknown-part-refused)); a stale build
-   (`stale_build`), which includes a stale render of the
-   [main-session guidance](../glossary.json#concept.main-session-guidance); a docsite template
-   that [Views](../spec-tooling/views/module.md)' inventory rule rejects
-   (`invalid_docsite_template`,
-   [checked first](requirements.md#req.distribution.installer-docsite-template-first)); a missing
-   render of the guidance (`stale_build`,
-   [requirements](requirements.md#req.distribution.installer-fresh-guidance)); with
-   `--develop`, a source that Dogfooding's check refuses; a project in which an installed part reports
-   work running (`concorde_busy`, described below) or whose idle check fails (`part_failed`); a `concorde.json` that names no Python requirement
-   (`invalid_descriptor`); a `.claude/settings.json` that is not a JSON object with an optional
-   `permissions.allow` list (`settings_invalid`,
-   [checked first](requirements.md#req.distribution.installer-settings-checked)); a `.mcp.json`
-   that is not a JSON object with an optional `mcpServers` object (`mcp_config_invalid`,
-   [checked as early](requirements.md#req.distribution.installer-mcp-checked)); a machine
-   without `uv` on `PATH` (`uv_missing`), since uv owns Concorde's Python; and, when the pi runtime described
-   below is still to be placed, a machine without `npm` (`npm_missing`)
-   ([requirements](requirements.md#req.distribution.installer-programs-first)).
+- `--without-d2` leaves out the pinned `d2`.
+- `--without-pi-runtime` leaves out the [pi runtime](#the-pi-runtime).
+- `--without-dependencies` leaves out Concorde's Python dependencies.
+
+`--update` runs the installer in [update mode](#updating-an-installed-concorde), as `concorde update`
+does. The installer first decides everything that could refuse the install and only then writes.
+So a refusal among these checks leaves the project as it was. On a project where every check
+passes, it goes through these steps in order:
+
+1. **It checks, writing nothing.** It refuses these cases:
+   - A directory is not a project (`invalid_project`).
+   - A requested part name, or a name of a part it depends on, is not built by the package
+     (`unknown_part`, [requirements](requirements.md#req.distribution.unknown-part-refused)).
+   - A build is stale (`stale_build`). This includes a stale render of the
+     [main-session guidance](../glossary.json#concept.main-session-guidance).
+   - A docsite template fails [Views](../spec-tooling/views/module.md)' inventory rule
+     (`invalid_docsite_template`,
+     [checked first](requirements.md#req.distribution.installer-docsite-template-first)).
+   - A render of the guidance is missing (`stale_build`,
+     [requirements](requirements.md#req.distribution.installer-fresh-guidance)).
+   - With `--develop`, a source fails Dogfooding's check.
+   - In a project, an installed part reports work running (`concorde_busy`, described below).
+   - In a project, an installed part's idle check fails (`part_failed`).
+   - A `concorde.json` names no Python requirement (`invalid_descriptor`).
+   - A `.claude/settings.json` is not a JSON object with an optional `permissions.allow` list
+     (`settings_invalid`,
+     [checked first](requirements.md#req.distribution.installer-settings-checked)).
+   - A `.mcp.json` is not a JSON object with an optional `mcpServers` object
+     (`mcp_config_invalid`,
+     [checked as early](requirements.md#req.distribution.installer-mcp-checked)).
+   - A machine lacks `uv` on `PATH` (`uv_missing`), since uv owns Concorde's Python.
+   - When the pi runtime described below is still to be placed, a machine lacks `npm`
+     (`npm_missing`) ([requirements](requirements.md#req.distribution.installer-programs-first)).
 2. **It places the pinned programs** the installed parts' registrations name under
-   `install.programs`. Where the spec part is installed, it fetches the `d2` release
-   `concorde.json` pins, checks it
-   against its SHA-256 before anything else is written and places it at `.concorde/tools/d2`,
-   keeping it on a later install with the same pin
+   `install.programs`. Where the spec part is installed, it performs these steps unless
+   `--without-d2` skips them:
+   - It fetches the `d2` release `concorde.json` pins.
+   - Before anything else is written, it checks the release against its SHA-256.
+   - It places the release at `.concorde/tools/d2`.
+
+   On a later install with the same pin, it keeps the release
    ([requirements](requirements.md#req.distribution.installer-pinned-d2),
-   [checked first](requirements.md#req.distribution.installer-d2-first); `--without-d2` skips
-   it). Where the worker harness part is installed, it then places the pi runtime under
-   `.concorde/tools/pi-runtime/`, as described below.
+   [checked first](requirements.md#req.distribution.installer-d2-first)). Where the worker harness
+   part is installed, it then places the pi runtime under `.concorde/tools/pi-runtime/`, as
+   described below.
 3. **It places Concorde's files.** It places the Framework runtime of the chosen parts under
-   `.concorde/framework/`, replacing an earlier copy: `concorde.json`, each chosen part's code
-   directory `src/concorde/<directory>/` and the files and directories its registration lists under
-   `install.files`, such as Distribution's `scripts/concorde.py` and parts index, the spec part's
-   `protocol/` and rendered Protocol, Method's rendered worker prompts, the Issues command
-   `scripts/issues.py` and the worker harness's `scripts/available_models.py`, and nothing else,
-   so the code of a part that is not installed is not in the project at all and Concorde's own
-   development tooling, such as `scripts/e2e/`, never reaches it. It writes the files each chosen
-   part contributes, Concorde-owned defaults only where absent, and removes every file an earlier
-   install owned that this one no longer places, such as the workflow of a part left out, except a
-   Concorde-owned default, which holds the project's own data: one the receipt it replaces names
-   among its `defaults` stays, and stays Concorde's while it is in place, even when the parts now
-   installed or a newer Concorde no longer declare it. With the spec part go the Protocol
-   copy under
-   `.concorde/protocol/` and the docsite template under `.concorde/framework/docsite/`, exactly the
-   files Views' template inventory selects, `scaffold/` included, from which
-   `concorde docsite --propose` scaffolds a project's site
+   `.concorde/framework/`, replacing an earlier copy. It places these files and directories,
+   and nothing else:
+   - `concorde.json`.
+   - Each chosen part's code directory `src/concorde/<directory>/`.
+   - The files and directories its registration lists under `install.files`.
+
+   Examples of the registered files and directories are:
+   - Distribution's `scripts/concorde.py` and parts index.
+   - The spec part's `protocol/` and rendered Protocol.
+   - Method's rendered worker prompts.
+   - The Issues command `scripts/issues.py`.
+   - The worker harness's `scripts/available_models.py`.
+
+   So the code of a part that is not installed is not in the project at all.
+   For the same reason, Concorde's own development tooling, such as `scripts/e2e/`, never reaches
+   the project. It writes the files each chosen part contributes. It writes Concorde-owned
+   defaults only where absent. Except for Concorde-owned defaults, it removes every file an
+   earlier install owned that this one no longer places. An example is the workflow of a part
+   left out. A Concorde-owned default holds the project's own data. A default the replaced receipt
+   names among its `defaults` stays. While the default is in place, it stays Concorde's, even when
+   the installed parts or a newer Concorde no longer declare it.
+   With the spec part, it places the Protocol copy under `.concorde/protocol/`.
+   Where the spec part is installed, it also places the docsite template under `.concorde/framework/docsite/`.
+   The template contains exactly the files Views' template inventory selects, `scaffold/`
+   included. From that template, `concorde docsite --propose` scaffolds a project's site
    ([requirements](requirements.md#req.distribution.installer-docsite-template)).
 4. **It creates Concorde's own Python environment.** `uv venv` creates a venv at
    `.concorde/framework/python/` for the Python requirement `concorde.json` names under
-   `runtime.python`, on an interpreter uv chooses — one of the machine's or a uv-managed CPython,
-   which uv downloads when none fits — whatever interpreter runs the installer
-   ([requirements](requirements.md#req.distribution.uv-owns-python)); when uv cannot create it,
-   the install is refused with `python_env_failed` and uv's output. Into that environment go
-   Concorde's Python dependencies, such as LangGraph, which Method's `spec_panel` runs on, only
-   where an installed part's registration names one under `install.python_dependencies`: exactly
-   the runtime part of the checkout's `uv.lock`, each package checked against its locked hash
-   ([requirements](requirements.md#req.distribution.locked-python-dependencies)), then checked by
-   importing each dependency the installed parts name. A failing step is refused with `python_dependencies_failed` and the failing command's output;
-   `--without-dependencies` skips them, and the Operations that need them then refuse.
-5. **It writes the command.** `.concorde/bin/concorde`, composed from the registrations of the
-   installed parts, runs Concorde only in that environment,
-   with the caller's `PYTHONPATH`, `PYTHONHOME` and user site-packages left out, so an activated
-   project venv never becomes Concorde's interpreter
+   `runtime.python`. Whatever interpreter runs the installer, uv chooses the venv's interpreter
+   ([requirements](requirements.md#req.distribution.uv-owns-python)). It chooses one of the
+   machine's interpreters or a uv-managed CPython. When none fits, uv downloads a uv-managed
+   CPython. When uv cannot create the venv, the install is refused with `python_env_failed` and
+   uv's output. Only where an installed part's registration names a dependency under
+   `install.python_dependencies`, Concorde's Python dependencies go into that environment.
+   An example is LangGraph, which Method's `spec_panel` runs on. The dependencies are exactly the
+   runtime part of the checkout's `uv.lock`. Each package is checked against its locked hash
+   ([requirements](requirements.md#req.distribution.locked-python-dependencies)). Then each
+   dependency the installed parts name is checked by importing it. A failing step is refused with
+   `python_dependencies_failed` and the failing command's output. `--without-dependencies` skips
+   these steps. The Operations that need the dependencies then refuse.
+5. **It writes the command.** `.concorde/bin/concorde` is composed from the registrations of the
+   installed parts. It runs Concorde only in that environment. It leaves out these parts of the
+   caller's environment:
+   - `PYTHONPATH`.
+   - `PYTHONHOME`.
+   - User site-packages.
+
+   So an activated project venv never becomes Concorde's interpreter
    ([requirements](requirements.md#req.distribution.own-python)).
-6. **It installs the guidance.** The main-session guidance, [composed](#guidance-composition) of
-   Coordination's working method followed by the guidance every other installed part contributes,
-   in the order of the parts table, becomes the project skill `.claude/skills/concorde/SKILL.md`,
-   the build's renders of those parts composed unchanged, and a block between
-   `<!-- concorde:start -->` and `<!-- concorde:end -->` in the project's `CLAUDE.md`, replaced in
-   place on a later install, leaving the rest of the file untouched, and ending, where the spec part
-   is installed, with an `@<path>` import of the project's glossary once one is declared
-   ([requirements](requirements.md#req.distribution.glossary-import)). The task-session prompt
-   composed of the same parts replaces the build's composition of every part in the Framework copy,
-   `.concorde/framework/generated/guidance/task-session.md`, where Coordination reads it, and is
-   removed there when the coordination part is not installed. Distribution's `init` entry
-   point also adds that import after an `init --apply` that created the first glossary, as
-   [the command entry points](#realization.distribution.command) describe. The guidance is for Claude
-   Code alone, since the main agent and its task sessions run on Claude Code for now; nothing is
-   placed for a pi session, and a project's own `AGENTS.md` is left as it is.
-7. **It installs the workflows and the project MCP server.** Where the workflow part is installed,
-   every rendered workflow of an installed part for Claude Code, one whose every source in a
-   part's code directory, as the build manifest records it, lies in an installed part's, becomes
-   `.claude/workflows/concorde-<name>.js`, which Claude Code offers as the command
-   `/concorde-<name>`, and the `permissions.allow` of the project's `.claude/settings.json` gains
-   the rules the workflow needs to run without a prompt per step: `Workflow(concorde-<name>)` for
-   each workflow and the rules the installed parts register under `install.permissions`, the
-   workflow part's for its [step agents](../glossary.json#concept.step-agent):
-   `mcp__concorde__workflow_step`, the project MCP server's tool through which they start every
-   step, and `Bash(.concorde/bin/concorde workflow report:*)`. It adds only rules that are missing,
-   records them in the receipt, removes on a later install the recorded rules it no longer ships,
-   and leaves every other setting untouched
-   ([requirements](requirements.md#req.distribution.installer-own-permissions)). In every install
-   it registers the [project MCP server](../glossary.json#concept.project-mcp-server), which serves
-   the tools of the installed parts, in the project's `.mcp.json`
-   as `"concorde": {"command": ".concorde/bin/concorde", "args": ["project-mcp"]}`, which Claude
-   Code starts from the directory a session starts in, the project root, keeping every other
-   server, and leaves the file as it is when that entry is already there
+6. **It installs the guidance.** The main-session guidance is [composed](#guidance-composition)
+   of Coordination's working method followed by the guidance every other installed part
+   contributes. Those contributions follow the order of the parts table. The build's renders of
+   those parts are composed unchanged. The guidance becomes the project skill
+   `.claude/skills/concorde/SKILL.md` and a block in the project's `CLAUDE.md`.
+   The block lies between `<!-- concorde:start -->` and `<!-- concorde:end -->`.
+   On a later install, the block is replaced in place. The rest of the file stays untouched.
+   Where the spec part is installed, once a project glossary is declared, the block ends with an
+   `@<path>` import of that glossary
+   ([requirements](requirements.md#req.distribution.glossary-import)). The task-session prompt is
+   composed of the same parts. It replaces the build's composition of every part in the Framework
+   copy, `.concorde/framework/generated/guidance/task-session.md`, where Coordination reads it.
+   When the coordination part is not installed, the prompt is removed there.
+   After an `init --apply` that created the first glossary, Distribution's `init` entry point also
+   adds that import. [The command entry points](#realization.distribution.command) describe this.
+   The guidance is for Claude Code alone, since the main agent and its task sessions run on
+   Claude Code for now. Nothing is placed for a pi session. A project's own `AGENTS.md` is left as
+   it is.
+7. **It installs the workflows and the project MCP server.** Where the workflow part is
+   installed, it installs every rendered workflow of an installed part for Claude Code whose
+   sources allow it. Every source of such a workflow in a part's code directory, as the build
+   manifest records it, lies in an installed part's directory.
+
+   Each such workflow becomes `.claude/workflows/concorde-<name>.js`.
+   Claude Code offers the workflow as the command `/concorde-<name>`.
+   Where the workflow part is installed, the `permissions.allow` of the project's `.claude/settings.json`
+   gains the rules the workflow needs to run without a prompt per step. These are `Workflow(concorde-<name>)` for each workflow
+   and the rules the installed parts register under `install.permissions`.
+   The workflow part registers two rules for its [step agents](../glossary.json#concept.step-agent):
+   - `mcp__concorde__workflow_step`, the project MCP server's tool through which they start every
+     step.
+   - `Bash(.concorde/bin/concorde workflow report:*)`.
+
+   The installer adds only rules that are missing. The installer records them in the receipt.
+   On a later install, the installer removes the recorded rules it no longer ships. It leaves every other
+   setting untouched ([requirements](requirements.md#req.distribution.installer-own-permissions)).
+   In every install, it registers the [project MCP server](../glossary.json#concept.project-mcp-server)
+   in the project's `.mcp.json`. The server serves the tools of the installed parts.
+   The entry is `"concorde": {"command": ".concorde/bin/concorde", "args": ["project-mcp"]}`.
+   Claude Code starts the server from the directory a session starts in, the project root.
+   The installer keeps every other server. When that entry is already there, the installer leaves
+   the file as it is
    ([requirements](requirements.md#req.distribution.installer-project-mcp),
    [the rest kept](requirements.md#req.distribution.installer-mcp-kept)).
-8. **It records the install.** It adds the ignore rules each installed part contributes, such as
-   the Kernel's `.concorde/locks/`, Execution's `.concorde/unbound/`, `.concorde/lobby/` and the
-   `.claude/worktrees/` its
-   [unbound checkouts](../glossary.json#concept.unbound-checkout) go to,
-   Coordination's `.concorde/tasks/` and `.concorde/history/`, the
-   [workspace binding](../glossary.json#concept.workspace-binding) `.concorde/workspace.json` that
-   each task worktree gets and `.claude/worktrees/`, where task worktrees go, and its own,
-   `.concorde/framework/`, `.concorde/tools/` and `.concorde/runs/`, where Dogfooding keeps
-   [defect reports](../glossary.json#concept.defect-report) and End-to-end testing its session
-   logs, and writes the receipt `.concorde/install.json`, which names the installed parts.
+8. **It records the install.** It adds the ignore rules each installed part contributes.
+   Examples are:
+   - The Kernel's `.concorde/locks/`.
+   - Execution's `.concorde/unbound/`.
+   - Execution's `.concorde/lobby/`.
+   - Execution's `.claude/worktrees/`, where its
+     [unbound checkouts](../glossary.json#concept.unbound-checkout) go.
+   - Coordination's `.concorde/tasks/`.
+   - Coordination's `.concorde/history/`.
+   - Coordination's [workspace binding](../glossary.json#concept.workspace-binding)
+     `.concorde/workspace.json`, which each task worktree gets.
+   - Coordination's `.claude/worktrees/`, where task worktrees go.
+   - Distribution's own `.concorde/framework/`.
+   - Distribution's own `.concorde/tools/`.
+   - Distribution's own `.concorde/runs/`, where Dogfooding keeps
+     [defect reports](../glossary.json#concept.defect-report) and End-to-end testing keeps its
+     session logs.
+
+   It writes the receipt `.concorde/install.json`, which names the installed parts.
 9. **It keeps the installed files bound.** Where the spec part is installed, in an initialized
-   project, it asks Spec core to bring the
-   root Module's Concorde installation realization in step with the receipt: every file the receipt
-   names outside `.concorde/`, other than the amended ones, that exists and that no realization
-   binds by its exact path becomes an exact entry, and an entry whose file is gone is removed, so the files a newer Concorde adds are bound like those
-   initialization bound
+   project, it asks Spec core to update the root Module's Concorde installation realization.
+   Spec core brings that realization in step with the receipt. A file becomes an exact entry
+   when all these conditions hold:
+   - The receipt names the file outside `.concorde/`.
+   - The file is not one of the amended files.
+   - The file exists.
+   - No realization binds the file by its exact path.
+
+   When an entry's file is gone, the entry is removed. So the files a newer Concorde adds are bound
+   like those initialization bound
    ([requirements](requirements.md#req.distribution.installer-keeps-installation-bound)). Specs
-   that cannot be read are left as they are for `spec-validation` to report, and a binding Spec
-   core refuses is reported in the result, as [below](#when-an-install-fails-halfway).
+   that cannot be read are left as they are for `spec-validation` to report.
+   When Spec core refuses a binding, the result reports it, as
+   [below](#when-an-install-fails-halfway).
 
-The installer prints the receipt as its result, which
-[the install result](contracts.md#contract.distribution.install-result) defines exactly. The
-receipt names Concorde's own environment under `python` (its path, the requirement it was
-created for, the interpreter uv chose and that interpreter's version), the installed dependencies
-under `dependencies` (the requirements file, the digest of the `uv.lock` they came from and the
-number of packages, or `null` without them), `d2` and the pi runtime under `tools`, the checkout
-installed from as `source`, the commit it was at as `source_commit` (`null` outside a Git
-checkout), the installed parts with the one version they carry
-([requirements](requirements.md#req.distribution.parts-recorded)) and the `mode`, `normal` or, for a
-[develop install](../glossary.json#concept.develop-install) made with `--develop`, `develop`. It
-lists under `files` every file Concorde owns in the project, including a default an earlier
+The installer prints the receipt as its result.
+[The install result](contracts.md#contract.distribution.install-result) defines that result
+exactly. The receipt names Concorde's own environment under `python`, with these details:
+
+- Its path.
+- The requirement it was created for.
+- The interpreter uv chose.
+- That interpreter's version.
+
+With installed dependencies, the receipt names them under `dependencies`, with these details:
+
+- The requirements file.
+- The digest of the `uv.lock` they came from.
+- The number of packages.
+
+Without the dependencies, `dependencies` is `null`. The receipt also names:
+
+- `d2` and the pi runtime under `tools`.
+- The checkout installed from as `source`.
+- The commit the checkout was at as `source_commit` (`null` outside a Git checkout).
+- The installed parts with the one version they carry
+  ([requirements](requirements.md#req.distribution.parts-recorded)).
+- The `mode`, `normal` or, for a [develop install](../glossary.json#concept.develop-install) made
+  with `--develop`, `develop`.
+
+Under `files`, it lists every file Concorde owns in the project. This includes a default an earlier
 install wrote and this one found in place
-([requirements](requirements.md#req.distribution.receipt-complete)), under `defaults` those of
-them that are Concorde-owned defaults, so that a later install knows them without a package that
-still declares them, and under `amended` the
-project's own files it only amends: `.gitignore`, `CLAUDE.md`, `.mcp.json` and, once written,
-`.claude/settings.json` ([requirements](requirements.md#req.distribution.receipt-amended)).
+([requirements](requirements.md#req.distribution.receipt-complete)). Under `defaults`, it lists
+those files that are Concorde-owned defaults. This lets a later install know them without a
+package that still declares them. Under `amended`, it lists the project's own files it only amends:
 
-A project in which work of an installed part is still running when the installer checks is refused
-with `concorde_busy`, since replacing the framework copy under that work would change its code
-halfway ([requirements](requirements.md#req.distribution.idle-install)). The installer asks the idle
-check each installed part registers and names everything they report
-([requirements](requirements.md#req.distribution.busy-named)). In Concorde the execution part's
-check is the one that reports anything: every [run](../glossary.json#concept.run) of an Operation
-or of an [execution command](../glossary.json#concept.execution-command) whose runner holds its
-[run lock](../glossary.json#concept.run-lock) at that moment, found through its
+- `.gitignore`.
+- `CLAUDE.md`.
+- `.mcp.json`.
+- Once written, `.claude/settings.json`
+  ([requirements](requirements.md#req.distribution.receipt-amended)).
+
+When work of an installed part still runs at the check, the installer refuses the project with
+`concorde_busy`. This is because replacing the framework copy under that work would change its
+code halfway ([requirements](requirements.md#req.distribution.idle-install)). The installer asks
+the idle check each installed part registers. It names everything those checks report
+([requirements](requirements.md#req.distribution.busy-named)). In Concorde, the execution part's
+check is the one that reports anything. It reports every [run](../glossary.json#concept.run) of an
+Operation or an [execution command](../glossary.json#concept.execution-command) whose runner holds
+its [run lock](../glossary.json#concept.run-lock) at that moment. The check finds the run through its
 [run progress file](../glossary.json#concept.run-progress-file) wherever the
-[run store](../glossary.json#concept.run-store) keeps it, in the lobby too while a bound run waits
-for its workspace's lock. The [progress file](../glossary.json#concept.progress-file) of an
-Operation's worker, which lies beside the Operation's and names the same runner, is not a run of its
-own. A project without the execution part has no run to report.
+[run store](../glossary.json#concept.run-store) keeps it. This includes the lobby while a bound run
+waits for its workspace's lock. An Operation's worker's
+[progress file](../glossary.json#concept.progress-file) lies beside the Operation's progress file.
+The worker's progress file names the same runner. It is not a run of its own. A project without the
+execution part has no run to report.
 
-This check is all the protection there is. The installer makes it once, in step 1, and takes no
-lock that keeps a run from starting afterwards, while it downloads, places the pi runtime,
-replaces the Framework copy and creates Concorde's environment; nor does it see a runner still
-starting at the check, which takes its run lock only once it has loaded its code. **The developer
-must not start a run, `task-validation`, `delivery` or any other `concorde` command, in any
-worktree of the project, while an install or update runs**: such a command may find no
-interpreter or load code partly old and partly new, and fail or misbehave. Long-lived processes the
-check never looks at, such as each session's
+This check is all the protection there is. The installer makes it once, in step 1.
+It takes no lock that keeps a run from starting afterwards, during these steps:
+
+- It downloads.
+- It places the pi runtime.
+- It replaces the Framework copy.
+- It creates Concorde's environment.
+
+At the check, the installer does not see a runner that still starts. That runner takes its run lock
+only once it has loaded its code. **While an install or update runs, the developer must not start
+any of these in any worktree of the project**:
+
+- A run.
+- `task-validation`.
+- `delivery`.
+- Any other `concorde` command.
+
+Such a command may find no interpreter or load code partly old and partly new.
+As a result, the command may fail or misbehave. Long-lived processes the check never looks at keep
+running the code they loaded until they restart. Examples are each session's
 [project MCP server](../glossary.json#concept.project-mcp-server) and
-[Spec MCP server](../spec-tooling/spec-mcp/module.md), keep running
-the code they loaded until they restart. The help of `concorde update` and of the installer says
-so where the developer starts them.
+[Spec MCP server](../spec-tooling/spec-mcp/module.md). The help of `concorde update` and of the
+installer says so where the developer starts them.
 
 #### When an install fails halfway
 
-Only the refusals of step 1 and the download of step 2 are decided before the first write. After
-it, a step that runs a program can still fail (`pi_runtime_failed`, `python_env_failed`,
-`python_dependencies_failed`), and so can a file operation of the installer itself, on a full disk
-or a path it may not replace, which it refuses with `install_failed` and the operating system's
-error ([requirements](requirements.md#req.distribution.failed-write-reported)); an installer
-that is killed reports nothing. Nothing is rolled back. What the steps before the failure wrote
-stays, and what the project holds depends on where the install stopped:
+Only the refusals of step 1 and the download of step 2 are decided before the first write.
+After the first write, a step that runs a program can still fail with these codes:
 
-- **Before the receipt**, steps 2 to 8: the project may hold the new tools, Protocol copy and a new
-  or partly copied Framework runtime beside the previous command, guidance, workflows and settings.
-  The receipt still describes the previous install, or is missing after a first install, and the
-  installed command may not run until the install completes: it then says that its own Python
+- `pi_runtime_failed`.
+- `python_env_failed`.
+- `python_dependencies_failed`.
+
+A file operation of the installer itself can also fail, on a full disk or a path it may not
+replace. The installer refuses that failure with `install_failed` and the operating system's error
+([requirements](requirements.md#req.distribution.failed-write-reported)). An installer that is
+killed reports nothing. Nothing is rolled back. What the steps before the failure wrote stays.
+What the project holds depends on where the install stopped:
+
+- **Before the receipt**, steps 2 to 8: the project may hold these new components:
+  - The new tools.
+  - The Protocol copy.
+  - A new or partly copied Framework runtime.
+
+  These may sit beside these previous components:
+  - The command.
+  - The guidance.
+  - The workflows.
+  - The settings.
+
+  The receipt still describes the previous install. After a first install, the receipt is missing.
+  Until the install completes, the installed command may not run. It then says that its own Python
   environment is missing.
 - **At the receipt**: the receipt is replaced whole, so it is either the previous one or the new
-  one; a killed installer may leave `.concorde/install.json.partial` behind.
-- **After the receipt**, in step 9: every installed file and the new receipt are in place, and
-  only the installation realization may lag behind the receipt. Spec core writes its metadata
-  member, and the root entry's paragraph explaining it when it creates the realization, as one
-  [file transaction](../glossary.json#concept.file-transaction), which it restores when a write
-  fails while the installer runs. When Spec core refuses the binding, the install still succeeds and
-  its result carries Spec core's error under `binding_error`, naming every file a restore the
-  operating system refused left with its new content. An installer killed between the two writes
-  of a new realization, or such a failed restore, can leave the metadata naming the realization
-  without the paragraph that explains it, which `spec-validation` reports.
+  one. A killed installer may leave `.concorde/install.json.partial` behind.
+- **After the receipt**, in step 9: every installed file and the new receipt are in place.
+  Only the installation realization may lag behind the receipt. Spec core writes its metadata
+  member as one [file transaction](../glossary.json#concept.file-transaction).
+  When Spec core creates the realization, that same transaction includes the root entry's paragraph
+  explaining it. When a write fails while the installer runs, Spec core restores the transaction.
+  When Spec core refuses the binding, the install still succeeds. Its result carries Spec core's
+  error under `binding_error`. The error names every file left with its new content by a restore
+  the operating system refused. An installer can be killed between the two writes of a new
+  realization. That interruption, or such a failed restore, can leave the metadata naming the
+  realization without the paragraph that explains it. `spec-validation` reports that state.
 
-Running the same install again repeats every step, keeping the `d2` and pi runtime already in
-place, and completes it, with one exception: it does not write a missing paragraph of a
-realization that already exists. The developer then removes that realization from the root
-Module's metadata, after which the next install creates it whole.
+Running the same install again repeats every step. It keeps the `d2` and pi runtime already in
+place. It completes the install, with one exception: it does not write a missing paragraph of a
+realization that already exists. The developer then removes that realization from the root Module's
+metadata. After that removal, the next install creates the realization whole.
 
 ### The pi runtime
 
-Workers run on pi unless the
-[worker configuration](../glossary.json#concept.worker-configuration) chooses Claude
-Code for them, although the main agent runs on Claude Code, so every install of the worker harness
-part places, as that part's install contribution, the **pi runtime** — the sandbox engine
-`@anthropic-ai/sandbox-runtime` that pi workers run their commands in — under
-`.concorde/tools/pi-runtime/` by copying the package's
-`src/concorde/distribution/pi_runtime/package.json` and `package-lock.json` there and running
-`npm ci --ignore-scripts`, which installs exactly the locked versions after checking each npm
-package's integrity hash
+Unless the
+[worker configuration](../glossary.json#concept.worker-configuration) chooses Claude Code for them,
+workers run on pi. The main agent runs on Claude Code.
+Since workers run on pi by default, every install of the worker harness part places the **pi runtime**
+as that part's install contribution under `.concorde/tools/pi-runtime/`.
+The pi runtime is the sandbox engine `@anthropic-ai/sandbox-runtime` that pi workers run their
+commands in. The install places it through these steps:
+
+- Copy the package's `src/concorde/distribution/pi_runtime/package.json` there.
+- Copy `package-lock.json` there.
+- Run `npm ci --ignore-scripts`.
+
+After checking each npm package's integrity hash, that command installs exactly the locked versions
 ([requirements](requirements.md#req.distribution.installer-locked-pi-runtime)). A later install
 with the same lockfile keeps the runtime it placed. When the runtime is still to be placed and npm
 is not on `PATH`, the install refuses with `npm_missing` before writing anything
 ([requirements](requirements.md#req.distribution.installer-programs-first)).
-`--without-pi-runtime` leaves the runtime out, for a machine where every worker runs on Claude
-Code; the receipt records that choice (`pi_runtime`) so that an update keeps it, and a pi worker
-then fails with `pi_runtime_missing`, naming the command that installs the runtime.
+For a machine where every worker runs on Claude Code, `--without-pi-runtime` leaves the runtime out.
+The receipt records that choice (`pi_runtime`) so that an update keeps it.
+A pi worker then fails with `pi_runtime_missing`, naming the command that installs the runtime.
 
 ### Updating an installed Concorde
 
 <a id="concept.distribution.update"></a>
 
-`concorde update` runs, in update mode, the installer of the Concorde checkout the receipt names as
-its `source` (or `--from <checkout>`); `python3 <checkout>/scripts/install-concorde.py <project>
---update` does the same from the checkout. An update installs exactly the parts the receipt names,
-every part when it names none, as a receipt written before parts were recorded does, with any part
-the new Concorde makes one of them depend on
-([requirements](requirements.md#req.distribution.update-installed-parts)); `--parts` with an update
-adds parts to that set, with the parts they depend on. A part the receipt names that the new
-Concorde no longer builds refuses the update with `unknown_part`. It goes through three steps, the
-last two only where the spec part is installed:
+`concorde update` runs the installer in update mode.
+It uses the Concorde checkout the receipt names as its `source` (or `--from <checkout>`).
+`python3 <checkout>/scripts/install-concorde.py <project>
+--update` does the same from the checkout. An update installs exactly the parts the receipt names.
+When the receipt names none, the update installs every part, as with a receipt written before parts
+were recorded. The update also installs any part the new Concorde makes one of those parts depend on
+([requirements](requirements.md#req.distribution.update-installed-parts)). With an update,
+`--parts` adds parts to that set, with the parts they depend on.
+When the new Concorde no longer builds a part the receipt names, the update refuses with
+`unknown_part`. It goes through three steps. The last two apply only where the spec part is installed:
 
-1. **It installs as the first install did.** It keeps develop mode, keeps `d2` and the Python
-   dependencies left out where the install it updates had a part needing them and placed none,
-   so that they come with a part added later when the earlier install had no use for them, always
-   places the pi runtime where the worker harness part is installed unless the first install left
-   it out with `--without-pi-runtime` (so an update adds it to an install made before the runtime
-   was placed by default), creates Concorde's own environment again with uv for the new checkout's Python
-   requirement, and refuses like an install when a run holds its run lock at the check; nothing
-   else in the project may be started until the update ends, as
+1. **It installs as the first install did.** It does the following:
+   - It keeps develop mode.
+   - Where the previous install had a part needing `d2` and placed none, it keeps `d2` left out.
+   - Where the previous install had a part needing Python dependencies and placed none, it keeps
+     the Python dependencies left out.
+   - Where the worker harness part is installed, it always places the pi runtime unless the first
+     install left it out with `--without-pi-runtime`.
+   - It creates Concorde's own environment again with uv for the new checkout's Python requirement.
+   - When a run holds its run lock at the check, it refuses like an install.
+
+   The `d2` and Python dependency rules let them come with a part added later when the earlier
+   install had no use for them.
+   The pi runtime rule therefore adds it to an install made before the runtime was placed by default.
+   Until the update ends, nothing else in the project may be started, as
    [the busy check](#installing-into-a-project) explains.
-2. **It binds the new Protocol copy** in the project configuration itself, the one write of the
-   project configuration an installer makes, where the project is initialized. A project not
-   initialized yet has no configuration, which the update does not create: the mark of step 3
-   then records no rebinding unless an earlier mark did, and initialization binds the copy later.
-3. **It marks the project Concorde unvalidated** by writing `.concorde/update.json`, which Git
-   ignores, with the versions, installed commits and Protocol bindings before and after. The
-   validation findings `CONCORDE-UPDATE-001` and `CONCORDE-UPDATE-002` described next name the
-   commits too, since between two commits of a
-   [Concorde repository](../glossary.json#concept.concorde-repository) the version seldom changes.
-   The mark is replaced whole, so until this write an earlier mark stays as it was. When the
-   project is still marked by an earlier update it has not validated since, the new mark keeps that
-   mark's version, commit and Protocol binding from before, since everything installed since then
-   is still to be validated, and names this update's as the ones after
+2. Where the project is initialized, **it binds the new Protocol copy** in the project configuration
+   itself. This is the one write of the project configuration an installer makes.
+   A project not initialized yet has no configuration. The update does not create that configuration.
+   In that case, the mark of step 3 records no rebinding unless an earlier mark did.
+   Initialization binds the copy later.
+3. **It marks the project Concorde unvalidated** by writing `.concorde/update.json`, which Git ignores.
+   The mark records these values before and after:
+   - The versions.
+   - The installed commits.
+   - The Protocol bindings.
+
+   The validation findings `CONCORDE-UPDATE-001` and `CONCORDE-UPDATE-002` described next name the
+   commits too. This is because, between two commits of a
+   [Concorde repository](../glossary.json#concept.concorde-repository), the version seldom changes.
+   The mark is replaced whole, so until this write an earlier mark stays as it was.
+   When the project still carries an earlier update's mark without successful validation since that update,
+   the new mark keeps these before-values from the earlier mark:
+   - Its version.
+   - Its commit.
+   - Its Protocol binding.
+
+   This is because everything installed since then is still to be validated.
+   The new mark names this update's corresponding values as the ones after
    ([requirements](requirements.md#req.distribution.update-mark-kept)).
 
 The mark then decides what validation says. While it is there, `concorde spec-validation` in the
-primary worktree reports `CONCORDE-UPDATE-001` as an error, which also stops a `task merge`; a
-validation that finds other errors keeps the mark, and the first validation that finds none
-removes it and says so (`CONCORDE-UPDATE-002`). Only an update sets the mark, so a project that
-stops validating because of its own changes is never marked by it.
+primary worktree reports `CONCORDE-UPDATE-001` as an error. That error also stops a `task merge`.
+A validation that finds other errors keeps the mark.
+The first validation that finds none removes the mark and says so (`CONCORDE-UPDATE-002`).
+Only an update sets the mark, so a project that stops validating because of its own changes is
+never marked by it.
 
 ```d2 illustrative
 direction: right
@@ -709,47 +1017,81 @@ unvalidated -> unvalidated: "spec-validation with\nerrors: CONCORDE-UPDATE-001"
 unvalidated -> unmarked: "spec-validation without\nother errors: CONCORDE-UPDATE-002"
 ```
 
-Where the spec part is not installed, the update ends after its install: it leaves the project
-configuration alone, writes no mark, and its
-[result](contracts.md#contract.distribution.update-result) carries `update` `null` and asks only for
-the updated files to be committed, never for a `spec-validation` the project does not have.
+Where the spec part is not installed, the update ends after its install with these effects:
 
-Open tasks are a separate matter, and an
+- It leaves the project configuration alone.
+- It writes no mark.
+- Its [result](contracts.md#contract.distribution.update-result) carries `update` `null`.
+- Its result asks only for the updated files to be committed, never for a `spec-validation` the
+  project does not have.
+
+Open tasks are a separate matter. They are an
 [optional integration](../glossary.json#concept.optional-integration) with the coordination part.
-Where it is installed, its registration reports the tasks that have not ended, and the
-[update result](contracts.md#contract.distribution.update-result) lists them and, when the Protocol
-copy changed, asks for the primary branch to be merged into each, since their worktrees keep the
-previous copy until then; validation does not wait for that merge. Without the coordination part
-the list is empty.
+Where the coordination part is installed, its registration reports the tasks that have not ended.
+The [update result](contracts.md#contract.distribution.update-result) lists those tasks.
+When the coordination part is installed and the Protocol copy changed, the result asks for the primary
+branch to be merged into each task.
+This is because their worktrees keep the previous copy until then.
+Validation does not wait for that merge. Without the coordination part the list is empty.
 
-An update that fails or is interrupted before its install wrote the new receipt ends before it
-rebinds or marks anything, with the previous receipt in place, so running it again updates from
-that install. One that stops after the new receipt, in step 9 of the install or while it rebinds
-or writes the mark ([a failed write](requirements.md#req.distribution.failed-write-reported)), leaves
-the new Concorde installed with the Protocol binding old or new and without this update's mark:
-a project that was not marked before has no mark, and running the update again completes it, but
-its mark then names the Concorde just installed as the one before; a project already marked keeps
-its earlier mark, whose before-state the completed update keeps too. A killed update may leave
-`.concorde/update.json.partial` behind. An update whose coordination part fails to report its open
-tasks is refused with `part_failed` once it has installed, rebound and marked: the new Concorde is
-in place and the project marked, and only the result's list of open tasks is lost, which
-`concorde task list` shows. When the
-installed command no longer runs because the failure left its Framework copy or environment
+When an update fails or is interrupted before its install writes the new receipt, it ends before
+it rebinds or marks anything. The previous receipt stays in place, so running the update again
+updates from that install.
+An update can stop after the new receipt at any of these points:
+
+- In step 9 of the install.
+- While it rebinds.
+- While it writes the mark ([a failed write](requirements.md#req.distribution.failed-write-reported)).
+
+Such an update leaves the new Concorde installed with the Protocol binding old or new and without
+this update's mark.
+For a project that was not marked before, the following holds:
+
+- The project has no mark.
+- Running the update again completes it.
+- The completed update's mark then names the Concorde just installed as the one before.
+
+For a project already marked, the earlier mark stays in place.
+The completed update keeps that earlier mark's before-state too.
+A killed update may leave `.concorde/update.json.partial` behind.
+When the coordination part fails to report its open tasks, the update refuses with `part_failed`
+after these steps:
+
+- It installs.
+- It rebinds.
+- It marks.
+
+The new Concorde is in place. The project is marked.
+Only the result's list of open tasks is lost. `concorde task list` shows those open tasks.
+When the installed command no longer runs because the failure left its Framework copy or environment
 incomplete, the update is run again with `install-concorde.py --update` from the checkout.
 
 ### Refusals
 
-Every refusal of the installer and of `concorde update` prints `{"error": <link>}` and exits with
-status 1: one link of the Framework's [error chain](../glossary.json#concept.error-chain), in the
-shape of its [error contract](../kernel/tracing/contracts.md#contract.tracing.error),
-whose actor is `Installer (install-concorde)` or `concorde update`, whose code is the refusal's,
-whose detail names what is wrong and where, and whose reason is `input` when only a different
-project, Concorde checkout or argument corrects it and `environment` otherwise
-([requirements](requirements.md#req.distribution.installer-error-links)). The caller can therefore
-forward it as the cause of its own link like any other refusal.
+Every refusal of the installer and of `concorde update` prints `{"error": <link>}`.
+Every refusal exits with status 1. The output is one link of the Framework's
+[error chain](../glossary.json#concept.error-chain), in the shape of its
+[error contract](../kernel/tracing/contracts.md#contract.tracing.error). The link has these details:
 
-Every refusal, with when it happens, its reason and whether it can come after the installer wrote
-something:
+- Its actor is `Installer (install-concorde)` or `concorde update`.
+- Its code is the refusal's.
+- Its detail names what is wrong and where.
+
+When only a change from this list corrects the refusal, its reason is `input`:
+
+- A different project.
+- A different Concorde checkout.
+- A different argument.
+
+Otherwise, its reason is `environment`
+([requirements](requirements.md#req.distribution.installer-error-links)). The caller can therefore
+forward the emitted error-chain link as the cause of its own link like any other refusal.
+
+The table lists these details for every refusal:
+
+- When it happens.
+- Its reason.
+- Whether it can come after the installer wrote something.
 
 | Code | Refused when | Reason | After a write |
 | --- | --- | --- | --- |
@@ -778,126 +1120,186 @@ something:
 
 ### After installing
 
-The installer never writes Specs or the registry, except the installation realization of step 9,
-and a plain install never writes the project configuration; only update mode rewrites the
+Except for the installation realization of step 9, the installer never writes Specs or the registry.
+A plain install never writes the project configuration. Only update mode rewrites the
 configuration's Protocol binding, as described above
 ([requirements](requirements.md#req.distribution.installer-no-specs)). Where the spec part is
-installed, its install contribution then lets the developer describe the project:
-`concorde init --propose --name <name>` prints Spec core's initialization proposal, and
+installed, its install contribution then lets the developer describe the project.
+When the spec part is installed, `concorde init --propose --name <name>` prints Spec core's initialization proposal.
 `concorde init --apply --proposal <file>` applies a proposal read from a file outside the project
-only when Spec core accepts its shape, its integrity (the proposal digest matches the value) and its
-freshness (the project is still in the state it was computed from), which shows the proposal intact
-and current, not that propose printed it
-([Spec core](../spec-tooling/spec/requirements.md#req.spec.init-explicit-envelope)). After a plain install that brought a new Protocol copy, the developer accepts
-it by updating the binding; `concorde update` does that itself.
+only when Spec core accepts all these properties of it:
+
+- Its shape.
+- Its integrity (the proposal digest matches the value).
+- Its freshness (the project is still in the state it was computed from).
+
+This acceptance shows the proposal intact and current, not that propose printed it
+([Spec core](../spec-tooling/spec/requirements.md#req.spec.init-explicit-envelope)). After a plain
+install that brought a new Protocol copy, the developer accepts the copy by updating the binding.
+`concorde update` does that itself.
 
 ## How it is built
 
 ### Why the parts reach Distribution only through registrations
 
-Distribution must compose any set of parts, including one that leaves out the very Modules it would
-otherwise call: the `concorde` command of a project with only the spec part has no `task`, and that
-of a project without the spec part has no `spec-validation`. If Distribution imported each part to
-route its commands, install its files and check that it is idle, installing Distribution would
-install every part, and a part missing from the project would fail at the first call that reached
-it. So each part describes itself as plain data, and Distribution loads only the registrations of
-the installed parts: it routes a command to the part that registered it, presents the MCP tools the
-installed parts registered, places the files, rules and programs they contribute, composes their
-guidance and asks their idle checks. No part imports Distribution either, so registering needs
-nothing installed, and the spec part, which depends on nothing, registers like any other. The
-registration is Distribution's own contract because Distribution is the one that reads it, as the
-worker harness owns the format of the grant it receives.
+Distribution must compose any set of parts.
+This includes a set that leaves out the very Modules Distribution would otherwise call.
+In a project with only the spec part, the `concorde` command has no `task`.
+In a project without the spec part, the command has no `spec-validation`.
+If Distribution imported each part for these purposes, installing Distribution would install every part:
 
-All parts are built from this one repository and carry its one version number, so a project never
-holds two parts of different Concorde versions and an update moves every installed part together.
+- To route its commands.
+- To install its files.
+- To check that it is idle.
+
+Under those imports, a part missing from the project would fail at the first call that reached it.
+Because of these import problems, each part describes itself as plain data.
+For the same reason, Distribution loads only the registrations of the installed parts.
+From those registrations, Distribution does the following:
+
+- It routes a command to the part that registered it.
+- It presents the MCP tools the installed parts registered.
+- It places the files they contribute.
+- It places the rules they contribute.
+- It places the programs they contribute.
+- It composes their guidance.
+- It asks their idle checks.
+
+No part imports Distribution either, so registering needs nothing installed.
+The spec part depends on nothing. The spec part registers like any other.
+The registration is Distribution's own contract because Distribution is the one that reads it.
+Similarly, the worker harness owns the format of the grant it receives.
+
+All parts are built from this one repository. They carry its one version number.
+Because of this, a project never holds two parts of different Concorde versions.
+For the same reason, an update moves every installed part together.
 
 ### Around it
 
 <a id="uses-spec"></a>
 
-**Spec core** is an [optional integration](../glossary.json#concept.optional-integration): it
-matters only where the spec part is installed, and then Distribution relies on it for the steps it
-adds around the spec part's own commands. It owns `spec-validation` and `registry`, the
-[structural checks](../glossary.json#concept.structural-check) and
-[registry](../glossary.json#concept.registry) they work on, and the
-[Protocol binding](../glossary.json#concept.protocol-binding) that
-`protocol-manifest --bind-project` and an update rewrite. Distribution relies on its envelope for
-the commands that print it, those [listed above](#the-command-line) as not routed elsewhere, and
-never interprets a Spec itself; a Spec core refusal of such a command prints unchanged in that
-envelope, which Distribution writes and amends in its own code, meeting the envelope's format
-without Spec core's. The installer builds the Protocol copy itself from the tracked manifest, whose
-format Spec core defines, refusing a stale build before any write, and calls the spec part only
-through the install services its registration names: the docsite template before any write and the
-binding of the installed files after the receipt. A refusal of the binding leaves the Specs to
-`spec-validation` and the install successful, its result carrying Spec core's
-[error](../spec-tooling/spec/errors.md#contract.spec.error). The binding is one of Spec core's file
-transactions, whose limits decide what an interrupted binding leaves, as
-[When an install fails halfway](#when-an-install-fails-halfway) explains. Without the spec part
-there is no Protocol copy, no binding, no initialization and no update mark.
+**Spec core** is an [optional integration](../glossary.json#concept.optional-integration).
+It matters only where the spec part is installed. There, Distribution relies on Spec core for
+steps Distribution adds around the spec part's own commands. Spec core owns:
+
+- `spec-validation` and `registry`.
+- The [structural checks](../glossary.json#concept.structural-check) and
+  [registry](../glossary.json#concept.registry) they work on.
+- The [Protocol binding](../glossary.json#concept.protocol-binding) that
+  `protocol-manifest --bind-project` and an update rewrite.
+
+For commands that print Spec core's envelope, Distribution relies on that envelope.
+These are the commands [listed above](#the-command-line) as not routed elsewhere.
+Distribution never interprets a Spec itself. A Spec core refusal of such a command prints
+unchanged in that envelope. Distribution writes and amends the envelope in its own code.
+It meets the envelope's format without Spec core's code. The installer builds the
+Protocol copy itself from the tracked manifest. Spec core defines the manifest's format.
+Before any write, the installer refuses a stale build. The installer calls the spec part only
+through the install services its registration names:
+
+- The docsite template before any write.
+- The binding of the installed files after the receipt.
+
+A refusal of the binding has these effects:
+
+- The Specs are left to `spec-validation`.
+- The install remains successful.
+- The install's result carries Spec core's [error](../spec-tooling/spec/errors.md#contract.spec.error).
+
+The binding is one of Spec core's file transactions. The transaction's limits decide what an interrupted binding leaves, as
+[When an install fails halfway](#when-an-install-fails-halfway) explains. Without the spec part,
+none of these exist:
+
+- A Protocol copy.
+- A binding.
+- Initialization.
+- An update mark.
 
 <a id="uses-views"></a>
 
-**Views**, in the spec part too, owns the docsite scaffold; `docsite` only routes
-`--propose`/`--apply` to it. The scaffold proposal and every file it writes are Views'
-responsibility, and an `--apply` without `--proposal` is refused first. Views also owns the template
-inventory, the rule selecting which files of the package's `docsite/` are the template; where the
-spec part is installed, the installer ships exactly those files, `scaffold/` included, by calling
-that rule, through the spec part's `install.prepare` service, rather than repeating it, and refuses
-with `invalid_docsite_template` when the rule rejects the package's template, so a project's
-scaffold always finds the template it expects
-([one inventory](../spec-tooling/views/requirements.md#req.views.template-inventory),
+**Views**, in the spec part too, owns the docsite scaffold. `docsite` only routes
+`--propose`/`--apply` to Views. The scaffold proposal and every file Views writes are Views'
+responsibility. Without `--proposal`, an `--apply` is refused first. Views also owns the template
+inventory. This rule selects which files of the package's `docsite/` are the template.
+Where the spec part is installed, the installer ships exactly those files, `scaffold/` included.
+Where the spec part is installed, the installer calls the rule through the spec part's
+`install.prepare` service rather than repeating it.
+Where the spec part is installed and the rule rejects the package's template, the installer
+refuses with `invalid_docsite_template`.
+These shipping and rejection rules apply so that a project's scaffold always finds the template it
+expects ([one inventory](../spec-tooling/views/requirements.md#req.views.template-inventory),
 [the rule](../spec-tooling/views/contracts.md#contract.views.scaffold-proposal)).
 
 <a id="uses-tracing"></a>
 
-**Tracing** defines the [error contract](../kernel/tracing/contracts.md#contract.tracing.error) in
-whose shape the installer, `concorde update`, the `concorde` command and the project MCP server
-print their own refusals, so a caller forwards them like any other link. Distribution follows that shape without importing the Kernel's code, since it is
+**Tracing** defines the [error contract](../kernel/tracing/contracts.md#contract.tracing.error).
+These components print their own refusals in that contract's shape:
+
+- The installer.
+- `concorde update`.
+- The `concorde` command.
+- The project MCP server.
+
+Because these refusals follow that shape, a caller forwards them like any other link.
+Distribution follows that shape without importing the Kernel's code, since Distribution is
 installed with any part, the spec part alone included.
 
 <a id="uses-dogfooding"></a>
 
 **Dogfooding** owns the [develop
 install](../glossary.json#concept.develop-install): which checkouts may be
-installed from in develop mode, and the guidance a develop install adds. Dogfooding is no part, so
-the installer reaches it through the entry the package descriptor names under `develop.check`.
-With `--develop`, and on every update of a develop install, the installer calls its source check
-before writing anything
-and refuses with its code and message when the check refuses, then, where the coordination and
-issues parts are installed, adds its rendered guidance to the skill and the `CLAUDE.md` block
-([guidance composition](#guidance-composition)), and records the mode and the checked commit in the
-receipt.
+installed from in develop mode, and the guidance a develop install adds.
+Dogfooding is no part, so the installer reaches it through the entry the package descriptor names
+under `develop.check`. With `--develop`, and on every update of a develop install, the installer
+performs these steps:
+
+- Before writing anything, it calls Dogfooding's source check.
+- When the check refuses, the installer refuses with the check's code and message.
+- Then, where the coordination and issues parts are installed, it adds Dogfooding's rendered
+  guidance to the skill and the `CLAUDE.md` block
+  ([guidance composition](#guidance-composition)).
+- It records the mode and the checked commit in the receipt.
 
 <a id="uses-execution"></a>
 
 **Execution**, in the execution part, is an
 [optional integration](../glossary.json#concept.optional-integration) reached through that part's
-idle check. Distribution never reads a run lock itself, but it relies on what the check reports
-meaning a run still running: a [run](../glossary.json#concept.run) whose runner holds its
-[run lock](../glossary.json#concept.run-lock), found through its
+idle check. Distribution never reads a run lock itself. Distribution relies on the check's report
+meaning a run that still runs. Such a [run](../glossary.json#concept.run) has a runner that holds
+its [run lock](../glossary.json#concept.run-lock). The run is found through its
 [run progress file](../glossary.json#concept.run-progress-file) wherever the
-[run store](../glossary.json#concept.run-store) keeps it, the lobby included, so that a busy
-refusal names exactly the runs whose code an install would replace under them. Where the execution
-part is installed, an install is refused while such a run runs; without it no part reports a run,
-and the installer finds the project idle.
+[run store](../glossary.json#concept.run-store) keeps it, the lobby included.
+This ensures that a busy refusal names exactly the runs whose code an install would replace under
+them. Where the execution part is installed and such a run runs, an install is refused.
+Without the execution part, no part reports a run. The installer then finds the project idle.
 
 <a id="uses-tasks"></a>
 
-**Tasks**, in the coordination part, is an optional integration too. Distribution relies on its
-promise that, while an update's mark is in the primary worktree, every `task merge` runs
+**Tasks**, in the coordination part, is an optional integration too. Distribution relies on this
+promise from Tasks. While an update's mark is in the primary worktree, every `task merge` runs
 `concorde spec-validation` on the merged result
-([requirements](../coordination/tasks/requirements.md#req.tasks.merge-update-validated)), which is
-how the mark stops a merge until the project validates; and after an update it lists the open
-tasks only from what the coordination part's `after_update` entry reports. Without the coordination
-part there is no task to merge or list, and the update result's `open_tasks` is empty.
+([requirements](../coordination/tasks/requirements.md#req.tasks.merge-update-validated)).
+This is how the mark stops a merge until the project validates. After an update, Distribution
+lists the open tasks only from what the coordination part's `after_update` entry reports.
+Without the coordination part, there is no task to merge or list. The update result's `open_tasks`
+is then empty.
 
-Every other part reaches Distribution only through its registration, and Distribution relies on
-nothing of it but what the registration says. It routes `task`, `run`, the execution commands,
-`workflow`, `issues` and `trace` to the part that registered each, handing it the rest of the
-command line, and that part defines its own output and exit codes; it names no Operation's or
-command's meaning and passes no task. It places the workflows the workflow part renders, with the
-permission rules their step agents need, refusing stale renders like any other build output; and
-it places the worker harness part's pi runtime and discovery entry point, and writes neither the
+Every other part reaches Distribution only through its registration. Distribution relies on
+nothing of that part but what the registration says. Distribution routes each of these to the part
+that registered it, handing that part the rest of the command line:
+
+- `task`.
+- `run`.
+- The execution commands.
+- `workflow`.
+- `issues`.
+- `trace`.
+
+That part defines its own output. That part defines its own exit codes. Distribution names no
+Operation's or command's meaning. Distribution passes no task. Distribution places the workflows the workflow part renders,
+with the permission rules their step agents need. Like any other build output, Distribution refuses
+stale renders. Distribution places the worker harness part's pi runtime and discovery entry point.
+Distribution writes neither the
 [worker configuration](../glossary.json#concept.worker-configuration) nor the
 [model map](../glossary.json#concept.model-map).
 
@@ -905,135 +1307,195 @@ it places the worker harness part's pi runtime and discovery entry point, and wr
 
 <a id="realization.distribution.descriptor"></a>
 
-The **package descriptor** `concorde.json` is an input of the build, so a licence or version change
-is never shipped with renders made before it.
+The **package descriptor** `concorde.json` is an input of the build. Therefore, a licence or
+version change is never shipped with renders made before that change.
 
 <a id="realization.distribution.build"></a>
 
-The **build renderer** is a pure function of the source tree followed by a guarded write: includes
-must be safe, acyclic and audience-consistent, and an output is written only inside the build-owned
-`generated/` locations ([requirements](requirements.md#req.distribution.build-owned-outputs)). A
-prompt pulls in another with an include line and declares the audience it is written for, so a
-worker's instructions never take in text meant for another reader; the
-[include line](requirements.md#req.distribution.prompt-includes), the
-[safe include](requirements.md#req.distribution.safe-includes) and the
-[audience rules](requirements.md#req.distribution.include-audience) are requirements. A prompt is
-reached at most once within one root and is never deduplicated
-([requirements](requirements.md#req.distribution.include-once)), so the order and the values of
-every text a root holds are visible in its tree, and a text needed twice in one root is kept in two
-prompts. A leftover is removed only when its bytes still match the previous manifest; an edited
-leftover, a link or an unknown file stops the build first.
+The **build renderer** is a pure function of the source tree followed by a guarded write.
+Includes must be:
+
+- Safe.
+- Acyclic.
+- Audience-consistent.
+
+An output is written only inside the build-owned `generated/` locations
+([requirements](requirements.md#req.distribution.build-owned-outputs)). A prompt pulls in another
+with an include line. The prompt declares the audience it is written for.
+The include line and audience declaration work together so that a worker's instructions never take
+in text meant for another reader. These are requirements:
+
+- The [include line](requirements.md#req.distribution.prompt-includes).
+- The [safe include](requirements.md#req.distribution.safe-includes).
+- The [audience rules](requirements.md#req.distribution.include-audience).
+
+A prompt is reached at most once within one root
+([requirements](requirements.md#req.distribution.include-once)). A prompt is never deduplicated.
+These rules make the order and the values of every text a root holds visible in its tree.
+A text needed twice in one root is therefore kept in two prompts.
+Unless its bytes still match the previous manifest, a leftover is not removed.
+Any of these stops the build first:
+
+- An edited leftover.
+- A link.
+- An unknown file.
 
 The build also renders the **skills** agents load as Agent Skills, each as
-`generated/skills/<name>/SKILL.md` under the front matter naming the skill and describing it
-([requirements](requirements.md#req.distribution.skills-rendered)). The `concorde` skill is the
-main-session guidance [composed](#guidance-composition) of every part of the package, the
-composition the installer makes for the installed parts with a description that presents the
-session as the main agent only where the coordination part is installed; `concorde-development` is
-the render of the root Module's guidance for developing Concorde in its own source checkout, which
-that checkout loads beside `concorde` and no installation places. Rendering the skill in the build
-rather than only in the installer lets the checkout and an installation of every part load the very
-same file.
+`generated/skills/<name>/SKILL.md` ([requirements](requirements.md#req.distribution.skills-rendered)).
+Each skill is under the front matter naming the skill and describing it. The `concorde` skill is
+the main-session guidance [composed](#guidance-composition) of every part of the package.
+The installer makes that composition for the installed parts. The description presents the session
+as the main agent only where the coordination part is installed.
+`concorde-development` is the render of the root Module's guidance for developing Concorde in its
+own source checkout. That checkout loads the development skill beside `concorde`. No installation
+places the development skill. The checkout and an installation of every part can load the very
+same skill file.
+This is because the build renders the skill rather than only the installer.
 
 <a id="guidance-composition"></a>
 
 The **guidance composition**, `guidance.py`, is the one code that composes the guidance from a set
-of part registrations, for the build and the installer alike. Each part registers up to three
-rendered sections under `guidance`: its section of the project skill (`skill`), of the task-session
-prompt (`task_session`) and of the `CLAUDE.md` block (`claude_md`). A composition of one kind is
-the sections of that kind of the given parts, Coordination's first, the others in the order of the
-[parts table](#parts-and-their-registrations) and a part the table does not name after them by
-name, each unchanged and separated by one blank line
-([requirements](requirements.md#req.distribution.composed-guidance)); the skill carries its front
-matter. Without the coordination
-part the skill and the block are the installed parts' sections alone and there is no task-session
-prompt, since task sessions are Coordination's. Coordination's sections live in
-[Main session](../coordination/main-session/module.md)'s `prompts/main-session/`, every other
-part's in `prompts/guidance/<part directory>/`, each bound by its part's top Module, and each
-section says what happens where a part it mentions is not installed: a paragraph that names a
-command or project MCP tool of a part the section may be composed without names that part, as in
-"where the execution part is installed"
-([requirements](requirements.md#req.distribution.guidance-absent-parts)). Dogfooding's develop section
-is no part's: the installer appends it to the composed skill and block in a develop install that
-installs the coordination and issues parts, which it relies on, and leaves it out of any other,
-which is still a develop install in its source check and receipt.
+of part registrations. The build and the installer both use it. Each part registers up to three
+rendered sections under `guidance`:
+
+- Its section of the project skill (`skill`).
+- Its section of the task-session prompt (`task_session`).
+- Its section of the `CLAUDE.md` block (`claude_md`).
+
+A composition of one kind is the sections of that kind of the given parts, in this order:
+
+- Coordination's section first.
+- The other named parts' sections in the order of the [parts table](#parts-and-their-registrations).
+- The sections of parts the table does not name, after the others, by name.
+
+Each section is unchanged. One blank line separates the sections
+([requirements](requirements.md#req.distribution.composed-guidance)). The skill carries its front
+matter. Without the coordination part, the skill and the block are the installed parts' sections
+alone. There is then no task-session prompt, since task sessions are Coordination's.
+Coordination's sections live in [Main session](../coordination/main-session/module.md)'s
+`prompts/main-session/`. Every other part's sections live in `prompts/guidance/<part directory>/`.
+Each section is bound by its part's top Module. Each section says what happens where a part it
+mentions is not installed. When a section may be composed without a part, a paragraph naming that
+part's command or project MCP tool names that part. It does so as in "where the execution part is
+installed" ([requirements](requirements.md#req.distribution.guidance-absent-parts)). Dogfooding's
+develop section is no part's. In a develop install that installs the coordination and issues
+parts, the installer appends Dogfooding's develop section to the composed skill and block.
+Dogfooding's develop section relies on those parts. In any other develop install, the installer
+leaves that section out. Such an install is still a develop install in its source check and receipt.
 
 <a id="realization.distribution.command"></a>
 
-The **command entry points** are thin: they load the registrations of the installed parts, take the
-global `--project-root`, load the installed parts' registering code and call the entry the
-registering part names for the command with the rest of the command line, and, for a command
-registered with `output` `envelope`, print the shared envelope the entry answers and exit with its
-status, so a command's meaning changes only in its owner.
+The **command entry points** are thin. They take these steps:
+
+- Load the registrations of the installed parts.
+- Take the global `--project-root`.
+- Load the installed parts' registering code.
+- Call the entry the registering part names for the command with the rest of the command line.
+
+For a command registered with `output` `envelope`, the entry points print the shared envelope the
+entry answers. For such a command, they exit with the envelope's status.
+This thin routing means a command's meaning changes
+only in its owner.
 The commands routed to other owners keep their owners' output unchanged. Two Spec core commands
 are the exceptions, where Distribution adds a step of its own to its owner's work:
 
-- `spec-validation`: Spec core still decides every structural finding, but Distribution's entry
+- `spec-validation`: Spec core still decides every structural finding. Distribution's entry
   point adds the findings of [an update not yet validated](#updating-an-installed-concorde) to its
-  result and removes the update mark `.concorde/update.json` after a result with no other error, as
-  the [installer program](#realization.distribution.installer) describes.
+  result. After a result with no other error, the entry point removes the update mark
+  `.concorde/update.json`, as the [installer program](#realization.distribution.installer) describes.
 - `init --apply`: Spec core's initialization writes only the project's Specs and configuration,
-  never `CLAUDE.md`. Once it has succeeded, the entry point brings the glossary import of the
-  installed `CLAUDE.md` block up to date, so that the first glossary is imported
-  ([requirements](requirements.md#req.distribution.glossary-import)); a project without that block
-  is left as it is. When that write fails, the result is `failed` with `guidance_failed`, which
-  keeps the initialization's result and has the operating system's error as its cause. The project
-  is initialized then, so the developer repairs the cause and runs `concorde update` or the
-  installer again, which install the block with the import, and never `init --apply` again, which
-  refuses an initialized project.
+  never `CLAUDE.md`. Once initialization succeeds, the entry point brings the glossary import of
+  the installed `CLAUDE.md` block up to date. As a result, the first glossary is imported
+  ([requirements](requirements.md#req.distribution.glossary-import)). Without that block, a project
+  is left as it is. When that write fails, the result is `failed` with `guidance_failed`.
+  That error keeps the initialization's result. It has the operating system's error as its cause.
+  When that write fails, the project is initialized, so the developer repairs the cause.
+  After that failure, the developer runs `concorde update` or the installer again, which install
+  the block with the import.
+  After that failure, the developer never runs `init --apply` again, because it refuses an initialized project.
 
 <a id="realization.distribution.project-mcp"></a>
 
 The **project MCP server host**, `src/concorde/distribution/project_mcp/`, is the
-[project MCP server](#the-project-mcp-server) without any tool of its own: `server.py` runs the
-stdio session, finds the primary worktree through Git's common directory, decides whether the
-session listens to it as a channel and sends channel events from the threads that watch;
-`calls.py` runs each call in a fresh process of the current Concorde and watches the waits and the
-long work the tools start; `tools.py` is what that process runs, presenting the tools of the
-installed parts' registrations, calling the entry each names and becoming the long work a
-`long_work` tool hands over. It is a small hand-written JSON-RPC session with no MCP library, since
-its wire is the same few messages plus one notification.
+[project MCP server](#the-project-mcp-server) without any tool of its own. Its files have these roles:
+
+- `server.py` runs the stdio session. It finds the primary worktree through Git's common directory.
+  It decides whether the session listens to it as a channel. It sends channel events from the
+  threads that watch.
+- `calls.py` runs each call in a fresh process of the current Concorde. It watches the waits and
+  the long work the tools start.
+- `tools.py` is what that process runs. It presents the tools of the installed parts' registrations.
+  It calls the entry each registration names. It becomes the long work a `long_work` tool hands over.
+
+It is a small hand-written JSON-RPC session with no MCP library, since its wire is the same few
+messages plus one notification.
 
 <a id="realization.distribution.protocol-copy-writer"></a>
 
-The **Protocol copy writer** builds the copy from the tracked manifest and rendered assets after
-checking freshness and each digest
-([requirements](requirements.md#req.distribution.no-stale-copy)), so a project receives exactly the
-Protocol the manifest names.
+After checking freshness and each digest, the **Protocol copy writer** builds the copy from the
+tracked manifest and rendered assets ([requirements](requirements.md#req.distribution.no-stale-copy)).
+This ensures that a project receives exactly the Protocol the manifest names.
 
 <a id="realization.distribution.installer"></a>
 
-The **installer program** resolves the parts to install with their dependencies, reuses the
-writer, the build's freshness check and Views' docsite template inventory, places each installed
-part's contributions and installs the composed `concorde` skill and main-session block. Everything that can refuse an
-install before any program runs — the build's freshness, the docsite template, Dogfooding's develop
-source check, the running Concorde, the descriptor's Python requirement, the project's settings,
-`uv` on `PATH` and, when the pi runtime is still to be placed, `npm` — and then the pinned download
-are decided before the first write, so such a refusal leaves the project as it was.
+The **installer program** resolves the parts to install with their dependencies. It reuses:
 
-In update mode the installer takes the choices to keep from the previous receipt and installs as
-before. It then rewrites the configuration's Protocol binding itself, since the project would
-otherwise be bound to a Protocol copy it no longer carries, and writes the Git-ignored mark
-`.concorde/update.json`. The mark holds because Distribution's own `spec-validation` entry point
-adds `CONCORDE-UPDATE-001` to Spec core's result while the mark is present, and removes the mark
-only on a result that is otherwise a success; a `task merge`, whose default check is that
-validation in the primary worktree, therefore stops until the project validates with the new
-Concorde ([requirements](requirements.md#req.distribution.update-unvalidated),
+- The writer.
+- The build's freshness check.
+- Views' docsite template inventory.
+
+It places each installed part's contributions. It installs the composed `concorde` skill and
+main-session block. These are all the checks that can refuse an install before any program runs:
+
+- The build's freshness.
+- The docsite template.
+- Dogfooding's develop source check.
+- The running Concorde.
+- The descriptor's Python requirement.
+- The project's settings.
+- `uv` on `PATH`.
+- When the pi runtime is still to be placed, `npm`.
+
+The installer decides all those checks and then the pinned download before the first write.
+So a refusal at any of them leaves the project as it was.
+
+In update mode the installer takes the choices to keep from the previous receipt. It installs as
+before. It then rewrites the configuration's Protocol binding itself. The reason is that the
+project would otherwise be bound to a Protocol copy it no longer carries. The installer writes
+the Git-ignored mark `.concorde/update.json`. The mark holds because Distribution's own
+`spec-validation` entry point does the following:
+
+- While the mark is present, the entry point adds `CONCORDE-UPDATE-001` to Spec core's result.
+- Unless a result is otherwise a success, the entry point does not remove the mark.
+
+A `task merge` has that validation in the primary worktree as its default check.
+It therefore stops until the project validates with the new Concorde
+([requirements](requirements.md#req.distribution.update-unvalidated),
 [reported](requirements.md#req.distribution.unvalidated-reported),
 [cleared](requirements.md#req.distribution.unvalidated-cleared)).
 
 <a id="realization.distribution.guidance"></a>
 
 The **Distribution guidance** is the part's sections of the [main-session
-guidance](../glossary.json#concept.main-session-guidance), kept in `prompts/guidance/distribution/`
-and registered under `guidance` in the part's registration, which [the composition
-below](#guidance-composition) composes after Coordination's working method wherever the part is
-installed: the project skill's "Installed parts and updates", what `concorde` is, `part_missing` and
-`concorde update`, and the `CLAUDE.md` block's sentence on them, the one section every install
-holds. Each section says what happens where a part it mentions is not installed.
+guidance](../glossary.json#concept.main-session-guidance). The sections are kept in
+`prompts/guidance/distribution/`. The part registers the sections under `guidance` in its
+registration. Wherever the part is installed, [the composition below](#guidance-composition)
+composes those sections after Coordination's working method. The sections cover:
+
+- The project skill's "Installed parts and updates".
+- What `concorde` is.
+- `part_missing`.
+- `concorde update`.
+- The `CLAUDE.md` block's sentence on them, the one section every install holds.
+
+Each section says what happens where a part it mentions is not installed.
 
 <a id="realization.distribution.tests"></a>
 
-The **Distribution tests**, under `tests/concorde/distribution/`, exercise the build, the Protocol
-manifest and the installed command on a fresh project, verifying the
-[requirements](requirements.md) and [scenarios](scenarios.md).
+The **Distribution tests**, under `tests/concorde/distribution/`, exercise these on a fresh project:
+
+- The build.
+- The Protocol manifest.
+- The installed command.
+
+They verify the [requirements](requirements.md) and [scenarios](scenarios.md).

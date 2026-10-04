@@ -9,25 +9,36 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - GIVEN a checkout whose prompt roots include other prompt files through include lines
 - WHEN the developer runs `build`
 - THEN each root is written to its path under `generated/` with every include expanded
-- AND a `{{name}}` in a prompt is written as the literal `{name}`, while other braces stay as they are
+- AND a `{{name}}` in a prompt is written as the literal `{name}`
+- AND other braces stay as they are
 - AND `generated/build-manifest.json` records the digest of every source and output
 - AND a following `build --check` reports no differences
 
 ### scenario.distribution.build-skills — Render every skill with its front matter
 
-- GIVEN a checkout whose parts register their guidance sections, Coordination's skill section `prompts/main-session/skill.md` among them, and the prompt root `prompts/development/skill.md`
+- GIVEN a checkout whose parts register their guidance sections
+- AND those sections include Coordination's skill section `prompts/main-session/skill.md`
+- AND the checkout has the prompt root `prompts/development/skill.md`
 - WHEN the developer runs `build`
 - THEN `generated/skills/concorde/SKILL.md` and `generated/skills/concorde-development/SKILL.md` each start with front matter naming the skill and describing it in a double-quoted string
-- AND the `concorde` skill continues with the render of Coordination's skill section followed by the render of every other part's skill section in the order of the parts table, each byte for byte and separated by one blank line
+- AND the `concorde` skill continues with the render of Coordination's skill section followed by the render of every other part's skill section
+- AND those renders follow the order of the parts table
+- AND each render is byte for byte
+- AND one blank line separates the renders
 - AND the development skill continues with the render of its prompt root, byte for byte
 - AND `generated/guidance/task-session.md` is the [task-session](../glossary.json#concept.task-session) sections of every part composed the same way
 - AND the [build manifest](../glossary.json#concept.build-manifest) records them
 
 ### scenario.distribution.composed-guidance — Compose the guidance of a set of parts
 
-- GIVEN the registrations of the coordination, spec and distribution parts alone
+- GIVEN the registrations of the coordination part
+- AND the registrations of the spec part
+- AND the registrations of the distribution part
+- AND no registrations of other parts
 - WHEN Distribution composes their guidance
-- THEN the skill is Coordination's skill section followed by the spec part's and then Distribution's, the task-session prompt Coordination's followed by the spec part's, and the `CLAUDE.md` block Coordination's followed by the spec part's and Distribution's
+- THEN the skill is Coordination's skill section followed by the spec part's and then Distribution's
+- AND the task-session prompt is Coordination's followed by the spec part's
+- AND the `CLAUDE.md` block is Coordination's section followed by the spec part's and Distribution's
 - AND none holds a section of a part not given, such as the issues part's
 
 ### scenario.distribution.composed-guidance-without-coordination — Compose the guidance without the coordination part
@@ -50,8 +61,10 @@ This illustrates [a guidance section standing without the parts it may lack](req
 
 - GIVEN a workflow catalog whose only workflow is the [brownfield workflow](../glossary.json#concept.brownfield-workflow)
 - WHEN the developer runs `build`
-- THEN `generated/workflows/claude/concorde-brownfield.js` starts with a `meta` block naming `concorde-brownfield`, followed by the Claude Code step adapter and the procedure
-- AND it is the only workflow render under `generated/workflows/`
+- THEN `generated/workflows/claude/concorde-brownfield.js` starts with a `meta` block naming `concorde-brownfield`
+- AND the Claude Code step adapter follows that block
+- AND the procedure follows the adapter
+- AND `generated/workflows/claude/concorde-brownfield.js` is the only workflow render under `generated/workflows/`
 - AND the [build manifest](../glossary.json#concept.build-manifest) records it
 
 ### scenario.distribution.build-check-stale — Report a stale build without writing
@@ -85,7 +98,9 @@ This illustrates [a prompt reached at most once within one root](requirements.md
 
 ### scenario.distribution.build-keeps-edited-leftover — Keep a leftover output edited by hand
 
-- GIVEN an output the previous build wrote, whose prompt root was removed since and whose bytes were edited after that build
+- GIVEN an output the previous build wrote
+- AND its prompt root was removed since that build
+- AND its bytes were edited after that build
 - WHEN the developer runs `build`
 - THEN the build stops with an error naming the edited output
 - BUT the edited output is kept as it is
@@ -104,7 +119,8 @@ This illustrates [a prompt reached at most once within one root](requirements.md
 - GIVEN a Protocol chapter that changed and a fresh build
 - WHEN the developer runs `protocol-manifest --write --bind-project`
 - THEN the tracked manifest is rewritten with the new digests
-- AND the configuration is bound to it and `.concorde/protocol/` is refreshed
+- AND the configuration is bound to it
+- AND `.concorde/protocol/` is refreshed
 
 ### scenario.distribution.protocol-manifest-report — Report a changed Protocol
 
@@ -116,15 +132,22 @@ This illustrates [a prompt reached at most once within one root](requirements.md
 
 - GIVEN a Protocol chapter that changed and a fresh build
 - WHEN the developer runs `protocol-manifest --bind-project`
-- THEN the result is `failed` with `protocol_mismatch`, the configuration is bound to the tracked manifest and `.concorde/protocol/` is left as it was
-- AND when the developer then runs `protocol-manifest --write`, the tracked manifest is rewritten with the new digests, its result names the changed assets and the configuration's binding is unchanged
+- THEN the result is `failed` with `protocol_mismatch`
+- AND the configuration is bound to the tracked manifest
+- AND `.concorde/protocol/` is left as it was
+- AND when the developer then runs `protocol-manifest --write`, the tracked manifest is rewritten with the new digests
+- AND when the developer then runs `protocol-manifest --write`, the result of that command names the changed assets
+- AND when the developer then runs `protocol-manifest --write`, the configuration's binding is unchanged
 
 ### scenario.distribution.protocol-manifest-refused — Write nothing without a fresh build and a readable manifest
 
 - GIVEN a package whose Protocol source changed after its last build, or whose tracked Protocol manifest is not of the manifest's shape
 - WHEN the developer runs `protocol-manifest --write --bind-project`
 - THEN the result is `invalid` with `CONCORDE-PROTOCOL-MANIFEST-001` naming the problem
-- BUT nothing is written: neither the tracked manifest, the configuration's binding nor `.concorde/protocol/`
+- BUT nothing is written
+- AND the tracked manifest remains unchanged
+- AND the configuration's binding remains unchanged
+- AND `.concorde/protocol/` remains unchanged
 
 This illustrates [the precondition of `protocol-manifest`](requirements.md#req.distribution.protocol-manifest-precondition).
 
@@ -148,7 +171,8 @@ This illustrates [the precondition of `protocol-manifest`](requirements.md#req.d
 
 - GIVEN a project whose receipt names the parts installed, and one whose receipt names none
 - WHEN the developer asks `concorde --help` for its commands, or the [project MCP server](../glossary.json#concept.project-mcp-server) lists its tools
-- THEN the first offers exactly the distribution commands and the commands of the parts its receipt names, and the tools they register whose required parts are installed
+- THEN the first offers exactly the distribution commands and the commands of the parts its receipt names
+- AND the first offers exactly the tools those parts register whose required parts are installed
 - AND the second offers the commands of every part of the package
 
 ### scenario.distribution.part-missing — A command or tool of a part not installed names the part
@@ -163,25 +187,50 @@ This illustrates [the precondition of `protocol-manifest`](requirements.md#req.d
 
 ### scenario.distribution.install — Install Concorde into a project
 
-- GIVEN a Git project that is not initialized, so that it has no Specs, and a fresh Concorde package
+- GIVEN a Git project that is not initialized, so that it has no Specs
+- AND a fresh Concorde package is available
 - WHEN the developer runs the installer on the project
-- THEN the project has the Protocol copy under `.concorde/protocol/`, the `concorde` command and the [main-session guidance](../glossary.json#concept.main-session-guidance) as a project skill and a `CLAUDE.md` block
-- AND the `d2` release pinned in `concorde.json` for this platform is at `.concorde/tools/d2`, ignored by Git and named in the receipt
-- AND `.gitignore` ignores `.claude/worktrees/`, where task worktrees go, and `.concorde/workspace.json`, their [workspace binding](../glossary.json#concept.workspace-binding)
+- THEN the project has the Protocol copy under `.concorde/protocol/`
+- AND the project has the `concorde` command
+- AND the project has the [main-session guidance](../glossary.json#concept.main-session-guidance) as a project skill and a `CLAUDE.md` block
+- AND the `d2` release pinned in `concorde.json` for this platform is at `.concorde/tools/d2`
+- AND Git ignores that `d2` release
+- AND the receipt names that `d2` release
+- AND `.gitignore` ignores `.claude/worktrees/`, where task worktrees go
+- AND `.gitignore` ignores `.concorde/workspace.json`, the task worktrees' [workspace binding](../glossary.json#concept.workspace-binding)
 - AND every rendered Claude Code workflow is at `.claude/workflows/concorde-<name>.js`
-- AND `.claude/settings.json` allows `Workflow(concorde-brownfield)`, `mcp__concorde__workflow_step` and `Bash(.concorde/bin/concorde workflow report:*)`, keeps every setting it had, and the receipt records the added rules
-- AND the installer prints the receipt as its [install result](contracts.md#contract.distribution.install-result) and exits with status 0
-- AND the receipt records the package as `source`, mode `normal`, and `source_commit` `null` for a package outside a Git checkout
-- AND nothing is placed under `.pi/`, no `AGENTS.md` is created, and a project's own `AGENTS.md` is left as it is and not listed under `amended`
-- BUT no Spec document, registry or project configuration with its [Protocol binding](../glossary.json#concept.protocol-binding) is created, which only initialization creates
+- AND `.claude/settings.json` allows `Workflow(concorde-brownfield)`
+- AND `.claude/settings.json` allows `mcp__concorde__workflow_step`
+- AND `.claude/settings.json` allows `Bash(.concorde/bin/concorde workflow report:*)`
+- AND `.claude/settings.json` keeps every setting it had
+- AND the receipt records the added rules
+- AND the installer prints the receipt as its [install result](contracts.md#contract.distribution.install-result)
+- AND the installer exits with status 0
+- AND the receipt records the package as `source`
+- AND the receipt records mode `normal`
+- AND for a package outside a Git checkout, the receipt records `source_commit` `null`
+- AND nothing is placed under `.pi/`
+- AND no `AGENTS.md` is created
+- AND a project's own `AGENTS.md` is left as it is
+- AND the project's own `AGENTS.md` is not listed under `amended`
+- BUT no Spec document is created
+- AND no registry is created
+- AND no project configuration with its [Protocol binding](../glossary.json#concept.protocol-binding) is created
+- AND only initialization creates these
 
 ### scenario.distribution.install-parts — Install a set of parts with their dependencies
 
 - GIVEN a built Concorde package and a project
 - WHEN the developer runs the installer with `--parts coordination`
-- THEN the receipt names under `parts` the coordination, kernel and distribution parts, each with the package's version
-- AND the Framework copy holds the code of exactly those parts, and the guidance, ignore rules, programs and workflows of no other part
-- AND the installed `concorde` refuses a command of a part left out with `part_missing`
+- THEN the receipt names the coordination part under `parts` with the package's version
+- AND the receipt names the kernel part under `parts` with the package's version
+- AND the receipt names the distribution part under `parts` with the package's version
+- AND the Framework copy holds the code of exactly those parts
+- AND the Framework copy holds the guidance of no other part
+- AND the Framework copy holds the ignore rules of no other part
+- AND the Framework copy holds the programs of no other part
+- AND the Framework copy holds the workflows of no other part
+- AND for a command of a part left out, the installed `concorde` refuses with `part_missing`
 
 ### scenario.distribution.install-unknown-part — A part the package does not build installs nothing
 
@@ -209,28 +258,38 @@ This illustrates [refusing a part the package does not build](requirements.md#re
 
 - GIVEN a project in which the coordination part is installed without the spec part
 - WHEN the developer runs `concorde update`
-- THEN the update result carries `update` `null` and no `.concorde/update.json` is written
-- AND its `next` asks only for the updated files to be committed
+- THEN the update result carries `update` `null`
+- AND no `.concorde/update.json` is written
+- AND the update result's `next` asks only for the updated files to be committed
 
 ### scenario.distribution.install-repeat — Installing again repeats no download
 
 - GIVEN a project in which Concorde was installed with the pinned `d2` and the locked pi runtime
 - WHEN the developer runs the installer again with the same package
-- THEN the `d2` release is not downloaded again and `npm` does not run again, the runtime placed first staying in place
+- THEN the `d2` release is not downloaded again
+- AND `npm` does not run again
+- AND the runtime placed first stays in place
 - AND `CLAUDE.md` still holds exactly one Concorde block
 
 ### scenario.distribution.install-docsite-template — An installed Concorde can scaffold a docsite
 
 - GIVEN a fresh Concorde package whose `docsite/` holds the template beside files the template inventory leaves out
-- WHEN the developer installs it into a project, initializes the project's Specs and runs `concorde docsite --propose`
+- WHEN the developer installs it into a project
+- AND the developer initializes the project's Specs
+- AND the developer runs `concorde docsite --propose`
 - THEN `.concorde/framework/docsite/` holds exactly the template files [Views](../spec-tooling/views/module.md)' inventory selects, `scaffold/` included
-- AND the proposal succeeds, listing the template files, a new `docsite/site.json` and, with `--github-pages`, the deployment workflow
+- AND the proposal succeeds
+- AND the proposal lists the template files
+- AND the proposal lists a new `docsite/site.json`
+- AND with `--github-pages`, the proposal lists the deployment workflow
 
 ### scenario.distribution.install-docsite-template-refused — An unsafe docsite template installs nothing
 
 - GIVEN a Concorde package whose `docsite/` template contains a symbolic link
 - WHEN the developer installs it into a project
-- THEN the install is refused with `invalid_docsite_template`, naming the link, whose reason is `input`
+- THEN the install is refused with `invalid_docsite_template`
+- AND the refusal names the link
+- AND the link's reason is `input`
 - BUT nothing is written into the project
 
 ### scenario.distribution.glossary-import — The CLAUDE.md block imports the project's glossary
@@ -242,42 +301,55 @@ This illustrates [refusing a part the package does not build](requirements.md#re
 
 ### scenario.distribution.glossary-import-failed — A glossary import that cannot be written after init
 
-- GIVEN a project in which Concorde is installed and whose `CLAUDE.md` cannot be written
+- GIVEN a project in which Concorde is installed
+- AND the project's `CLAUDE.md` cannot be written
 - WHEN `concorde init --apply` creates the project's first glossary
-- THEN the result is `failed` with `guidance_failed`, keeping the initialization's result and naming the operating system's error, and the project is initialized
+- THEN the result is `failed` with `guidance_failed`
+- AND the result keeps the initialization's result
+- AND the result names the operating system's error
+- AND the project is initialized
 - AND once `CLAUDE.md` can be written, `concorde update` adds the glossary import to the Concorde block
 
 ### scenario.distribution.glossary-import-none — The CLAUDE.md block imports nothing before a glossary
 
-- GIVEN a project whose `CLAUDE.md` has content of its own and which declares no glossary yet
+- GIVEN a project whose `CLAUDE.md` has content of its own
+- AND the project declares no glossary yet
 - WHEN the developer installs Concorde
 - THEN the Concorde block of `CLAUDE.md` imports no glossary
 - AND the rest of `CLAUDE.md` is kept
 
 ### scenario.distribution.install-defaults-kept — A Concorde-owned default stays the project's data
 
-- GIVEN a project installed with the issues part, whose receipt names `.concorde/issues/.gitignore` under `files` and `defaults`, the developer having edited that file
-- WHEN Concorde is installed again without the issues part, and then from a Concorde that no longer declares that default
-- THEN the file stays as the developer left it each time, and each receipt still names it under `files` and `defaults`
+- GIVEN a project installed with the issues part
+- AND its receipt names `.concorde/issues/.gitignore` under `files` and `defaults`
+- AND the developer edited that file
+- WHEN Concorde is installed again without the issues part
+- AND Concorde is then installed from a Concorde that no longer declares that default
+- THEN the file stays as the developer left it each time
+- AND each receipt still names the file under `files` and `defaults`
 
 ### scenario.distribution.install-settings-kept — A developer's settings survive the installer
 
-- GIVEN a project whose `.claude/settings.json` has its own permission rules, and a receipt recording a rule the new package no longer ships
+- GIVEN a project whose `.claude/settings.json` has its own permission rules
+- AND a receipt records a rule the new package no longer ships
 - WHEN the installer runs again
-- THEN the developer's rules and other settings are unchanged, the missing workflow rules are added and the rule no longer shipped is removed
+- THEN the developer's rules and other settings are unchanged
+- AND the missing workflow rules are added
+- AND the rule no longer shipped is removed
 
 ### scenario.distribution.install-settings-invalid — Unusable settings refuse the install
 
 - GIVEN a project whose `.claude/settings.json` is not a JSON object
 - WHEN the installer runs
-- THEN it is refused with `settings_invalid`
+- THEN the install is refused with `settings_invalid`
 - BUT nothing is written, not even a workflow the project lacks
 
 ### scenario.distribution.mcp-reroute — A call is served as the current code registers its tool
 
 - GIVEN a server that listed a tool as served in the primary worktree, without long work and on the session's thread
 - WHEN the current code's registration serves it in the session's worktree, or as long work, or on a thread of its own, and the session calls it without listing its tools again
-- THEN the call's process answers how the current code serves every tool, running nothing, and the server runs the call again in the session's worktree, or hands on its long work in that worktree, or answers it on a thread of its own
+- THEN the call's process answers how the current code serves every tool, running nothing
+- AND the server runs the call again in the session's worktree, or hands on its long work in that worktree, or answers it on a thread of its own
 - AND a call routed twice otherwise is refused with `call_failed`
 
 This illustrates [serving a call as the current code registers its tool](requirements.md#req.distribution.mcp-current-serving).
@@ -294,7 +366,8 @@ This illustrates [refusing a call without an answer](requirements.md#req.distrib
 ### scenario.distribution.mcp-tools-changed-after-refresh — Learning how a tool is served lists nothing to the session
 
 - GIVEN a server that listed its tools to the session
-- WHEN the session calls a tool the listing lacks, so that the server fetches the current code's listing to learn how it is served, and the answer says the current code's tools differ from those listed
+- WHEN the session calls a tool the listing lacks, so that the server fetches the current code's listing to learn how it is served
+- AND the answer says the current code's tools differ from those listed
 - THEN the server tells its session that its tools changed
 
 This illustrates [the session hearing that its tools changed](requirements.md#req.distribution.mcp-tools-changed).
@@ -319,7 +392,9 @@ This illustrates [the environment deciding the channel](requirements.md#req.dist
 
 - GIVEN a project whose `.mcp.json` registers a server of its own
 - WHEN the installer runs
-- THEN `.mcp.json` also registers `concorde` as `.concorde/bin/concorde project-mcp`, the project's own server is unchanged, and the receipt lists `.mcp.json` under `amended`
+- THEN `.mcp.json` also registers `concorde` as `.concorde/bin/concorde project-mcp`
+- AND the project's own server is unchanged
+- AND the receipt lists `.mcp.json` under `amended`
 - AND installing again leaves the file as it is
 
 ### scenario.distribution.install-mcp-config-invalid — An unusable `.mcp.json` refuses the install
@@ -493,27 +568,34 @@ This illustrates [the environment deciding the channel](requirements.md#req.dist
 
 - GIVEN a project installed without the pi runtime by an installer that did not record the choice
 - WHEN the developer runs `concorde update`
-- THEN the pi runtime is placed and the receipt records `pi_runtime` true
+- THEN the pi runtime is placed
+- AND the receipt records `pi_runtime` true
 - AND the next `concorde update` keeps the runtime without installing it again
 
 ### scenario.distribution.install-later-files-bound — Files a later install adds stay bound
 
-- GIVEN a project in which Concorde was installed and then initialized, so that its installation realization binds the files installed then
-- WHEN the developer installs Concorde again, or runs `concorde update`, with a Concorde that installs more files, such as a workflow an older Concorde did not install
-- THEN every file listed under the receipt's `files` outside `.concorde/` that the install added, and that no other realization binds by its exact path, is an exact entry of the installation realization
+- GIVEN a project in which Concorde was installed and then initialized
+- AND as a result, its installation realization binds the files installed then
+- WHEN the developer installs Concorde again, or runs `concorde update`, with a Concorde that installs more files
+- AND a workflow an older Concorde did not install is an example of such an additional file
+- THEN for each added file listed under the receipt's `files` outside `.concorde/`, when no other realization binds that file's exact path, the installation realization has an exact entry for it
 - BUT the files the receipt names as `amended` are not bound
 - AND once the files are committed, `concorde spec-validation` reports no `CHK.binds.unbound` for them
-- BUT a project that is not initialized gets no Spec, and installing again with nothing new leaves the Specs unchanged
+- BUT a project that is not initialized gets no Spec
+- AND installing again with nothing new leaves the Specs unchanged
 
 ### scenario.distribution.install-binding-failed — A failed binding is reported and the install kept
 
-- GIVEN an initialized project in which Spec core refuses to bind the installation, for instance because writing the root [Module](../glossary.json#concept.module)'s metadata fails
+- GIVEN an initialized project in which Spec core refuses to bind the installation
+- AND the refusal occurs, for instance, because writing the root [Module](../glossary.json#concept.module)'s metadata fails
 - WHEN the developer installs Concorde
-- THEN the install succeeds with the new receipt in place, and its result carries Spec core's error under `binding_error`, naming the file concerned
+- THEN the install succeeds with the new receipt in place
+- AND the install's result carries Spec core's error under `binding_error`, naming the file concerned
 - BUT the receipt written to `.concorde/install.json` holds no `binding_error`
 
 ### scenario.distribution.update-keeps-pi-runtime-choice — An update keeps a runtime left out
 
 - GIVEN a project installed with `--without-pi-runtime`, whose receipt records `pi_runtime` false
 - WHEN the developer runs `concorde update`
-- THEN the update succeeds without the pi runtime, even on a machine without npm, and the receipt still records `pi_runtime` false
+- THEN even on a machine without npm, the update succeeds without the pi runtime
+- AND the receipt still records `pi_runtime` false
