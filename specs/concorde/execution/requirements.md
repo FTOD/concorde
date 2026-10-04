@@ -18,14 +18,11 @@ No part of Execution SHALL do any of the following to a
 
 ### req.execution.no-task-knowledge — Execution knows no task
 
-No part of Execution SHALL read or write any of this state:
+No part of Execution SHALL read or write any of this state, so that everything a run knows about its workspace comes from the workspace binding of the worktree it starts in:
 
 - a [task record](../glossary.json#concept.task-record)
 - a [decision log](../glossary.json#concept.decision-log)
 - any other state of the task store
-
-So everything a run knows about its workspace comes from the workspace binding of the worktree it
-starts in.
 
 ### req.execution.reads-no-spec — Execution reads no Spec
 
