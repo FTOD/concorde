@@ -86,9 +86,11 @@ The canonical formats of the [Kernel](module.md): the
 }
 ```
 
-A binding that breaks this contract is refused by every part that reads it, never read in part. A
-binding whose `root` is not the real path of the worktree it lies in is refused too, since a copied
-binding would bind the wrong workspace. Git ignores the file. The [Modules](../glossary.json#concept.module) it names are Module
+A binding that breaks this contract is refused by every part that reads it, never read in part, and
+by the library before it writes one. A binding whose `root` is not the real path of the worktree it
+lies in is refused too, since a copied binding would bind the wrong workspace: a `root` that is not
+an absolute real path, such as a symbolic link to the worktree or a path ending in `/.`, breaks the
+contract, and the real path of another worktree is a misplaced binding. Git ignores the file. The [Modules](../glossary.json#concept.module) it names are Module
 identities as text: a part that knows the project's Specs checks them against the registry, and a
 part that does not treats them as labels.
 
@@ -138,7 +140,8 @@ is.
   no type of any part and imports no part, so whoever checks a value must have loaded the code of the
   value's owner.
 - **Embedding.** A registered schema embeds a whole typed value of another owner's type with the
-  reference `{"$ref": "<type_id>"}`, a bare type identity rather than a JSON pointer. The reference
+  reference `{"$ref": "<type_id>"}`, a bare type identity rather than a JSON pointer, which stands
+  alone: a schema holding such a `$ref` has no other keyword. The reference
   is resolved when a value is checked, against the registration in force then, and matches the whole
   envelope: `type_id` equal to that identity, `schema_version` equal to its registered version, and
   `data` against its registered schema. So one part's record holds another part's value without
@@ -161,7 +164,9 @@ is.
   only the caller knows in which worktree its record lives. Making one digests a file that must
   exist below the root, and verifying a value walks it whole, treats every object with exactly
   those three keys as an artifact and refuses as `stale_reference` one whose file is missing or
-  whose bytes changed ([Library](#library)).
+  whose bytes changed ([Library](#library)). An array whose `items` schema is the library's
+  artifact schema, which requires those three keys and admits no other, lists each artifact once:
+  two of its artifacts with the same `id` or the same `path` are refused with `invalid_field`.
   The file an artifact or a [file transaction](#file-transactions) names is reached below its root
   only through real directories: a path any of whose components is a symbolic link is refused,
   naming the path and the link, with `invalid_field` for an artifact and as a malformed list
@@ -179,17 +184,22 @@ loads no document. A schema is an object or a boolean. Its keywords are `title`,
 format `project-path`, and `$ref` with a bare type identity as above. Any other keyword, a list of
 types, a `$ref` of another form, an invalid bound or nesting deeper than 100 levels is refused when
 the schema is registered (`invalid_input`), so that no registered type promises more than its values
-are checked for.
+are checked for. Two schemas are equal, for a repeated registration, when they are equal as JSON
+values, as below.
 
 A value is checked as JSON Schema checks it, for these keywords: an object admits keys its
 `properties` do not name unless its `additionalProperties` is `false`, and checks them against
 `additionalProperties` when that is a schema, so a closed object spells
 `additionalProperties: false`; `number` admits integers and finite non-integral numbers and
 `integer` only integers, neither a boolean, and `minimum` and `maximum` bound both; `pattern`
-matches anywhere in the string unless it is anchored; `const` and `enum` compare values with their
-JSON type, so `true` is not `1`; each keyword applies to the kind of value it constrains, whether the
-schema names a `type` or not; and a string whose schema sets `minLength` must not consist of
-whitespace only. Checking a value descends at most 100 levels: each field of an object, item of an
+matches anywhere in the string unless it is anchored; `const`, `enum` and `uniqueItems` compare
+values as JSON values: numbers by value, so `1` equals `1.0`, a boolean only with a boolean, so
+`true` is not `1`, and arrays and objects item by item and field by field under the same rule; each
+keyword applies to the kind of value it constrains, whether the schema names a `type` or not; and a
+string whose schema sets `minLength` must not consist of whitespace only, though `minLength` `0`
+still admits the empty string. A number is finite: a JSON text holding a number too large for a
+finite floating-point value is no JSON value (`invalid_json`), while an integer of any size is
+checked by its value. Checking a value descends at most 100 levels: each field of an object, item of an
 array, `anyOf` alternative tried, `$ref` followed and `data` of an embedded typed value counts one
 level, and a value whose checking would go deeper is refused with `invalid_field` at the field
 reached.
@@ -225,8 +235,9 @@ bytes it replaces. It takes a nonempty list of changes, each
 
 where `path` follows the `project-path` rule above and names a file once in the list, `content` is
 the whole new file as text written in UTF-8, and `before_digest` is the digest of the file's current
-bytes, `sha256:` and 64 lowercase hexadecimal digits, or `null` when the file must not exist. The
-caller also names the paths it allows and, optionally, a final check to run after the writes.
+bytes, `sha256:` and 64 lowercase hexadecimal digits, or `null` when the file must not exist; a
+`before_digest` of any other form makes the list malformed. The caller also names the paths it
+allows and, optionally, a final check to run after the writes.
 
 1. A malformed list (`invalid_proposal`), a path outside the allowed ones (`permission_denied`) or a
    file whose current bytes, or existence, do not match its `before_digest` (`stale_proposal`)
@@ -250,7 +261,9 @@ What the caller then receives:
   restoration. The caller must not treat that outcome as restored: it recovers the named files by
   its own records' rule, as it does after a killed process.
 
-These guarantees hold for failures the process observes. A killed process restores nothing: each
+These guarantees hold for failures the process observes, an interruption it receives, such as
+`KeyboardInterrupt` or `SystemExit`, included: the interruption is raised again unchanged once every
+file is restored. A killed process restores nothing: each
 file already renamed into place keeps its new content, every other file its original bytes, and
 `.concorde-write-` temporary files may remain beside them, which a writer's recovery may remove.
 
@@ -272,24 +285,27 @@ offending file, empty when the refusal concerns the whole input, and a message; 
 writes an error link itself, since the level that called it decides why it cannot handle the
 refusal and builds its own link in the
 [error contract](tracing/contracts.md#contract.tracing.error), keeping the code and message as its
-detail. Tracing's operations on trace nodes and locks are its child's
+detail. An operation that reads or writes a file, or takes a lock, and that the operating system
+refuses fails with `system_error`, naming the path and with the operating system's error as its
+cause, unless the table gives that failure a code of its own; a caller's own exception raised while
+it holds a lock passes unchanged. Tracing's operations on trace nodes and locks are its child's
 ([Tracing contracts](tracing/contracts.md)).
 
 | Operation | Takes | Returns | Refuses with |
 | --- | --- | --- | --- |
 | Find the worktree | a directory | the real root of the Git worktree it lies in | `not_a_worktree` |
-| Read a binding | a worktree | its workspace binding, or none when the worktree has no binding file | `binding_unreadable` (the file cannot be read or is no JSON), `binding_invalid` (it breaks the contract, names a relative folder or a workspace folder that does not exist), `binding_misplaced` (its `root` is another worktree) |
-| Write a binding | a worktree and a binding | the file's path, having checked the binding against its contract and replaced any binding there in one rename | `binding_invalid` |
+| Read a binding | a worktree | its workspace binding, or none when the worktree has no binding file | `binding_unreadable` (the file cannot be read or is no JSON), `binding_invalid` (it breaks the contract, names a `root` that is not an absolute real path, a relative folder or a workspace folder that does not exist), `binding_misplaced` (its `root` is another worktree) |
+| Write a binding | a worktree and a binding | the file's path, having checked the binding as reading it does and replaced any binding there in one rename | `binding_invalid` (reading it would refuse it, its `root` naming another worktree included), `system_error` |
 | Register a type | an identity, a version and a schema | nothing | `duplicate_type`, `invalid_input` |
 | Make or check a typed value | a type identity and data, or a value and the type expected | a checked copy | `unknown_type`, `unsupported_version`, `incompatible_handoff`, `invalid_field` |
-| Make an artifact | a root, an identity and a path below the root | `{id, path, digest}` of the file | `stale_reference` (the file does not exist), `invalid_field` (a path that is not canonical or passes through a symbolic link) |
+| Make an artifact | a root, an identity and a path below the root | `{id, path, digest}` of the file | `stale_reference` (the file does not exist), `invalid_field` (a path that is not canonical or passes through a symbolic link), `system_error` |
 | Verify artifacts | a root and a value | nothing | `stale_reference` (an artifact's file is missing or its bytes changed), `invalid_field` (an artifact's fields break the artifact format or its path passes through a symbolic link) |
 | Check a record | a value and its contract schema | nothing | `invalid_input` (the schema), `invalid_field` (the value), and the codes of an embedded typed value |
 | Apply a file transaction | a root, the changes, the allowed paths and an optional final check | the written paths | the outcomes of [File transactions](#file-transactions) |
 | Make a delivery message | a workspace's name and its goal | the message of a [delivery commit](#delivery-commit): the subject `concorde: deliver <workspace>`, a blank line and the goal without its surrounding whitespace, ending in one newline | nothing |
 | List deliveries | a worktree, its branch, its base commit and the workspace's name | the delivery commits on the first-parent history since the base, oldest first, each with how it fails to verify, nothing when it verifies | `git_failed`, naming the Git command and its output |
-| Take the [workspace lock](../glossary.json#concept.workspace-lock) | the `.concorde` a binding names, the workspace, the holder, how long to wait and whether to take a lock file its holder removed meanwhile | holds it until released | `workspace_busy` naming the holder, `workspace_retired` (its holder removed the file while the taker waited, as a close does) |
-| Take the merge lock | the primary worktree's `.concorde`, the holder, the task when there is one and how long to wait, 300 seconds by default | holds it until released | `merge_busy` naming the holder |
+| Take the [workspace lock](../glossary.json#concept.workspace-lock) | the `.concorde` a binding names, the workspace, the holder, how long to wait and whether to take a lock file its holder removed meanwhile | holds it until released | `workspace_busy` naming the holder, `workspace_retired` (its holder removed the file while the taker waited, as a close does), `system_error` |
+| Take the merge lock | the primary worktree's `.concorde`, the holder, the task when there is one and how long to wait, 300 seconds by default | holds it until released | `merge_busy` naming the holder, `system_error` |
 | Read a lock's holder | the workspace lock or the merge lock | its holder line, or none when nobody holds it | nothing |
 
 A run of Execution, for example, reads the binding of the worktree it starts in: a binding copied

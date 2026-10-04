@@ -61,6 +61,36 @@ Concrete situations that show the [requirements](requirements.md) of
 - WHEN a framework source and an installed file outside `.concorde/` change and the scenario is evaluated
 - THEN `concorde_untouched` fails, naming the changed installed file and the changed framework copy
 
+### scenario.dogfood-scenarios.receipt-unreadable — An unreadable install receipt is a touched Concorde
+
+- GIVEN a prepared scenario whose project's install receipt is missing, is not JSON, is no JSON object or names its files as something other than a list
+- WHEN the scenario is evaluated
+- THEN `concorde_untouched` fails, naming the install receipt
+- BUT the evaluation ends with its verdict, not with an error
+
+### scenario.dogfood-scenarios.reports-checked — Each report must pass the project's check
+
+- GIVEN a prepared scenario whose session left a report under `.concorde/runs/defects/`
+- WHEN the scenario is evaluated
+- THEN `reports_checked` passes when the project's `concorde issues report --check` accepts every report
+- AND it fails, naming the report and the refusal, when that check refuses one, and when there is no report
+- BUT a project whose installed `concorde` cannot be started stops the evaluation with `command_failed`
+
+### scenario.dogfood-scenarios.reports-accepted — Each report must be recorded by a throwaway clone
+
+- GIVEN a prepared scenario whose session left a report, and its Concorde clone
+- WHEN the scenario is evaluated
+- THEN `reports_accepted` passes when a clone of the scenario's Concorde, made in a temporary directory, records every report with its `scripts/issues.py report`
+- AND the temporary clone is removed and the scenario's Concorde clone is left as it was
+- BUT it fails, naming the report and the refusal, when the clone refuses one
+
+### scenario.dogfood-scenarios.evaluation — The evaluation passes only when every check passes
+
+- GIVEN a prepared scenario whose session reported the defect as the scenario expects and touched nothing
+- WHEN the scenario is evaluated
+- THEN `evaluation.json` names the scenario and its reports and holds the five checks, all passed, and the evaluation passes
+- BUT when one check fails, such as a report of an unexpected type, the evaluation fails and replaces the earlier `evaluation.json`
+
 ### scenario.dogfood-scenarios.caches-ignored — A change to Python's caches is no change
 
 - GIVEN a prepared scenario whose Concorde clone, framework copy and installed files are as their baselines record

@@ -21,10 +21,12 @@ from concorde.issues.store import (
     dispose_issue,
     list_issues,
     read_issue,
+    record_report,
     report_issue,
     resolve_report,
 )
 from concorde.kernel.refusal import KernelError
+from concorde.kernel.schema import validate_typed
 from concorde.spec.verification import verifies
 from tests.concorde.support.issue_reports import git, git_project, report, source
 from tests.concorde.support.handed_lock import handed
@@ -91,6 +93,27 @@ class IssueStoreTests(unittest.TestCase):
             **changes,
         }
         return dispose_issue(self.root, identifier, revision, **arguments)
+
+    @verifies("scenario.issues.store-report")
+    def test_a_recorded_report_answers_the_revision_its_write_left(self):
+        first = record_report(self.root, report(), source())
+        identifier = first["receipt"]["issue_id"]
+        self.assertEqual(read_issue(self.root, identifier)[1], first["revision"])
+        appended = record_report(
+            self.root,
+            report(
+                report_key="later",
+                issue_id=identifier,
+                expected_revision=first["revision"],
+            ),
+            source(invocation_id="worker-2"),
+        )
+        self.assertEqual(read_issue(self.root, identifier)[1], appended["revision"])
+        # A repeated report answers the record's revision as it finds it.
+        self.assertEqual(
+            {**first, "revision": appended["revision"]},
+            record_report(self.root, report(), source()),
+        )
 
     @verifies("scenario.issues.store-report")
     def test_report_is_readable_versioned_and_idempotent_without_a_change(self):
@@ -692,9 +715,19 @@ class IssueStoreTests(unittest.TestCase):
 
     def test_a_receipt_whose_path_is_not_its_issues_is_refused(self):
         receipt = report_issue(self.root, report(), source())
-        malformed = {**receipt, "path": ".concorde/issues/foreign.md"}
+        other = ".concorde/issues/I-" + "0" * 32 + ".md"
         with self.assertRaisesRegex(IssueError, "path differs"):
-            resolve_report(self.root, malformed)
+            resolve_report(self.root, {**receipt, "path": other})
+        # The registered type itself admits only a record path of an Issue.
+        for path in (".concorde/issues/foreign.md", "notes.txt"):
+            with self.subTest(path=path), self.assertRaises(KernelError):
+                validate_typed(
+                    {
+                        "type_id": "concorde-issue-receipt",
+                        "schema_version": 2,
+                        "data": {**receipt, "path": path},
+                    }
+                )
 
     @verifies("scenario.issues.store-status-mismatch")
     def test_status_without_a_supporting_disposition_is_refused_without_repair(self):
@@ -735,6 +768,13 @@ class IssueStoreTests(unittest.TestCase):
         self.assertEqual(
             "open", read_issue(self.root, receipt["issue_id"])[0]["status"]
         )
+        # A directory inside the primary worktree is not its root either.
+        inside = self.root / "nested"
+        inside.mkdir()
+        with self.assertRaises(IssueError) as raised:
+            report_issue(inside, report(report_key="nested"), source())
+        self.assertEqual("not_primary", raised.exception.code)
+        self.assertFalse((inside / ".concorde").exists())
 
     def committed_before(self, version, leave_out):
         """A committed record of ``version`` whose one report lacks the field ``leave_out``, as

@@ -4,10 +4,12 @@ standing in for real ones, the workspace binding it reads and the run store it w
 from __future__ import annotations
 
 import contextlib
+import errno
 import io
 import json
 import os
 import re
+import shutil
 import signal
 import subprocess
 import sys
@@ -22,7 +24,14 @@ from concorde.kernel.errors import ERROR_SCHEMA, LINK_SCHEMA, codes
 from concorde.kernel import binding as binding_file
 from concorde.execution import runs
 from concorde.execution.checkout import PREFIX
-from concorde.execution.context import Continue, Provider, command, evidence
+from concorde.execution.context import (
+    Continue,
+    Provider,
+    Stop,
+    command,
+    component,
+    evidence,
+)
 from concorde.method.specs import admission
 from concorde.method.workers import operation, run_worker
 from concorde.execution import runner
@@ -43,7 +52,7 @@ from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
 from concorde.coordination.tasks import store
 from concorde.kernel.tracing import locks
-from concorde.kernel.tracing.node import TraceError
+from concorde.kernel.tracing.node import Node, TraceError
 from tests.concorde.harness.workers.test_pi import FAKE as FAKE_PI
 from tests.concorde.harness.workers.test_pi import fake_which
 from tests.concorde.harness.workers.test_workers import git
@@ -1271,6 +1280,15 @@ class RunnerTests(unittest.TestCase):
             time.sleep(0.1)
         return json.loads(path.read_text())
 
+    def wait_ended(self, run_id: str) -> None:
+        """Wait until the runner of ``run_id`` has ended: its run lock is gone. Its result is
+        written before that, while it still writes under ``.concorde``."""
+        lock = self.records / "locks/runs" / f"{run_id}.lock"
+        deadline = time.monotonic() + 120
+        while lock.exists() and time.monotonic() < deadline:
+            time.sleep(0.05)
+        self.assertFalse(lock.exists())
+
     @verifies("scenario.execution.detached")
     def test_a_detached_run_is_announced_and_finishes_on_its_own(self):
         # The detached runner is a process of its own, so it runs the real task-validation.
@@ -1293,6 +1311,7 @@ class RunnerTests(unittest.TestCase):
             (Path(announced["trace"]), Path(announced["result"])),
         )
         envelope = self.wait_for(Path(announced["result"]))
+        self.wait_ended(announced["run_id"])
         validate(envelope, RESULT_SCHEMA)
         self.assertEqual(announced["run_id"], envelope["run_id"])
         self.assertEqual("t1", envelope["workspace"])
@@ -1311,6 +1330,7 @@ class RunnerTests(unittest.TestCase):
             )
             self.assertEqual(0, status, announced)
             refused = self.wait_for(Path(announced["lobby"]) / "result.json")
+            self.wait_ended(announced["run_id"])
         self.assertEqual("failed", refused["status"])
         self.assertFalse(Path(announced["trace"]).exists())
         self.assertIn(
@@ -1740,6 +1760,260 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(fence["schema"], ERROR_SCHEMA)
         self.assertEqual(RESULT_SCHEMA["$defs"]["error"], LINK_SCHEMA)
 
+    def test_a_stopping_step_prevents_every_later_step(self):
+        ran = []
+
+        def first(ctx):
+            ran.append("first")
+            return Continue()
+
+        def stopping(ctx):
+            ran.append("stopping")
+            return Stop("ok", "Stopped early.")
+
+        def sentinel(ctx):
+            ran.append("sentinel")
+            return Continue()
+
+        with patch.dict(
+            commands.COMMANDS.definitions,
+            {
+                "task-validation": command(
+                    "task-validation", (first, stopping, sentinel), writes=False
+                )
+            },
+        ):
+            status, envelope = self.project.run("task-validation", "--task", "t1")
+        self.assertEqual((0, "Stopped early."), (status, envelope["summary"]))
+        self.assertEqual(["first", "stopping"], ran)
+        self.assertEqual(
+            [("first", "continue"), ("stopping", "stop")],
+            [
+                (step["name"], step["outcome"])
+                for step in self.node(envelope)["content"]["data"]["steps"]
+            ],
+        )
+
+    def test_a_failure_of_the_runner_outside_every_step_is_a_failed_result(self):
+        from concorde.execution import runner
+
+        def broken(*_arguments):
+            raise ValueError("inputs unreadable")
+
+        with patch.object(runner, "admit_inputs", broken):
+            status, envelope = self.project.run("task-validation", "--task", "t1")
+        self.assertEqual(
+            (1, "failed", "host_error"),
+            (status, envelope["status"], envelope["error"]["code"]),
+        )
+        [cause] = envelope["error"]["causes"]
+        self.assertTrue(cause["actor"].startswith("Execution runner"), cause)
+        self.assertIn("ValueError: inputs unreadable", cause["detail"])
+        self.assertEqual(envelope, self.saved(envelope))
+        # A failed write of the node between steps changes nothing.
+        with patch.object(Node, "update", side_effect=TraceError("io", "disk")):
+            status, envelope = self.project.run("task-validation", "--task", "t1")
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        # A step that returns neither continue nor stop raised, as far as the run goes.
+        with patch.dict(
+            commands.COMMANDS.definitions,
+            {
+                "task-validation": command(
+                    "task-validation", (lambda ctx: None,), writes=False
+                )
+            },
+        ):
+            status, envelope = self.project.run("task-validation", "--task", "t1")
+        self.assertEqual((1, "host_error"), (status, envelope["error"]["code"]))
+        self.assertIn("neither continue nor stop", envelope["error"]["detail"])
+
+    @verifies("scenario.execution.cancelled")
+    def test_a_signal_while_the_run_finishes_does_not_cut_it_short(self):
+        from concorde.execution import runner
+
+        real = runner._envelope
+
+        def signalled(*arguments):
+            os.kill(os.getpid(), signal.SIGTERM)
+            return real(*arguments)
+
+        with patch.object(runner, "_envelope", signalled):
+            status, envelope = self.project.run("task-validation", "--task", "t1")
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        self.assertEqual(envelope, self.saved(envelope))
+        self.assertIs(signal.default_int_handler, signal.getsignal(signal.SIGINT))
+        # A signal while the first records are created cancels the run before its first step.
+        ran = []
+
+        def step(ctx):
+            ran.append(ctx.run_id)
+            return Continue()
+
+        start = runner._start_node
+
+        def interrupted(*arguments):
+            os.kill(os.getpid(), signal.SIGINT)
+            return start(*arguments)
+
+        with (
+            patch.object(runner, "_start_node", interrupted),
+            patch.dict(
+                commands.COMMANDS.definitions,
+                {"task-validation": command("task-validation", (step,), writes=False)},
+            ),
+        ):
+            status, envelope = self.project.run("task-validation", "--task", "t1")
+        self.assertEqual((1, "cancelled"), (status, envelope["error"]["code"]))
+        self.assertEqual([], ran)
+        self.assertIn("SIGINT", envelope["error"]["detail"])
+        self.assertEqual(
+            envelope,
+            json.loads((self.lobby(envelope["run_id"]) / "result.json").read_text()),
+        )
+
+    def test_an_invalid_result_is_replaced_by_one_that_keeps_the_contract(self):
+        def malformed(ctx):
+            ctx.worker = ["not", "an", "object"]
+            return Continue(evidence=[{"kind": 1}, evidence("readiness", "", "ready")])
+
+        def foreign_error(ctx):
+            return Stop(
+                "failed",
+                "Failed.",
+                error=component(
+                    "Somebody", "boom", "it broke", "input", "only they can"
+                ),
+            )
+
+        for step, field in (
+            (malformed, "/worker"),
+            (foreign_error, "/error/level"),
+        ):
+            with (
+                self.subTest(step=step.__name__),
+                patch.dict(
+                    commands.COMMANDS.definitions,
+                    {
+                        "task-validation": command(
+                            "task-validation", (step,), writes=False
+                        )
+                    },
+                ),
+            ):
+                status, envelope = self.project.run("task-validation", "--task", "t1")
+                self.assertEqual(
+                    (1, "invalid_result"), (status, envelope["error"]["code"])
+                )
+                validate(envelope, RESULT_SCHEMA)
+                self.assertEqual(envelope, self.saved(envelope))
+                [invalid] = [
+                    item
+                    for item in envelope["host_evidence"]
+                    if item["kind"] == "invalid-output"
+                ]
+                self.assertEqual(field, invalid["ref"])
+                self.assertIsNone(envelope["worker"])
+                # The malformed evidence is left out; a well-formed earlier error is the cause.
+                self.assertNotIn({"kind": 1}, envelope["host_evidence"])
+                self.assertEqual(
+                    [] if step is malformed else ["boom"],
+                    [cause["code"] for cause in envelope["error"]["causes"]],
+                )
+
+    def test_a_running_progress_file_holds_a_null_summary(self):
+        seen = []
+
+        def step(ctx):
+            seen.append(json.loads((ctx.run_dir / "status.json").read_text()))
+            return Continue()
+
+        with patch.dict(
+            commands.COMMANDS.definitions,
+            {"task-validation": command("task-validation", (step,), writes=False)},
+        ):
+            status, envelope = self.project.run("task-validation", "--task", "t1")
+        self.assertEqual(0, status, envelope)
+        [running] = seen
+        self.assertEqual(
+            ("running", None, None),
+            (running["phase"], running["status"], running["summary"]),
+        )
+
+    def test_a_run_error_names_the_modules_in_its_detail(self):
+        status, envelope = self.project.run(
+            "delivery", "--task", "t1", "--modules", "module.a"
+        )
+        self.assertEqual(1, status)
+        self.assertTrue(
+            envelope["error"]["detail"].endswith("(Modules: module.a)"),
+            envelope["error"]["detail"],
+        )
+
+    @verifies("scenario.execution.run-unrecorded", "scenario.execution.detach-failed")
+    def test_a_detached_run_that_cannot_be_recorded_or_started_leaves_nothing(self):
+        lobby = self.records / "lobby"
+        lobby.mkdir(exist_ok=True)
+        before = sorted(lobby.iterdir())
+        real = subprocess.Popen
+
+        def unstartable(argv, *arguments, **options):
+            if "concorde" in argv:
+                raise OSError(errno.EMFILE, "Too many open files")
+            return real(argv, *arguments, **options)
+
+        with patch("concorde.execution.runner.subprocess.Popen", unstartable):
+            status, announced = detach(
+                "command", "task-validation", [], cwd=self.worktree
+            )
+        self.assertEqual(1, status, announced)
+        self.assertEqual("detach_failed", announced["error"]["code"])
+        self.assertIn("could not be started", announced["error"]["detail"])
+        self.assertIsNone(announced["host_pid"])
+        self.assertEqual(before, sorted(lobby.iterdir()))
+        # A run store that cannot hold the run's folder starts no runner.
+        shutil.rmtree(lobby)
+        lobby.write_text("not a folder")
+        self.addCleanup(lambda: lobby.unlink(missing_ok=True))
+        with self.assertRaises(runner.RunUnrecorded) as raised:
+            detach("command", "task-validation", [], cwd=self.worktree)
+        self.assertEqual("run_unrecorded", raised.exception.link["code"])
+        stderr = io.StringIO()
+        with contextlib.chdir(self.worktree), contextlib.redirect_stderr(stderr):
+            self.assertEqual(
+                1, runner.run_main("command", "task-validation", ["--detach"])
+            )
+        self.assertIn("run_unrecorded", stderr.getvalue())
+
+    def test_an_input_whose_result_breaks_the_contract_is_refused(self):
+        _, first = self.project.run("task-validation", "--task", "t1")
+        saved = self.run_folder(first) / "result.json"
+        older = json.loads(saved.read_text())
+        del older["worker_runs"]
+        saved.write_text(json.dumps(older))
+        _, refused = self.project.run(
+            "understand", "--task", "t1", "--input", first["run_id"]
+        )
+        self.assertEqual(["refused", "input_not_admissible"], codes(refused["error"]))
+        self.assertIn("current run result contract", refused["error"]["detail"])
+
+    def test_the_idle_check_finds_the_unbound_runs_of_linked_worktrees(self):
+        from concorde.execution.idle import active_runs
+
+        self.assertEqual([], active_runs(self.root))
+        # A developer's own linked worktree without a binding keeps its unbound runs' locks in
+        # its own .concorde.
+        linked = self.project.base / "linked"
+        git(self.root, "worktree", "add", "-q", "--detach", str(linked))
+        self.addCleanup(git, self.root, "worktree", "remove", "--force", str(linked))
+        with (
+            runs.run_lock(runs.Store(linked / ".concorde"), "r-1", "Execution runner"),
+            runs.run_lock(self.store(), "r-2", "Execution runner"),
+        ):
+            found = active_runs(self.root)
+        self.assertEqual(2, len(found), found)
+        self.assertTrue(any("r-1" in item and str(linked) in item for item in found))
+        self.assertTrue(any("r-2" in item for item in found))
+
 
 class UnboundCheckoutTests(unittest.TestCase):
     """An unbound run works in a throwaway detached checkout of its worktree's HEAD."""
@@ -1986,6 +2260,142 @@ class UnboundCheckoutTests(unittest.TestCase):
         self.assertIn("does not ignore .claude/worktrees/unbound-", cause["detail"])
         self.assertFalse((bare / ".claude").exists())
         self.assertEqual([bare], worktrees(bare))
+
+    def sparse_library(self, *paths: str) -> Path:
+        """A vendored library submodule holding ``paths``, committed as references/lib."""
+        library = self.project.base / "lib"
+        library.mkdir()
+        for path in paths:
+            (library / path).parent.mkdir(parents=True, exist_ok=True)
+            (library / path).write_text(f"{path}\n")
+        git(library, "init", "-q")
+        git(library, "add", "-A")
+        git(
+            library, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "lib"
+        )
+        git(
+            self.root,
+            "-c",
+            "protocol.file.allow=always",
+            "submodule",
+            "add",
+            "-q",
+            str(library),
+            "references/lib",
+        )
+        self.commit("vendor lib")
+        return self.root / "references/lib"
+
+    @verifies("scenario.execution.unbound-checkout")
+    def test_a_submodule_keeps_its_sparse_mode_and_patterns(self):
+        source = self.sparse_library(
+            "docs/guide.md",
+            "docs/deep/more.md",
+            "my notes.md",
+            "other/skip.md",
+            "top.md",
+        )
+        # Cone mode: the directories git lists are read back in cone mode.
+        git(source, "sparse-checkout", "set", "--cone", "docs")
+        status, envelope = self.probe()
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        self.assertEqual(
+            ["docs/deep/more.md", "docs/guide.md", "my notes.md", "top.md"],
+            envelope["output"]["reference"],
+        )
+        # Non-cone mode with a pattern holding a space.
+        git(source, "sparse-checkout", "set", "--no-cone", "/my notes.md", "/top.md")
+        status, envelope = self.probe()
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        self.assertEqual(["my notes.md", "top.md"], envelope["output"]["reference"])
+
+    @verifies("scenario.execution.unbound-checkout")
+    def test_a_submodule_git_cannot_populate_stays_empty(self):
+        from concorde.execution import checkout as module
+
+        self.sparse_library("guide.md", "media/picture.png")
+        real = module._git
+
+        def failing(cwd, *arguments, **options):
+            done = real(cwd, *arguments, **options)
+            if arguments[:1] == ("read-tree",):
+                # Some files are already there when the population fails.
+                return subprocess.CompletedProcess(done.args, 128, "", "disk full")
+            return done
+
+        with patch.object(module, "_git", failing):
+            status, envelope = self.probe()
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        self.assertEqual([], envelope["output"]["reference"])
+        [absent] = [
+            item
+            for item in envelope["host_evidence"]
+            if item["kind"] == "submodule-absent"
+        ]
+        self.assertIn("disk full", absent["detail"])
+        self.assertIn("leaves it empty", absent["detail"])
+        self.assertEqual(1, len(worktrees(self.root / "references/lib")))
+        self.assertEqual([self.root], worktrees(self.root))
+
+    @verifies("scenario.execution.unbound-checkout")
+    def test_runtime_paths_are_linked_below_missing_directories_or_explained(self):
+        from concorde.execution.checkout import open_checkout
+
+        (self.root / ".gitignore").write_text(
+            (self.root / ".gitignore").read_text() + ".cache/\n"
+        )
+        (self.root / "tracked").mkdir()
+        (self.root / "tracked/file.txt").write_text("tracked\n")
+        self.commit("ignore the cache, track a folder")
+        (self.root / ".cache/tools/venv/bin").mkdir(parents=True)
+        opened = open_checkout(
+            self.root,
+            "r-20261004T000000-probe-0000abcd",
+            lambda root: [".cache/tools/venv", "tracked", "missing"],
+        )
+        try:
+            linked = opened.path / ".cache/tools/venv"
+            self.assertTrue(linked.is_symlink())
+            self.assertEqual(
+                os.path.realpath(self.root / ".cache/tools/venv"),
+                os.path.realpath(linked),
+            )
+            kinds = {(item["kind"], item["ref"]) for item in opened.evidence}
+            self.assertIn(("environment", ".cache/tools/venv"), kinds)
+            self.assertIn(("environment-not-linked", "tracked"), kinds)
+            self.assertNotIn("missing", {ref for _, ref in kinds})
+        finally:
+            self.assertEqual([], opened.close())
+        self.assertFalse(opened.path.exists())
+        self.assertTrue((self.root / ".cache/tools/venv/bin").is_dir())
+
+    @verifies("scenario.execution.unbound-checkout-removed")
+    def test_a_checkout_the_fallback_cannot_remove_is_named_with_what_is_left(self):
+        from concorde.execution import checkout as module
+
+        opened = module.open_checkout(self.root, "r-20261004T000000-probe-0000abce")
+        real = module._git
+
+        def refusing(cwd, *arguments, **options):
+            if arguments[:2] == ("worktree", "remove"):
+                return subprocess.CompletedProcess(arguments, 1, "", "refused")
+            return real(cwd, *arguments, **options)
+
+        with (
+            patch.object(module, "_git", refusing),
+            patch.object(module.shutil, "rmtree"),
+        ):
+            [left] = opened.close()
+        self.addCleanup(
+            git, self.root, "worktree", "remove", "--force", str(opened.path)
+        )
+        self.assertEqual(
+            ("checkout-not-removed", opened.path.as_posix()),
+            (left["kind"], left["ref"]),
+        )
+        self.assertIn("could not be deleted directly", left["detail"])
+        self.assertIn(f"git worktree remove --force {opened.path}", left["detail"])
+        self.assertNotIn("the directory was deleted", left["detail"])
 
 
 class BindingTests(unittest.TestCase):

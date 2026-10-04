@@ -381,9 +381,9 @@ def update_main(words, root=None) -> int:
     project was installed from (or ``--from``) in update mode."""
     import subprocess
 
-    from .install import refusal
+    from .install import ArgumentParser, InstallError, refusal
 
-    parser = argparse.ArgumentParser(
+    parser = ArgumentParser(
         prog="concorde update",
         description="Update the installed Concorde from the checkout its receipt names. Start no "
         "other concorde command, in any worktree of the project, until the update ends: it is "
@@ -398,7 +398,17 @@ def update_main(words, root=None) -> int:
         help="parts to install besides those the receipt names, with the parts they depend on",
     )
     parser.add_argument("--project-root", default=str(root or "."))
-    arguments = parser.parse_args(list(words))
+    try:
+        arguments = parser.parse_args(list(words))
+    except InstallError as error:
+        sys.stdout.write(
+            json.dumps(
+                {"error": refusal(error.code, str(error), actor="concorde update")},
+                indent=2,
+            )
+            + "\n"
+        )
+        return 1
     project = Path(arguments.project_root).resolve()
     try:
         receipt = json.loads((project / ".concorde/install.json").read_text())

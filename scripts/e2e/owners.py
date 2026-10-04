@@ -290,13 +290,22 @@ def phase(
         )
         run_id = new_run(records, task, known)
     released = time.time()
+    # The result is read once and judged as read: a later read may miss it while the run
+    # rewrites its progress file, which names its folder.
+    written = {}
+
+    def ended() -> bool:
+        written["result"] = result_of(records, run_id)
+        return written["result"] is not None
+
     until(
-        lambda: result_of(records, run_id) is not None,
+        ended,
         limit,
         f"run {run_id} wrote no result",
         progress=str(run_folder(records, run_id) / "status.json"),
     )
-    if refused_busy(result_of(records, run_id) or {}):
+    result = written["result"]
+    if refused_busy(result):
         # The run did no work: another run took the lock after the case released it and held it
         # past the run's wait, so there is no run end to judge.
         raise E2EError(
@@ -306,12 +315,21 @@ def phase(
             result=str(run_folder(records, run_id) / "result.json"),
         )
     if owner is not None:
-        # An owner not woken by the deadline is judged below, as a problem of the verdict.
-        observe(lambda: owner.woken(released) and owner.settled(released), wake)
+        # An owner not woken by the deadline is judged below, as a problem of the verdict; an
+        # owner that ended before it was woken stops the case.
+        observe(
+            lambda: (
+                (owner.woken(released) and owner.settled(released))
+                or owner.require_running(f"before the run of the phase {name} woke it")
+            ),
+            wake,
+        )
     time.sleep(grace)
     end = time.time()
+    # A session that ended can no longer be woken: that is no verdict but a failure of the case.
+    for session in sessions:
+        session.require_running(f"while the case observed the phase {name}")
     verdicts, problems = judge(sessions, owner, baseline, end)
-    result = result_of(records, run_id) or {}
     status = result.get("status")
     seen = []
     for session in sessions:
@@ -364,12 +382,18 @@ def owners(
     record_path = project / ".concorde/tasks" / task / "task.json"
     try:
         worktree = Path(json.loads(record_path.read_text(encoding="utf-8"))["worktree"])
-    except (OSError, ValueError, KeyError) as error:
+    except (OSError, ValueError, KeyError, TypeError) as error:
         raise E2EError(
             "no_task",
             f"{project} has no open task {task} with a worktree ({error}); prepare the project "
             "with a task first",
         ) from error
+    if not worktree.is_dir():
+        raise E2EError(
+            "no_task",
+            f"the worktree {worktree} of the task {task} of {project} does not exist; prepare "
+            "the project with a task first",
+        )
     records = records_of(worktree)
     directory = directory or project / ".concorde/runs/e2e/owners" / _stamp()
     directory.mkdir(parents=True, exist_ok=True)

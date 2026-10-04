@@ -84,12 +84,14 @@ elif args[:2] == ["task", "show"]:
 
 # A live Claude Code session: a turn per prompt, a background command run detached and, unless
 # NOTIFIES is false, notified when it ends, and a foreground command's output given as its tool
-# result; with WAKES_ALL also woken, with a notification of its own, for the end of every run.
+# result; with WAKES_ALL also woken, with a notification of its own, for the end of every run, and
+# with EXITS ended right after the turn that started a background command.
 FAKE_CLAUDE = """#!/usr/bin/env python3
 import json, re, subprocess, sys, threading, time
 from pathlib import Path
 WAKES_ALL = %(wakes_all)r
 NOTIFIES = %(notifies)r
+EXITS = %(exits)r
 RECORDS = Path(%(records)r)
 lock = threading.Lock()
 def say(event):
@@ -124,6 +126,8 @@ for line in sys.stdin:
         process = subprocess.Popen(["bash", "-c", command], stdout=subprocess.DEVNULL,
                                    start_new_session=True)
         turn("STARTED")
+        if EXITS:
+            sys.exit(0)
         if NOTIFIES:
             threading.Thread(target=notify, args=(process,), daemon=True).start()
     elif "task show" in text:
@@ -173,7 +177,11 @@ class OwnersCaseTests(unittest.TestCase):
         return path
 
     def run_case(
-        self, wakes_all: bool = False, notifies: bool = True, wake: float = 60.0
+        self,
+        wakes_all: bool = False,
+        notifies: bool = True,
+        wake: float = 60.0,
+        exits: bool = False,
     ) -> dict:
         claude = self.program(
             self.base / "claude",
@@ -181,6 +189,7 @@ class OwnersCaseTests(unittest.TestCase):
             % {
                 "wakes_all": wakes_all,
                 "notifies": notifies,
+                "exits": exits,
                 "records": str(self.records),
             },
         )
@@ -268,12 +277,36 @@ class OwnersCaseTests(unittest.TestCase):
     @verifies("scenario.e2e.owners-run-refused")
     def test_a_run_refused_for_a_busy_workspace_stops_the_case_with_an_error(self):
         self.concorde(refused=True)
-        with self.assertRaises(e2e.E2EError) as raised:
+        # A read after the first that found the result may find none, as one does while the run
+        # rewrites its progress file under load: the case must judge the result it read.
+        read = owners.result_of
+        found = set()
+
+        def once(records, run_id):
+            if run_id in found:
+                return None
+            result = read(records, run_id)
+            if result is not None:
+                found.add(run_id)
+            return result
+
+        with (
+            patch.object(owners, "result_of", once),
+            self.assertRaises(e2e.E2EError) as raised,
+        ):
             self.run_case()
         self.assertEqual("workspace_busy", raised.exception.code)
         self.assertIn("phase unowned", raised.exception.detail)
         refused = Path(raised.exception.evidence["result"])
         self.assertEqual(self.records / "lobby", refused.parent.parent)
+
+    @verifies("scenario.e2e.owners-session-ended")
+    def test_an_owner_that_ends_before_it_is_woken_stops_the_case(self):
+        with self.assertRaises(e2e.E2EError) as raised:
+            self.run_case(exits=True)
+        self.assertEqual("session_failed", raised.exception.code)
+        self.assertIn("live session claude-1 ended", raised.exception.detail)
+        self.assertIn("phase owned-by-claude", raised.exception.detail)
 
     def test_the_queued_run_waits_longer_than_the_case_holds_the_lock(self):
         self.assertEqual(1200, owners.queue_wait(owners.LIMIT_SECONDS))
@@ -300,6 +333,18 @@ class OwnersCaseTests(unittest.TestCase):
             owners.owners(self.project, task="t9")
         self.assertEqual("no_task", raised.exception.code)
         started.assert_not_called()
+        # A task record whose worktree is gone is refused the same way.
+        (self.project / ".concorde/tasks/t1/task.json").write_text(
+            json.dumps({"id": "t1", "worktree": str(self.base / "removed")})
+        )
+        with (
+            patch.object(owners, "LiveSession") as started,
+            self.assertRaises(e2e.E2EError) as raised,
+        ):
+            owners.owners(self.project, task="t1")
+        self.assertEqual("no_task", raised.exception.code)
+        self.assertIn("does not exist", raised.exception.detail)
+        started.assert_not_called()
 
     def test_the_status_listed_for_a_run_is_read_from_task_show(self):
         output = 'noise {"a": 1}\n' + json.dumps(
@@ -318,7 +363,12 @@ class LiveSessionTests(unittest.TestCase):
             claude = base / "claude"
             claude.write_text(
                 FAKE_CLAUDE
-                % {"wakes_all": False, "notifies": True, "records": directory}
+                % {
+                    "wakes_all": False,
+                    "notifies": True,
+                    "exits": False,
+                    "records": directory,
+                }
             )
             claude.chmod(0o755)
             session = live.LiveSession(

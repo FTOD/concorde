@@ -65,11 +65,15 @@ A [file transaction](../glossary.json#concept.file-transaction) SHALL write no f
 
 ### req.kernel.transaction-restored — A failed transaction restores what it wrote
 
-When a write or the final check of a file transaction fails while its process runs, the transaction SHALL restore every file it wrote, or remove every file it created, before it reports the failure.
+When a write or the final check of a file transaction fails while its process runs, the transaction SHALL attempt to restore every file it wrote, or remove every file it created, before it reports the failure.
 
-The guarantee covers only what the transaction's own process observes and assumes that its caller
-excludes every other writer of the target files, as [File transactions](contracts.md#file-transactions)
-says: a killed process restores nothing and may leave its `.concorde-write-` temporary files beside
+A restoration the operating system refuses does not stop the others, and the failure then names the
+files not restored, as [req.kernel.transaction-unrestored-named](#req.kernel.transaction-unrestored-named)
+says; otherwise every file holds its original bytes again when the failure is reported. An
+interruption the process receives, such as `KeyboardInterrupt`, is such a failure. The guarantee
+covers only what the transaction's own process observes and assumes that its caller excludes every
+other writer of the target files, as [File transactions](contracts.md#file-transactions) says: a
+killed process restores nothing and may leave its `.concorde-write-` temporary files beside
 the target files, and another writer's change during the transaction may be overwritten.
 
 ### req.kernel.transaction-unrestored-named — A refused restoration is named

@@ -49,10 +49,11 @@ which every Concorde installation of the method part registers.
 
 - GIVEN a primary worktree at commit `C` with an uncommitted change, a `.venv` Git ignores and a submodule it has checked out sparsely
 - WHEN an unbound `understand` run is started there and a main session commits a merge in the primary worktree while its worker works
-- THEN the run's steps and worker work in a detached checkout of `C`, `.claude/worktrees/unbound-<run-id>` of the primary worktree, reading `C`'s files without the uncommitted change, the primary worktree's `.venv` through a link, and the submodule with the same sparse patterns
+- THEN the run's steps and worker work in a detached checkout of `C`, `.claude/worktrees/unbound-<run-id>` of the primary worktree, reading `C`'s files without the uncommitted change, the primary worktree's `.venv` through a link, and the submodule with the same sparse patterns, in the same cone or non-cone mode
 - AND the worker's audit of the checkout is clean, and its model is the one `C`'s committed [worker configuration](../glossary.json#concept.worker-configuration) chooses, not an uncommitted change of it
 - AND the result is `ok`, names `C` as `commit`, has `checkout` evidence and is saved in the primary worktree's `.concorde/unbound/`
 - AND the checkout is gone once the result is written, and the primary worktree keeps its uncommitted change, its `.venv` and the merge
+- BUT a submodule Git cannot populate is left empty with `submodule-absent` evidence, and a runtime path Git does not ignore is not linked, with `environment-not-linked` evidence
 
 ### scenario.execution.unbound-checkout-removed — The checkout is removed when a step raises
 
@@ -60,6 +61,7 @@ which every Concorde installation of the method part registers.
 - WHEN a step of an unbound run started there raises an error
 - THEN the result is `failed` with `host_error`, names `C` as `commit` and has `checkout` evidence
 - AND the checkout is gone once the result is written, and the repository lists exactly the worktrees it listed before the run, the task worktree among them
+- BUT a checkout that neither Git nor the direct removal could delete is named by `checkout-not-removed` evidence saying what is left and how to remove it, and the result's status is unchanged
 
 ### scenario.execution.unbound-no-commit — A worktree without a commit refuses an unbound run
 
@@ -220,6 +222,7 @@ which every Concorde installation of the method part registers.
 - WHEN a run is started with `--detach` and its runner writes no run progress file before it ends or the announcement wait runs out
 - THEN the command ends the runner and exits with status 1, printing a `detach_failed` link that says no step ran
 - AND nothing of the run remains: no lobby folder, no node, no result and no run lock file
+- AND a runner process the command cannot start is reported the same way, with nothing of the run left
 
 ### scenario.execution.run-unrecorded — A run whose first records cannot be created runs no step
 
@@ -228,6 +231,7 @@ which every Concorde installation of the method part registers.
 - THEN no step runs, no result is written and nothing is printed on standard output
 - AND the command exits with status 1, its `run_unrecorded` link on standard error with the `Execution (run store)` link of the refusal as its cause
 - AND no run lock is left and the workspace lock is free
+- AND a run started there with `--detach` whose run store refuses its folder starts no runner and ends the same way
 
 ### scenario.execution.result-unsaved — A result that cannot be saved is printed and the run is lost
 
@@ -251,6 +255,7 @@ which every Concorde installation of the method part registers.
 - THEN its running step ends every worker process it started through the worker harness
 - AND the result has status `failed` with `cancelled` evidence and is written and printed
 - AND the result's `worker_runs` and its `cancelled` link name the worker run, whose record ends `interrupted` and whose progress file is `finished`
+- BUT a signal that arrives while the result is composed or written changes nothing: the run finishes as composed and its result is written
 
 ### scenario.execution.inputs — An earlier result is admitted as material of the run
 

@@ -6,7 +6,8 @@
 // "execute": {"cwd": <dir>, "concorde": <command>} every agent does what its prompt asks in that
 // directory and returns what came back: a step agent's call of the project MCP server's
 // `workflow_step` is played by the command that tool runs, `<concorde> workflow step --json
-// <request> --wait <wait>` (`concorde` defaults to the script's args.concorde), and the report
+// <request> --wait <wait>`, run without a shell (`concorde` defaults to the script's
+// args.concorde, then to .concorde/bin/concorde), and the report
 // agent runs the command its prompt names, as it would with its Bash tool. Standard output:
 // {"meta": <Claude meta>, "calls": [{"key", "request", "tool", "arguments" | "lost", "options",
 //  "prompt"}], "notes": [...], "result": <what the script returned>, "error": <message or null>}.
@@ -64,13 +65,12 @@ function executed(prompt) {
   )
 }
 
-// Plays the step tool: runs the step command it runs and answers what that printed, or null.
+// Plays the step tool: runs the step command it runs, without a shell so that no path is split,
+// and answers what that printed, or null.
 function stepped(values) {
   const concorde = input.execute.concorde || (input.args && input.args.concorde) || ".concorde/bin/concorde"
-  const command =
-    concorde + " workflow step --json '" + JSON.stringify(values.request).replace(/'/g, "'\\''") +
-    "' --wait " + values.wait
-  return parsed(spawnSync("/bin/sh", ["-c", command], { cwd: input.execute.cwd, encoding: "utf-8" }))
+  const argv = ["workflow", "step", "--json", JSON.stringify(values.request), "--wait", String(values.wait)]
+  return parsed(spawnSync(concorde, argv, { cwd: input.execute.cwd, encoding: "utf-8" }))
 }
 
 const match = source.match(/^export const meta = (\{[\s\S]*?\n\})\n/)

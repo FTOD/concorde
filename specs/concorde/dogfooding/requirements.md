@@ -15,8 +15,8 @@ worktree of its Git repository, on a branch, with no uncommitted or untracked ch
 
 A refusal of a develop install, or of an update of one, by
 [req.dogfooding.clean-primary-source](#req.dogfooding.clean-primary-source) SHALL name its reason:
-not a worktree's root, a linked worktree (with the primary worktree's path), a detached `HEAD`, or
-the uncommitted paths.
+not a worktree's root, a linked worktree (with the primary worktree's path, or, where Git records
+no such path, the repository's Git directory), a detached `HEAD`, or the uncommitted paths.
 
 A refusal lists at most ten uncommitted paths and counts the rest.
 

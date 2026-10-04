@@ -153,8 +153,9 @@ differs.
 
 A develop install is refused, writing nothing, when the checkout is not a Git worktree's root
 (`develop_source_not_repository`), is a linked worktree (`develop_source_not_primary`, naming the
-primary worktree), has a detached `HEAD` (`develop_source_detached`) or has uncommitted changes
-(`develop_source_dirty`, naming them)
+primary worktree, or the Git directory where Git records no path for it), has a detached `HEAD` (`develop_source_detached`) or has uncommitted changes
+(`develop_source_dirty`, naming them), and when Git cannot answer these questions about it
+(`develop_source_unreadable`, with Git's own message)
 ([requirements](requirements.md#req.dogfooding.refusal-names-reason)). Turning a develop install
 into a normal one, or the reverse, is a new install with or without `--develop`.
 
