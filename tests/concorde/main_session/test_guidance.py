@@ -81,7 +81,7 @@ class GuidanceTests(unittest.TestCase):
         )
         self.assertIn("a second is refused with `workspace_busy`", self.skill)
         self.assertIn(
-            "`concorde task-validation` shows what would block; `concorde delivery`",
+            "`concorde task-validation` shows what would block. `concorde delivery`",
             self.session,
         )
         self.assertIn(
@@ -244,36 +244,35 @@ class GuidanceTests(unittest.TestCase):
             self.session,
         )
         self.assertIn(
-            "give it the least content its format needs to be valid", self.session
+            "Give it the least content its format needs to be valid", self.session
         )
         self.assertIn("`entries` of the right realization", self.session)
-        self.assertIn("commit both together", self.session)
+        self.assertIn("Commit both together", self.session)
         self.assertIn(
-            "Whoever works in the workspace (the task session, where the coordination part "
-            "is installed) prepares the workers' environment",
+            "Whoever works in the workspace prepares the workers' environment. Where the "
+            "coordination part is installed, this is the task session",
             self.skill,
         )
-        self.assertIn("When the work needs a new implementation file", self.session)
+        self.assertIn("The work may need a new implementation file", self.session)
         self.assertIn(
-            "any other new implementation file the work needs is created first",
+            "to fill any other new implementation file the work needs",
             self.skill,
         )
         # A new Spec document is Specification's to create, never a session's.
         self.assertIn(
-            "A new Spec document is not such a file: never create one for a worker, since "
-            "`specify` proposes it and the Operation creates it and registers it in its "
-            "Module's `owns`",
+            "A new Spec document is not such a file. Never create one for a worker. "
+            "`specify` proposes it",
             self.session,
         )
         self.assertIn(
-            "A new Spec document is not prepared this way: `specify` proposes it and the "
-            "Operation creates it and registers it in its Module's `owns`",
+            "Whoever works in the workspace does not prepare a new Spec document this way. "
+            "`specify` proposes it",
             self.skill,
         )
         self.assertIn("creates the delivery commit on the task branch", self.session)
         self.assertIn(
-            "creates the delivery commit on the workspace's branch, a task branch where the "
-            "coordination part is installed",
+            "creates the delivery commit on the workspace's branch. Where the coordination "
+            "part is installed, this is a task branch",
             self.skill,
         )
         for text in (self.session, self.skill):
@@ -292,18 +291,20 @@ class GuidanceTests(unittest.TestCase):
         )
         self.assertIn("until the verdict is `accepted`", session)
         self.assertIn(
-            "A finding the reviewer maintains after you rejected it, and that you still "
-            "reject, is a disagreement: do not run again on it, escalate it",
+            "reviewer maintains a finding after your rejection, and you still reject it, it is "
+            "a disagreement",
             session,
         )
+        self.assertIn("- Do not run again on it.", session)
+        self.assertIn("- Escalate it with both positions.", session)
         self.assertIn(
-            "A maintained finding whose renewed reasoning convinces you is no disagreement: "
-            "accept it and revise the plan",
+            "A maintained finding whose renewed reasoning convinces you is no disagreement. "
+            "Accept it and revise the plan",
             session,
         )
         self.assertIn("concorde run plan_review --plan <file>", self.skill)
         self.assertIn(
-            "optionally `plan_review` of the plan written for the work", self.skill
+            "Optionally run `plan_review` of the plan written for the work", self.skill
         )
         self.assertIn("`reviewer` for `plan_review`", self.skill)
 

@@ -52,13 +52,10 @@ Whoever works in the workspace does not prepare a new Spec document this way. `s
 it. The Operation creates it. The Operation registers it in its Module's `owns`.
 
 `code_review` judges a task's change since its base. With `--scope module` it is a **Module
-review** instead. One reviewer per named Module judges that Module's whole code and tests against
+review** instead: one reviewer per named Module judges that Module's whole code and tests against
 all of its Specs. The reviewer may challenge a Spec requirement it finds unreasonable or
-unrealizable. Use it for a whole-Module check in these cases:
-
-- After a large change.
-- On code written before its Specs or by an earlier version.
-- On a project just adopted with the brownfield workflow.
+unrealizable. Use it for a whole-Module check after a large change, on code written before its
+Specs or by an earlier version, or on a project just adopted with the brownfield workflow.
 
 When run unbound in the primary worktree, it needs only `--modules`. Where the issues part is
 installed, the reviews (`spec_review`, `spec_panel`, `code_review`) report their findings as Issues,
@@ -66,9 +63,9 @@ as "Issues" says. Otherwise, they keep their findings in their run result, where
 
 **Brownfield.** Concorde works Spec first. Only when Concorde was just installed and initialized in
 a project whose code came before its Specs, describe that code with the `brownfield` workflow.
-Run it with `module` set to the root Module (or to the Module to split). Run it in a workspace bound
-to that Module. Where the coordination part is installed, open a task bound to it. In that task,
-have its task session run the workflow. The workflow takes these steps:
+Run it with `module` set to the root Module (or to the Module to split) in a workspace bound to that
+Module. Where the coordination part is installed, open a task bound to it and have its task session
+run the workflow. The workflow takes these steps:
 
 - Survey the code.
 - Scaffold child Modules.
