@@ -8,7 +8,6 @@ Two kinds of run work on a workspace. A workspace is a worktree whose `.concorde
 binds it, such as a task worktree. An **Operation** (`concorde run <operation>`) launches AI workers
 under a grant. An **execution command** is deterministic. It launches none. Where the method part
 is installed, Method's execution commands include these examples:
-
 - `concorde task-validation`
 - `concorde delivery`
 - `concorde scaffold`
