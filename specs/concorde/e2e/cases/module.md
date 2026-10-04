@@ -3,7 +3,7 @@
 ## Purpose
 
 SWE-bench cases test Concorde's whole change flow on real issues: a case is prepared at its base
-commit, adopted, its Specs repaired, its issue worked through Concorde as a
+commit, adopted, its [Specs](../../glossary.json#concept.spec) repaired, its issue worked through Concorde as a
 [main agent](../../glossary.json#concept.main-agent) would, and the merged change graded with the
 case's own tests, the way SWE-bench grades it. This [Module](../../glossary.json#concept.module) holds the
 two steps that exist only for cases, repairing the adopted Specs in one bounded round and grading a

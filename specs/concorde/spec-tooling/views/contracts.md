@@ -197,10 +197,10 @@ or builds; a missing file, invalid JSON or a broken rule fails with an error nam
 | --- | --- |
 | `schema_version` | Exactly `1`. |
 | `title` | Nonempty; site and navigation title. |
-| `url` | Absolute `http://` or `https://` URL. |
+| `url` | Absolute `http://` or `https://` URL with a host. |
 | `baseUrl` | Starts and ends with `/`. |
 | `organizationName`, `projectName` | Nonempty. |
-| `repository` | Optional absolute HTTP(S) URL; adds a navigation link, an icon for `github.com`, otherwise a "Source" label. |
+| `repository` | Optional absolute HTTP(S) URL with a host; adds a navigation link, an icon for `github.com`, otherwise a "Source" label. |
 | `tagline` | Optional nonempty string. |
 | `userDocs` | Optional object, below; without it the root redirects to the root Module's entry. |
 | `customDocs` | Optional array of collections, below. |
@@ -235,7 +235,7 @@ Commands run from `docsite/` with the dependencies installed from `package-lock.
 
 | Command | Effect |
 | --- | --- |
-| `npm run validate` | Loads the project and renders every page in memory; reports the number of Modules and documents or fails. Writes nothing. |
+| `npm run validate` | Loads the project and renders every page in memory, diagrams included; reports the number of Modules and documents or fails. Writes nothing. |
 | `npm run start` | Stages the Specs and starts the Docusaurus preview; stages and restarts it whenever a registered input changes, until interrupted. |
 | `npm run build` | Stages, builds the candidate, validates it and promotes it to `docsite/build/`. |
 | `npm test` | Runs the publisher's tests. |

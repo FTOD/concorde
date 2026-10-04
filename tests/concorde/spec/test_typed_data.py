@@ -177,6 +177,9 @@ class TypedDataTests(unittest.TestCase):
             (5, {"minLength": 1, "properties": {}}),
             ({"a": "b"}, True),
             (1.0, {"enum": [1, 2]}),
+            ([1], {"const": [1.0]}),
+            ([1, 2], {"type": "array", "uniqueItems": True}),
+            (12, {"anyOf": [{"type": "integer"}], "minimum": 10}),
         ]
         refused = [
             ("ab", {"pattern": "^b"}),
@@ -189,6 +192,11 @@ class TypedDataTests(unittest.TestCase):
             (" ", {"type": "string", "minLength": 1}),
             (True, {"enum": [1, 2]}),
             (1, {"const": True}),
+            ([1], {"const": [True]}),
+            ({"a": [True]}, {"enum": [{"a": [1]}]}),
+            ([1, 1.0], {"type": "array", "uniqueItems": True}),
+            ([{"a": 1}, {"a": 1.0}], {"type": "array", "uniqueItems": True}),
+            (1, {"anyOf": [{"type": "integer"}], "minimum": 10}),
             ({"a": 1}, {"additionalProperties": False}),
             ("x", False),
         ]
@@ -202,6 +210,27 @@ class TypedDataTests(unittest.TestCase):
             ):
                 check_schema(data, schema)
             self.assertEqual("invalid_field", raised.exception.code)
+
+    def test_the_contract_subset_compares_json_values(self):
+        from concorde.spec.schema import ContractError, validate
+
+        for data, schema in (
+            (1, {"const": 1.0}),
+            (2.0, {"enum": [1, 2]}),
+            ([1, 2], {"type": "array", "uniqueItems": True}),
+        ):
+            with self.subTest(data=data, schema=schema):
+                validate(data, schema)
+        for data, schema in (
+            ([1], {"const": [True]}),
+            (True, {"enum": [1]}),
+            ([1, 1.0], {"type": "array", "uniqueItems": True}),
+        ):
+            with (
+                self.subTest(data=data, schema=schema),
+                self.assertRaises(ContractError),
+            ):
+                validate(data, schema)
 
     @verifies("scenario.spec.typed-register-conflict")
     def test_a_second_registration_must_be_identical(self):
@@ -237,10 +266,16 @@ class TypedDataTests(unittest.TestCase):
             self.assertEqual("invalid_input", raised.exception.code)
         # A property may be named like a keyword.
         register("concorde-fixture-keyword-names", 1, obj({"oneOf": STRING}))
+        # A property named $ref and literal data holding $ref are no type references.
+        register(
+            "concorde-fixture-ref-names",
+            1,
+            obj({"$ref": STRING, "kind": {"const": {"$ref": "x"}}}),
+        )
 
     @verifies("scenario.spec.typed-value-reject")
     def test_json_rejects_duplicate_fields_and_non_finite_numbers(self):
-        for value in ('{"x":1,"x":2}', '{"x":NaN}', '{"x":Infinity}'):
+        for value in ('{"x":1,"x":2}', '{"x":NaN}', '{"x":Infinity}', '{"x":1e999}'):
             with self.subTest(value=value), self.assertRaises(TypedDataError):
                 decode(value)
 

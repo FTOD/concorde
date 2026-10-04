@@ -354,17 +354,41 @@ it("lists user documents first, then the Module documents tab, then custom docs,
   // The root redirect page steps aside so the user documents' root page is the home page.
   expect(config.presets[0][1].pages.exclude).toContain("index.tsx");
   expect(
-    config.plugins.find((plugin: any) => plugin?.[1]?.id === "user")[1],
+    config.plugins.find((plugin: any) => plugin?.[1]?.id === "user_docs")[1],
   ).toMatchObject({ path: "../docs", routeBasePath: "/" });
+});
+
+// verifies: scenario.views.user-docs
+it("gives user documents and a custom collection named user distinct docs instances", () => {
+  put("docs/README.md", "# Bank\n");
+  put("docsite/user/index.md", "---\nslug: /\n---\n# User\n");
+  put(
+    "docsite/site.json",
+    JSON.stringify({
+      ...readJson(project, "docsite/site.json"),
+      userDocs: { path: "../docs" },
+      customDocs: [
+        { id: "user", label: "User", path: "user", routeBasePath: "user" },
+      ],
+    }),
+  );
+  const ids = siteConfiguration()
+    .plugins.filter(
+      (plugin: any) => plugin?.[0] === "@docusaurus/plugin-content-docs",
+    )
+    .map((plugin: any) => plugin[1].id);
+  expect(ids).toContain("user");
+  expect(ids).toContain(userDocs.USER_DOCS_PLUGIN_ID);
+  expect(new Set(ids).size).toBe(ids.length);
 });
 
 // verifies: scenario.views.publish-homepage-default
 it("keeps the root redirect page when no user documents are configured", () => {
   const config = siteConfiguration();
   expect(config.presets[0][1].pages).toEqual({});
-  expect(config.plugins.some((plugin: any) => plugin?.[1]?.id === "user")).toBe(
-    false,
-  );
+  expect(
+    config.plugins.some((plugin: any) => plugin?.[1]?.id === "user_docs"),
+  ).toBe(false);
 });
 
 // verifies: scenario.views.user-docs-refused
@@ -419,6 +443,28 @@ it.each([
   [
     "a registered Spec document",
     () => ({ path: "../specs", routeBasePath: "guides" }),
+    /customDocs guides includes registered Spec/,
+  ],
+  [
+    "a symbolic link to a registered Spec document",
+    () => {
+      put("docsite/guides/index.md", "# Guides\n");
+      const page = load().pages[0].sourcePath;
+      symlinkSync(
+        resolve(root, page),
+        resolve(root, "docsite/guides/linked.md"),
+      );
+      return { path: "guides", routeBasePath: "guides" };
+    },
+    /customDocs guides includes registered Spec/,
+  ],
+  [
+    "a symbolic link to a directory holding a registered Spec document",
+    () => {
+      put("docsite/guides/index.md", "# Guides\n");
+      symlinkSync(resolve(root, "specs"), resolve(root, "docsite/guides/all"));
+      return { path: "guides", routeBasePath: "guides" };
+    },
     /customDocs guides includes registered Spec/,
   ],
   [

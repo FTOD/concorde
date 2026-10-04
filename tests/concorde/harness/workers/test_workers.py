@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
+import shlex
+import signal
 import shutil
 import subprocess
 import sys
@@ -26,6 +29,7 @@ from concorde.worker_harness.settings import (
 )
 from concorde.worker_harness.workers import (
     WORKER_RESULT_SCHEMA,
+    Refusal,
     RoundValidation,
     WorkerRequest,
     run_worker,
@@ -456,6 +460,104 @@ class SettingsTests(unittest.TestCase):
             json.loads(broken.stdout)["hookSpecificOutput"]["permissionDecision"],
         )
 
+    @verifies("scenario.workers.write-through-link")
+    def test_the_write_hook_judges_a_link_by_its_target(self):
+        root, a = self.project.root, self.project.root / "src/a"
+        data = json.loads(
+            write_hook_source(root, self.project.grant)
+            .split("GRANT: dict = ", 1)[1]
+            .split("\n", 1)[0]
+        )
+        (a / "to-spec.md").symlink_to(root / "specs/a/module.md")
+        (a / "to-outside.py").symlink_to(self.project.base / "elsewhere.py")
+        (a / "to-new.py").symlink_to(root / "src/created.py")
+        (root / "checks/to-calc.py").symlink_to(a / "calc.py")
+
+        def decide(path: Path) -> str | None:
+            return write_hook.decide({"tool_input": {"file_path": str(path)}}, data)
+
+        # A link at a rw path writes only where its target is writable.
+        self.assertIn(
+            f"specs/a/module.md (the target of the symbolic link {a}/to-spec.md) is "
+            "read-only",
+            decide(a / "to-spec.md"),
+        )
+        self.assertIn(
+            f"is a symbolic link to {self.project.base}/elsewhere.py, outside the task "
+            "worktree",
+            decide(a / "to-outside.py"),
+        )
+        # A link whose target does not exist yet is judged by the file it would create.
+        self.assertIn(
+            "src/created.py (the target of the symbolic link",
+            decide(a / "to-new.py"),
+        )
+        # A link outside rw writes its target when that target is rw.
+        self.assertIsNone(decide(root / "checks/to-calc.py"))
+
+    @verifies("scenario.workers.most-specific-entry")
+    def test_a_file_listed_apart_below_a_rw_directory_keeps_its_level(self):
+        root = self.project.root
+        grant_value = {
+            **self.project.grant,
+            "entries": [
+                *self.project.grant["entries"],
+                {"path": "src/a/calc.py", "level": "ro"},
+            ],
+        }
+        rules = deny_rules(root, grant_value, self.run, home=self.project.home)
+        self.assertIn(f"Edit(/{root}/src/a/calc.py)", rules)
+        self.assertNotIn(f"Read(/{root}/src/a/calc.py)", rules)
+        data = json.loads(
+            write_hook_source(root, grant_value)
+            .split("GRANT: dict = ", 1)[1]
+            .split("\n", 1)[0]
+        )
+        self.assertIn(
+            "src/a/calc.py is read-only",
+            write_hook.decide(
+                {"tool_input": {"file_path": f"{root}/src/a/calc.py"}}, data
+            ),
+        )
+        self.assertIsNone(
+            write_hook.decide(
+                {"tool_input": {"file_path": f"{root}/src/a/new.py"}}, data
+            )
+        )
+
+    def test_a_rw_directory_below_a_ro_directory_stays_writable(self):
+        grant_value = {
+            **self.project.grant,
+            "entries": [
+                {"path": "src/", "level": "ro"},
+                {"path": "src/a/", "level": "rw"},
+            ],
+        }
+        rules = deny_rules(
+            self.project.root, grant_value, self.run, home=self.project.home
+        )
+        root = self.project.root.as_posix()
+        self.assertNotIn(f"Edit(/{root}/src/**)", rules)
+        self.assertFalse(any(rule.startswith(f"Edit(/{root}/src/a") for rule in rules))
+        self.assertIn(f"Edit(/{root}/src/new.py)", rules)
+        self.assertIn(f"Edit(/{root}/src/bmod/**)", rules)
+        self.assertNotIn(f"Read(/{root}/src/new.py)", rules)
+
+    def test_the_write_hook_command_quotes_its_paths(self):
+        python = "/opt/my python/it's/python3"
+        settings = worker_settings(
+            self.project.root,
+            self.project.grant,
+            self.run,
+            python=python,
+            home=self.project.home,
+        )
+        command = settings["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
+        self.assertEqual(
+            [python, (self.run.control / "write_hook.py").as_posix()],
+            shlex.split(command),
+        )
+
     @verifies("scenario.workers.malformed-grant-refused")
     def test_a_malformed_grant_raises_a_detailed_settings_error(self):
         entries = self.project.grant["entries"]
@@ -466,6 +568,12 @@ class SettingsTests(unittest.TestCase):
             ([*entries, {"path": "/etc/passwd", "level": "ro"}], "is absolute"),
             ([*entries, {"path": "src/../../x", "level": "ro"}], "'..'"),
             ([*entries, {"path": "src/x.py", "level": "write"}], "level 'write'"),
+            ([*entries, {"path": "src/x.py", "level": ["rw"]}], "level ['rw']"),
+            (
+                [*entries, {"path": "./src/x.py", "level": "ro"}],
+                "not in canonical form",
+            ),
+            ([*entries, {"path": "src//x.py", "level": "ro"}], "not in canonical form"),
             (
                 [*entries, {"path": "src/x.py", "level": "ro", "why": "x"}],
                 "field(s) why",
@@ -837,6 +945,128 @@ class WorkerRunTests(unittest.TestCase):
         self.assertEqual(["src/a/calc.py"], audit["changed"])
         self.assertEqual(["src/a/calc.py (deleted)"], audit["violations"])
 
+    @verifies("scenario.workers.audit-deleted")
+    def test_deleting_a_file_untracked_before_the_run_is_a_violation(self):
+        (self.root / "src/a/draft.py").write_text("DRAFT = 1\n")
+        record = self.project.run(
+            [{"removes": [f"{self.root}/src/a/draft.py"]}], check_modules=None
+        )
+        self.assertEqual("audit_violation", record["error"]["code"])
+        self.assertEqual(
+            ["src/a/draft.py (deleted)"], record["rounds"][0]["audit"]["violations"]
+        )
+
+    def test_a_mode_change_of_a_file_changed_before_the_run_is_observed(self):
+        (self.root / "src/bmod/secret.py").write_text("SECRET = 2\n")
+        record = self.project.run(
+            [{"chmods": {f"{self.root}/src/bmod/secret.py": "755"}}],
+            check_modules=None,
+        )
+        self.assertEqual("audit_violation", record["error"]["code"])
+        self.assertEqual(
+            ["src/bmod/secret.py"], record["rounds"][0]["audit"]["violations"]
+        )
+
+    def test_a_switch_to_another_branch_at_the_same_commit_is_a_violation(self):
+        record = self.project.run(
+            [{"commands": [["git", "-C", str(self.root), "switch", "-q", "-c", "x"]]}],
+            check_modules=None,
+        )
+        self.assertEqual("audit_violation", record["error"]["code"])
+        self.assertIn("HEAD", record["rounds"][0]["audit"]["violations"])
+
+    @verifies("scenario.workers.most-specific-entry")
+    def test_the_audit_and_deletions_honour_a_file_listed_apart(self):
+        self.project.grant["entries"].append({"path": "src/a/calc.py", "level": "ro"})
+        written = self.project.run(
+            [{"writes": {f"{self.root}/src/a/calc.py": "changed\n"}}],
+            check_modules=None,
+        )
+        self.assertEqual("audit_violation", written["error"]["code"])
+        self.assertEqual(["src/a/calc.py"], written["rounds"][0]["audit"]["violations"])
+        git(self.root, "checkout", "--", "src/a/calc.py")
+        proposed = self.project.run(
+            [{"result": {"proposed_deletions": ["src/a/calc.py"]}}],
+            check_modules=None,
+        )
+        self.assertEqual(["src/a/calc.py"], proposed["deletions_refused"])
+        self.assertTrue((self.root / "src/a/calc.py").exists())
+
+    @verifies("scenario.workers.deletion-through-link-refused")
+    def test_a_proposed_deletion_through_a_directory_link_is_refused(self):
+        outside = self.project.base / "outside"
+        outside.mkdir()
+        (outside / "kept.txt").write_text("kept\n")
+        (self.root / "src/a/to-specs").symlink_to(self.root / "specs/a")
+        (self.root / "src/a/to-outside").symlink_to(outside)
+        (self.root / "src/a/to-calc.py").symlink_to(self.root / "src/a/calc.py")
+        record = self.project.run(
+            [
+                {
+                    "result": {
+                        "proposed_deletions": [
+                            "src/a/to-specs/module.md",
+                            "src/a/to-outside/kept.txt",
+                            "src/a/to-calc.py",
+                        ]
+                    }
+                }
+            ],
+            check_modules=None,
+        )
+        self.assertEqual("ok", record["status"], record["error"])
+        self.assertEqual(
+            ["src/a/to-specs/module.md", "src/a/to-outside/kept.txt"],
+            record["deletions_refused"],
+        )
+        self.assertTrue((self.root / "specs/a/module.md").exists())
+        self.assertTrue((outside / "kept.txt").exists())
+        # A final link is removed itself, never its target.
+        self.assertEqual(["src/a/to-calc.py"], record["deleted"])
+        self.assertFalse(os.path.lexists(self.root / "src/a/to-calc.py"))
+        self.assertTrue((self.root / "src/a/calc.py").exists())
+
+    @verifies("scenario.workers.deletions-whatever-the-outcome")
+    def test_proposed_deletions_follow_a_clean_last_round_whatever_its_outcome(self):
+        def failing(_worktree, _folder, _result):
+            return RoundValidation(
+                repair="still broken",
+                failure=Refusal("checks_failed", "the check still fails"),
+            )
+
+        def violating(_worktree, _folder, _result):
+            return RoundValidation(violation=Refusal("audit_violation", "not allowed"))
+
+        for validation, code, deleted in (
+            (failing, "checks_failed", True),
+            (violating, "audit_violation", False),
+        ):
+            with self.subTest(code=code):
+                (self.root / "src/a/old.py").write_text("OLD = 1\n")
+                record = self.project.run(
+                    [{"result": {"proposed_deletions": ["src/a/old.py"]}}],
+                    check_modules=None,
+                    round_validation=validation,
+                    rounds=0,
+                )
+                self.assertEqual(code, record["error"]["code"])
+                self.assertEqual(deleted, not (self.root / "src/a/old.py").exists())
+                self.assertEqual(["src/a/old.py"] if deleted else [], record["deleted"])
+
+    def test_a_result_returned_before_a_process_failure_is_kept(self):
+        for step, code in (
+            ({"envelope": {"subtype": "error_max_turns"}}, "worker_limit_reached"),
+            ({"linger": 30}, "worker_timeout"),
+        ):
+            with self.subTest(code=code):
+                record = self.project.run(
+                    [{**step, "result": {"summary": "kept"}}],
+                    check_modules=None,
+                    timeout=3,
+                )
+                self.assertEqual(code, record["error"]["code"])
+                self.assertEqual("kept", record["worker_result"]["summary"])
+
     @verifies("scenario.workers.proposed-deletion")
     def test_the_host_performs_proposed_deletions(self):
         (self.root / "src/a/old.py").write_text("OLD = 1\n")
@@ -1069,7 +1299,7 @@ class WorkerRunTests(unittest.TestCase):
             self.assertTrue((run / name).is_file(), name)
         node = json.loads((run / "trace.json").read_text())
         self.assertEqual(
-            ("worker-run", "ok", "concorde-worker-run-trace", 4, 2),
+            ("worker-run", "ok", "concorde-worker-run-trace", 5, 2),
             (
                 node["kind"],
                 node["status"],
@@ -1224,6 +1454,153 @@ class WorkerRunTests(unittest.TestCase):
         self.assertIsNotNone(record["ended_at"])
         status = json.loads((directory / "status.json").read_text())
         self.assertEqual(("finished", "failed"), (status["phase"], status["status"]))
+
+    @verifies("scenario.workers.interrupted-run")
+    def test_an_interrupted_round_keeps_the_transcript_of_its_session(self):
+        class Interrupt(BaseException):
+            pass
+
+        def interrupt(_signal, _frame):
+            raise Interrupt("SIGALRM")
+
+        started = []
+        previous = signal.signal(signal.SIGALRM, interrupt)
+        try:
+            signal.alarm(2)
+            with self.assertRaises(Interrupt):
+                self.project.run(
+                    [{"early_session": True, "sleep": 30}],
+                    check_modules=None,
+                    started=started.append,
+                )
+        finally:
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, previous)
+        [run_id] = started
+        record = worker_runs.read_record(self.project.trace, run_id)
+        self.assertEqual("interrupted", record["error"]["code"])
+        self.assertIsNotNone(record["transcript"])
+        self.assertTrue(Path(record["transcript"]).is_file())
+
+    @verifies("scenario.workers.cleanup-failed")
+    def test_a_runtime_directory_left_behind_fails_the_run(self):
+        keeping = worker_runs.remove_runtime
+
+        def leaving(paths):
+            keeping(paths)
+            return f"the runtime directory {paths.root} could not be removed: busy"
+
+        with patch("concorde.worker_harness.workers.remove_runtime", leaving):
+            ok = self.project.run([{}], check_modules=None)
+            blocked = self.project.run(
+                [{"result": {"status": "blocked"}}], check_modules=None
+            )
+        self.assertEqual("failed", ok["status"])
+        self.assertEqual("cleanup_failed", ok["error"]["code"])
+        self.assertEqual("environment", ok["error"]["unhandled"]["reason"])
+        self.assertIn("could not be removed: busy", ok["error"]["detail"])
+        self.assertEqual([], ok["error"]["causes"])
+        # The link the run would otherwise have ended with is kept as its cause.
+        self.assertEqual("cleanup_failed", blocked["error"]["code"])
+        [cause] = blocked["error"]["causes"]
+        self.assertEqual("worker_blocked", cause["code"])
+
+    @verifies("scenario.workers.cleanup-failed")
+    def test_a_transcript_that_cannot_be_kept_fails_the_run(self):
+        copy = shutil.copyfile
+
+        def refuse(source, target, **options):
+            if Path(target).name == "transcript.jsonl":
+                raise OSError(28, "No space left on device")
+            return copy(source, target, **options)
+
+        with patch("concorde.worker_harness.workers.shutil.copyfile", refuse):
+            record = self.project.run([{}], check_modules=None)
+        self.assertEqual("cleanup_failed", record["error"]["code"])
+        self.assertIn("could not be kept", record["error"]["detail"])
+        self.assertIn("No space left on device", record["error"]["detail"])
+        self.assertIsNone(record["transcript"])
+        stored = worker_runs.read_record(self.project.trace, record["run_id"])
+        self.assertIsNone(stored["transcript"])
+
+    def test_the_runtime_directory_goes_even_when_the_worker_locked_it(self):
+        _, paths = worker_runs.create_run(self.project.trace)
+        cache = paths.home / ".cache/tool"
+        cache.mkdir(parents=True)
+        (cache / "entry").write_text("x")
+        (paths.config / "credentials.json").write_text("{}")
+        cache.chmod(0o500)
+        (paths.home / ".cache").chmod(0o000)
+        self.assertIsNone(worker_runs.remove_runtime(paths))
+        self.assertFalse(paths.root.exists())
+
+    @verifies("scenario.workers.malformed-grant-refused")
+    def test_a_grant_refused_before_its_node_is_written_still_ends(self):
+        self.project.grant["context_identity"] = 5
+        record = self.project.run([{}])
+        self.assertEqual("grant_malformed", record["error"]["code"])
+        self.assertIn("context identity is not a string", record["error"]["detail"])
+        self.assertIsNone(record["tools"])
+        self.assertFalse(Path(record["runtime_directory"]).exists())
+        stored = worker_runs.read_record(self.project.trace, record["run_id"])
+        self.assertEqual("failed", stored["status"])
+        self.assertIsNone(stored["tools"])
+
+    def test_a_failing_started_callback_still_ends_the_run(self):
+        started = []
+
+        def refuse(run_id):
+            started.append(run_id)
+            raise RuntimeError("no observer")
+
+        with self.assertRaises(RuntimeError):
+            self.project.run([{}], check_modules=None, started=refuse)
+        [run_id] = started
+        record = worker_runs.read_record(self.project.trace, run_id)
+        self.assertEqual("interrupted", record["error"]["code"])
+        kept = self.project.runtime({"run_id": run_id})
+        self.assertFalse((Path("/tmp") / kept.name).exists())
+
+    @verifies("scenario.workers.trace-failure-reported")
+    def test_a_refused_trace_write_is_reported_never_silent(self):
+        from concorde.kernel.tracing import node as trace_node
+
+        write = trace_node.write
+
+        def refusing(folder, record):
+            # Every write of the first round's node is refused.
+            if Path(folder).parent.name == "rounds" and Path(folder).name == "1":
+                raise OSError(28, "No space left on device")
+            return write(folder, record)
+
+        with patch.object(trace_node, "write", refusing):
+            ok = self.project.run([{}], check_modules=None)
+            blocked = self.project.run(
+                [{"result": {"status": "blocked"}}], check_modules=None
+            )
+        self.assertEqual("ok", ok["status"], ok["error"])
+        self.assertTrue(ok["trace_failures"])
+        self.assertTrue(
+            all("rounds/1/trace.json" in item for item in ok["trace_failures"])
+        )
+        self.assertIn("at its start", ok["trace_failures"][0])
+        self.assertIn("No space left on device", ok["trace_failures"][0])
+        stored = worker_runs.read_record(self.project.trace, ok["run_id"])
+        self.assertEqual(ok["trace_failures"], stored["trace_failures"])
+        self.assertEqual("blocked", blocked["status"])
+        self.assertIn(
+            "trace-write", [item["kind"] for item in blocked["error"]["evidence"]]
+        )
+
+    def test_the_final_record_digests_the_final_progress_file(self):
+        record = self.project.run([{}], check_modules=None)
+        node = json.loads((Path(record["run_directory"]) / "trace.json").read_text())
+        [progress] = [item for item in node["artifacts"] if item["id"] == "progress"]
+        status = Path(record["run_directory"]) / progress["path"]
+        self.assertEqual(
+            "sha256:" + hashlib.sha256(status.read_bytes()).hexdigest(),
+            progress["digest"],
+        )
 
     @verifies("scenario.workers.timeout")
     def test_a_round_past_its_deadline_is_killed(self):

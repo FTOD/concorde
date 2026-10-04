@@ -3,9 +3,11 @@
 Nothing here polls. A lock or run wait blocks on the lock itself (``locks.wait_released``), which
 the kernel releases however its holder ends. A task wait learns of every new holder of the task's
 workspace lock from the kernel (``watch.Changes``), blocks on the lock until that holder lets it
-go, and reads the task's state again: every change of a task to ``delivered``, ``merging``,
-``closed`` or ``failed`` is made while that lock is held, by a delivery run, a merge or a close,
-so those four are the states a task wait admits. A rebind wait learns of every write of the task's
+go, and reads the task's state again: every change of a task to ``delivered``, ``closed`` or
+``failed`` is made while that lock is held, by a delivery run, a merge or a close, and lasts once
+it is released, so those three are the states a task wait admits. ``merging`` does not last: a
+merge holds the lock from storing it until it closes the task or returns it to delivered, so no
+wait would ever see it. A rebind wait learns of every write of the task's
 record from the kernel (``watch.Changes`` on the task's folder, which also reports the folder
 moving to the history) and reads the record again. A merge wait blocks on the task's merge attempt
 lock, which ``concorde task merge`` holds until its output is complete and removes then, so it
@@ -26,8 +28,9 @@ from ...kernel.tracing.watch import Changes, WatchError
 from . import store
 from .store import TaskError
 
-# The states a task reaches only while its workspace lock is held, and so the ones a wait sees.
-AWAITABLE = ("delivered", "merging", "closed", "failed")
+# The states a task reaches only while its workspace lock is held and keeps once it is released,
+# and so the ones a wait sees.
+AWAITABLE = ("delivered", "closed", "failed")
 LOCKS = ("merge", "workspace")
 
 
@@ -63,6 +66,14 @@ def _deadline(timeout: float | None) -> float | None:
 
 
 def check_until(until: list[str]) -> list[str]:
+    if "merging" in until:
+        raise TaskError(
+            "invalid_input",
+            "a task wait cannot wait for merging: a merge holds the task's workspace lock from "
+            "storing the task merging until it closes it or returns it to delivered, so a wait "
+            "never sees that state; wait for closed or delivered instead, or for the end of "
+            "the merge itself with `concorde task wait <task> --merge`",
+        )
     wrong = [state for state in until if state not in AWAITABLE]
     if not until or wrong:
         raise TaskError(

@@ -6,14 +6,22 @@ Spec tooling is the spec [part](../glossary.json#concept.part) of Concorde, the 
 Specs themselves. It checks that a project's Specs are structurally sound, computes from them what a
 task may read and write, and serves them to agents and to people. Every Module of Concorde that
 reads Specs relies on it to refuse a structure that cannot support a trustworthy boundary. It never
-changes a [Spec](../glossary.json#concept.spec) on its own, never decides which
-[task type](../glossary.json#concept.task-type) a piece of work gets, never launches a worker and
-never enforces a boundary: a grant it computes is applied by the worker harness, to which Method
-hands it. Its deterministic core reports failures with [its own error type](spec/errors.md), and
-Views reports a failed build of its own.
+changes a [Spec](../glossary.json#concept.spec) on its own: it writes Spec files only when asked
+to, by `concorde init --apply`, which creates a project's first Spec, by
+`concorde registry --write`, which regenerates the [registry](../glossary.json#concept.registry)
+mirror, and by the install services, which keep the installation realization's file entries bound
+after an install or update; each of these writes exactly what a deterministic rule derives, and
+none decides a promise. It never decides which [task type](../glossary.json#concept.task-type) a piece of work
+gets, never launches a [worker](../glossary.json#concept.worker) and never enforces a boundary: a
+grant it computes is applied by the worker harness, the part that prepares each worker's
+permissions and launches it, to which Method, the part whose
+[Operations](../glossary.json#concept.operation) launch workers, hands it. Its deterministic core
+reports failures with [its own error type](spec/errors.md), and Views reports a failed build of its
+own.
 
-The spec part depends on no other part, not even the Kernel: a project can install it alone to keep
-its architecture described, checked, served over MCP and published, with no agent of Concorde's.
+The spec part depends on no other part, not even the Kernel, the part that defines the data formats
+and locks the other parts share: a project can install it alone to keep its architecture described,
+checked, served over MCP and published, with no agent of Concorde's.
 Judging whether a Spec is good enough for its reader calls a model, so the Spec reviews are Method's
 Operations, not this part's.
 
@@ -38,8 +46,8 @@ Each child has its own entry point:
 | --- | --- | --- |
 | `concorde spec-validation` | Spec core | every structural finding, in one run |
 | `concorde registry`, `concorde grant`, `concorde init` | Spec core | the registry mirror, the grant a task type would give, a project's first Spec |
-| Spec MCP server (stdio) | Spec MCP server | which Modules exist, what one selects, whom a change concerns, what grant a task type gives |
-| Published site | Views | the Specs as pages for people |
+| `concorde spec-mcp`, a stdio server registered in the project's `.mcp.json` ([using it](spec-mcp/module.md#using-the-server)) | Spec MCP server | which Modules exist, what one declares and selects, whom a change concerns, what grant a task type gives, every structural finding |
+| `npm run build` in `docsite/`; `concorde docsite --propose` and `--apply --proposal FILE` in another project ([the commands](views/module.md#the-commands)) | Views | the Specs as pages for people; the same site scaffolded into another project |
 
 <a id="uses-distribution"></a>
 
@@ -128,7 +136,9 @@ keeps a promise.
 
 A failure never becomes a silently narrower answer. Spec core refuses with its error record instead
 of returning part of a result; the Spec MCP server turns every refusal into a tool error, never a
-partial answer; and a failed Views build deletes its candidate and keeps the published site.
+partial answer; and a failed Views build deletes its candidate and keeps the published site,
+except when the filesystem refuses the rollback of a failed promotion, which leaves the previous
+site for manual recovery as Views' [promotion](views/pipeline.md#promotion) says.
 
 ### Part entries
 
@@ -145,6 +155,23 @@ installation realization's exact file entries in step with the installation reco
 core's `bind_installation` ([Initialization](spec/contracts.md#initialization)). They belong to the
 part rather than to one child because they call all three, so that Spec core imports neither Views
 nor the Spec MCP server ([req.spec.no-owner-imports](spec/requirements.md#req.spec.no-owner-imports)).
+
+<a id="init-command"></a>
+
+The `init` command is a thin adapter over Spec core's `initialize`
+([Initialization](spec/contracts.md#initialization)). `concorde init --propose --name <name>
+[--target <id>] [--python <interpreter>]` calls it with action `propose` (`--target` defaulting to
+`module.project`); `concorde init --apply --proposal <file>` reads the project-relative JSON
+`<file>`, which must be an object holding at least `proposal` and `proposal_digest`, such as the
+whole `result` that `--propose` printed, and calls it with action `apply` and those two fields; any
+other field of the file is ignored, and the proposal itself is checked by `initialize`. Either way
+the command prints Spec core's [shared envelope](spec/contracts.md#validation-result) with `tool`
+`init` and `target` `.`: status `success` with `initialize`'s answer, whose own `status` is
+`proposed` or `applied`, as `result` (exit code 0), or status `failed` with the refusal's
+[error record](spec/errors.md) as `error` (exit code 3). Besides `initialize`'s own refusals the
+adapter adds `invalid_input` for a malformed command line, a propose without `--name`, an apply
+without `--proposal` and a proposal file that cannot be read as JSON, and `invalid_proposal` for a
+file that is not an object holding both fields.
 
 ```d2 illustrative
 direction: right
@@ -175,8 +202,9 @@ part.guidance -> distribution.composition: sections
 The **Spec tooling guidance** is the part's sections of the [main-session
 guidance](../glossary.json#concept.main-session-guidance), kept in `prompts/guidance/spec/` and
 registered under `guidance` in the part's registration, which
-[Distribution](../distribution/module.md#guidance-composition) composes after Coordination's working
-method wherever the part is installed: the project skill's "Project terms" and "Specs"
+[Distribution](../distribution/module.md#guidance-composition) composes after the working method of
+Coordination, the part of the [main agent](../glossary.json#concept.main-agent), its tasks and their
+task sessions, wherever the part is installed: the project skill's "Project terms" and "Specs"
 (`spec-validation`, `grant`, `registry --write`, the Spec MCP server and how to escalate Spec
 tooling's own error record), the task-session prompt's project terms and Spec tooling's errors, and
 the `CLAUDE.md` block's sentence on the project terms, beside which the installer imports the

@@ -5,7 +5,13 @@ import {
   ILLUSTRATIVE_LABEL,
   renderPage,
 } from "../../plugins/scoped-content/render";
-import { bankProject, put, read, type Project } from "../protocol-fixture";
+import {
+  bankProject,
+  put,
+  read,
+  updateMetadata,
+  type Project,
+} from "../protocol-fixture";
 
 let project: Project;
 const render = (path: string) => {
@@ -62,6 +68,56 @@ it("exposes every stable identity of a page exactly once", () => {
     '<a id="contract.transfer.submit"></a>\n\n```concorde-contract',
   );
   expect(details).not.toContain('id="module.transfer"');
+});
+
+// verifies: scenario.views.id-anchors
+it("places a realization anchor at a heading with closing hashes or a definition heading", () => {
+  const path = "specs/transfer/module.md";
+  const original = read(project, path);
+  put(
+    project,
+    path,
+    original.replace(
+      '<a id="transfer-service"></a>\n\nThe transfer service',
+      "### Service {#transfer-service} ###\n\nThe transfer service",
+    ),
+  );
+  expect(render(path)).toContain(
+    '### Service {#transfer-service} ###\n\n<a id="realization.transfer.service"></a>',
+  );
+  // A realization meaning a requirement heading, which carries its identity implicitly.
+  put(project, path, original);
+  const details = "specs/transfer/requirements.md";
+  updateMetadata(project, details, (metadata) => {
+    metadata.defines = [
+      {
+        id: "realization.transfer.rule",
+        type: "realization",
+        title: "Rule",
+        meaning: "#req.transfer.single",
+        entries: ["src/transfer/"],
+      },
+    ];
+  });
+  expect(render(details)).toContain(
+    '### One transfer per submission {#req.transfer.single}\n\n<a id="realization.transfer.rule"></a>',
+  );
+});
+
+// verifies: scenario.views.id-anchors
+it("anchors a contract whose fence carries words after the language", () => {
+  const path = "specs/transfer/requirements.md";
+  put(
+    project,
+    path,
+    read(project, path).replace(
+      "```concorde-contract\n",
+      "```concorde-contract title=submit\n",
+    ),
+  );
+  expect(render(path)).toContain(
+    '<a id="contract.transfer.submit"></a>\n\n```concorde-contract title=submit',
+  );
 });
 
 // verifies: scenario.views.id-anchors

@@ -7,7 +7,7 @@ proposal it applies is Adoption's
 
 The output also carries, beside the record's fields, the `workflow` object of the
 [step output convention](../../workflows/contracts.md#contract.workflows.step-output), whose `data`
-hands a [workflow script](../../glossary.json#concept.workflow-script) what it needs to describe the created Modules, as
+hands a [workflow script](../../glossary.json#concept.workflow-script) what it needs to describe the created [Modules](../../glossary.json#concept.module), as
 [req.scaffold.step-output](requirements.md#req.scaffold.step-output) says: `created_modules`, the
 list of the created Modules in the record's order, each `{"id": "<module>", "uses":
 ["<module>", …]}` with the `uses` the survey proposed among the created Modules alone. It declares
@@ -211,7 +211,7 @@ the [runner's errors](../../execution/runner.md#errors).
 | Code | Status | Reason | Raised when |
 | --- | --- | --- | --- |
 | `invalid_request` | `failed` | `input` | the scaffold has no `--input`, several, or one that is not a survey, or the survey's output breaks its contract |
-| `specs_unloadable` | `failed` | `scope` | the worktree's Specs cannot be loaded; the cause is Spec core's error |
+| `specs_unloadable` | `failed` | `scope` | the worktree's [Specs](../../glossary.json#concept.spec) cannot be loaded; the cause is Spec core's error |
 | `stale_proposal` | `blocked` | `decision` | the proposal no longer fits the worktree (a child's folder already exists, among others) or a file it would create exists, each mismatch listed and a cause of its own, a `component` link of code `proposal_mismatch`; or a file changed while it was written, every file restored and Spec core's error the cause |
 | `scaffold_invalid` | `failed` | `capability` | the scaffold's files would add structural errors; one cause per finding, and nothing is kept |
 | `write_failed` | `failed` | `environment` | the [file transaction](../../glossary.json#concept.file-transaction) failed for another reason, such as the operating system refusing a write, or could not restore a file it wrote, whatever made it fail; the detail and the `unrestored` evidence name every file that still holds the scaffold's content, the detail says every other file is as before, the options say to remove or restore the named files, and Spec core's error is the cause |

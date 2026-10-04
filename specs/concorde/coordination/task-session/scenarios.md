@@ -14,6 +14,7 @@ Commands, the session's [trace node](../../glossary.json#concept.trace-node) and
 - AND the task's [trace](../../glossary.json#concept.trace) holds the started session as the node `sessions/<id>/` with its identity and name
 - AND the [task record](../../glossary.json#concept.task-record) names `concorde-7d` as its `main`, which the first prompt presents as the main agent's session when the task session started
 - BUT when Claude Code reports no started session, the command fails with `session_failed`, carrying Claude Code's output, and the task is unchanged
+- AND when the task is closed after Claude Code started the session and before it is recorded, the command fails with `task_closed` after removing that session with `claude rm`, and says so
 
 ### scenario.task-session.project-mcp — A task session gets the project MCP server without a channel
 
@@ -38,6 +39,7 @@ Commands, the session's [trace node](../../glossary.json#concept.trace-node) and
 - WHEN its hook judges an Edit of a file in the task worktree, of the [decision log](../../glossary.json#concept.decision-log) and of a file of the primary worktree
 - THEN the first two are allowed and the third is denied with a reason naming the task worktree
 - AND the hook denies an Edit of an [Issue](../../glossary.json#concept.issue) record, which lies outside the task worktree
+- AND it denies an Edit of a symbolic link in the task worktree that points to a file of the primary worktree, and allows one that points inside the task worktree
 - BUT the settings restrict nothing else: they carry no sandbox, so the session's commands reach every path, process, socket and network host
 
 ## Ending with the task

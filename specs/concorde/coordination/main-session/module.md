@@ -592,8 +592,8 @@ both locks and answered, replaces itself with `concorde task merge`.
   is a process of the server rather than of the relaying agent's turn
   ([Workflows](../../workflows/module.md#steps-through-the-server)). Its exact shape is
   [Workflows'](../../workflows/contracts.md).
-- **Waiting**: `register_wait` asks to be woken when a task becomes `delivered`, `merging`,
-  `closed` or `failed`, when a task is rebound to a main agent's session other than a named one,
+- **Waiting**: `register_wait` asks to be woken when a task becomes `delivered`, `closed` or
+  `failed` (never `merging`, which lasts only while the merge holds the task's workspace lock), when a task is rebound to a main agent's session other than a named one,
   when a run ends, or when a lock is released. The server watches by running the matching
   `concorde task wait`, which waits without polling, blocking on the lock itself or on the operating system's
   notice of each new holder, and wakes its session with a [Claude Code channel](#channels) event

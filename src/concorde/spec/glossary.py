@@ -23,6 +23,9 @@ ENTRY_OPTIONAL = frozenset(
 )
 # A term link inside a definition addresses another entry of the same file by fragment alone.
 DEFINITION_LINK = re.compile(r"\[([^\]]*)\]\((#[^\s)]*)\)")
+# A link whose fragment is a concept identity is a term link even when it names a path, which it
+# must not: ``definition_links`` counts it and ``misaddressed_links`` names it for CHK.term.link.
+PATH_TERM_LINK = re.compile(r"\[([^\]]*)\]\(([^\s)#]+)#(concept\.[^\s)]*)\)")
 
 
 def _is_text(value: Any) -> bool:
@@ -30,13 +33,26 @@ def _is_text(value: Any) -> bool:
 
 
 def definition_links(definition: str) -> list[str]:
-    """The fragments of every link in a definition, without the leading ``#``."""
-    return [match.group(2)[1:] for match in DEFINITION_LINK.finditer(definition)]
+    """The fragments, without the leading ``#``, of every fragment-only link in a definition and
+    of every link that names a path before a concept identity."""
+    return sorted(
+        {match.group(2)[1:] for match in DEFINITION_LINK.finditer(definition)}
+        | {match.group(3) for match in PATH_TERM_LINK.finditer(definition)}
+    )
+
+
+def misaddressed_links(definition: str) -> list[str]:
+    """The targets of the term links of a definition that name a path, not a fragment alone."""
+    return [
+        f"{match.group(2)}#{match.group(3)}"
+        for match in PATH_TERM_LINK.finditer(definition)
+    ]
 
 
 def plain_definition(definition: str) -> str:
     """A definition with its term links reduced to their text, as a reader without links sees it."""
-    return DEFINITION_LINK.sub(lambda match: match.group(1), definition)
+    text = DEFINITION_LINK.sub(lambda match: match.group(1), definition)
+    return PATH_TERM_LINK.sub(lambda match: match.group(1), text)
 
 
 def problems(value: Any) -> list[tuple[str, str, str | None]]:
@@ -349,6 +365,7 @@ __all__ = [
     "changed_entries",
     "concept",
     "definition_links",
+    "misaddressed_links",
     "entries",
     "entry_problems",
     "ownership_violations",

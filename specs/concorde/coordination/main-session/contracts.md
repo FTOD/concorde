@@ -41,7 +41,7 @@ refusals, such as `call_failed` and `no_project`, are
 | `invalid_input` | `input` | the tool is unknown, or its arguments do not satisfy its input schema or name a combination it does not take; the detail names the argument |
 | `workspace_busy`, `merge_busy` | `environment` | `task_merge` found the lock held; the detail names the lock file and the holder's command, process, start time, session and task, and the evidence of kind `lock` carries the holder line as JSON |
 | `start_failed` | `environment` | the operating system refused to start `concorde task merge`; both locks were released |
-| `unknown_run` | `input` | `run_result` names a run no reader finds |
+| `unknown_run` | `input` | `run_result` names no run of Execution: an identity no reader finds, or the node of something else, such as a task or a worker run, which has no [run result](../../glossary.json#concept.run-result) |
 | `part_missing` | `input` | `run_result`, or `register_wait` for a `run`, where the execution part is not installed; the detail names the part |
 | any Tasks or Tracing code | as there | the command the tool presents refused, such as `unknown_task`, `merge_busy` from `task_open` or `workspace_busy` from `task_close` |
 | any other code | `environment` | an unexpected error of the server, as a link built from the exception |
@@ -127,8 +127,10 @@ installed, as `concorde task wait --run` is. It then checks whether what it wait
 is one of `until`, the task's record names a main agent's session other than `rebound`, the run's
 runner holds no [run lock](../../glossary.json#concept.run-lock), or
 nobody holds the lock. Then it answers `{"registered": false, "already": <answer>}`, the value the
-matching `concorde task wait` would print, and registers nothing. `until` admits `delivered`,
-`merging`, `closed` and `failed` only, the states a task reaches while its workspace lock is held.
+matching `concorde task wait` would print, with the same fields and `waited_seconds` 0, and registers
+nothing. `until` admits `delivered`, `closed` and `failed` only, the states a task reaches while its
+workspace lock is held and keeps once it is released; `merging` is refused with `invalid_input`, as
+`concorde task wait` refuses it.
 
 Otherwise, without a channel, it answers
 `{"registered": false, "channel": false, "command": "<concorde task wait …>", "explanation": …}`,

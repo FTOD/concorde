@@ -87,8 +87,8 @@ Every entry the scaffold creates SHALL state the survey's purpose.
 Every entry the scaffold creates SHALL say, in a section Not yet specified that follows its Purpose, that the Module's core concepts, behaviour and design are not yet specified.
 
 The section stands where the reading order of an entry puts the core concepts and the overview, so
-a reader meets the unknowns before the parts. A Parts section follows, which explains the
-realization binding the child's code, and then a Collaborations section, which explains each
+a reader meets the unknowns before the parts. A `Parts` section follows, which explains the
+realization binding the child's code, and then a `Collaborations` section, which explains each
 proposed `uses`.
 
 ## The workflow handoff

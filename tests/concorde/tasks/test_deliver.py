@@ -11,6 +11,7 @@ import subprocess
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import concorde
 from concorde.coordination.tasks import cli, merge, store
@@ -123,6 +124,48 @@ class DeliverTests(ProjectCase):
         self.assertEqual(0, status, merged)
         self.assertEqual("closed", merged["record"]["state"])
         self.assertEqual(head, git(self.root, "rev-parse", "HEAD^2"))
+
+    @verifies("scenario.tasks.trace-write-reported")
+    def test_a_refused_trace_write_is_reported_by_delivery_and_merge(self):
+        worktree = self.opened()
+        real = trace.write
+
+        def refusing(folder, record):
+            if Path(folder).parent.name == "checks":
+                raise OSError(28, "No space left on device")
+            return real(folder, record)
+
+        with patch.object(trace, "write", refusing):
+            status, value = self.command(
+                "deliver", "t1", "--check", python("pass"), cwd=worktree
+            )
+        self.assertEqual(0, status, value)
+        # The delivery is made all the same; the check node's failed writes are reported.
+        self.assertTrue(value["delivery"]["commit"])
+        self.assertTrue(value["warnings"])
+        for text in value["warnings"]:
+            self.assertIn(str(self.attempt() / "checks/1/trace.json"), text)
+            self.assertIn("No space left on device", text)
+        with patch.object(trace, "write", refusing):
+            status, merged = self.command("merge", "t1", "--check", python("pass"))
+        self.assertEqual(0, status, merged)
+        self.assertEqual("closed", merged["record"]["state"])
+        failed = [text for text in merged["warnings"] if "No space left" in text]
+        self.assertTrue(failed, merged["warnings"])
+        self.assertIn("merges/1/checks/1/trace.json", failed[0])
+        # A refusal names them in its detail.
+        self.project.open_task("t2")
+        other = self.project.worktree("t2")
+        with patch.object(trace, "write", refusing):
+            error = self.refusal(
+                "deliver",
+                "t2",
+                "--check",
+                python("import sys; sys.exit(1)"),
+                cwd=other,
+            )
+        self.assertEqual("check_failed", error["code"])
+        self.assertIn("its trace is incomplete", error["detail"])
 
     @verifies("scenario.tasks.deliver-check-failed")
     def test_a_failed_check_commits_nothing(self):

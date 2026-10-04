@@ -188,14 +188,14 @@ The [grant](../../glossary.json#concept.grant) a caller hands the worker harness
 data. The worker harness owns this format and computes nothing in it: it never derives a grant from
 Specs, widens one or reads where it came from. In Concorde, a step of Method fills it from the grant
 Spec core computes, projecting its `task_type`, `entries` and `context_identity`, which have exactly
-this shape; Spec core's grant also carries the Modules and glossary terms, which Method keeps for
+this shape; Spec core's grant also carries the [Modules](../../glossary.json#concept.module) and glossary terms, which Method keeps for
 itself and never passes. A contract test on each side keeps the three shared fields equal, so
 neither part imports the other.
 
 ```concorde-contract
 {
   "id": "contract.workers.grant-input",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -229,7 +229,8 @@ neither part imports the other.
           "properties": {
             "path": {
               "type": "string",
-              "minLength": 1
+              "minLength": 1,
+              "pattern": "^(?!\\.\\.?(/|$))(?!.*/\\.\\.?(/|$))[^/]+(/[^/]+)*/?$"
             },
             "level": {
               "enum": [
@@ -247,7 +248,7 @@ neither part imports the other.
       }
     }
   },
-  "semantics": "The grant of one worker run, handed over by its caller as data and frozen for the whole run. task_type is the Protocol task type of the worker's job, which selects its tool set. entries lists every path the worker may reach with its level: rw writable, ro readable, names known by name only; a path is relative to the worktree the worker works in, never absolute and never leaving it through .., a directory ending in /, and a path no entry names is hidden. context_identity identifies what selected the entries, as the caller computed it; the worker harness records it and the digest of the grant, and never interprets either. A grant whose entries break this shape is refused before anything is generated, with grant_malformed naming the first such entry; one without a task type, entries or context identity with grant_unavailable. A behaviour or field change increments the version.",
+  "semantics": "The grant of one worker run, handed over by its caller as data and frozen for the whole run. task_type is the Protocol task type of the worker's job, which selects its tool set. entries lists every path the worker may reach with its level: rw writable, ro readable, names known by name only; a path is relative to the worktree the worker works in, never absolute, never leaving it through .. and in canonical form, each directory named once between single slashes with no empty or . segment, a directory ending in /, and a path no entry names is hidden. The most specific entry for a path decides its level: its exact entry, else the longest directory entry above it, so a file listed apart from its directory keeps its own level. context_identity identifies what selected the entries, as the caller computed it; the worker harness records it and the digest of the grant, and never interprets either. A grant whose entries break this shape is refused before anything is generated, with grant_malformed naming the first such entry; one without a task type, entries or context identity with grant_unavailable. A behaviour or field change increments the version.",
   "example": {
     "task_type": "implement",
     "entries": [
@@ -575,7 +576,7 @@ defines them; their contents are these values.
 ```concorde-contract
 {
   "id": "contract.workers.worker-run-trace",
-  "version": 4,
+  "version": 5,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -591,6 +592,7 @@ defines them; their contents are these values.
       "deletions_refused",
       "deletions_absent",
       "deletions_failed",
+      "trace_failures",
       "rounds"
     ],
     "properties": {
@@ -695,13 +697,20 @@ defines them; their contents are these values.
           "minLength": 1
         }
       },
+      "trace_failures": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
       "rounds": {
         "type": "integer",
         "minimum": 0
       }
     }
   },
-  "semantics": "The data of the typed value concorde-worker-run-trace, the content of a worker run's trace node, which is its run record. task_type is the worker's task type; backend_source says what chose the backend: the worker configuration entry that set it, such as operations.implement.default or the configuration's own default entry, the text Concorde's default worker backend when no entry sets one and pi applies, or null when the request was made without resolving the worker's backend; local_model is the id the model map gave the worker's project model name on its backend, passed with --model, and model_map the path of that map, both null when the request named no local id; tools is the tool set the worker was given, or null when the run was refused before a backend was prepared. transcript is the path, relative to the node's folder, of the transcript the host moved there from the runtime directory once the worker ended (transcript.jsonl), null when no session existed. worker_result is the last worker result verbatim, a claim, or null. deleted lists the proposed deletions the host performed, deletions_refused those it refused as the worker gave them, deletions_absent those in the rw list it found already absent and deletions_failed those whose deletion failed, each but the refused relative to the worktree (launch.md#proposed-deletions). rounds is how many rounds began; each is a worker-round node below this one. The worker run's identity, times, status, outcome, error (Workers' link), its metadata (the Modules, the Operation and worker id it was launched for, task type, backend, project model name and reasoning level as configured, context identity and the grant, brief and settings digests) and its files (status.json, grant.json, brief.md, transcript.jsonl) are the uniform fields of its trace node. A behaviour or field change increments the version.",
+  "semantics": "The data of the typed value concorde-worker-run-trace, the content of a worker run's trace node, which is its run record. task_type is the worker's task type; backend_source says what chose the backend: the worker configuration entry that set it, such as operations.implement.default or the configuration's own default entry, the text Concorde's default worker backend when no entry sets one and pi applies, or null when the request was made without resolving the worker's backend; local_model is the id the model map gave the worker's project model name on its backend, passed with --model, and model_map the path of that map, both null when the request named no local id; tools is the tool set the worker was given, or null when the run was refused before a backend was prepared. transcript is the path, relative to the node's folder, of the transcript of the session the worker's output named last, which the host moved there from the runtime directory once the run ended, also an interrupted one (transcript.jsonl), null when no session existed or when the host could not keep it, which then fails the run with cleanup_failed. worker_result is the last valid worker result verbatim, a claim, kept whatever else ended its round, such as a timeout, or null. deleted lists the proposed deletions the host performed, deletions_refused those it refused as the worker gave them, deletions_absent those in the rw list it found already absent and deletions_failed those whose deletion failed, each but the refused relative to the worktree (launch.md#proposed-deletions). trace_failures lists, as the host knew them when it wrote this content, every write of this node's or a round node's trace.json the operating system refused, each naming the file, the moment (start, update or end) and the error; tracing stays best-effort for the work, so such a failure changes no status (launch.md#run-record). rounds is how many rounds began; each is a worker-round node below this one. The worker run's identity, times, status, outcome, error (Workers' link), its metadata (the Modules, the Operation and worker id it was launched for, task type, backend, project model name and reasoning level as configured, context identity and the grant, brief and settings digests) and its files (status.json, grant.json, brief.md, transcript.jsonl) are the uniform fields of its trace node. A behaviour or field change increments the version.",
   "example": {
     "task_type": "implement",
     "backend_source": "operations.implement.default",
@@ -727,6 +736,7 @@ defines them; their contents are these values.
     "deletions_refused": [],
     "deletions_absent": [],
     "deletions_failed": [],
+    "trace_failures": [],
     "rounds": 2
   }
 }
@@ -908,7 +918,7 @@ not stored; the run's trace node and its rounds' nodes are the record that is ke
 ```concorde-contract
 {
   "id": "contract.workers.worker-run-record",
-  "version": 2,
+  "version": 3,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -940,6 +950,7 @@ not stored; the run's trace node and its rounds' nodes are the record that is ke
       "deletions_refused",
       "deletions_absent",
       "deletions_failed",
+      "trace_failures",
       "run_directory",
       "runtime_directory",
       "rounds"
@@ -1177,6 +1188,13 @@ not stored; the run's trace node and its rounds' nodes are the record that is ke
           "minLength": 1
         }
       },
+      "trace_failures": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
       "run_directory": {
         "type": "string",
         "minLength": 1
@@ -1292,7 +1310,7 @@ not stored; the run's trace node and its rounds' nodes are the record that is ke
       }
     }
   },
-  "semantics": "The value the host returns to its caller, in Concorde an Operation's step, when a worker run ends, however it ends, so that the caller reads the audits and the round validation's evidence without reading a file; it is never written itself, and the record kept is the run's trace node and its rounds' nodes (contract.workers.worker-run-trace, contract.workers.worker-round-trace), from which runs.read_record rebuilds it but for worktree, stderr_tail and runtime_directory. It holds the run node's content and, as that node keeps them, its identity run_id, status (ok, blocked or failed), error (Workers' link, null for ok), started_at and ended_at, and its metadata operation, worker, backend, model, reasoning and context_identity with the grant, settings and brief digests, each null until made; it differs from the node's content in that tools is the tool set as the backend's comma-separated list, as passed to --tools, transcript the absolute path of the transcript in the run directory, and rounds not their number but the ordered list of every round that began. Each round carries what its node's content and usage hold: round, prompt, session, exit, duration (seconds) and usage (the tokens, cost and turns the agent program reported and duration_seconds); what the agent program reported under the key of its backend, claude or pi, as the round content's agent holds it; audit, the audit object of contract.workers.worker-round-trace, once the round was audited; evidence, the round validation's evidence as the caller returned it, with each artifact path absolute, only when the round validation ran; and validation, its outcome, only when it ran. A key absent from a round means that step did not happen in it. worktree is the worker's worktree, run_directory the worker run's node folder, runtime_directory its runtime directory, removed by the time the record is returned, and stderr_tail the end of the last round's standard error. A behaviour or field change increments the version.",
+  "semantics": "The value the host returns to its caller, in Concorde an Operation's step, when a worker run ends, however it ends, so that the caller reads the audits and the round validation's evidence without reading a file; it is never written itself, and the record kept is the run's trace node and its rounds' nodes (contract.workers.worker-run-trace, contract.workers.worker-round-trace), from which runs.read_record rebuilds it but for worktree, stderr_tail and runtime_directory. It holds the run node's content and, as that node keeps them, its identity run_id, status (ok, blocked or failed), error (Workers' link, null for ok), started_at and ended_at, and its metadata operation, worker, backend, model, reasoning and context_identity with the grant, settings and brief digests, each null until made; it differs from the node's content in that tools is the tool set as the backend's comma-separated list, as passed to --tools, transcript the absolute path of the transcript in the run directory, and rounds not their number but the ordered list of every round that began. Each round carries what its node's content and usage hold: round, prompt, session, exit, duration (seconds) and usage (the tokens, cost and turns the agent program reported and duration_seconds); what the agent program reported under the key of its backend, claude or pi, as the round content's agent holds it; audit, the audit object of contract.workers.worker-round-trace, once the round was audited; evidence, the round validation's evidence as the caller returned it, with each artifact path absolute, only when the round validation ran; and validation, its outcome, only when it ran. A key absent from a round means that step did not happen in it. trace_failures is the node content's list completed with any failure of the final write itself, which only this value can carry; when the run did not end ok, each also appears in its error's evidence as trace-write evidence. worktree is the worker's worktree, run_directory the worker run's node folder, runtime_directory its runtime directory, removed by the time the record is returned, and stderr_tail the end of the last round's standard error. A behaviour or field change increments the version.",
   "example": {
     "run_id": "w-20261002T101500-a1b2c3",
     "status": "failed",
@@ -1357,6 +1375,7 @@ not stored; the run's trace node and its rounds' nodes are the record that is ke
     "deletions_refused": [],
     "deletions_absent": [],
     "deletions_failed": [],
+    "trace_failures": [],
     "run_directory": "/repo/.concorde/tasks/discounts/workspace/runs/r-1/workers/w-20261002T101500-a1b2c3",
     "runtime_directory": "/tmp/concorde-a1b2c3-x7k2",
     "rounds": [

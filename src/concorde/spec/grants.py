@@ -18,16 +18,17 @@ reads the whole project's Specs, where it is read only.
 
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass
 from typing import Sequence
 
 from .model import ToolResult
 from .repository_base import (
     SpecError,
+    bound_by,
     digest,
     installed_files,
     is_directory_entry,
-    read_file,
 )
 
 TASK_TYPES = (
@@ -131,12 +132,13 @@ class Grant:
         return tuple(self.value["entries"])
 
     def level(self, path: str) -> str | None:
-        """The level of one concrete path: its own entry or the directory entry covering it."""
+        """The level of one concrete path: its own entry or a directory entry that binds it under
+        the exclusion rule, so an excluded file below a directory entry keeps its own level."""
         best = None
         for entry in self.value["entries"]:
             listed = entry["path"]
             if listed == path or (
-                is_directory_entry(listed) and path.startswith(listed)
+                is_directory_entry(listed) and bound_by(listed, path)
             ):
                 if best is None or RANK[entry["level"]] > RANK[best]:
                     best = entry["level"]
@@ -195,7 +197,7 @@ def context_identity(
     if not project_specification:
         return digest({"modules": items})
     project = [
-        {"path": path, "digest": digest(read_file(repository.root, path))}
+        {"path": path, "digest": digest(repository.loaded_bytes(path))}
         for path in repository.project_specification()
     ]
     return digest({"modules": items, "project_specification": project})
@@ -253,6 +255,8 @@ def grant(repository, modules: Sequence[str], task_type: str) -> Grant:
     for path, level in list(levels.items()):
         if level == "rw" and path in installed:
             levels[path] = "ro"
+    # A directory entry stands for the paths below it only where it binds them under the
+    # exclusion rule: an excluded path keeps its own entry and level.
     directories = [
         (path, level) for path, level in levels.items() if is_directory_entry(path)
     ]
@@ -260,12 +264,12 @@ def grant(repository, modules: Sequence[str], task_type: str) -> Grant:
         {"path": path, "level": level}
         for path, level in sorted(levels.items())
         if not any(
-            other != path and path.startswith(other) and RANK[cover] >= RANK[level]
+            other != path and bound_by(other, path) and RANK[cover] >= RANK[level]
             for other, cover in directories
         )
     ]
     terms = {
-        identity: repository.glossary_entries[identity]
+        identity: copy.deepcopy(repository.glossary_entries[identity])
         for module in bound
         for identity in repository.terms(module)
     }

@@ -58,7 +58,7 @@ A specify run whose worker ended `ok` and whose validation still reports an erro
 not have after the last repair round SHALL end `blocked` with the new findings as evidence.
 
 Errors present in the baseline are reported as pre-existing and do not stop the run, so a specify
-run can repair Specs that were already broken. When the worker itself ended `blocked` or `failed`,
+run can repair [Specs](../../glossary.json#concept.spec) that were already broken. When the worker itself ended `blocked` or `failed`,
 the run keeps the worker's status and its new errors appear in the Spec change's validation
 findings.
 

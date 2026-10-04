@@ -298,8 +298,8 @@ merge's result or the wait's answer comes later.
   refused with `workspace_busy` or `merge_busy`, register a wait for that lock with
   `register_wait` (or, without a channel, run the `concorde task wait` command it returns in
   background Bash) and call `task_merge` again once you are woken: you may be refused again.
-- `register_wait`: asks to be woken when a task becomes `delivered`, `merging`, `closed` or
-  `failed` (`task` with `until`), when a task is rebound to a main agent's session other than one
+- `register_wait`: asks to be woken when a task becomes `delivered`, `closed` or `failed` (`task`
+  with `until`; never `merging`, which no wait sees), when a task is rebound to a main agent's session other than one
   it names (`task` with `rebound`), when a run ends (`run`, where the execution part is installed), or when a lock is released (`lock`
   `merge`, or `workspace` with `task`). It answers at once when that already happened. It only
   notifies: when you are woken for a lock, ask for it again, and you may be refused again.

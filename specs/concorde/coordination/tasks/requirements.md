@@ -23,8 +23,10 @@ Every change to a task record SHALL be one
 [file transaction](../../glossary.json#concept.file-transaction) bound to the digest of the record
 bytes it replaces.
 
-A concurrent change is detected by the digest, never overwritten; after three conflicting attempts
-the update is refused with `record_conflict`.
+A change made before the transaction's digest check is detected and the update applied again to
+what is there; after three conflicting attempts the update is refused with `record_conflict`. A
+change during the transaction is excluded by the task's lock, which every writer of the record
+holds, not by the digest.
 
 ### req.tasks.records-kept — Records outlive their task
 
@@ -218,7 +220,9 @@ every other task worktree.
 A refused task command or record update SHALL leave every record, branch and worktree unchanged.
 
 The exceptions are refusals that say so themselves: `binding_failed`, where `concorde task open`
-leaves the worktree and branch it had added, naming them and how to remove them; and three `concorde task merge` refusals: `rollback_failed`, where Git would not
+leaves the worktree and branch it had added, naming them and how to remove them; a
+`record_unwritable` of `concorde task open`, which removes the worktree, branch and task folder it
+had added before refusing and names any of them it could not remove and how to; and three `concorde task merge` refusals: `rollback_failed`, where Git would not
 restore the primary branch and the task stays `merging`; a `check_failed` whose checks created
 paths, which the reset leaves in the primary worktree and the refusal names; and a close that
 failed after the merge and its checks succeeded, which leaves the checked merge in place and the
@@ -235,7 +239,8 @@ step leave that step done, and say so:
 - a close refused while writing the record (`record_conflict`, `record_unwritable`) after it
   removed the worktree leaves the task in its state without its worktree, which the refusal says;
 - a close's `decision_log_failed` leaves the task closed or failed in its record without its
-  closing in the decision log;
+  closing in the decision log, and a `record_unwritable` of its [trace node](../../glossary.json#concept.trace-node) leaves it closed or
+  failed in its record with its closing logged and its trace node not ended;
 - a close's `decision_log_uncommitted` leaves the task closed or failed in its record, with its
   closing in the decision log, and its folder current, since the log is not yet in Git;
 - an escalation's `decision_log_failed` leaves the escalation in the task's trace and not in the
@@ -244,9 +249,10 @@ step leave that step done, and say so:
 
 Each refusal of a close says that running the same close again finishes it once the cause is
 fixed, or, for a close run by a merge whose task stays `merging`, `concorde task merge <task-id>
---resume`: the rerun skips a worktree that is gone, and the same close of a task already closed
-with that outcome appends the closing its decision log lacks, commits the log the primary branch
-lacks and changes nothing else.
+--resume`, and for one whose record the merge's close already stored closed, `concorde task close
+<task-id> --merged`: the rerun skips a worktree that is gone, and the same close of a task already
+closed with that outcome appends the closing its decision log lacks, ends the trace node that has
+not ended, commits the log the primary branch lacks and changes nothing else.
 
 ## Merging
 
@@ -260,6 +266,11 @@ the primary branch could fast-forward.
 A commit added to the task branch after those checks is therefore never merged unchecked; closing
 the task as merged then refuses with `not_merged`, since the branch's head is no longer its latest
 delivery commit.
+
+When the primary branch already contains the checked head, as after a merge made by hand, there is
+nothing to merge and no merge commit is made: the merge runs its checks on the primary branch's
+head as it is, records that head as its `after`, answers `contained` true, ends its attempt's node
+with the outcome `contained`, and closes the task as merged, which commits the decision log alone.
 
 ### req.tasks.merge-workspace-locked — No run of a task changes it while it is merged or closed
 
@@ -331,8 +342,10 @@ A wait SHALL end with `wait_unreachable` when the task ended in a state it does 
 at all while it waits for a rebind, and with `wait_timeout` when its `--timeout` passes first,
 changing nothing.
 
-A task wait admits only `delivered`, `merging`, `closed` and `failed`, the states a task reaches
-while its workspace lock is held.
+A task wait admits only `delivered`, `closed` and `failed`, the states a task reaches while its
+workspace lock is held and keeps once it is released. It refuses `merging` with `invalid_input`,
+explaining that a merge holds the lock for as long as the task is `merging`, so no wait sees that
+state, and naming `--merge`, which waits for the merge itself.
 
 ### req.tasks.merge-all-or-nothing — A merge is checked or undone
 
@@ -392,8 +405,10 @@ uninterrupted merge does, and otherwise refuses with `not_resumable`; `concorde 
 merge commit, and returns the task to delivered.
 
 Both refuse with `merge_diverged`, touching nothing, when the primary worktree is on another branch
-or its head is neither the commit before the merge nor the merge commit, and with `not_merging` for
-a task that is not `merging`.
+or its head is neither the commit before the merge nor the merge commit, and `--abort` also when
+a Git merge in progress there is not the task's, merging another commit than the checked one or
+into another head than the commit before the merge, checked before it aborts anything; both refuse
+with `not_merging` for a task that is not `merging`.
 
 ### req.tasks.empty-log-warned — A merge warns of an unwritten decision log
 
@@ -474,7 +489,7 @@ Every refusal of a `concorde task` command SHALL print an error link that names 
 
 ### req.tasks.escalation-kept — Escalations keep their whole chain
 
-An escalation SHALL record the escalated errors unchanged as the causes of the escalating session's link, in the task record and the decision log, and an escalation that names no error that link alone, with no causes.
+An escalation SHALL record the escalated errors unchanged as the causes of the escalating session's link, in the task's trace node and the decision log, and an escalation that names no error that link alone, with no causes.
 
 ## Delivering without Method
 

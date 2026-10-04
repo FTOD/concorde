@@ -8,10 +8,11 @@ is answered in its project-relative form.
 ## Session
 
 The server is started as `concorde spec-mcp` and speaks MCP over standard input and output. It
-declares the tools capability and no resources or prompts. It resolves its root after the client's
-`initialized` notification: `CLAUDE_PROJECT_DIR` when set, otherwise the single `file://` root from
-`roots/list`. The root is the real path of that directory and does not change for the life of the
-process.
+declares the tools capability and no resources or prompts. It resolves its root once, after the
+client's first `initialized` notification: `CLAUDE_PROJECT_DIR` when set, otherwise the single
+`file://` root from `roots/list`. The root is the real path of that directory and does not change
+for the life of the process. A malformed message never ends the session: a request the server
+cannot answer is answered with a JSON-RPC error and the next message is read.
 
 Every tool returns one text content item holding canonical JSON. A failure sets `isError: true`,
 and its JSON is `{"error": <record>}`, where the record is Spec tooling's
@@ -22,8 +23,8 @@ argument as `field`, the path or identity concerned), the reason, the remediatio
 | --- | --- |
 | `no_root` | no root could be resolved; the message says why, such as the number of client roots |
 | `outside_root` | a path argument resolves outside the root, through `..`, another absolute path or a symbolic link; the message names what it resolved to |
-| `invalid_input` | an argument is missing or of the wrong type, the tool is unknown, or a path names the root itself; the message names the argument and the value |
-| `system_error` | the operating system refused to read the Specs; the cause names the path |
+| `invalid_input` | the call's params or its `arguments`, when present, are not an object, an argument is missing or of the wrong type (an optional argument given as `null` among them), the tool is unknown or its name is not a string, or a path names the root itself; the message names the argument and the value |
+| `system_error` | the operating system refused to read the [Specs](../../glossary.json#concept.spec); the cause names the path |
 | `unexpected_error` | a defect of the server; the record names where it was raised |
 | any Spec core code | loading or the computation failed, for example `protocol_mismatch`, `unsupported_profile`, `invalid_target`, `invalid_task_type`, `unknown_module` or `shared_file`, with Spec core's record unchanged |
 

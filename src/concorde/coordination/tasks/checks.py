@@ -14,6 +14,7 @@ import time
 from pathlib import Path
 
 from ...kernel.tracing.node import Node
+from .store import TaskError
 
 TIMEOUT = 1800
 # How much of a failed check's output a refusal quotes; the log holds all of it.
@@ -29,8 +30,11 @@ def run(
     kind: str,
     content_type: str,
     environment: dict | None = None,
+    failures: list[str] | None = None,
 ) -> tuple[dict, str | None]:
-    """Run one check in ``cwd`` as the node ``folder``; its result and, when it failed, why."""
+    """Run one check in ``cwd`` as the node ``folder``; its result and, when it failed, why.
+    Each write of the node's ``trace.json`` the file system refused is added to ``failures``,
+    for the caller to report."""
     node = Node(
         folder,
         identity,
@@ -56,17 +60,33 @@ def run(
         code, output = ran.returncode, ran.stdout or ""
         problem = None if code == 0 else f"exited {code}"
     except subprocess.TimeoutExpired as error:
-        code, output = -1, error.stdout if isinstance(error.stdout, str) else ""
+        # What it printed before it was stopped comes as bytes, whatever ``text`` says.
+        printed = error.stdout or b""
+        code = -1
+        output = (
+            printed.decode("utf-8", "replace")
+            if isinstance(printed, bytes)
+            else printed
+        )
         problem = f"was stopped after {TIMEOUT} s"
     except OSError as error:
         code, output = -1, ""
         problem = f"could not run: {error}"
     seconds = round(time.monotonic() - started, 3)
-    with log.open("a", encoding="utf-8") as stream:
-        stream.write(
-            f"$ {shlex.join(argv)}\n{output}"
-            f"{'' if output.endswith(chr(10)) or not output else chr(10)}"
-            f"[exit {code} after {seconds} s]\n"
+    # The node's own write makes the folder; the log is kept even when that write failed, and a
+    # log the file system refuses is reported like a refused node write.
+    unlogged = None
+    try:
+        folder.mkdir(parents=True, exist_ok=True)
+        with log.open("a", encoding="utf-8") as stream:
+            stream.write(
+                f"$ {shlex.join(argv)}\n{output}"
+                f"{'' if output.endswith(chr(10)) or not output else chr(10)}"
+                f"[exit {code} after {seconds} s]\n"
+            )
+    except OSError as error:
+        unlogged = (
+            f"the check log {log} could not be written: {type(error).__name__}: {error}"
         )
     node.finish(
         "ok" if problem is None else "failed",
@@ -74,11 +94,24 @@ def run(
         content={"argv": list(argv), "exit_code": code if code >= 0 else None},
         used={"duration_seconds": seconds},
     )
+    if failures is not None:
+        failures.extend([*node.failures, *([unlogged] if unlogged else [])])
     result = {"argv": list(argv), "exit_code": code, "seconds": seconds}
     if problem is None:
         return result, None
     tail = output.strip()[-OUTPUT_TAIL:] or "(no output)"
     return result, f"the check `{shlex.join(argv)}` {problem}; its output ends: {tail}"
+
+
+def with_failures(refusal: TaskError, failures: list[str]) -> TaskError:
+    """``refusal``, its detail naming each write of a trace node that failed, which a refusal
+    reports as an answer reports them among its warnings."""
+    if not failures:
+        return refusal
+    return TaskError(
+        refusal.code,
+        f"{refusal}; besides, its trace is incomplete: " + "; ".join(failures),
+    )
 
 
 def parse(texts: list[str], invalid) -> list[list[str]]:
@@ -98,4 +131,4 @@ def parse(texts: list[str], invalid) -> list[list[str]]:
     return found
 
 
-__all__ = ["OUTPUT_TAIL", "TIMEOUT", "parse", "run"]
+__all__ = ["OUTPUT_TAIL", "TIMEOUT", "parse", "run", "with_failures"]

@@ -7,7 +7,13 @@
  * `null` to allow, or the reason of a denial as the worker should read it.
  */
 
-import { existsSync, realpathSync, statSync } from "node:fs";
+import {
+  existsSync,
+  lstatSync,
+  readlinkSync,
+  realpathSync,
+  statSync,
+} from "node:fs";
 import {
   basename,
   dirname,
@@ -52,12 +58,29 @@ export function resolveLikePi(
   return isAbsolute(value) ? normalize(value) : resolve(cwd, value);
 }
 
-/** The path with every symbolic link resolved, including those of parents that exist. */
-export function realOf(path: string): string {
+/**
+ * The path with every symbolic link resolved, the final one included, as far as the links exist:
+ * a link whose target does not exist yet resolves to that target, the file a write through it
+ * would create.
+ */
+export function realOf(path: string, depth = 0): string {
   if (existsSync(path)) return realpathSync(path);
   const parent = dirname(path);
   if (parent === path) return path;
-  return join(realOf(parent), basename(path));
+  const inParent = join(realOf(parent, depth), basename(path));
+  let link = false;
+  try {
+    link = lstatSync(inParent).isSymbolicLink();
+  } catch {
+    link = false;
+  }
+  // A dangling link: follow it, giving up on a loop as the operating system would.
+  if (link && depth < 40)
+    return realOf(
+      resolve(dirname(inParent), readlinkSync(inParent)),
+      depth + 1,
+    );
+  return inParent;
 }
 
 function within(path: string, base: string): boolean {
@@ -70,23 +93,29 @@ function relativeTo(path: string, base: string): string {
   return path === base ? "" : path.slice(base.length + 1);
 }
 
-function listed(relative: string, entries: string[]): boolean {
-  return entries.some((entry) =>
-    entry.endsWith("/")
-      ? relative === entry.slice(0, -1) || relative.startsWith(entry)
-      : relative === entry,
-  );
-}
+type Level = "rw" | "ro" | "names";
 
-/** The grant level of a path relative to the task worktree, or null when it has none. */
-export function levelOf(
-  policy: Policy,
-  relative: string,
-): "rw" | "ro" | "names" | null {
-  if (listed(relative, policy.rw)) return "rw";
-  if (listed(relative, policy.ro)) return "ro";
-  if (listed(relative, policy.names)) return "names";
-  return null;
+/**
+ * The grant level of a path relative to the task worktree, or null when it has none: the most
+ * specific entry decides, an exact entry, else the longest directory entry at or above it.
+ */
+export function levelOf(policy: Policy, relative: string): Level | null {
+  const levels: Level[] = ["rw", "ro", "names"];
+  for (const level of levels)
+    if (policy[level].includes(relative)) return level;
+  let best: Level | null = null;
+  let length = -1;
+  for (const level of levels)
+    for (const entry of policy[level])
+      if (
+        entry.endsWith("/") &&
+        (relative === entry.slice(0, -1) || relative.startsWith(entry)) &&
+        entry.length > length
+      ) {
+        best = level;
+        length = entry.length;
+      }
+  return best;
 }
 
 /** Whether a worktree-relative path is the worktree's `.git`, a submodule's, or below one. */
@@ -99,11 +128,20 @@ function inGit(policy: Policy, path: string): boolean {
   return policy.git.some((base) => within(path, base));
 }
 
+/** Whether an absolute path is a runtime path or below one. */
+function inRuntime(policy: Policy, path: string): boolean {
+  return policy.runtime.some((base) => within(path, base));
+}
+
 function readOne(policy: Policy, path: string): string | null {
   if (inGit(policy, path)) return "Git metadata is not available to workers";
-  if (within(path, policy.worktree)) {
-    const relative = relativeTo(path, policy.worktree);
-    if (isGit(relative)) return "Git metadata is not available to workers";
+  const inWorktree = within(path, policy.worktree);
+  const relative = inWorktree ? relativeTo(path, policy.worktree) : "";
+  if (inWorktree && isGit(relative))
+    return "Git metadata is not available to workers";
+  // A runtime path is readable wherever it lies, inside the task worktree too.
+  if (inRuntime(policy, path)) return null;
+  if (inWorktree) {
     const level = levelOf(policy, relative);
     if (level === "rw" || level === "ro") return null;
     if (level === "names")
@@ -112,8 +150,7 @@ function readOne(policy: Policy, path: string): string | null {
   }
   if (policy.hidden.some((base) => within(path, base)))
     return `${path} belongs to the host`;
-  if ([...policy.own, ...policy.runtime].some((base) => within(path, base)))
-    return null;
+  if (policy.own.some((base) => within(path, base))) return null;
   if (within(path, policy.userHome) || within(path, policy.primary))
     return `${path} is outside this task's boundary`;
   return null;
@@ -128,26 +165,42 @@ export function readDecision(policy: Policy, path: string): string | null {
   return real === lexical ? null : readOne(policy, real);
 }
 
+function isLink(path: string): boolean {
+  try {
+    return lstatSync(path).isSymbolicLink();
+  } catch {
+    return false;
+  }
+}
+
 /**
- * Decide a write of an absolute path, as the Claude Code backend's write hook does: directories
- * resolved, a final symbolic link judged by its own name, and only `rw` paths allowed.
+ * Decide a write of an absolute path, as the Claude Code backend's write hook does: every
+ * symbolic link resolved, the final one included, so that a write is judged by the file it would
+ * change, and only `rw` paths allowed.
  */
 export function writeDecision(policy: Policy, path: string): string | null {
   const absolute = normalize(path);
-  const resolved = join(realOf(dirname(absolute)), basename(absolute));
+  const resolved = realOf(absolute);
+  const link = isLink(absolute);
   if (!within(resolved, policy.worktree) || resolved === policy.worktree) {
-    return `${path} is outside the task worktree`;
+    return link
+      ? `${path} is a symbolic link to ${resolved}, outside the task worktree`
+      : `${path} is outside the task worktree`;
   }
   const relative = relativeTo(resolved, policy.worktree);
   if (isGit(relative) || inGit(policy, resolved))
     return "Git metadata is not available to workers";
-  if (listed(relative, policy.rw)) return null;
-  if (listed(relative, policy.ro))
-    return `${relative} is read-only for this task`;
-  if (listed(relative, policy.names))
-    return `only the name of ${relative} is visible to this task`;
+  const level = levelOf(policy, relative);
+  if (level === "rw") return null;
+  // A denial through a final link names the file judged and the link it was reached by.
+  const named = link
+    ? `${relative} (the target of the symbolic link ${path})`
+    : relative;
+  if (level === "ro") return `${named} is read-only for this task`;
+  if (level === "names")
+    return `only the name of ${named} is visible to this task`;
   return (
-    `${relative} is not in this task's grant; a new file outside the bound directories is ` +
+    `${named} is not in this task's grant; a new file outside the bound directories is ` +
     "created and bound to a Module by the task level before a worker fills it, and a " +
     "file another Module binds needs that Module bound to the task"
   );
@@ -181,7 +234,12 @@ export function searchDecision(policy: Policy, path: string): string | null {
       const relative = relativeTo(candidate, policy.worktree);
       if (isGit(relative) || inGit(policy, candidate))
         return "Git metadata is not available to workers";
-      if (!readableBelow(policy, relative))
+      if (
+        !readableBelow(policy, relative) &&
+        !policy.runtime.some(
+          (base) => within(base, candidate) || within(candidate, base),
+        )
+      )
         return `${relative || policy.worktree} holds nothing this task may read`;
       continue;
     }

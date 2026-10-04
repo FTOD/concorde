@@ -384,8 +384,8 @@ identities:
 | `CONCORDE-SOURCE-008` | error | the configuration, registry or Protocol binding cannot be read, so nothing else was checked; the message is the load error's, the remediation carries its remediation and reason, and `result.load_error` holds its [error record](errors.md) |
 
 `result` holds `summary` (the counts of errors and warnings), `source_digest` (a digest over the
-paths and digests of the configuration, the registry, every assessed document member, the project
-glossary and the Protocol binding), `claims` (the kinds
+paths and digests of the configuration, the registry, every registered document member as read,
+whether or not it was admitted, the project glossary and the Protocol binding), `claims` (the kinds
 of structure the run checked) and `semantic_completeness: "not_proven"`. No other Module's records
 enter the digest, nor do the files Modules bind, the list of version-controlled files or the tests
 scanned for verification declarations, so a finding about bindings, unbound files or scenario
@@ -611,8 +611,9 @@ and `package` the running Concorde package. `data` is one of:
 Any other action, a propose without a name and an apply without both fields fail with
 `invalid_input`. Spec core registers the proposal type.
 
-`source_digest` is the `sha256:` digest of the canonical JSON of `{protocol, entries}`: the binding
-of the installed Protocol copy and the realization entries the proposal binds (below), that is, the
+`source_digest` is the `sha256:` digest of the canonical JSON of `{protocol, entries, installed}`:
+the binding of the installed Protocol copy, the realization entries of the existing project files
+and the installed files the Concorde installation realization binds (both below), that is, the
 project state the proposal was computed from. `proposal_digest` is the `sha256:` digest of the
 canonical JSON of the proposal typed value.
 
@@ -626,9 +627,9 @@ on propose as given, otherwise the first of `.venv/bin/python` and `venv/bin/pyt
 and absent when there is none;
 `.concorde/specs.json` with one record for the root Module; `specs/project/module.md` with its
 metadata; and the empty project glossary `specs/project/glossary.json`, beside the entry. The entry
-follows the reading order the Protocol's writing guidance recommends, in three sections: Purpose;
-Not yet specified, which says that the project's core concepts, behaviour and architecture are not
-yet specified; and Parts, which says that the root contains, uses and includes nothing yet, explains
+follows the reading order the Protocol's writing guidance recommends, in three sections: `Purpose`;
+`Not yet specified`, which says that the project's core concepts, behaviour and architecture are not
+yet specified; and `Parts`, which says that the root contains, uses and includes nothing yet, explains
 its realizations and is where the children are explained once it has some. Its metadata declares the `module` block with the entry as the
 only owned document, empty relation arrays and the glossary, and the glossary holds no concept.
 

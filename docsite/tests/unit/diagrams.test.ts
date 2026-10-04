@@ -254,6 +254,27 @@ describe("scenario.views.diagram-subset-refused", () => {
       await rm(project.root, { recursive: true, force: true });
     }
   });
+
+  // verifies: scenario.views.diagram-subset-refused
+  it("names the line of the source file, front matter and inserted anchors notwithstanding", async () => {
+    const project = bankProject();
+    try {
+      const path = "specs/bank/module.md";
+      const source =
+        "---\nsidebar_position: 1\n---\n" +
+        read(project, path) +
+        '\n```d2\nfoo: Foo {\n  style.fill: "#fff"\n}\n```\n';
+      put(project, path, source);
+      const lines = source.split("\n");
+      const line = lines.indexOf('  style.fill: "#fff"') + 1;
+      const registry = loadScopedRegistry(project.root);
+      await expect(materializeScoped(registry)).rejects.toThrow(
+        `${path}:${line} is outside the semantic subset`,
+      );
+    } finally {
+      await rm(project.root, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("scenario.views.d2-missing", () => {

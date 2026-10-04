@@ -19,7 +19,7 @@ Printed by `concorde workflow step`, from the workspace's
 ```concorde-contract
 {
   "id": "contract.workflows.step",
-  "version": 6,
+  "version": 7,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -277,7 +277,7 @@ Printed by `concorde workflow step`, from the workspace's
       }
     }
   },
-  "semantics": "The outcome of one workflow step in the bound workspace the step command runs in. workspace names that workspace as its binding does. key is the step key, including the restart label after # and the answers digest after @ when they were given. name is the Operation or execution command the step runs. run_id names the run recorded for the key, null for a refused step, except one whose run started before its workspace was retired, which names that run, and for a step that is still waiting for the workspace lock, and result_path the path in the run store where its run result is or will be saved. state is running while the run has no result and its runner lives, and also when the command's wait ended before the workspace lock was free, in which case nothing was started or recorded and asking again waits for the lock again; finished once it has a result, lost when it has neither a result nor a living runner, and refused when the run could not start, the workflow record refused the step or the workspace was retired while the command waited for its workflow lock, which nothing records; status and summary are the result's once finished and null otherwise. decision_points counts the decision points the finished run declared under the step output convention, leaving out those the step's own answers settle, and 0 otherwise. blocking is the run's declared blocking item, null when it declared none or has not finished, and data is the data object it declared, handed to the script unchanged and uninterpreted, {} when it declared none or has not finished; Workflows reads nothing else of a run's output. error is null for running and finished, and the workflow's link for lost and refused. A behaviour or field change increments the version.",
+  "semantics": "The outcome of one workflow step in the bound workspace the step command runs in. workspace names that workspace as its binding does. key is the step key, including the restart label after # and the answers digest after @ when they were given. name is the Operation or execution command the step runs. run_id names the step's run. It is null in exactly three cases: a step refused because its run could not start or the workflow record refused it; a step refused because its workspace was retired before the step started a run; and a running step with no run yet, because the call's wait ended before the workflow lock or the workspace lock was free, or before the run of a step still starting entered the step's node. A step refused after its run started names that run: one whose workspace was retired before the step could end its node, and one the workflow record could not record (step_unrecorded). result_path is null exactly when run_id is; otherwise it is the path of the run's result as Execution's run store finds the run at that moment: in the run's node, run/ of the step's node, once the run holds its workspace's lock, or in the run's lobby folder before then, where a run refused before it held that lock keeps its result for good. state is running while the run has no result and its runner lives, and also when the call ended with no run, in which case this call started and recorded nothing and asking again waits again; finished once it has a result, lost when it has neither a result nor a living runner, and refused when the run could not start, the workflow record refused the step or could not record its run, or the workspace was retired while the command waited for its workflow lock, which nothing records; status and summary are the result's once finished and null otherwise. decision_points counts the decision points the finished run declared under the step output convention, leaving out those the step's own answers settle, and 0 otherwise. blocking is the run's declared blocking item, null when it declared none or has not finished, and data is the data object it declared, handed to the script unchanged and uninterpreted, {} when it declared none or has not finished; Workflows reads nothing else of a run's output. error is null for running and finished, and the workflow's link for lost and refused. A behaviour or field change increments the version.",
   "example": {
     "workflow": "brownfield",
     "workspace": "adopt",
@@ -304,7 +304,7 @@ What `concorde workflow step --json` takes, as the
 ```concorde-contract
 {
   "id": "contract.workflows.step-request",
-  "version": 6,
+  "version": 7,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -394,7 +394,7 @@ What `concorde workflow step --json` takes, as the
       }
     }
   },
-  "semantics": "One step request, with the meaning of the command line's options: the workflow, mode and base step key, argv as the name of an Operation or an execution command followed by its arguments, answers as the list of every answer given for this step so far or null, each in the shape of an answer of the step output convention ($defs.answer of contract.workflows.step-output), naming by id the decision point it settles, saying in answered_by whether the main agent or the developer settled it, retry to start a new run for a key whose current step did not end ok, and restart, a short generation label or null, to start the step again whatever its outcome: the label is part of the step key, so the restarted step supersedes the earlier one and every later step once, and a relaunch with the same label finds it again. The request names no workspace: the step runs in the workspace whose binding lies in the worktree the command starts in, and argv carries no workspace either. An Operation in argv is started as concorde run <argv> --detach and an execution command as concorde <argv> --detach. answers, retry and restart are optional and mean null, false and null when left out; the workflow scripts leave them out whenever they hold that value, so that a step agent that retypes the request has less to copy. A behaviour or field change increments the version.",
+  "semantics": "One step request, with the meaning of the command line's options: the workflow, mode and base step key, argv as the name of an Operation or an execution command, matching ^[a-z][a-z_-]*$ as a step outcome names it, followed by its arguments (a first item that does not match is refused as invalid_request before anything is written, which the schema dialect cannot express), answers as the list of every answer given for this step so far or null, each in the shape of an answer of the step output convention ($defs.answer of contract.workflows.step-output), naming by id the decision point it settles, saying in answered_by whether the main agent or the developer settled it, retry to start a new run for a key whose current step did not end ok, and restart, a short generation label or null, to start the step again whatever its outcome: the label is part of the step key, so the restarted step supersedes the earlier one and every later step once, and a relaunch with the same label finds it again. The request names no workspace: the step runs in the workspace whose binding lies in the worktree the command starts in, and argv carries no workspace either. An Operation in argv is started as concorde run <argv> --detach and an execution command as concorde <argv> --detach. answers, retry and restart are optional and mean null, false and null when left out; the workflow scripts leave them out whenever they hold that value, so that a step agent that retypes the request has less to copy. A behaviour or field change increments the version.",
   "example": {
     "workflow": "brownfield",
     "mode": "interactive",
@@ -723,7 +723,7 @@ Printed by `concorde workflow report` and saved in the workflow's trace node, at
 ```concorde-contract
 {
   "id": "contract.workflows.result",
-  "version": 8,
+  "version": 9,
   "schema": {
     "$defs": {
       "error": {
@@ -1330,7 +1330,7 @@ Printed by `concorde workflow report` and saved in the workflow's trace node, at
       }
     }
   },
-  "semantics": "The result of the workflow of one bound workspace, built from its workflow record and the saved run results. workspace names the workspace; mode is the mode of the latest recorded step. steps lists the current steps in the order recorded, each with the name of its Operation or execution command, its Modules, run and status: ok, blocked or failed from its result, running while its runner lives, lost without result or runner, refused without a run. superseded lists the steps a later rerun superseded, which contribute nothing else. decisions, decision_points, deviations and notes are every item of those kinds the finished current steps declared under the step output convention, exactly as their runs declared them, each with its step and run, in the order of the steps; so a decision says whether the worker took it or it follows an answer the main agent or the developer gave, and a note, such as a review's verdict or a proposed check, keeps the kind and data its run gave it. Workflows interprets none of them. pending lists the decision points of the last step an interactive run ended at that its answers did not settle, empty otherwise. problems lists every current step that did not end ok with its run's error chain unchanged, or the workflow's own link for a running, lost or refused step. status is running while a current step runs; otherwise failed when the procedure stopped at a failed, lost or refused step, blocked when it stopped at a blocked step or at a step that declared blocking, awaiting_decision when an interactive run ended at decision points, ok when its last step, as the part that registered the workflow names it, ended ok, and failed with the code incomplete when the recorded steps end before that last step, or no installed part registers the workflow, without any of these stops. error is null exactly when status is ok; otherwise it is the workflow's link, level workflow, whose causes are the errors of the steps that stopped it, unchanged, and whose evidence names a declared blocking item or every pending point. Each report is saved beside the workflow record as reports/<n>.json, with its Markdown rendering as reports/<n>.md. A behaviour or field change increments the version.",
+  "semantics": "The result of the workflow of one bound workspace, built from its workflow record and the saved run results, or, for a workspace whose first step was lost before anything was recorded, from the workflow and mode the report command was given and the keys it reports lost. workspace names the workspace; mode is the mode of the latest recorded step, or the given mode when none is recorded. steps lists the current steps in the order recorded, each with the name of its Operation or execution command, its Modules, run and status: ok, blocked or failed from its result, running while its runner lives or while a step still starting may yet get its run, lost without result or runner or when a starting step's run never started, refused without a run; then every key reported lost whose base key has no current step, with the name unknown. superseded lists the steps a later rerun superseded, which contribute nothing else. decisions, decision_points, deviations and notes are every item of those kinds the finished current steps declared under the step output convention, exactly as their runs declared them, each with its step and run, in the order of the steps; so a decision says whether the worker took it or it follows an answer the main agent or the developer gave, and a note, such as a review's verdict or a proposed check, keeps the kind and data its run gave it. Workflows interprets none of them. pending lists, when the status is awaiting_decision, the decision points of the latest current step that its answers did not settle, empty otherwise. problems lists every current step that did not end ok with its run's error chain unchanged, or the workflow's own link for a running, lost or refused step. status is decided by the latest current step in recorded order, in this order of precedence: running while any current step runs; failed with the code step_lost when a key reported lost has no current step of its base key; failed when the latest current step ended failed, was lost or was refused; blocked when it ended blocked or declared blocking; awaiting_decision when the latest recorded step ran in interactive mode and the latest current step has decision points its answers did not settle; ok when the latest current step's base key is the last step the part that registered the workflow names and that step ended ok; and otherwise failed with the code incomplete, also when no installed part registers the workflow. error is null exactly when status is ok; otherwise it is the workflow's link, level workflow, with the reason the error table gives its code, whose causes are the errors of the steps that stopped it, unchanged, and whose evidence names a declared blocking item or every pending point. Each report is saved beside the workflow record as reports/<n>.json, with its Markdown rendering as reports/<n>.md. A behaviour or field change increments the version.",
   "example": {
     "workflow": "brownfield",
     "workspace": "adopt",
@@ -1620,14 +1620,18 @@ The adapter defines three functions for the procedure:
 - `step(key, argv)` asks for one [workflow step](../glossary.json#concept.workflow-step): `key` is
   its base key, as the [step request](#contract.workflows.step-request) restricts it, and `argv`
   the name of an Operation or execution command followed by its arguments. The adapter adds the
-  step's `answers`, `retry` and `restart` from `args` and relays the request until the run has
-  finished, so the promise it returns resolves to a [step outcome](#contract.workflows.step) whose
-  state is `finished`, `lost` or `refused`, or `running` only when 200 calls for the step ended
-  without its end; it resolves to `null` when three relays in a row brought no outcome that names
-  the step and a well-formed run identity or none. Asking again for the same key never starts a
-  second run.
-- `report(lost)` runs `concorde workflow report`, with `--lost <key>` when `lost` names a key, and
-  returns a promise of the script's result.
+  step's `answers`, `retry` and `restart` from `args`, leaves `retry` out once an outcome names a
+  run, and relays the request until the run has finished, so the promise it returns resolves to a
+  [step outcome](#contract.workflows.step) whose state is `finished`, `lost` or `refused`, or
+  `running` only after 200 calls for the step, a guard against a run that never ends, when it
+  resolves to the last outcome that said the run was running. It resolves to `null` when three
+  relays in a row brought no answer: an outcome that names the
+  [step key](../glossary.json#concept.step-key) asked for (its base key, its restart label and,
+  for an answered step, an answers digest checked by its shape), a step outcome's state and a
+  well-formed run identity, or none only for a refused or running step. Asking again for the same
+  key never starts a second run.
+- `report(lost)` runs `concorde workflow report --workflow <WORKFLOW> --mode <args.mode>`, with
+  `--lost <key>` when `lost` names a key, and returns a promise of the script's result.
 - `note(text)` shows progress and records nothing.
 
 ### The script's result
@@ -1643,8 +1647,9 @@ Every path of the procedure ends by returning what `report` resolved to, which i
 
 The workflow result itself is the saved report, which the script's result only points at. A procedure
 stops at a step whose outcome is `null` and reports that step's key as lost. A step whose outcome
-carries a `step_rejected`, `step_unrecorded` or `workspace_retired` link is in no workflow record,
-so the report cannot see it: the procedure stops there, reports its key as lost and returns that
+carries a `step_rejected` or `workspace_retired` link is in no workflow record, and one with
+`step_unrecorded` is recorded without its run, so the report cannot see what it ran: the procedure
+stops there, reports its key as lost and returns that
 outcome, unchanged, as `rejected` beside the fields above, as Method's brownfield workflow does.
 
 ## MCP tools
@@ -1702,7 +1707,7 @@ workspace folder, and each step one of kind `step` below it, as
 ```concorde-contract
 {
   "id": "contract.workflows.workflow-trace",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -1830,7 +1835,7 @@ workspace folder, and each step one of kind `step` below it, as
       }
     }
   },
-  "semantics": "The data of the typed value concorde-workflow-trace, the content of a workflow's trace node, which is the workspace's workflow record. workflow names the workspace's one workflow. steps lists every step ever recorded, in order: its key, the Operation or execution command it ran, its run identity or null when it was refused, the mode it ran in, the answers file it passed (relative to the workflow's node), the refusal's error link or null, whether a later rerun superseded it, its node folder relative to the workflow's node (steps/<n>-<key>) and when it was recorded. reports lists every report with its status, the paths of its JSON and Markdown files relative to the workflow's node and when it was saved. The node's identity is the workflow name, its metadata the workspace, the workflow and the mode of the latest step, its start the first step, its status running until a report ends it ok, blocked or failed (awaiting_decision counting as blocked, with that outcome), and it is written again with every step and report. A behaviour or field change increments the version.",
+  "semantics": "The data of the typed value concorde-workflow-trace, the content of a workflow's trace node, which is the workspace's workflow record. workflow names the workspace's one workflow. steps lists every step ever recorded, in order: its key, the Operation or execution command it ran, its run identity, null while the step is starting and when it was refused, the mode it ran in, the answers file it passed (relative to the workflow's node), the refusal's error link, null unless it was refused, whether a later rerun superseded it, its node folder relative to the workflow's node, steps/<n>-<key> with <n> counting every step the workflow recorded from 1 and the key written with every character other than a lower-case letter, digit, . or - as _, and when it was recorded. A step whose run_id and error are both null is starting: the step command records it so before it launches its run and writes the run, or the refusal of a run that did not start, into it once the launch has answered; a later step or report command adopts the run whose node lies in the step's node. reports lists every report with its status, the paths of its JSON and Markdown files relative to the workflow's node and when it was saved. The node's identity is the workflow name, its metadata the workspace, the workflow and the mode of the latest step, its start the first step, or the first report when the first step was lost before anything was recorded, its status running until a report ends it ok, blocked or failed (awaiting_decision counting as blocked, with that outcome), and it is written again with every step and report. A behaviour or field change increments the version.",
   "example": {
     "workflow": "brownfield",
     "steps": [
@@ -1861,7 +1866,7 @@ workspace folder, and each step one of kind `step` below it, as
 ```concorde-contract
 {
   "id": "contract.workflows.step-trace",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -1912,7 +1917,7 @@ workspace folder, and each step one of kind `step` below it, as
       }
     }
   },
-  "semantics": "The data of the typed value concorde-step-trace, the content of one workflow step's trace node. key is the step key, name the Operation or execution command, run_id the run it started, whose node is run/ inside this one, or null when it was refused, mode the workflow's mode, superseded whether a later rerun superseded it, and state what the step command or report last saw of its run. The node starts when the step is recorded and ends once a step or report command sees its run finished, lost or refused, with the run's status (ok, blocked or failed, failed for lost and refused) and the state as outcome; its error is the run's error, or the step's own link for a lost or refused step. A behaviour or field change increments the version.",
+  "semantics": "The data of the typed value concorde-step-trace, the content of one workflow step's trace node. key is the step key, name the Operation or execution command, run_id the run it started, whose node is run/ inside this one, null while the step is starting and when it was refused, mode the mode the step ran in, superseded whether a later rerun superseded it, and state what the step command or report last saw: running while the step starts and while its run runs. The node's identity is its folder name, <n>-<key>, so that each attempt of a retried key is a node of its own. The node starts when the step is recorded and ends once a step or report command sees its run finished, lost or refused, or a starting step's run never started, which is lost, with the run's status (ok, blocked or failed, failed for lost and refused) and the state as outcome; its error is the run's error, or the step's own link for a lost or refused step, the same link the step outcome and the report carry. A behaviour or field change increments the version.",
   "example": {
     "key": "describe:module.checkout",
     "name": "code_to_spec",
@@ -1935,11 +1940,11 @@ causes.
 | `awaiting_decision` | result | `decision` | an interactive run ended at [decision points](../glossary.json#concept.decision-point); the evidence names each pending point |
 | `step_blocked` | result | `decision` | the procedure stopped at a step that ended `blocked`, its error the cause, or at a step whose output declared it [blocking](#contract.workflows.step-output), with that declaration's code and detail as evidence |
 | `step_failed` | result | `decision` | the procedure stopped at a step that ended `failed`; the step's error is the cause |
-| `step_lost` | step outcome, result | `environment` | a step's run has no result and no living runner, its link carrying the end of the runner's output `host.out` as evidence and as its one cause, a `component` link of the actor `Execution runner of <run-id>` with the code `host_ended` and reason `environment`, whose detail says the runner ended without a result and gives the end of that output, `(nothing)` when it wrote none; or the script reported the key with nothing recorded |
-| `step_refused` | step outcome, result | `input` | the runner rejected the step's command line (its message is the cause) or the detached runner did not start (the `detach_failed` link is the cause) |
+| `step_lost` | step outcome, result | `environment` | a step's run has no result and no living runner, its link carrying the end of the runner's output `host.out` as evidence and as its one cause, a `component` link of the actor `Execution runner of <run-id>` with the code `host_ended` and reason `environment`, whose detail says the runner ended without a result and gives the end of that output, `(nothing)` when it wrote none; a step recorded as starting whose run never entered its node while no run of the workspace runs, without evidence or cause; or the script reported the key with nothing recorded |
+| `step_refused` | step outcome, result | `input` | the runner rejected the step's command line (its message is the cause), the detached runner did not start (the `detach_failed` link is the cause), or the launcher could not be run or gave no answer within 90 seconds and was ended (a `component` link `run_not_started` of reason `environment` is the cause) |
 | `step_running` | result | `exhausted` | a report was taken while a current step still runs |
 | `step_rejected` | step outcome | `input` | the workflow record refused the step (`workflow_conflict`, `step_conflict`, `record_unreadable`), its `Workflows (workflow record)` link the cause; nothing was started or recorded, and the outcome has state `refused` |
-| `step_unrecorded` | step outcome | `environment` | a run started but the workflow record refused to record it, its link the cause; the link names the live run |
+| `step_unrecorded` | step outcome | `environment` | a run started but the workflow record could not record it, its `Workflows (workflow record)` link (such as `record_unwritable`) the cause; the link names the live run, and the step stays recorded as starting, for the next call to adopt the run |
 | `workspace_retired` | step outcome | `environment` | the workflow lock's file was removed or replaced while the step command waited for it, or, once it held the lock, the worktree's binding was gone, untrusted or no longer the one the command read: whoever retired the workspace moved its folder away; a `Workflows (workflow lock)` link of code `lock_removed`, `binding_gone`, `binding_untrusted` or `binding_changed` is the cause. Nothing was started or recorded, and the outcome has state `refused`; when the step had started a run that ended before the retirement, the link names that run and so does the outcome |
 | `incomplete` | result | `capability` | the recorded steps end before the procedure's last step without any of the stops above, such as a script that ended early |
 | `report_failed` | report command | `capability` | the report could not be built for a reason of its own, such as a recorded result the report's contract refuses; the detail names the reason, instead of the command ending in a traceback |
@@ -1954,7 +1959,9 @@ reason `input` when a finished run's output carries a `workflow` object that bre
 [step output convention](#contract.workflows.step-output), which a report answers as
 `report_failed`, and, for the report,
 `no_workflow` when the workspace ran no [workflow step](../glossary.json#concept.workflow-step)
-and `record_unreadable` when its workflow record cannot be read, and, for the report, `workspace_retired` with reason `environment` when the workspace was retired while it waited for the workflow lock, as for a step. A command line that breaks the
+and the report was not given both `--workflow` and a `--lost` key, `workflow_conflict` when
+`--workflow` names another workflow than the one recorded, and `record_unreadable` when its
+workflow record cannot be read or breaks its contract, and, for the report, `workspace_retired` with reason `environment` when the workspace was retired while it waited for the workflow lock, as for a step. A command line that breaks the
 [step request](#contract.workflows.step-request) contract, or a malformed report command line, is
 answered with a `component` link of
 the actor `Workflows (concorde workflow)`, code `invalid_request`, reason `input`, and exit status

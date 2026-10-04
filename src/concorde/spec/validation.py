@@ -17,7 +17,7 @@ from pathlib import Path
 from .content_model import MODULE_OPTIONAL, metadata_path
 from .content_repository import DocumentUnitRepository, strictness
 from .errors import system_cause
-from .glossary import plain_definition
+from .glossary import misaddressed_links, plain_definition
 from .model import Finding, ToolResult
 from .repository import SpecRepository
 from .repository_base import (
@@ -119,7 +119,6 @@ class Checks:
     def run(self) -> list[Finding]:
         for family in (
             self.registry,
-            self.documents,
             self.glossary,
             self.terms,
             self.nodes,
@@ -181,24 +180,6 @@ class Checks:
                 )
 
     # --- documents -----------------------------------------------------------------------
-
-    def documents(self) -> None:
-        repository = self.repository
-        for module in repository.declarations.values():
-            entries = [
-                path
-                for path in module.owns
-                if path in repository.units
-                and repository.units[path].role == "module"
-                and path.split("/")[-1] == "module.md"
-            ]
-            if len(entries) > 1:
-                self.add(
-                    "CHK.document.entry",
-                    metadata_path(module.entry),
-                    f"Module {module.id} owns several module-role module.md documents: {entries}",
-                    subject=module.id,
-                )
 
     # --- the glossary and term links -----------------------------------------------------
 
@@ -286,6 +267,15 @@ class Checks:
                         "concept of the glossary",
                         subject=concept.id,
                     )
+            for target in misaddressed_links(concept.definition or ""):
+                self.add(
+                    "CHK.term.link",
+                    path,
+                    f"the definition of {concept.id} links {target}; a term link inside a "
+                    "definition addresses another entry by fragment alone, "
+                    f"#{target.split('#', 1)[1]}",
+                    subject=concept.id,
+                )
 
     def terms(self) -> None:
         """CHK.term.link for every term link in reading, and CHK.term.unlinked."""
@@ -1481,8 +1471,10 @@ def validate_repository(
                 for member in target.sources
                 if member in repository.source_documents
             )
-        for path, unit in sorted(repository.units.items()):
-            inputs.extend((member.path, member.digest) for member in unit.sources)
+        # Every registered document member as read, admitted or not, so that an invalid result
+        # pins the bytes of the documents that failed admission too.
+        for member, raw in sorted(repository.member_bytes.items()):
+            inputs.append((member, digest(raw) if raw is not None else "absent"))
         if repository.glossary_bytes is not None:
             artifacts.append(repository.glossary_path)
             inputs.append((repository.glossary_path, digest(repository.glossary_bytes)))

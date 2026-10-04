@@ -19,6 +19,7 @@ from unittest.mock import patch
 
 from concorde.worker_harness import pi_backend
 from concorde.worker_harness.settings import RunPaths, sandbox_filesystem
+from concorde.worker_harness.workers import result_schema
 from concorde.spec.verification import verifies
 from tests.concorde.harness.workers.test_workers import LOOPBACK_PROXY, WorkerProject
 
@@ -494,6 +495,236 @@ class PiPolicyTests(unittest.TestCase):
         self.assertIn("holds nothing this task may read", out["search:b-only"])
         self.assertIn("Git metadata", out["search:git"])
         self.assertIn("Git metadata", out["search:common-git"])
+
+    @verifies("scenario.workers.write-through-link")
+    def test_a_write_through_a_link_is_judged_by_its_target(self):
+        w = self.worktree
+        (w / "src/a/to-spec.md").symlink_to(w / "specs/a.md")
+        (w / "src/a/to-outside.py").symlink_to(self.base / "elsewhere.py")
+        (w / "specs/to-calc.py").symlink_to(w / "src/a/calc.py")
+        out = self.decide(
+            writes={
+                "to-secret": f"{w}/src/a/link.py",
+                "to-spec": f"{w}/src/a/to-spec.md",
+                "to-outside": f"{w}/src/a/to-outside.py",
+                "to-rw": f"{w}/specs/to-calc.py",
+            }
+        )
+        self.assertIn(
+            f"src/b/secret.py (the target of the symbolic link {w}/src/a/link.py) is not "
+            "in this task's grant",
+            out["write:to-secret"],
+        )
+        self.assertIn(
+            "specs/a.md (the target of the symbolic link", out["write:to-spec"]
+        )
+        self.assertIn("read-only", out["write:to-spec"])
+        self.assertIn(
+            f"is a symbolic link to {self.base}/elsewhere.py, outside the task worktree",
+            out["write:to-outside"],
+        )
+        self.assertIsNone(out["write:to-rw"])
+
+    @verifies("scenario.workers.most-specific-entry")
+    def test_a_file_listed_apart_below_a_rw_directory_keeps_its_level(self):
+        w = self.worktree
+        self.policy["ro"].append("src/a/calc.py")
+        self.policy["names"].append("src/a/sub/")
+        out = self.decide(
+            reads={"ro": f"{w}/src/a/calc.py"},
+            writes={
+                "ro": f"{w}/src/a/calc.py",
+                "names": f"{w}/src/a/sub/x.py",
+                "rw": f"{w}/src/a/other.py",
+            },
+        )
+        self.assertIsNone(out["read:ro"])
+        self.assertIn("src/a/calc.py is read-only", out["write:ro"])
+        self.assertIn("only the name of src/a/sub/x.py", out["write:names"])
+        self.assertIsNone(out["write:rw"])
+
+    @verifies("scenario.workers.runtime-paths-readable")
+    def test_a_runtime_path_inside_the_worktree_is_readable(self):
+        w = self.worktree
+        (w / ".venv/lib").mkdir(parents=True)
+        (w / ".venv/lib/site.py").write_text("x")
+        self.policy["runtime"] = [(w / ".venv").as_posix()]
+        out = self.decide(
+            reads={
+                "runtime": f"{w}/.venv/lib/site.py",
+                "beside": f"{w}/src/b/secret.py",
+            },
+            writes={"runtime": f"{w}/.venv/lib/site.py"},
+            searches={"runtime": f"{w}/.venv"},
+        )
+        self.assertIsNone(out["read:runtime"])
+        self.assertIsNone(out["search:runtime"])
+        self.assertIn("not in this task's grant", out["read:beside"])
+        self.assertIn("not in this task's grant", out["write:runtime"])
+
+
+def pi_package() -> Path | None:
+    """The installed pi package the ``pi`` command runs, or None."""
+    command = os.environ.get("CONCORDE_PI") or shutil.which("pi")
+    if not command:
+        return None
+    for parent in Path(os.path.realpath(command)).parents:
+        manifest = parent / "package.json"
+        if manifest.is_file():
+            try:
+                name = json.loads(manifest.read_text()).get("name")
+            except ValueError:
+                return None
+            return parent if name == "@earendil-works/pi-coding-agent" else None
+    return None
+
+
+PI_PACKAGE = pi_package()
+EXTENSION_PROBE = """
+import extension from "./permission.ts";
+import { validateToolArguments } from "@earendil-works/pi-ai";
+const tools = {}, handlers = {}, entries = [], out = {};
+extension({
+  registerTool: (tool) => { tools[tool.name] = tool; },
+  on: (event, handler) => { handlers[event] = handler; },
+  appendEntry: (type, data) => entries.push({ type, data }),
+});
+let aborted = 0;
+const ctx = { cwd: %(work)s, abort() { aborted++; } };
+async function attempt(name, run) {
+  try { out[name] = { ok: await run() }; } catch (error) { out[name] = { error: String(error.message ?? error) }; }
+}
+await attempt("read-granted", async () => (await tools.read.execute("1", { path: %(granted)s }, undefined, undefined, ctx)).content[0].text);
+await attempt("read-variant", async () => (await tools.read.execute("2", { path: %(variant)s }, undefined, undefined, ctx)).content[0].text);
+const result = tools.concorde_result;
+const call = (args) => ({ type: "toolCall", id: "r", name: "concorde_result", arguments: args });
+await attempt("result-invalid", async () => validateToolArguments(result, call({ status: "maybe" })));
+await attempt("result-valid", async () => validateToolArguments(result, call(%(valid)s)));
+await attempt("result-ends", async () => (await result.execute("r", %(valid)s)).terminate);
+for (const total of [0.3, 0.3]) await handlers.message_end({ message: { role: "assistant", usage: { cost: { total } } } }, ctx);
+await handlers.message_end({ message: { role: "user", usage: { cost: { total: 5 } } } }, ctx);
+out.blocked = await handlers.tool_call({}, ctx);
+out.entries = entries;
+out.aborted = aborted;
+console.log(JSON.stringify(out));
+"""
+
+
+@unittest.skipUnless(
+    shutil.which("node") and PI_PACKAGE is not None,
+    "Node and an installed pi are needed to load the permission extension",
+)
+class PiExtensionTests(unittest.TestCase):
+    """The generated permission extension, loaded by Node with pi's own tools and validation and
+    a recording stand-in for pi's extension API."""
+
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.base = Path(os.path.realpath(directory.name))
+        self.worktree = self.base / "wt"
+        (self.worktree / "notes").mkdir(parents=True)
+        # Only the NFC spelling is granted; only the NFD spelling exists.
+        self.granted = self.worktree / "notes/caf\u00e9.txt"
+        (self.worktree / "notes/cafe\u0301.txt").write_text("hidden")
+        (self.worktree / "notes/open.txt").write_text("visible")
+        (self.base / "work").mkdir()
+        extension = self.base / "extension"
+        modules = extension / "node_modules/@earendil-works"
+        modules.mkdir(parents=True)
+        (modules / "pi-coding-agent").symlink_to(PI_PACKAGE)
+        dependencies = PI_PACKAGE / "node_modules"
+        (modules / "pi-ai").symlink_to(dependencies / "@earendil-works/pi-ai")
+        (extension / "node_modules/typebox").symlink_to(dependencies / "typebox")
+        stub = self.base / "sandbox-runtime"
+        (stub / "dist").mkdir(parents=True)
+        (stub / "dist/index.js").write_text("export const SandboxManager = {};\n")
+        shutil.copy2(POLICY_SOURCE, extension / "pi_policy.ts")
+        policy = {
+            "worktree": self.worktree.as_posix(),
+            "rw": [],
+            "ro": ["notes/caf\u00e9.txt", "notes/open.txt"],
+            "names": [],
+            "hidden": [],
+            "own": [(self.base / "work").as_posix()],
+            "runtime": [],
+            "git": [],
+            "primary": (self.base / "primary").as_posix(),
+            "userHome": (self.base / "home").as_posix(),
+            "sandbox": {"denyRead": [], "allowRead": [], "allowWrite": []},
+            "programs": {"rg": "rg", "fd": "fd"},
+            "limits": {"maxTurns": 10, "maxBudgetUsd": 0.5},
+            "resultSchema": result_schema(None),
+        }
+        (extension / "permission.ts").write_text(
+            pi_backend.extension_source(policy, stub)
+        )
+        self.extension = extension
+
+    def probe(self) -> dict:
+        valid = {
+            "status": "ok",
+            "summary": "done",
+            "error": None,
+            "proposed_deletions": [],
+            "output": {},
+        }
+        probe = self.extension / "probe.mts"
+        probe.write_text(
+            EXTENSION_PROBE
+            % {
+                "work": json.dumps((self.base / "work").as_posix()),
+                "granted": json.dumps((self.worktree / "notes/open.txt").as_posix()),
+                "variant": json.dumps(self.granted.as_posix()),
+                "valid": json.dumps(valid),
+            }
+        )
+        completed = subprocess.run(
+            ["node", "--experimental-strip-types", "--no-warnings", str(probe)],
+            cwd=self.extension,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        return json.loads(completed.stdout.strip().splitlines()[-1])
+
+    @verifies("scenario.workers.pi-file-tools-denied")
+    def test_a_read_is_checked_on_the_file_pi_opens(self):
+        out = self.probe()
+        self.assertEqual({"ok": "visible"}, out["read-granted"])
+        # pi falls back to the NFD spelling, which the grant does not name.
+        self.assertIn("Concorde grant:", out["read-variant"]["error"])
+        self.assertIn("is not in this task's grant", out["read-variant"]["error"])
+
+    @verifies("scenario.workers.pi-invalid-result-retried")
+    def test_pi_validates_the_result_before_it_ends_the_run(self):
+        out = self.probe()
+        self.assertIn("error", out["result-invalid"])
+        self.assertIn("status", out["result-invalid"]["error"])
+        self.assertEqual("ok", out["result-valid"]["ok"]["status"])
+        self.assertEqual({"ok": True}, out["result-ends"])
+
+    @verifies("scenario.workers.pi-budget-limit")
+    def test_the_extension_stops_the_run_over_its_budget(self):
+        out = self.probe()
+        self.assertEqual(
+            [
+                {
+                    "type": "concorde-limit",
+                    "data": {"limit": "budget", "value": 0.6, "maximum": 0.5},
+                }
+            ],
+            out["entries"],
+        )
+        self.assertEqual(1, out["aborted"])
+        self.assertEqual(
+            {
+                "block": True,
+                "reason": "Concorde grant: the run reached its budget limit",
+            },
+            out["blocked"],
+        )
 
 
 if __name__ == "__main__":

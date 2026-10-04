@@ -32,6 +32,13 @@ records and error codes are defined in the [contracts](contracts.md).
 - THEN the command fails with `task_exists`, `branch_exists` or `path_exists`
 - AND no record, branch or worktree is created or changed
 
+### scenario.tasks.open-unrecorded — An open that cannot record its task undoes itself
+
+- GIVEN a primary worktree whose file system refuses the new task's record after the worktree and its binding were written
+- WHEN the main agent opens a task named `severity`
+- THEN the command fails with `record_unwritable`, naming the file system's error and that the open was undone
+- AND neither the branch `concorde/severity`, its worktree nor the task's folder remains, so the same open succeeds once the cause is fixed
+
 ### scenario.tasks.open-not-ignored — Refuse a worktree the primary would track
 
 - GIVEN a primary worktree whose `.gitignore` does not ignore `.claude/worktrees/`
@@ -247,10 +254,10 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 
 ### scenario.tasks.close-rerun — Running a close again finishes it
 
-- GIVEN a task whose close removed its worktree and then could not write the record, or wrote the record and then could not append its closing to the decision log
+- GIVEN a task whose close removed its worktree and then could not write the record, wrote the record and then could not append its closing to the decision log, or appended it and then could not end the task's trace node
 - WHEN the main agent reads the refusal
 - THEN it names what the close did and says that running the same close again finishes it
-- AND running the same close again closes the task, or appends the missing closing once and leaves the record unchanged
+- AND running the same close again closes the task, or appends the missing closing once, or ends the trace node, and leaves the record unchanged
 
 ### scenario.tasks.close-other-outcome — Refuse to close a closed task again
 
@@ -374,6 +381,7 @@ This illustrates [a merge running the Concorde it started with](requirements.md#
 - THEN the command fails with `check_failed`, naming for a failing check the check, its exit status, the log and the end of its output, and for checks that left paths those paths and the log
 - AND the primary branch is back at the commit it had before the merge, without the decision log the merge commit added, clean apart from the paths the checks created, which stay
 - AND the task is still delivered with its worktree
+- AND a check stopped after its time limit fails the same way, its log and the refusal keeping what it printed before it was stopped
 
 ### scenario.tasks.merge-commit-refused — A refused merge commit is undone
 
@@ -398,6 +406,13 @@ This illustrates [a merge running the Concorde it started with](requirements.md#
 - THEN the primary branch holds the checked delivery commit and not the later commit
 - AND closing the task fails with `not_merged`, leaving the task `merging` and saying that `--resume` finishes it once the cause is fixed
 
+### scenario.tasks.merge-already-contained — A head the primary branch already holds is checked and closed
+
+- GIVEN a delivered task whose delivery commit was merged into the primary branch by hand
+- WHEN the main agent merges the task with `concorde task merge`
+- THEN no merge commit is made: the checks run on the primary branch's head, which the answer gives as both `before` and `after`, with `contained` true
+- AND the task is closed as merged, its attempt's node ending with the outcome `contained`, and its decision log is committed alone on the primary branch
+
 ### scenario.tasks.merge-waits-for-run — A merge waits for the task's run to end
 
 - GIVEN a delivered task whose [workspace lock](../../glossary.json#concept.workspace-lock) a run that is finishing holds
@@ -416,7 +431,7 @@ This illustrates [a merge running the Concorde it started with](requirements.md#
 
 - GIVEN a `concorde task merge` whose process was killed while its checks ran, leaving the task `merging` and its merge commit at the head of the primary branch
 - WHEN any main session runs `concorde task open`, `merge`, `close`, `session` or `escalate`, for that task or another
-- THEN the command fails with `merge_incomplete`, naming the task, the commit before the merge, the merge commit and the `--resume` and `--abort` recovery, and changes nothing
+- THEN the command fails with `merge_incomplete`, naming the task, the commit before the merge, the merge commit and the `--resume` and `--abort` recovery, and changes nothing, a close stopping none of the task's sessions and runs
 - AND `concorde task list` and `concorde task show` still answer, showing the task as `merging` with the commits before and after the merge and the checked commit
 
 ### scenario.tasks.merge-resume — Resume checks the interrupted merge again
@@ -465,6 +480,7 @@ This illustrates [a merge running the Concorde it started with](requirements.md#
 - WHEN the main agent runs `concorde task merge <task-id> --abort`
 - THEN the command fails with `merge_diverged`, naming the primary branch's head, the commit before the merge and the merge commit
 - AND the primary branch and the task, still `merging`, are unchanged
+- BUT when the primary branch is back at the commit before the merge with a merge of another commit in progress, made by hand, the command fails with `merge_diverged` naming that commit and leaves that merge in progress
 
 ### scenario.tasks.merge-live-busy — A merge still running is busy, not incomplete
 
@@ -486,6 +502,13 @@ This illustrates [a merge running the Concorde it started with](requirements.md#
 
 This illustrates [a delivery following its checks](requirements.md#req.tasks.deliver-checked) and
 [the Kernel's convention](requirements.md#req.tasks.deliver-convention).
+
+### scenario.tasks.trace-write-reported — A refused trace write is reported, never fatal
+
+- GIVEN a task whose worktree holds a change, on a file system that refuses every write of a check's [trace node](../../glossary.json#concept.trace-node)
+- WHEN the task is delivered with `concorde task deliver` and merged with `concorde task merge`, each with one check that passes
+- THEN both succeed as they would otherwise, and each answer's `warnings` names the check node's `trace.json` and the file system's error
+- AND a delivery whose check fails is refused with `check_failed` whose detail names the incomplete trace the same way
 
 ### scenario.tasks.deliver-check-failed — A failed check delivers nothing
 
@@ -634,7 +657,7 @@ This illustrates [the parts Coordination does without](../module.md#optional-int
 
 - GIVEN a current task whose record has `schema_version` 2 and no `main`, `mains` or `reports`, with a task session started with `--main concorde-7d`
 - WHEN it is shown, reported to and rebound
-- THEN it is shown with `main` `concorde-7d`, `mains` from its session and no reports, the report is recorded, and after the rebind the record has `schema_version` 4 and satisfies the record contract
+- THEN it is shown with `main` `concorde-7d`, `mains` from its session and no reports, the report is recorded, and after the rebind the record has the current `schema_version`, 5, and satisfies the record contract
 - AND its trace node is unchanged in shape, so an earlier Concorde still writes it
 - AND a record of `schema_version` 3 with an answered report is read with that answer `by` `main-agent`
 
@@ -690,6 +713,7 @@ This illustrates [the parts Coordination does without](../module.md#optional-int
 - WHEN the task is closed as completed
 - THEN the wait ends with `wait_unreachable`, an error link naming the state the task ended in
 - AND a wait for a state a task reaches without its workspace lock, such as `active`, is refused with `invalid_input`
+- AND so is a wait for `merging`, which lasts only while a merge holds the lock, the refusal naming `--merge`, which waits for the merge itself
 
 ### scenario.tasks.wait-lock — A lock wait returns when its holder dies
 

@@ -4,6 +4,7 @@ import {
   loadScopedRegistry,
   requireScoped,
 } from "../plugins/scoped-content/model";
+import { renderDiagrams } from "../plugins/scoped-content/diagrams";
 import { renderPage } from "../plugins/scoped-content/render";
 
 function projectRoot(): string {
@@ -19,7 +20,9 @@ async function main() {
   const root = projectRoot();
   requireScoped(root);
   const registry = loadScopedRegistry(root);
-  registry.pages.forEach((page) => renderPage(registry, page));
+  // Step 2 of staging, diagrams included, in memory: nothing is written.
+  for (const page of registry.pages)
+    await renderDiagrams(registry, page, renderPage(registry, page), null);
   process.stdout.write(
     `Validated publication: ${registry.modules.length} Modules, ${registry.pages.length} documents.\n`,
   );

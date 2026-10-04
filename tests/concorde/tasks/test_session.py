@@ -150,6 +150,34 @@ class TaskSessionTests(unittest.TestCase):
         self.assertFalse((self.folder / "sessions").exists())
 
     @verifies("scenario.task-session.start")
+    def test_a_session_started_but_not_recorded_is_removed(self):
+        claude = FakeClaude()
+
+        def closed(*_arguments):
+            raise store.TaskError("task_closed", "task t1 is closed")
+
+        with patch.object(store, "record_session", closed):
+            with self.assertRaises(store.TaskError) as raised:
+                session.start(self.root, "t1", "m", run=claude)
+        self.assertEqual("task_closed", raised.exception.code)
+        self.assertEqual(["claude", "rm", "33afbc14"], claude.calls[-1][0])
+        self.assertIn("was removed with `claude rm 33afbc14`", str(raised.exception))
+        # When Claude Code cannot remove it, the refusal names the command that does.
+        failing = FakeClaude()
+
+        def refuse(command, **options):
+            if command[1] == "rm":
+                return subprocess.CompletedProcess(command, 1, "", "busy")
+            return FakeClaude.__call__(failing, command, **options)
+
+        with patch.object(store, "record_session", closed):
+            with self.assertRaises(store.TaskError) as raised:
+                session.start(self.root, "t1", "m", run=refuse)
+        self.assertIn(
+            "remove it by hand with `claude rm 33afbc14`", str(raised.exception)
+        )
+
+    @verifies("scenario.task-session.start")
     def test_a_closed_task_starts_no_session(self):
         store.close_task(self.root, "t1", "completed", note="tried it")
         with self.assertRaises(store.TaskError) as raised:
@@ -315,6 +343,11 @@ class TaskSessionTests(unittest.TestCase):
         self.assertIsNotNone(self.hook(self.folder / "task.json"))
         # Issues are written through the Issue command or tools, never by Edit or Write.
         self.assertIsNotNone(self.hook(self.root / ".concorde/issues/I-0.md"))
+        # A link is judged by the file it points to, which Edit and Write write through.
+        (self.worktree / "out.py").symlink_to(self.root / "src/a/calc.py")
+        (self.worktree / "in.py").symlink_to(self.worktree / "src/a/calc.py")
+        self.assertIsNotNone(self.hook(self.worktree / "out.py"))
+        self.assertIsNone(self.hook(self.worktree / "in.py"))
         denied = self.hook(self.root / "src/a/calc.py")
         self.assertEqual("deny", denied["hookSpecificOutput"]["permissionDecision"])
         self.assertIn(

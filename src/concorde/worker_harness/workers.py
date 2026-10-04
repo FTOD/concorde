@@ -37,7 +37,7 @@ from ..kernel.schema import register, validate
 from ..kernel.tracing.kinds import NodeKind, register as register_kinds
 from ..kernel.tracing import layout
 from ..kernel.tracing.node import Node
-from .audit import audit, rw_allows, snapshot
+from .audit import audit, snapshot
 from .claude_backend import BackendRefusal, ClaudeBackend
 from .pi_backend import PiBackend
 from .placement import PlacementError, place
@@ -54,11 +54,11 @@ _PATHS = {"type": "array", "items": {"type": "string", "minLength": 1}}
 _NULLABLE_TEXT = {"anyOf": [{"type": "null"}, {"type": "string", "minLength": 1}]}
 # A free-form object: the typed-value check closes an object without additionalProperties.
 _OBJECT = {"type": "object", "additionalProperties": {}}
-# contract.workers.worker-run-trace, version 4
+# contract.workers.worker-run-trace, version 5
 WORKER_RUN_TRACE = "concorde-worker-run-trace"
 register(
     WORKER_RUN_TRACE,
-    4,
+    5,
     {
         "type": "object",
         "additionalProperties": False,
@@ -74,6 +74,7 @@ register(
             "deletions_refused",
             "deletions_absent",
             "deletions_failed",
+            "trace_failures",
             "rounds",
         ],
         "properties": {
@@ -98,6 +99,7 @@ register(
             "deletions_refused": _PATHS,
             "deletions_absent": _PATHS,
             "deletions_failed": _PATHS,
+            "trace_failures": _PATHS,
             "rounds": {"type": "integer", "minimum": 0},
         },
     },
@@ -481,8 +483,22 @@ def run_worker(request: WorkerRequest) -> dict:
     # the unbound runs of the worktree.
     parent = Path(request.trace_parent or layout.concorde_of(worktree) / "unbound")
     run_id, paths = create_run(parent)
-    if request.started is not None:
-        request.started(run_id)
+    started = {"node": False}
+    try:
+        return _run(request, worktree, run_id, paths, started)
+    except BaseException:
+        if not started["node"]:
+            # The run's node could not be started, so no record can end the run; its runtime
+            # directory still goes.
+            remove_runtime(paths)
+        raise
+
+
+def _run(
+    request: WorkerRequest, worktree: Path, run_id: str, paths, started: dict
+) -> dict:
+    """The run of ``run_worker`` once its run and runtime directories exist; ``started`` is told
+    when the run's node exists, from which on the run always ends its own record."""
     actor = f"Workers run {run_id} ({request.task_type} worker)"
     backend = BACKENDS[request.backend]() if request.backend in BACKENDS else None
     trace = paths.trace
@@ -499,6 +515,9 @@ def run_worker(request: WorkerRequest) -> dict:
         if isinstance(request.grant, dict)
         else None
     )
+    # The node keeps a context identity only as a string; the grant check refuses any other.
+    if not isinstance(context_identity, str):
+        context_identity = None
     record: dict = {
         "run_id": run_id,
         "task_type": request.task_type,
@@ -515,9 +534,8 @@ def run_worker(request: WorkerRequest) -> dict:
         "grant_digest": None,
         "settings_digest": None,
         "brief_digest": None,
-        "tools": backend.tools(request.task_type, request.grant)
-        if backend and request.task_type in TASK_TYPES
-        else None,
+        # The tool set the backend prepared, null until it did.
+        "tools": None,
         "started_at": now(),
         "ended_at": None,
         "rounds": [],
@@ -528,6 +546,8 @@ def run_worker(request: WorkerRequest) -> dict:
         "deletions_refused": [],
         "deletions_absent": [],
         "deletions_failed": [],
+        # Every write of the run's or a round's trace.json the operating system refused.
+        "trace_failures": [],
         "status": "failed",
         "error": None,
         "run_directory": trace.as_posix(),
@@ -560,60 +580,40 @@ def run_worker(request: WorkerRequest) -> dict:
     ):
         node.keep(identity, relative)
     node.start()
+    started["node"] = True
     # The transcript the backend writes in the runtime directory, moved into the run directory
-    # when the run ends.
-    source: dict = {"transcript": None}
+    # when the run ends, and the latest session the worker's output named, even in a round that
+    # never returned.
+    source: dict = {"transcript": None, "session": None}
     rounds: dict = {}
+    attempts: list[str] = []
+    # The valid worker result of the last round if its audit was clean: its proposed deletions are
+    # performed when the run ends, unless the round validation answered a violation.
+    pending: dict = {"result": None}
 
-    def finish(status: str, error: dict | None = None) -> dict:
-        _keep_transcript(source["transcript"], trace)
-        remove_runtime(paths)
-        for number, round_node in list(rounds.items()):
-            if round_node.record["status"] == "running":
-                _finish_round(
-                    round_node, record["rounds"][number - 1], "failed", "interrupted"
-                )
-        record["status"] = status
-        record["error"] = error
-        record["ended_at"] = now()
-        interrupted = bool(error) and error.get("code") == "interrupted"
-        node.finish(
-            status,
-            outcome="interrupted" if interrupted else status,
-            error=error,
-            content=_run_content(record),
-            ended_at=record["ended_at"],
-            grant_digest=record["grant_digest"],
-            brief_digest=record["brief_digest"],
-            settings_digest=record["settings_digest"],
-        )
-        progress.finish(status)
-        return record
-
-    def fail(code: str, detail: str, reason: str, explanation: str, **extra) -> dict:
+    def workers_link(
+        code: str, detail: str, reason: str, explanation: str, **extra
+    ) -> dict:
         found = list(extra.pop("evidence", ()))
         if record["transcript"]:
             found.append(evidence("transcript", record["transcript"], ""))
         found.append(evidence("trace", run_id, trace.as_posix()))
-        return finish(
-            "failed",
-            link(
-                "workers",
-                actor,
-                code,
-                detail,
-                reason=reason,
-                explanation=explanation,
-                evidence=found,
-                **extra,
-            ),
+        return link(
+            "workers",
+            actor,
+            code,
+            detail,
+            reason=reason,
+            explanation=explanation,
+            evidence=found,
+            **extra,
         )
 
-    def deletion_failure(failed: list[str], cause, attempts: list[str]) -> dict:
+    def deletion_link(failed: list[str], cause: dict | None) -> dict:
         def listed(paths) -> str:
             return ", ".join(paths) or "none"
 
-        return fail(
+        return workers_link(
             "deletion_failed",
             f"the host could not delete {len(failed)} of the worker's proposed deletion(s): "
             f"{', '.join(failed)}; it deleted {listed(record['deleted'])}, refused "
@@ -626,12 +626,85 @@ def run_worker(request: WorkerRequest) -> dict:
             causes=[cause],
         )
 
-    def finalized(result: dict, cause, attempts: list[str]) -> dict:
-        """Carry out the proposed deletions of an ok run and end it."""
-        failed = _finalize(worktree, record, result)
-        if failed:
-            return deletion_failure(failed, cause, attempts)
-        return finish("ok")
+    def finish(status: str, error: dict | None = None) -> dict:
+        problems: list[str] = []
+        if backend is not None and source["session"]:
+            found = backend.transcript(paths, source["session"])
+            if found:
+                source["transcript"] = found
+        if source["transcript"]:
+            problem = _keep_transcript(source["transcript"], trace)
+            record["transcript"] = (
+                (trace / TRANSCRIPT).as_posix() if problem is None else None
+            )
+            if problem is not None:
+                problems.append(problem)
+        result, pending["result"] = pending["result"], None
+        if result is not None:
+            failed = _finalize(worktree, record, result)
+            if failed:
+                status, error = "failed", deletion_link(failed, error)
+        problem = remove_runtime(paths)
+        if problem is not None:
+            problems.append(problem)
+        if problems:
+            status, error = (
+                "failed",
+                workers_link(
+                    "cleanup_failed",
+                    "the host could not clean up once the worker had ended: "
+                    + "; ".join(problems),
+                    "environment",
+                    "Workers keeps the transcript and removes the runtime directory with the "
+                    "file system's own operations and cannot repair what the operating system "
+                    "refused; what remains is for whoever runs the host to remove",
+                    attempts=attempts,
+                    causes=[error],
+                ),
+            )
+        for number, round_node in list(rounds.items()):
+            if round_node.record["status"] == "running":
+                _finish_round(
+                    round_node, record["rounds"][number - 1], "failed", "interrupted"
+                )
+        record["status"] = status
+        # Tracing is best-effort for the work, never silent: every refused write of the run's or a
+        # round's trace.json is reported, in the record and in a failed run's error.
+        record["trace_failures"] = traced()
+        if error is not None:
+            error["evidence"] += [
+                evidence("trace-write", "", failure)
+                for failure in record["trace_failures"]
+            ]
+        record["error"] = error
+        record["ended_at"] = now()
+        interrupted = bool(error) and error.get("code") == "interrupted"
+        # The progress file is final before the node takes the digests of its files.
+        progress.finish(status)
+        node.finish(
+            status,
+            outcome="interrupted" if interrupted else status,
+            error=error,
+            content=_run_content(record),
+            ended_at=record["ended_at"],
+            grant_digest=record["grant_digest"],
+            brief_digest=record["brief_digest"],
+            settings_digest=record["settings_digest"],
+        )
+        # The final write's own failure reaches only the returned record.
+        record["trace_failures"] = traced()
+        return record
+
+    def traced() -> list[str]:
+        return [
+            *node.failures,
+            *(failure for item in rounds.values() for failure in item.failures),
+        ]
+
+    def fail(code: str, detail: str, reason: str, explanation: str, **extra) -> dict:
+        return finish(
+            "failed", workers_link(code, detail, reason, explanation, **extra)
+        )
 
     def attempt() -> dict:
         if backend is None:
@@ -680,7 +753,7 @@ def run_worker(request: WorkerRequest) -> dict:
                 "Workers launches only with a complete frozen grant, which its caller computes",
             )
         try:
-            rw = grant_view(request.grant).paths("rw")
+            view = grant_view(request.grant)
             _grant_shape(request.grant, request.task_type)
         except SettingsError as error:
             return fail(
@@ -714,6 +787,7 @@ def run_worker(request: WorkerRequest) -> dict:
             return fail(
                 refusal.code, refusal.detail, refusal.reason, refusal.explanation
             )
+        record["tools"] = backend.tools(request.task_type, request.grant)
         brief_file = trace / "brief.md"
         brief_file.write_text(brief(request, worktree))
         record.update(
@@ -736,10 +810,10 @@ def run_worker(request: WorkerRequest) -> dict:
             )
 
         session: str | None = None
-        attempts: list[str] = []
         environment = backend.environment(request, paths)
         prompt, kind = brief_file.read_text(), "initial"
         for number in range(1, request.rounds + 2):
+            pending["result"] = None
             round_record: dict = {"round": number, "prompt": kind}
             record["rounds"].append(round_record)
             round_node = _start_round(trace, number, request, round_record)
@@ -751,6 +825,8 @@ def run_worker(request: WorkerRequest) -> dict:
             def on_line(line: str, stream=stream) -> None:
                 for tool, arguments in stream.feed(line):
                     progress.action(tool, arguments)
+                if stream.session:
+                    source["session"] = stream.session
 
             progress.phase("worker", round=number)
             outcome = _launch(request, paths, command, environment, prompt, on_line)
@@ -772,6 +848,7 @@ def run_worker(request: WorkerRequest) -> dict:
             concluded = stream.conclude(outcome)
             if concluded.session:
                 session = concluded.session
+            source["session"] = session or source["session"]
             round_record["session"] = session
             round_record.update(concluded.info)
             round_record["usage"] = dict(concluded.usage)
@@ -779,7 +856,7 @@ def run_worker(request: WorkerRequest) -> dict:
             if source["transcript"]:
                 record["transcript"] = (trace / TRANSCRIPT).as_posix()
             progress.phase("audit")
-            verdict = audit(worktree, before, rw)
+            verdict = audit(worktree, before, lambda path: view.level(path) == "rw")
             round_record["audit"] = verdict.record()
             # A write outside the grant is reported whatever else went wrong in the round.
             outside = (
@@ -788,6 +865,26 @@ def run_worker(request: WorkerRequest) -> dict:
                 else f"; the worker also changed {len(verdict.violations)} path(s) outside "
                 f"the grant's writable paths: {', '.join(verdict.violations)}"
             )
+            result = concluded.result
+            invalid = None
+            try:
+                if result is None:
+                    text = concluded.final_text
+                    raise KernelError(
+                        "invalid_field",
+                        "the worker ended without a structured result"
+                        + (f"; its final text: {text[-2000:]}" if text else ""),
+                    )
+                validate(result, schema)
+                invalid = _consistency(result)
+            except KernelError as error:
+                invalid = f"{error.field or '/'}: {error}"
+            # A valid result is kept whatever else ended the round, and its proposed deletions
+            # are performed at the end when the round's audit was clean.
+            if invalid is None:
+                record["worker_result"] = result
+                if verdict.clean:
+                    pending["result"] = result
             if outcome["timed_out"]:
                 _finish_round(round_node, round_record, "failed", "timed_out")
                 return fail(
@@ -822,22 +919,6 @@ def run_worker(request: WorkerRequest) -> dict:
                     attempts=attempts,
                     causes=[failure],
                 )
-            result = concluded.result
-            invalid = None
-            try:
-                if result is None:
-                    text = concluded.final_text
-                    raise KernelError(
-                        "invalid_field",
-                        "the worker ended without a structured result"
-                        + (f"; its final text: {text[-2000:]}" if text else ""),
-                    )
-                validate(result, schema)
-                invalid = _consistency(result)
-            except KernelError as error:
-                invalid = f"{error.field or '/'}: {error}"
-            if invalid is None:
-                record["worker_result"] = result
             if not verdict.clean:
                 _finish_round(round_node, round_record, "failed", "audit_violation")
                 return fail(
@@ -881,9 +962,6 @@ def run_worker(request: WorkerRequest) -> dict:
                     round_node, round_record, result["status"], result["status"]
                 )
                 cause = worker_link(record, result)
-                failed = _finalize(worktree, record, result)
-                if failed:
-                    return deletion_failure(failed, cause, attempts)
                 return finish(
                     result["status"],
                     link(
@@ -907,7 +985,7 @@ def run_worker(request: WorkerRequest) -> dict:
                 )
             if request.round_validation is None:
                 _finish_round(round_node, round_record, "ok", "ok")
-                return finalized(result, None, attempts)
+                return finish("ok")
             progress.phase("validation", round=number)
             try:
                 answer = request.round_validation(worktree, round_node.folder, result)
@@ -949,6 +1027,8 @@ def run_worker(request: WorkerRequest) -> dict:
                     causes=list(refusal.causes),
                 )
             if answer.violation is not None:
+                # A round its caller does not allow at all leaves the worktree to the caller.
+                pending["result"] = None
                 refusal = answer.violation
                 round_record["validation"] = f"violation: {refusal.detail}"
                 _finish_round(
@@ -965,7 +1045,7 @@ def run_worker(request: WorkerRequest) -> dict:
             if not answer.repair:
                 round_record["validation"] = "clean"
                 _finish_round(round_node, round_record, "ok", "ok")
-                return finalized(result, None, attempts)
+                return finish("ok")
             round_record["validation"] = answer.repair
             attempts.append(
                 f"round {number}: the worker ended ok; "
@@ -978,7 +1058,7 @@ def run_worker(request: WorkerRequest) -> dict:
             if number > request.rounds:
                 if answer.failure is None:
                     _finish_round(round_node, round_record, "ok", "ok")
-                    return finalized(result, None, attempts)
+                    return finish("ok")
                 refusal = answer.failure
                 _finish_round(round_node, round_record, "failed", "validation_failed")
                 return fail(
@@ -996,11 +1076,15 @@ def run_worker(request: WorkerRequest) -> dict:
         raise AssertionError("every round ends the run or resumes it")
 
     try:
+        if request.started is not None:
+            request.started(run_id)
         return attempt()
     except BaseException as error:
         # A signal (the host's cancellation), an interrupt or an unexpected error ended the run:
-        # its record and progress file still end, so no reader sees a worker that runs forever.
+        # its record and progress file still end, so no reader sees a worker that runs forever,
+        # and the worktree is left as the interruption found it.
         if record["ended_at"] is None:
+            pending["result"] = None
             fail(
                 "interrupted",
                 f"the worker run ended before it finished: {type(error).__name__}"
@@ -1032,6 +1116,7 @@ def _run_content(record: dict) -> dict:
         "deletions_refused": list(record["deletions_refused"]),
         "deletions_absent": list(record["deletions_absent"]),
         "deletions_failed": list(record["deletions_failed"]),
+        "trace_failures": list(record["trace_failures"]),
         "rounds": len(record["rounds"]),
     }
 
@@ -1106,31 +1191,33 @@ def _keep_stderr(round_node: Node, stderr: bytes) -> None:
         pass
 
 
-def _keep_transcript(source: str | None, trace: Path) -> None:
-    """Move the session's transcript from the runtime directory into the run directory."""
-    if not source:
-        return
+def _keep_transcript(source: str, trace: Path) -> str | None:
+    """Move the session's transcript from the runtime directory into the run directory; None
+    once it is there, otherwise why it is not."""
     try:
         shutil.copyfile(source, trace / TRANSCRIPT)
-    except OSError:
-        pass
+    except OSError as error:
+        return (
+            f"the transcript {source} could not be kept as {trace / TRANSCRIPT}: "
+            f"{error.strerror or error}"
+        )
+    return None
 
 
 def _finalize(worktree: Path, record: dict, result: dict) -> list[str]:
-    """Perform the proposed deletions after a clean audit; return each failed one with its
-    error. A repeated entry is dropped, an absent one recorded as absent, and a failure does not
+    """Perform the proposed deletions after the last round's clean audit; return each failed one
+    with its error. A repeated entry is dropped, an absent one recorded as absent, and a failure does not
     stop the others."""
-    rw = [
-        entry["path"]
-        for entry in json.loads(
-            (Path(record["run_directory"]) / "grant.json").read_text()
-        )["entries"]
-        if entry["level"] == "rw"
-    ]
+    view = grant_view(
+        json.loads((Path(record["run_directory"]) / "grant.json").read_text())
+    )
     seen: set[Path] = set()
     failures: list[str] = []
     for proposed in result.get("proposed_deletions", []):
-        absolute = Path(os.path.normpath(os.path.join(worktree, proposed)))
+        lexical = Path(os.path.normpath(os.path.join(worktree, proposed)))
+        # The directories' symbolic links resolved, so that the path judged is the entry the
+        # deletion removes; a final link is removed itself, never its target.
+        absolute = Path(os.path.realpath(lexical.parent)) / lexical.name
         if absolute in seen:
             continue
         seen.add(absolute)
@@ -1140,7 +1227,7 @@ def _finalize(worktree: Path, record: dict, result: dict) -> list[str]:
             record["deletions_refused"].append(proposed)
             continue
         exists = os.path.lexists(absolute)
-        if not rw_allows(rw, relative) or (exists and not absolute.is_file()):
+        if view.level(relative) != "rw" or (exists and not absolute.is_file()):
             record["deletions_refused"].append(proposed)
         elif not exists:
             record["deletions_absent"].append(relative)

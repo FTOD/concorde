@@ -11,7 +11,7 @@ shapes are in the [contracts](contracts.md).
 - AND the workspace `adopt` with an `ok` survey of `module.shop` proposing `module.checkout` bound to `src/checkout/` and `module.inventory` bound to `src/inventory/`, and a pytest check for checkout
 - WHEN the [main agent](../../glossary.json#concept.main-agent) runs `concorde scaffold --input <survey run>` in its worktree
 - THEN `specs/shop/checkout/module.md` and `specs/shop/inventory/module.md` exist with their metadata, each stating its purpose and, in a section Not yet specified after it, that its core concepts, behaviour and design are not yet specified
-- AND the root's entry contains both with an explaining paragraph each at the end of its Parts section, and its realization no longer binds `src/checkout/` or `src/inventory/`
+- AND the root's entry contains both with an explaining paragraph each at the end of its `Parts` section, and its realization no longer binds `src/checkout/` or `src/inventory/`
 - AND the root still binds every other file it bound under `src/`, here `src/db.py`
 - AND a realization the root declares in a document other than its entry is narrowed the same way, in the same [file transaction](../../glossary.json#concept.file-transaction), and the record's `parent_entries_after` is what the root's documents bind after it
 - AND the registry has both records

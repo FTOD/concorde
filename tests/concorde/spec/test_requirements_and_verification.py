@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import tempfile
 import unittest
 import warnings
@@ -237,6 +238,22 @@ class RequirementsAndVerificationTests(unittest.TestCase):
         self.assertNotIn(
             "scenario.shop.submit",
             [f.subject_id for f in findings if f.rule_id == "CONCORDE-COVERAGE-001"],
+        )
+        # An unreadable test file is reported in the same way, and the scan goes on.
+        if os.geteuid() == 0:
+            return
+        self.write("tests/shop/test_broken.py", "def test_fine():\n    pass\n")
+        unreadable = self.root / "tests/shop/test_broken.py"
+        unreadable.chmod(0)
+        self.addCleanup(unreadable.chmod, 0o644)
+        findings = self.project.validate().findings
+        self.assertEqual(
+            ["tests/shop/test_broken.py"],
+            [f.source for f in findings if f.rule_id == "CONCORDE-COVERAGE-003"],
+        )
+        self.assertEqual(
+            ["tests/shop/test_unknown.py"],
+            [f.source for f in findings if f.rule_id == "CHK.verifies.resolves"],
         )
 
     @verifies(

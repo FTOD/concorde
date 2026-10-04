@@ -139,6 +139,17 @@ in the task worktree would decide what the [delivery commit](../../glossary.json
 holds. A polling loop, which the guidance forbids anyway
 ([Waiting never polls](#req.main-session.no-polling)), may never end by itself.
 
+### req.main-session.task-session-still-during-runs — A task session leaves its worktree alone while a run of it runs
+
+The task-session guidance SHALL tell a task session to leave its task worktree untouched, editing
+and committing nothing, from the start of any run of its workspace until that run has ended.
+
+A run's [write audit](../../glossary.json#concept.write-audit) attributes every change of the worktree to the run's
+[workers](../../glossary.json#concept.worker)
+([Workers](../../worker-harness/workers/module.md)), so a change the session makes meanwhile fails
+the run, as a write of a worker that may only read, or is blamed on its workers, and the run, with
+its model spend, is wasted.
+
 ### req.main-session.act-on-run-result — Every run result is acted on
 
 The guidance SHALL tell the main agent to act on the
@@ -407,13 +418,18 @@ merge-end wait returns only once that answer is complete
 
 When what it waits for already happened, its answer carries the value that command would print.
 
-### req.main-session.project-mcp-no-wait — The server never waits for a lock
+### req.main-session.project-mcp-no-wait — The server never waits for a workspace or merge lock
 
-A tool of the server that needs a lock SHALL be refused at once, with `workspace_busy` or
-`merge_busy`, when another process holds it, naming the lock file and the holder's command,
-process, start time, Claude Code session and task as the holder line gives them.
+A tool of the server that needs a [workspace lock](../../glossary.json#concept.workspace-lock) or
+the [merge lock](../../glossary.json#concept.merge-lock) SHALL be refused at once, with
+`workspace_busy` or `merge_busy`, when another process holds it, naming the lock file and the
+holder's command, process, start time, Claude Code session and task as the holder line gives them.
 
-It takes a lock without waiting, and a refused call releases every lock it had taken.
+It takes those locks without waiting, and a refused call releases every lock it had taken. A task's
+record lock is no such lock: every change of a task record holds it for that one update only, so a
+short write such as `task_report`, `task_answer`, `task_rebind` or `task_escalate` waits for it as
+the command does, briefly, at worst while a close asks Claude Code about the task's sessions, rather
+than being refused for contention that ends within moments.
 
 ### req.main-session.project-mcp-handover — A granted lock belongs to the work
 
@@ -449,8 +465,10 @@ When the server does not know its session to listen to it as a channel, `task_me
 A `register_wait` for something that already happened answers at once with that answer, channel or
 not ([`register_wait` answers with its registration](#req.main-session.project-mcp-wait-answer)).
 
-For `task_merge` that is the wait for the task's
-[workspace lock](../../glossary.json#concept.workspace-lock), which the merge holds until it ends.
+For `task_merge` that is `concorde task wait <task> --merge`, the merge-end wait, which returns
+once the merge has written its whole answer, not the wait for the task's
+[workspace lock](../../glossary.json#concept.workspace-lock), which the close that ends the merge
+removes before then ([A merge's output stays with its attempt](#req.main-session.project-mcp-merge-output)).
 
 ### req.main-session.project-mcp-errors — Every refusal is an error link
 
