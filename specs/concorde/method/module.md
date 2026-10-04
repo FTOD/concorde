@@ -148,8 +148,8 @@ The round validation is Method's. It checks in this order:
 2. Then, when the step asks for them, it runs the
    [configured checks](../glossary.json#concept.configured-check) through Check execution, outside
    the worker. These checks cover the bound Modules and every Module that uses one of them.
-3. Then, when every check passed or none ran and the step has its own validation, it runs that
-   validation. One example is the structural validation a Spec-writing step runs instead of
+3. Then, if the step has its own validation, it runs that validation when every check passed or
+   none ran. One example is the structural validation a Spec-writing step runs instead of
    configured checks.
 
 It returns the [check results](../glossary.json#concept.check-result) as the round's evidence. It
@@ -301,9 +301,8 @@ The **Standard sequence** realization, `src/concorde/method/workers.py`, holds t
 [standard worker sequence](../glossary.json#concept.standard-worker-sequence). It holds:
 
 - The admission step `check_worker_models`.
-- The helper that puts it first in every Operation definition Method registers.
-- The admission of its Modules.
-- The runtime-path resolver of an Operation that may run unbound.
+- The helper that puts it first in every Operation definition Method registers, with the admission
+  of its Modules and the runtime-path resolver of one that may run unbound.
 - The projection of Spec core's grant into the worker harness's grant input.
 - The composition of the task instructions.
 - The round validation.
@@ -428,12 +427,9 @@ returns one run result through the ordinary steps.
 <a id="contains-adoption"></a>
 
 **Adoption** provides `survey` and `code_to_spec`, the Operations that describe existing code in
-Specs for a project whose code came before them. The brownfield workflow usually runs them in
-this order:
-
-- A read-only survey proposes child Modules.
-- The execution command `scaffold` creates them between the two Operations.
-- `code-to-spec` workers describe each Module's code.
+Specs for a project whose code came before them. A read-only survey proposes child Modules. The
+execution command `scaffold` creates them between the two Operations. `code-to-spec` workers
+describe each Module's code. The brownfield workflow usually runs them in that order.
 
 <a id="contains-validation"></a>
 
@@ -476,9 +472,8 @@ defines:
 - Its guidance sections.
 - LangGraph, the Python dependency its panels import.
 
-Before Distribution routes `concorde run` or a
-[workflow step](../glossary.json#concept.workflow-step) to the execution part, Method relies on
-Distribution loading those modules. Method also relies on Distribution refusing a command of a
+Method relies on Distribution loading those modules before Distribution routes `concorde run` or a
+[workflow step](../glossary.json#concept.workflow-step) to the execution part. Method also relies on Distribution refusing a command of a
 part that is not installed with `part_missing`. As the
 [command line](../distribution/module.md#the-command-line) says, this is how its optional
 integrations tell an absent part. Method imports nothing of Distribution.

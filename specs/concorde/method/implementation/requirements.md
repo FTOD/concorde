@@ -93,10 +93,10 @@ When, after one resume round with every mismatch, its worker's `failures` violat
 conditions, the test Operation SHALL end the run `failed` with `failures_unaccounted`:
 
 - They hold exactly one entry per check that did not pass.
-- Each entry names that check's identity.
+- Each entry is named by that check's identity.
 - They hold no entry for a check that passed.
 
-When the first answer does not hold, and only then, the test Operation gives the resume round. The
+The test Operation gives the resume round only when the first answer does not hold. The
 entries' contents stay the worker's interpretation.
 
 ### req.implementation.host-check-facts — Check outcomes come from the Operation
