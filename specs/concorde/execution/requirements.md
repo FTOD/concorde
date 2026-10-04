@@ -1,30 +1,36 @@
 # Execution requirements
 
 The Module-wide obligations of [Execution](module.md). The runner is in
-[How a run is executed](runner.md), the binding and the
-[run result](../glossary.json#concept.run-result) in the [contracts](contracts.md); the
-[scenarios](scenarios.md) show the obligations at work.
+[How a run is executed](runner.md). The binding and the
+[run result](../glossary.json#concept.run-result) are in the [contracts](contracts.md).
+The [scenarios](scenarios.md) show the obligations at work.
 
 ## The seam with the upper half
 
 ### req.execution.binding-read-only — The binding is only read
 
-No part of Execution SHALL write, change or remove a
-[workspace binding](../glossary.json#concept.workspace-binding).
+No part of Execution SHALL do any of the following to a
+[workspace binding](../glossary.json#concept.workspace-binding):
+
+- write it
+- change it
+- remove it
 
 ### req.execution.no-task-knowledge — Execution knows no task
 
-No part of Execution SHALL read or write a [task record](../glossary.json#concept.task-record), a
-[decision log](../glossary.json#concept.decision-log) or any other state of the task store, so that
-everything a run knows about its workspace comes from the workspace binding of the worktree it
-starts in.
+No part of Execution SHALL read or write any of this state, so that everything a run knows about its workspace comes from the workspace binding of the worktree it starts in:
+
+- a [task record](../glossary.json#concept.task-record)
+- a [decision log](../glossary.json#concept.decision-log)
+- any other state of the task store
 
 ### req.execution.reads-no-spec — Execution reads no Spec
 
 No part of Execution SHALL read a [Spec](../glossary.json#concept.spec).
 
-So the runner treats the [Modules](../glossary.json#concept.module) a run names as names, and a definition that reads the Specs admits
-them itself, as Method's do; Execution installs and runs with the kernel part alone.
+So the runner treats the [Modules](../glossary.json#concept.module) a run names as names. A
+definition that reads the Specs admits them itself, as Method's do. Execution installs and runs
+with the kernel part alone.
 
 ### req.execution.computes-no-grant — Execution computes no grant
 
@@ -37,44 +43,58 @@ A definition whose steps launch workers computes their grants itself, as Method'
 
 No part of Execution SHALL launch a [worker](../glossary.json#concept.worker) itself.
 
-Whatever a run needs of a worker is done by its definition's steps, through the parts they depend
-on; the runner only tells the run context which worker runs those steps started.
+A run's definition's steps do whatever the run needs of a worker, through the parts they depend
+on. The runner only tells the run context which worker runs those steps started.
 
 ### req.execution.binding-trusted — Only a sound binding binds
 
-The runner SHALL refuse a run, before any step, whose worktree holds a binding that cannot be read,
-breaks the binding contract or names a root other than that worktree.
+When a run's worktree holds a binding with any of these faults, the runner SHALL refuse the run
+before any step:
+
+- The binding cannot be read.
+- The binding breaks the binding contract.
+- The binding names a root other than that worktree.
 
 ## Results
 
 ### req.execution.one-result — Every accepted command line ends with one result
 
 Every `concorde run` or [execution command](../glossary.json#concept.execution-command) started in
-a Git worktree whose whole command line is accepted and names a known
-[Operation](../glossary.json#concept.operation) or command SHALL write exactly one run result,
-including when the run is refused, fails or is cancelled by `SIGINT` or `SIGTERM`, unless it was
-started with `--detach` and reported `detach_failed`, its first records could not be created
-(`run_unrecorded`), a final write of its records failed (`result_unsaved`), or its runner was killed
-by a signal it cannot handle, such as `SIGKILL`, before writing the result.
+a Git worktree, whose whole command line is accepted and names a known
+[Operation](../glossary.json#concept.operation) or command, SHALL write exactly one run result in
+every case except these:
 
-A malformed command line, including one with an unknown argument, or one started outside every Git
-worktree starts no run and writes no result (exit status 2), and a detached runner that ends or is
-killed before it announced its run (`detach_failed`) leaves no run, as
-[How a run is executed](runner.md) describes. A run whose first records could not be created runs
-no step, and one whose result could not be saved, or whose final `trace.json` broke the node
-contract, still prints its result and counts as lost, both with exit status 1
-([When records cannot be written](runner.md#when-records-cannot-be-written)). A runner killed
-outside its control after its announcement leaves a run without a result whose
-[run lock](../glossary.json#concept.run-lock) nobody holds: a lost run, which every observer tells by
-that lock ([Run progress file](runner.md#run-progress-file)).
+- It was started with `--detach` and reported `detach_failed`.
+- Its first records could not be created (`run_unrecorded`).
+- A final write of its records failed (`result_unsaved`).
+- Its runner was killed by a signal it cannot handle, such as `SIGKILL`, before writing the result.
+
+Every case includes a run that is refused, fails or is cancelled by `SIGINT` or `SIGTERM`.
+
+A malformed command line, including one with an unknown argument, starts no run and writes no
+result (exit status 2). A command line started outside every Git worktree also starts no run and
+writes no result (exit status 2). A detached runner that ends or is killed before it announced its
+run (`detach_failed`) leaves no run, as [How a run is executed](runner.md) describes. A run whose
+first records could not be created runs no step. A run whose result could not be saved, or whose
+final `trace.json` broke the node contract, still prints its result and counts as lost. Both runs
+end with exit status 1
+([When records cannot be written](runner.md#when-records-cannot-be-written)).
+
+A runner killed outside its control after its announcement leaves a run without a result. Nobody
+holds that run's [run lock](../glossary.json#concept.run-lock). This is a lost run, which every
+observer tells by that lock ([Run progress file](runner.md#run-progress-file)).
 
 ### req.execution.unrecorded-runs-nothing — A run that cannot be recorded runs no step
 
-The runner SHALL run no step of a run whose folder, run lock or first
-[run progress file](../glossary.json#concept.run-progress-file) it could not create, or whose
-first `trace.json` breaks the node contract.
+When any of these conditions holds, the runner SHALL run no step of the run:
 
-It exits instead with status 1 and its `run_unrecorded` link on standard error, as
+- The runner could not create the run's folder.
+- The runner could not create the run's run lock.
+- The runner could not create the run's first
+  [run progress file](../glossary.json#concept.run-progress-file).
+- The run's first `trace.json` breaks the node contract.
+
+The runner exits instead with status 1 and its `run_unrecorded` link on standard error, as
 [When records cannot be written](runner.md#when-records-cannot-be-written) describes.
 
 ### req.execution.unsaved-printed — A result that cannot be saved is still printed
@@ -82,9 +102,12 @@ It exits instead with status 1 and its `run_unrecorded` link on standard error, 
 When publishing a run's result fails, or its final `trace.json` breaks the node contract, the
 runner SHALL print the result it composed on standard output.
 
-The run then counts as lost; the runner writes its `result_unsaved` link to standard error,
-releases the run's locks and exits with status 1, as
-[When records cannot be written](runner.md#when-records-cannot-be-written) describes.
+The run then counts as lost. The runner takes these actions, as
+[When records cannot be written](runner.md#when-records-cannot-be-written) describes:
+
+- writes its `result_unsaved` link to standard error
+- releases the run's locks
+- exits with status 1
 
 ### req.execution.result-atomic — A result is published whole
 
@@ -93,12 +116,12 @@ complete result, never part of one.
 
 ### req.execution.result-printed — A foreground run prints its result
 
-A command started without `--detach` SHALL print on standard output exactly the run result it
-composed, unless the run could not be recorded
-([req.execution.unrecorded-runs-nothing](#req.execution.unrecorded-runs-nothing)).
+Unless the run could not be recorded
+([req.execution.unrecorded-runs-nothing](#req.execution.unrecorded-runs-nothing)), a command
+started without `--detach` SHALL print on standard output exactly the run result it composed.
 
-That is the result it wrote, or, when it could not save it, the result it composed
-([req.execution.unsaved-printed](#req.execution.unsaved-printed)).
+That is the result the command wrote. When the command could not save the result, it is the result
+the command composed ([req.execution.unsaved-printed](#req.execution.unsaved-printed)).
 
 ### req.execution.claims-apart — Worker claims stay the worker's
 
@@ -112,8 +135,12 @@ A run result SHALL carry an error exactly when its status is not `ok`.
 
 ### req.execution.error-chain — The run's own link is on top of what it received
 
-The top link of a run result's error SHALL be the run's own link, with the errors of the worker
-runs, checks or components the run called as its causes.
+The run result SHALL place the run's own link at the top of its error, with errors from these
+sources as its causes:
+
+- the worker runs the run called
+- the checks the run called
+- the components the run called
 
 ### req.execution.reasons — The run says why it cannot handle the error
 
@@ -122,19 +149,22 @@ The run's own link SHALL give the reason the run cannot handle the error as its 
 
 ### req.execution.error-detail — The run's link names what is concerned
 
-The run's own link SHALL name the run and its workspace, or for an unbound run the worktree it
-started in and the commit it examined, in its actor, and give a detail that names the paths and
-the messages concerned and the Modules the run works on.
+The run's own link SHALL name all of these:
+
+- in its actor, the run and its workspace or, for an unbound run, the worktree it started in and
+  the commit it examined
+- in a detail, the paths and the messages concerned
+- in that detail, the Modules the run works on
 
 ### req.execution.output-checked — Outputs match their contract
 
-The runner SHALL replace a result that fails the run result contract, or an `ok` result whose
-`output` fails the definition's output contract, by a `failed` result that satisfies the run
-result contract before writing it.
+Before writing results failing the run result contract or `ok` results whose `output` fails the
+definition's output contract, the runner SHALL replace them by `failed` results satisfying the run
+result contract.
 
-The replacement keeps of what the steps left only what satisfies the contract, as
-[Composing the result](runner.md#composing-the-result) says. A result whose error is not the run's
-own link, of the level `operation` or `command` its definition's kind gives, fails the contract.
+Of what the steps left, the replacement keeps only what satisfies the contract, as
+[Composing the result](runner.md#composing-the-result) says. A result fails the contract when its
+error is not the run's own link of the level `operation` or `command` its definition's kind gives.
 
 ## Runs
 
@@ -145,8 +175,9 @@ from before its admission until after its result is written.
 
 ### req.execution.workspace-busy — A busy workspace refuses a run
 
-The runner SHALL refuse with `workspace_busy` a run of a workspace whose lock another process
-holds, at once or, with `--wait <seconds>`, once the lock is still held after that many seconds.
+When another process holds a workspace's lock, the runner SHALL refuse its run with
+`workspace_busy` at once or, with `--wait <seconds>`, once the lock is still held after that many
+seconds.
 
 ### req.execution.workspace-wait — A waiting run waits in its own process
 
@@ -155,67 +186,77 @@ With `--wait <seconds>`, the runner SHALL wait for a busy workspace's lock insid
 ### req.execution.waiting-progress — A waiting run names the lock's holder
 
 While a run waits for its workspace's lock, its
-[run progress file](../glossary.json#concept.run-progress-file) SHALL name the step `workspace-lock`
-and, in `waiting_for`, the lock's holder as its holder line describes it, whether that holder is a
-run or another taker of the lock, such as a task's merge or close.
+[run progress file](../glossary.json#concept.run-progress-file) SHALL name both of these:
+
+- the step `workspace-lock`
+- in `waiting_for`, the lock's holder as its holder line describes it, whether that holder is a run
+  or another taker of the lock, such as a task's merge or close
 
 ### req.execution.workspace-wait-continues — A waiting run goes on once the lock is free
 
-With `--wait <seconds>`, the runner SHALL take a busy workspace's lock as soon as it is free within
-that time and go on with the run from its admission, as for a run that found the workspace free.
+With `--wait <seconds>`, the runner SHALL do both of these:
+
+- take a busy workspace's lock as soon as it is free within that time
+- go on with the run from its admission, as for a run that found the workspace free
 
 ### req.execution.unbound-read-only — Only a definition that allows it runs unbound
 
-An [unbound run](../glossary.json#concept.unbound-run) SHALL be admitted only for a definition that
-allows unbound runs.
+Only for a definition that allows unbound runs SHALL the runner admit an
+[unbound run](../glossary.json#concept.unbound-run).
 
 ### req.execution.no-writing-worker — An unbound run launches no writing worker
 
 No step of an unbound run SHALL launch a worker whose grant would keep a writable path.
 
-The runner tells every step of an unbound run, through its run context, that the run may only read;
-a definition whose steps launch workers, as Method's do, gives them reading grants only.
+Through its run context, the runner tells every step of an unbound run that the run may only read.
+A definition whose steps launch workers, as Method's do, gives them reading grants only.
 
 ### req.execution.unbound-checkout — An unbound run works in a checkout of HEAD
 
-The runner SHALL run every step of an admitted unbound run, and so every worker its steps launch, in an
-[unbound checkout](../glossary.json#concept.unbound-checkout) of the commit at `HEAD` of the
+The runner SHALL run every step of an admitted unbound run, and so every worker its steps launch,
+in an [unbound checkout](../glossary.json#concept.unbound-checkout) of the commit at `HEAD` of the
 worktree the run started in.
 
 ### req.execution.unbound-origin-untouched — An unbound run leaves its worktree as it was
 
-An unbound run SHALL NOT change any file of the worktree it started in outside that worktree's
-`.concorde/unbound/` and `.concorde/locks/` and, while the run lasts, its unbound checkout in the
-primary worktree's `.claude/worktrees/`, nor that worktree's index, except the
-[Issues](../glossary.json#concept.issue) it publishes through the Issues store.
+Except for the [Issues](../glossary.json#concept.issue) it publishes through the Issues store,
+an unbound run SHALL NOT change its starting worktree's index or any file of that worktree outside
+these locations:
 
-The requirement protects the worktree's content and index, and two changes lie outside it. Git's
-administrative files change as the runner creates and removes the checkout as a linked worktree, as
-[Unbound checkout](runner.md#unbound-checkout) says: they belong to the repository, not to the
-worktree's content. And a review may publish Issues, only
-through the [Issues](../issues/module.md) store, which commits each on the primary branch as a
-commit of its own while it holds the [merge lock](../glossary.json#concept.merge-lock); nothing else
-of the run writes there, and the checkout it examines, its Specs and its code stay as they were.
+- that worktree's `.concorde/unbound/`
+- that worktree's `.concorde/locks/`
+- while the run lasts, its unbound checkout in the primary worktree's `.claude/worktrees/`
+
+The requirement protects the worktree's content and index. Two changes lie outside it. As the
+runner creates and removes the checkout as a linked worktree, Git's administrative files change,
+as [Unbound checkout](runner.md#unbound-checkout) says. They belong to the repository, not to the
+worktree's content. A review may publish Issues, only through the [Issues](../issues/module.md)
+store. While the store holds the [merge lock](../glossary.json#concept.merge-lock), it commits each
+Issue on the primary branch as a commit of its own. Nothing else of the run writes there. The
+checkout the run examines stays as it was. Its Specs and its code stay as they were.
 
 ### req.execution.checkout-removed — The checkout does not outlive the run
 
-The runner SHALL remove an unbound run's checkout, whatever ended its steps, before it writes the
-run's result, and name in the result whatever of it could not be removed.
+Whatever ended an unbound run's steps, the runner SHALL remove the run's checkout before it writes the run's result, and name in that result whatever of the checkout it could not remove.
 
-What Git refuses to remove the runner removes directly; what that leaves, it names with
-`checkout-not-removed` evidence, as [Unbound checkout](runner.md#unbound-checkout) step 5 says.
+When Git refuses to remove something, the runner removes it directly. The runner names what that
+leaves with `checkout-not-removed` evidence, as [Unbound checkout](runner.md#unbound-checkout)
+step 5 says.
 
 ### req.execution.commit-named — The result names the commit examined
 
-The result of an unbound run whose checkout was created SHALL name as `commit` the commit that
+When an unbound run's checkout was created, its result SHALL name as `commit` the commit that
 checkout held.
 
 ### req.execution.trace-node — Every run is a trace node where the binding says
 
 The runner SHALL record every run as a [trace node](../glossary.json#concept.trace-node) in the
-binding's workspace folder once the run entered its workspace, in the lobby of the binding's
-`.concorde` when it never did, or in `.concorde/unbound/` of the worktree it started in for an
-unbound run or a run whose binding it refused.
+location that applies:
+
+- once the run entered its workspace, in the binding's workspace folder
+- when the run never entered its workspace, in the lobby of the binding's `.concorde`
+- for an unbound run or a run whose binding the runner refused, in `.concorde/unbound/` of the
+  worktree the run started in
 
 The node lies in `runs/<run-id>/` of the workspace folder, or in the folder `--trace-at` names inside
 it. A bound run's node lies in the [lobby](runner.md#the-lobby) until the run enters its workspace,
@@ -227,79 +268,111 @@ The runner SHALL write a run's `trace.json`, with the status `running`, before t
 
 ### req.execution.trace-ended — A run's node holds its end after its result
 
-The runner SHALL write a run's `trace.json` again after its result, with the run's end, status and
-outcome, as [Run identity and trace node](runner.md#run-identity-and-trace-node) lists.
+After writing a run's result, the runner SHALL write its `trace.json` again with the fields
+[Run identity and trace node](runner.md#run-identity-and-trace-node) lists:
+
+- the run's end
+- the run's status
+- the run's outcome
 
 ### req.execution.trace-write-reported — A refused trace write is in the result
 
-The runner SHALL report every write of a run's `trace.json` that the operating system refused as
-`trace-write` evidence of the run's result, without changing the run's status, its steps or its
-exit status for it.
+For every write of a run's `trace.json` that the operating system refused, the runner SHALL report
+`trace-write` evidence in the run's result without changing any of the following for it:
+
+- the run's status
+- the run's steps
+- the run's exit status
 
 Tracing is best-effort for the run, never silent
-([req.tracing.written-at-start](../kernel/tracing/requirements.md#req.tracing.written-at-start)):
-the result names each refused write with the node's file, the moment (start, update or end) and
-the error, and a refused final write, which follows the result, is added to the published result
-afterwards, so that the result as published and printed names it.
+([req.tracing.written-at-start](../kernel/tracing/requirements.md#req.tracing.written-at-start)).
+The result names each refused write with these details:
+
+- the node's file
+- the moment (start, update or end)
+- the error
+
+A refused final write follows the result. Afterwards, the runner adds the refused write to the
+published result, so that the result as published and printed names it.
 
 ### req.execution.files-in-node — Every file of a run lies in its node
 
-The runner SHALL keep every file of a run, its result, run progress file, the nodes of its checks
-and of its worker runs and, for a [detached run](../glossary.json#concept.detached-run), its
-runner's output, in the run's node folder.
+The runner SHALL keep every file of a run in the run's node folder, including:
+
+- its result
+- its run progress file
+- the nodes of its checks
+- the nodes of its worker runs
+- for a [detached run](../glossary.json#concept.detached-run), its runner's output
 
 ### req.execution.lobby — Nothing enters a workspace folder before its lock
 
-The runner SHALL NOT create or write any file or folder in a bound run's workspace folder before
-the run holds the [workspace lock](../glossary.json#concept.workspace-lock) and the binding read
-again matches the binding read at the parse.
+Before a bound run holds the [workspace lock](../glossary.json#concept.workspace-lock) and its
+reread binding matches the binding read at the parse, the runner SHALL NOT create or write any
+file or folder in its workspace folder.
 
-Until then, and for good when the run is refused or cancelled before, the run's node lies in
-`lobby/<run-id>/` of the binding's `.concorde`, so whoever retires a workspace while holding its
-lock, as closing a task does, never moves a folder some run is writing.
+Until then, the run's node lies in `lobby/<run-id>/` of the binding's `.concorde`. When the run is
+refused or cancelled before then, its node lies there for good. So whoever retires a workspace
+while holding its lock, as closing a task does, never moves a folder some run is writing.
 
 ### req.execution.workspace-retired — A run never works in a retired workspace
 
-Once it holds the workspace lock, the runner SHALL refuse with `workspace_retired` a run whose lock
-file was removed or replaced while it waited, or whose worktree's binding is now absent,
-untrusted or different from the binding it read at the parse.
+Once it holds the workspace lock, the runner SHALL refuse a run with `workspace_retired` when any
+of these conditions holds:
+
+- The run's lock file was removed or replaced while it waited.
+- The run's worktree's binding is now absent.
+- The run's worktree's binding is now untrusted.
+- The run's worktree's binding is now different from the binding the runner read at the parse.
 
 ### req.execution.locks-apart — A run's locks lie under the locks directory
 
 The runner SHALL take a run's [run lock](../glossary.json#concept.run-lock) and
 [workspace lock](../glossary.json#concept.workspace-lock) as files under `locks/` of the binding's
-`.concorde`, or of the `.concorde` of the worktree an unbound run started in, never inside a trace.
+`.concorde` or, for an unbound run, its starting worktree's `.concorde`, never inside a trace.
 
 ### req.execution.inputs-same-workspace — Inputs come from the same workspace
 
-The runner SHALL admit as `--input` only an `ok` run whose workspace is the run's own workspace,
-which for an unbound run is a run whose `workspace` is null, and whose saved result satisfies the
-current run result contract.
+The runner SHALL admit a run as `--input` only when all these conditions hold:
+
+- The input run is `ok`.
+- The input run's workspace is the run's own workspace, which for an unbound run means the input
+  run's `workspace` is null.
+- The input run's saved result satisfies the current run result contract.
 
 A result an older Concorde wrote under another version of the contract is refused like any other
-inadmissible input: no version field or migration exists, since runs are short-lived trace data.
+inadmissible input. No version field or migration exists, since runs are short-lived trace data.
 
 ### req.execution.detached-same-run — A detached run is an ordinary run
 
-A run started with `--detach` SHALL check, record and report exactly as the same run started without it.
+A run started with `--detach` SHALL do each of the following exactly as the same run started
+without it:
+
+- check
+- record
+- report
 
 ### req.execution.detached-announced — A detached run is announced once it exists
 
-A command started with `--detach` SHALL announce the run, printing its run identity, its node and
-result path in its workspace folder and its lobby folder with exit status 0, only once the run's
-[run progress file](../glossary.json#concept.run-progress-file) exists, in the lobby or in its node.
+Only once the run's [run progress file](../glossary.json#concept.run-progress-file) exists in the
+lobby or its node SHALL a command started with `--detach` announce the run with exit status 0 by
+printing:
 
-An existing run progress file wins: the command announces the run once that file exists, even when
-the runner has ended by then. When none exists by the time the runner ends or the announcement
-wait runs out, the command reports `detach_failed` instead, as
-[How a run is executed](runner.md#detached-runs) describes.
+- its run identity
+- its node and result path in its workspace folder
+- its lobby folder
+
+An existing run progress file wins. Once that file exists, the command announces the run, even
+when the runner ended by then. When none exists by the time the runner ends or the announcement
+wait runs out, the command reports `detach_failed` instead.
+[How a run is executed](runner.md#detached-runs) describes this.
 
 ### req.execution.detach-failed-ends-runner — An unannounced runner is ended
 
 A command started with `--detach` SHALL end the runner before it reports `detach_failed`.
 
-So an unannounced runner never starts its run later, and running the command again starts a new
-run with nothing to repeat.
+So an unannounced runner never starts its run later. Running the command again starts a new run
+with nothing to repeat.
 
 ### req.execution.detach-failed-leaves-nothing — An unannounced run leaves nothing behind
 
@@ -314,21 +387,26 @@ and including the first step that stops the run.
 ### req.execution.run-lock-held — A run's lock is held exactly while its runner lives
 
 The runner SHALL hold a run's [run lock](../glossary.json#concept.run-lock) from before it writes
-the run's first [run progress file](../glossary.json#concept.run-progress-file) until after it has
-written the run's result, its finished run progress file and its final `trace.json`.
+the run's first [run progress file](../glossary.json#concept.run-progress-file) until after it
+writes all of the following:
 
-The operating system releases the lock however the runner ends, so a run is running exactly while
-its run lock is held, and a run without a result whose lock nobody holds is lost
+- the run's result
+- its finished run progress file
+- its final `trace.json`
+
+However the runner ends, the operating system releases the lock. So a run is running exactly
+while its run lock is held. A run without a result whose lock nobody holds is lost
 ([Run progress file](runner.md#run-progress-file)). Whoever prepared a workspace reads its runs
-through this lock and the records the [run store](../glossary.json#concept.run-store) keeps in the
-workspace folder and the [lobby](runner.md#the-lobby), and stops a run that still runs by sending its
-runner `SIGTERM`; Execution registers no call for either. Coordination does both, where the
-execution part is installed, to derive whether a task is active and to stop a task's runs before it
+through this lock and the records the [run store](../glossary.json#concept.run-store) keeps. The
+run store keeps those records in the workspace folder and the [lobby](runner.md#the-lobby). To
+stop a run that still runs, whoever prepared the workspace sends its runner `SIGTERM`. Execution
+registers no call for either reading or stopping runs. Where the execution part is installed,
+Coordination does both to derive whether a task is active and to stop a task's runs before it
 closes the task.
 
 ### req.execution.no-chaining — Runs do not start runs
 
 No step SHALL start another run.
 
-A [workflow](../workflows/module.md) sequences runs from outside them, through the same command lines;
-calling a service such as Check execution or resuming a worker is not starting a run.
+A [workflow](../workflows/module.md) sequences runs from outside them, through the same command
+lines. Calling a service such as Check execution or resuming a worker is not starting a run.

@@ -1,12 +1,17 @@
 # Timing spans
 
-The precise obligations, scenarios and record formats of the timing recorder in
-`src/concorde/execution/checks/timing.py`. The entry explains
-what a diagnostic span is for.
+This document states the precise details of the timing recorder in
+`src/concorde/execution/checks/timing.py`:
+
+- obligations
+- scenarios
+- record formats
+
+The entry explains what a diagnostic span is for.
 
 ## Span record
 
-A span is a JSON object with these fields; all are present:
+A span is a JSON object. All of these fields are present:
 
 | Field | Content |
 | --- | --- |
@@ -23,17 +28,28 @@ A span is a JSON object with these fields; all are present:
 | `status` | `ok`, `error`, `cancelled` or `incomplete` |
 | `metadata` | only the counts `prompt_bytes`, `context_bytes`, `items`, `returncode`, `probe_index`, and the labels `stage`, `target_id`, `change_id`, `context_id`; any other key is dropped |
 
-A count must be a finite number below 10^18 and nonnegative, except `returncode`; otherwise it is
-null. A label is kept only when it is a host-issued identifier of at most 160 characters drawn from
-letters, digits and `-_.:`; otherwise it is null.
+A count must meet all of these conditions:
+
+- be a finite number
+- be below 10^18
+- be nonnegative, except for `returncode`
+
+Otherwise, the count is null. Only when a label is a host-issued identifier of at most 160
+characters drawn from these characters is it kept:
+
+- letters
+- digits
+- `-_.:`
+
+Otherwise, the label is null.
 
 A finished trace handed to a sink is `{schema_version: 1, trace_id, complete, omitted, spans}`. A
-trace keeps at most 20,000 spans, open ones included, so an open span holds its place until it
-finishes; a span marked while the trace is full is not stored. `omitted` counts the spans not
-stored together with the spans still open when the trace is handed to its sink, which are stored
-with status `incomplete`, and `complete` is false whenever `omitted` is not zero. The sink receives
-a copy of the trace, which is then sealed: a span that finishes or starts afterwards changes nothing
-handed over and is not recorded.
+trace keeps at most 20,000 spans, open ones included. An open span therefore holds its place until it
+finishes. While the trace is full, a span marked is not stored. `omitted` counts the spans not
+stored together with the spans still open when the trace is handed to its sink. The spans still
+open are stored with status `incomplete`. Whenever `omitted` is not zero, `complete` is false.
+The sink receives a copy of the trace. The trace is then sealed. Afterwards, a span that finishes
+or starts changes nothing handed over. The span is not recorded.
 
 ## Library entry points
 
@@ -49,13 +65,24 @@ handed over and is not recorded.
 The timing summary is `{complete, summed_span_seconds, covered_seconds_by_process}`: what the
 spans measured, and nothing they cannot, such as elapsed wall time.
 
-The directory conditions keep diagnostic files apart from the project and from the lifecycle
-records and locks Concorde keeps under `.concorde/tasks`, `.concorde/history`, `.concorde/unbound` and `.concorde/locks`. A function marked with
-`timed` and called while no trace is open but `CONCORDE_DIAGNOSTIC_TIMING_DIR` is set opens a trace
-of its own whose sink is `diagnostic_sink` of that directory; when the directory is refused, the
-trace has no sink and the `CONCORDE_TIMING_INCOMPLETE` line is written instead.
+The directory conditions keep diagnostic files apart from the project and from Concorde's
+lifecycle records and locks. Concorde keeps those records and locks under these paths:
 
-A caller opens a trace with a sink, marks nested work and summarizes what the sink received:
+- `.concorde/tasks`
+- `.concorde/history`
+- `.concorde/unbound`
+- `.concorde/locks`
+
+When called while no trace is open but `CONCORDE_DIAGNOSTIC_TIMING_DIR` is set, a function marked
+with `timed` opens a trace of its own. The trace's sink is `diagnostic_sink` of that directory.
+When the directory is refused, the trace has no sink. The `CONCORDE_TIMING_INCOMPLETE` line is
+written instead.
+
+A caller performs these steps:
+
+- opens a trace with a sink
+- marks nested work
+- summarizes what the sink received
 
 ```python
 received = []
@@ -71,62 +98,98 @@ with tracing(Trace(sink=received.append)):
 summary = summarize(received[0]["spans"])
 ```
 
-The sink receives the finished trace once, when the `tracing` block ends; `summarize` reads the span
+When the `tracing` block ends, the sink receives the finished trace once. `summarize` reads the span
 records of that trace.
 
 ## Requirements
 
 ### req.checks.timing-passive — Recording never changes the work
 
-Recording, persisting or failing to persist a diagnostic span SHALL NOT change the outcome, the
-retry behaviour or the authority of the work it describes.
+When recording, persisting or failing to persist a diagnostic span, the timing recorder SHALL NOT
+change these aspects of the work the span describes:
 
-A sink failure marks the trace incomplete and writes one `CONCORDE_TIMING_INCOMPLETE` line to
-standard error; nothing else follows from it.
+- the outcome
+- the retry behaviour
+- the authority
+
+A sink failure marks the trace incomplete. The sink failure writes one
+`CONCORDE_TIMING_INCOMPLETE` line to standard error. Nothing else follows from the sink failure.
 
 ### req.checks.timing-no-content — Spans hold no content
 
-A diagnostic span SHALL NOT contain prompts, source text, tool output, environment values, command
-arguments or exception messages.
+A diagnostic span SHALL NOT contain any of this content:
+
+- prompts
+- source text
+- tool output
+- environment values
+- command arguments
+- exception messages
 
 ### req.checks.timing-unknown — Unreported figures stay unknown
 
-A count, duration or context figure that the observed work did not report SHALL be recorded and
-summarized as null, never as zero.
+For any of these figures that the observed work did not report, the timing recorder SHALL record
+and summarize the figure as null, never as zero:
+
+- a count
+- a duration
+- a context figure
 
 ### req.checks.timing-per-process — Durations are never compared across processes
 
 A timing summary SHALL NOT subtract timestamps taken in different processes.
 
-Covered time is therefore computed per process, as the union of that process's intervals, and wall
+Covered time is therefore computed per process, as the union of that process's intervals. Wall
 timestamps are used only to correlate records.
 
 ## Scenarios
 
 ### scenario.checks.timing-spans — A span records nested work without its content
 
-- GIVEN a trace is open and host code marks nested units of work as spans
+- GIVEN a trace is open
+- AND host code marks nested units of work as spans
 - WHEN the work ends successfully, with an error or by cancellation
-- THEN each span records its name, status, monotonic duration, wall start time, its own, parent, trace and process identities, and the host-issued labels given to it
-- AND counts that the work did not report are null, and a span still open when the trace ends keeps a null duration
-- BUT no prompt, source text, tool output, environment value, command argument or exception message is recorded
+- THEN each span records its name and status
+- AND each span records its monotonic duration and wall start time
+- AND each span records its own and parent identities
+- AND each span records its trace and process identities
+- AND each span records the host-issued labels given to it
+- AND counts that the work did not report are null
+- AND when the trace ends, a span still open keeps a null duration
+- BUT no prompt or source text is recorded
+- AND no tool output or environment value is recorded
+- AND no command argument or exception message is recorded
 
 ### scenario.checks.timing-no-trace — Marking a span outside a trace records nothing
 
-- GIVEN no trace is open and `CONCORDE_DIAGNOSTIC_TIMING_DIR` is not set
+- GIVEN no trace is open
+- AND `CONCORDE_DIAGNOSTIC_TIMING_DIR` is not set
 - WHEN host code marks a unit of work as a span
 - THEN the work runs and returns or raises exactly as unmarked work would
-- AND no span is kept, nothing is written to standard error and no file is written
+- AND no span is kept
+- AND nothing is written to standard error
+- AND no file is written
 
 ### scenario.checks.timing-standalone-directory — A standalone process writes its trace to a named directory
 
-- GIVEN no trace is open and `CONCORDE_DIAGNOSTIC_TIMING_DIR` names an existing, absolute, canonical directory outside the working directory and outside any `.concorde/tasks`, `.concorde/history`, `.concorde/unbound` or `.concorde/locks` directory
+- GIVEN no trace is open
+- AND `CONCORDE_DIAGNOSTIC_TIMING_DIR` names an existing directory
+- AND the directory is absolute and canonical
+- AND the directory is outside the working directory
+- AND the directory is outside any `.concorde/tasks` directory
+- AND the directory is outside any `.concorde/history` directory
+- AND the directory is outside any `.concorde/unbound` directory
+- AND the directory is outside any `.concorde/locks` directory
 - WHEN host code marks a unit of work as a span
-- THEN a new trace file for that work is created in the directory with mode 0600, without following a symbolic link
+- THEN a new trace file for that work is created in the directory with mode 0600, without following
+  a symbolic link
 
 ### scenario.checks.timing-invalid-directory — A refused timing directory receives nothing
 
-- GIVEN no trace is open and `CONCORDE_DIAGNOSTIC_TIMING_DIR` names a directory that is relative, missing, a symbolic link, not canonical, the working directory or inside it, or inside a `.concorde/tasks`, `.concorde/history`, `.concorde/unbound` or `.concorde/locks` directory
+- GIVEN no trace is open
+- AND `CONCORDE_DIAGNOSTIC_TIMING_DIR` names a directory that is relative, missing, a symbolic link,
+  not canonical, the working directory or inside it, or inside a `.concorde/tasks`,
+  `.concorde/history`, `.concorde/unbound` or `.concorde/locks` directory
 - WHEN host code marks a unit of work as a span
 - THEN nothing is written to that directory or to the working directory
 - AND one `CONCORDE_TIMING_INCOMPLETE` line is written to standard error
@@ -136,27 +199,39 @@ timestamps are used only to correlate records.
 
 - GIVEN a trace whose sink fails when it receives the finished trace
 - WHEN the traced work ends
-- THEN the trace is counted incomplete and one `CONCORDE_TIMING_INCOMPLETE` line is written to standard error
-- AND the work's result, status and error codes are the same as with a working sink
+- THEN the trace is counted incomplete
+- AND one `CONCORDE_TIMING_INCOMPLETE` line is written to standard error
+- AND the work's result is the same as with a working sink
+- AND the work's status is the same as with a working sink
+- AND the work's error codes are the same as with a working sink
 - BUT the sink is not retried
 
 ### scenario.checks.timing-trace-cap — A full trace counts what it omits
 
 - GIVEN a trace that already holds 20,000 spans, finished or open
 - WHEN more spans are marked
-- THEN they are not stored, and the trace reports how many were omitted and that it is incomplete
-- AND spans still open when the trace is handed to its sink are stored within the cap with status `incomplete` and also counted in `omitted`
+- THEN they are not stored
+- AND the trace reports how many were omitted
+- AND the trace reports that it is incomplete
+- AND when the trace is handed to its sink, spans still open are stored within the cap with status
+  `incomplete`
+- AND those spans still open are also counted in `omitted`
 
 ### scenario.checks.timing-concurrent-traces — Concurrent traces stay separate
 
 - GIVEN several threads or asynchronous tasks each run work under their own trace
 - WHEN their spans finish in interleaved order
-- THEN every span is stored in the trace that was open where its work started, with that trace's identity and parent
+- THEN every span is stored in the trace that was open where its work started
+- AND every span is stored with that trace's identity and parent
 
 ### scenario.checks.timing-summary — A timing summary reports covered time per process
 
 - GIVEN span records, some overlapping and some without a duration
 - WHEN they are summarized
-- THEN the summary reports the covered seconds of each process as the union of that process's intervals, and the summed span seconds separately
+- THEN the summary reports the covered seconds of each process as the union of that process's
+  intervals
+- AND the summary reports the summed span seconds separately
 - AND spans without a duration make the summary incomplete instead of counting as zero
-- BUT no span name, trace identity or label appears in the summary
+- BUT no span name appears in the summary
+- AND no trace identity appears in the summary
+- AND no label appears in the summary

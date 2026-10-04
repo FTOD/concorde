@@ -1,13 +1,17 @@
 # Workers contracts
 
-The exact answer every worker ends with, the grant a caller hands over, the worker configuration
-file, and what a worker run and each of its rounds retain in their trace nodes.
+This document describes these contracts:
+
+- the exact answer every worker ends with
+- the grant a caller hands over
+- the worker configuration file
+- what a worker run and each of its rounds retain in their trace nodes
 
 ## Worker result
 
-The [entry](../../glossary.json#concept.worker-result) explains the worker result's role; [the run
-mechanics](launch.md#rounds) say how the host reacts to it. Its `error` is the worker's link of the
-Framework's [error chain](../../kernel/tracing/contracts.md#contract.tracing.error).
+The [entry](../../glossary.json#concept.worker-result) explains the worker result's role. [The run
+mechanics](launch.md#rounds) say how the host reacts to it. The worker result's `error` is the worker's
+link of the Framework's [error chain](../../kernel/tracing/contracts.md#contract.tracing.error).
 
 ```concorde-contract
 {
@@ -184,13 +188,24 @@ Framework's [error chain](../../kernel/tracing/contracts.md#contract.tracing.err
 
 ## Grant input {#grant-input}
 
-The [grant](../../glossary.json#concept.grant) a caller hands the worker harness for one run, as
-data. The worker harness owns this format and computes nothing in it: it never derives a grant from
-Specs, widens one or reads where it came from. In Concorde, a step of Method fills it from the grant
-Spec core computes, projecting its `task_type`, `entries` and `context_identity`, which have exactly
-this shape; Spec core's grant also carries the [Modules](../../glossary.json#concept.module) and glossary terms, which Method keeps for
-itself and never passes. A contract test on each side keeps the three shared fields equal, so
-neither part imports the other.
+The [grant](../../glossary.json#concept.grant) is data a caller hands the worker harness for one run.
+The worker harness owns this format. It computes nothing in the format. The worker harness never
+does any of these:
+
+- derive a grant from Specs
+- widen a grant
+- read where a grant came from
+
+In Concorde, a step of Method fills this data from the grant Spec core computes. The step projects
+these fields, which have exactly this shape:
+
+- `task_type`
+- `entries`
+- `context_identity`
+
+Spec core's grant also carries the [Modules](../../glossary.json#concept.module) and glossary terms.
+Method keeps the Modules and glossary terms for itself. Method never passes them. A contract test
+on each side keeps the three shared fields equal. Neither part therefore imports the other.
 
 ```concorde-contract
 {
@@ -272,8 +287,8 @@ neither part imports the other.
 
 ## Worker configuration
 
-The file the [worker configuration](../../glossary.json#concept.worker-configuration) is, which
-[Choosing worker models](module.md#choosing-worker-models) explains.
+The [worker configuration](../../glossary.json#concept.worker-configuration) is a file. [Choosing
+worker models](module.md#choosing-worker-models) explains this file.
 
 ```concorde-contract
 {
@@ -509,8 +524,8 @@ The file the [worker configuration](../../glossary.json#concept.worker-configura
 
 ## Model map
 
-The file the [model map](../../glossary.json#concept.model-map) is, which
-[Choosing worker models](module.md#choosing-worker-models) explains.
+The [model map](../../glossary.json#concept.model-map) is a file. [Choosing worker
+models](module.md#choosing-worker-models) explains this file.
 
 ```concorde-contract
 {
@@ -569,9 +584,10 @@ The file the [model map](../../glossary.json#concept.model-map) is, which
 
 ## Worker run trace
 
-Every worker run is a [trace node](../../glossary.json#concept.trace-node) of kind `worker-run`, and each of
-its rounds one of kind `worker-round` below it, as [Tracing](../../kernel/tracing/contracts.md#contract.tracing.node)
-defines them; their contents are these values.
+Every worker run is a [trace node](../../glossary.json#concept.trace-node) of kind `worker-run`.
+Each of its rounds is a trace node of kind `worker-round` below the worker run's trace node.
+[Tracing](../../kernel/tracing/contracts.md#contract.tracing.node) defines these nodes. Their
+contents are these values.
 
 ```concorde-contract
 {
@@ -908,12 +924,12 @@ defines them; their contents are these values.
 
 ## Returned run record
 
-What the host returns to the caller that asked for the worker, in Concorde an
-[Operation](../../glossary.json#concept.operation)'s step: the
-[run record](../../glossary.json#concept.run-record) as the caller reads it, which carries every
-round's content so that the caller reads the audits and the round validation's evidence without
-reading a file. It is
-not stored; the run's trace node and its rounds' nodes are the record that is kept.
+The host returns the [run record](../../glossary.json#concept.run-record), as the caller reads it,
+to the caller that asked for the worker. In Concorde, that caller is an
+[Operation](../../glossary.json#concept.operation)'s step. The returned run record carries every
+round's content. This content lets the caller read the audits and the round validation's evidence
+without reading a file. The returned run record is not stored. The run's trace node and its rounds'
+nodes are the record that is kept.
 
 ```concorde-contract
 {

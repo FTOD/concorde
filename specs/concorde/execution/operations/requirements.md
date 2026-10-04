@@ -1,14 +1,17 @@
 # Operations requirements
 
-The Module-wide obligations of [Operations](module.md). What every run promises, whatever its
-definition, is in the [Execution requirements](../requirements.md); the [scenarios](scenarios.md)
-rely in particular on
-[req.execution.claims-apart](../requirements.md#req.execution.claims-apart),
-[req.execution.error-when-not-ok](../requirements.md#req.execution.error-when-not-ok),
-[req.execution.reasons](../requirements.md#req.execution.reasons) and
-[req.execution.error-detail](../requirements.md#req.execution.error-detail). How Method's
-[Operations](../../glossary.json#concept.operation) run their workers is in
-[How an Operation runs its workers](../../method/workers.md), and the scenarios show the obligations at work.
+This document states the Module-wide obligations of [Operations](module.md). Whatever a run's
+definition, the [Execution requirements](../requirements.md) state what every run promises. The
+[scenarios](scenarios.md) rely in particular on:
+
+- [req.execution.claims-apart](../requirements.md#req.execution.claims-apart).
+- [req.execution.error-when-not-ok](../requirements.md#req.execution.error-when-not-ok).
+- [req.execution.reasons](../requirements.md#req.execution.reasons).
+- [req.execution.error-detail](../requirements.md#req.execution.error-detail).
+
+[How an Operation runs its workers](../../method/workers.md) describes how Method's
+[Operations](../../glossary.json#concept.operation) run their workers. The scenarios show the
+obligations at work.
 
 ## Definitions
 
@@ -16,45 +19,52 @@ rely in particular on
 
 Every Operation's steps SHALL launch every worker through the worker harness.
 
-So every worker runs under the boundary the harness applies, is audited and leaves its [run record](../../glossary.json#concept.run-record),
-whatever part provides the Operation.
+Whatever part provides the Operation, these statements therefore hold for every worker:
+
+- It runs under the boundary the harness applies.
+- It is audited.
+- It leaves its [run record](../../glossary.json#concept.run-record).
 
 ### req.operations.grant-frozen — A worker's grant is frozen before its launch
 
-Every worker-backed step SHALL freeze the grant of its worker before it asks the worker harness to
-launch the worker.
+Before asking the worker harness to launch the worker, every worker-backed step SHALL freeze the
+grant of its worker.
 
 ### req.operations.status-mapping — Worker failures are never ok
 
-A run in which the grant could not be computed, a worker could not be launched or timed out, the
-[write audit](../../glossary.json#concept.write-audit) found a violation, or the round validation
-still reported, after the last [resume round](../../glossary.json#concept.resume-round), a failure
-it designates to fail the run, such as a
-[configured check](../../glossary.json#concept.configured-check) still failing, SHALL end with
-status `failed`.
+When any of these conditions holds, a run SHALL end with status `failed`:
 
-What a run ends with when its round validation still reports something else to repair after the
-last round is the providing Operation's to say by its own contract: Adoption's `code_to_spec`, for
-example, ends `blocked` when structural errors remain
+- The grant could not be computed.
+- A worker could not be launched or timed out.
+- The [write audit](../../glossary.json#concept.write-audit) found a violation.
+- After the last [resume round](../../glossary.json#concept.resume-round), the round validation
+  still reported a failure it designates to fail the run, such as a
+  [configured check](../../glossary.json#concept.configured-check) still failing.
+
+When round validation still reports something else to repair after the last round, the providing
+Operation states the run's final status by its own contract. For example, when structural errors
+remain, Adoption's `code_to_spec` ends `blocked`
 ([req.adoption.errors-left-block](../../method/adoption/requirements.md#req.adoption.errors-left-block)).
 
 ### req.operations.model-work-only — Every Operation has model work
 
-Every Operation in the catalog SHALL declare at least one [worker id](../../glossary.json#concept.worker-id) and ask the worker harness to
-launch at least one AI worker on a run whose worker step settles the worker's grant, backend and
-model.
+Every Operation in the catalog SHALL do both of these:
 
-A run refused before that, such as one whose [worker
-configuration](../../glossary.json#concept.worker-configuration) cannot be read, launches no
-worker, as Method's [standard worker sequence](../../method/workers.md#standard-worker-sequence)
-shows.
+- declare at least one [worker id](../../glossary.json#concept.worker-id)
+- ask the worker harness to launch at least one AI worker on a run whose worker step settles the
+  worker's grant, backend and model
+
+When a run is refused before that worker step, it launches no worker. For example, when a run's
+[worker configuration](../../glossary.json#concept.worker-configuration) cannot be read, the run is
+refused before that worker step. Method's
+[standard worker sequence](../../method/workers.md#standard-worker-sequence) shows this.
 
 A job that needs no model is an [execution command](../../glossary.json#concept.execution-command)
 of its own [Module](../../glossary.json#concept.module) instead.
 
 ### req.operations.unique-names — An Operation name has one definition
 
-The catalog SHALL refuse to load when two installed parts register an Operation of the same name,
+When two installed parts register an Operation of the same name, the catalog SHALL refuse to load,
 naming both.
 
 ### req.operations.no-chaining — Operations do not start Operations
