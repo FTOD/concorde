@@ -5,7 +5,10 @@ from __future__ import annotations
 
 import io
 import json
+import os
+import shutil
 import subprocess
+import sys
 import tempfile
 import threading
 import unittest
@@ -49,6 +52,59 @@ class StoodIn(Calls):
     def long_work(self, name, envelope, worktree):
         self.ran.append(("long_work", worktree, envelope["served"]))
         return self.replies.pop(0)
+
+
+class Scripted(Calls):
+    """``Calls`` whose call processes run ``script`` with this Python instead of ``concorde``."""
+
+    def __init__(self, primary: Path, script: str):
+        super().__init__(primary, primary, None, False, None, None)
+        self.script = script
+
+    def command(self, *words, worktree=None):
+        return [sys.executable, "-c", self.script], dict(os.environ)
+
+
+class FailedCallTests(unittest.TestCase):
+    """A call that gives no answer is refused with what its process printed on both streams."""
+
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.primary = Path(directory.name)
+
+    def detail(self, calls: Calls, work) -> str:
+        with self.assertRaises(tools.Refusal) as refused:
+            work()
+        self.assertEqual("call_failed", refused.exception.link["code"])
+        return refused.exception.link["detail"]
+
+    @verifies("scenario.distribution.mcp-call-failed")
+    def test_a_failed_call_keeps_both_streams(self):
+        printing = (
+            "import sys, time\n"
+            "print('said on stdout', flush=True)\n"
+            "print('said on stderr', file=sys.stderr, flush=True)\n"
+        )
+        cases = {
+            "exited": (printing + "sys.exit(3)\n", 30, "exited with status 3"),
+            "timed out": (printing + "time.sleep(30)\n", 2, "within 2 seconds"),
+        }
+        for case, (script, limit, ended) in cases.items():
+            with self.subTest(case=case):
+                calls = Scripted(self.primary, script)
+                detail = self.detail(
+                    calls, lambda: calls.run("probe", {}, limit, self.primary)
+                )
+                self.assertIn(ended, detail)
+                self.assertIn("on standard error: said on stderr", detail)
+                self.assertIn("on standard output: said on stdout", detail)
+        calls = Scripted(self.primary, printing + "sys.exit(4)\n")
+        self.addCleanup(lambda: shutil.rmtree(calls.runtime(), ignore_errors=True))
+        detail = self.detail(calls, lambda: calls.long_work("probe", {}, self.primary))
+        self.assertIn("exited with status 4", detail)
+        self.assertIn("on standard error: said on stderr", detail)
+        self.assertIn("on standard output: said on stdout", detail)
 
 
 def listing(digest: str, **serving) -> dict:

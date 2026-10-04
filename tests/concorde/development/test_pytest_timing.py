@@ -14,6 +14,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from concorde.spec.verification import verifies
 from tests.concorde.support.paths import REPOSITORY_ROOT
@@ -120,6 +121,19 @@ class PytestTimingTests(unittest.TestCase):
         before = runner.fingerprint(selected, self.root)
         (self.root / "notes.txt").write_text("not an input\n")
         self.assertEqual(before, runner.fingerprint(selected, self.root))
+        # The environment records Python's effective bytecode setting, however it was set.
+        with patch.object(runner.sys, "dont_write_bytecode", True):
+            self.assertTrue(
+                runner.fingerprint(selected, self.root)["environment_facts"][
+                    "bytecode_disabled"
+                ]
+            )
+        with patch.object(runner.sys, "dont_write_bytecode", False):
+            self.assertFalse(
+                runner.fingerprint(selected, self.root)["environment_facts"][
+                    "bytecode_disabled"
+                ]
+            )
 
         # A caller may pass no reason, scope, phase or attempt.
         value = self.run_report("report.json")

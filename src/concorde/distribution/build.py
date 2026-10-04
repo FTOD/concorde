@@ -480,8 +480,19 @@ def recompute_protocol_manifest(project_root: str | Path) -> dict:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError) as error:
         raise BuildError(f"cannot read {manifest_path}: {error}") from error
+    assets = manifest.get("assets") if isinstance(manifest, dict) else None
+    if not isinstance(assets, list) or not all(
+        isinstance(item, dict)
+        and isinstance(item.get("path"), str)
+        and isinstance(item.get("digest"), str)
+        for item in assets
+    ):
+        raise BuildError(
+            f"{manifest_path} is not a Protocol manifest: it must be an object whose assets is a "
+            "list of objects, each with a string path and digest"
+        )
     updated = copy.deepcopy(manifest)
-    for item in updated.get("assets", []):
+    for item in updated["assets"]:
         path = root / item["path"]
         if path.is_symlink() or not path.is_file():
             raise BuildError(

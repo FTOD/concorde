@@ -323,7 +323,7 @@
       "id": "concept.main-agent",
       "title": "Main agent",
       "owner": "module.concorde",
-      "definition": "The developer-facing Claude Code session, started in the primary worktree, that discusses the project, splits work into tasks, hands every task to a task session and answers it, and merges the delivered tasks, asking the developer every question a task needs.",
+      "definition": "The developer-facing Claude Code session, started in the primary worktree, that discusses the project, splits work into tasks, hands every task to a task session and answers it, and merges the delivered tasks, deciding ordinary questions itself and asking the developer those its decision policy reserves for the developer.",
       "explanation": "specs/concorde/module.md#concept.main-agent"
     },
     {
@@ -712,7 +712,7 @@
       "id": "concept.task-context",
       "title": "Task context",
       "owner": "module.concorde",
-      "definition": "The material produced for one task, namely its brief, constraints and admitted artifacts, which adds no Spec or code source.",
+      "definition": "The material produced for one worker's job, namely its brief, constraints and admitted artifacts, which adds no Spec or code source.",
       "explanation": "specs/concorde/module.md#concept.task-context"
     },
     {

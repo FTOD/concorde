@@ -264,8 +264,9 @@ described next.
 `protocol-manifest` compares the digests the tracked manifest `protocol/manifest.json`, whose shape
 [Spec core](../spec-tooling/spec/contracts.md#protocol-manifest) defines, records for the rendered
 Protocol assets with those of the current build. It first requires a fresh build and a readable
-tracked manifest whose every asset the build holds; otherwise it reports `invalid` with
-`CONCORDE-PROTOCOL-MANIFEST-001` naming the problem and writes nothing, whatever its flags. Then
+tracked manifest of the manifest's shape whose every asset the build holds; otherwise it reports
+`invalid` with `CONCORDE-PROTOCOL-MANIFEST-001` naming the problem and writes nothing, whatever its
+flags ([requirements](requirements.md#req.distribution.protocol-manifest-precondition)). Then
 each combination of its two flags does the following, its result's `differences` naming the assets
 whose digests differed from the build's and its `artifacts` what it wrote:
 
@@ -677,7 +678,9 @@ last two only where the spec part is installed:
    else in the project may be started until the update ends, as
    [the busy check](#installing-into-a-project) explains.
 2. **It binds the new Protocol copy** in the project configuration itself, the one write of the
-   project configuration an installer makes.
+   project configuration an installer makes, where the project is initialized. A project not
+   initialized yet has no configuration, which the update does not create: the mark of step 3
+   then records no rebinding unless an earlier mark did, and initialization binds the copy later.
 3. **It marks the project Concorde unvalidated** by writing `.concorde/update.json`, which Git
    ignores, with the versions, installed commits and Protocol bindings before and after. The
    validation findings `CONCORDE-UPDATE-001` and `CONCORDE-UPDATE-002` described next name the
@@ -751,6 +754,7 @@ something:
 
 | Code | Refused when | Reason | After a write |
 | --- | --- | --- | --- |
+| `invalid_arguments` | the installer's or `concorde update`'s command line is malformed, such as a missing project or an option without its value | `input` | no |
 | `invalid_project` | the project is not a directory | `input` | no |
 | `unknown_part` | `--parts`, or the receipt an update reads, names a part the package does not build, or a part depends on one | `input` | no |
 | `stale_build` | the build is stale, or a render or file the install places, such as the guidance or a file an installed part ships, is missing | `input` | no |
