@@ -132,15 +132,15 @@ block it.
 ### Statuses
 
 Whenever the worker completes an assessment, sufficient or not, `status` is `ok`. `sufficient` says
-whether work may proceed. When the worker cannot assess the goal at all, it is `blocked`. The goal
-may be ambiguous, or Modules may not be bound. In that case, the
-[error chain](../../glossary.json#concept.error-chain) ends in the worker's own link with what it
-tried and would need. When the worker cannot be run or changes a file, it is `failed`. Workers'
-launch, timeout or audit error is the cause of the Operation's link, as for every
-[standard worker sequence](../../glossary.json#concept.standard-worker-sequence).
+whether work may proceed. When the worker cannot assess the goal at all, `status` is `blocked`. The
+goal may be ambiguous, or Modules may not be bound. In that case, the [error
+chain](../../glossary.json#concept.error-chain) ends in the worker's own link with what it tried and
+would need. When the worker cannot be run or changes a file, `status` is `failed`. Workers' launch,
+timeout or audit error is the cause of the Operation's link, as for every [standard worker
+sequence](../../glossary.json#concept.standard-worker-sequence).
 
-When the assessment names an unknown Module or is internally inconsistent, it is also `failed`.
-An assessment is internally inconsistent when any of these holds:
+When the assessment names an unknown Module or is internally inconsistent, `status` is also
+`failed`. An assessment is internally inconsistent when any of these holds:
 
 - Gaps and sufficiency disagree.
 - Plan and `--plan` disagree.

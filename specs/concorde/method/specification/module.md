@@ -43,25 +43,25 @@ The result's facts come from the Operation's own diff. The worker's account stay
 
 The Operation is worker-backed, run with [task type](../../glossary.json#concept.task-type)
 `specify`. The bound Modules' own documents (reading files and metadata) and the project glossary
-are writable. Method's round validation includes a glossary ownership audit. It reports any
-changed glossary entry whose owner is not a bound Module. Other Modules' selected documents stay
-read-only. Implementation files show by name only. A worker may bind to a realization only a file
-that exists. The task level creates and binds a new file before the run that fills it, and never
-declares it ahead of that run.
+are writable. Method's round validation includes a glossary ownership audit. It reports any changed
+glossary entry whose owner is not a bound Module. Other Modules' selected documents stay read-only.
+Implementation files show by name only. A worker may bind to a realization only a file that exists.
+The task level creates and binds a new file before the run that fills it. A file is never declared
+before it exists.
 
 ### Validation against a baseline
 
-Validation is structural: the same [checks](../../glossary.json#concept.structural-check)
-`concorde spec-validation` runs. Before the worker starts, the Operation validates the workspace's
-Specs as a baseline. It compares every later validation with that baseline. Comparing with the
-baseline lets `specify` repair an already-broken worktree. Pre-existing errors do not stop the run.
-Only errors the change introduced stop it. This comparison is the step's own validation. The
-Operation hands it to the worker harness as part of round validation
-([standard worker sequence](../../glossary.json#concept.standard-worker-sequence)). After each
-round that the worker ended `ok` with a clean audit, the worker harness calls that validation.
-At most twice per worker launch, it resumes the worker with every error its change introduced.
-The worker thus repairs the Specs it broke itself. Only errors left after the last round stop the
-run for a decision at the task level.
+Validation is structural: the same [checks](../../glossary.json#concept.structural-check) `concorde
+spec-validation` runs. Before the worker starts, the Operation validates the workspace's Specs as a
+baseline. It compares every later validation with that baseline. Comparing with the baseline lets
+`specify` repair an already-broken worktree. Pre-existing errors do not stop the run. Only errors
+the change introduced stop it. This comparison is the step's own validation. The Operation hands it
+to the worker harness as part of round validation ([standard worker
+sequence](../../glossary.json#concept.standard-worker-sequence)). After each round that the worker
+ended `ok` with a clean audit, the worker harness calls that validation and resumes the worker with
+every error its change introduced, at most twice per worker launch. The worker thus repairs the
+Specs it broke itself. Only errors left after the last round stop the run for a decision at the task
+level.
 
 ## Overview
 
@@ -132,13 +132,13 @@ The `status` values mean these things:
 - When the worker could not be run or the audit found a write outside the grant, the status is
   `failed`.
 
-A contradicted promise or a needed document of an unbound Module can prevent the worker from
-making the change. In that case, the [error chain](../../glossary.json#concept.error-chain) ends in
-the worker's own link with its options. For a new validation error, it ends in the Operation's
-`new_structural_errors` link (reason `decision`). That link has one cause per finding, with its
-rule, file and message. Edits stay uncommitted. Within its authority, the task level can accept,
-retry, repair or discard them. Except after an audit violation or a failure before the worker ran,
-`blocked`/`failed` still carries the observed change.
+A contradicted promise or a needed document of an unbound Module can prevent the worker from making
+the change. When the worker cannot make the change, the [error
+chain](../../glossary.json#concept.error-chain) ends in the worker's own link with its options. For
+a new validation error, it ends in the Operation's `new_structural_errors` link (reason `decision`).
+That link has one cause per finding, with its rule, file and message. Edits stay uncommitted. Within
+its authority, the task level can accept, retry, repair or discard them. Except after an audit
+violation or a failure before the worker ran, `blocked`/`failed` still carries the observed change.
 
 ### New and deleted documents
 
@@ -172,7 +172,7 @@ needs all of them. In that case, these things hold:
 - The run stays `blocked`, with `document-refused` evidence naming the reason for each refused
   proposal.
 
-The worker can have an owned document deleted only by proposing it. After a clean audit, the
+An owned document is deleted only by proposing it. After a clean audit, the
 Operation performs the deletion. A change spanning several Modules, such as a contract version
 increment, needs them all bound in one run.
 
