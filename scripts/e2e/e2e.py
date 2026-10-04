@@ -53,6 +53,7 @@ import re
 import shutil
 import subprocess
 import sys
+import traceback
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -73,6 +74,7 @@ from common import (  # noqa: E402
 
 sys.path.insert(0, str(CHECKOUT / "src"))
 
+from concorde.distribution import parts  # noqa: E402
 from concorde.method.workers import declared_workers  # noqa: E402
 from concorde.worker_harness import models  # noqa: E402
 
@@ -129,6 +131,8 @@ def worker_configuration(model: str | None = None) -> dict:
     source = CHECKOUT / WORKERS
     try:
         own = json.loads(source.read_text(encoding="utf-8"))
+        if not isinstance(own, dict):
+            raise ValueError(f"it holds a JSON {type(own).__name__}, not an object")
     except (OSError, ValueError) as error:
         raise E2EError(
             "worker_configuration_unreadable",
@@ -141,7 +145,10 @@ def worker_configuration(model: str | None = None) -> dict:
 
 def require_mapped(workers: dict) -> None:
     """Refuse, before anything is set up, a worker configuration whose workers this machine's
-    model map cannot resolve: the test project's workers read the same user-level map."""
+    model map cannot resolve: the test project's workers read the same user-level map. The
+    Operations this checkout's parts register, which the check knows, are loaded first, as the
+    ``concorde`` command loads them."""
+    parts.load(parts.installed())
     try:
         models.check_mapped(workers, declared_workers())
     except models.ModelConfigError as error:
@@ -325,18 +332,31 @@ def driver_input(project: Path, worktree: Path, workflow: str, args: dict) -> di
     )
     if not script.is_file():
         raise E2EError("script_missing", f"{script} does not exist; reinstall Concorde")
+    # The step agents run the worktree's command without a shell, and the report's command line
+    # names it relative to the worktree, its working directory, so no path is split on a space.
     return {
         "script": str(script),
-        "args": {**args, "concorde": str(worktree / ".concorde/bin/concorde")},
+        "args": dict(args),
         "outcomes": {},
         "report": None,
-        "execute": {"cwd": str(worktree)},
+        "execute": {
+            "cwd": str(worktree),
+            "concorde": str(worktree / ".concorde/bin/concorde"),
+        },
     }
 
 
 def task_worktree(project: Path, task: str) -> Path:
-    record = json.loads((project / f".concorde/tasks/{task}/task.json").read_text())
-    return Path(record["worktree"])
+    """The worktree the record of ``task`` names; ``no_task`` when it cannot be read."""
+    path = project / f".concorde/tasks/{task}/task.json"
+    try:
+        return Path(json.loads(path.read_text(encoding="utf-8"))["worktree"])
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        raise E2EError(
+            "no_task",
+            f"{project} has no task {task} whose record {path} names its worktree "
+            f"({type(error).__name__}: {error}); prepare the project with that task",
+        ) from error
 
 
 def saved_reports(project: Path, task: str) -> list[dict]:
@@ -487,6 +507,25 @@ def dogfood_command(arguments) -> dict:
     return dogfood.evaluate(arguments.directory.resolve())
 
 
+def failed(code: str, detail: str, **evidence) -> int:
+    """Print the error ``{"error": {code, detail, ...evidence}}``; the exit status 1."""
+    sys.stdout.write(
+        json.dumps({"error": {"code": code, "detail": detail, **evidence}}, indent=2)
+        + "\n"
+    )
+    return 1
+
+
+def restart_label(text: str) -> tuple[str, str]:
+    """One ``--restart KEY=LABEL`` as its pair; a malformed one is a usage error."""
+    key, separator, label = text.partition("=")
+    if not separator or not key or not label:
+        raise argparse.ArgumentTypeError(
+            f"{text!r} is not KEY=LABEL, a step's base key and its restart label"
+        )
+    return key, label
+
+
 def main(argv) -> int:
     parser = argparse.ArgumentParser(prog="e2e")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -515,7 +554,13 @@ def main(argv) -> int:
     run_.add_argument("--module", default="module.project")
     run_.add_argument("--mode", choices=["no-ask", "interactive"], default="no-ask")
     run_.add_argument("--retry", action="append", default=[])
-    run_.add_argument("--restart", action="append", default=[], metavar="KEY=LABEL")
+    run_.add_argument(
+        "--restart",
+        action="append",
+        default=[],
+        type=restart_label,
+        metavar="KEY=LABEL",
+    )
     watch_ = sub.add_parser("watch")
     watch_.add_argument("project", type=Path)
     repair_ = sub.add_parser("repair-specs")
@@ -581,7 +626,7 @@ def main(argv) -> int:
             value = trust(arguments.projects)
         elif arguments.command == "run":
             project = arguments.project.resolve()
-            restart = dict(item.split("=", 1) for item in arguments.restart)
+            restart = dict(arguments.restart)
             args = workflow_args(
                 arguments.module,
                 arguments.mode,
@@ -635,20 +680,14 @@ def main(argv) -> int:
         else:
             value = watch(arguments.project.resolve())
     except E2EError as error:
-        sys.stdout.write(
-            json.dumps(
-                {
-                    "error": {
-                        "code": error.code,
-                        "detail": error.detail,
-                        **error.evidence,
-                    }
-                },
-                indent=2,
-            )
-            + "\n"
+        return failed(error.code, error.detail, **error.evidence)
+    except Exception as error:
+        # A failure no step foresaw is printed like any other, with its traceback.
+        return failed(
+            "unexpected_error",
+            f"{type(error).__name__}: {error}",
+            traceback=traceback.format_exc()[-3000:],
         )
-        return 1
     sys.stdout.write(json.dumps(value, indent=2, ensure_ascii=False) + "\n")
     return 0
 

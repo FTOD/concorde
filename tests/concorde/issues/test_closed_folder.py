@@ -11,6 +11,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from concorde.issues import store
 from concorde.issues.store import (
@@ -176,41 +177,67 @@ class ClosedFolderTests(unittest.TestCase):
 
     @verifies("scenario.issues.store-interrupted-move")
     def test_a_move_a_killed_write_left_is_put_back(self):
-        for stage in (False, True):
-            with self.subTest(stage=stage):
-                identifier = self.recorded(key=f"killed-{stage}")
-                committed = (self.root / OPEN.format(identifier)).read_bytes()
-                before, revision = self.head(), read_issue(self.root, identifier)[1]
-                with (
-                    base.killed_before_commit(stage=stage),
-                    self.assertRaises(SystemExit),
-                ):
-                    self.close(identifier, revision)
-                # The close published in closed/ and removed the open record, uncommitted.
-                self.assertFalse((self.root / OPEN.format(identifier)).exists())
-                self.assertTrue((self.root / CLOSED.format(identifier)).is_file())
-                self.assertEqual(before, self.head())
-                record, current = read_issue(self.root, identifier)
-                self.assertEqual(("open", revision), (record["status"], current))
-                recovery = store.recover_issues(self.root)
-                self.assertEqual(
-                    [
-                        {"path": OPEN.format(identifier), "action": "restored"},
-                        {"path": CLOSED.format(identifier), "action": "removed"},
-                    ],
-                    sorted(recovery["recovered"], key=lambda item: item["path"]),
-                )
-                self.assertEqual([], recovery["left"])
-                self.assertEqual(
-                    committed, (self.root / OPEN.format(identifier)).read_bytes()
-                )
-                self.assertEqual("", self.status())
-                # The repeated close moves the record, at the committed revision.
-                self.close(identifier, revision)
-                self.assertEqual(
-                    sorted([OPEN.format(identifier), CLOSED.format(identifier)]),
-                    self.changed(),
-                )
+        # A close moves the record into closed/, a reopening out of it; staged, the path a
+        # reopening published sorts before the record it removed.
+        for reopen in (False, True):
+            for stage in (False, True):
+                with self.subTest(reopen=reopen, stage=stage):
+                    self.killed_move_is_put_back(reopen, stage)
+
+    def killed_move_is_put_back(self, reopen, stage):
+        identifier = self.recorded(key=f"killed-{reopen}-{stage}", closed=reopen)
+        source, target = (CLOSED, OPEN) if reopen else (OPEN, CLOSED)
+        status = "closed" if reopen else "open"
+
+        def move(revision):
+            if not reopen:
+                return self.close(identifier, revision)
+            return store.dispose_issue(
+                self.root,
+                identifier,
+                revision,
+                reason="reopened",
+                note="Regressed",
+                evidence=["failing test"],
+                actor="main-agent",
+            )
+
+        committed = (self.root / source.format(identifier)).read_bytes()
+        before, revision = self.head(), read_issue(self.root, identifier)[1]
+        with (
+            base.killed_before_commit(stage=stage),
+            self.assertRaises(SystemExit),
+        ):
+            move(revision)
+        # The write published the record in its new folder and removed it from the old one,
+        # uncommitted.
+        self.assertFalse((self.root / source.format(identifier)).exists())
+        self.assertTrue((self.root / target.format(identifier)).is_file())
+        self.assertEqual(before, self.head())
+        record, current = read_issue(self.root, identifier)
+        self.assertEqual((status, revision), (record["status"], current))
+        recovery = store.recover_issues(self.root)
+        self.assertEqual(
+            sorted(
+                [
+                    {"path": source.format(identifier), "action": "restored"},
+                    {"path": target.format(identifier), "action": "removed"},
+                ],
+                key=lambda item: item["path"],
+            ),
+            sorted(recovery["recovered"], key=lambda item: item["path"]),
+        )
+        self.assertEqual([], recovery["left"])
+        self.assertEqual(
+            committed, (self.root / source.format(identifier)).read_bytes()
+        )
+        self.assertEqual("", self.status())
+        # The repeated write moves the record, at the committed revision.
+        move(revision)
+        self.assertEqual(
+            sorted([OPEN.format(identifier), CLOSED.format(identifier)]),
+            self.changed(),
+        )
 
     @verifies("scenario.issues.store-interrupted-move")
     def test_the_next_write_puts_back_a_killed_move_first(self):
@@ -356,6 +383,28 @@ class ClosedFolderTests(unittest.TestCase):
         )
         self.assertTrue((self.root / path).is_file())
         self.assertIn("Hand-edited", (self.root / path).read_text())
+
+    @verifies("scenario.issues.store-archive-left")
+    def test_archive_keeps_a_record_changed_after_it_read_it(self):
+        moved = self.recorded(key="moved", closed=True)
+        path = self.misplace(moved)
+        before = self.head()
+        publish = store._publish_texts
+
+        def changed_meanwhile(root, records):
+            publish(root, records)
+            # Another program edits the misplaced record after the archive read it.
+            (root / path).write_text((root / path).read_text() + "\n")
+
+        with (
+            patch("concorde.issues.store._publish_texts", changed_meanwhile),
+            self.assertRaises(IssueError) as raised,
+        ):
+            archive_issues(self.root)
+        self.assertEqual("stale_issue", raised.exception.code)
+        self.assertEqual(before, self.head())
+        self.assertTrue((self.root / path).read_text().endswith("\n\n"))
+        self.assertFalse((self.root / CLOSED.format(moved)).exists())
 
 
 class ArchiveCommandTests(unittest.TestCase):

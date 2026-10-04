@@ -142,17 +142,22 @@ class LiveSession:
         """Whether a turn ended since ``moment``: Claude Code's ``result`` event."""
         return any(event.get("type") == "result" for event in self.since(moment))
 
+    def require_running(self, when: str) -> bool:
+        """``False`` while the session's process runs; ``session_failed`` naming ``when`` once it
+        has ended."""
+        if self.process.poll() is None:
+            return False
+        raise E2EError(
+            "session_failed",
+            f"live session {self.name} ended with status {self.process.returncode} {when}",
+            log=str(self.log),
+            stderr=self.stderr(),
+        )
+
     def wait_settled(self, moment: float, limit: float, poll: float = 0.5) -> None:
         deadline = time.monotonic() + limit
         while not self.settled(moment):
-            if self.process.poll() is not None:
-                raise E2EError(
-                    "session_failed",
-                    f"live session {self.name} ended with status {self.process.returncode} "
-                    "before its turn ended",
-                    log=str(self.log),
-                    stderr=self.stderr(),
-                )
+            self.require_running("before its turn ended")
             if time.monotonic() > deadline:
                 raise E2EError(
                     "live_timeout",

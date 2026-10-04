@@ -521,15 +521,16 @@ def _require_primary(root: Path) -> Path:
         else None
     )
     primary = layout.primary_worktree(here) if top is not None else None
-    if top is None or top != primary:
+    if top is None or top != primary or here != top:
+        if top is None:
+            why = "it lies in no Git worktree"
+        elif top != primary:
+            why = f"its worktree {top} is not the primary worktree {primary}"
+        else:
+            why = f"it is a directory inside the primary worktree {top}, not its root"
         raise IssueError(
             f"{root} is not the primary worktree of its repository, which alone writes Issue "
-            f"records: "
-            + (
-                f"its worktree {top} is not the primary worktree {primary}"
-                if top is not None
-                else "it lies in no Git worktree"
-            ),
+            f"records: {why}",
             "not_primary",
         )
     return top
@@ -741,22 +742,10 @@ def _recover(root: Path) -> dict:
                 failed.append(f"removing {path}: {error.strerror}")
             else:
                 recovered.append({"path": path, "action": "removed"})
-            continue
-        other = next(place for place in issue_paths(Path(path).stem) if place != path)
-        if path in committed:
-            reason = _foreign(root, path, committed[path])
-            # A committed record removed by a write that published it in its other folder.
-            if (
-                reason == "the committed record was deleted"
-                and other in records
-                and other not in committed
-                and _foreign(root, other, committed[path], here=False) is None
-            ):
-                reason = None
-        else:
-            reason = _foreign(
-                root, path, committed.get(other), here=other not in committed
-            )
+    # Every record is judged before any is put back: putting back one half of a move first would
+    # make the other half look like no write's.
+    judged = [(path, _judged(root, path, records, committed)) for path in records]
+    for path, reason in judged:
         if reason is not None:
             left.append({"path": path, "reason": reason})
             continue
@@ -773,6 +762,27 @@ def _recover(root: Path) -> dict:
             "recovery_failed",
         )
     return {"recovered": recovered, "left": left}
+
+
+def _judged(
+    root: Path, path: str, records: list[str], committed: dict[str, bytes]
+) -> str | None:
+    """Why the change of the record ``path`` is no Issue write's, or ``None`` when a write left
+    it; ``records`` are every changed record and ``committed`` the committed bytes of both places
+    of their Issues."""
+    other = next(place for place in issue_paths(Path(path).stem) if place != path)
+    if path not in committed:
+        return _foreign(root, path, committed.get(other), here=other not in committed)
+    reason = _foreign(root, path, committed[path])
+    # A committed record removed by a write that published it in its other folder.
+    if (
+        reason == "the committed record was deleted"
+        and other in records
+        and other not in committed
+        and _foreign(root, other, committed[path], here=False) is None
+    ):
+        return None
+    return reason
 
 
 def _untouched(recovery: dict, identifier: str) -> None:
@@ -906,22 +916,27 @@ def _publish(
         root,
         [(identifier, path, render(record), None if moved else before)],
     )
-    _settle(root, [path], [committed] if moved else [], [identifier], before, message)
+    _settle(
+        root,
+        [path],
+        [(committed, before)] if moved else [],
+        [identifier],
+        message,
+    )
     return path
 
 
 def _settle(
     root: Path,
     published: list[str],
-    removed: list[str],
+    removed: list[tuple[str, str]],
     identifiers: list[str],
-    before: str | None,
     message: str,
 ) -> None:
     """Remove the committed records ``removed`` that ``published`` replaces in the other folder,
-    sync and commit every one of those paths alone; when anything fails, put each back first.
-    ``before`` is the revision a single removed record must still have."""
-    paths = [*published, *removed]
+    each given with the revision it must still have, sync and commit every one of those paths
+    alone; when anything fails, put each back first."""
+    paths = [*published, *(old for old, _ in removed)]
     one = len(identifiers) == 1
     what = f"Issue {identifiers[0]}" if one else f"{len(identifiers)} Issues"
     record, it, them = ("record", "it", "it") if one else ("records", "they", "them")
@@ -930,13 +945,13 @@ def _settle(
         f"read shows {them}, and the next Issue write or `concorde issues recover` puts {them} "
         "back"
     )
-    for old in removed if before is not None else ():
+    for old, before in removed:
         # Another program changed the record after this write read it: keep its change.
         target = checked_path(root, old)
         if not target.is_file() or digest(target.read_bytes()) != before:
             left = _put_back_all(root, published)
             raise IssueError(
-                f"Issue {identifiers[0]} was changed by another program after this write read "
+                f"Issue {Path(old).stem} was changed by another program after this write read "
                 "it, so nothing was written"
                 + (
                     ""
@@ -948,7 +963,7 @@ def _settle(
                 path=old,
             )
     try:
-        for old in removed:
+        for old, _ in removed:
             checked_path(root, old).unlink()
         _sync_directory(root)
         problem = _commit(root, paths, message, identifiers)
@@ -1119,7 +1134,21 @@ def report_issue(
     *,
     wait: float = locking.MERGE_WAIT,
 ) -> dict:
-    """Commit before replying. Identity is idempotent per trusted invocation and report key.
+    """The receipt of ``record_report``, which records the report."""
+    return record_report(root, report, source, wait=wait)["receipt"]
+
+
+def record_report(
+    root: Path,
+    report: dict,
+    source: dict,
+    *,
+    wait: float = locking.MERGE_WAIT,
+) -> dict:
+    """Record the report and answer ``{receipt, revision}``, the revision of the record the
+    receipt names as this write left it, read under the merge lock.
+
+    Commit before replying. Identity is idempotent per trusted invocation and report key.
 
     ``root`` is the primary worktree (``project_root``); the write waits up to ``wait`` seconds
     for its merge lock, which a caller holding it hands on.
@@ -1161,7 +1190,10 @@ def report_issue(
                             f"in Issue {identifier}",
                             "issue_key_conflict",
                         )
-                    return {**receipt, "path": committed}
+                    return {
+                        "receipt": {**receipt, "path": committed},
+                        "revision": revision,
+                    }
             if "issue_id" not in report:
                 raise IssueError(
                     f"allocated Issue identity {identifier} is already occupied",
@@ -1206,7 +1238,7 @@ def report_issue(
             committed,
             f"concorde: {'record' if revision is None else 'report to'} Issue {identifier}",
         )
-    return receipt
+    return {"receipt": receipt, "revision": digest(render(record).encode())}
 
 
 def disposition_record(
@@ -1378,9 +1410,8 @@ def archive_issues(root: Path, *, wait: float = locking.MERGE_WAIT) -> dict:
             _settle(
                 root,
                 [target for _, _, target, _ in moves],
-                [path for _, path, _, _ in moves],
+                [(path, digest(raw)) for _, path, _, raw in moves],
                 [identifier for identifier, _, _, _ in moves],
-                None,
                 f"concorde: archive {len(moves)} Issue record"
                 + ("" if len(moves) == 1 else "s"),
             )
