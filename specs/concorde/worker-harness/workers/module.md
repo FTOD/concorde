@@ -177,8 +177,8 @@ outside `rw`, or a deletion, is a violation. A violation ends the run `failed`.
 <a id="concept.resume-round"></a>
 
 A **[resume round](../../glossary.json#concept.resume-round)** continues the worker's own session
-with what its caller's **round validation** reports to repair. The worker repairs it within the
-same run. The round validation is a callback the caller passes with the request. After every round
+with what its caller's **round validation** reports to repair, so that the worker repairs it within
+the same run. The round validation is a callback the caller passes with the request. After every round
 whose worker ended `ok` with a clean audit, the host calls the round validation. The callback
 answers with the evidence to keep and what to repair
 ([Round validation](launch.md#round-validation)).

@@ -79,7 +79,7 @@ class GuidanceTests(unittest.TestCase):
             "reads that binding from the worktree it starts in and never names the task",
             self.skill,
         )
-        self.assertIn("a second is refused with `workspace_busy`", self.skill)
+        self.assertIn("run is refused with `workspace_busy`", self.skill)
         self.assertIn(
             "`concorde task-validation` shows what would block; `concorde delivery`",
             self.session,
@@ -305,7 +305,7 @@ class GuidanceTests(unittest.TestCase):
         self.assertIn(
             "optionally `plan_review` of the plan written for the work", self.skill
         )
-        self.assertIn("`reviewer` for `plan_review`", self.skill)
+        self.assertIn("`plan_review` names its worker `reviewer`", self.skill)
 
     @verifies("scenario.main-session.task-session-workflow")
     def test_a_task_session_runs_workflows_in_the_mode_of_its_brief(self):
@@ -659,14 +659,16 @@ class GuidanceTests(unittest.TestCase):
             "show the developer its whole error chain as rendered", self.skill
         )
         self.assertIn("never a summary of it", self.skill)
+        self.assertIn("open a task for that work", self.skill)
         self.assertIn(
-            "open a task for that work and escalate in it with "
-            "`--error-file .concorde/unbound/<run-id>/result.json`",
+            "escalate in that task with `--error-file .concorde/unbound/<run-id>/result.json`",
             self.skill,
         )
-        self.assertIn("`--run` names only runs of the task's own workspace", self.skill)
         self.assertIn(
-            "show the developer the whole rendered chain of an unbound run that is not `ok`",
+            "`--run` option names only runs of the task's own workspace", self.skill
+        )
+        self.assertIn(
+            "When an unbound run is not `ok`, show the developer its whole rendered chain",
             self.block,
         )
 
@@ -846,28 +848,29 @@ class GuidanceTests(unittest.TestCase):
         models = self.skill.split("## Worker models", 1)[1]
         for instruction in (
             "never takes a worker's model or reasoning level from your or the developer's own pi",
-            "only credentials and pi's provider definitions come from there",
-            "no worker runs without it",
+            "Only credentials and pi's provider definitions come from there",
+            "No worker runs without it",
             "`config_missing`",
-            "The installer does not write it",
-            "ask the developer which models workers may use",
-            "commit it alone on the primary branch before any Operation runs",
+            "the installer does not write the file",
+            "take these steps before any Operation runs",
+            "Ask the developer which models workers may use",
+            "Commit the file alone on the primary branch",
             "the required `enabled_models`",
             "`model_not_enabled`",
-            "`model_unresolved`, so give the `default` a model",
-            "otherwise its model's own level in `enabled_models`",
+            "`model_unresolved`. So give the `default` a model",
+            "Its model's own level in `enabled_models`",
             "goes into `enabled_models` too",
             "**project model name** that depends on no installation",
             "never goes into the file",
             "`~/.config/concorde/models.json`",
             "`CONCORDE_MODEL_MAP`",
             "is never committed",
-            "write or change it only when the developer asks or agrees",
-            "tell them the entry the map needs",
+            "Only when the developer asks or agrees, write or change the map",
+            "tell the developer the entry the map needs",
             "`model_unmapped`",
             "`model_map_missing`",
             "`model_map_invalid`",
-            "the project model name is never used as the id",
+            "The project model name is never used as the id",
             "`schema_version: 2`",
         ):
             with self.subTest(instruction=instruction):
@@ -877,37 +880,42 @@ class GuidanceTests(unittest.TestCase):
         self.assertIn('"gpt-6-astra"', example)
         self.assertNotIn("local-openai/", example)
         self.assertNotIn("pi's default model", self.skill)
-        self.assertIn("never on anyone's own Claude Code or pi settings", self.block)
+        self.assertIn(
+            "Never run them on anyone's own Claude Code or pi settings", self.block
+        )
         self.assertIn("untracked model map", self.block)
         self.assertIn("ask the developer for its models", self.block)
 
     @verifies("scenario.main-session.choose-models")
     def test_the_developer_chooses_worker_models(self):
-        self.assertIn("Workers run on pi, although you run on Claude Code", self.skill)
+        self.assertIn("workers run on pi", self.skill)
+        self.assertIn("although you run on Claude Code", self.skill)
         self.assertIn(
             "what the worktree's `.concorde/workers.json` chooses", self.skill
         )
         self.assertIn("The file is tracked by Git", self.skill)
         self.assertIn("a task carries the file of its base commit", self.skill)
-        self.assertIn("Change worker models only when the developer asks", self.skill)
-        self.assertIn("commit that file alone on the primary branch", self.skill)
-        self.assertIn("reaches the primary branch when the task merges", self.skill)
-        self.assertIn("there is no editor", self.skill)
+        self.assertIn("Only when the developer asks, change worker models", self.skill)
+        self.assertIn("Commit that file alone on the primary branch", self.skill)
+        self.assertIn(
+            "When the task merges, the change reaches the primary branch", self.skill
+        )
+        self.assertIn("There is no editor", self.skill)
         self.assertIn("scripts/available_models.py --backend pi", self.skill)
         self.assertIn("custom/offline model names", self.skill)
         self.assertIn("one entry per **worker id**", self.skill)
         self.assertIn(
-            "`reviewer1` to `reviewer5`, `architect1`, `architect2` and `chair`",
+            "- `reviewer1` to `reviewer5` - `architect1` - `architect2` - `chair`",
             self.skill,
         )
         self.assertIn("`limits` of every worker launch", self.skill)
         self.assertIn(
-            "change the models workers use only when the developer asks", self.block
+            "Change the models workers use only when the developer asks", self.block
         )
         self.assertIn("tracked `.concorde/workers.json`", self.block)
-        self.assertIn('unless an entry sets `backend: "claude"`', self.skill)
+        self.assertIn('Unless an entry sets `backend: "claude"`', self.skill)
         self.assertIn(
-            "an entry that only chooses a backend keeps the model and level it inherits",
+            "An entry that only chooses a backend keeps the model and level it inherits",
             self.skill,
         )
         self.assertNotIn(
@@ -928,25 +936,27 @@ class GuidanceTests(unittest.TestCase):
     @verifies("scenario.main-session.no-task-operations")
     def test_questions_and_reviews_may_run_without_a_task(self):
         self.assertIn(
-            "Some Operations also run **unbound**, in a worktree without a binding such as "
+            "some Operations also run **unbound**, in a worktree without a binding such as "
             "the primary worktree",
             self.skill,
         )
         self.assertIn(
-            "they change no Spec or code, since an unbound run launches only reading workers",
+            "Since an unbound run launches only reading workers, these Operations change no "
+            "Spec or code",
             self.skill,
         )
         self.assertIn(
             "They work on a throwaway checkout of that worktree's `HEAD`", self.skill
         )
-        self.assertIn("uncommitted changes are not examined", self.skill)
+        self.assertIn("They do not examine uncommitted changes", self.skill)
         self.assertIn(
-            "their result has `workspace` null and names the examined commit as `commit`",
+            "Their result has `workspace` null. The result names the examined commit as "
+            "`commit`",
             self.skill,
         )
         self.assertIn("a question or a review that does not justify a task", self.skill)
         self.assertIn("An `--input` of such a run must be unbound too", self.skill)
-        self.assertIn("as an unbound Operation in the primary worktree", self.block)
+        self.assertIn("run an unbound Operation in the primary worktree", self.block)
 
 
 class ProjectMcpGuidanceTests(unittest.TestCase):

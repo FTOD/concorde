@@ -9,7 +9,7 @@ Concorde never takes a worker's model or reasoning level from your or the develo
 Claude Code settings. Only credentials and pi's provider definitions come from there. The file is
 tracked by Git like the project's code. No worker runs without it. When a run's worktree has no
 file, the run fails with `config_missing`. Since the models are the developer's choice, the
-installer does not write the file. When the project has no file, you take these steps before any
+installer does not write the file. When the project has no file, take these steps before any
 Operation runs:
 
 - Ask the developer which models workers may use and which is the default.

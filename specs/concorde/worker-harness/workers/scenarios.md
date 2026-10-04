@@ -121,7 +121,7 @@ the run. [The run mechanics](launch.md) give these exact details:
 - THEN the brief tells the worker to report a promise the Spec does not state, or a document it
   lacks, as a finding
 - AND the brief tells the worker to go on reviewing
-- AND only when the worker cannot review at all, the brief tells the worker to return `blocked`
+- AND the brief tells the worker to return `blocked` only when it cannot review at all
 - BUT a `specify`, `implement` or `test` worker is told to return `blocked` for a promise the Spec
   does not state
 
@@ -471,7 +471,7 @@ the run. [The run mechanics](launch.md) give these exact details:
 - THEN the audit still runs
 - AND the audit is clean
 - BUT no round validation runs
-- AND no configured check runs
+- AND therefore no configured check runs
 - AND no resume round follows
 - AND the run ends `blocked` with the worker result verbatim
 - AND the run's error is Workers' `worker_blocked` link, of level `workers`
@@ -492,7 +492,7 @@ the run. [The run mechanics](launch.md) give these exact details:
 - WHEN before the run returns, it is interrupted from outside in a way its host can handle, such as
   a termination signal or the cancellation of the run that launched it
 - THEN its run record ends `failed` with the error `interrupted`, of reason `environment`
-- AND its run record names the interruption
+- AND that error names the interruption
 - AND its [progress file](../../glossary.json#concept.progress-file) is `finished` with status
   `failed`
 - AND the interruption travels on to the launcher
@@ -603,7 +603,7 @@ the run. [The run mechanics](launch.md) give these exact details:
 - WHEN pi validates a `concorde_result` call whose argument breaks the worker result schema
 - AND pi then validates one whose argument satisfies the schema
 - THEN the first call is refused before the tool runs, naming the field at fault
-- AND the session can go on
+- AND the session can therefore go on
 - AND the second call passes
 - AND the tool asks pi to end the run
 
@@ -921,8 +921,8 @@ the run. [The run mechanics](launch.md) give these exact details:
 - AND a model map that lacks the ids of several models the workers of `spec_panel` would run on,
   on the backends that would run them
 - AND the map lacks the id of a model only another Operation's worker takes
-- WHEN before that Operation's first worker launches, the configuration reader checks the workers
-  of `spec_panel` against the map, as that Operation's run asks
+- WHEN the configuration reader checks the workers of `spec_panel` against the map, as the run of
+  `spec_panel` asks before its first worker launches
 - THEN one `model_unmapped` refusal names every model and backend the map lacks for `spec_panel`,
   with the workers that would take each
 - AND the refusal names the map
