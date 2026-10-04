@@ -2,6 +2,6 @@
 audience: shared
 ---
 
-Run a question or review that needs no task as an unbound Operation in the primary worktree,
-started in background Bash, and show the developer the whole rendered chain of an unbound run that
-is not `ok` (the skill's "Unbound runs").
+For a question or review that needs no task, run an unbound Operation in the primary worktree. Start
+that Operation in background Bash. When an unbound run is not `ok`, show the developer its whole
+rendered chain (the skill's "Unbound runs").
