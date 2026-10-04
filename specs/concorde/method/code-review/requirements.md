@@ -1,8 +1,7 @@
 # Code review requirements
 
-The Module-wide obligations of [Code review](module.md). The report's shape is in the
-[contracts](contracts.md); the [scenarios](scenarios.md) show the obligations in concrete
-situations.
+[Code review](module.md) has these Module-wide obligations. The report's shape is in the
+[contracts](contracts.md). The [scenarios](scenarios.md) show the obligations in concrete situations.
 
 ## Inputs
 
@@ -13,21 +12,24 @@ when the grant makes that path readable, listing every other changed path by nam
 
 ### req.code-review.checks-by-host — Checks run through the Operation
 
-The code review [Operation](../../glossary.json#concept.operation) SHALL run the
-[configured checks](../../glossary.json#concept.configured-check) its scope selects through Check
-execution before it launches a reviewer: in a change review those of the bound Modules and of every
-Module that uses one of them, in a Module review those of each reviewed Module.
+Before it launches a reviewer, the code review [Operation](../../glossary.json#concept.operation)
+SHALL run the [configured checks](../../glossary.json#concept.configured-check) through Check
+execution according to its scope:
+
+- In a change review, run those of the bound Modules and of every Module that uses one of them.
+- In a Module review, run those of each reviewed Module.
 
 ### req.code-review.module-scope — A Module review judges each Module whole
 
 In a Module review, the code review Operation SHALL launch one reviewer per named
-[Module](../../glossary.json#concept.module), under the `review-code`
-[grant](../../glossary.json#concept.grant) of that Module alone, whose brief names the Module's
-own Spec documents and code files and gives no diff.
+[Module](../../glossary.json#concept.module), each with these:
+
+- The `review-code` [grant](../../glossary.json#concept.grant) of that Module alone.
+- A brief that names the Module's own Spec documents and code files and gives no diff.
 
 ### req.code-review.module-scope-no-base — A Module review has no base
 
-The code review Operation SHALL end a Module review given `--base` `failed` with
+When a Module review is given `--base`, the code review Operation SHALL end it `failed` with
 `base_in_module_scope` before it launches a reviewer.
 
 ## Reviewing
@@ -56,82 +58,120 @@ A reviewer SHALL report every blocking finding it can establish in a single run.
 
 ### req.code-review.earlier-issues — The reviewer receives the earlier Issues
 
-The code review Operation SHALL give each reviewer, before it judges, the open
-[Issues](../../glossary.json#concept.issue) of its reviewed Modules one of whose reports a
-`code_review` run made, each with its identity, severity, tier, title, description and evidence as
-its latest report states them.
+Before each reviewer judges, the code review Operation SHALL give it the
+[Issues](../../glossary.json#concept.issue) that meet these conditions, each with its identity,
+severity, tier, title, description and evidence as its latest report states them:
 
-Where the issues part is not installed there are no earlier Issues, and the reviewer receives none.
+- The Issue is open and is an Issue of one of its reviewed Modules.
+- A `code_review` run made one of its reports.
+
+Where the issues part is not installed, there are no earlier Issues. In that case, the reviewer
+receives none.
 
 ## Findings
 
 ### req.code-review.evidence — Every finding names its basis and locations
 
-Every finding SHALL name a reviewed Module, a basis, which is the requirement, scenario, contract,
-concept or [Spec](../../glossary.json#concept.spec) passage of that Module's
-[Spec context](../../glossary.json#concept.spec-context) it is judged against, and at least one
-location in the project's files that shows it.
+Every finding SHALL name all of these:
+
+- A reviewed Module.
+- A basis: the requirement, scenario, contract, concept or [Spec](../../glossary.json#concept.spec)
+  passage of that Module's [Spec context](../../glossary.json#concept.spec-context) against which
+  the finding is judged.
+- At least one location in the project's files that shows the finding.
 
 ### req.code-review.spec-challenge — A Spec the reviewer disputes is challenged
 
-A reviewer that judges a requirement, scenario or contract of its reviewed Module unreasonable or
-unrealizable SHALL report it as a finding of kind `spec-challenge` whose basis is that promise and
-whose problem says why, rather than as a defect of the code.
+When a reviewer judges a requirement, scenario or contract of its reviewed Module unreasonable or
+unrealizable, it SHALL report it as a finding with all of these properties:
+
+- Its kind is `spec-challenge`.
+- Its basis is that promise.
+- Its problem says why the reviewer judges it unreasonable or unrealizable.
+- It is not a defect of the code.
 
 ### req.code-review.evidence-resolves — Cited evidence exists
 
-The code review Operation SHALL report no finding that, after the reviewer's one [resume round](../../glossary.json#concept.resume-round) to correct its citations, still names a Module the reviewer did not review, cites a stable identity or document that the reviewed Modules' Spec context does not define, or names a location whose file is neither in the worktree nor a changed path of the diff, or whose line lies beyond that file's end, listing each such finding as rejected with the reason and still reporting every other finding of that reviewer.
+After the reviewer's one [resume round](../../glossary.json#concept.resume-round) to correct its
+citations, the code review Operation SHALL handle findings as follows:
+
+- Report no finding that still names a Module the reviewer did not review.
+- Report no finding that still cites a stable identity or document that the reviewed Modules' Spec
+  context does not define.
+- Report no finding that still names a location whose file is neither in the worktree nor a changed
+  path of the diff.
+- Report no finding that still names a location whose line lies beyond that file's end.
+- List each such finding as rejected with the reason.
+- Still report every other finding of that reviewer.
 
 A citation that does not hold is usually a slip of an otherwise sound finding, such as a line range
-a little past a file's end, so the reviewer is resumed once with every such citation to correct, and
-what still does not hold afterwards costs only that finding: the reviewer's other findings stand
-and its Modules' outcomes follow from them.
+a little past a file's end. The reviewer is resumed once with every such citation to correct.
+What still does not hold afterwards costs only that finding. The reviewer's other findings stand.
+Its Modules' outcomes follow from them.
 
 ## Issues and verdict
 
 ### req.code-review.findings-as-issues — Every finding is reported as an Issue where Issues exist
 
-The code review Operation SHALL report every finding of a Module whose evidence resolved through the
-Issue store as one [Issue report](../../glossary.json#concept.issue-report) with the finding's
-[tier](../../glossary.json#concept.issue-tier) and
-[severity](../../glossary.json#concept.issue-severity), owned by the finding's Module, appending a
-finding that names an offered earlier Issue to that Issue at the
-[revision](../../glossary.json#concept.issue-revision) read just before, and creating an Issue
-for every other finding, wherever the issues part is installed.
+Wherever the issues part is installed, the code review Operation SHALL report every finding of a
+Module whose evidence resolved through the Issue store as follows:
 
-Where the issues part is not installed, the review keeps every finding in its report with its tier
-and severity, records nothing outside the run and says in its report that the findings were not
-recorded as Issues.
+- Report it as one [Issue report](../../glossary.json#concept.issue-report) with the finding's
+  [tier](../../glossary.json#concept.issue-tier) and
+  [severity](../../glossary.json#concept.issue-severity).
+- Assign ownership to the finding's Module.
+- For a finding that names an offered earlier Issue, append it to that Issue at the
+  [revision](../../glossary.json#concept.issue-revision) read just before.
+- For every other finding, create an Issue.
+
+Where the issues part is not installed, the review does all of these:
+
+- Keeps every finding in its report with its tier and severity.
+- Records nothing outside the run.
+- Says in its report that the findings were not recorded as Issues.
 
 Issues is an [optional integration](../../glossary.json#concept.optional-integration) of the method
-part: the review's judgement, its evidence checks and its verdict are the same either way.
+part. The review's judgement, its evidence checks and its verdict are the same either way.
 
 ### req.code-review.blank-earlier — An empty earlier names no Issue
 
-The code review Operation SHALL treat a reviewer's finding whose `earlier` is empty or blank as
-naming no earlier Issue, as if the field were left out, while every other `earlier` is checked
-against the earlier Issues it offered.
+The code review Operation SHALL handle a reviewer's findings according to these field values:
+
+- When `earlier` is empty or blank, treat the finding as naming no earlier Issue, as if the field
+  were left out.
+- For every other `earlier`, check it against the earlier Issues the Operation offered.
 
 ### req.code-review.no-closing — The review closes no Issue
 
-The code review Operation SHALL NOT close or reopen an Issue; it lists the earlier Issues the
-reviewer found resolved in its report.
+The code review Operation SHALL NOT close or reopen an Issue.
+
+It lists the earlier Issues the reviewer found resolved in its report.
 
 ### req.code-review.store-refusal — A refusal of the Issue store is an error, not an Issue
 
-When the Issue store refuses a report, the code review Operation SHALL make that Module `incomplete`
-with `issues_unreported`, whose cause is the store's error, report none of that Module's later
-findings, and record no Issue about the refusal.
+When the Issue store refuses a report, the code review Operation SHALL do all of these:
+
+- Make that Module `incomplete` with `issues_unreported`, whose cause is the store's error.
+- Report none of that Module's later findings.
+- Record no Issue about the refusal.
 
 ### req.code-review.verdict-derived — The Operation derives the verdict
 
-The code review Operation SHALL derive each reviewed Module's outcome as `incomplete` when it could
-not be reviewed or its Issues could not be read or all written, `changes_required` when an Issue of a
-blocking tier stands for it, reported by the run or an earlier Issue it carried — or, where the
-issues part is not installed, when the run reports a finding of a blocking tier — and `accepted`
-otherwise, and the verdict as `incomplete` when any Module is, else `changes_required` when any
-Module is, else `accepted`.
+The code review Operation SHALL derive each reviewed Module's outcome and the verdict according to
+these rules, in order:
+
+- When a Module could not be reviewed or its Issues could not be read or all written, its outcome
+  is `incomplete`.
+- Otherwise, a Module's outcome is `changes_required` in either of these cases:
+  - Where the issues part is installed, an Issue of a blocking tier stands for it, reported by the
+    run or an earlier Issue it carried.
+  - Where the issues part is not installed, the run reports a finding of a blocking tier.
+- Otherwise, a Module's outcome is `accepted`.
+- When any Module is incomplete, the verdict is `incomplete`.
+- Otherwise, when any Module is `changes_required`, the verdict is `changes_required`.
+- Otherwise, the verdict is `accepted`.
 
 ### req.code-review.no-resume — No resume but to correct citations
 
-The code review Operation SHALL NOT resume a reviewer after it has returned its result, except once when a finding's Module, basis or location does not hold, with those citations to correct.
+After a reviewer returns its result, the code review Operation SHALL NOT resume it except once to
+correct citations when a finding's Module, basis or location does not hold.
