@@ -247,10 +247,10 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 
 ### scenario.tasks.close-rerun — Running a close again finishes it
 
-- GIVEN a task whose close removed its worktree and then could not write the record, or wrote the record and then could not append its closing to the decision log
+- GIVEN a task whose close removed its worktree and then could not write the record, wrote the record and then could not append its closing to the decision log, or appended it and then could not end the task's trace node
 - WHEN the main agent reads the refusal
 - THEN it names what the close did and says that running the same close again finishes it
-- AND running the same close again closes the task, or appends the missing closing once and leaves the record unchanged
+- AND running the same close again closes the task, or appends the missing closing once, or ends the trace node, and leaves the record unchanged
 
 ### scenario.tasks.close-other-outcome — Refuse to close a closed task again
 
@@ -416,7 +416,7 @@ This illustrates [a merge running the Concorde it started with](requirements.md#
 
 - GIVEN a `concorde task merge` whose process was killed while its checks ran, leaving the task `merging` and its merge commit at the head of the primary branch
 - WHEN any main session runs `concorde task open`, `merge`, `close`, `session` or `escalate`, for that task or another
-- THEN the command fails with `merge_incomplete`, naming the task, the commit before the merge, the merge commit and the `--resume` and `--abort` recovery, and changes nothing
+- THEN the command fails with `merge_incomplete`, naming the task, the commit before the merge, the merge commit and the `--resume` and `--abort` recovery, and changes nothing, a close stopping none of the task's sessions and runs
 - AND `concorde task list` and `concorde task show` still answer, showing the task as `merging` with the commits before and after the merge and the checked commit
 
 ### scenario.tasks.merge-resume — Resume checks the interrupted merge again
@@ -634,7 +634,7 @@ This illustrates [the parts Coordination does without](../module.md#optional-int
 
 - GIVEN a current task whose record has `schema_version` 2 and no `main`, `mains` or `reports`, with a task session started with `--main concorde-7d`
 - WHEN it is shown, reported to and rebound
-- THEN it is shown with `main` `concorde-7d`, `mains` from its session and no reports, the report is recorded, and after the rebind the record has `schema_version` 4 and satisfies the record contract
+- THEN it is shown with `main` `concorde-7d`, `mains` from its session and no reports, the report is recorded, and after the rebind the record has the current `schema_version`, 5, and satisfies the record contract
 - AND its trace node is unchanged in shape, so an earlier Concorde still writes it
 - AND a record of `schema_version` 3 with an answered report is read with that answer `by` `main-agent`
 

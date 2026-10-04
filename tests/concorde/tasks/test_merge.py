@@ -871,6 +871,10 @@ class MergeTests(unittest.TestCase):
                 self.assertIn(part, error["detail"])
         self.assertFalse((self.root / ".concorde/tasks/t2").exists())
         self.assertEqual(after, self.head())
+        # A close is refused before it stops any task session or run of the task.
+        with patch.object(store, "stop_task", side_effect=AssertionError("stopped")):
+            error = self.refusal("close", "t1", "--failed", "--reason", "r", "--no-error")
+        self.assertEqual("merge_incomplete", error["code"])
         # The killed merge's attempt node still says it runs; nothing ended it.
         self.assertEqual(
             "running", trace.read(self.root / ".concorde/tasks/t1/merges/1")["status"]

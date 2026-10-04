@@ -1257,6 +1257,9 @@ class TaskStoreTests(unittest.TestCase):
             [item["state"] for item in node["content"]["data"]["transitions"]],
         )
         self.assertEqual("merged", node["content"]["data"]["closing"]["outcome"])
+        # The node ended after the closing was logged: its digest of the log is the final one.
+        (logged,) = [item for item in node["artifacts"] if item["id"] == "decision-log"]
+        self.assertEqual(trace.digest(history / "decisions.md"), logged["digest"])
         for kind in ("task", "workspace", "workflow"):
             self.assertFalse(self.lock(kind, "t1").exists(), kind)
         self.assert_contract(self.record())
@@ -1875,6 +1878,27 @@ class TaskStoreTests(unittest.TestCase):
             )
         self.assertEqual((stored, closing), (self.record("t2"), self.log("t2")))
         self.assert_contract(self.record("t2"))
+        # The record and the closing are written but the trace node refuses its end.
+        self.project.open_task("t3")
+        real_end = store._end_task_node
+
+        def unwritable(primary, task_id, closing, ended):
+            raise store.TaskError("record_unwritable", "the trace node cannot be written")
+
+        with patch.object(store, "_end_task_node", unwritable):
+            status, value = self.close("t3", "--completed", "--note", "done")
+        self.assertEqual((1, "record_unwritable"), (status, value["error"]["code"]))
+        self.assertIn("is closed in its record already", value["error"]["detail"])
+        self.assertIn("`concorde task close t3 --completed`", value["error"]["detail"])
+        self.assertIsNone(trace.read(self.folder("t3"))["ended_at"])
+        self.assertIs(real_end, store._end_task_node)
+        status, value = self.close("t3", "--completed", "--note", "done")
+        self.assertEqual(0, status, value)
+        node = trace.read(self.history("t3"))
+        self.assertEqual(("ok", "completed"), (node["status"], node["outcome"]))
+        self.assertEqual(
+            1, self.log("t3").count(f"## Closed: completed, {value['closed']['at']}")
+        )
 
     def log(self, task_id="t1"):
         """The task's decision log, in its folder or, once closed, in the history."""

@@ -595,9 +595,10 @@ def _serialize(record: dict) -> bytes:
 def update(primary: Path, task_id: str, change, *, locked: bool = False) -> dict:
     """Apply ``change(record) -> record`` bound to the bytes read, holding the task's lock.
 
-    ``locked`` says the caller already holds the task's lock. A change made meanwhile by a
-    process that did not take the lock is detected and ``change`` is applied again to what is
-    there, so the preconditions it checks hold for the record it writes.
+    ``locked`` says the caller already holds the task's lock. A change made before the bytes are
+    compared is detected and ``change`` is applied again to what is there, so the preconditions it
+    checks hold for the record it writes; one between the comparison and the rename is excluded
+    only by the task's lock, which every writer of the record holds.
     """
     path = record_path(primary, task_id)
     if not TASK_ID.match(task_id or "") or not path.is_file():
@@ -1070,19 +1071,20 @@ def report(primary: Path, task_id: str, text: str, escalated: list[int]) -> dict
             return record
 
         record = update(primary, task_id, change, locked=True)
-    carried = (
-        f"\n\nIt carries escalation(s) {', '.join(map(str, entry['escalations']))}."
-        if entry["escalations"]
-        else ""
-    )
-    _append_log(
-        primary,
-        task_id,
-        f"Report {entry['number']} to the main agent ({record['main'] or 'no session named'}), "
-        f"{stamp}",
-        f"{text}{carried}",
-        f"report {entry['number']}",
-    )
+        carried = (
+            f"\n\nIt carries escalation(s) {', '.join(map(str, entry['escalations']))}."
+            if entry["escalations"]
+            else ""
+        )
+        # Still under the lock, so no close appends its closing before this entry.
+        _append_log(
+            primary,
+            task_id,
+            f"Report {entry['number']} to the main agent "
+            f"({record['main'] or 'no session named'}), {stamp}",
+            f"{text}{carried}",
+            f"report {entry['number']}",
+        )
     return {
         "report": entry,
         "main": record["main"],
@@ -1135,13 +1137,13 @@ def answer(primary: Path, task_id: str, numbers: list[int], text: str) -> dict:
             return record
 
         update(primary, task_id, change, locked=True)
-    _append_log(
-        primary,
-        task_id,
-        f"Answer to report(s) {', '.join(map(str, numbers))} of the task session, {stamp}",
-        text,
-        f"the answer to report(s) {', '.join(map(str, numbers))}",
-    )
+        _append_log(
+            primary,
+            task_id,
+            f"Answer to report(s) {', '.join(map(str, numbers))} of the task session, {stamp}",
+            text,
+            f"the answer to report(s) {', '.join(map(str, numbers))}",
+        )
     return {
         "answered": answered,
         "decision_log": decision_log_path(primary, task_id).as_posix(),
@@ -1642,8 +1644,9 @@ def escalate(primary: Path, task_id: str, error: dict) -> int:
     receiver = "main agent" if error["level"] == "task-session" else "developer"
     by = "task-session" if error["level"] == "task-session" else "main-agent"
     number = 0
+    purpose = "a task that ended takes no escalation: its trace and decision log are final"
     with task_locked(primary, task_id):
-        load_task(primary, task_id)
+        load_unended(primary, task_id, purpose)
 
         def change(content):
             nonlocal number
@@ -1655,23 +1658,24 @@ def escalate(primary: Path, task_id: str, error: dict) -> int:
             return content
 
         change_trace(primary, task_id, change)
-    path = decision_log_path(primary, task_id)
-    try:
-        with path.open("a", encoding="utf-8") as stream:
-            stream.write(
-                f"\n## Escalated to the {receiver}, {stamp}\n\n{render(error)}\n\n"
-                f"```json\n{json.dumps(error, indent=2, ensure_ascii=False)}\n```\n"
-            )
-    except OSError as failure:
-        raise TaskError(
-            "decision_log_failed",
-            f"the escalation was written to the trace of task {task_id} as escalation "
-            f"{number} (`concorde task show {task_id}` prints it under escalations), "
-            f"but appending it to the decision log {path} failed afterwards: {failure}; "
-            "escalating again would record it twice, so once the log is writable append it "
-            f"there by hand under the heading `## Escalated to the {receiver}, {stamp}`; the "
-            f"escalated chain:\n{render(error)}",
-        ) from failure
+        # Still under the lock, so no close appends its closing before this entry.
+        path = decision_log_path(primary, task_id)
+        try:
+            with path.open("a", encoding="utf-8") as stream:
+                stream.write(
+                    f"\n## Escalated to the {receiver}, {stamp}\n\n{render(error)}\n\n"
+                    f"```json\n{json.dumps(error, indent=2, ensure_ascii=False)}\n```\n"
+                )
+        except OSError as failure:
+            raise TaskError(
+                "decision_log_failed",
+                f"the escalation was written to the trace of task {task_id} as escalation "
+                f"{number} (`concorde task show {task_id}` prints it under escalations), "
+                f"but appending it to the decision log {path} failed afterwards: {failure}; "
+                "escalating again would record it twice, so once the log is writable append "
+                f"it there by hand under the heading `## Escalated to the {receiver}, "
+                f"{stamp}`; the escalated chain:\n{render(error)}",
+            ) from failure
     return number
 
 
@@ -1750,8 +1754,23 @@ def close_task(
         problems.append("--force applies only to closing without a merge")
     if problems:
         raise TaskError("invalid_input", "; ".join(problems))
-    refuse_closed(primary, task_id)
+    current = refuse_closed(primary, task_id)
     _prune(primary)
+    # Refused before anything is stopped, and checked again under the locks; a merge whose
+    # process still runs is waited for there instead.
+    unfinished = unfinished_merge(primary)
+    if unfinished is not None and not merge_lock_held(primary):
+        raise incomplete_merge(primary, unfinished)
+    worktree = Path(current["worktree"])
+    if (
+        outcome != "merged"
+        and not force
+        and current["state"] not in ENDED
+        and _dirty(worktree)
+    ):
+        raise TaskError(
+            "dirty_worktree", _dirty_detail(worktree) + "; pass --force to discard them"
+        )
     if outcome != "merged":
         stop_task(primary, task_id)
     started = time.monotonic()
@@ -1865,6 +1884,11 @@ def _close_held(
     again = (
         again or f"`concorde task close {task_id} --{outcome}` with the same options"
     )
+    # Once the record is ended, only a close finishes the steps the task lacks: a merge's own
+    # retry takes a task still merging.
+    finish = (
+        again if by == "close" else f"`concorde task close {task_id} --{outcome}`"
+    )
     record = load_task(primary, task_id)
     worktree = Path(record["worktree"])
     if record["state"] in ENDED:
@@ -1873,9 +1897,8 @@ def _close_held(
             raise TaskError(
                 "invalid_transition", f"task {task_id} is already {record['state']}"
             )
-        if not _closing_logged(primary, task_id, ended):
-            _log_closing(primary, task_id, record)
-        commit_decision_log(primary, task_id, ended, again)
+        _finish_ending(primary, task_id, record, finish)
+        commit_decision_log(primary, task_id, ended, finish)
         warnings.extend(session.finish_sessions(primary, task_id))
         if before_move is not None:
             before_move()
@@ -1949,7 +1972,6 @@ def _close_held(
     try:
         with task_locked(primary, task_id):
             closed = update(primary, task_id, change, locked=True)
-            _end_task_node(primary, task_id, closing, now())
     except TaskError as error:
         if not removed:
             raise
@@ -1959,13 +1981,37 @@ def _close_held(
             f"{task_id} stays {record['state']} without it; once the cause is fixed, {again} "
             "finishes the close",
         ) from error
-    _log_closing(primary, task_id, closed)
-    commit_decision_log(primary, task_id, closed["closed"], again)
+    _finish_ending(primary, task_id, closed, finish)
+    commit_decision_log(primary, task_id, closed["closed"], finish)
     warnings.extend(session.finish_sessions(primary, task_id))
     if before_move is not None:
         before_move()
-    _move_to_history(primary, task_id, key, again)
+    _move_to_history(primary, task_id, key, finish)
     return closed
+
+
+def _finish_ending(primary: Path, task_id: str, record: dict, finish: str) -> None:
+    """For the ended ``record`` of a current task, append its closing to the decision log unless
+    the log holds it, then end the task's trace node unless it has ended, under the task's lock.
+
+    The closing is the decision log's last entry: a report, answer or escalation appends under
+    the same lock and only to a task that has not ended. So the node, ended after it, records
+    the log's final digest. A refusal says the record is ended and that ``finish`` finishes the
+    close."""
+    closed = record["closed"]
+    try:
+        with task_locked(primary, task_id):
+            if not _closing_logged(primary, task_id, closed):
+                _log_closing(primary, task_id, record)
+            if _node_of(task_folder(primary, task_id)).get("ended_at") is None:
+                _end_task_node(primary, task_id, closed, now())
+    except TaskError as error:
+        raise TaskError(
+            error.code,
+            f"{error}; task {task_id} is {closed['state']} in its record already, with outcome "
+            f"{closed['outcome']} at {closed['at']}; once the cause is fixed, {finish} "
+            "finishes the close and changes nothing it already did",
+        ) from error
 
 
 def _end_task_node(primary: Path, task_id: str, closing: dict, ended: str) -> None:
@@ -2230,11 +2276,8 @@ def _log_closing(primary: Path, task_id: str, record: dict) -> None:
     except OSError as error:
         raise TaskError(
             "decision_log_failed",
-            f"task {task_id} is {closed['state']} in its record, with outcome "
-            f"{closed['outcome']} at {closed['at']}, but appending its closing to the decision "
-            f"log {path} failed afterwards: {error}; once the log is writable, "
-            f"`concorde task close {task_id} --{closed['outcome']}` with the same options "
-            "appends it and changes nothing else",
+            f"appending the closing of task {task_id} to its decision log {path} failed: "
+            f"{error}",
         ) from error
 
 

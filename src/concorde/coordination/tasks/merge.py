@@ -928,7 +928,8 @@ def _checked_close(
             by="merge",
         )
     except TaskError as error:
-        if error.code in ("decision_log_failed", "decision_log_uncommitted"):
+        if _ended(primary, task_id):
+            # The record is closed: the close's own refusal says what finishes it.
             raise TaskError(
                 error.code,
                 f"task {task_id} was merged into {branch} at {after}, every check passed and "
@@ -963,6 +964,14 @@ def _checked_close(
         },
         "warnings": warnings + store.end_sessions(primary, closed),
     }
+
+
+def _ended(primary: Path, task_id: str) -> bool:
+    """Whether the current record of the task is ended, as a close that wrote it left it."""
+    try:
+        return store.load_task(primary, task_id)["state"] in store.ENDED
+    except TaskError:
+        return False
 
 
 def _diverged(primary: Path, record: dict, where: str) -> TaskError:

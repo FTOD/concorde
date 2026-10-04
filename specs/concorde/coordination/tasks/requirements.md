@@ -23,8 +23,10 @@ Every change to a task record SHALL be one
 [file transaction](../../glossary.json#concept.file-transaction) bound to the digest of the record
 bytes it replaces.
 
-A concurrent change is detected by the digest, never overwritten; after three conflicting attempts
-the update is refused with `record_conflict`.
+A change made before the transaction's digest check is detected and the update applied again to
+what is there; after three conflicting attempts the update is refused with `record_conflict`. A
+change during the transaction is excluded by the task's lock, which every writer of the record
+holds, not by the digest.
 
 ### req.tasks.records-kept — Records outlive their task
 
@@ -235,7 +237,8 @@ step leave that step done, and say so:
 - a close refused while writing the record (`record_conflict`, `record_unwritable`) after it
   removed the worktree leaves the task in its state without its worktree, which the refusal says;
 - a close's `decision_log_failed` leaves the task closed or failed in its record without its
-  closing in the decision log;
+  closing in the decision log, and a `record_unwritable` of its trace node leaves it closed or
+  failed in its record with its closing logged and its trace node not ended;
 - a close's `decision_log_uncommitted` leaves the task closed or failed in its record, with its
   closing in the decision log, and its folder current, since the log is not yet in Git;
 - an escalation's `decision_log_failed` leaves the escalation in the task's trace and not in the
@@ -244,9 +247,10 @@ step leave that step done, and say so:
 
 Each refusal of a close says that running the same close again finishes it once the cause is
 fixed, or, for a close run by a merge whose task stays `merging`, `concorde task merge <task-id>
---resume`: the rerun skips a worktree that is gone, and the same close of a task already closed
-with that outcome appends the closing its decision log lacks, commits the log the primary branch
-lacks and changes nothing else.
+--resume`, and for one whose record the merge's close already stored closed, `concorde task close
+<task-id> --merged`: the rerun skips a worktree that is gone, and the same close of a task already
+closed with that outcome appends the closing its decision log lacks, ends the trace node that has
+not ended, commits the log the primary branch lacks and changes nothing else.
 
 ## Merging
 
@@ -474,7 +478,7 @@ Every refusal of a `concorde task` command SHALL print an error link that names 
 
 ### req.tasks.escalation-kept — Escalations keep their whole chain
 
-An escalation SHALL record the escalated errors unchanged as the causes of the escalating session's link, in the task record and the decision log, and an escalation that names no error that link alone, with no causes.
+An escalation SHALL record the escalated errors unchanged as the causes of the escalating session's link, in the task's trace node and the decision log, and an escalation that names no error that link alone, with no causes.
 
 ## Delivering without Method
 
