@@ -171,13 +171,12 @@ the workspace.
 
 Deterministic code alone decides readiness. Delivery can therefore run the same steps and trust
 their outcome without asking. A model's opinion of completeness is not enough. That is also why
-Validation is an execution command and not an Operation. It involves no model, yet a workflow must
-be able to take it as a step. Its caller must receive its evidence and error chain like any run's.
-At the end, Validation remeasures the input digest to which the readiness is bound. This proves
-that the measured inputs at the end of the run are those recorded at the start. It does not trust
-a timestamp.
-In addition, Check execution refuses a check whose own inputs changed while it ran. Changes the
-measurement leaves out, below, are not seen.
+`task-validation` is an execution command and not an Operation. It involves no model, yet a workflow
+must be able to take it as a step. Its caller must receive its evidence and error chain like any
+run's. At the end, Validation remeasures the input digest to which the readiness is bound. This
+proves that the measured inputs at the end of the run are those recorded at the start. It does not
+trust a timestamp. In addition, Check execution refuses a check whose own inputs changed while it
+ran. Changes the measurement leaves out, below, are not seen.
 
 ### What is measured and checked
 
