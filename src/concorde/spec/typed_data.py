@@ -91,27 +91,39 @@ def _evaluated(schema: Any) -> None:
         _evaluated(child)
 
 
-def _admissible(value: Any) -> Any:
-    """The schema with every registered-type reference replaced by ``true`` for the subset check."""
-    if isinstance(value, dict):
-        if "$ref" in value:
-            reference = value["$ref"]
-            if (
-                set(value) != {"$ref"}
-                or not isinstance(reference, str)
-                or not reference.strip()
-                or reference.startswith("#")
-            ):
-                raise TypedDataError(
-                    "invalid_input",
-                    "",
-                    "a registered schema refers to other types only through typed_schema()",
-                )
-            return True
-        return {key: _admissible(item) for key, item in value.items()}
-    if isinstance(value, list):
-        return [_admissible(item) for item in value]
-    return value
+def _admissible(schema: Any) -> Any:
+    """The schema with every registered-type reference replaced by ``true`` for the subset check.
+
+    Only schema positions are searched for references: the names of a ``properties`` map and the
+    literal values of ``const``, ``enum``, ``default`` or ``examples`` are data, never references.
+    """
+    if not isinstance(schema, dict):
+        return schema
+    if "$ref" in schema:
+        reference = schema["$ref"]
+        if (
+            set(schema) != {"$ref"}
+            or not isinstance(reference, str)
+            or not reference.strip()
+            or reference.startswith("#")
+        ):
+            raise TypedDataError(
+                "invalid_input",
+                "",
+                "a registered schema refers to other types only through typed_schema()",
+            )
+        return True
+    result = dict(schema)
+    if isinstance(schema.get("properties"), dict):
+        result["properties"] = {
+            key: _admissible(child) for key, child in schema["properties"].items()
+        }
+    for name in ("items", "additionalProperties"):
+        if name in schema:
+            result[name] = _admissible(schema[name])
+    if isinstance(schema.get("anyOf"), list):
+        result["anyOf"] = [_admissible(child) for child in schema["anyOf"]]
+    return result
 
 
 def register(type_id: str, version: int, schema: dict) -> None:
@@ -207,22 +219,22 @@ def decode(text: str) -> Any:
     def constant(value):
         raise ValueError(f"non-JSON numeric constant: {value}")
 
+    def number(text):
+        value = float(text)
+        if not math.isfinite(value):
+            raise ValueError(f"number out of range: {text}")
+        return value
+
     try:
-        return json.loads(text, object_pairs_hook=pairs, parse_constant=constant)
+        return json.loads(
+            text, object_pairs_hook=pairs, parse_constant=constant, parse_float=number
+        )
     except (ValueError, TypeError, RecursionError) as error:
         raise TypedDataError("invalid_json", "", str(error)) from error
 
 
 def _pointer(field: str, key: Any) -> str:
     return field + "/" + str(key).replace("~", "~0").replace("/", "~1")
-
-
-def _equal(first: Any, second: Any) -> bool:
-    """JSON equality: numbers compare by value, and a boolean equals only a boolean."""
-    numbers = (int, float)
-    if type(first) in numbers and type(second) in numbers:
-        return first == second
-    return type(first) is type(second) and first == second
 
 
 def check_schema(value: Any, schema: dict | bool, field: str = "") -> None:
@@ -232,15 +244,17 @@ def check_schema(value: Any, schema: dict | bool, field: str = "") -> None:
     if schema is False:
         raise TypedDataError("invalid_field", field, "value is forbidden")
     if "anyOf" in schema:
+        # A matching alternative satisfies anyOf only: the schema's other keywords still apply.
         for option in schema["anyOf"]:
             try:
                 check_schema(value, option, field)
-                return
+                break
             except TypedDataError:
                 pass
-        raise TypedDataError(
-            "invalid_field", field, "value does not match an admitted alternative"
-        )
+        else:
+            raise TypedDataError(
+                "invalid_field", field, "value does not match an admitted alternative"
+            )
     if "$ref" in schema:
         return check_schema(value, _whole(schema["$ref"], field), field)
     types = {
@@ -256,9 +270,11 @@ def check_schema(value: Any, schema: dict | bool, field: str = "") -> None:
     expected = schema.get("type")
     if expected and type(value) not in types[expected]:
         raise TypedDataError("invalid_field", field, f"expected {expected}")
-    if "const" in schema and not _equal(value, schema["const"]):
+    if "const" in schema and not _subset.json_equal(value, schema["const"]):
         raise TypedDataError("invalid_field", field, f"expected {schema['const']!r}")
-    if "enum" in schema and not any(_equal(value, item) for item in schema["enum"]):
+    if "enum" in schema and not any(
+        _subset.json_equal(value, item) for item in schema["enum"]
+    ):
         raise TypedDataError("invalid_field", field, "unsupported value")
     # Like JSON Schema, each keyword applies to the kind of value it constrains, whether the
     # schema names a type or not.
@@ -284,9 +300,7 @@ def check_schema(value: Any, schema: dict | bool, field: str = "") -> None:
             raise TypedDataError("invalid_field", field, "too few items")
         if len(value) > schema.get("maxItems", len(value)):
             raise TypedDataError("invalid_field", field, "too many items")
-        if schema.get("uniqueItems") and len(
-            {canonical(item) for item in value}
-        ) != len(value):
+        if schema.get("uniqueItems") and not _subset.unique(value):
             raise TypedDataError("invalid_field", field, "items must be unique")
         for index, item in enumerate(value):
             check_schema(item, schema.get("items", True), _pointer(field, index))

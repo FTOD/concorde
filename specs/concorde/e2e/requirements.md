@@ -19,7 +19,7 @@ The tool SHALL refuse an end-to-end root, the default or `CONCORDE_E2E_ROOT`, wh
 
 ### req.e2e.user-setup — A test project is set up as a user's
 
-The tool SHALL set up a [test project](../glossary.json#concept.test-project) only through Git, which fetches the revision, checks it out on a branch and commits, and this checkout's installer and `concorde` command, the same steps a user takes, never writing the project's Concorde Specs or configuration itself, except its [worker configuration](../glossary.json#concept.worker-configuration), which a user writes by hand since no command writes it.
+The tool SHALL set up a [test project](../glossary.json#concept.test-project) only through Git, which fetches the revision, checks it out on a branch and commits, and this checkout's installer and `concorde` command, the same steps a user takes, never writing the project's Concorde [Specs](../glossary.json#concept.spec) or configuration itself, except its [worker configuration](../glossary.json#concept.worker-configuration), which a user writes by hand since no command writes it.
 
 The interpreter `--python` names therefore reaches the project configuration only as an argument of `concorde init`.
 

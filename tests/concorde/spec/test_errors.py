@@ -57,6 +57,13 @@ class SpecErrorTests(unittest.TestCase):
         for code, (reason, remediation) in CODES.items():
             self.assertTrue(reason.strip() and remediation.strip(), code)
 
+    def test_the_unsupported_profile_reason_names_the_profile_read(self):
+        from concorde.spec.repository_base import PROFILE_VERSION
+
+        self.assertIn(
+            f"profile_version {PROFILE_VERSION} ", CODES["unsupported_profile"][0]
+        )
+
     def test_other_modules_register_the_codes_of_their_own_subclasses(self):
         from concorde.execution.checks.checks import CheckError
         from concorde.issues.store import IssueError

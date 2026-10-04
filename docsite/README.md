@@ -74,14 +74,14 @@ release in CI.
 
 | Command             | Purpose                                                                    |
 | ------------------- | -------------------------------------------------------------------------- |
-| `npm run validate`  | Load and render every page in memory; writes nothing.                      |
+| `npm run validate`  | Load and render every page, diagrams included, in memory; writes nothing.  |
 | `npm run start`     | Stage the Specs and preview them, restarting whenever the Specs change.    |
 | `npm run build`     | Stage, build a candidate, validate it and promote it to `build/`.          |
 | `npm test`          | Run the publisher's tests.                                                 |
 | `npm run typecheck` | Type-check the TypeScript sources.                                         |
 | `npm run check`     | Run typecheck, tests, validate and build.                                  |
 
-A build writes `build/build-manifest.json` (schema 22): every published document with its route,
+A build writes `build/build-manifest.json` (schema 23): every published document with its route,
 owner, reading collection, selecting Modules and the digests of both members, plus one digest over
 all inputs. A candidate whose manifest, digest or links do not match the current sources is deleted
 and the previous `build/` stays. Promotion replaces the whole directory, so pages no longer

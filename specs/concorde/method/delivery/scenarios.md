@@ -17,7 +17,7 @@ commit and output are defined in the [contracts](contracts.md).
 
 ### scenario.delivery.unverified-scenarios — An untested new scenario stops a code change
 
-- GIVEN a workspace that changes `src/a/calc.py` and adds `scenario.a.sum` to [Module](../../glossary.json#concept.module) A's Specs, while the untouched `scenario.a.answer` has no test either
+- GIVEN a workspace that changes `src/a/calc.py` and adds `scenario.a.sum` to [Module](../../glossary.json#concept.module) A's [Specs](../../glossary.json#concept.spec), while the untouched `scenario.a.answer` has no test either
 - WHEN delivery runs
 - THEN delivery is `blocked` with `unverified_scenarios` naming `scenario.a.sum` and its document, and not `scenario.a.answer`
 

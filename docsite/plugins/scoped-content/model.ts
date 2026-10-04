@@ -39,7 +39,10 @@ export interface Page {
   route: string;
   stagedPath: string;
   title: string;
+  /** The reading without its front matter. */
   content: string;
+  /** The line of the source file on which `content` begins, 1 without front matter. */
+  contentLine: number;
   contentDigest: string;
   documentId: string;
   owner: string;
@@ -525,8 +528,11 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
           concepts.some((c) => c.id === match[1]),
           `Unknown glossary term in the definition of ${concept.id}: #${match[1]} (${glossaryPath})`,
         );
+    // Staged like a page: a leading specs/ is removed only when the glossary path has one.
     const glossaryStagedPath = (
-      stripRoot ? glossaryPath.slice("specs/".length) : glossaryPath
+      stripRoot && glossaryPath.startsWith("specs/")
+        ? glossaryPath.slice("specs/".length)
+        : glossaryPath
     ).replace(/\.json$/, ".md");
     const glossaryRoute = "/specs/" + glossaryStagedPath.replace(/\.md$/, "");
     requireThat(
@@ -634,6 +640,9 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
       stagedPath,
       title: /^#\s+(.+)$/m.exec(prose(content))?.[1] ?? module.title,
       content,
+      contentLine: raw.endsWith(content)
+        ? raw.slice(0, raw.length - content.length).split("\n").length
+        : 1,
       contentDigest: hash(raw),
       documentId: unit.document.id,
       owner: moduleId,

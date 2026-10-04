@@ -2,7 +2,9 @@ import { readFile } from "node:fs/promises";
 import { mkdtemp, rm, mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
+import { existsSync, rmSync } from "node:fs";
 import { captureProcess } from "../capture-process";
+import { bankProject, put, read } from "../protocol-fixture";
 
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -61,6 +63,31 @@ describe("build interface", () => {
     );
     // Preparation and preview-cache isolation are exercised by the real build tests, rather
     // than requiring a particular private call expression or cache-removal implementation.
+  });
+
+  // verifies: scenario.views.diagram-subset-refused
+  it("checks diagrams like staging does, naming the source line, and writes nothing", () => {
+    const project = bankProject();
+    try {
+      const path = "specs/bank/module.md";
+      const before = read(project, path);
+      put(
+        project,
+        path,
+        before + '\n```d2\nfoo: Foo {\n  style.fill: "#fff"\n}\n```\n',
+      );
+      const line = before.split("\n").length + 3;
+      const result = validate(project.root);
+      expect(result.status).toBe(1);
+      expect(`${result.stdout}${result.stderr}`).toContain(
+        `${path}:${line} is outside the semantic subset`,
+      );
+      expect(existsSync(resolve(project.root, "docsite/.generated"))).toBe(
+        false,
+      );
+    } finally {
+      rmSync(project.root, { recursive: true, force: true });
+    }
   });
 
   it("returns a non-zero diagnostic for an unconfigured project root", async () => {

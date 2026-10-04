@@ -6,7 +6,6 @@ This is deliberately an advertised subset, never a claim of full JSON Schema sup
 
 from __future__ import annotations
 
-import json
 import math
 import re
 from typing import Any
@@ -55,6 +54,34 @@ KEYWORDS = frozenset(
     }
 )
 TYPES = {"object", "array", "string", "integer", "number", "boolean", "null"}
+
+
+def json_equal(first: Any, second: Any) -> bool:
+    """JSON value equality: numbers by value, a boolean only equal to a boolean, containers
+    member by member."""
+    numbers = (int, float)
+    if type(first) in numbers and type(second) in numbers:
+        return first == second
+    if type(first) is not type(second):
+        return False
+    if isinstance(first, list):
+        return len(first) == len(second) and all(
+            json_equal(a, b) for a, b in zip(first, second)
+        )
+    if isinstance(first, dict):
+        return first.keys() == second.keys() and all(
+            json_equal(item, second[key]) for key, item in first.items()
+        )
+    return first == second
+
+
+def unique(items: list) -> bool:
+    """Whether no two of ``items`` are equal JSON values."""
+    return not any(
+        json_equal(item, other)
+        for index, item in enumerate(items)
+        for other in items[index + 1 :]
+    )
 
 
 def pointer(base: str, key: Any) -> str:
@@ -169,12 +196,11 @@ def validate(
             ):
                 raise ContractError(f"value does not satisfy {name}", field)
 
-    def equal(first, second):
-        return type(first) is type(second) and first == second
-
-    if "const" in schema and not equal(value, schema["const"]):
+    if "const" in schema and not json_equal(value, schema["const"]):
         raise ContractError("unexpected constant", field)
-    if "enum" in schema and not any(equal(value, option) for option in schema["enum"]):
+    if "enum" in schema and not any(
+        json_equal(value, option) for option in schema["enum"]
+    ):
         raise ContractError("unsupported value", field)
     actual = {
         dict: "object",
@@ -205,9 +231,7 @@ def validate(
             <= schema.get("maxItems", math.inf)
         ):
             raise ContractError("invalid array length", field)
-        if schema.get("uniqueItems") and len(
-            {json.dumps(x, sort_keys=True) for x in value}
-        ) != len(value):
+        if schema.get("uniqueItems") and not unique(value):
             raise ContractError("duplicate array items", field)
         for index, item in enumerate(value):
             child(item, schema.get("items", True), pointer(field, index))

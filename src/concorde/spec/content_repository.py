@@ -14,6 +14,8 @@ entry, an unknown relation target or a composition cycle.
 
 from __future__ import annotations
 
+import copy
+
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -42,6 +44,7 @@ from .repository_base import (
     SpecDocument,
     SpecError,
     bound_by,
+    unbindable,
     digest,
     entry_exists,
     expand_entry,
@@ -213,6 +216,8 @@ class NodeRef:
 class _Load:
     findings: list[Finding] = field(default_factory=list)
     fatal: list[Finding] = field(default_factory=list)
+    # The error behind a finding, by the finding's identity, kept as its cause.
+    causes: dict[int, SpecError] = field(default_factory=dict)
 
 
 class DocumentUnitRepository:
@@ -262,6 +267,8 @@ class DocumentUnitRepository:
         self.modules: dict[str, Module] = {}
         self.document_targets: dict[str, list[str]] = {}
         self.units: dict[str, DocumentUnit] = {}
+        # Every registered document member's bytes as read, admitted or not; None when unreadable.
+        self.member_bytes: dict[str, bytes | None] = {}
         self.readings: dict[str, Reading] = {}
         self.nodes: dict[str, NodeRef] = {}
         self.concept_nodes: dict[str, Concept] = {}
@@ -277,10 +284,11 @@ class DocumentUnitRepository:
         self.glossary_entries: dict[str, dict] = {}
         self._terms_cache: dict[str, dict[str, list[dict]]] = {}
         self._identity_paths: dict[str, str] = {}
-        self._reference_digest_cache: dict[str, str] = {}
+        self._external_cache: dict[str, tuple[tuple[str, ...], str]] = {}
         self._context_cache: dict[str, dict[str, list[dict]]] = {}
         self._registry()
         self._documents()
+        self._entries()
         self._targets()
         self._glossary()
         outside = sorted(
@@ -309,9 +317,7 @@ class DocumentUnitRepository:
                 reason="a registry, entry or document structure that breaks these checks "
                 "cannot support a trustworthy boundary, so the repository is refused",
                 remediation="repair every cause, then run `concorde spec-validation`",
-                causes=[
-                    from_finding(item, _error_code(item.rule_id)) for item in fatal
-                ],
+                causes=[self._finding_cause(item) for item in fatal],
             )
 
     # --- loading ------------------------------------------------------------------------
@@ -330,6 +336,7 @@ class DocumentUnitRepository:
         subject: str | None = None,
         fatal: bool = False,
         remediation: str = "Repair the declaration so the Spec graph is well formed.",
+        cause: BaseException | None = None,
     ) -> None:
         finding = Finding(
             check,
@@ -343,6 +350,17 @@ class DocumentUnitRepository:
         self._load.findings.append(finding)
         if fatal:
             self._load.fatal.append(finding)
+        if cause is not None:
+            self._load.causes[id(finding)] = _as_cause(cause)
+
+    def _finding_cause(self, finding: Finding) -> SpecError:
+        """A fatal finding as a cause of the load error, with the error behind it, if any, as its
+        own cause."""
+        error = from_finding(finding, _error_code(finding.rule_id))
+        underlying = self._load.causes.get(id(finding))
+        if underlying is not None:
+            error.causes = (underlying,)
+        return error
 
     def _raw(self, path: str) -> bytes:
         return (
@@ -361,6 +379,7 @@ class DocumentUnitRepository:
                 path=self.registry_path,
                 reason="the Spec registry is a strict JSON document",
                 remediation="repair the JSON syntax of the registry, or restore it from Git",
+                causes=[_as_cause(error, path=self.registry_path)],
             ) from error
         if (
             not isinstance(value, dict)
@@ -437,11 +456,8 @@ class DocumentUnitRepository:
         try:
             metadata = decode(self._raw(metadata_path(entry)).decode("utf-8"))
             block = metadata.get("module") if isinstance(metadata, dict) else None
-            owner = (
-                (metadata.get("document") or {}).get("owner")
-                if isinstance(metadata, dict)
-                else None
-            )
+            document = metadata.get("document") if isinstance(metadata, dict) else None
+            owner = document.get("owner") if isinstance(document, dict) else None
             if owner != module_id:
                 self._problem(
                     "CHK.registry.mirror",
@@ -457,6 +473,7 @@ class DocumentUnitRepository:
                 f"entry metadata of {module_id} cannot be read: {error}",
                 subject=module_id,
                 fatal=True,
+                cause=error,
             )
         if not isinstance(block, dict):
             block = None
@@ -502,6 +519,8 @@ class DocumentUnitRepository:
             owns.insert(0, entry)
 
         def relations(name: str, required: set[str], optional: set[str] = frozenset()):
+            # A malformed item, which validation reports against the schema, declares nothing;
+            # an identity that is no string (``target``, ``kind``, ``contract``) is malformed.
             items = block.get(name) if block else None
             if not isinstance(items, list):
                 return ()
@@ -511,6 +530,11 @@ class DocumentUnitRepository:
                 if isinstance(item, dict)
                 and required <= item.keys()
                 and not item.keys() - required - optional
+                and all(
+                    isinstance(item[key], str)
+                    for key in ("target", "kind", "contract")
+                    if key in required
+                )
             )
 
         declaration = ModuleDeclaration(
@@ -573,7 +597,9 @@ class DocumentUnitRepository:
                         f"document member cannot be read: {error}",
                         subject=owner,
                         fatal=True,
+                        cause=error,
                     )
+            self.member_bytes.update({member: raw.get(member) for member in members})
             if len(raw) != 2:
                 continue
             try:
@@ -587,6 +613,7 @@ class DocumentUnitRepository:
                     f"reading must be nonempty UTF-8 Markdown: {error}",
                     subject=owner,
                     fatal=True,
+                    cause=error,
                 )
                 continue
             try:
@@ -598,6 +625,7 @@ class DocumentUnitRepository:
                     f"metadata is not UTF-8 JSON with unique keys: {error}",
                     subject=owner,
                     fatal=True,
+                    cause=error,
                 )
                 continue
             entry = self.declarations[owner].entry == path
@@ -653,6 +681,26 @@ class DocumentUnitRepository:
             for problem in reading.problems:
                 self._problem(problem.check, path, problem.message, line=problem.line)
             self._declarations(unit, reading)
+
+    def _entries(self) -> None:
+        """CHK.document.entry for a Module owning several module-role module.md documents."""
+        for module in self.declarations.values():
+            entries = [
+                path
+                for path in module.owns
+                if path in self.units
+                and self.units[path].role == "module"
+                and path.split("/")[-1] == "module.md"
+            ]
+            if len(entries) > 1:
+                self._problem(
+                    "CHK.document.entry",
+                    metadata_path(module.entry),
+                    f"Module {module.id} owns several module-role module.md documents: "
+                    f"{entries}",
+                    subject=module.id,
+                    fatal=True,
+                )
 
     def _register(self, node: NodeRef) -> bool:
         previous = self.nodes.get(node.id)
@@ -950,6 +998,7 @@ class DocumentUnitRepository:
                     f"concept {identity} names owner {node.owner!r}, which is no registered "
                     "Module",
                     subject=identity,
+                    fatal=True,
                 )
                 continue
             if not self._register(
@@ -1072,6 +1121,21 @@ class DocumentUnitRepository:
         self.unit(reading)
         # Return current bytes, not cached bytes: materialization must detect changes after freeze.
         return self._raw(path)
+
+    def loaded_bytes(self, path: str) -> bytes:
+        """The bytes of a registered document member or of the glossary as this repository loaded
+        them, overrides included: the snapshot every query answers from."""
+        if path == self.glossary_path and self.glossary_bytes is not None:
+            return self.glossary_bytes
+        raw = self.member_bytes.get(path)
+        if raw is None:
+            raise SpecError(
+                f"{path} is no loaded member of a registered Spec document and not the glossary",
+                "permission_denied",
+                path=path,
+                reason="a repository answers only from the sources it loaded",
+            )
+        return raw
 
     def source_is_overridden(self, path: str) -> bool:
         reading = self.source_documents.get(path)
@@ -1367,7 +1431,10 @@ class DocumentUnitRepository:
     def term_records(self, module: ModuleRef) -> list[dict]:
         """The selected glossary entries of a Module, whole, with their selecting declarations."""
         return [
-            {"entry": self.glossary_entries[identity], "reasons": reasons}
+            {
+                "entry": copy.deepcopy(self.glossary_entries[identity]),
+                "reasons": reasons,
+            }
             for identity, reasons in self.terms(module).items()
         ]
 
@@ -1517,22 +1584,28 @@ class DocumentUnitRepository:
             if kind == "external"
         )
 
+    def _external(self, entry: str) -> tuple[tuple[str, ...], str]:
+        """The files of one external entry and their digest, read together once per repository,
+        so that the listing and the digest describe the same moment."""
+        if entry not in self._external_cache:
+            files = tuple(
+                expand_entry(
+                    self.root, entry, skipped_suffixes=REFERENCE_SKIPPED_SUFFIXES
+                )
+            )
+            self._external_cache[entry] = (
+                files,
+                digest([(path, digest(read_file(self.root, path))) for path in files]),
+            )
+        return self._external_cache[entry]
+
     def external_files(self, entry: str) -> tuple[str, ...]:
         """Existing readable files below one external entry, media and archives excluded."""
-        return tuple(
-            expand_entry(self.root, entry, skipped_suffixes=REFERENCE_SKIPPED_SUFFIXES)
-        )
+        return self._external(entry)[0]
 
     def external_digest(self, entry: str) -> str:
         """One digest per entry over its readable files' paths and bytes; cached per repository."""
-        if entry not in self._reference_digest_cache:
-            self._reference_digest_cache[entry] = digest(
-                [
-                    (path, digest(read_file(self.root, path)))
-                    for path in self.external_files(entry)
-                ]
-            )
-        return self._reference_digest_cache[entry]
+        return self._external(entry)[1]
 
     def external_context(self, module: ModuleRef) -> tuple:
         """ExternalContext(M): only M's own external inclusions; a selected Module brings none."""
@@ -1571,9 +1644,12 @@ class DocumentUnitRepository:
         """ImplementationScope(M): M's realization entries.
 
         A directory entry covers every present and future file below it under the exclusion
-        rule; use ``BoundarySets.writable`` or ``bound_by`` to test one path.
+        rule; use ``BoundarySets.writable`` or ``bound_by`` to test one path. An entry under
+        ``.concorde/`` or ``generated/`` binds nothing and is left out (validation reports it).
         """
-        return tuple(self._resolve(module).files)
+        return tuple(
+            entry for entry in self._resolve(module).files if not unbindable(entry)
+        )
 
     def boundary_sets(self, module: ModuleRef):
         """The boundary sets of one Module (see ``boundaries``)."""
@@ -1808,8 +1884,8 @@ class DocumentUnitRepository:
                 continue
             shared = {
                 path
-                for mine in target.files
-                for theirs in other.files
+                for mine in self.implementation_scope(target)
+                for theirs in self.implementation_scope(other)
                 if (path := _shared_path(mine, theirs)) is not None
             }
             if shared:
@@ -1890,6 +1966,21 @@ def _shared_path(first: str, second: str) -> str | None:
     if is_directory_entry(second) and bound_by(second, first):
         return first
     return None
+
+
+def _as_cause(error: BaseException, **location) -> SpecError:
+    """An error caught while loading as a cause: a Spec tooling error as it is, an operating
+    system error as ``system_error``, text that is not UTF-8 as ``invalid_spec`` and any other
+    undecodable value as ``invalid_json``."""
+    if isinstance(error, SpecError):
+        return error
+    if isinstance(error, OSError):
+        return system_cause(error, **location)
+    return SpecError(
+        f"{type(error).__name__}: {error}",
+        "invalid_spec" if isinstance(error, UnicodeError) else "invalid_json",
+        path=location.get("path"),
+    )
 
 
 def _error_code(check: str) -> str:

@@ -46,8 +46,9 @@ Repeated queries against the same repository SHALL return equal results in the s
 Loading the Specs and computing [boundary sets](../../glossary.json#concept.boundary-set), grants
 and impact indexes SHALL NOT read the contents of implementation files.
 
-Listing a directory to expand its entries is allowed; only paths are used. Validation's coverage
-scan, which parses bound test files, is a separate step.
+Listing a directory to expand its entries is allowed; only paths are used. The `covered-by` index
+and validation's coverage scan, which parse bound test files for their verification declarations,
+are the exception, and neither feeds a boundary set or a grant.
 
 ### req.spec.no-partial-repository — No partial repository
 
@@ -192,7 +193,10 @@ Every [impact index](../../glossary.json#concept.impact-index) SHALL be computed
 declarations and realization entries alone.
 
 No index reads implementation file contents, test results or recorded evidence, and no index
-query changes a boundary set.
+query changes a boundary set. The one exception is `covered-by`, which reads the
+[verification declarations](../../glossary.json#concept.verification-declaration) of bound test
+sources as [req.spec.coverage-from-tests](#req.spec.coverage-from-tests) says, without importing,
+compiling or running them.
 
 ## Grants
 
@@ -219,7 +223,7 @@ Every path the list does not cover, directly or below a directory entry, is deni
 ### req.spec.grant-no-widening — Nothing else widens a grant
 
 A grant SHALL contain no path outside the boundary sets of its bound Modules and, for the task
-types that assign it, ProjectImplementation.
+types that assign them, ProjectImplementation and ProjectSpecification.
 
 Task material, shared files, impact indexes and the task's history add nothing.
 
@@ -338,8 +342,8 @@ A file expected to be absent has a null digest and must still be absent.
 ### req.spec.init-allowed-files — Initialization writes only its own files
 
 Applying an initial proposal SHALL write only
-`.concorde/config.json`, `.concorde/specs.json` and the members of the documents the proposed
-registry registers.
+`.concorde/config.json`, `.concorde/specs.json`, the members of the documents the proposed
+registry registers and the glossary the proposed root Module declares.
 
 ### req.spec.init-no-overwrite — Initialization never overwrites
 

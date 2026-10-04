@@ -26,7 +26,7 @@ Concrete situations that show the [requirements](requirements.md) of
 
 - GIVEN an adopted case whose Spec review requires changes
 - WHEN the developer runs `repair-specs` for it
-- THEN a task over the named Modules runs, in its worktree, `spec_review`, then `specify` with that review as input and an intent to change the Specs and never the code, then `spec_review` once more, `task-validation` and `delivery`, and is merged
+- THEN a task over the named [Modules](../../glossary.json#concept.module) runs, in its worktree, `spec_review`, then `specify` with that review as input and an intent to change the [Specs](../../glossary.json#concept.spec) and never the code, then `spec_review` once more, `task-validation` and `delivery`, and is merged
 - AND no run names the task: each works on the worktree's [workspace binding](../../glossary.json#concept.workspace-binding)
 
 ### scenario.swe-bench-cases.repair-accepted — An accepted review needs no repair

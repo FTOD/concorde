@@ -428,8 +428,8 @@ Initialization creates only what the project owns, its configuration, registry a
 everything that exists because Concorde is installed is the installer's. So that the project
 validates at once, the root Module binds every file the project already has in one realization that
 says only where the files are, and later Modules take files over from it. The first entry follows
-the recommended reading order and invents nothing: after its Purpose, a section says what is not yet
-specified, and its Parts section explains the realizations and, once a scaffold adds children, the
+the recommended reading order and invents nothing: after its `Purpose`, a section says what is not
+yet specified, and its `Parts` section explains the realizations and, once a scaffold adds children, the
 children.
 
 Propose and apply are two calls, and apply refuses before it writes anything unless the proposal

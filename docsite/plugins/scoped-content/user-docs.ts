@@ -5,8 +5,11 @@ import { collectionDirectory, refuseRegisteredSpecs } from "./custom-docs";
 import type { SiteIdentity } from "./site-identity";
 import type { ScopedRegistry } from "./model";
 
-/** The docs instance that publishes user documents at the site root. */
-export const USER_DOCS_PLUGIN_ID = "user";
+/**
+ * The docs instance that publishes user documents at the site root. Its id has an underscore, which a
+ * custom collection id never has, so the two docs instances can never share an id.
+ */
+export const USER_DOCS_PLUGIN_ID = "user_docs";
 /** The files Docusaurus publishes at a directory's own route; one of them is the home page. */
 const ROOT_PAGES = ["README.md", "README.mdx", "index.md", "index.mdx"];
 

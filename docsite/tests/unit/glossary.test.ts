@@ -56,6 +56,19 @@ describe("loading the project glossary", () => {
   });
 
   // verifies: scenario.views.load-registry
+  it("routes a glossary outside specs/ by its whole path when every reading is under specs/", () => {
+    put(project, "glossary.json", read(project, glossaryPath));
+    rmSync(resolve(project.root, glossaryPath));
+    record("module.bank").glossary = "glossary.json";
+    writeRegistry(project);
+    expect(load().glossary).toMatchObject({
+      path: "glossary.json",
+      stagedPath: "glossary.md",
+      route: "/specs/glossary",
+    });
+  });
+
+  // verifies: scenario.views.load-registry
   it("is null when no Module declares one", () => {
     delete record("module.bank").glossary;
     delete record("module.audit").uses[0].relies_on;

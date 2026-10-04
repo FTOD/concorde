@@ -73,11 +73,11 @@ first step.
 
 For each proposed child it writes an entry `module.md` and its metadata in a folder named after the
 child's identity, next to the parent's entry. The entry follows the recommended reading order and
-invents nothing: its Purpose states the survey's purpose; a section Not yet specified says that the
-child's core concepts, behaviour and design are not specified yet; its Parts section explains a
-realization binding the paths the survey proposed for the child; and its Collaborations section
+invents nothing: its `Purpose` states the survey's purpose; a section `Not yet specified` says that
+the child's core concepts, behaviour and design are not specified yet; its `Parts` section explains
+a realization binding the paths the survey proposed for the child; and its `Collaborations` section
 explains each proposed `uses`. The scaffold adds the children to the parent's `contains` with one
-explaining paragraph each at the end of the parent's Parts section, which repeats the child's
+explaining paragraph each at the end of the parent's `Parts` section, which repeats the child's
 purpose from the survey, removes the children's paths from the parent's realization entries and adds
 the registry records.
 

@@ -23,7 +23,7 @@ starts in.
 
 No part of Execution SHALL read a [Spec](../glossary.json#concept.spec).
 
-So the runner treats the Modules a run names as names, and a definition that reads the Specs admits
+So the runner treats the [Modules](../glossary.json#concept.module) a run names as names, and a definition that reads the Specs admits
 them itself, as Method's do; Execution installs and runs with the kernel part alone.
 
 ### req.execution.computes-no-grant — Execution computes no grant

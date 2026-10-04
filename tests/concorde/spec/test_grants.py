@@ -9,7 +9,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from concorde.spec.grants import LEVELS, TASK_TYPES, context_identity, grant
+from concorde.spec.grants import LEVELS, TASK_TYPES, Grant, context_identity, grant
 from concorde.spec.repository import SpecRepository
 from concorde.spec.repository_base import SpecError
 from concorde.spec.verification import verifies
@@ -247,6 +247,51 @@ class GrantTests(unittest.TestCase):
         self.assertEqual("rw", both["src/shared.py"])
         alone = self.levels(self.grant(["module.a"], "understand"))
         self.assertEqual("names", alone["src/shared.py"])
+
+    @verifies("scenario.spec.grant-shared-file")
+    def test_a_directory_entry_does_not_cover_a_file_the_exclusion_rule_skips(self):
+        (self.root / "src/a/.settings").write_text("x\n")
+        value = self.project.metadata("specs/d/module.md")
+        for record in value["defines"]:
+            if record["id"] == "realization.d.code":
+                record["entries"] = ["src/shared.py", "src/a/.settings"]
+        self.project.write("specs/d/module.md.json", json.dumps(value))
+        sync_registry(self.root)
+        # module.a's src/a/ does not bind the dot-file, so no file is shared, and the file
+        # keeps its own, read-only entry in module.a's grant.
+        value = self.grant(["module.a"], "implement")
+        self.assertEqual("rw", self.levels(value)["src/a/"])
+        self.assertEqual("ro", self.levels(value)["src/a/.settings"])
+        self.assertEqual("ro", Grant(value).level("src/a/.settings"))
+        self.assertEqual("rw", Grant(value).level("src/a/one.py"))
+        both = self.grant(["module.a", "module.d"], "implement")
+        self.assertEqual("rw", Grant(both).level("src/a/.settings"))
+
+    def test_control_records_and_generated_outputs_are_never_granted(self):
+        for path in (".concorde/notes.json", "generated/out.txt"):
+            (self.root / path).parent.mkdir(parents=True, exist_ok=True)
+            (self.root / path).write_text("x\n")
+        value = self.project.metadata("specs/d/module.md")
+        for record in value["defines"]:
+            if record["id"] == "realization.d.code":
+                record["entries"] = [
+                    "src/shared.py",
+                    ".concorde/notes.json",
+                    "generated/",
+                ]
+        self.project.write("specs/d/module.md.json", json.dumps(value))
+        sync_registry(self.root)
+        self.assertIn("CHK.binds.no-spec", self.project.rules())
+        for task_type in ("implement", "understand"):
+            with self.subTest(task_type=task_type):
+                value = self.grant(["module.d"], task_type)
+                paths = [entry["path"] for entry in value["entries"]]
+                self.assertIn("src/shared.py", paths)
+                self.assertFalse(
+                    [p for p in paths if p.startswith((".concorde/", "generated/"))],
+                    paths,
+                )
+                self.assertIsNone(Grant(value).level(".concorde/notes.json"))
 
     def installed_project(self, entries):
         """Module I binding ``entries`` in a project whose installer placed a skill and a

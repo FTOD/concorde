@@ -1013,7 +1013,7 @@ and Spec core links below it keep their own codes.
 | --- | --- | --- | --- | --- |
 | `invalid_request` | survey | `failed` | `input` | a survey is bound to other than one [Module](../../glossary.json#concept.module) |
 | `invalid_answers` | survey, code_to_spec | `failed` | `input` | the answers file cannot be read, breaks `contract.adoption.answers` or answers one identity twice |
-| `specs_unloadable` | both | `failed` | `scope` | the worktree's Specs cannot be loaded; the cause is Spec core's error |
+| `specs_unloadable` | both | `failed` | `scope` | the worktree's [Specs](../../glossary.json#concept.spec) cannot be loaded; the cause is Spec core's error |
 | `grant_unavailable` | survey, code_to_spec | `failed` | `scope` | Spec core cannot compute the `code-to-spec` grant; the cause is its error |
 | `unknown_modules` | code_to_spec | `failed` | `input` | a bound Module is not registered, listed with the registered ones |
 | `inconsistent_proposal` | survey | `failed` | `capability` | the proposal does not fit the worktree, has a decision whose choice names none of its options or that neither chooses nor follows an answer, or does not follow an answer; every problem is listed |

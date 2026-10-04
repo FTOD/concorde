@@ -42,8 +42,8 @@ export function injectAnchors(content: string): string {
     const marker = FENCE.exec(line);
     if (marker) {
       fence = marker[1];
-      const info = marker[2].trim();
-      if (/^concorde-contract$/.test(info)) {
+      // The language is the info string's first word, as for the loader and Spec core.
+      if (marker[2].trim().split(/\s+/)[0] === "concorde-contract") {
         const body: string[] = [];
         for (let j = i + 1; j < lines.length && !closes(lines[j], fence); j++)
           body.push(lines[j]);
@@ -93,6 +93,19 @@ function appendTerms(
   return `${content}\n\n## Terms\n\n${items.join("\n")}\n`;
 }
 
+/** The identity a heading line carries, read as `readingMeanings` reads it: its explicit
+ * `{#id}` once any closing hashes are removed, else its requirement or scenario identity. */
+function headingIdentity(line: string): string | undefined {
+  const heading = /^(#{1,6})[ \t]+(.*?)[ \t]*#*[ \t]*$/.exec(line);
+  if (!heading) return undefined;
+  const text = heading[2].trim();
+  const explicit = /\s+\{#([^{}]+)\}$/.exec(text);
+  return (
+    explicit?.[1] ??
+    DEFINITION_HEADING.exec(text.replace(/\s+\{#[^{}]+\}$/, ""))?.[1]
+  );
+}
+
 /** Place anchors for metadata-declared nodes whose identity the reading does not carry. */
 function anchorAtMeanings(
   content: string,
@@ -119,9 +132,7 @@ function anchorAtMeanings(
           ? [...(opening?.[0] ?? line).matchAll(/<a id="([^"]+)"><\/a>/g)].map(
               (m) => m[1],
             )
-          : [/^#{1,6}[ \t].*\{#([^{}]+)\}[ \t]*$/.exec(line)?.[1]].filter(
-              (id): id is string => Boolean(id),
-            );
+          : [headingIdentity(line)].filter((id): id is string => Boolean(id));
       const extra = ids.flatMap((id) => pending.get(id) ?? []);
       ids.forEach((id) => pending.delete(id));
       if (!extra.length) return [line];

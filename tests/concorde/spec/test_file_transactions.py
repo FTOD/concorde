@@ -11,7 +11,7 @@ from concorde.spec.changes import apply_files, file_change
 from concorde.spec.impact import changed_documents, changed_nodes
 from concorde.spec.repository import SpecError, SpecRepository
 from concorde.spec.verification import verifies
-from tests.concorde.support.spec_project import PACKAGE, project
+from tests.concorde.support.spec_project import PACKAGE, block, project
 
 
 class FileTransactionTests(unittest.TestCase):
@@ -40,6 +40,19 @@ class FileTransactionTests(unittest.TestCase):
         self.assertEqual(
             ["a.txt", "b.txt"], sorted(p.name for p in self.root.iterdir())
         )
+
+    def test_a_malformed_change_set_is_refused_before_any_write(self):
+        for changes in (
+            {"path": "a.txt"},
+            ["a.txt"],
+            [{"path": ["a.txt"], "before_digest": None, "content": "A"}],
+            [{"path": "a.txt", "before_digest": 5, "content": "A"}],
+            [],
+        ):
+            with self.subTest(changes=changes), self.assertRaises(SpecError) as raised:
+                apply_files(self.root, changes, {"a.txt"})
+            self.assertEqual("invalid_proposal", raised.exception.code)
+        self.assertEqual([], list(self.root.iterdir()))
 
     @verifies("scenario.spec.transaction-write-refused")
     def test_a_refused_write_is_a_system_error_and_restores_earlier_writes(self):
@@ -187,6 +200,50 @@ class ChangedDefinitionTests(unittest.TestCase):
             changed_nodes(
                 old, new, ["specs/bank/module.md", "specs/transfer/module.md"]
             ),
+        )
+
+    def test_a_contract_is_defined_by_its_fence_and_metadata_members_name_documents(
+        self,
+    ):
+        def contract(identity, semantics):
+            return block(
+                "concorde-contract",
+                {
+                    "id": identity,
+                    "version": 1,
+                    "schema": {"type": "integer"},
+                    "semantics": semantics,
+                    "example": 1,
+                },
+            )
+
+        for root, semantics in ((self.old_root, "Old."), (self.new_root, "New.")):
+            with (root / "specs/ledger/obligations.md").open("a") as stream:
+                stream.write(
+                    "\n## Contracts\n\n"
+                    + contract("contract.ledger.first", semantics)
+                    + "\n"
+                    + contract("contract.ledger.second", "Unchanged.")
+                )
+        old = SpecRepository(self.old_root, PACKAGE)
+        new = SpecRepository(self.new_root, PACKAGE)
+        self.assertEqual(
+            ("contract.ledger.first",),
+            changed_nodes(old, new, ["specs/ledger/obligations.md"]),
+        )
+        # A metadata member names its document.
+        metadata = self.new_root / "specs/ledger/module.md.json"
+        metadata.write_text(
+            metadata.read_text().replace('"Balance store"', '"Balance table"')
+        )
+        new = SpecRepository(self.new_root, PACKAGE)
+        self.assertEqual(
+            ("specs/ledger/module.md",),
+            changed_documents(old, new, ["specs/ledger/module.md.json"]),
+        )
+        self.assertEqual(
+            ("realization.ledger.store",),
+            changed_nodes(old, new, ["specs/ledger/module.md.json"]),
         )
 
 
