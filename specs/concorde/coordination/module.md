@@ -202,11 +202,8 @@ completed instead. When a task will not reach its goal, it is closed as failed i
 
 ### The seam with the lower half
 
-The upper half talks to the lower half only through these:
-
-- The binding.
-- The lower half's commands.
-- What the lower half recorded.
+The upper half talks to the lower half only through the binding, the lower half's commands and what
+it recorded:
 
 ```d2 illustrative
 coordination: Coordination {
