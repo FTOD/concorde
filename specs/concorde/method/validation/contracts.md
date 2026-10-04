@@ -28,7 +28,8 @@ it is bound to.
   Git quotes a path, so that `"caf\351.txt"` records the file named `caf`, the byte `0xE9` and
   `.txt`. The record names exactly one path, whatever bytes Git reports for it, and the changed
   paths stay sorted by the byte order of the paths themselves. Every finding names a changed path
-  as it is recorded, while Validation compares the path itself with the Specs' entries.
+  as it is recorded, while Validation compares the path itself with the entries of the
+  [Specs](../../glossary.json#concept.spec).
 - A changed path's **digest** is `sha256:` followed by the hexadecimal SHA-256 of its content in
   the worktree: a regular file's bytes; for a symbolic link, `symlink:` followed by its link text;
   for a directory, which is a submodule or another repository, `gitlink:` followed by the
