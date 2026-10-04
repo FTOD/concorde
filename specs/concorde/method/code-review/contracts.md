@@ -2,25 +2,33 @@
 
 The exact shape of what [Code review](module.md) returns. The report is the `output` of the
 [run result](../../glossary.json#concept.run-result). Each reviewer supplies its summary,
-`findings` and `resolved` as the Operation-specific part of its answer; the
-[Operation](../../glossary.json#concept.operation) adds the inputs it examined, the
-[Issues](../../glossary.json#concept.issue) it reported to, the outcomes and the verdict.
+`findings` and `resolved` as the Operation-specific part of its answer. The
+[Operation](../../glossary.json#concept.operation) adds:
 
-Where the issues part is not installed, the report has the same shape: every finding's `issue` is
-null, every [Module](../../glossary.json#concept.module)'s `earlier_issues` is null, since none were read, and the report's summary says
-that its findings were not recorded as Issues. Either way the run's output also carries, under the
-[step output convention](../../workflows/contracts.md#contract.workflows.step-output), one `notes`
-item of kind `review` holding the verdict and each Module's outcome with its count of findings by
-tier, so that a workflow reports the review without knowing this contract.
+- The inputs it examined.
+- The [Issues](../../glossary.json#concept.issue) it reported to.
+- The outcomes.
+- The verdict.
+
+Where the issues part is not installed, the report has the same shape:
+
+- Every finding's `issue` is null.
+- Every [Module](../../glossary.json#concept.module)'s `earlier_issues` is null, since none were read.
+- The report's summary says that its findings were not recorded as Issues.
+
+Either way the run's output also carries one `notes` item of kind `review` under the
+[step output convention](../../workflows/contracts.md#contract.workflows.step-output). This item
+holds the verdict and each Module's outcome with its count of findings by tier. This lets a
+workflow report the review without knowing this contract.
 
 ## Reviewer result
 
 A reviewer ends with the ordinary [worker result](../../glossary.json#concept.worker-result)
 whose `output` is `{"findings": [...], "resolved": [...]}`. A finding is `{module, kind,
-severity, tier, title, problem, impact, basis, locations, evidence, suggestion}`, plus `earlier` when it is an
-earlier Issue's problem, naming that Issue; it is a report finding without `issue`. `resolved`, which
-may be left out, holds `{issue, reason}` for each earlier Issue the code no longer has. A `blocked`
-or `failed` reviewer still returns an empty `findings` array.
+severity, tier, title, problem, impact, basis, locations, evidence, suggestion}`. When a finding is an
+earlier Issue's problem, it also has `earlier`, naming that Issue. It is a report finding without
+`issue`. `resolved`, which may be left out, holds `{issue, reason}` for each earlier Issue the code
+no longer has. A `blocked` or `failed` reviewer still returns an empty `findings` array.
 
 ## Code review report
 
