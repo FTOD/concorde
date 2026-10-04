@@ -116,8 +116,8 @@ when its target is `rw` too. When its target is `rw`, a link elsewhere lets a wr
 As everywhere the Harness reads a grant, a path's level is that of the grant's most specific entry
 for it. This is its exact entry, else the longest directory entry above it. The rows are tried from
 the top. The first row that matches decides. A denial reached through a final link names the file
-judged followed by `(the target of the symbolic link <path>)`. A denial outside the task worktree
-says the path is a symbolic link to that target.
+judged followed by `(the target of the symbolic link <path>)`. Such a denial outside the task
+worktree says the path is a symbolic link to that target.
 
 The hook sees only the grant, not which Module declares an ungranted path. Its reason for an
 ungranted path covers both an undeclared file and a file of a Module the task is not bound to.
