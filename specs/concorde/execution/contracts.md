@@ -1,9 +1,8 @@
 # Execution contracts
 
-The canonical values of [Execution](module.md): the
+This document defines the canonical values of [Execution](module.md). These are the
 [run result](../glossary.json#concept.run-result) every run returns and the content of the trace node
-every run leaves. How the runner reads and fills
-them is in [How a run is executed](runner.md).
+every run leaves. [How a run is executed](runner.md) describes how the runner reads and fills them.
 
 ## Run result
 
@@ -394,7 +393,8 @@ them is in [How a run is executed](runner.md).
 ## Run trace
 
 Every run is a [trace node](../glossary.json#concept.trace-node) of kind `run` as
-[Tracing](../kernel/tracing/contracts.md#contract.tracing.node) defines it, whose content is this value.
+[Tracing](../kernel/tracing/contracts.md#contract.tracing.node) defines it. The content of that trace
+node is the value below.
 
 ```concorde-contract
 {
