@@ -10,7 +10,7 @@ requirement belongs to the [Module](../../glossary.json#concept.module) as a who
 Except for its own run's entries in the [run store](../../glossary.json#concept.run-store), Spec
 review SHALL NOT create, change or delete any file of the worktree it reviews.
 
-Whichever worktree the run reviews, the Issue store writes its
+Whichever worktree the run reviews, the Issue store writes Spec review's
 [Issue](../../glossary.json#concept.issue) reports in the primary worktree. An
 [unbound run](../../glossary.json#concept.unbound-run) reviews its
 [unbound checkout](../../glossary.json#concept.unbound-checkout). It keeps its run store in the
@@ -104,8 +104,8 @@ The refusal makes the Module's review `incomplete`. It travels in the result's
 ### req.spec-review.host-verdict — The Operation derives the verdict
 
 The [Operation](../../glossary.json#concept.operation) SHALL derive a
-[Spec](../../glossary.json#concept.spec) review's or Spec panel's verdict by its payload contract's
-rule, never from a worker's statement.
+[Spec](../../glossary.json#concept.spec) review's or Spec panel's verdict by the rule of that
+Operation's payload contract, never from a worker's statement.
 
 ### req.spec-review.no-structural-substitute — Structural errors stop a Module's review
 
