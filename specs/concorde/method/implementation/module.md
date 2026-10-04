@@ -123,7 +123,7 @@ which may be one step of the workspace's goal. `test`'s `--focus` narrows what i
 never which checks run. `implement` also admits earlier `ok` outputs via `--input`. `--rounds`
 sets the resume-round limit (0 or more). Without it, the limit is the
 [worker configuration](../../glossary.json#concept.worker-configuration)'s `limits.rounds`.
-When that is not set, the limit is three. For example, the task level creates
+When that is not set either, the limit is three. For example, the task level creates
 `src/concorde/issues/severity.py` and binds it to Issues. After that,
 `implement --goal "accept and store the report severity"` lets the worker fill it and change the
 other Issues files. It returns once the checks pass or the rounds run out.
@@ -143,7 +143,7 @@ other Issues files. It returns once the checks pass or the rounds run out.
 
 When a run has no configured check, it ends `ok` with no check evidence. The result states this.
 The caller should run `test` or add checks. Whenever the worker returned a result, the output holds
-the code change whatever the status. Edits stay uncommitted.
+the code change whatever the status. In that case, edits stay uncommitted.
 
 `test`'s `status` has these cases:
 
@@ -215,11 +215,11 @@ When the configuration names the project's interpreter in `python`, the brief na
 case, it also puts the interpreter first on the worker's PATH as `python`. The sandbox may then
 read its environment and the installation it resolves to. Since the sandbox allows a read at a
 path's real location, the directory holding each symbolic link on that way is readable too.
-However, the home directory or one that holds it is never readable. The worker may use the
+This rule never makes the home directory or one that holds it readable. The worker may use the
 interpreter to try things, but its own runs are never evidence. A file it creates outside its
 writable paths is silently lost, which the brief says. The worker cannot delete a file itself.
 It names deletions in its result. After a clean audit, the Operation performs those inside the
-writable paths and refuses the rest.
+writable paths. It refuses the rest.
 
 Each resume round continues the same session with the failures and is only for failed checks. Any
 of these ends the run at once:
@@ -296,7 +296,9 @@ grant as data and `implement`'s round validation, which runs the checks. It does
   reports.
 - It collects its worker result.
 - It audits the worktree.
-- It writes the run record, the last defence against a write outside the grant.
+- It writes the run record.
+
+Workers is thus the last defence against a write outside the grant.
 
 <a id="uses-checks"></a>
 

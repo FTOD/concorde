@@ -56,10 +56,8 @@ Before reporting it, Delivery verifies that the commit has exactly one parent. E
 Delivery creates has exactly one parent. Since the subject alone proves nothing about what the
 commit holds, Delivery also validates the workspace again exactly as for a new delivery. When a head
 with the subject has another number of parents, such as a merge commit, it is `commit_unverified`.
-The error names the mismatch. Like any delivery, it is `blocked` in either case:
-
-- Its workspace is not ready.
-- Its code change leaves a scenario unverified.
+The error names the mismatch. A head whose workspace is not ready, or whose code change leaves a
+scenario unverified, is `blocked` like any delivery.
 
 The delivery run's own [trace node](../../glossary.json#concept.trace-node) references the delivery
 commit. Thus, the trace leads to what was committed. The reference depends on what the run did:
@@ -205,7 +203,7 @@ Delivery makes the delivery commit. Workers do not. A delivery makes a proposal 
 that is merged. It must match what was checked. Only deterministic code that checks it can prove
 that match. Thus, immediately before committing, Delivery decides the readiness itself. It decides
 the readiness over the whole workspace since its base. It does not trust an earlier
-`task-validation` run or the checks each step passed. Each step is verified on its own. Only the
+`task-validation` run or the checks each step passed. Steps are verified one at a time. Only the
 whole can show that the steps still fit together. Validation's last step remeasures the inputs. When a change occurs while the checks run,
 the run fails. The commit follows at once, so it is exactly what was validated, or nothing.
 
@@ -214,8 +212,8 @@ identities and digests committed with it could never be checked later. The resul
 local and removed by retention. Nothing ever read them. While the delivery run's trace node is
 kept, it holds the readiness's record. Delivery changes no
 [Spec](../../glossary.json#concept.spec) itself. When the readiness is decided, every realization
-entry already exists. After the task level creates a new file, it binds that file. It does not bind
-the file before creating it. The commit therefore holds exactly what was validated.
+entry already exists. The task level binds a new file only once it has
+created it. The commit therefore holds exactly what was validated.
 
 Since delivery involves no model, it is an execution command rather than an
 [Operation](../../glossary.json#concept.operation). It is a run nonetheless. Thus, a workflow can
@@ -287,7 +285,7 @@ validates whatever the worktree then holds.
 Step 8 records the index with Git's own means rather than a copy Delivery would keep:
 
 - `git write-tree` records the index's entries.
-- `git ls-files` lists the paths the tree lacks: intent-to-add entries a tree cannot hold.
+- `git ls-files` lists the paths. Those the tree lacks are intent-to-add entries a tree cannot hold.
 - `git ls-files -v` shows the skip-worktree and assume-unchanged flags.
 
 Delivery restores the recorded parts with these commands:
@@ -394,7 +392,7 @@ The **Delivery command** realization holds these parts and their tests:
 - <a id="uses-commands"></a>**Commands**, Execution's execution-command framework, is what
   `delivery` plugs into. Method registers its definition there. This is how the runner finds this
   [Module](../../glossary.json#concept.module)'s definition by the command's name.
-- <a id="uses-kernel"></a>The **Kernel** gives Delivery these conventions:
+- <a id="uses-kernel"></a>The **Kernel** gives Delivery these:
 
   - The format of the [workspace binding](../../glossary.json#concept.workspace-binding) it reads
     through the run context ([contract](../../kernel/contracts.md#contract.kernel.workspace-binding)).
@@ -402,7 +400,7 @@ The **Delivery command** realization holds these parts and their tests:
   - The [delivery commit](../../glossary.json#concept.delivery-commit) convention it makes its
     commits by.
 
-  Thus, Coordination recognizes them while depending on the Kernel and not on Method.
+  Thus, Coordination, which depends on the Kernel and not on Method, recognizes Delivery's commits.
 - <a id="uses-validation"></a>**Validation** provides the readiness steps. Delivery runs those
   steps as its own. Thus, its readiness is decided exactly as a `task-validation` run's. Delivery
   relies on their final remeasurement to prove that the measured inputs at the end are those the
