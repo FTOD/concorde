@@ -3,31 +3,61 @@
 ## Purpose
 
 Issues keeps one durable, project-wide record of each concrete problem found while working on a
-project, outliving the conversation, worker or task that found it: Issue records the primary
-worktree keeps under `.concorde/issues/`, the open ones there and the closed ones in its `closed/`
-folder, the store that alone writes them and commits each write on the primary branch, dispositions
-closing or reopening one, and the bookkeeping command, whose actions the issues part also registers
-as tools with the [project MCP server](../glossary.json#concept.project-mcp-server), that sessions
-record, close, reopen, list, show and check them with. Every report carries a **[tier](../glossary.json#concept.issue-tier)** saying who
-may handle the problem and a **[severity](../glossary.json#concept.issue-severity)** saying how much
-it matters, so that work can start from the most severe Issues. Recording never stops the reporter, starts a repair or changes the outcome
-of a task, and it grants nobody read/write access; Issues neither solves problems nor decides who
-may close one — a task fixes an [Issue](../glossary.json#concept.issue) with ordinary work on its
-[Module](../glossary.json#concept.module), and whoever disposes it answers for the evidence cited.
+project. The record outlives whoever or whatever found the problem:
+
+- The conversation.
+- The worker.
+- The task.
+
+Issues covers these elements:
+
+- Issue records that the primary worktree keeps under `.concorde/issues/`, with open records there
+  and closed records in its `closed/` folder.
+- The store that alone writes the records and commits each write on the primary branch.
+- Dispositions that close or reopen an Issue.
+- The bookkeeping command that sessions use to manage the records.
+
+The issues part also registers the bookkeeping command's actions as tools with the
+[project MCP server](../glossary.json#concept.project-mcp-server). Sessions use the command to:
+
+- Record Issues.
+- Close Issues.
+- Reopen Issues.
+- List Issues.
+- Show Issues.
+- Check Issues.
+
+Every report carries a **[tier](../glossary.json#concept.issue-tier)** saying who may handle the
+problem. Every report carries a **[severity](../glossary.json#concept.issue-severity)** saying how
+much it matters, so that work can start from the most severe Issues. Recording never does any of
+these things:
+
+- Stop the reporter.
+- Start a repair.
+- Change the outcome of a task.
+- Grant anybody read/write access.
+
+Issues does not solve problems. Issues does not decide who may close an Issue.
+A task fixes an [Issue](../glossary.json#concept.issue) with ordinary work on its
+[Module](../glossary.json#concept.module). Whoever disposes the Issue answers for the evidence cited.
 A failure of the Issue system itself is never recorded as an Issue.
 
-Issues is the issues [part](../glossary.json#concept.part), and it depends on the
-[Kernel](../kernel/module.md) alone: its report and receipt shapes are registered as
-[typed-value](../glossary.json#concept.typed-value) types, its records are written through
-[file transactions](../glossary.json#concept.file-transaction), every write takes
-the [merge lock](../glossary.json#concept.merge-lock) and every refusal is a link of the
-[error chain](../glossary.json#concept.error-chain). Two features reach further, as
-[optional integrations](../glossary.json#concept.optional-integration): an Issue's Module is checked
-against the [registry](../glossary.json#concept.registry) only where the spec part is installed, and
-is a plain label otherwise; and a write is refused while a task's merge is unfinished only where the
-coordination part is installed, since without it there is no task merge to wait for. Which
-Operations report Issues, and which task merges close them, are those parts' own integrations with
-this one.
+Issues is the issues [part](../glossary.json#concept.part). It depends on the
+[Kernel](../kernel/module.md) alone:
+
+- Its report and receipt shapes are registered as
+  [typed-value](../glossary.json#concept.typed-value) types.
+- Its records are written through [file transactions](../glossary.json#concept.file-transaction).
+- Every write takes the [merge lock](../glossary.json#concept.merge-lock).
+- Every refusal is a link of the [error chain](../glossary.json#concept.error-chain).
+
+Two features reach further, as [optional integrations](../glossary.json#concept.optional-integration).
+Only where the spec part is installed, an Issue's Module is checked against the
+[registry](../glossary.json#concept.registry). Otherwise, its Module is a plain label.
+Only where the coordination part is installed, a write is refused while a task's merge is
+unfinished. This is because without the coordination part there is no task merge to wait for.
+Which Operations report Issues is those parts' own integration with this one.
+Which task merges close Issues is those parts' own integration with this one.
 
 ## Core concepts
 
@@ -35,33 +65,74 @@ this one.
 
 <a id="concept.issue"></a><a id="concept.issue-report"></a>
 
-Each Issue is one file of the primary worktree, holding its reports, dispositions and status:
-`.concorde/issues/I-<32 hex digits>.md` while it is open and `.concorde/issues/closed/I-<32 hex
-digits>.md` once it is closed, so that the records seen directly in `.concorde/issues/` are the open
-Issues. Its identity is unique in the project from the moment it is
-reported, because it is derived from the reporting invocation and the reporter's key and every
-worktree writes the same store. Each report classifies the problem as a `bug`, a `gap` (an
-implementation/[Spec](../glossary.json#concept.spec) mismatch, a Spec conflict or a missing promise)
-or a `limitation`, and states it completely: its description, impact, basis and evidence, so that
-whoever the Issue is escalated to, by its identity alone, can act on it. The latest report supplies
-the current title, tier, severity, classification and owning Module. When that report's owner is `null`,
-ownership falls to its reporting Module, the root Module for a command-recorded report. Appending a
-new observation can therefore correct ownership, tier, severity or classification without rewriting
-an earlier report. Ownership identifies the Module whose promise needs attention; it does not assign an agent or
-grant permission to change that Module.
+Each Issue is one file of the primary worktree. The file holds:
 
-A report may name its **origin**, when the problem was seen in another project, such as a
-[defect report](../glossary.json#concept.defect-report) handed to the
-[Concorde repository](../glossary.json#concept.concorde-repository), and carry the whole
-[error chain](../glossary.json#concept.error-chain). The observation's origin is distinct from the
-provenance of the command that records it here.
+- Its reports.
+- Its dispositions.
+- Its status.
+
+While the Issue is open, its file is `.concorde/issues/I-<32 hex digits>.md`.
+Once the Issue is closed, its file is `.concorde/issues/closed/I-<32 hex
+digits>.md`. This placement ensures that the records seen directly in `.concorde/issues/` are the
+open Issues. From the moment the Issue is reported, its identity is unique in the project for these
+reasons:
+
+- The identity is derived from the reporting invocation and the reporter's key.
+- Every worktree writes the same store.
+
+Each report classifies the problem as one of these:
+
+- A `bug`.
+- A `gap`.
+- A `limitation`.
+
+A `gap` is one of these:
+
+- An implementation/[Spec](../glossary.json#concept.spec) mismatch.
+- A Spec conflict.
+- A missing promise.
+
+Each report states the problem completely, so that whoever receives the escalated Issue can act
+on it by its identity alone. The report states:
+
+- The problem's description.
+- The problem's impact.
+- The problem's basis.
+- The problem's evidence.
+
+The latest report supplies the current values of:
+
+- The title.
+- The tier.
+- The severity.
+- The classification.
+- The owning Module.
+
+When that report's owner is `null`, ownership falls to its reporting Module.
+For a command-recorded report, the reporting Module is the root Module.
+Appending a new observation can therefore correct these values without rewriting an earlier
+report:
+
+- Ownership.
+- Tier.
+- Severity.
+- Classification.
+
+Ownership identifies the Module whose promise needs attention. Ownership does not assign an agent.
+Ownership does not grant permission to change that Module.
+
+When the problem was seen in another project, a report may name its **origin**.
+An example is a [defect report](../glossary.json#concept.defect-report) handed to the
+[Concorde repository](../glossary.json#concept.concorde-repository).
+A report may carry the whole [error chain](../glossary.json#concept.error-chain).
+The observation's origin is distinct from the provenance of the command that records it here.
 
 ### Tiers
 
 <a id="concept.issue-tier"></a>
 
-A report's **tier** says whether AI may handle the problem without the level above it, the main
-agent and then the developer. There are four, weakest first:
+A report's **tier** says whether AI may handle the problem without the level above it.
+The levels above are the main agent and then the developer. There are four tiers, weakest first:
 
 | Tier | Name | The problem | Who handles it |
 | --- | --- | --- | --- |
@@ -70,19 +141,21 @@ agent and then the developer. There are four, weakest first:
 | 3 | `preferred-fix` | simple, with several possible fixes of which one is clearly better | the session fixing it, which reports the fix it chose to the level above |
 | 4 | `decision-needed` | unclear, or clear but with an uncertain fix | the level above decides before anyone fixes it |
 
-A `suggestion` is advisory; the other three tiers are **blocking**. The reporter chooses the tier as
-part of its observation, and a later report may change it like any other classification. Issues
-records the tier and never acts on it: which session fixes an Issue, and when, is the
-[main-session guidance](../coordination/main-session/module.md#issues)'s. Records written before
-tiers existed hold reports without one; such an Issue has no tier until a tiered report is appended.
+A `suggestion` is advisory. The other three tiers are **blocking**. The reporter chooses the tier
+as part of its observation. A later report may change the tier like any other classification.
+Issues records the tier. Issues never acts on the tier.
+The [main-session guidance](../coordination/main-session/module.md#issues) determines which session
+fixes an Issue and when. Records written before tiers existed hold reports without one.
+Until a tiered report is appended, such an Issue has no tier.
 
 ### Severities
 
 <a id="concept.issue-severity"></a>
 
 A report's **severity** says how much the problem matters: what goes wrong, and for whom, while it
-stands. It is independent of the tier, which says who may handle the problem: an obvious fix may be
-critical and a problem awaiting a decision low. There are four, most severe first:
+stands. Severity is independent of the tier, which says who may handle the problem.
+An obvious fix may be critical. A problem awaiting a decision may be low.
+There are four severities, most severe first:
 
 | Severity | The problem's consequence while it stands |
 | --- | --- |
@@ -91,36 +164,59 @@ critical and a problem awaiting a decision low. There are four, most severe firs
 | `medium` | a secondary flow or an edge case fails, or a gap that slows the work without misleading it |
 | `low` | cosmetic, such as wording, naming or layout: nothing goes wrong |
 
-The reporter chooses the severity as part of its observation, and a later report may change it like
-the tier. Issues records the severity and acts on it only when asked to list by it: `list` sorted by
-severity puts the most severe Issues first, so that whoever chooses what to fix next starts there.
-Records written before severities existed hold reports without one; such an Issue has no severity,
-and sorts after every Issue with one, until a report with a severity is appended.
+The reporter chooses the severity as part of its observation. A later report may change the
+severity like the tier. Issues records the severity. When asked to list by severity, Issues
+acts on it, and only then. `list` sorted by severity puts the most severe Issues first, so that whoever chooses
+what to fix next starts there. Records written before severities existed hold reports without one.
+Until a report with a severity is appended, such an Issue has these properties:
+
+- It has no severity.
+- It sorts after every Issue with a severity.
 
 ### Issue revisions
 
 <a id="concept.issue-revision"></a>
 
-An [Issue revision](../glossary.json#concept.issue-revision) identifies
-the exact file contents, independently of status: appending a report changes the revision while
-leaving the Issue open. `show`, `report`, `close` and `reopen` return revisions. Appending uses the
-revision its reporter read as `expected_revision`; `close` and `reopen` read the current revision
-themselves and submit the disposition against that revision. Their CLI has no argument binding the
-write to an earlier `show`. A concurrent change after the command's read is refused with
-`stale_issue`. Read the Issue again, reconsider the action and retry against its current record;
-never erase a concurrent report to make an old request succeed.
+An [Issue revision](../glossary.json#concept.issue-revision) identifies the exact file contents,
+independently of status. Appending a report changes the revision while leaving the Issue open.
+These actions return revisions:
+
+- `show`.
+- `report`.
+- `close`.
+- `reopen`.
+
+Appending uses the revision its reporter read as `expected_revision`.
+`close` and `reopen` read the current revision themselves. These actions submit the disposition
+against that revision. Their CLI has no argument binding the write to an earlier `show`.
+When a concurrent change follows the command's read, the write is refused with
+`stale_issue`. Follow these steps:
+
+- Read the Issue again.
+- Reconsider the action.
+- Retry against its current record.
+
+Never erase a concurrent report to make an old request succeed.
 
 ## Overview
 
 ### Structure
 
 Sessions record and read Issues with the bookkeeping command, directly or through the Issue tools
-on the project MCP server, which go through the Issue store; the store relies on the Kernel for its
-records, its file transactions and the merge lock, the command on Tracing for the error chains it
-checks and prints; where they are installed, the command reads Spec core's registry for which
-Modules exist and the store reads Tasks' [task records](../glossary.json#concept.task-record) for an unfinished merge, each through the
-file its owner's Spec defines and never through that part's code, and Tasks closes through the
-command the Issues a merged task resolves.
+on the project MCP server. The command and tools go through the Issue store.
+The store relies on the Kernel for:
+
+- Its records.
+- Its file transactions.
+- The merge lock.
+
+The command relies on Tracing for the error chains it checks and prints.
+Where Spec core is installed, the command reads Spec core's registry for which Modules exist.
+The command reads the registry through the file that Spec core's Spec defines.
+Where Tasks is installed, the store reads Tasks' [task records](../glossary.json#concept.task-record)
+for an unfinished merge. The store reads the task records through the file that Tasks' Spec defines.
+Neither reads through that part's code. Through the command, Tasks closes the Issues a merged task
+resolves.
 
 ```d2
 issues: Issues
@@ -137,8 +233,8 @@ tasks -> issues
 session -> issues
 ```
 
-The store alone decides what a record may hold and when it is written, and the command adds what a
-session must not be able to claim; everything else is ordinary work.
+The store alone decides what a record may hold. The store alone decides when a record is written.
+The command adds what a session must not be able to claim. Everything else is ordinary work.
 
 ```d2
 issues: Issues {
@@ -156,8 +252,8 @@ issues: Issues {
 }
 ```
 
-The command has two faces, its command line and the Issue tools, and both run the same actions,
-which is why a tool answers and refuses exactly as the command does:
+The command has two faces: its command line and the Issue tools. Both run the same actions.
+This is why a tool answers and refuses exactly as the command does:
 
 ```d2 illustrative
 direction: right
@@ -176,63 +272,104 @@ actions -> store
 
 ### Where Issues are kept
 
-Issues are project-level: the primary worktree keeps them, like tasks, and every worktree of the
-project, every session and every run reads and writes the same records. The store resolves the
-primary worktree from any worktree of the repository, reads the records there and writes only
-there. Each write holds the primary worktree's
-[merge lock](../glossary.json#concept.merge-lock), publishes the record in the folder its status
-names and commits that one record on the primary branch, in a commit of its own whose trailer
-`Concorde-Issue` names the Issue, before it answers; a disposition that changes the status moves the
-record into the other folder in that same commit, and an archive commits the records it moves, and
-only them, in one commit; other changes of the primary worktree, staged or not, stay as they were. So the records are
-versioned with the project and, once acknowledged, are committed; a write never lands between a
-task's merge commit and the checks that decide whether the merge stays, and, where the
-coordination part is installed, while a task's merge is unfinished no write is made at all.
+Issues are project-level. The primary worktree keeps them, like tasks. The following read and
+write the same records:
+
+- Every worktree of the project.
+- Every session.
+- Every run.
+
+From any worktree of the repository, the store resolves the primary worktree. The store reads the
+records there. It writes only there. Before it answers, each write holds the primary worktree's
+[merge lock](../glossary.json#concept.merge-lock) throughout these steps:
+
+- It publishes the record in the folder its status names.
+- It commits that one record on the primary branch in a commit of its own.
+
+That commit's trailer `Concorde-Issue` names the Issue. When a disposition changes the status, it
+moves the record into the other folder in that same commit. An archive commits the records it
+moves, and only them, in one commit. Other changes of the primary worktree, staged or not, stay as
+they were. So the records are versioned with the project. So, once acknowledged, the records are
+committed. A write never lands between a task's merge commit and the checks that decide whether
+the merge stays. Where the coordination part is installed, no write occurs while a task's merge
+is unfinished.
 
 Only committed records count. Every read takes the records of the primary worktree's last commit,
-never its files, so a record is visible exactly when it is committed, and a receipt names a report
+never its files. So a record is visible exactly when it is committed. A receipt names a report
 the commit holds. A write that fails after publishing its record puts it back before it refuses.
-Only when that putting back fails, or the writing process is killed, does a record stay published
-but not committed: no read shows it, and it is put back before any further write acts, as
-[recovering uncommitted records](#recovering-uncommitted-records) explains.
+A record stays published but not committed only when that putting back fails or the writing
+process is killed. In that case, no read shows the record. Before any further write acts, the
+record is put back, as [recovering uncommitted records](#recovering-uncommitted-records) explains.
 
 ### Recovering uncommitted records
 
-Every write, holding the merge lock and before it reads the record it changes, looks for what an
-earlier write published but did not commit: a record file of `.concorde/issues/` or its `closed/`
-folder whose state, staged or not, differs from the last commit, and the temporary files of an
-interrupted [file transaction](../glossary.json#concept.file-transaction). A record file that holds
-a valid record of its Issue continuing the committed one, if any, with more reports or
-dispositions, is what a write leaves behind: it is put back to its committed version, or removed
-when no commit holds it, and the temporaries are removed. A write that moves a record between the
-folders publishes it in one before it removes it from the other, so a committed record whose file
-is gone while the other folder holds such a continuation is a move's leftover too: the record is
-restored where it was committed and the new file removed. Nothing is committed in recovery, because a write that
-left an uncommitted record gave no receipt and recorded nothing: whoever made it was refused or
-never answered, and may repeat it. A write killed, or whose answer was lost, after its commit did
-record its report, so a caller left without an answer reads `list` or `show` before it repeats a
-creation. Any other change of a record, such as a deleted, edited or invalid record, was made by no
-write, so recovery leaves it as it is, and only a write of that very Issue is refused, with
-`uncommitted_change`, until someone inspects and reverts it; writes of other Issues go on. Recovery
-touches nothing outside `.concorde/issues/`, and nothing there but those records and temporaries.
+While holding the merge lock, every write looks for what an earlier write published but did not
+commit. This happens before the write reads the record it changes. The write looks for:
 
-`concorde issues recover` runs the same recovery without writing an Issue, and says what it put
-back and which changes it left. The main agent runs it when such a record keeps the primary
-worktree from being clean, as before a task's merge, or after a refusal with `recovery_failed`
-once the cause the refusal names is fixed.
+- A record file of `.concorde/issues/` or its `closed/` folder whose state, staged or not, differs
+  from the last commit.
+- The temporary files of an interrupted [file transaction](../glossary.json#concept.file-transaction).
 
-A task branch holds the copy of `.concorde/issues/`, both folders, of the commit it started from
-and never changes it: a task that finds, fixes or closes a problem changes the primary worktree's records directly,
-never its own copy, so a task branch brings no Issue change into its merge and Issue records never
-conflict in Git.
+A write leaves behind a record file that holds a valid record of its Issue with more reports or
+dispositions. If a committed record exists, that valid record continues it. Such a file is put
+back to its committed version. When no commit holds it, the file is removed instead. The
+temporaries are removed. When a write moves a record between the folders, it publishes the record
+in one before it removes the record from the other. So a move's leftover also occurs when both
+these conditions hold:
+
+- A committed record's file is gone.
+- The other folder holds such a continuation.
+
+In that case, the record is restored where it was committed. The new file is removed. Nothing is
+committed in recovery, because a write that left an uncommitted record gave no receipt and
+recorded nothing. Whoever made that write was refused or never answered, and may repeat it.
+When a write is killed after its commit, it did record its report. The same holds when its answer
+was lost after its commit. So a caller left without an answer reads `list` or `show` before it
+repeats a creation. Any other change of a record was made by no write. Such changes include:
+
+- A deleted record.
+- An edited record.
+- An invalid record.
+
+So recovery leaves such a change as it is. Until someone inspects and reverts it, only a write of
+that very Issue is refused, with `uncommitted_change`. Writes of other Issues go on. Recovery
+touches nothing outside `.concorde/issues/`. Within that folder, recovery touches nothing but
+those records and temporaries.
+
+`concorde issues recover` runs the same recovery without writing an Issue. It says what it put
+back and which changes it left. When such a record keeps the primary worktree from being clean,
+the main agent runs it, as before a task's merge. After a refusal with `recovery_failed`, once the
+cause the refusal names is fixed, the main agent also runs it.
+
+A task branch holds the copy of `.concorde/issues/`, both folders, of the commit it started from.
+The task branch never changes that copy. When a task does any of the following, it changes the
+primary worktree's records directly, never its own copy:
+
+- Finds a problem.
+- Fixes a problem.
+- Closes a problem.
+
+So a task branch brings no Issue
+change into its merge. For the same reason, Issue records never conflict in Git.
 
 ### Lifecycle
 
-An **Issue status** starts `open`. A **disposition**
-records a decision to close or reopen it, with a reason, note, evidence and actor, and moves the
-record into the folder of the new status in the same commit. `resolved`,
-`duplicate` and `not-actionable` are closing reasons, not extra statuses. The only statuses are
-`open` and `closed`:
+An **Issue status** starts `open`. A **disposition** records a decision to close or reopen it,
+with these details:
+
+- A reason.
+- A note.
+- Evidence.
+- An actor.
+
+The disposition moves the record into the folder of the new status in the same commit. The
+following are closing reasons, not extra statuses:
+
+- `resolved`.
+- `duplicate`.
+- `not-actionable`.
+
+The only statuses are `open` and `closed`:
 
 ```d2 illustrative
 direction: right
@@ -254,31 +391,50 @@ closed -> open: reopen (reopened)
 | Close as `not-actionable` | `open` | `closed` | The note and evidence explain why no repair is warranted. |
 | Reopen | `closed` | `open` | Evidence calls the previous closure into question or shows recurrence. |
 
-Only a disposition changes an existing Issue's status. Starting a repair, running checks or
-delivering a task is not a disposition; there is no `in-progress` state. A duplicate closure changes
-only the Issue being closed: its reports stay there, and later changes to the referenced Issue do not
-propagate automatically. Reopening retains the identity and history; append a new observation
-afterwards if the problem's description, tier, severity, classification or owner needs to change. A closed
-Issue cannot receive a new report or close again, and an open one cannot reopen. Rejected actions
-leave its record unchanged.
+Only a disposition changes an existing Issue's status. None of the following is a disposition:
 
-A record lies in the folder of its status: `.concorde/issues/` while open, `.concorde/issues/closed/`
-once closed. A record that lies in the other folder is **misplaced**, such as a closed record
-committed before closed Issues had a folder of their own or one moved by hand. It is still read,
-listed, shown and written like any other, and a write of it moves it into the folder of its status
-in that write's commit; `check` reports it,
-and `concorde issues archive` moves every misplaced record into its place, unchanged, in one commit
-under the merge lock. An Issue lives in exactly one place: one committed in both folders is refused
-by every read until someone removes the copy that is not its whole history.
+- Starting a repair.
+- Running checks.
+- Delivering a task.
+
+There is no `in-progress` state. A duplicate closure changes only the Issue being closed. Its
+reports stay there. Later changes to the referenced Issue do not propagate automatically.
+Reopening retains the identity and history. After reopening, append a new observation if any of
+these needs to change:
+
+- The problem's description.
+- The problem's tier.
+- The problem's severity.
+- The problem's classification.
+- The problem's owner.
+
+A closed Issue cannot receive a new report or close again. An open Issue cannot reopen. Rejected
+actions leave its record unchanged.
+
+A record lies in the folder of its status. While open, it lies in `.concorde/issues/`. Once closed,
+it lies in `.concorde/issues/closed/`. A record that lies in the other folder is **misplaced**.
+Examples include a closed record committed before closed Issues had a folder of their own or a
+record moved by hand. Like any other record, a misplaced record is:
+
+- Read.
+- Listed.
+- Shown.
+- Written.
+
+A write of a misplaced record moves it into the folder of its status in that write's commit. `check` reports a misplaced record. Under the merge lock,
+`concorde issues archive` moves every misplaced record into its place, unchanged, in one commit.
+An Issue lives in exactly one place. Until someone removes the copy that is not its whole
+history, every read refuses an Issue committed in both folders.
 
 ### A repair
 
-Solving an Issue is ordinary work: a task for its current owning Module fixes it, and the task names
-the Issues it resolves, with `concorde task open --resolves` or later `concorde task resolve`. The
-fix reaches the primary branch with the task's merge, and only then is the problem solved there, so
-[Tasks](../coordination/tasks/module.md) closes each named Issue that is still open as `resolved`,
-with the merge commit as evidence, once the merge's checks have passed and while it still holds the
-merge lock. A task that ends without merging closes nothing.
+Solving an Issue is ordinary work. A task for its current owning Module fixes it. The task names
+the Issues it resolves, with `concorde task open --resolves` or later `concorde task resolve`.
+The fix reaches the primary branch with the task's merge. Only then is the problem solved there.
+So, after the merge's checks pass, [Tasks](../coordination/tasks/module.md), still holding the
+merge lock, closes each named Issue still open as `resolved`.
+Tasks uses the merge commit as evidence for that closure. A task that ends without merging
+closes nothing.
 
 ```d2 illustrative
 direction: right
@@ -304,227 +460,392 @@ b.deliver -> primary.merge_b
 
 ### Failures of the Issue system
 
-A failure of the Issue system itself, of its store, its bookkeeping command or its Issue tools, is
-never reported as an Issue: an Issue system that failed cannot be trusted
-to record its own failure, and a session waiting for it to do so would wait for ever. Such a failure
-travels as an [error chain](../glossary.json#concept.error-chain) instead, in the task's
-[decision log](../glossary.json#concept.decision-log) and escalation for a session, or in its run's
-result for a run. Every refusal whose reason is `environment`, such as a busy merge lock, an
-unfinished merge, a failed commit or a file the operating system would not write, says so in its
-options. A report about a design gap of Issues that the Issue system can still record, such as a
-suggestion, is an ordinary Issue.
+A failure of any of the following is never reported as an Issue:
+
+- The Issue system itself.
+- Its store.
+- Its bookkeeping command.
+- Its Issue tools.
+
+This is because an Issue system that failed cannot be trusted to record its own failure.
+Another reason is that a session waiting for it to do so would wait for ever. Such a failure travels as an
+[error chain](../glossary.json#concept.error-chain) instead. For a session, it travels in the
+task's [decision log](../glossary.json#concept.decision-log) and escalation. For a run, it travels
+in that run's result. Every refusal whose reason is `environment` says so in its options.
+Examples include:
+
+- A busy merge lock.
+- An unfinished merge.
+- A failed commit.
+- A file the operating system would not write.
+
+When the Issue system can still record a report about a design gap of Issues, that report is an
+ordinary Issue, such as a suggestion.
 
 ## Using Issues
 
 ### Sessions and Issues
 
-The session that meets a problem decides whether it becomes an Issue, and the [main agent](../glossary.json#concept.main-agent) decides
-when to dispose one. A worker's finding or an [Operation](../glossary.json#concept.operation)'s error
-reaches the session in that run's result; neither creates or closes an Issue by itself unless the
-Operation's own host records it through the store. A concrete problem the current task will not fix,
-such as another Module's [Spec gap](../glossary.json#concept.spec-gap), is worth recording for later
-work. Recording it does not clear a blocker, change a task's outcome, schedule a repair or notify
-another session. Sessions discover recorded problems by reading `list` and `show`.
+The session that meets a problem decides whether it becomes an Issue.
+The [main agent](../glossary.json#concept.main-agent) decides when to dispose one.
+A worker's finding or an [Operation](../glossary.json#concept.operation)'s error reaches the session
+in that run's result. Unless the Operation's own host records it through the store, neither creates
+or closes an Issue by itself. A concrete problem the current task will not fix, such as another
+Module's [Spec gap](../glossary.json#concept.spec-gap), is worth recording for later work.
+Recording it does none of the following:
+
+- Clear a blocker.
+- Change a task's outcome.
+- Schedule a repair.
+- Notify another session.
+
+Sessions discover recorded problems by reading `list` and `show`.
 
 The bookkeeping command is the sessions' interface. In an installed project it is
-`concorde issues` (`concorde` stands for `.concorde/bin/concorde`); in Concorde's source checkout it
-is `python3 scripts/concorde.py issues`, which routes to the issues part's command entry, the one
-`python3 scripts/issues.py` also runs. The issues part registers the same actions with the project MCP server as the tools `issue_list`,
-`issue_show`, `issue_check`, `issue_report`, `issue_close` and `issue_reopen`, which answer and
-refuse exactly as the command does; `recover` and `archive` are the command's alone. A session, the main agent or a [task session](../glossary.json#concept.task-session), uses
-those tools because they record the calling session as reporter and actor, which the command cannot
-know; the command serves a task session's shell and the runs it starts as well. Whichever worktree a
-call starts from, it acts on the primary worktree's records.
+`concorde issues` (`concorde` stands for `.concorde/bin/concorde`). In Concorde's source checkout it
+is `python3 scripts/concorde.py issues`. This routes to the issues part's command entry, the one
+`python3 scripts/issues.py` also runs. The issues part registers the same actions with the project
+MCP server as these tools:
+
+- `issue_list`
+- `issue_show`
+- `issue_check`
+- `issue_report`
+- `issue_close`
+- `issue_reopen`
+
+These tools answer and refuse exactly as the command does. `recover` and `archive` are the
+command's alone. A session, either the main agent or a [task session](../glossary.json#concept.task-session), uses those tools.
+
+The reason is that the tools record the calling session as reporter and actor, which the command
+cannot know. The command serves a task session's shell and the runs it starts as well. Whichever
+worktree a call starts from, it acts on the primary worktree's records.
 
 ### Recording and following up
 
-Read `list` before recording, and `show <id>` for a possible match: a reporter appends to the Issue
-already tracking its problem instead of creating another. `list` returns every Issue, open and
-closed, unless it is filtered: `--status`, `--module`, `--tier` and `--severity` (the tool's
-`status`, `module`, `tier` and `severity`) keep only the Issues with that status, concerning that
-Module as owner or reporting Module, or of those tiers or severities, so `list --module <owner> --status open` reads the Issues a new report
-about that Module could duplicate without reading the whole project's. A closed match may need
-reopening: list the Module's closed Issues too when the problem may have been fixed before. Write
-the report as JSON using the [report contract](interface.md#contract.issues.report), with its tier
-and severity, then run
-`concorde issues report --file <report.json> [--task <task-id>]` or call `issue_report`. The
-command checks the owner against the primary worktree's registry, evidence paths in the worktree the
-report is made in or the named origin, and any error chain; it supplies the reporter, reporting
-Module, registry digest, task and Git `HEAD` itself. A successful reply gives a
-[receipt](interface.md#contract.issues.receipt) naming that immutable report and the record's
-revision. Keep it as the reference for follow-up. `report --check` checks the report without
-recording it, useful before handing a defect report to another project; a report with an `origin`
-is checked without resolving its reporting Module, which the project recording it resolves.
+Read `list` before recording. For a possible match, read `show <id>`.
+A reporter appends to the Issue already tracking its problem instead of creating another.
+Unless it is filtered, `list` returns every Issue, open and closed. These filters keep only the
+Issues that match:
+
+- `--status` (the tool's `status`) keeps Issues with that status.
+- `--module` (the tool's `module`) keeps Issues concerning that Module as owner or reporting Module.
+- `--tier` (the tool's `tier`) keeps Issues of those tiers.
+- `--severity` (the tool's `severity`) keeps Issues of those severities.
+
+Thus, `list --module <owner> --status open` reads the Issues a new report about that Module could
+duplicate without reading the whole project's. A closed match may need reopening. When the problem
+may have been fixed before, list the Module's closed Issues too. Write the report as JSON using the
+[report contract](interface.md#contract.issues.report), with its tier and severity. Then run
+`concorde issues report --file <report.json> [--task <task-id>]` or call `issue_report`.
+The command checks the following:
+
+- The owner against the primary worktree's registry.
+- Evidence paths in the worktree the report is made in or the named origin.
+- Any error chain.
+
+The command supplies the following itself:
+
+- The reporter.
+- The reporting Module.
+- The registry digest.
+- The task.
+- Git `HEAD`.
+
+A successful reply gives a [receipt](interface.md#contract.issues.receipt) naming that immutable
+report and the record's revision. Keep it as the reference for follow-up. `report --check` checks
+the report without recording it. This is useful before handing a defect report to another project.
+For a report with an `origin`, this check does not resolve its reporting Module.
+The project recording the report resolves its reporting Module.
 
 What `list` and `show` found decides what the report carries:
 
-- no matching Issue: omit `issue_id` and `expected_revision`, and the report creates an Issue;
-- an open match: put its `issue_id`, and the revision `show` printed as `expected_revision`, and
-  the report is appended to it;
-- a closed match whose closure the new observation calls into question or shows recurring: `reopen`
-  it first, then append as to an open match, with the revision `reopen` printed; otherwise record a
-  new Issue.
+- When no matching Issue exists, omit `issue_id` and `expected_revision`. The report creates an
+  Issue.
+- For an open match, put its `issue_id` and the revision `show` printed as `expected_revision`.
+  The report is appended to that Issue.
+- When a new observation calls a closed match's closure into question or shows recurrence,
+  `reopen` the Issue first. Then append as to an open match, with the revision `reopen` printed.
+  Otherwise, record a new Issue.
 
-Running a creation twice creates two Issues even when the
-file and report key are unchanged: each command invocation has new provenance. The store's retry
-handling applies only when a caller reuses the same invocation and report key, as the
-[interface](interface.md#store-operations) explains; it does not deduplicate separate CLI runs.
+Even when the file and report key are unchanged, running a creation twice creates two Issues.
+This is because each command invocation has new provenance. The store's retry handling applies
+only when a caller reuses the same invocation and report key, as the
+[interface](interface.md#store-operations) explains. The store's retry handling does not
+deduplicate separate CLI runs.
 
 ### Closing and reopening
 
 A fixed Issue is closed by the merge of the task that resolves it, as [a repair](#a-repair) shows.
-Close one by hand only for another reason, or when it was fixed without such a task: use
-`close <id> --reason <reason> --note <text> --evidence <item>...` or
-`reopen <id> --note <text> --evidence <item>...`, or the tools `issue_close` and `issue_reopen`;
-duplicate closure also needs `--duplicate-of <other-id>`. Each prints the record's revision and its
-path, in `closed/` after a close and back in `.concorde/issues/` after a reopening. The command
-records `main-agent` as actor;
-the tools record the session. Each disposition needs a nonblank note and at least one evidence item.
-The store validates their form and the transition; it does not establish that the evidence proves
-the decision or that the actor had authority. Whoever disposes answers for that judgment. Closed
-records remain readable in `closed/` and are never deleted by the store. The exact state rules are in the
-[record interface](interface.md#record-file).
+Close an Issue by hand only for another reason, or when it was fixed without such a task.
+Use one of the following:
+
+- `close <id> --reason <reason> --note <text> --evidence <item>...`
+- `reopen <id> --note <text> --evidence <item>...`
+- The tool `issue_close`.
+- The tool `issue_reopen`.
+
+For duplicate closure, also supply `--duplicate-of <other-id>`. Each prints the record's revision
+and its path. After a close, the path is in `closed/`. After a reopening, the path is back in
+`.concorde/issues/`. The command records `main-agent` as actor.
+The tools record the session. Each disposition needs a nonblank note and at least one evidence item.
+The store validates their form and the transition. The store does not establish that the evidence
+proves the decision or that the actor had authority. Whoever disposes answers for that judgment.
+Closed records remain readable in `closed/`. The store never deletes closed records. The exact
+state rules are in the [record interface](interface.md#record-file).
 
 ### Inspection and refusals
 
-`list` prints a summary row per committed Issue that passes its filters, with its severity and
-tier, by identity or, with `--sort severity` (the tool's `sort`), most severe first; `show <id>`
-the complete committed record, its revision and its path, and `check` validates every record file
-of the worktree it runs in, in both folders: in the primary worktree the project's Issues, in a
-task worktree the copy its branch holds, which proves the branch's code still reads the records.
-`recover` puts back what writes left uncommitted, and `archive` moves misplaced records into their
-place. These commands never launch a model. The
-[configured check](../glossary.json#concept.configured-check) `check.issues.store` runs `check`
-whenever this Module's checks run; it fails malformed, misnamed, misplaced or inconsistent records,
-an Issue recorded in both folders and, where the spec part is installed, open Issues with
-unregistered owners, naming the repair of each, but only notes closed Issues with unregistered
-owners. Validating the records is this check's, never `concorde spec-validation`'s, so the Spec
-tooling knows nothing of Issues. An open
-Issue with a valid owner does not by itself fail this check; readiness to deliver work is a separate
-decision.
+For each committed Issue that passes its filters, `list` prints a summary row with its severity
+and tier. With `--sort severity` (the tool's `sort`), it prints most severe first.
+Otherwise, it prints by identity. `show <id>` prints the following:
 
-An unknown Issue, stale revision, action on the wrong status, unregistered owner, missing report
-evidence, busy merge lock, unfinished merge, unreadable task record, failed commit, record that
-could not be put back or record changed by hand is refused without committing a record or leaving one a read shows.
-The error names the Issue, file, field or argument and gives a code and explanation so the caller
-can correct the request. The exit status is 2 for an unusable request and 1 for a refused one; exact
-shapes, actions and codes are in the [Issue interface](interface.md).
+- The complete committed record.
+- Its revision.
+- Its path.
+
+`check` validates every record file of the worktree it runs in, in both folders:
+
+- In the primary worktree, it validates the project's Issues.
+- In a task worktree, it validates the copy its branch holds.
+
+The task-worktree validation proves the branch's code still reads the records.
+`recover` puts back what writes left uncommitted. `archive` moves misplaced records into their
+place. These commands never launch a model. Whenever this Module's checks run, the
+[configured check](../glossary.json#concept.configured-check) `check.issues.store` runs `check`.
+It fails the following, naming the repair of each:
+
+- Malformed records.
+- Misnamed records.
+- Misplaced records.
+- Inconsistent records.
+- An Issue recorded in both folders.
+- Where the spec part is installed, open Issues with unregistered owners.
+
+It only notes closed Issues with unregistered owners. Validating the records is this check's,
+never `concorde spec-validation`'s. For this reason, the Spec tooling knows nothing of Issues.
+An open Issue with a valid owner does not by itself fail this check.
+Readiness to deliver work is a separate decision.
+
+The following are refused without committing a record or leaving one a read shows:
+
+- An unknown Issue.
+- A stale revision.
+- An action on the wrong status.
+- An unregistered owner.
+- Missing report evidence.
+- A busy merge lock.
+- An unfinished merge.
+- An unreadable task record.
+- A failed commit.
+- A record that could not be put back.
+- A record changed by hand.
+
+The error names what applies from this list:
+
+- The Issue.
+- The file.
+- The field.
+- The argument.
+
+The error gives a code and explanation so the caller can correct the request.
+For an unusable request, the exit status is 2. For a refused request, the exit status is 1.
+The [Issue interface](interface.md) gives the exact details:
+
+- Shapes.
+- Actions.
+- Codes.
 
 ## How it is built
 
 <a id="design"></a>
 
-Issues' design has an outside, the Modules it relies on and those that rely on it, and an
-inside, the store and the bookkeeping command that divide its work.
-
+Issues' design has an outside: the Modules it relies on and those that rely on it.
+Its design has an inside: the store and the bookkeeping command that divide its work.
 ### Around it
 
-No program but the store writes a record, and nobody edits one by hand. Main session declares
-`session -> issues` in the [structure](#structure) diagram: its
-[guidance](../coordination/main-session/module.md) says when sessions record, fix and close Issues,
-where the issues part contributes its section of that guidance, and the issues part registers the
-command's actions as tools with the project MCP server, Distribution's host. Tasks relies on Issues to check
-the Issues a task names as resolving and to close them when the task merges, which it does by
-running `concorde issues close` for each, handing that process the merge lock it holds, as the
-[interface](interface.md#disposing-under-a-held-lock) states.
+No program but the store writes a record. Nobody edits one by hand. Main session declares
+`session -> issues` in the [structure](#structure) diagram. Its
+[guidance](../coordination/main-session/module.md) says when sessions do the following:
 
-For provenance the command asks Git for the reporting worktree's `HEAD` and records `null` when Git
-fails.
+- Record Issues.
+- Fix Issues.
+- Close Issues.
+
+The issues part contributes its section of that guidance. The issues part registers the command's
+actions as tools with the project MCP server, Distribution's host. Tasks relies on Issues to check
+the Issues a task names as resolving. When the task merges, Tasks relies on Issues to close those
+Issues. Tasks does this by running `concorde issues close` for each Issue. Tasks hands that process
+the merge lock it holds, as the [interface](interface.md#disposing-under-a-held-lock) states.
+
+For provenance the command asks Git for the reporting worktree's `HEAD`. When Git fails, the
+command records `null`.
 
 <a id="uses-distribution"></a>
 
-**Distribution**, the installation host present in every installation, installs the issues part
-from its [part registration](../glossary.json#concept.part-registration), the plain data its
+**Distribution** is the installation host present in every installation. It installs the issues
+part from its [part registration](../glossary.json#concept.part-registration). The
 [registration contract](../distribution/contracts.md#contract.distribution.part-registration)
-defines: the `issues` command, the `issue_*` tools, the typed value types of reports and receipts,
-the part's guidance sections and `scripts/issues.py`. Issues relies on Distribution routing the
-command to its entry and on the [project MCP server](../glossary.json#concept.project-mcp-server)
-answering each tool call with a fresh process of the primary worktree's Concorde and returning its
-answer or refusal unchanged, which is why a session's tool call and its shell's `concorde issues`
-write the same records under the same lock; it imports nothing of Distribution.
+defines this plain data:
+
+- The `issues` command.
+- The `issue_*` tools.
+- The typed value types of reports and receipts.
+- The part's guidance sections.
+- `scripts/issues.py`.
+
+Issues relies on Distribution routing the command to its entry. Issues also relies on the
+[project MCP server](../glossary.json#concept.project-mcp-server) answering each tool call with a
+fresh process of the primary worktree's Concorde. Issues also relies on the server returning its
+answer or refusal unchanged. Because of this routing and tool-call behavior, a session's tool call and its shell's
+`concorde issues` write the same records under the same lock. Issues imports nothing of Distribution.
 
 <a id="uses-tracing"></a>
 
 **Tracing** provides the Framework's
-[error contract](../kernel/tracing/contracts.md#contract.tracing.error), on which the command relies twice:
-it checks a report's `error_chain` against it, refusing one the contract does not accept, and it
-prints every refusal as one `component` link of it, so that a session or run carries the refusal on
-in its own error chain unchanged.
+[error contract](../kernel/tracing/contracts.md#contract.tracing.error). The command relies on it
+twice. The command checks a report's `error_chain` against the contract. When the contract does
+not accept a report, the command refuses it. The command prints every refusal as one `component`
+link of the contract. The command does this so that a session or run carries the refusal on in
+its own error chain unchanged.
 
 <a id="uses-kernel"></a>
 
-The **Kernel** provides the [typed-value](../glossary.json#concept.typed-value) format Issues' shapes
-register with, the [file transaction](../glossary.json#concept.file-transaction) a digest-bound
-record publishes through, and the [merge lock](../glossary.json#concept.merge-lock) every write
-holds or relies on its caller holding, as a merge closing the Issues its task resolves does once it
-has closed the task. A stale transaction is refused, reported `stale_issue`, writing nothing. The
-store's error type, `IssueError`, is Issues' own, with its own codes, and the command prints each of
-its refusals as a `component` link, as the [interface](interface.md#store-operations) says.
+The **Kernel** provides the following:
+
+- The [typed-value](../glossary.json#concept.typed-value) format Issues' shapes register with.
+- The [file transaction](../glossary.json#concept.file-transaction) a digest-bound record publishes
+  through.
+- The [merge lock](../glossary.json#concept.merge-lock) every write holds or relies on its caller
+  holding. A write relies on its caller holding the lock when a merge that has closed its task
+  closes the Issues its task resolves.
+
+When a transaction is stale, it is refused. The refusal reports `stale_issue`. The transaction
+writes nothing. The store's error type,
+`IssueError`, is Issues' own. It has its own codes. The command prints each of the store's refusals
+as a `component` link, as the [interface](interface.md#store-operations) says.
 
 <a id="uses-spec"></a>
 
-**Spec core** is an [optional integration](../glossary.json#concept.optional-integration), reached
-through its registry mirror alone, the [registry file](../spec-tooling/spec/contracts.md#registry-file)
-`.concorde/specs.json` Spec core defines, never through the spec part's code:
-the file itself tells whether the spec part is installed, a worktree without it having none. Where
-it is there, the command reads the [registry](../glossary.json#concept.registry) for which Modules
-exist, which is root, and which digest names a report's context: a report's owner must be a
-registered Module, a `null` owner falls to the root Module, and the store check fails an open Issue
-whose owner is not registered. Where it is not, a Module is a plain label: a report must name its
-owner, which nothing checks, its context digest is that of no registry, and the store check judges
-no owner and says, in a note, that the spec part is not installed. A report with an `origin` that
-`report --check` checks before it is handed to another project resolves no reporting Module either
-way: the project that records it resolves one, so its `null` owner is never refused here.
+**Spec core** is an [optional integration](../glossary.json#concept.optional-integration).
+Issues reaches it through its registry mirror alone, never through the spec part's code. This
+mirror is the [registry file](../spec-tooling/spec/contracts.md#registry-file)
+`.concorde/specs.json` Spec core defines. The file itself tells whether the spec part is installed.
+A worktree without the file has no spec part. Where the file is present, the command reads the
+[registry](../glossary.json#concept.registry) for the following:
+
+- Which Modules exist.
+- Which Module is root.
+- Which digest names a report's context.
+
+In that case, the following applies:
+
+- A report's owner must be a registered Module.
+- A `null` owner falls to the root Module.
+- The store check fails an open Issue whose owner is not registered.
+
+Where the file is absent, a Module is a plain label. In that case, the following applies:
+
+- A report must name its owner.
+- Nothing checks that owner.
+- The report's context digest is that of no registry.
+- The store check judges no owner.
+- The store check says, in a note, that the spec part is not installed.
+
+When `report --check` checks a report with an `origin` before handoff to another project, it
+resolves no reporting Module either way. The project that records the report resolves a reporting
+Module, so the report's `null` owner is never refused here.
 
 <a id="uses-tasks"></a>
 
-**Tasks** is an optional integration, reached through its
-[task records](../coordination/tasks/contracts.md#contract.tasks.record) alone, never through
-the coordination part's code. Where the coordination part is installed, Tasks records
-[before its merge touches the primary branch](../coordination/tasks/requirements.md#req.tasks.merging-recorded)
-that a task is `merging`, and before every write the store reads the records of the current tasks,
-`.concorde/tasks/*/task.json`, and refuses the write with `merge_incomplete` while one is stored
-`merging`, its message
-[Tasks' account of that merge](../coordination/tasks/requirements.md#req.tasks.merge-incomplete-refused)
-built from the record's `merging`: the merging task, its process and start, its commits, where the
-primary branch is now and the `--resume` and `--abort` that finish it. A record that does not read
-as a JSON object cannot be told not to be `merging`, and may be the very record of the merge, so
-the write is refused with `unreadable_task_record`, an environment refusal naming the record, until
-the main agent repairs it, as Tasks refuses its own commands on it. Where
-the coordination part is not installed there is no `.concorde/tasks/`, no task merge, and no write
-waits for one. The primary worktree of any worktree of the repository the store finds through Git's
-common directory itself, needing no part.
+**Tasks** is an optional integration. Issues reaches it through its
+[task records](../coordination/tasks/contracts.md#contract.tasks.record) alone, never through the
+coordination part's code. Where the coordination part is installed, the following applies:
 
-A merge that holds the merge lock and closes the Issues its task resolves through the bookkeeping
-command hands the lock on to the command's process, as the Kernel's
-[merge lock](../glossary.json#concept.merge-lock) allows: the command's write then adopts the lock
-instead of waiting for it. That is the only way a write runs under a lock its caller holds; no
-entry of the store skips taking the lock.
+- Tasks records that a task is `merging`
+  [before its merge touches the primary branch](../coordination/tasks/requirements.md#req.tasks.merging-recorded).
+- Before every write, the store reads the records of the current tasks,
+  `.concorde/tasks/*/task.json`.
+- While one task is stored `merging`, the store refuses the write with `merge_incomplete`.
+  Its message is
+  [Tasks' account of that merge](../coordination/tasks/requirements.md#req.tasks.merge-incomplete-refused),
+  built from the record's `merging`. The message names the following:
+  - The merging task.
+  - Its process and start.
+  - Its commits.
+  - Where the primary branch is now.
+  - The `--resume` and `--abort` that finish it.
+- A record that does not read as a JSON object cannot be told not to be `merging`.
+  That record may be the very record of the merge.
+  For these reasons, until the main agent repairs the record, the store refuses the write with
+  `unreadable_task_record`. This is an environment refusal naming the record, as Tasks refuses its
+  own commands on it.
+
+Where the coordination part is not installed, the following applies:
+
+- There is no `.concorde/tasks/`.
+- There is no task merge.
+- No write waits for a task merge.
+
+The store itself finds the primary worktree of any worktree of the repository through Git's common
+directory. This needs no part.
+
+For a merge that holds the merge lock and closes the Issues its task resolves through the
+bookkeeping command, the following applies:
+
+- The merge hands the lock on to the command's process, as the Kernel's
+  [merge lock](../glossary.json#concept.merge-lock) allows.
+- The command's write then adopts the lock instead of waiting for it.
+
+That is the only way a write runs under a lock its caller holds.
+No entry of the store skips taking the lock.
 
 ### Inside
 
 <a id="realization.issues.store"></a>
 
-**The Issue store** is the only code that creates, appends to, disposes or moves an Issue record,
-and it never deletes a committed record: moving one between the folders removes it from one only
-in the commit that adds it to the other. Each file holds the record alone, so no prose copy can
-drift from it, and reports are never rewritten: a later observation that classifies the problem
-differently is a new report. Writes are serialized by the merge lock; each puts back what earlier
-writes left uncommitted, checks the revision its caller read against the committed record and
-commits the record alone before it answers, so success means the record is committed and a
-concurrent writer is never silently overwritten, and a failure after publication puts the record
-back as it was and refuses the write. The [record file](interface.md#record-file) and the
-[store operations](interface.md#store-operations) give the exact layout, order of steps and Git
-commands. Reads ask Git for the records of the last commit, so they need no lock and see one
-commit's records at once. Identities are derived from the reporting invocation and the reporter's
-key rather than counted, so no allocation state is shared. The report and receipt shapes are
-registered as [typed-value](../glossary.json#concept.typed-value) types, so that another part's
-schema could embed one by name; Issues itself
-exchanges and checks reports, receipts and records as they are, without an envelope, and no other
-part knows the types.
+**The Issue store** is the only code that performs these actions on an Issue record:
 
-The view below follows one write and what each refusal leaves; every refusal before publication
-leaves the record as it was committed.
+- Creating the record.
+- Appending to the record.
+- Disposing the record.
+- Moving the record.
+
+The store never deletes a committed record. When moving a record between the folders, the store
+removes it from one only in the commit that adds it to the other. Each file holds the record alone,
+so no prose copy can drift from it. Reports are never rewritten. A later observation that classifies
+the problem differently is a new report. The merge lock serializes writes. Before each write
+answers, it performs these steps:
+
+- Putting back what earlier writes left uncommitted.
+- Checking the revision its caller read against the committed record.
+- Committing the record alone.
+
+Because of these steps, success means the record is committed. These steps also ensure that a
+concurrent writer is never silently overwritten. After a failure following publication, the store
+puts the record back as it was. The store then refuses the write. The
+[record file](interface.md#record-file) and the [store operations](interface.md#store-operations)
+give these exact details:
+
+- The layout.
+- The order of steps.
+- The Git commands.
+
+Reads ask Git for the records of the last commit, so they need no lock. For the same reason, reads
+see one commit's records at once. Identities are derived from the reporting invocation and the
+reporter's key rather than counted, so no allocation state is shared. The report and receipt
+shapes are registered as [typed-value](../glossary.json#concept.typed-value) types so that another
+part's schema could embed one by name. Issues itself exchanges and checks these items as they are,
+without an envelope:
+
+- Reports.
+- Receipts.
+- Records.
+
+No other part knows the types.
+
+The view below follows one write and what each refusal leaves. When a refusal occurs before
+publication, it leaves the record as it was committed.
 
 ```d2 illustrative
 direction: down
@@ -560,43 +881,85 @@ putback -> failed: putting back failed
 
 <a id="realization.issues.command"></a>
 
-**The bookkeeping command** is the sessions' face of the store — `report`/`close`/`reopen` write,
-`recover` puts back, `archive` moves misplaced records, `list`/`show`/the store check read — kept in `src/concorde/issues/command.py` so that
-its command line `src/concorde/issues/cli.py`, which `concorde issues` and `scripts/issues.py`
-run, and the Issue tools `src/concorde/issues/tools.py` share every answer and refusal; the issues
-part's [part registration](../glossary.json#concept.part-registration) names both. Where the spec part is
-installed it reads the [registry](../glossary.json#concept.registry) for which Modules exist, which
-is root, and which digest names a report's context; elsewhere a Module is a label. It supplies provenance rather than trusting report-file
-claims; the report's optional `origin` describes a separate, cross-project observation. An owner
-given as `null` falls to the root Module. Attribution as `main-agent` or `task-session` is a
-convention of the command and the tools, not authentication: the library accepts provenance from its
-caller. It is used by a model, which can only fix a request it understands, so every refusal names
-the Issue, report file and field or argument and says what is wrong, passing the store's own errors
-on unchanged. A part that may not import Issues' code, such as the method part's reviews, records
-the reports of its own run through the command too, giving with `--provenance` the provenance it
-vouches for, which the command records as given, as the store's library does for its callers.
+**The bookkeeping command** is the sessions' face of the store. Its actions are:
 
-The store check is this Module's own, `concorde issues check` and the tool `issue_check`, and its
-configured check rather than part of Spec validation, so the Spec tooling stays unaware of Issues and
-the records are still checked whenever this Module's checks run. An
-open Issue with an unregistered owner fails it because nobody can be asked to solve it; a closed one
+- `report` writes.
+- `close` writes.
+- `reopen` writes.
+- `recover` puts back.
+- `archive` moves misplaced records.
+- `list` reads.
+- `show` reads.
+- The store check reads.
+
+The command is kept in `src/concorde/issues/command.py` so that its command line and the Issue
+tools share every answer and refusal. Its command line is `src/concorde/issues/cli.py`, which
+`concorde issues` and `scripts/issues.py` run. The Issue tools are in
+`src/concorde/issues/tools.py`. The issues part's
+[part registration](../glossary.json#concept.part-registration) names both. Where the spec part is
+installed, the command reads the [registry](../glossary.json#concept.registry) for these details:
+
+- Which Modules exist.
+- Which Module is root.
+- Which digest names a report's context.
+
+Elsewhere, a Module is a label. The command supplies provenance rather than trusting report-file
+claims. The report's optional `origin` describes a separate, cross-project observation. An owner
+given as `null` falls to the root Module. Attribution as `main-agent` or `task-session` is a
+convention of the command and the tools, not authentication. The library accepts provenance from
+its caller. A model uses the command. The model can only fix a request it understands, so every
+refusal names these details:
+
+- The Issue.
+- The report file.
+- The field or argument.
+
+For the same reason, every refusal says what is wrong. For the same reason, the command passes
+the store's own errors on unchanged in its refusals. A part that may not import Issues' code records the reports of its own run through
+the command too. The method part's reviews are an example. With `--provenance`, the part gives
+the provenance it vouches for. The command records that provenance as given, as the store's library
+does for its callers.
+
+The store check is this Module's own. Its interfaces are `concorde issues check` and the tool
+`issue_check`. It is this Module's configured check rather than part of Spec validation. Because
+of this separation, the Spec tooling stays unaware of Issues. For the same reason, whenever this
+Module's checks run, the records are still checked. An open Issue with an unregistered owner fails
+the store check because nobody can be asked to solve it. A closed Issue with an unregistered owner
 is only noted.
 
 <a id="realization.issues.tests"></a>
 
-The **Issues tests** cover the store on Git repositories (the merge lock, commits, concurrent
-writers, malformed records, failed publications and commits, reads of committed records only,
-recovery after failed and killed writes, moves between the folders and their recovery, archiving,
-tiers, severities and the order by severity), every bookkeeping-command
-action with its refusals, from the primary and a linked worktree, and the configured store check on
-a fixture project.
+The **Issues tests** cover the store on Git repositories in these areas:
+
+- The merge lock.
+- Commits.
+- Concurrent writers.
+- Malformed records.
+- Failed publications and commits.
+- Reads of committed records only.
+- Recovery after failed and killed writes.
+- Moves between the folders and their recovery.
+- Archiving.
+- Tiers.
+- Severities.
+- The order by severity.
+
+The tests cover every bookkeeping-command action with its refusals, from the primary and a linked
+worktree. The tests also cover the configured store check on a fixture project.
 
 <a id="realization.issues.guidance"></a>
 
 The **Issues guidance** is the part's sections of the [main-session
-guidance](../glossary.json#concept.main-session-guidance), kept in `prompts/guidance/issues/` and
-registered under `guidance` in the part's registration, which
-[Distribution](../distribution/module.md#guidance-composition) composes after Coordination's working
-method wherever the part is installed: the project skill's and the task-session prompt's "Issues":
-recording, tiers, severities, fixing and failures of the Issue system. Each section says what
-happens where a part it mentions is not installed.
+guidance](../glossary.json#concept.main-session-guidance). The sections are kept in
+`prompts/guidance/issues/`. The part's registration registers them under `guidance`. Wherever the
+part is installed, [Distribution](../distribution/module.md#guidance-composition) composes the
+sections after Coordination's working method. They are the project skill's and the task-session
+prompt's "Issues" sections. They cover these subjects:
+
+- Recording.
+- Tiers.
+- Severities.
+- Fixing.
+- Failures of the Issue system.
+
+Each section says what happens where a part it mentions is not installed.
