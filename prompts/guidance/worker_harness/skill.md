@@ -139,7 +139,7 @@ or an empty list does not block custom/offline model names. When the developer a
 AI may use these suggestions. If a requested model is already known, edit it directly without a
 mandatory question flow.
 
-When a worker launches, Workers validates the whole file. The chosen backend must be installed
+Workers validate the whole file when a worker launches. The chosen backend must be installed
 then. The backend need not be installed to edit the file. The following cases cause configuration
 errors:
 
