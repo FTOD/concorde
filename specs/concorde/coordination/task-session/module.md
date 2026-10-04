@@ -242,7 +242,8 @@ Claude Code settings file with a PreToolUse hook of its own on Edit, Write, Mult
 NotebookEdit, which lets them change the task worktree and the task's
 [decision log](../../glossary.json#concept.decision-log) and denies every other path, an
 [Issue](../../glossary.json#concept.issue) record among them, with a reason naming the task
-worktree. Once the task is closed its folder has moved to the
+worktree. It judges a symbolic link by the file it points to, since Edit and Write write through
+it: a link in the task worktree to a file outside it is denied like that file. Once the task is closed its folder has moved to the
 [history](../../glossary.json#concept.history), and the hook refuses every write to the decision
 log, whose folder no longer exists, rather than recreate it. Where the issues part is installed, the
 session writes Issues through the Issue command or the Issue tools, as the runs it starts do. The
