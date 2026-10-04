@@ -148,7 +148,11 @@ The tool is one command of this checkout, `scripts/e2e/e2e.py`, printing one JSO
 command and `{"error": …}` with the failed command and its output otherwise. It exits 0 when it
 prints its result, also a workflow result whose status is not `ok` and an owners case that ended
 `failed`, since those are the test's findings; 1 when it prints `{"error": …}`; and 2, printing its
-usage to standard error and doing nothing, for a malformed command line:
+usage to standard error and doing nothing, for a malformed command line, such as a `--restart`
+that is not `<key>=<label>`. A failure none of its steps names a code for, such as a command that
+cannot be started at all, is printed as an error too, never as a traceback: a command it cannot
+start as `command_failed`, and anything else it did not foresee as `unexpected_error` with the
+traceback beside its detail:
 
 ```text
 python3 scripts/e2e/e2e.py repos
@@ -208,6 +212,10 @@ repository's name, checks it out as a `main` branch, installs Concorde from this
 `d2`, initializes it, writes its worker configuration, commits and opens a task bound to the root
 Module, which makes a test project. The task is `--task` (default `adopt`).
 
+The end-to-end root is resolved to an absolute path before anything else, so a relative
+`CONCORDE_E2E_ROOT` names the same directory for every command `prepare` runs, whichever directory
+that command runs in.
+
 It initializes the project as a user does, in the two steps of Spec core's
 [initialization](../spec-tooling/spec/contracts.md#initialization): `concorde init --propose` with
 the project directory's name and, when `--python` is given, `--python <interpreter>`, then
@@ -224,7 +232,8 @@ environment, so the developer's [model map](../glossary.json#concept.model-map) 
 as it does the developer's own projects', and no map is written for it. Before anything is cloned,
 `prepare` hands the configuration it built to Workers' check of a configuration, which validates it
 and resolves through that map the model of every worker of every Operation the
-[Operation catalog](../glossary.json#concept.operation-catalog) lists; `prepare` enumerates no
+[Operation catalog](../glossary.json#concept.operation-catalog) lists, having loaded the Operations
+this checkout's parts register as the `concorde` command loads them; `prepare` enumerates no
 worker itself and passes Workers' refusal on with its code ([Around it](#uses-workers)).
 
 `prepare` refuses, each time before anything is cloned:
@@ -309,7 +318,9 @@ its [workflow record](../glossary.json#concept.workflow-record), under
   for Claude Code's workflow runtime of the Workflows tests, whose step agents execute, without a
   model, the real `concorde workflow step` command that the `workflow_step` call the script hands
   them would run, and the real `concorde workflow report` command line, in the task's worktree, so
-  every workflow step is a real one. It has no model between
+  every workflow step is a real one. The step command is the worktree's own, run without a shell,
+  and the report's command line names it relative to the worktree, its working directory, so a
+  project path holding spaces or shell syntax is never split or interpreted. It has no model between
   steps, while its Operations still launch real workers, so it tests Concorde's side without Claude
   Code's workflow runtime.
 
@@ -320,7 +331,8 @@ ends at its first [decision point](../glossary.json#concept.decision-point), and
 answers to continue it. `--retry <key>` and `--restart <key>=<label>` become the workflow's own
 `retry` list and `restart` map, for a run that continues a task.
 
-A workflow result whose status is not `ok` is printed like any other. `run` fails instead with
+A workflow result whose status is not `ok` is printed like any other. `run` refuses a task whose
+record cannot be read or names no worktree with `no_task`. It fails instead with
 `run_failed` when the headless session ends `exited` or `no_session`
 ([how a headless session ends](sessions/module.md#overview)), naming its `session.json`,
 or when the driver exits with a non-zero status, with its standard error and log; with the
@@ -514,7 +526,9 @@ the owners case checks.
 **Distribution** provides the installer and the `concorde` command that set a test project up the
 way a user's project is set up, with every [part](../glossary.json#concept.part) installed, routing
 each command to the part that registered it; a test
-project always runs the Concorde of this checkout. When the installer, `concorde init` or
+project always runs the Concorde of this checkout. Its parts' registrations are what `prepare`
+loads, as the `concorde` command loads them, before it checks a worker configuration against the
+Operations they register. When the installer, `concorde init` or
 `concorde task open` fails, `prepare` stops with `command_failed`
 naming that command, its exit status and its output, and leaves the partial project directory as it
 is (see [Preparing a test project](#preparing-a-test-project)); End-to-end testing never repairs a
