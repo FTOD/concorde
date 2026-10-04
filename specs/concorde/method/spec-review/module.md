@@ -267,9 +267,9 @@ The Operation also supplies these items:
 - For a checker, the numbered findings to check.
 
 The criteria are the Protocol's. The brief does not restate them. Thus, every worker judges by the
-same bar as a Spec's author reads. The Operation appends them from the project's
-[Protocol copy](../../glossary.json#concept.protocol-copy). It includes the *Writing guidance* and
-the *Sentence style* the criteria build on.
+same bar as a Spec's author reads. The Operation appends them from the project's [Protocol
+copy](../../glossary.json#concept.protocol-copy). It also appends the *Writing guidance* and the
+*Sentence style* the criteria build on.
 
 The `readability` dimension covers the Sentence style. Spec core's style checks already report
 these problems as warnings:
@@ -559,8 +559,8 @@ things:
 - Keep a [run record](../../glossary.json#concept.run-record).
 
 When a worker ends `blocked`/`failed` or an audit finds a change, that Module's review or panel is
-`incomplete`. Its error link travels in the result's
-[error chain](../../glossary.json#concept.error-chain) unchanged.
+`incomplete`. The error link of that worker or audit travels in the result's [error
+chain](../../glossary.json#concept.error-chain) unchanged.
 
 <a id="uses-issues"></a>
 
