@@ -7,26 +7,43 @@ The Module-wide obligations of [End-to-end testing](module.md). The
 
 ### req.e2e.swe-bench-projects — Test projects come from SWE-bench
 
-The tool SHALL prepare only repositories SWE-bench's harness names, unless the developer passes `--any`.
+Unless the developer passes `--any`, the tool SHALL prepare only repositories SWE-bench's harness
+names.
 
 ### req.e2e.root-outside-checkout — No test project lies inside the checkout
 
-The tool SHALL refuse an end-to-end root, the default or `CONCORDE_E2E_ROOT`, whose real path is this checkout or lies inside it.
+When an end-to-end root's real path is this checkout or lies inside it, the tool SHALL refuse that
+root.
+
+This applies to the default root or `CONCORDE_E2E_ROOT`.
 
 ### req.e2e.fresh-project — A test project is prepared into a new directory
 
-`prepare` SHALL refuse a project directory that already exists.
+When a project directory already exists, `prepare` SHALL refuse it.
 
 ### req.e2e.user-setup — A test project is set up as a user's
 
-The tool SHALL set up a [test project](../glossary.json#concept.test-project) only through Git, which fetches the revision, checks it out on a branch and commits, and this checkout's installer and `concorde` command, the same steps a user takes, never writing the project's Concorde [Specs](../glossary.json#concept.spec) or configuration itself, except its [worker configuration](../glossary.json#concept.worker-configuration), which a user writes by hand since no command writes it.
+The tool SHALL set up a [test project](../glossary.json#concept.test-project) only through the same
+steps a user takes:
+
+- Git fetches the revision.
+- Git checks it out on a branch.
+- Git commits.
+- The tool uses this checkout's installer.
+- The tool uses this checkout's `concorde` command.
+
+Except for its [worker configuration](../glossary.json#concept.worker-configuration), the tool
+SHALL NOT write the project's Concorde [Specs](../glossary.json#concept.spec) or configuration
+itself. A user writes the worker configuration by hand since no command writes it.
 
 The interpreter `--python` names therefore reaches the project configuration only as an argument of `concorde init`.
 
 ### req.e2e.never-installed — End-to-end testing reaches no user
 
-No file of this [Module](../glossary.json#concept.module) SHALL be installed into a project or
-rendered into the [main-session guidance](../glossary.json#concept.main-session-guidance).
+Concorde SHALL NOT install any file of this [Module](../glossary.json#concept.module) into a project.
+
+Concorde SHALL NOT render any file of this Module into the
+[main-session guidance](../glossary.json#concept.main-session-guidance).
 
 ## Running
 
@@ -36,7 +53,11 @@ A headless run SHALL start its `claude -p` session with `CLAUDE_CODE_PRINT_BG_WA
 
 ### req.e2e.headless-granted — A headless run's tools need no trust
 
-A headless run SHALL grant the workflow, the [project MCP server](../glossary.json#concept.project-mcp-server)'s `workflow_step` and the `concorde workflow report` command with `--allowedTools`.
+With `--allowedTools`, a headless run SHALL grant these tools:
+
+- The workflow.
+- The [project MCP server](../glossary.json#concept.project-mcp-server)'s `workflow_step`.
+- The `concorde workflow report` command.
 
 ### req.e2e.headless-mcp — A headless run's MCP server needs no approval
 
@@ -53,9 +74,11 @@ of the task's worktree.
 `run` SHALL print only a [workflow result](../glossary.json#concept.workflow-result) saved in the
 [workflow record](../glossary.json#concept.workflow-record) after the run started.
 
-A saved result names no run, so this makes the printed result the run's own only under the
-prerequisite that a test project is driven by one `run` at a time and that nobody else reports a
-workflow in it while the run runs ([Running a workflow](module.md#running-a-workflow)).
+A saved result names no run. Therefore, the printed result is the run's own only under these
+prerequisites ([Running a workflow](module.md#running-a-workflow)):
+
+- A test project is driven by one `run` at a time.
+- While the run runs, nobody else reports a workflow in that test project.
 
 ### req.e2e.trust-explicit — Trust changes only on request
 
@@ -74,27 +97,32 @@ adds as it was.
 
 ### req.e2e.owners-case — The owners case fails unless only a run's owner is woken and every other session sees it
 
-The owners case SHALL end `failed`, naming each problem, when, in the interval it judges a phase
-over, the owner of the run it played began no turn and received no notification, or any other live
-session began a turn or received a notification, or when afterwards a session that does not own the
-run did not find it with the status of its result.
+When any of these conditions holds, the owners case SHALL end `failed`, naming each problem:
 
-The interval runs from the end of the owner's launching turn, or from the start of the phase for a
-run nobody owns, to the end of the observation window that
-[req.e2e.owners-deadline](#req.e2e.owners-deadline) bounds. The case prompts no session in it, so
-every turn and notification there is a wake.
+- During the interval the case judges a phase over, the owner of the run it played began no turn
+  and received no notification.
+- During that interval, any other live session began a turn or received a notification.
+- Afterwards, a session that does not own the run did not find it with the status of its result.
+
+For a run with an owner, the interval starts at the end of the owner's launching turn.
+For a run nobody owns, the interval starts at the start of the phase.
+The interval ends at the end of the observation window that
+[req.e2e.owners-deadline](#req.e2e.owners-deadline) bounds. The case prompts no session in the
+interval, so every turn and notification there is a wake.
 
 ### req.e2e.owners-deadline — An owner's missing wake is a verdict, not an error
 
-The owners case SHALL judge a phase at the latest `--wake` and `--grace` seconds after its run
-wrote its result, whether or not the run's owner has been woken by then.
+Whether or not the run's owner is woken by then, the owners case SHALL judge a phase at the latest
+`--wake` and `--grace` seconds after its run wrote its result.
 
 An owner not woken by then is therefore a problem of the `failed` verdict that
 [req.e2e.owners-case](#req.e2e.owners-case) requires, never an error of the case.
 
 ### req.e2e.owners-queue — The owners case's run outwaits the case's hold
 
-The owners case SHALL launch a phase's run with a `--wait` longer than its limit, the longest it
-holds the task's [workspace lock](../glossary.json#concept.workspace-lock) after the launch.
+The owners case SHALL launch a phase's run with a `--wait` longer than its limit.
+
+The limit is the longest the case holds the task's
+[workspace lock](../glossary.json#concept.workspace-lock) after the launch.
 
 A run of the phase is therefore never refused for the lock the case itself holds.
