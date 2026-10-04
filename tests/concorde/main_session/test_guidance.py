@@ -47,15 +47,15 @@ class GuidanceTests(unittest.TestCase):
             self.skill,
         )
         self.assertIn(
-            "only after you told the developer what you would change and why it is small, and "
-            "the developer approved that specific change",
+            "only after both of these events: - You told the developer what you would change "
+            "and why it is small. - The developer approved that specific change.",
             self.skill,
         )
         self.assertIn("concorde task open", self.skill)
         self.assertIn(
             "Hand every task to a task session, even when there is only one", self.skill
         )
-        self.assertIn("you never work inside a task worktree yourself", self.skill)
+        self.assertIn("You never work inside a task worktree yourself", self.skill)
         self.assertNotIn("EnterWorktree", self.skill)
         self.assertNotIn("EnterWorktree", self.block)
         self.assertIn(
@@ -63,7 +63,7 @@ class GuidanceTests(unittest.TestCase):
         )
         session = self.session
         self.assertIn(
-            "Inside the task worktree you may change Specs and code yourself",
+            "Inside the task worktree, you may change Specs and code yourself",
             session,
         )
         self.assertIn(
@@ -108,12 +108,12 @@ class GuidanceTests(unittest.TestCase):
             "not the brief an Operation gives each of its workers", self.session
         )
         self.assertIn(
-            "put all the others to the developer at once (with AskUserQuestion), "
-            "and then answer the session once with every answer",
+            "Put all the others to the developer at once (with AskUserQuestion). "
+            "Then answer the session once with every answer.",
             self.skill,
         )
         self.assertIn(
-            "after recording its task brief in the task's decision log", self.block
+            "After recording its task brief in the task's decision log", self.block
         )
         self.assertIn("naming its escalation as a cause", self.skill)
         self.assertIn("concorde task session", self.block)
@@ -138,7 +138,7 @@ class GuidanceTests(unittest.TestCase):
         )
         self.assertIn("never from your first prompt", self.session)
         self.assertIn(
-            "run `concorde task wait <task> --rebound <that name>` in background Bash",
+            "Run `concorde task wait <task> --rebound <that name>` in background Bash",
             self.session,
         )
         self.assertIn("send the same report to that name, without", self.session)
@@ -147,9 +147,9 @@ class GuidanceTests(unittest.TestCase):
             "Its answer names the reports it answers by their number", self.session
         )
         self.assertIn(
-            "an answer to a report you already acted on, which the main agent sends again "
-            "after a restart since it cannot tell whether its message arrived, changes "
-            "nothing: ignore it",
+            "After a restart, the main agent sends again an answer to a report you may "
+            "already have acted on, since it cannot tell whether its message arrived. Such "
+            "an answer to a report you already acted on changes nothing: ignore it.",
             self.session,
         )
 
@@ -160,7 +160,7 @@ class GuidanceTests(unittest.TestCase):
             "`concorde task list --main <former name> --state open,active,delivered,merging`",
             self.skill,
         )
-        self.assertIn("once a task has ended nobody answers its", self.skill.lower())
+        self.assertIn("once a task has ended, nobody answers its", self.skill.lower())
         self.assertIn("`concorde task rebind <task> --main <current name>`", self.skill)
         self.assertIn("whose `answer` is null", self.skill)
         self.assertIn("before anything else", self.skill.split("### When your", 1)[1])
@@ -173,7 +173,7 @@ class GuidanceTests(unittest.TestCase):
         # A recorded answer may never have been sent, so it is sent again.
         self.assertIn(
             "For each task whose last report has an answer, send that latest recorded answer "
-            "again to its task session, naming the reports it answers",
+            "again to its task session. Name the reports it answers.",
             self.skill,
         )
         self.assertIn(
@@ -198,7 +198,7 @@ class GuidanceTests(unittest.TestCase):
         )
         self.assertNotIn("wait for its answer before continuing", self.session)
         self.assertIn(
-            "Do not merge the task branch into the primary branch, close the task",
+            "Do not do any of the following: - Merge the task branch into the primary branch. - Close the task.",
             self.session,
         )
         self.assertIn(
@@ -220,8 +220,8 @@ class GuidanceTests(unittest.TestCase):
             self.session,
         )
         self.assertIn(
-            "let every run of your workspace finish and stop every other background command "
-            "you started that still runs",
+            "Before you validate and deliver: - Let every run of your workspace finish. - Stop "
+            "every other background command you started that still runs",
             self.session,
         )
         self.assertIn("holds your workspace lock", self.session)
@@ -366,15 +366,13 @@ class GuidanceTests(unittest.TestCase):
         self.assertNotIn("leave the task worktree", self.skill)
         self.assertIn(
             "merge it from the primary worktree without asking the developer for "
-            "authorization: with the project MCP server's `task_merge`",
+            "authorization. Use either of these: - The project MCP server's `task_merge`",
             self.skill,
         )
-        self.assertIn(
-            "or with `concorde task merge <task>` in background Bash", self.skill
-        )
+        self.assertIn("- `concorde task merge <task>` in background Bash", self.skill)
         self.assertIn("Never merge a task with `git merge` yourself", self.skill)
         self.assertIn("runs `concorde spec-validation` there", self.skill)
-        self.assertIn("merge delivered task branches without asking", self.block)
+        self.assertIn("Merge delivered task branches without asking", self.block)
 
     @verifies("scenario.main-session.merge-command")
     def test_the_merge_command_runs_in_the_background(self):
@@ -399,13 +397,13 @@ class GuidanceTests(unittest.TestCase):
             "merges a delivered task without ever waiting for a lock", self.skill
         )
         self.assertIn(
-            "or is refused at once with `workspace_busy` or `merge_busy` naming who holds "
+            "it is refused at once with `workspace_busy` or `merge_busy` naming who holds "
             "the busy one",
             self.skill,
         )
         self.assertIn(
-            "register a wait for that lock with `register_wait` (or, without a channel, run "
-            "the `concorde task wait` command it returns in background Bash) and call "
+            "register a wait for that lock with `register_wait`. Without a channel, run the "
+            "`concorde task wait` command it returns in background Bash instead. Call "
             "`task_merge` again once you are woken: you may be refused again.",
             self.skill,
         )
@@ -429,13 +427,13 @@ class GuidanceTests(unittest.TestCase):
     def test_an_update_reaches_the_open_tasks_through_their_sessions(self):
         self.assertIn(
             "When a `concorde update` installed a new Protocol copy, its result lists the open "
-            "tasks and asks to merge the primary branch into each: answer each listed task's "
-            "session the same way, starting one again if it has ended, to merge the primary "
-            "branch into its task branch",
+            "tasks and asks to merge the primary branch into each. Answer each listed task's "
+            "session the same way, starting one again if it has ended. Ask it to merge the "
+            "primary branch into its task branch",
             self.skill,
         )
         self.assertIn(
-            "then to validate again, and deliver again when it had delivered, and report.",
+            "Then ask it to validate again, and deliver again when it had delivered, and report.",
             self.skill,
         )
         session = self.session
@@ -445,24 +443,26 @@ class GuidanceTests(unittest.TestCase):
             session,
         )
         self.assertIn(
-            "or asks you after a `concorde update` to take the primary branch's new Protocol "
-            "copy, merge the primary branch it names into your task branch",
+            "After a `concorde update`, it asks you to take the primary branch's new Protocol "
+            "copy. For a merge conflict or the new Protocol copy, merge the primary branch it "
+            "names into your task branch",
             session,
         )
         self.assertIn("Never rebase or switch branches", session)
-        self.assertIn("never merge the task branch into the primary branch", session)
+        self.assertIn("Never merge the task branch into the primary branch", session)
         self.assertIn("after a `concorde update` that asks for it", self.block)
 
     @verifies("scenario.main-session.small-change")
     def test_a_small_change_needs_the_developers_approval(self):
         self.assertIn(
             "a typo, a one-line fix or a wording correction, may be made directly there, but "
-            "only after you told the developer what you would change and why it is small",
+            "only after both of these events: - You told the developer what you would change "
+            "and why it is small.",
             self.skill,
         )
         self.assertIn("Without that approval, open a task.", self.skill)
         self.assertIn(
-            "that the developer approved after you said what you would change",
+            "The developer must approve it after you say what you would change",
             self.block,
         )
 
@@ -482,7 +482,7 @@ class GuidanceTests(unittest.TestCase):
             self.skill,
         )
         self.assertIn(
-            "decide those your authority covers, put all the others to the developer at once",
+            "Decide those your authority covers. Put all the others to the developer at once",
             self.skill,
         )
         self.assertIn("a task never asks the developer in place", self.block)
@@ -509,8 +509,9 @@ class GuidanceTests(unittest.TestCase):
             skill,
         )
         self.assertIn(
-            "Run `concorde task merge <task> --abort` instead when the refusal says the primary "
-            "branch is not at the merge commit or `--resume` answers `not_resumable`",
+            "When either condition below applies, run `concorde task merge <task> --abort` "
+            "instead: - The refusal says the primary branch is not at the merge commit. - "
+            "`--resume` answers `not_resumable`.",
             skill,
         )
         self.assertIn(
@@ -593,7 +594,7 @@ class GuidanceTests(unittest.TestCase):
             "start, in the task's decision log with its reason",
             self.session,
         )
-        self.assertIn("record every decision you made alone for a task", self.block)
+        self.assertIn("Record every decision you made alone for a task", self.block)
 
     @verifies("scenario.main-session.major-decision")
     def test_major_decisions_are_escalated_with_their_evidence(self):
@@ -603,7 +604,8 @@ class GuidanceTests(unittest.TestCase):
         )
         self.assertIn("changes what a Module promises to its users", self.skill)
         self.assertIn(
-            "never replace the chain with your own summary: add your link on top of it",
+            "never replace the chain with your own summary. In that case, add your link on "
+            "top of it",
             self.skill,
         )
         self.assertIn(
@@ -611,9 +613,9 @@ class GuidanceTests(unittest.TestCase):
             self.skill,
         )
         self.assertIn(
-            "A decision with major impact that no error carries, such as one a no-ask workflow "
-            "that ended `ok` took, is escalated the same way naming no run, file or "
-            "escalation: your link alone is then the whole chain.",
+            "Escalate a decision with major impact that no error carries the same way, naming "
+            "no run, file or escalation: your link alone is then the whole chain. One example "
+            "is a decision taken by a no-ask workflow that ended `ok`.",
             self.skill,
         )
 
@@ -829,7 +831,10 @@ class GuidanceTests(unittest.TestCase):
             (skill, "then run `concorde issues recover` (it has no MCP tool)"),
             (skill, "`uncommitted_change` means the record of the Issue you wrote"),
             (skill, "Never commit such a record by hand."),
-            (merging, "it first puts back the Issue records a killed Issue write left"),
+            (
+                merging,
+                "the command first puts back the Issue records a killed Issue write left",
+            ),
             (merging, "inspect it with `git diff` and revert it"),
             (
                 merging,
@@ -959,12 +964,12 @@ class ProjectMcpGuidanceTests(unittest.TestCase):
         )
         self.assertIn("--dangerously-load-development-channels server:concorde", block)
         self.assertIn(
-            "with the project MCP server's `task_merge`, which returns at once", skill
+            "The project MCP server's `task_merge`, which returns at once", skill
         )
         self.assertIn("`register_wait`", skill)
         self.assertIn("a research preview", skill)
         self.assertIn(
-            "run that command in background Bash, which wakes you when it returns",
+            "Run that command in background Bash, which wakes you when it returns",
             skill,
         )
         self.assertIn(
