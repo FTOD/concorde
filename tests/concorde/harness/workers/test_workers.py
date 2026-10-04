@@ -495,6 +495,36 @@ class SettingsTests(unittest.TestCase):
         # A link outside rw writes its target when that target is rw.
         self.assertIsNone(decide(root / "checks/to-calc.py"))
 
+    @verifies("scenario.workers.most-specific-entry")
+    def test_a_file_listed_apart_below_a_rw_directory_keeps_its_level(self):
+        root = self.project.root
+        grant_value = {
+            **self.project.grant,
+            "entries": [
+                *self.project.grant["entries"],
+                {"path": "src/a/calc.py", "level": "ro"},
+            ],
+        }
+        rules = deny_rules(root, grant_value, self.run, home=self.project.home)
+        self.assertIn(f"Edit(/{root}/src/a/calc.py)", rules)
+        self.assertNotIn(f"Read(/{root}/src/a/calc.py)", rules)
+        data = json.loads(
+            write_hook_source(root, grant_value)
+            .split("GRANT: dict = ", 1)[1]
+            .split("\n", 1)[0]
+        )
+        self.assertIn(
+            "src/a/calc.py is read-only",
+            write_hook.decide(
+                {"tool_input": {"file_path": f"{root}/src/a/calc.py"}}, data
+            ),
+        )
+        self.assertIsNone(
+            write_hook.decide(
+                {"tool_input": {"file_path": f"{root}/src/a/new.py"}}, data
+            )
+        )
+
     def test_a_rw_directory_below_a_ro_directory_stays_writable(self):
         grant_value = {
             **self.project.grant,
@@ -944,6 +974,23 @@ class WorkerRunTests(unittest.TestCase):
         )
         self.assertEqual("audit_violation", record["error"]["code"])
         self.assertIn("HEAD", record["rounds"][0]["audit"]["violations"])
+
+    @verifies("scenario.workers.most-specific-entry")
+    def test_the_audit_and_deletions_honour_a_file_listed_apart(self):
+        self.project.grant["entries"].append({"path": "src/a/calc.py", "level": "ro"})
+        written = self.project.run(
+            [{"writes": {f"{self.root}/src/a/calc.py": "changed\n"}}],
+            check_modules=None,
+        )
+        self.assertEqual("audit_violation", written["error"]["code"])
+        self.assertEqual(["src/a/calc.py"], written["rounds"][0]["audit"]["violations"])
+        git(self.root, "checkout", "--", "src/a/calc.py")
+        proposed = self.project.run(
+            [{"result": {"proposed_deletions": ["src/a/calc.py"]}}],
+            check_modules=None,
+        )
+        self.assertEqual(["src/a/calc.py"], proposed["deletions_refused"])
+        self.assertTrue((self.root / "src/a/calc.py").exists())
 
     @verifies("scenario.workers.deletion-through-link-refused")
     def test_a_proposed_deletion_through_a_directory_link_is_refused(self):

@@ -10,8 +10,8 @@
     "edits": [
       {
         "file": "src/concorde/worker_harness/write_hook.py",
-        "old": "            relative == path or (path.endswith(\"/\") and relative.startswith(path))\n",
-        "new": "            relative == path\n            or (level != \"rw\" and path.endswith(\"/\") and relative.startswith(path))\n"
+        "old": "            if path.endswith(\"/\") and relative.startswith(path)\n",
+        "new": "            if path.endswith(\"/\") and relative.startswith(path) and name != \"rw\"\n"
       },
       {
         "file": "src/concorde/worker_harness/settings.py",
@@ -20,8 +20,8 @@
       },
       {
         "file": "src/concorde/worker_harness/pi_policy.ts",
-        "old": "  if (listed(relative, policy.rw)) return null;\n",
-        "new": "  if (policy.rw.includes(relative)) return null;\n"
+        "old": "    for (const entry of policy[level])\n",
+        "new": "    for (const entry of level === \"rw\" ? [] : policy[level])\n"
       }
     ]
   },

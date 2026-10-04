@@ -196,7 +196,11 @@ Workers finds once it has checked that the worktree lies directly in the primary
 `.claude/worktrees/` ([placement](../workers/launch.md#placement)). The Harness hides
 each of them, and the primary worktree as it hides the user's home, wherever the repository lies;
 it never looks for Git paths itself beyond the `.git` entries it meets in the task worktree. The Harness relies on the grant listing every path's level (`rw`, `ro`,
-`names`, ungranted omitted); it never computes or widens a grant, only receives it frozen from
+`names`, ungranted omitted), and reads a path's level from the grant's most specific entry for it:
+its exact entry, else the longest directory entry above it, so that a file the grant lists apart
+from the directory around it, such as another Module's file below a writable directory, keeps its
+own level in the deny rules, the write hook, the permission extension and Workers' audit alike; it
+never computes or widens a grant, only receives it frozen from
 Workers. It generates nothing from a malformed grant: one that has no `entries` list, or an entry
 that is not an object with a non-empty path relative to the task worktree, never absolute, never
 leaving it through `..` and in canonical form, with no empty or `.` segment, and a level that is one
@@ -272,6 +276,9 @@ flags and environment listed here; the Harness generates everything the settings
   like one inside it, and so is its Git metadata.
 - A read denial's message is Claude Code's generic "denied by your permission settings", so the
   brief states the grant; write denials explain themselves via the hook.
+- The Bash sandbox writes a `rw` directory whole: a file the grant lists apart below it at `ro` or
+  `names` is protected from the file tools, but a Bash write to it is caught only by Workers'
+  audit after the round, which fails the run.
 - A single `rw` file granted to Bash is bind-mounted, so it can't be deleted or renamed from Bash,
   and a file created outside `rw` appears to succeed but lands on a throw-away filesystem, unseen by
   the audit — the brief warns of this.

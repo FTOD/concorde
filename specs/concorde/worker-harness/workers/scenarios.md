@@ -101,6 +101,14 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - THEN the writes through the three links in the `rw` directory are denied, each reason naming the target judged and the link, the one outside the worktree saying the link leads outside it
 - AND the write through the link to the `rw` file is allowed
 
+### scenario.workers.most-specific-entry — A file listed apart below a writable directory keeps its own level
+
+- GIVEN a grant whose `rw` directory entry has below it a file listed at `ro` on its own, such as another Module's file, and a directory listed at `names`
+- WHEN a worker writes that file, with the write hook on the Claude Code backend or the permission extension on pi, or changes it otherwise, or proposes its deletion
+- THEN the write is denied as read-only, a write below the `names` directory as named only, while another file of the `rw` directory stays writable
+- AND the deny rules forbid editing the file but not reading it
+- AND a change to it is an audit violation and its proposed deletion is refused
+
 ### scenario.workers.ro-edit-denied — A read-only file cannot be edited
 
 - GIVEN a running worker on the Claude Code backend whose grant makes a [Spec](../../glossary.json#concept.spec) file `ro`

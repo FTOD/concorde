@@ -93,23 +93,29 @@ function relativeTo(path: string, base: string): string {
   return path === base ? "" : path.slice(base.length + 1);
 }
 
-function listed(relative: string, entries: string[]): boolean {
-  return entries.some((entry) =>
-    entry.endsWith("/")
-      ? relative === entry.slice(0, -1) || relative.startsWith(entry)
-      : relative === entry,
-  );
-}
+type Level = "rw" | "ro" | "names";
 
-/** The grant level of a path relative to the task worktree, or null when it has none. */
-export function levelOf(
-  policy: Policy,
-  relative: string,
-): "rw" | "ro" | "names" | null {
-  if (listed(relative, policy.rw)) return "rw";
-  if (listed(relative, policy.ro)) return "ro";
-  if (listed(relative, policy.names)) return "names";
-  return null;
+/**
+ * The grant level of a path relative to the task worktree, or null when it has none: the most
+ * specific entry decides, an exact entry, else the longest directory entry at or above it.
+ */
+export function levelOf(policy: Policy, relative: string): Level | null {
+  const levels: Level[] = ["rw", "ro", "names"];
+  for (const level of levels)
+    if (policy[level].includes(relative)) return level;
+  let best: Level | null = null;
+  let length = -1;
+  for (const level of levels)
+    for (const entry of policy[level])
+      if (
+        entry.endsWith("/") &&
+        (relative === entry.slice(0, -1) || relative.startsWith(entry)) &&
+        entry.length > length
+      ) {
+        best = level;
+        length = entry.length;
+      }
+  return best;
 }
 
 /** Whether a worktree-relative path is the worktree's `.git`, a submodule's, or below one. */
@@ -184,13 +190,14 @@ export function writeDecision(policy: Policy, path: string): string | null {
   const relative = relativeTo(resolved, policy.worktree);
   if (isGit(relative) || inGit(policy, resolved))
     return "Git metadata is not available to workers";
-  if (listed(relative, policy.rw)) return null;
+  const level = levelOf(policy, relative);
+  if (level === "rw") return null;
   // A denial through a final link names the file judged and the link it was reached by.
   const named = link
     ? `${relative} (the target of the symbolic link ${path})`
     : relative;
-  if (listed(relative, policy.ro)) return `${named} is read-only for this task`;
-  if (listed(relative, policy.names))
+  if (level === "ro") return `${named} is read-only for this task`;
+  if (level === "names")
     return `only the name of ${named} is visible to this task`;
   return (
     `${named} is not in this task's grant; a new file outside the bound directories is ` +

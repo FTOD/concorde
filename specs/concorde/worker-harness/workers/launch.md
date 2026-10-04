@@ -279,11 +279,15 @@ again, it changed, and gone, as an untracked file deleted is, it was deleted.
 
 | Observation since the snapshot | Verdict |
 | --- | --- |
-| a changed or new file in the `rw` list | allowed |
-| a changed or new file outside the `rw` list | violation |
+| a changed or new file whose level is `rw` | allowed |
+| a changed or new file of any other level, or of none | violation |
 | a deleted file | violation |
 | a changed `HEAD`, index or branch | violation |
 | a change under a path Git ignores | not observed |
+
+A file's level is that of the grant's most specific entry for it, its exact entry, else the longest
+directory entry above it, as the Harness reads it; so a file the grant lists `ro` below a `rw`
+directory is not writable. Proposed deletions read the level the same way.
 
 Each round records its audit as an object with:
 

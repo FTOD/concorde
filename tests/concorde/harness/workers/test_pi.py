@@ -525,6 +525,24 @@ class PiPolicyTests(unittest.TestCase):
         )
         self.assertIsNone(out["write:to-rw"])
 
+    @verifies("scenario.workers.most-specific-entry")
+    def test_a_file_listed_apart_below_a_rw_directory_keeps_its_level(self):
+        w = self.worktree
+        self.policy["ro"].append("src/a/calc.py")
+        self.policy["names"].append("src/a/sub/")
+        out = self.decide(
+            reads={"ro": f"{w}/src/a/calc.py"},
+            writes={
+                "ro": f"{w}/src/a/calc.py",
+                "names": f"{w}/src/a/sub/x.py",
+                "rw": f"{w}/src/a/other.py",
+            },
+        )
+        self.assertIsNone(out["read:ro"])
+        self.assertIn("src/a/calc.py is read-only", out["write:ro"])
+        self.assertIn("only the name of src/a/sub/x.py", out["write:names"])
+        self.assertIsNone(out["write:rw"])
+
     @verifies("scenario.workers.runtime-paths-readable")
     def test_a_runtime_path_inside_the_worktree_is_readable(self):
         w = self.worktree

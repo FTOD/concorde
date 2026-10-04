@@ -62,7 +62,9 @@ path decides it:
 | another path inside the user's home or the primary worktree | deny | the path is outside this task's boundary |
 | any other path | allow | — |
 
-The last row keeps system directories readable, as on the Claude Code backend. A runtime path inside
+A path's level is that of the grant's most specific entry for it, its exact entry, else the
+longest directory entry above it, as in [the write hook](claude-code.md#write-hook). The last row
+keeps system directories readable, as on the Claude Code backend. A runtime path inside
 the task worktree, such as `.venv` or `node_modules`, is readable to `read` as to the sandbox, which
 lists it in `allowRead`; a search rooted at it, or at a directory holding one, is allowed too.
 

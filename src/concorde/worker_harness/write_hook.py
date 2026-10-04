@@ -36,13 +36,18 @@ def decide(data: dict, grant: dict) -> str | None:
     if ".git" in relative.split("/"):
         return "Git metadata is not available to workers"
 
-    def listed(level: str) -> bool:
-        return any(
-            relative == path or (path.endswith("/") and relative.startswith(path))
-            for path in grant[level]
-        )
-
-    if listed("rw"):
+    # The most specific entry decides: an exact entry, else the longest directory entry above.
+    levels = ("rw", "ro", "names")
+    level = next((name for name in levels if relative in grant[name]), None)
+    if level is None:
+        covering = [
+            (len(path), name)
+            for name in levels
+            for path in grant[name]
+            if path.endswith("/") and relative.startswith(path)
+        ]
+        level = max(covering)[1] if covering else None
+    if level == "rw":
         return None
     # A denial through a final link names the file judged and the link it was reached by.
     named = (
@@ -50,9 +55,9 @@ def decide(data: dict, grant: dict) -> str | None:
         if os.path.islink(absolute)
         else relative
     )
-    if listed("ro"):
+    if level == "ro":
         return f"{named} is read-only for this task"
-    if listed("names"):
+    if level == "names":
         return f"only the name of {named} is visible to this task"
     return (
         f"{named} is not in this task's grant; a new file outside the bound directories is "

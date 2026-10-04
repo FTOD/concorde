@@ -37,7 +37,7 @@ from ..kernel.schema import register, validate
 from ..kernel.tracing.kinds import NodeKind, register as register_kinds
 from ..kernel.tracing import layout
 from ..kernel.tracing.node import Node
-from .audit import audit, rw_allows, snapshot
+from .audit import audit, snapshot
 from .claude_backend import BackendRefusal, ClaudeBackend
 from .pi_backend import PiBackend
 from .placement import PlacementError, place
@@ -753,7 +753,7 @@ def _run(
                 "Workers launches only with a complete frozen grant, which its caller computes",
             )
         try:
-            rw = grant_view(request.grant).paths("rw")
+            view = grant_view(request.grant)
             _grant_shape(request.grant, request.task_type)
         except SettingsError as error:
             return fail(
@@ -856,7 +856,7 @@ def _run(
             if source["transcript"]:
                 record["transcript"] = (trace / TRANSCRIPT).as_posix()
             progress.phase("audit")
-            verdict = audit(worktree, before, rw)
+            verdict = audit(worktree, before, lambda path: view.level(path) == "rw")
             round_record["audit"] = verdict.record()
             # A write outside the grant is reported whatever else went wrong in the round.
             outside = (
@@ -1208,13 +1208,9 @@ def _finalize(worktree: Path, record: dict, result: dict) -> list[str]:
     """Perform the proposed deletions after the last round's clean audit; return each failed one
     with its error. A repeated entry is dropped, an absent one recorded as absent, and a failure does not
     stop the others."""
-    rw = [
-        entry["path"]
-        for entry in json.loads(
-            (Path(record["run_directory"]) / "grant.json").read_text()
-        )["entries"]
-        if entry["level"] == "rw"
-    ]
+    view = grant_view(
+        json.loads((Path(record["run_directory"]) / "grant.json").read_text())
+    )
     seen: set[Path] = set()
     failures: list[str] = []
     for proposed in result.get("proposed_deletions", []):
@@ -1231,7 +1227,7 @@ def _finalize(worktree: Path, record: dict, result: dict) -> list[str]:
             record["deletions_refused"].append(proposed)
             continue
         exists = os.path.lexists(absolute)
-        if not rw_allows(rw, relative) or (exists and not absolute.is_file()):
+        if view.level(relative) != "rw" or (exists and not absolute.is_file()):
             record["deletions_refused"].append(proposed)
         elif not exists:
             record["deletions_absent"].append(relative)

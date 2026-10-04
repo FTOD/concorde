@@ -16,6 +16,7 @@ from __future__ import annotations
 import hashlib
 import os
 import subprocess
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -92,13 +93,6 @@ def snapshot(worktree: Path) -> Snapshot:
     return Snapshot(head, _digest(index_path), files)
 
 
-def rw_allows(rw: list[str], path: str) -> bool:
-    return any(
-        path == entry or (entry.endswith("/") and path.startswith(entry))
-        for entry in rw
-    )
-
-
 @dataclass(frozen=True)
 class AuditResult:
     changed: tuple[str, ...]
@@ -116,8 +110,11 @@ class AuditResult:
         }
 
 
-def audit(worktree: Path, before: Snapshot, rw: list[str]) -> AuditResult:
-    """Compare the worktree now with ``before`` and judge every change against ``rw``."""
+def audit(
+    worktree: Path, before: Snapshot, writable: Callable[[str], bool]
+) -> AuditResult:
+    """Compare the worktree now with ``before`` and judge every change: ``writable`` tells
+    whether the grant's most specific entry for a worktree-relative path is ``rw``."""
     after = snapshot(worktree)
     violations: list[str] = []
     if after.head != before.head:
@@ -135,9 +132,9 @@ def audit(worktree: Path, before: Snapshot, rw: list[str]) -> AuditResult:
         changed.append(path)
         if new is None:
             violations.append(f"{path} (deleted)")
-        elif not rw_allows(rw, path):
+        elif not writable(path):
             violations.append(path)  # a write outside rw
     return AuditResult(tuple(changed), tuple(dict.fromkeys(violations)))
 
 
-__all__ = ["AuditResult", "Snapshot", "audit", "rw_allows", "snapshot"]
+__all__ = ["AuditResult", "Snapshot", "audit", "snapshot"]
