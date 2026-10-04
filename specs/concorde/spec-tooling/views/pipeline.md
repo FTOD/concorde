@@ -118,9 +118,10 @@ document's first level-1 heading, falling back to the owner's title.
      each `concorde-contract` fence;
    - **diagrams**: each `d2` block is rendered by the `d2` program to an SVG staged beside the page
      and replaced by an image of it. A checked block is first parsed in the semantic subset, whose
-     violation fails the build with the document and line; each shape then receives a class of the
-     house style from what its label resolves to (the page's Module, a descendant, another Module, a
-     concept, a realization, a realization with file rows, a qualified node) and each edge the class
+     violation fails the build with the document and the line of its source file; each shape then
+     receives a class of the house style from what its label resolves to (the page's Module, a
+     descendant, another Module, a concept, a realization, a realization with file rows, a qualified
+     node) and each edge the class
      `uses` when it joins two Modules without a label, and `relates` otherwise. A container of five
      or more children that no edge touches is laid out as a near-square grid instead of one long
      row. A qualified shape that names one of the page's own nodes shows only the node's title,

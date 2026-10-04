@@ -59,6 +59,14 @@ shapes are in the [contracts](contracts.md).
 - AND a step that takes the workflow lock after the close, finding the binding gone or changed, is refused with `workspace_retired` the same way, its cause `binding_gone` or `binding_changed`
 - AND `concorde workflow report` there is refused with a `component` link `workspace_retired` of reason `environment`
 
+### scenario.workflows.step-adopted — A run its step command did not record is adopted
+
+- GIVEN a workspace whose step `survey` is recorded as starting, with its node `workflow/steps/1-survey/` and no run, because the step command that launched its run ended before it recorded the run
+- WHEN the step command is run for `survey` while that run still waits for the [workspace lock](../glossary.json#concept.workspace-lock)
+- THEN it starts no run, waiting within its `--wait`, and prints the step outcome with state `running` and no run when the bound ends first
+- AND once the run has entered `run/` of the step's node, running the same command again starts no run, records that run in the step and prints its outcome
+- BUT when no run lies in the step's node and no run of the workspace runs, the step's run never started: the command ends the step's node lost and starts the run anew under the key `survey`, superseding the starting step
+
 ### scenario.workflows.step-cached — A finished step returns at once
 
 - GIVEN a workspace whose step `survey` has finished `ok`
@@ -124,6 +132,14 @@ shapes are in the [contracts](contracts.md).
 - WHEN the step command is run for that key again
 - THEN it prints the step outcome with state `lost` and a `workflow` link naming the key, the run and the dead runner, with the end of the runner's output, and exits with status 1
 - AND `concorde workflow report --lost describe:module.checkout` lists the step as a lost problem and has status `failed`
+
+### scenario.workflows.lost-first — A first step lost before any record
+
+- GIVEN a task worktree of the workspace `adopt` with no workflow recorded, whose interactive brownfield workflow's step agents returned nothing for its first step `survey`
+- WHEN the script reports with `concorde workflow report --workflow brownfield --mode interactive --lost survey`
+- THEN the workflow result has status `failed`, the mode `interactive`, lists `survey` as a lost problem and its error is a `workflow` link `step_lost`
+- AND the result is saved in the workflow's node, created for it, which names the workflow `brownfield`
+- BUT `concorde workflow report --lost survey` without `--workflow` is refused with `no_workflow`
 
 ### scenario.workflows.lost-finished — A key reported lost keeps its finished run
 

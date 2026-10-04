@@ -9,8 +9,11 @@ binding's ``.concorde`` is held. The lock is never taken again on a file that wa
 while waiting for it, and once held the binding is read again: whoever retires the workspace, as a
 task's close does, removes the lock file while holding it, so a step or report that finds the lock
 gone or the binding gone or changed is refused with ``workspace_retired`` before it writes anything.
-Paths inside the record are relative to the workflow's node; the record ``load`` returns names the
-answers files absolutely, as the step command passes them on.
+A step is recorded as starting, without a run, before its run is launched, and its run is
+written into it once announced; a later call finds a step still starting when the command that
+launched it ended first, and adopts the run found in the step's node (``adopt``). Paths inside the
+record are relative to the workflow's node; the record ``load`` returns names the answers files
+absolutely, as the step command passes them on.
 """
 
 from __future__ import annotations
@@ -23,8 +26,8 @@ from pathlib import Path
 
 from ..kernel import binding as workspace_binding
 from ..kernel.refusal import KernelError
-from ..execution.runs import Store
-from ..kernel.schema import register
+from ..execution.runs import RUN_ID, Store
+from ..kernel.schema import register, validate_typed
 from ..kernel.tracing.kinds import NodeKind, register as register_kinds
 from ..kernel.tracing import layout, locks
 from ..kernel.tracing import node as trace
@@ -35,11 +38,11 @@ _MODE = {"enum": ["interactive", "no-ask"]}
 # A free-form object, such as an error link: the typed-value check closes an object that has no
 # additionalProperties.
 _OBJECT = {"type": "object", "additionalProperties": {}}
-# contract.workflows.workflow-trace, version 1
+# contract.workflows.workflow-trace, version 2
 WORKFLOW_TRACE = "concorde-workflow-trace"
 register(
     WORKFLOW_TRACE,
-    1,
+    2,
     {
         "type": "object",
         "additionalProperties": False,
@@ -92,11 +95,11 @@ register(
         },
     },
 )
-# contract.workflows.step-trace, version 1
+# contract.workflows.step-trace, version 2
 STEP_TRACE = "concorde-step-trace"
 register(
     STEP_TRACE,
-    1,
+    2,
     {
         "type": "object",
         "additionalProperties": False,
@@ -204,28 +207,28 @@ def load(space: Workspace) -> dict | None:
         return None
     try:
         node = json.loads(path.read_text(encoding="utf-8"))
-        data = node["content"]["data"]
-    except (OSError, ValueError, KeyError, TypeError) as error:
+        content = node.get("content") if isinstance(node, dict) else None
+        data = validate_typed(content, WORKFLOW_TRACE)["data"]
+    except (OSError, ValueError, KernelError) as error:
         raise WorkflowError(
             "record_unreadable", f"the workflow record {path} cannot be read: {error}"
         ) from error
-    steps = []
-    for step in data.get("steps", []):
-        steps.append(
-            {
-                **step,
-                "answers": (space.directory / step["answers"]).as_posix()
-                if step.get("answers")
-                else None,
-            }
-        )
+    steps = [
+        {
+            **step,
+            "answers": (space.directory / step["answers"]).as_posix()
+            if step["answers"]
+            else None,
+        }
+        for step in data["steps"]
+    ]
     reports = [
         {
             **item,
             "path": (space.directory / item["path"]).as_posix(),
             "rendered": (space.directory / item["rendered"]).as_posix(),
         }
-        for item in data.get("reports", [])
+        for item in data["reports"]
     ]
     return {
         "workspace": space.name,
@@ -315,7 +318,7 @@ def _write(space: Workspace, record: dict, *, ended: dict | None = None) -> None
         )
     node["content"] = {
         "type_id": WORKFLOW_TRACE,
-        "schema_version": 1,
+        "schema_version": 2,
         "data": {"workflow": record["workflow"], "steps": steps, "reports": reports},
     }
     trace.write(space.directory, node)
@@ -323,9 +326,11 @@ def _write(space: Workspace, record: dict, *, ended: dict | None = None) -> None
 
 
 @contextmanager
-def step_lock(space: Workspace):
+def step_lock(space: Workspace, wait: float | None = None):
     """The workspace's workflow lock, held while a key is looked up, started and recorded, a step's
-    node ended or a report saved; ``WorkspaceRetired`` when the workspace was retired meanwhile.
+    node ended or a report saved; ``WorkspaceRetired`` when the workspace was retired meanwhile,
+    ``locks.LockBusy`` when another command still holds it after ``wait`` seconds (None: as long
+    as it takes).
 
     The lock is a leaf: nothing waits for another lock while holding it, so that a close holding
     the workspace lock always gets it soon. A lock file removed or replaced while this process
@@ -335,7 +340,7 @@ def step_lock(space: Workspace):
     """
     try:
         with locks.hold(
-            space.lock, f"workflow of workspace {space.name}", wait=None, retake=False
+            space.lock, f"workflow of workspace {space.name}", wait=wait, retake=False
         ):
             _check_binding(space)
             yield
@@ -376,6 +381,12 @@ def _check_binding(space: Workspace) -> None:
             f"workspace {space.name} (changed: {', '.join(changed)}); a workflow writes only in "
             "the workspace whose binding it read",
         )
+
+
+def starting(step: dict) -> bool:
+    """Whether a recorded step is still starting: recorded before its run was launched, with
+    neither the run nor a refusal written into it yet."""
+    return step["run_id"] is None and step.get("error") is None
 
 
 def current_steps(record: dict | None) -> list[dict]:
@@ -426,8 +437,9 @@ def _write_step(
     result: dict | None = None,
     error: dict | None = None,
 ) -> None:
-    """Write the step's node: running while its run runs, ended once it finished, was lost or
-    was refused. An ended node is written again only to mark it superseded."""
+    """Write the step's node: running while the step starts and its run runs, ended once it
+    finished, was lost or was refused. An ended node is written again only to mark it superseded.
+    The node's identity is its folder name, ``<n>-<key>``: a retried key has one node per attempt."""
     folder = space.directory / step["node"]
     existing = trace.read(folder)
     data = {
@@ -445,7 +457,7 @@ def _write_step(
     kind = "command" if step["name"] in _commands() else "operation"
     record = existing or {
         "schema_version": 1,
-        "id": step["key"],
+        "id": folder.name,
         "kind": "step",
         "started_at": trace.now(),
         "ended_at": None,
@@ -474,7 +486,7 @@ def _write_step(
         record.update(
             ended_at=at,
             status=status if status in ("ok", "blocked", "failed") else "failed",
-            outcome=state if state != "finished" else status,
+            outcome=state,
             error=error or (result or {}).get("error"),
             usage=trace.usage(
                 duration_seconds=trace.seconds_between(record["started_at"], at)
@@ -482,7 +494,7 @@ def _write_step(
         )
         if record["status"] not in ("blocked", "failed"):
             record["error"] = None
-    record["content"] = {"type_id": STEP_TRACE, "schema_version": 1, "data": data}
+    record["content"] = {"type_id": STEP_TRACE, "schema_version": 2, "data": data}
     trace.write(folder, record)
 
 
@@ -497,17 +509,16 @@ def record_step(
     workflow: str,
     key: str,
     name: str,
-    run_id: str | None,
     mode: str,
     answers: str | None,
-    error: dict | None = None,
     folder: Path | None = None,
 ) -> dict:
-    """Record one step under the held workflow lock: name the workflow on the first step,
-    supersede, append, and write the step's node.
+    """Record one step as starting, before its run is launched, under the held workflow lock: name
+    the workflow on the first step, supersede, append, and write the step's node.
 
     When a current step has the same base key, it and every step recorded after it are marked
     superseded, so a retried or answered step makes the procedure's later steps run again.
+    ``set_run`` writes the announced run, or the refusal, into the step.
     """
     record = load(space)
     check_step(space, record, workflow, key, name)
@@ -535,10 +546,10 @@ def record_step(
     entry = {
         "key": key,
         "name": name,
-        "run_id": run_id,
+        "run_id": None,
         "mode": mode,
         "answers": answers,
-        "error": error,
+        "error": None,
         "superseded": False,
         "node": folder.relative_to(space.directory).as_posix(),
         "at": now(),
@@ -549,57 +560,91 @@ def record_step(
         node = step_node(space, step)
         if node is not None:
             _write_step(space, step, state=(node["content"]["data"]["state"]))
-    _write_step(
-        space,
-        {**entry, "workflow": workflow},
-        state="refused" if run_id is None else "running",
-        error=error,
-    )
+    _write_step(space, {**entry, "workflow": workflow}, state="running")
     return record
 
 
-def end_step(space: Workspace, step: dict, state: str, result: dict | None) -> None:
-    """End a step's node once its run finished or was lost; a node already ended is kept."""
+def set_run(
+    space: Workspace, node: str, run_id: str | None, error: dict | None = None
+) -> dict:
+    """Write into the starting step whose node is ``node`` its announced run, or the refusal of a
+    run that did not start, under the held workflow lock; the step. ``WorkflowError``
+    (``record_unwritable``) when the record cannot be written, the step staying starting."""
+    record = load(space)
+    step = next(
+        (
+            s
+            for s in (record or {}).get("steps", [])
+            if s["node"] == node and starting(s)
+        ),
+        None,
+    )
+    if step is None:
+        raise WorkflowError(
+            "record_unwritable",
+            f"the workflow record of workspace {space.name} holds no starting step in {node}",
+        )
+    step.update(run_id=run_id, error=error)
+    try:
+        _write(space, record)
+        _write_step(
+            space,
+            step,
+            state="refused" if run_id is None else "running",
+            error=error,
+        )
+    except OSError as failure:
+        raise WorkflowError(
+            "record_unwritable",
+            f"the workflow record of workspace {space.name} could not record the step in "
+            f"{node}: {failure}",
+        ) from failure
+    return step
+
+
+def node_run(space: Workspace, step: dict) -> str | None:
+    """The run whose node lies in ``run/`` of the step's node, or None while none entered it."""
+    found = trace.read(space.directory / step["node"] / "run")
+    identity = (found or {}).get("id")
+    return identity if isinstance(identity, str) and RUN_ID.match(identity) else None
+
+
+def adopt(space: Workspace, step: dict) -> str | None:
+    """The run of a step still starting, found in its node and written into the record under the
+    held workflow lock; None while no run entered the node. The command that launched the run
+    ended before it could record it, so the step's node, where the run was placed, names it."""
+    run_id = node_run(space, step)
+    if run_id is not None:
+        set_run(space, step["node"], run_id)
+        step["run_id"] = run_id
+    return run_id
+
+
+def end_step(
+    space: Workspace,
+    step: dict,
+    state: str,
+    result: dict | None,
+    error: dict | None = None,
+) -> None:
+    """End a step's node once its run finished or was lost, with ``error`` as the step's own link
+    for a lost one; a node already ended is kept."""
     node = step_node(space, step)
     if node is None or node.get("ended_at") or state == "running":
         return
-    lost = None
-    if state == "lost":
-        lost = {
-            "level": "workflow",
-            "actor": f"Workflow step {step['key']} (workspace {space.name})",
-            "code": "step_lost",
-            "detail": f"the run {step['run_id']} of step {step['key']} has no result and no "
-            "living runner",
-            "evidence": [{"kind": "trace", "ref": step["run_id"] or "", "detail": ""}],
-            "attempts": [],
-            "unhandled": {
-                "reason": "environment",
-                "explanation": "the run's runner ended without writing its result",
-            },
-            "options": [],
-            "recommendation": "",
-            "causes": [],
-        }
-    _write_step(space, step, state=state, result=result, error=lost)
+    _write_step(space, step, state=state, result=result, error=error)
 
 
 def record_report(space: Workspace, result: dict, rendered: str) -> dict:
     """Save a report and its rendering in the workflow's node, list it there and end the node
-    with the report's status; the caller holds the workflow lock (``step_lock``)."""
-    record = load(space)
-    if record is None:
-        raise WorkflowError(
-            "no_workflow",
-            f"workspace {space.name} ran no workflow step; there is nothing to report",
-        )
-    from ..execution.runs import load_result, run_state
-
-    # Every step whose run ended by now has its node ended with it.
-    for step in record["steps"]:
-        if step.get("run_id"):
-            state = run_state(space.store, step["run_id"])
-            end_step(space, step, state, load_result(space.store, step["run_id"]))
+    with the report's status; the caller holds the workflow lock (``step_lock``). A workspace
+    whose first step was lost before anything was recorded gets its workflow's node here."""
+    record = load(space) or {
+        "workspace": space.name,
+        "workflow": result["workflow"],
+        "steps": [],
+        "reports": [],
+    }
     number = len(record["reports"]) + 1
     folder = space.directory / "reports"
     folder.mkdir(parents=True, exist_ok=True)
@@ -635,14 +680,18 @@ __all__ = [
     "WorkflowError",
     "Workspace",
     "WorkspaceRetired",
+    "adopt",
     "base_key",
     "check_step",
     "current_steps",
     "end_step",
     "load",
     "next_step_folder",
+    "node_run",
     "record_report",
     "record_step",
+    "set_run",
+    "starting",
     "step_lock",
     "workspace",
     "write_answers",

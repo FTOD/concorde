@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import IO
 from urllib.parse import unquote, urlparse
 
-from ..errors import SpecError
+from ..errors import SpecError, unexpected
 from .tools import TOOLS, ToolError, call, canonical
 
 SERVER_INFO = {"name": "concorde-spec", "version": "1"}
@@ -30,6 +30,7 @@ class Session:
         self.environment = dict(os.environ if environment is None else environment)
         self.root: Path | None = None
         self.root_error: str | None = None
+        self.resolved = False
         self.client_roots = False
         self.pending: list[dict] = []
         self.next_id = 0
@@ -76,7 +77,11 @@ class Session:
                 message = json.loads(line)
             except ValueError:
                 continue
-            if message.get("id") == identity and "method" not in message:
+            if (
+                isinstance(message, dict)
+                and message.get("id") == identity
+                and "method" not in message
+            ):
                 return message
             self.pending.append(message)
 
@@ -91,8 +96,11 @@ class Session:
             self.root_error = "no CLAUDE_PROJECT_DIR and the client offers no roots"
             return
         response = self.request_client("roots/list")
-        roots = ((response or {}).get("result") or {}).get("roots") or []
-        files = [item.get("uri", "") for item in roots if isinstance(item, dict)]
+        result = response.get("result") if isinstance(response, dict) else None
+        roots = result.get("roots") if isinstance(result, dict) else None
+        roots = roots if isinstance(roots, list) else []
+        files = [item.get("uri") for item in roots if isinstance(item, dict)]
+        files = [uri for uri in files if isinstance(uri, str)]
         files = [uri for uri in files if uri.startswith("file://")]
         if len(files) != 1:
             self.root_error = (
@@ -116,13 +124,18 @@ class Session:
         if method is None:
             return  # a stray response
         if identity is None:
-            if method == "notifications/initialized" and self.root is None:
+            if method == "notifications/initialized" and not self.resolved:
+                self.resolved = True
                 self.resolve_root()
             return
         if method == "initialize":
-            params = message.get("params") or {}
+            params = message.get("params")
+            params = params if isinstance(params, dict) else {}
             requested = params.get("protocolVersion")
-            self.client_roots = "roots" in (params.get("capabilities") or {})
+            capabilities = params.get("capabilities")
+            self.client_roots = (
+                isinstance(capabilities, dict) and "roots" in capabilities
+            )
             self.reply(
                 identity,
                 {
@@ -150,11 +163,7 @@ class Session:
                 },
             )
         elif method == "tools/call":
-            params = message.get("params") or {}
-            self.reply(
-                identity,
-                self.tool_result(params.get("name"), params.get("arguments") or {}),
-            )
+            self.reply(identity, self.tool_result(message.get("params", {})))
         else:
             self.send(
                 {
@@ -164,7 +173,8 @@ class Session:
                 }
             )
 
-    def tool_result(self, name, arguments) -> dict:
+    def tool_result(self, params) -> dict:
+        """Answer one ``tools/call``; arguments default to ``{}`` only when they are absent."""
         try:
             if self.root is None:
                 raise ToolError(
@@ -172,7 +182,15 @@ class Session:
                     self.root_error
                     or "the session has no root yet: the client has not sent initialized",
                 )
-            value, error = call(self.root, name, arguments), False
+            if not isinstance(params, dict):
+                raise ToolError(
+                    "invalid_input",
+                    "the params of tools/call must be an object, not a JSON "
+                    f"{type(params).__name__}",
+                    "params",
+                )
+            value = call(self.root, params.get("name"), params.get("arguments", {}))
+            error = False
         except SpecError as failure:
             value, error = {"error": failure.record()}, True
         return {
@@ -185,8 +203,24 @@ class Session:
 
     def run(self) -> int:
         while (message := self.receive()) is not None:
-            if isinstance(message, dict):
+            if not isinstance(message, dict):
+                continue
+            try:
                 self.handle(message)
+            except Exception as error:  # noqa: BLE001 -- one bad message never ends the session
+                if message.get("method") is not None and message.get("id") is not None:
+                    record = unexpected(error).record()
+                    self.send(
+                        {
+                            "jsonrpc": "2.0",
+                            "id": message["id"],
+                            "error": {
+                                "code": -32603,
+                                "message": record["message"],
+                                "data": {"error": record},
+                            },
+                        }
+                    )
         return 0
 
 

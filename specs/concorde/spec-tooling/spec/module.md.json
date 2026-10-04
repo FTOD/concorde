@@ -150,7 +150,9 @@
         "tests/concorde/spec/test_module_model.py",
         "tests/concorde/spec/test_requirements_and_verification.py",
         "tests/concorde/spec/test_typed_data.py",
-        "tests/concorde/spec/test_structured_results.py"
+        "tests/concorde/spec/test_structured_results.py",
+        "tests/concorde/spec/test_frontmatter.py",
+        "tests/concorde/spec/test_loading.py"
       ]
     }
   ],

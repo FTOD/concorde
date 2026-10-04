@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Callable, TypeVar
 
 from .errors import SpecError
-from .typed_data import checked_path
+from .typed_data import TypedDataError, checked_path
 
 DECORATOR = "verifies"
 ATTRIBUTE = "concorde_scenarios"
@@ -211,15 +211,21 @@ def parse_source(source: str | bytes, filename: str) -> ast.Module:
 
 def _file_declarations(root: Path, relative: str) -> list[Verification]:
     typescript = relative.endswith(TYPESCRIPT_SUFFIXES)
-    target = checked_path(root, relative)
-    if target.is_symlink() or not target.is_file():
-        return []
+    try:
+        target = checked_path(root, relative)
+        if target.is_symlink() or not target.is_file():
+            return []
+        data = target.read_bytes()
+    except (OSError, TypedDataError) as error:
+        raise DeclarationError(
+            relative, None, f"cannot read the test file: {error}"
+        ) from error
     if typescript:
         return _typescript_declarations(
-            relative, target.read_text(encoding="utf-8", errors="replace")
+            relative, data.decode("utf-8", errors="replace")
         )
     try:
-        tree = parse_source(target.read_bytes(), relative)
+        tree = parse_source(data, relative)
     except (SyntaxError, ValueError) as error:
         raise DeclarationError(
             relative,

@@ -253,18 +253,31 @@ async function renderBlock(
   return runD2(input, `${page.sourcePath}:${line}`, registry.projectRoot);
 }
 
-/** Replace every `d2` block of a staged page with an image of its rendering. */
+/** Replace every `d2` block of a staged page with an image of its rendering, written beside
+ * `stagedFile`; with `stagedFile` null every block is checked and rendered, and nothing written.
+ * Diagnostics name the block's line in the source file: staging inserts lines but never adds,
+ * removes or reorders a `d2` block, so the n-th block of `content` is the n-th of the reading. */
 export async function renderDiagrams(
   registry: ScopedRegistry,
   page: Page,
   content: string,
-  stagedFile: string,
+  stagedFile: string | null,
 ): Promise<string> {
   const fences = fenceRanges(content).filter((f) => f.language === "d2");
+  const sourceFences = fenceRanges(page.content).filter(
+    (f) => f.language === "d2",
+  );
+  if (sourceFences.length !== fences.length)
+    throw new Error(
+      `Staging ${page.sourcePath} changed its number of d2 blocks from ${sourceFences.length} to ${fences.length}`,
+    );
   let out = "";
   let cursor = 0;
   for (const [index, fence] of fences.entries()) {
-    const line = content.slice(0, fence.start).split("\n").length;
+    const line =
+      page.contentLine -
+      1 +
+      page.content.slice(0, sourceFences[index].start).split("\n").length;
     const illustrative = isIllustrative(fence.info);
     const svg = await renderBlock(
       registry,
@@ -275,7 +288,8 @@ export async function renderDiagrams(
     );
     const digest = createHash("sha256").update(svg).digest("hex").slice(0, 12);
     const name = `${posix.basename(page.stagedPath, ".md")}.diagram-${index + 1}-${digest}.svg`;
-    await writeFile(resolve(dirname(stagedFile), name), svg);
+    if (stagedFile !== null)
+      await writeFile(resolve(dirname(stagedFile), name), svg);
     out += content.slice(cursor, fence.start);
     out += `${illustrative ? `${ILLUSTRATIVE_LABEL}\n\n` : ""}![Diagram ${index + 1} of ${page.title}](./${name})`;
     cursor = fence.end;

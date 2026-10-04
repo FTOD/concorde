@@ -13,7 +13,7 @@ The review works on the worktree it starts in. With a
 [workspace binding](../../glossary.json#concept.workspace-binding) there, it reviews that
 [workspace](../../glossary.json#concept.workspace), and `--modules` defaults to the binding's
 Modules. Without one it is an [unbound run](../../glossary.json#concept.unbound-run), for instance
-on the primary worktree, and judges the Specs as merged there. `--modules` names one or more
+on the primary worktree, and judges the [Specs](../../glossary.json#concept.spec) as merged there. `--modules` names one or more
 registered Modules of that worktree. `--check-findings` adds the checker. The reviewer and the
 checker are the Operation's two workers, with the [worker ids](../../glossary.json#concept.worker-id)
 `reviewer` and `checker`, so the

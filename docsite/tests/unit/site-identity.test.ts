@@ -166,6 +166,9 @@ describe("site identity schema 1", () => {
     ["schema_version", { ...validValue, schema_version: 2 }, /schema_version/],
     ["empty title", { ...validValue, title: "" }, /title/],
     ["non-absolute url", { ...validValue, url: "example.com" }, /url/],
+    ["url without a host", { ...validValue, url: "https://" }, /url/],
+    ["url with an empty host", { ...validValue, url: "https:///path" }, /url/],
+    ["url with whitespace", { ...validValue, url: "https://a b.com" }, /url/],
     [
       "baseUrl missing leading slash",
       { ...validValue, baseUrl: "atlas/" },
@@ -189,6 +192,11 @@ describe("site identity schema 1", () => {
     [
       "non-absolute repository",
       { ...validValue, repository: "not-a-url" },
+      /repository/,
+    ],
+    [
+      "repository without a host",
+      { ...validValue, repository: "http://:80/x" },
       /repository/,
     ],
   ])(

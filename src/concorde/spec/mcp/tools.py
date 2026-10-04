@@ -117,9 +117,9 @@ def _strings(arguments: dict, name: str) -> list[str]:
 
 
 def _string(arguments: dict, name: str, required: bool = True) -> str | None:
-    value = arguments.get(name)
-    if value is None and not required:
+    if name not in arguments and not required:
         return None
+    value = arguments.get(name)
     if not isinstance(value, str) or not value:
         raise ToolError(
             "invalid_input",
@@ -274,10 +274,10 @@ HANDLERS = {
 
 def call(root: Path, name: str, arguments: dict) -> dict:
     """Run one tool; raise a ``SpecError`` that says what failed, where and why."""
-    if name not in HANDLERS:
+    if not isinstance(name, str) or name not in HANDLERS:
         raise ToolError(
             "invalid_input",
-            f"unknown tool {name!r}; the tools are {', '.join(HANDLERS)}",
+            f"unknown tool {repr(name)[:100]}; the tools are {', '.join(HANDLERS)}",
             "name",
         )
     if not isinstance(arguments, dict):

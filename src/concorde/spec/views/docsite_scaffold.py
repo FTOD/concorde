@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
-from ..changes import apply_files, file_change
+from ..changes import apply_files
 from ..errors import system_cause
 from ..model import Finding, ToolResult
 from ..repository import SpecError, SpecRepository
@@ -30,8 +32,20 @@ SITE_IDENTITY_PATH = f"{TEMPLATE_ROOT}/site.json"
 WORKFLOW_SOURCE = f"{TEMPLATE_ROOT}/{WORKFLOW_TEMPLATE}"
 WORKFLOW_TARGET = ".github/workflows/deploy-docsite.yml"
 
-_ABSOLUTE_HTTP_URL = re.compile(r"^https?://\S+$")
-_ORIGIN_SECTION = 'remote "origin"'
+_IDENTITY_FIELDS = frozenset(
+    ("schema_version", "title", "url", "baseUrl", "organizationName", "projectName")
+)
+_PROPOSAL_FIELDS = frozenset(
+    (
+        "proposal_version",
+        "template_root",
+        "template_digest",
+        "identity",
+        "github_pages",
+        "files",
+        "conflicts",
+    )
+)
 _SSH_GITHUB = re.compile(r"^git@github\.com:(?P<owner>[^/]+)/(?P<repo>.+?)(?:\.git)?$")
 _HTTPS_GITHUB = re.compile(
     r"^https://github\.com/(?P<owner>[^/]+)/(?P<repo>.+?)(?:\.git)?/?$"
@@ -58,36 +72,63 @@ def _entry_module_title(project_root: Path) -> str | None:
         return None
 
 
-def _origin_repository(root: Path) -> str | None:
-    git_dir = root / ".git"
-    if not git_dir.is_dir() or git_dir.is_symlink():
-        return None
-    config_path = git_dir / "config"
-    if not config_path.is_file() or config_path.is_symlink():
-        return None
+def _absolute_http_url(value: str) -> bool:
+    """An absolute http(s) URL with a host and no whitespace."""
+    if not value or any(character.isspace() for character in value):
+        return False
     try:
-        text = config_path.read_text(encoding="utf-8")
-    except OSError:
+        parts = urlsplit(value)
+        return parts.scheme.lower() in {"http", "https"} and bool(parts.hostname)
+    except ValueError:
+        return False
+
+
+def _git(root: Path, *arguments: str) -> str | None:
+    """Git's answer in ``root``, read from no environment override, or None when it fails."""
+    environment = {
+        key: value for key, value in os.environ.items() if not key.startswith("GIT_")
+    }
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(root), *arguments],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            env=environment,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
         return None
-    section: str | None = None
-    url: str | None = None
-    for line in text.splitlines():
-        stripped = line.strip()
-        if stripped.startswith("[") and stripped.endswith("]"):
-            section = stripped[1:-1].strip()
-            continue
-        if section == _ORIGIN_SECTION and "=" in stripped:
-            key, _, value = stripped.partition("=")
-            if key.strip() == "url":
-                url = value.strip()
+    return completed.stdout.strip() if completed.returncode == 0 else None
+
+
+def _origin_repository(root: Path) -> str | None:
+    """The ``origin`` remote of the repository whose working tree ``root`` is, primary or linked."""
+    if not (root / ".git").exists():
+        return None
+    top = _git(root, "rev-parse", "--show-toplevel")
+    if top is None or Path(top).resolve() != root.resolve():
+        return None
+    url = _git(root, "config", "--get", "remote.origin.url")
     if not url:
         return None
     match = _SSH_GITHUB.match(url) or _HTTPS_GITHUB.match(url)
     if match:
         return f"https://github.com/{match.group('owner')}/{match.group('repo')}"
-    if _ABSOLUTE_HTTP_URL.match(url):
+    if _absolute_http_url(url):
         return url
     return None
+
+
+def _template_invalid(error: DocsiteTemplateError) -> ToolResult:
+    finding = Finding(
+        "CONCORDE-DOCSITE-002",
+        "error",
+        TEMPLATE_ROOT,
+        f"The docsite package template is missing or invalid: {error}",
+        "Install or reinstall Concorde so the docsite/ package template root is present.",
+    )
+    return ToolResult("docsite", ".", "invalid", findings=(finding,), error=error)
 
 
 def _validate_identity_inputs(
@@ -96,9 +137,9 @@ def _validate_identity_inputs(
     errors: list[str] = []
     if title is not None and not title.strip():
         errors.append("--title must be non-empty")
-    if repository is not None and not _ABSOLUTE_HTTP_URL.match(repository):
+    if repository is not None and not _absolute_http_url(repository):
         errors.append("--repository must be an absolute http(s):// URL")
-    if url is not None and not _ABSOLUTE_HTTP_URL.match(url):
+    if url is not None and not _absolute_http_url(url):
         errors.append("--url must be an absolute http(s):// URL")
     if base_url is not None and not (
         base_url.startswith("/") and base_url.endswith("/")
@@ -279,14 +320,7 @@ def propose_docsite(
     try:
         verify_package_root(package)
     except DocsiteTemplateError as error:
-        finding = Finding(
-            "CONCORDE-DOCSITE-002",
-            "error",
-            TEMPLATE_ROOT,
-            f"The docsite package template is missing or invalid: {error}",
-            "Install or reinstall Concorde so the docsite/ package template root is present.",
-        )
-        return ToolResult("docsite", ".", "invalid", findings=(finding,))
+        return _template_invalid(error)
 
     errors = _validate_identity_inputs(title, repository, url, base_url)
     if errors:
@@ -307,8 +341,11 @@ def propose_docsite(
         resolved_title, resolved_repository, url, base_url
     )
 
-    adapter = adapter_files(package)
-    entries = _proposal_entries(package, adapter, identity, github_pages)
+    try:
+        adapter = adapter_files(package)
+        entries = _proposal_entries(package, adapter, identity, github_pages)
+    except DocsiteTemplateError as error:
+        return _template_invalid(error)
     files = [
         _file_entry(entry["path"], entry["content"], entry["source"])
         for entry in entries
@@ -372,7 +409,19 @@ def _load_accepted(
         raise refused(
             f"the accepted docsite proposal is a JSON {type(value).__name__}, not an object"
         )
-    value = value.get("result", {}).get("proposal", value.get("proposal", value))
+    for wrapper in ("result", "proposal"):
+        if wrapper not in value:
+            continue
+        if wrapper == "result":
+            value = value["result"]
+            if not isinstance(value, dict) or "proposal" not in value:
+                raise refused(
+                    "the accepted docsite proposal's result must be an object holding "
+                    f"proposal, not {value!r}"[:200],
+                    "/result",
+                )
+        value = value["proposal"]
+        break
     if not isinstance(value, dict) or value.get("proposal_version") != PROPOSAL_VERSION:
         found = value.get("proposal_version") if isinstance(value, dict) else None
         raise refused(
@@ -381,6 +430,11 @@ def _load_accepted(
             "/proposal_version",
             remediation="regenerate the proposal with docsite --propose and apply that",
         )
+    if set(value) != _PROPOSAL_FIELDS:
+        raise refused(
+            f"the proposal has fields {sorted(value)}; a scaffold proposal has exactly "
+            f"{sorted(_PROPOSAL_FIELDS)}",
+        )
     files = value.get("files")
     if not isinstance(files, list) or not files:
         raise refused(
@@ -388,10 +442,20 @@ def _load_accepted(
             "/files",
         )
     identity = value.get("identity")
-    if not isinstance(identity, dict):
+    problem = _identity_problem(identity)
+    if problem is not None:
+        raise refused(f"the proposal's identity {problem}"[:300], "/identity")
+    conflicts = value.get("conflicts")
+    if not isinstance(conflicts, list) or not all(
+        isinstance(item, dict)
+        and set(item) == {"path", "reason"}
+        and all(isinstance(item[key], str) for key in item)
+        for item in conflicts
+    ):
         raise refused(
-            f"the proposal's identity must be an object, not {identity!r}"[:200],
-            "/identity",
+            "the proposal's conflicts must be a list of {path, reason} records of text, "
+            f"not {conflicts!r}"[:200],
+            "/conflicts",
         )
     github_pages = value.get("github_pages")
     if not isinstance(github_pages, bool):
@@ -426,20 +490,68 @@ def _load_accepted(
         for entry in entries
     ]
     if files != expected:
-        given = {item.get("path"): item for item in files if isinstance(item, dict)}
-        wanted = {item["path"]: item for item in expected}
-        differing = sorted(
-            str(path)
-            for path in given.keys() | wanted.keys()
-            if given.get(path) != wanted.get(path)
-        )
         raise refused(
             "the proposal's files differ from the exact scaffold inventory and content "
-            f"hashes in {len(differing)} entr(y/ies): " + ", ".join(differing[:20]),
+            "hashes: " + _files_difference(files, expected),
             "/files",
         )
     resolved = {entry["path"]: entry["content"] for entry in entries}
     return resolved, identity, github_pages, actual_digest
+
+
+def _identity_problem(identity: Any) -> str | None:
+    """Why ``identity`` is not a site identity a scaffold proposes, or None when it is."""
+    if not isinstance(identity, dict):
+        return f"must be an object, not {identity!r}"
+    fields = set(identity)
+    if not _IDENTITY_FIELDS <= fields or fields - _IDENTITY_FIELDS - {"repository"}:
+        return (
+            f"has fields {sorted(fields)}; it has exactly {sorted(_IDENTITY_FIELDS)} "
+            "and optionally repository"
+        )
+    if identity["schema_version"] != 1 or isinstance(identity["schema_version"], bool):
+        return f"has schema_version {identity['schema_version']!r}, not 1"
+    for key in ("title", "organizationName", "projectName"):
+        if not isinstance(identity[key], str) or not identity[key].strip():
+            return f"has {key} {identity[key]!r}, not nonempty text"
+    for key in ("url", "repository"):
+        if key in identity and not (
+            isinstance(identity[key], str) and _absolute_http_url(identity[key])
+        ):
+            return f"has {key} {identity[key]!r}, not an absolute http(s) URL"
+    base_url = identity["baseUrl"]
+    if not (
+        isinstance(base_url, str)
+        and base_url.startswith("/")
+        and base_url.endswith("/")
+    ):
+        return f"has baseUrl {base_url!r}, which does not start and end with '/'"
+    return None
+
+
+def _files_difference(files: list[Any], expected: list[dict[str, Any]]) -> str:
+    """Every differing path of a proposal's files, and any repeated or misordered path."""
+    given_paths = [
+        item.get("path") if isinstance(item, dict) else None for item in files
+    ]
+    given: dict[Any, list[Any]] = {}
+    for path, item in zip(given_paths, files):
+        given.setdefault(path if isinstance(path, str) else repr(path), []).append(item)
+    wanted = {item["path"]: item for item in expected}
+    differing = sorted(
+        path
+        for path in given.keys() | wanted.keys()
+        if given.get(path) != [wanted.get(path)]
+    )
+    parts = []
+    if differing:
+        parts.append(f"{len(differing)} differing entr(y/ies): " + ", ".join(differing))
+    repeated = sorted(path for path, items in given.items() if len(items) > 1)
+    if repeated:
+        parts.append("repeated paths: " + ", ".join(repeated))
+    if not parts:
+        parts.append("the entries are not sorted by path")
+    return "; ".join(parts)
 
 
 def apply_docsite(
@@ -455,9 +567,12 @@ def apply_docsite(
         else _default_package_root()
     )
     try:
+        verify_package_root(package)
         resolved, identity, github_pages, digest = _load_accepted(
             root, package, proposal_path
         )
+    except DocsiteTemplateError as error:
+        return _template_invalid(error)
     except (OSError, KeyError, TypeError, ValueError) as error:
         failure = (
             error
@@ -481,7 +596,7 @@ def apply_docsite(
 
     states = {
         relative: "missing"
-        if not (target := root / relative).exists()
+        if not (target := root / relative).exists() and not target.is_symlink()
         else "exact"
         if target.is_file() and target.read_bytes() == content
         else "changed"
@@ -523,8 +638,10 @@ def apply_docsite(
             },
         )
     try:
+        # Every destination was found absent: each change carries the null digest, so a file
+        # another process creates meanwhile is refused rather than taken as the before-state.
         changes = [
-            file_change(root, path, content.decode("utf-8"))
+            {"path": path, "before_digest": None, "content": content.decode("utf-8")}
             for path, content in sorted(resolved.items())
         ]
         created = apply_files(root, changes, set(resolved))

@@ -11,7 +11,7 @@ concorde run spec_panel [--modules <id>[,<id>...]] [--reviewers <2-5>] [--archit
 
 The panel works on the worktree it starts in, as [Spec review](operation.md#invocation) does: the
 bound [workspace](../../glossary.json#concept.workspace), whose Modules `--modules` defaults to, or,
-without a binding, an [unbound run](../../glossary.json#concept.unbound-run) that judges the Specs
+without a binding, an [unbound run](../../glossary.json#concept.unbound-run) that judges the [Specs](../../glossary.json#concept.spec)
 as merged there. `--modules` names one or more registered Modules of that worktree. `--reviewers` is
 the number of reviewers on each [Module](../../glossary.json#concept.module)'s panel, 3 by default,
 and `--architects` the number of architects, 2 by default. Each reviewer is the worker

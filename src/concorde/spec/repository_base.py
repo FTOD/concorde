@@ -195,6 +195,14 @@ def control_path(path: str) -> bool:
     return (path if path.endswith("/") else path + "/").startswith(CONTROL_PREFIXES)
 
 
+def unbindable(path: str) -> bool:
+    """Whether a path lies under ``.concorde/`` (or the version control store) or ``generated/``,
+    where no entry ever binds a file."""
+    return (path if path.endswith("/") else path + "/").startswith(
+        CONTROL_PREFIXES + GENERATED_PREFIXES
+    )
+
+
 def covers(entry: str, path: str) -> bool:
     """Whether an entry covers the given concrete path (no exclusion rule applied)."""
     return path.startswith(entry) if is_directory_entry(entry) else path == entry
@@ -231,9 +239,13 @@ def skipped_path(relative: str) -> bool:
 
 
 def bound_by(entry: str, path: str) -> bool:
-    """Whether one realization entry binds a concrete file path, applying directory exclusions."""
-    return covers(entry, path) and (
-        not is_directory_entry(entry) or not skipped_path(path[len(entry) :])
+    """Whether one realization entry binds a concrete file path, applying the exclusion rule:
+    directory exclusions below a directory entry, and never a path under ``.concorde/`` or
+    ``generated/``."""
+    return (
+        covers(entry, path)
+        and not unbindable(path)
+        and (not is_directory_entry(entry) or not skipped_path(path[len(entry) :]))
     )
 
 
@@ -249,6 +261,8 @@ def expand_entry(
     root: Path, entry: str, *, skipped_suffixes: tuple[str, ...] = SKIPPED_SUFFIXES
 ) -> list[str]:
     """Existing regular files bound by one entry, skipping excluded directories and files."""
+    if unbindable(entry):
+        return []
     if not is_directory_entry(entry):
         return [entry] if checked_path(root, entry).is_file() else []
     directory = checked_path(root, entry_base(entry))

@@ -25,7 +25,15 @@ from .output import (
     declared,
     pending,
 )
-from .step import NAME, STEP_SCHEMA, answered, lost_link, workflow_link
+from .step import (
+    NAME,
+    STEP_SCHEMA,
+    answered,
+    busy,
+    lost_link,
+    unstarted_link,
+    workflow_link,
+)
 from .store import WorkflowError, Workspace
 
 RUN = STEP_SCHEMA["properties"]["run_id"]["anyOf"][0]
@@ -63,7 +71,7 @@ def located(item: dict) -> dict:
     }
 
 
-# contract.workflows.result, version 8
+# contract.workflows.result, version 9
 RESULT_SCHEMA: dict = {
     "$defs": copy.deepcopy(errors.DEFS),
     **obj(
@@ -120,7 +128,14 @@ class Row:
         self.name = step["name"]
         self.run_id = step["run_id"]
         self.settled = answered(step.get("answers"))
-        state = run_state(space.store, self.run_id)
+        # A step still starting has no run in its node yet (``report`` adopted every run found
+        # there): it is running while a run of the workspace may still enter it, and lost
+        # otherwise, for its run never started.
+        unstarted = store.starting(step)
+        if unstarted:
+            state = "running" if not superseded and busy(space) else "lost"
+        else:
+            state = run_state(space.store, self.run_id)
         # One read decides: a result that appears after run_state is read on the next report.
         self.result = (
             load_result(space.store, self.run_id) if state == "finished" else None
@@ -135,13 +150,20 @@ class Row:
         )
         self.error = (self.result or {}).get("error") or step.get("error")
         if self.status == "lost":
-            self.error = lost_link(space, workflow, self.key, self.name, self.run_id)
+            self.error = (
+                unstarted_link(space, workflow, self.key, self.name)
+                if unstarted
+                else lost_link(space, workflow, self.key, self.name, self.run_id)
+            )
         elif self.status == "running":
             self.error = workflow_link(
                 workflow,
                 space.name,
                 "step_running",
-                f"the {self.name} run {self.run_id} of step {self.key} is still running",
+                f"step {self.key} ({self.name}) is starting: its run has not entered the "
+                "step's node yet"
+                if unstarted
+                else f"the {self.name} run {self.run_id} of step {self.key} is still running",
                 reason="exhausted",
                 explanation="the report was taken before the step finished",
                 options=["report again once the run has finished"],
@@ -184,17 +206,39 @@ def lost_row(workflow: str, workspace: str, key: str) -> dict:
     }
 
 
-def build(space: Workspace, lost: list[str] = ()) -> dict:
-    """The workflow result of a workspace, from its workflow record and its runs' results."""
+def build(
+    space: Workspace,
+    lost: list[str] = (),
+    workflow: str | None = None,
+    mode: str | None = None,
+) -> dict:
+    """The workflow result of a workspace, from its workflow record and its runs' results.
+
+    ``workflow`` and ``mode`` name the script's workflow and mode: a workspace whose first step was
+    lost before anything was recorded has no record, and its result is built from them and the
+    lost keys alone."""
     record = store.load(space)
     if record is None:
+        if not (lost and workflow):
+            raise WorkflowError(
+                "no_workflow",
+                f"workspace {space.name} ran no workflow step; there is nothing to report"
+                + (
+                    ", and a lost step is reported without a record only when --workflow "
+                    "names its workflow"
+                    if lost
+                    else ""
+                ),
+            )
+        record = {"workflow": workflow, "steps": []}
+    elif workflow is not None and workflow != record["workflow"]:
         raise WorkflowError(
-            "no_workflow",
-            f"workspace {space.name} ran no workflow step; there is nothing to report",
+            "workflow_conflict",
+            f"workspace {space.name} runs the workflow {record['workflow']}, not {workflow}",
         )
     workflow = record["workflow"]
     steps = record["steps"]
-    mode = steps[-1]["mode"] if steps else "no-ask"
+    mode = steps[-1]["mode"] if steps else mode or "no-ask"
     rows = [Row(space, step, workflow) for step in steps if not step["superseded"]]
     superseded = [
         Row(space, step, workflow, superseded=True).value()
@@ -250,14 +294,15 @@ def build(space: Workspace, lost: list[str] = ()) -> dict:
     elif last is None:
         status, code, reason = "failed", "incomplete", "capability"
     elif last.status in ("failed", "lost", "refused"):
-        status, code, reason = (
+        # The reasons of the error table: a failed step's handling is decided above the
+        # workflow, a lost one ended outside it, a refused one needs its command line corrected.
+        status, (code, reason) = (
             "failed",
             {
-                "failed": "step_failed",
-                "lost": "step_lost",
-                "refused": "step_refused",
+                "failed": ("step_failed", "decision"),
+                "lost": ("step_lost", "environment"),
+                "refused": ("step_refused", "input"),
             }[last.status],
-            "decision",
         )
         stop = [last]
     elif last.status == "blocked":
@@ -321,6 +366,8 @@ def build(space: Workspace, lost: list[str] = ()) -> dict:
                 "decision": "whether to answer, repair, retry or give up is decided above the "
                 "workflow, by the task level or those it escalates to",
                 "environment": "a step ended without a result the workflow could read",
+                "input": "the step's run could not start, and only its workflow script or "
+                "arguments, corrected above the workflow, can change that",
                 "capability": "the workflow's record does not show the procedure reaching its "
                 "end, and it cannot run the missing steps from a report",
                 "exhausted": "the report was taken before the procedure ended",
@@ -421,11 +468,43 @@ def rendered(result: dict) -> str:
     return "".join(lines)
 
 
-def report(space: Workspace, lost: list[str] = ()) -> dict:
+def report(
+    space: Workspace,
+    lost: list[str] = (),
+    workflow: str | None = None,
+    mode: str | None = None,
+) -> dict:
     """Build, check and save the workflow result of a workspace with its rendering, holding its
-    workflow lock; ``WorkspaceRetired`` when the workspace was retired meanwhile."""
+    workflow lock; ``WorkspaceRetired`` when the workspace was retired meanwhile.
+
+    Every step still starting whose run entered its node gets that run, and every step whose run
+    ended by now has its node ended with it, before the result is built."""
     with store.step_lock(space):
-        result = build(space, lost)
+        record = store.load(space)
+        for step in (record or {}).get("steps", []):
+            if store.starting(step):
+                store.adopt(space, step)
+            if step["run_id"]:
+                state = run_state(space.store, step["run_id"])
+                lost_now = (
+                    lost_link(
+                        space,
+                        record["workflow"],
+                        step["key"],
+                        step["name"],
+                        step["run_id"],
+                    )
+                    if state == "lost"
+                    else None
+                )
+                store.end_step(
+                    space,
+                    step,
+                    state,
+                    load_result(space.store, step["run_id"]),
+                    lost_now,
+                )
+        result = build(space, lost, workflow, mode)
         validate(result, RESULT_SCHEMA)
         store.record_report(space, result, rendered(result))
     return result

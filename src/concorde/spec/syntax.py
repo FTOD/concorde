@@ -688,11 +688,11 @@ def prose_text(text: str) -> list[tuple[int, str]]:
 
 def term_pattern(title: str) -> re.Pattern:
     """How ``CHK.term.unlinked`` recognises a title in prose, between word boundaries: a one-word
-    title only as written, a longer title in any letter case and also with a plural ``s``."""
+    title only as written, a longer title in any letter case, each also with a plural ``s``."""
     words = [re.escape(word) for word in title.split()]
     body = r"[\s-]+".join(words)
     if len(words) == 1:
-        return re.compile(rf"(?<![\w.-]){body}(?![\w-])")
+        return re.compile(rf"(?<![\w.-]){body}s?(?![\w-])")
     return re.compile(rf"(?<![\w.-]){body}s?(?![\w-])", re.IGNORECASE)
 
 

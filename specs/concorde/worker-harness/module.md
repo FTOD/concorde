@@ -56,7 +56,7 @@ back:
   [task type](../glossary.json#concept.task-type) it was computed for, exactly as the
   [grant input contract](workers/contracts.md#grant-input) defines. In Concorde, Method computes the
   grant through the Spec tooling and projects its `task_type`, `entries` and `context_identity`
-  into this format, keeping the grant's Modules and glossary terms for its own instructions and
+  into this format, keeping the grant's [Modules](../glossary.json#concept.module) and glossary terms for its own instructions and
   validation; those three fields have the same shape on both sides, which a contract test keeps so;
 - **the task instructions**: the caller's prompt for the job, to which the worker harness appends the
   grant's lists and the rules of its boundary to make the [brief](../glossary.json#concept.brief);

@@ -59,7 +59,7 @@ session, while the workers that the runs of a task launch may run on pi.
 
 The **[workspace binding](../glossary.json#concept.workspace-binding)** is the Kernel's term and the
 whole seam between the halves: the file in a task worktree that tells every run there which
-workspace, goal, Modules, branch and base it works on.
+workspace, goal, [Modules](../glossary.json#concept.module), branch and base it works on.
 
 ## Overview
 
