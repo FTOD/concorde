@@ -1065,9 +1065,7 @@ class TaskStoreTests(unittest.TestCase):
     @verifies("scenario.tasks.busy")
     def test_a_second_concurrent_run_is_refused(self):
         self.project.open_task("t1")
-        with workspace_lock(
-            store.concorde(self.root), "t1", "implement run r-held"
-        ):
+        with workspace_lock(store.concorde(self.root), "t1", "implement run r-held"):
             self.assertIn(
                 "implement run r-held", store.show_task(self.root, "t1")["busy"]
             )
@@ -1905,7 +1903,9 @@ class TaskStoreTests(unittest.TestCase):
         real_end = store._end_task_node
 
         def unwritable(primary, task_id, closing, ended):
-            raise store.TaskError("record_unwritable", "the trace node cannot be written")
+            raise store.TaskError(
+                "record_unwritable", "the trace node cannot be written"
+            )
 
         with patch.object(store, "_end_task_node", unwritable):
             status, value = self.close("t3", "--completed", "--note", "done")

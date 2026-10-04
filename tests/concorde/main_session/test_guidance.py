@@ -225,6 +225,11 @@ class GuidanceTests(unittest.TestCase):
             self.session,
         )
         self.assertIn("holds your workspace lock", self.session)
+        self.assertIn(
+            "While a run of your workspace runs, leave your worktree untouched, no edit and "
+            "no commit, until that run has ended",
+            self.session,
+        )
         for text in (self.session, self.skill):
             self.assertNotIn("the main agent prepares that before starting", text)
 

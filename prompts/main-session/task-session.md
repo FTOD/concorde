@@ -45,7 +45,10 @@ by default (`concorde task show <task>` prints its path):
 Run every long command, runs and your delivery above all, in background Bash
 (`run_in_background`), which wakes you when the command ends: they may take longer than a
 foreground Bash call is allowed, and a timeout kills the run half done. Never wait for anything
-with `sleep` loops. Before you validate and deliver, let every run of your workspace finish and
+with `sleep` loops. While a run of your workspace runs, leave your worktree untouched, no edit and
+no commit, until that run has ended: its write audit attributes every change of the worktree to the
+run's workers, so a change of yours fails the run or is blamed on its workers. Before you validate
+and deliver, let every run of your workspace finish and
 stop every other background command you started that still runs, a polling loop above all, and
 confirm each ended: a run that still runs holds your workspace lock, which refuses your validation
 and your delivery, and the delivery commits every uncommitted change, so a command still writing in

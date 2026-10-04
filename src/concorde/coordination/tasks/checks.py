@@ -60,7 +60,9 @@ def run(
         printed = error.stdout or b""
         code = -1
         output = (
-            printed.decode("utf-8", "replace") if isinstance(printed, bytes) else printed
+            printed.decode("utf-8", "replace")
+            if isinstance(printed, bytes)
+            else printed
         )
         problem = f"was stopped after {TIMEOUT} s"
     except OSError as error:

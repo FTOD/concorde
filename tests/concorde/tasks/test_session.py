@@ -173,7 +173,9 @@ class TaskSessionTests(unittest.TestCase):
         with patch.object(store, "record_session", closed):
             with self.assertRaises(store.TaskError) as raised:
                 session.start(self.root, "t1", "m", run=refuse)
-        self.assertIn("remove it by hand with `claude rm 33afbc14`", str(raised.exception))
+        self.assertIn(
+            "remove it by hand with `claude rm 33afbc14`", str(raised.exception)
+        )
 
     @verifies("scenario.task-session.start")
     def test_a_closed_task_starts_no_session(self):

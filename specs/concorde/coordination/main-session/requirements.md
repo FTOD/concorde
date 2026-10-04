@@ -139,6 +139,17 @@ in the task worktree would decide what the [delivery commit](../../glossary.json
 holds. A polling loop, which the guidance forbids anyway
 ([Waiting never polls](#req.main-session.no-polling)), may never end by itself.
 
+### req.main-session.task-session-still-during-runs — A task session leaves its worktree alone while a run of it runs
+
+The task-session guidance SHALL tell a task session to leave its task worktree untouched, editing
+and committing nothing, from the start of any run of its workspace until that run has ended.
+
+A run's [write audit](../../glossary.json#concept.write-audit) attributes every change of the worktree to the run's
+[workers](../../glossary.json#concept.worker)
+([Workers](../../worker-harness/workers/module.md)), so a change the session makes meanwhile fails
+the run, as a write of a worker that may only read, or is blamed on its workers, and the run, with
+its model spend, is wasted.
+
 ### req.main-session.act-on-run-result — Every run result is acted on
 
 The guidance SHALL tell the main agent to act on the

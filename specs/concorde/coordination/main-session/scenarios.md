@@ -103,11 +103,13 @@ This illustrates [listing the tasks](requirements.md#req.main-session.reconcile-
 - AND that its commands run under no sandbox, so it prepares its own worktree — dependencies, submodules, build outputs — and probes the machine it runs on itself
 - AND that `concorde task merge` audits at the end that nothing outside the task worktree changed
 - AND to let every run of its workspace finish and to stop every other background command it started, confirming each ended, before `task-validation` and `delivery`
+- AND to edit and commit nothing in its worktree while a run of it runs, since the run's [write audit](../../glossary.json#concept.write-audit) attributes every change to its workers
 - BUT that Edit and Write still refuse every path outside the task worktree and its decision log
 
 This illustrates [the task session's one rule](requirements.md#req.main-session.task-session-guidance),
 [runs in the background](requirements.md#req.main-session.task-session-background-runs) and
-[the quiet before validating](requirements.md#req.main-session.task-session-quiet-before-validation).
+[the quiet before validating](requirements.md#req.main-session.task-session-quiet-before-validation)
+and [the worktree left alone during a run](requirements.md#req.main-session.task-session-still-during-runs).
 
 ### scenario.main-session.task-session-prepares-workers — The task session creates and binds new implementation files before a worker fills them
 
@@ -419,9 +421,9 @@ This illustrates [Issue recovery](requirements.md#req.main-session.issues-recove
 
 ### scenario.main-session.project-mcp-run-result — run_result answers for runs only
 
-- GIVEN a task `t1` whose workspace holds a run with a saved result, a run whose runner holds its run lock and a run whose runner ended without writing a result
+- GIVEN a task `t1` whose workspace holds a run with a saved result, a run whose runner holds its [run lock](../../glossary.json#concept.run-lock) and a run whose runner ended without writing a result
 - WHEN the session calls `run_result` for each, for `t1` and for an identity no reader finds
-- THEN the first answers `running` false with its result, the second `running` true with its progress file, and the third `running` false with no result and its progress file
+- THEN the first answers `running` false with its result, the second `running` true with its [run progress file](../../glossary.json#concept.run-progress-file), and the third `running` false with no result and the run progress file its runner left
 - AND `t1`, a task's node, and the unknown identity are both refused with `unknown_run`
 
 ### scenario.main-session.project-mcp-fresh-code — A call answers with the Concorde current when it arrives

@@ -828,8 +828,12 @@ class MergeTests(unittest.TestCase):
                 value["merge"]["contained"],
             ),
         )
-        self.assertEqual([0], [check["exit_code"] for check in value["merge"]["checks"]])
-        self.assertEqual("contained", trace.read(Path(value["merge"]["log"]))["outcome"])
+        self.assertEqual(
+            [0], [check["exit_code"] for check in value["merge"]["checks"]]
+        )
+        self.assertEqual(
+            "contained", trace.read(Path(value["merge"]["log"]))["outcome"]
+        )
         # No merge commit: the decision log is committed alone on top of the merged head.
         self.assertEqual([before], self.parents(self.head()))
         self.assertTrue(
@@ -925,7 +929,9 @@ class MergeTests(unittest.TestCase):
         self.assertEqual(after, self.head())
         # A close is refused before it stops any task session or run of the task.
         with patch.object(store, "stop_task", side_effect=AssertionError("stopped")):
-            error = self.refusal("close", "t1", "--failed", "--reason", "r", "--no-error")
+            error = self.refusal(
+                "close", "t1", "--failed", "--reason", "r", "--no-error"
+            )
         self.assertEqual("merge_incomplete", error["code"])
         # The killed merge's attempt node still says it runs; nothing ended it.
         self.assertEqual(

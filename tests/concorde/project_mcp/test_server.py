@@ -265,7 +265,8 @@ class ProjectMcpTests(unittest.TestCase):
         done, error = client.call("run_result", run="r-done")
         self.assertFalse(error, done)
         self.assertEqual(
-            ("r-done", False, "ok"), (done["run"], done["running"], done["result"]["status"])
+            ("r-done", False, "ok"),
+            (done["run"], done["running"], done["result"]["status"]),
         )
         running, error = client.call("run_result", run="r-live")
         self.assertFalse(error, running)

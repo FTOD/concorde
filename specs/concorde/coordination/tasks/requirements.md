@@ -239,7 +239,7 @@ step leave that step done, and say so:
 - a close refused while writing the record (`record_conflict`, `record_unwritable`) after it
   removed the worktree leaves the task in its state without its worktree, which the refusal says;
 - a close's `decision_log_failed` leaves the task closed or failed in its record without its
-  closing in the decision log, and a `record_unwritable` of its trace node leaves it closed or
+  closing in the decision log, and a `record_unwritable` of its [trace node](../../glossary.json#concept.trace-node) leaves it closed or
   failed in its record with its closing logged and its trace node not ended;
 - a close's `decision_log_uncommitted` leaves the task closed or failed in its record, with its
   closing in the decision log, and its folder current, since the log is not yet in Git;

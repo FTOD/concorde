@@ -1523,9 +1523,7 @@ def _undo_open(
     folder, and the refusal saying so, naming whatever could not be removed and how to."""
     folder = task_folder(primary, task_id)
     left = []
-    removed = _git(
-        primary, "worktree", "remove", "--force", str(worktree), check=False
-    )
+    removed = _git(primary, "worktree", "remove", "--force", str(worktree), check=False)
     if removed.returncode != 0:
         left.append(
             f"the worktree {worktree} (`git worktree remove --force {worktree}`: "
@@ -1697,7 +1695,9 @@ def escalate(primary: Path, task_id: str, error: dict) -> int:
     receiver = "main agent" if error["level"] == "task-session" else "developer"
     by = "task-session" if error["level"] == "task-session" else "main-agent"
     number = 0
-    purpose = "a task that ended takes no escalation: its trace and decision log are final"
+    purpose = (
+        "a task that ended takes no escalation: its trace and decision log are final"
+    )
     with task_locked(primary, task_id):
         load_unended(primary, task_id, purpose)
 
@@ -1939,9 +1939,7 @@ def _close_held(
     )
     # Once the record is ended, only a close finishes the steps the task lacks: a merge's own
     # retry takes a task still merging.
-    finish = (
-        again if by == "close" else f"`concorde task close {task_id} --{outcome}`"
-    )
+    finish = again if by == "close" else f"`concorde task close {task_id} --{outcome}`"
     record = load_task(primary, task_id)
     worktree = Path(record["worktree"])
     if record["state"] in ENDED:

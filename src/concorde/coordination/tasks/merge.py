@@ -924,7 +924,9 @@ def _checked_close(
             task_id,
             "merged",
             again=f"`concorde task merge {task_id} --resume`",
-            before_move=lambda: attempt.end("ok", "contained" if contained else "merged"),
+            before_move=lambda: attempt.end(
+                "ok", "contained" if contained else "merged"
+            ),
             warnings=warnings,
             key=merging.get("history"),
             at=merging["since"],
