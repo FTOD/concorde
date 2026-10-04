@@ -415,6 +415,14 @@ This illustrates [Issue recovery](requirements.md#req.main-session.issues-recove
 - GIVEN a running server
 - WHEN a call names an unknown task, lacks a required argument or names no tool of the server
 - THEN each is refused with an error link: Tasks' own `unknown_task` link for the unknown task, and the server's own `invalid_input` link otherwise
+- AND `trace_show` of a node no reader finds is refused with the link `concorde trace show` prints, Tracing's own, with its explanation and options
+
+### scenario.main-session.project-mcp-run-result — run_result answers for runs only
+
+- GIVEN a task `t1` whose workspace holds a run with a saved result, a run whose runner holds its run lock and a run whose runner ended without writing a result
+- WHEN the session calls `run_result` for each, for `t1` and for an identity no reader finds
+- THEN the first answers `running` false with its result, the second `running` true with its progress file, and the third `running` false with no result and its progress file
+- AND `t1`, a task's node, and the unknown identity are both refused with `unknown_run`
 
 ### scenario.main-session.project-mcp-fresh-code — A call answers with the Concorde current when it arrives
 

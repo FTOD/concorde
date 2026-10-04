@@ -27,6 +27,8 @@ from ...kernel import binding, errors
 from ...kernel.refusal import KernelError
 from ...kernel.schema import validate
 from ...kernel.tracing import layout, locks, reader
+from ...kernel.tracing import node as trace
+from ...kernel.tracing.command import ACTOR as TRACING
 from . import cli as task_cli
 from . import merge, store, wait
 from .parts import _environment, concorde_command
@@ -310,20 +312,36 @@ def task_show(call: Call, arguments: dict):
     return store.show_task(call.primary, arguments["task"])
 
 
+def _tracing(error: reader.ReadError, explanation: str, options=()) -> Refusal:
+    """The refusal `concorde trace show` prints for ``error``, its actor and words."""
+    return Refusal(
+        errors.link(
+            "component",
+            TRACING,
+            error.code,
+            str(error),
+            reason="input",
+            explanation=explanation,
+            options=list(options),
+        )
+    )
+
+
 def trace_show(call: Call, arguments: dict):
     try:
         target, concorde = reader.locate(
             arguments["node"], reader.concorde_directories(call.primary)
         )
+    except reader.ReadError as error:
+        raise _tracing(
+            error,
+            "the reader shows only nodes it finds and never guesses another",
+            ["run `concorde trace list --history --unbound` to see what exists"],
+        ) from None
+    try:
         return reader.view(target, concorde, depth=arguments.get("depth"))
     except reader.ReadError as error:
-        raise own(
-            "trace_show",
-            error.code,
-            str(error),
-            explanation="the reader shows only nodes it finds and never guesses another",
-            options=["call task_list, or `concorde trace list --history --unbound`"],
-        ) from None
+        raise _tracing(error, "the node's record cannot be read") from None
 
 
 def run_result(call: Call, arguments: dict):
@@ -332,6 +350,23 @@ def run_result(call: Call, arguments: dict):
         folder, concorde = reader.locate(run, reader.concorde_directories(call.primary))
     except reader.ReadError as error:
         raise own("run_result", "unknown_run", str(error)) from None
+    # The reader finds every node by its identity: only an Execution run has a run result.
+    node = trace.read(folder)
+    kind = (node or {}).get("kind")
+    if (node is not None and kind != "run") or (
+        node is None
+        and not (folder / layout.PROGRESS).is_file()
+        and not (folder / layout.RESULT).is_file()
+    ):
+        raise own(
+            "run_result",
+            "unknown_run",
+            f"{run} names the {kind or 'unrecorded'} node {folder}, which is no run of "
+            "Execution and has no run result",
+            explanation="only a run of Execution has a run result; the tool never answers "
+            "for another node",
+            options=["call trace_show to read that node"],
+        )
     running = locks.held(layout.lock_file(concorde, "run", run))
     result = folder / layout.RESULT
     if not running and result.is_file():

@@ -407,13 +407,18 @@ merge-end wait returns only once that answer is complete
 
 When what it waits for already happened, its answer carries the value that command would print.
 
-### req.main-session.project-mcp-no-wait — The server never waits for a lock
+### req.main-session.project-mcp-no-wait — The server never waits for a workspace or merge lock
 
-A tool of the server that needs a lock SHALL be refused at once, with `workspace_busy` or
-`merge_busy`, when another process holds it, naming the lock file and the holder's command,
-process, start time, Claude Code session and task as the holder line gives them.
+A tool of the server that needs a [workspace lock](../../glossary.json#concept.workspace-lock) or
+the [merge lock](../../glossary.json#concept.merge-lock) SHALL be refused at once, with
+`workspace_busy` or `merge_busy`, when another process holds it, naming the lock file and the
+holder's command, process, start time, Claude Code session and task as the holder line gives them.
 
-It takes a lock without waiting, and a refused call releases every lock it had taken.
+It takes those locks without waiting, and a refused call releases every lock it had taken. A task's
+record lock is no such lock: every change of a task record holds it for that one update only, so a
+short write such as `task_report`, `task_answer`, `task_rebind` or `task_escalate` waits for it as
+the command does, briefly, at worst while a close asks Claude Code about the task's sessions, rather
+than being refused for contention that ends within moments.
 
 ### req.main-session.project-mcp-handover — A granted lock belongs to the work
 

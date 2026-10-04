@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import queue
@@ -34,7 +35,7 @@ from tests.concorde.support.brownfield_project import commit as commit_all
 from tests.concorde.support.environment import child_environment
 from tests.concorde.support.operation_project import OperationProject, commit
 from tests.concorde.support.paths import REPOSITORY_ROOT
-from tests.concorde.tasks.deliveries import deliver
+from tests.concorde.tasks.deliveries import deliver, write_run
 
 COMMAND = [sys.executable, str(REPOSITORY_ROOT / "scripts/concorde.py"), "project-mcp"]
 TOOLS = {
@@ -248,6 +249,38 @@ class ProjectMcpTests(unittest.TestCase):
         held, error = client.call("locks")
         self.assertEqual({"merge": None, "workspaces": {"t1": None}}, held)
 
+    @verifies("scenario.main-session.project-mcp-run-result")
+    def test_run_result_answers_running_finished_and_lost_runs_only(self):
+        self.project.open_task("t1")
+        write_run(self.root, "r-done", "t1", status="ok")
+        write_run(self.root, "r-live", "t1", status=None)
+        write_run(self.root, "r-lost", "t1", status=None)
+        live = layout.lock_file(self.root / ".concorde", "run", "r-live")
+        live.parent.mkdir(parents=True, exist_ok=True)
+        # The test stands in for the runner of r-live, holding its run lock.
+        runner = contextlib.ExitStack()
+        self.addCleanup(runner.close)
+        runner.enter_context(locks.hold(live, "a test runner", wait=None))
+        client = self.client()
+        done, error = client.call("run_result", run="r-done")
+        self.assertFalse(error, done)
+        self.assertEqual(
+            ("r-done", False, "ok"), (done["run"], done["running"], done["result"]["status"])
+        )
+        running, error = client.call("run_result", run="r-live")
+        self.assertFalse(error, running)
+        self.assertEqual((True, None), (running["running"], running["result"]))
+        self.assertEqual("running", running["progress"]["phase"])
+        # A runner that ended without its result leaves the run lost.
+        lost, error = client.call("run_result", run="r-lost")
+        self.assertFalse(error, lost)
+        self.assertEqual((False, None), (lost["running"], lost["result"]))
+        self.assertEqual("r-lost", lost["progress"]["run_id"])
+        # A task's node, or no node at all, is no run.
+        for name in ("t1", "r-none"):
+            value, error = client.call("run_result", run=name)
+            self.refusal(value, error, "unknown_run")
+
     @verifies("scenario.main-session.project-mcp-refusals")
     def test_refusals_are_error_links(self):
         client = self.client()
@@ -259,6 +292,11 @@ class ProjectMcpTests(unittest.TestCase):
         self.assertIn("project MCP server", link["actor"])
         value, error = client.call("no_such_tool")
         self.refusal(value, error, "invalid_input")
+        # trace_show refuses with Tracing's own link, as `concorde trace show` does.
+        value, error = client.call("trace_show", node="nobody")
+        link = self.refusal(value, error, "unknown_node")
+        self.assertEqual("Tracing (concorde trace)", link["actor"])
+        self.assertIn("concorde trace list --history --unbound", link["options"][0])
 
     @verifies("scenario.main-session.project-mcp-fresh-code")
     def test_each_call_answers_with_the_primary_worktrees_current_concorde(self):
