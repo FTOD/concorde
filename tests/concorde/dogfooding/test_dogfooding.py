@@ -320,15 +320,16 @@ class GuidanceTests(unittest.TestCase):
             "Observe every run of an Operation or execution command, every workflow and every "
             "worker run closely",
             "can end `ok` and still be wrong",
-            "Do not edit the Concorde repository, the framework copy under `.concorde/framework/`",
+            "do not edit any of these: - The Concorde repository. - The framework copy under "
+            "`.concorde/framework/`.",
             "Do not work around a Concorde defect",
             "The boundary is right; the work overreaches",
             "This project's Specs draw the boundary wrongly",
             "Concorde implements the boundary wrongly",
             "Concorde's design blocks a correct boundary",
-            "the Spec text and Protocol rule the boundary is derived from",
-            "the grant actually computed",
-            "the refused action with its message",
+            "The Spec text and Protocol rule the boundary is derived from",
+            "The grant actually computed",
+            "The refused action with its message",
             "Never settle a blocked boundary by only loosening it",
             "`.concorde/runs/defects/<report_key>.json`",
             "`owner_target_id`: `null`",
@@ -336,30 +337,31 @@ class GuidanceTests(unittest.TestCase):
             "`error_chain`: the whole error chain of the failure, unchanged, with your own link on top",
             "concorde task escalate <task> --code concorde_defect",
             "`report_key`: a short kebab-case name of the defect",
-            "`subtype`: `null` for a bug or a limitation",
+            "`subtype`: for a bug or a limitation, `null`",
             "concorde issues report --check --file <path>",
-            "while no run of an Operation or execution command, workflow or task session is "
-            "running, run `concorde update`: it refuses while such a run is still running",
-            "Start nothing until the update ends",
+            "while none of these runs, run `concorde update` from the primary worktree: - A run "
+            "of an Operation or execution command. - A workflow. - A task session. While any of "
+            "these still runs, the update refuses.",
+            "Until the update ends, start none of these in any worktree of the project",
             # A run that ended ok reported no error: the link alone is the whole chain, built by
             # task escalate naming no run in a task and written by hand outside one.
             "When the run ended `ok` and still did something wrong",
-            "run the same command without `--run`, with a `--detail` that names the run",
-            "your link, with no causes, is the whole chain",
-            "Without a task, write your link by hand, in the shape of the error contract",
+            "run the same command without `--run`. Give it a `--detail` that names: - The run.",
+            "Your link, with no causes, is the whole chain",
+            "Without a task, write your link by hand in the shape of the error contract",
             "citing the run and what shows the fault",
-            "and none when the run ended `ok`",
+            "When the run ended `ok`, include no causes",
             # Outside a task the report stays in the run store and no task is opened.
             "A defect you saw outside a task",
-            "opens no task: keep its report only under `.concorde/runs/defects/`",
-            "name that file to the developer",
+            "opens no task. Keep its report only under `.concorde/runs/defects/`",
+            "Name that file to the developer",
             # A defect of the Issue system travels as its error chain, never as an Issue report.
             "A defect of the Issue system itself** is never written as a defect report",
-            "`concorde issues report --check` refusing a correct report among them",
+            "This includes `concorde issues report --check` refusing a correct report",
             "A refusal whose reason is `environment`, such as `merge_busy`, is no defect",
             "Hand such a defect over as its error chain alone, with your own link on top",
             "`.concorde/runs/defects/<name>.error.json`",
-            "never as a report to record as an Issue",
+            "It is never a report to record as an Issue",
         ):
             self.assertIn(words(fragment), self.skill)
         # The example is a complete Issue report: only its shortened chain stands in.
@@ -403,15 +405,15 @@ class ConcordeRepositoryTests(unittest.TestCase):
             "## Defect reports from develop installs",
             "python3 scripts/issues.py report --file <report>",
             "--resolves <issue>",
-            "Fix a Concorde implementation bug",
+            "fix the Concorde implementation bug directly",
             (
-                "escalate to the developer before changing Concorde's design or Protocol or "
-                "loosening any boundary"
+                "escalate to the developer before any of the following: - Changing Concorde's "
+                "design. - Changing its Protocol. - Loosening any boundary."
             ),
             "`--reason not-actionable`",
             "Fix the defect generally, never only for the reporting project",
-            "append a report to the recorded Issue naming the Module at fault as its "
-            "`owner_target_id`",
+            "append a report to the recorded Issue with the following",
+            "The Module at fault as its `owner_target_id`",
         ):
             self.assertIn(words(fragment), instructions)
         rule = words(
