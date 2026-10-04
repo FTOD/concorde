@@ -143,7 +143,7 @@ The extension passes the filesystem configuration with every command.
 - The runtime directory's `control/` and `config/`.
 - Each path the grant lists apart at `names` below a `ro` or `rw` directory entry.
 
-`denyRead` wins inside the wider `allowRead`. Therefore, Bash cannot read those paths either.
+The last entry wins inside the wider `allowRead`, so Bash cannot read such a `names` path either.
 
 `allowRead` lists these paths and programs:
 
