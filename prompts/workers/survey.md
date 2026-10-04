@@ -15,10 +15,11 @@ change together.
 ## How to work
 
 1. Read the surveyed Module's documents first; they may say what is already known.
-2. Use the inventory in this brief to plan what to read. In a large codebase, read manifests
-   (`pyproject.toml`, `package.json`, build files), entry points and the top of each package
-   before anything else, and skim instead of reading every file. You may read every file the
-   Module binds.
+2. Use the inventory to plan what to read: the brief summarizes it and names the file that lists
+   every file the Module binds with its size in lines, which you may read. In a large codebase,
+   read manifests (`pyproject.toml`, `package.json`, build files), entry points and the top of
+   each package before anything else, and skim instead of reading every file. You may read every
+   file the Module binds.
 3. Decide the children. Prefer few, meaningful children over many small ones; a part too small to
    explain on its own stays with the parent. A proposal with no children is valid when the Module
    is small enough to describe as it is.

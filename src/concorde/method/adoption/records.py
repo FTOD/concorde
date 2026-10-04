@@ -24,7 +24,7 @@ from ...spec.repository_base import (
     skipped_path,
 )
 from ...spec.schema import ContractError, validate
-from ...spec.typed_data import TypedDataError, safe_path
+from ...spec.typed_data import TypedDataError, checked_path, safe_path
 from ...workflows.output import step_output
 
 S = {"type": "string", "minLength": 1}
@@ -449,19 +449,40 @@ def child_folder(parent_entry: str, child_id: str) -> str:
 
 
 def covered_by_parent(root: Path, parent_entries: list[str], entry: str) -> bool:
-    """Whether an existing child entry lies within the paths the parent's entries bind."""
+    """Whether an existing child entry lies within the paths the parent's entries bind.
+
+    The entry is reached through no symbolic link, as the Spec tooling reaches every bound path,
+    and a directory entry lies in no directory the exclusion rule skips below the parent's
+    directory entry, since the parent never bound the files of such a directory.
+    """
+    try:
+        path = checked_path(root, entry_base(entry))
+    except SpecError:
+        return False
     if is_directory_entry(entry):
-        directory = root / entry_base(entry)
-        if directory.is_symlink() or not directory.is_dir():
+        if not path.is_dir():
             return False
         return any(
-            is_directory_entry(parent) and (entry == parent or entry.startswith(parent))
+            is_directory_entry(parent)
+            and entry.startswith(parent)
+            and not skipped_path(entry[len(parent) :] + "x")
             for parent in parent_entries
         )
-    path = root / entry
-    if path.is_symlink() or not path.is_file():
+    if not path.is_file():
         return False
     return any(bound_by(parent, entry) for parent in parent_entries)
+
+
+def evidence_problems(questions: list[dict]) -> list[str]:
+    """Every open question's evidence that names an absolute path, which after
+    ``worktree_relative`` lies outside the worktree; a line suffix such as ``:12`` is allowed."""
+    return [
+        f"open question {question['id']}'s evidence {item!r} is an absolute path outside the "
+        "worktree; evidence names project-relative paths"
+        for question in questions
+        for item in question.get("evidence") or []
+        if item.startswith("/")
+    ]
 
 
 def proposal_problems(
@@ -692,6 +713,7 @@ __all__ = [
     "SpecError",
     "answer_problems",
     "child_folder",
+    "evidence_problems",
     "load_answers",
     "narrowed_entries",
     "obj",

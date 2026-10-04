@@ -12,7 +12,7 @@ shapes are in the [contracts](contracts.md).
 - AND a survey worker that proposes the children `module.checkout` binding `src/checkout/` and `module.inventory` binding `src/inventory/`
 - WHEN the caller runs `concorde run survey --modules module.shop` there
 - THEN the worker's grant reads the Specs and the code `module.shop` binds and writes nothing
-- AND its brief lists every bound file with its size in lines
+- AND its brief names an inventory file, which the worker may read beside its grant and which lists every bound file with its size in lines, and summarizes it by top-level path
 - AND the result is `ok` with a [decomposition proposal](../../glossary.json#concept.decomposition-proposal) naming `module.checkout` and `module.inventory` with their entries
 - AND the proposal's remaining entries are the root's entries without the children's paths
 - AND no file of the worktree changed
@@ -21,7 +21,7 @@ shapes are in the [contracts](contracts.md).
 
 - GIVEN a root Module whose Concorde installation realization binds `.claude/skills/concorde/SKILL.md`
 - WHEN a survey runs for it
-- THEN the inventory in its brief does not list the skill
+- THEN the inventory its brief names does not list the skill
 - AND a proposal giving the skill to a child fails with `inconsistent_proposal` naming the Concorde installation
 
 ### scenario.adoption.survey-no-task — An unbound survey before any task
@@ -46,6 +46,15 @@ shapes are in the [contracts](contracts.md).
 - THEN the result is `failed`
 - AND the [Operation](../../glossary.json#concept.operation)'s link lists both inconsistencies with `capability` as its reason
 - AND the worker's proposal stays in the result's `worker` field only
+- AND a child entry in a directory the exclusion rule skips below `src/`, such as `src/build/`, or one reached through a symbolic link fails the same way, since `module.shop` never bound its files
+
+### scenario.adoption.survey-after-scaffold — A survey revised after its scaffold needs a fresh workspace
+
+- GIVEN the task worktree `adopt` in which a survey of `module.shop` ran and its scaffold created `module.checkout` and `module.inventory`
+- WHEN the caller runs the survey of `module.shop` there again, with answers that revise it
+- THEN the result is `failed` with `fresh_workspace_required`, naming each Module `module.shop` contains since the workspace's base commit, before any worker started
+- AND nothing the scaffold wrote is undone and no file changes
+- BUT a survey of `module.checkout`, to which no scaffold wrote, runs as usual in the same worktree
 
 ### scenario.adoption.survey-answers — A survey follows the answers and records who settled them
 
@@ -70,7 +79,7 @@ shapes are in the [contracts](contracts.md).
 - GIVEN a survey worker that writes a child entry, a check input and an open question's evidence as absolute paths inside the task worktree, one of them through the worktree's real path
 - WHEN the host checks the proposal
 - THEN the result is `ok` and each of them is the project-relative path, a directory keeping its trailing `/`
-- BUT an absolute path outside the worktree is left as written and fails the survey with `inconsistent_proposal` naming it
+- BUT an absolute path outside the worktree, a child entry or an open question's evidence with a line suffix, is left as written and fails the survey with `inconsistent_proposal` naming it
 
 ## Code to spec
 
@@ -117,7 +126,9 @@ shapes are in the [contracts](contracts.md).
 - WHEN the run ends
 - THEN `tests/test_checkout.py` has a `verifies` decorator naming `scenario.checkout.submit` above `test_submit` and a no-op `verifies` definition, and nothing else changed in it
 - AND `linked_tests` names that test, and `unlinked_tests` names the other two with their reasons
-- AND the decorated file imports nothing of Concorde, and linking the same test again adds nothing
+- AND the decorated file imports nothing of Concorde, and linking the same test again, or naming it twice, adds nothing
+- AND in a file with CRLF line endings and more blank lines than usual, every byte that was there stays, and the added lines end with CRLF
+- AND a test defined under a top-level `if` is linked, while a test defined twice is reported in `unlinked_tests` as ambiguous
 
 ### scenario.adoption.describe-absolute-paths — Absolute test paths in a description still link
 
@@ -125,6 +136,7 @@ shapes are in the [contracts](contracts.md).
 - WHEN the run ends
 - THEN the promise names `tests/test_checkout.py::test_submit`, which `linked_tests` lists
 - AND the open question's evidence is `src/checkout/payment.py`
+- BUT an open question whose evidence names an absolute path outside the task worktree fails the run with `inconsistent_description` naming it
 
 ### scenario.adoption.foreign-verifies — A test file with its own `verifies` stays as it is
 
@@ -133,7 +145,18 @@ shapes are in the [contracts](contracts.md).
 - WHEN the run ends
 - THEN `tests/test_checkout.py` is unchanged
 - AND `unlinked_tests` names that test with a reason naming the file's own `verifies` binding and its line
+- AND a file that binds `verifies` by a loop, a `with`, an `except` clause, an assignment expression or a match pattern stays as it is in the same way
 - BUT a file whose `verifies` is the host's no-op helper or Concorde's decorator imported from `concorde.spec.verification` gets the decorator and no second definition
+- AND when that helper or import comes only after the test or inside a branch, the file stays as it is and the link is reported, since a decorator there could not use it
+
+### scenario.adoption.test-file-unwritable — A test file that cannot be written is reported
+
+- GIVEN a code_to_spec run whose scenario promise names a test in `tests/test_calc.py` and one in `tests/test_more.py`
+- AND writing `tests/test_calc.py` fails, or the file is read-only
+- WHEN the host links the tests
+- THEN `tests/test_calc.py` is unchanged and no temporary file is left beside it
+- AND `unlinked_tests` names its test with the reason that it could not be written
+- AND the test in `tests/test_more.py` is linked all the same
 
 ### scenario.adoption.stub-deleted — A stub the worker deleted leaves its Module
 

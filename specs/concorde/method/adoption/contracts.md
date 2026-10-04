@@ -1013,12 +1013,13 @@ and Spec core links below it keep their own codes.
 | --- | --- | --- | --- | --- |
 | `invalid_request` | survey | `failed` | `input` | a survey is bound to other than one [Module](../../glossary.json#concept.module) |
 | `invalid_answers` | survey, code_to_spec | `failed` | `input` | the answers file cannot be read, breaks `contract.adoption.answers` or answers one identity twice |
-| `specs_unloadable` | both | `failed` | `scope` | the worktree's Specs cannot be loaded; the cause is Spec core's error |
+| `specs_unloadable` | both | `failed` | `scope` | the worktree's Specs cannot be loaded, or, for a bound survey, the surveyed Module's entry metadata at the workspace's base commit cannot be read; the cause is Spec core's error when it gave one |
+| `fresh_workspace_required` | survey | `failed` | `scope` | a bound survey's Module contains a Module, or has an external inclusion, that its entry metadata at the workspace's base commit did not name: a scaffold has written to it, and revising a survey after its scaffold needs a fresh workspace; each addition is evidence |
 | `grant_unavailable` | survey, code_to_spec | `failed` | `scope` | Spec core cannot compute the `code-to-spec` grant; the cause is its error |
 | `unknown_modules` | code_to_spec | `failed` | `input` | a bound Module is not registered, listed with the registered ones |
-| `inconsistent_proposal` | survey | `failed` | `capability` | the proposal does not fit the worktree, has a decision whose choice names none of its options or that neither chooses nor follows an answer, or does not follow an answer; every problem is listed |
+| `inconsistent_proposal` | survey | `failed` | `capability` | the proposal does not fit the worktree, names an absolute path as an open question's evidence, has a decision whose choice names none of its options or that neither chooses nor follows an answer, or does not follow an answer; every problem is listed |
 | `new_structural_errors` | code_to_spec | `blocked` | `decision` | the description adds structural errors; one cause per finding |
-| `inconsistent_description` | code_to_spec | `failed` | `capability` | the description names another Module, repeats an identity, has a decision whose choice names none of its options or that neither chooses nor follows an answer, or leaves out an answered decision or question; every problem is listed |
+| `inconsistent_description` | code_to_spec | `failed` | `capability` | the description names another Module, repeats an identity, names an absolute path as an open question's evidence, has a decision whose choice names none of its options or that neither chooses nor follows an answer, or leaves out an answered decision or question; every problem is listed |
 
 A worker that ended `blocked` or `failed`, a launch error, a timeout and an audit violation keep
 the codes of the [standard worker sequence](../workers.md#errors-of-the-worker-sequence).

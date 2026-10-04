@@ -43,6 +43,7 @@ from .records import (
     SPEC_DESCRIPTION_SCHEMA,
     AnswersError,
     answer_problems,
+    evidence_problems,
     load_answers,
     repeated_ids,
     resolved_decisions,
@@ -573,6 +574,7 @@ def observe(ctx: RunContext):
             )
     problems += repeated_ids(output["decisions"], "decision")
     problems += repeated_ids(output["open_questions"], "open question")
+    problems += evidence_problems(output["open_questions"])
     problems += answer_problems(answers, output["decisions"], output["promises"])
     if problems:
         ctx.output = None

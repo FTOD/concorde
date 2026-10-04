@@ -85,9 +85,13 @@ then describe `module.inventory`, `module.checkout` and last `module.shop`, prov
 the worker describing `module.checkout` reads the description of `module.inventory` rather than its
 stub. A spec_review run reviews the three Modules, a `task-validation` run decides whether the
 workspace is ready, and, since it is, `delivery --adoption` makes the
-[delivery commit](../glossary.json#concept.delivery-commit) on the task branch. Each run is a
-step with its own key, `survey`, `scaffold`, `describe:module.inventory`, `describe:module.checkout`,
-`describe:module.shop`, `spec_review`, `validate` and `delivery`, listed in the workspace's
+[delivery commit](../glossary.json#concept.delivery-commit) on the task branch. The flag declares
+that the workspace describes code which already existed: linking the tests the scenarios were taken
+from adds `verifies` decorators to test files, which counts as changed code, and the flag exempts
+those scenarios from Delivery's rule that changed code ships with a test for each scenario it added
+or changed, as [Delivery explains](delivery/module.md#running-delivery); every other rule of
+delivery applies. Each run is a step with its own key, `survey`, `scaffold`,
+`describe:module.inventory`, `describe:module.checkout`, `describe:module.shop`, `spec_review`, `validate` and `delivery`, listed in the workspace's
 [workflow record](../glossary.json#concept.workflow-record), each a node `steps/<n>-<key>/` of the workflow's node with its run's node inside it. The
 workflow ends with its report, saved beside that record as `reports/1.json` with the
 Markdown rendering `reports/1.md`: status `ok`, every decision and [open question](../glossary.json#concept.open-question) the runs
@@ -116,9 +120,22 @@ runs `survey --modules module.shop --answers <file> --input <first survey run>`,
 follows the answer to the question the first one asked and records its decision `d.db-helper` as
 decided by `main-agent`, who gave the answer. It supersedes the step `survey` together
 with every step recorded after it. Here there is none, since the workflow paused right after the
-survey; had later steps been recorded, they would never be found again and would run anew. The
-workflow then goes on from the scaffold as on the normal path, and a relaunch with the same answers
-finds `survey@<digest>` again instead of running it once more.
+survey. The workflow then goes on from the scaffold as on the normal path, and a relaunch with the
+same answers finds `survey@<digest>` again instead of running it once more.
+
+Revising the survey after its scaffold ran, for example once a no-ask run's report shows a decision
+the developer would have taken otherwise, is not a replay in the same workspace. Superseding the
+later steps forgets their records but undoes none of their writes: the scaffold has narrowed
+`module.shop` and registered its children, and the descriptions stay. So the answered survey refuses to run there and ends `failed` with
+`fresh_workspace_required`, naming the Modules `module.shop` contains since the workspace's base
+commit ([req.adoption.survey-after-scaffold](adoption/requirements.md#req.adoption.survey-after-scaffold)),
+and the workflow ends with it, like after any survey that did not end `ok`. The procedure is a
+fresh workspace: the main agent, or whoever prepares workspaces, opens a new task for `module.shop`
+from the primary worktree, and its task session starts the workflow there with the same answers
+under the base key `survey`, which the survey of the new workspace follows without the first
+workspace's run as input. Nothing written in the first workspace is undone; whether its task is
+kept, to compare or to take descriptions from, or closed unmerged is the main agent's decision, put
+to the developer when its authority does not cover it.
 
 ## The brownfield procedure step by step
 

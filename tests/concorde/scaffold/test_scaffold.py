@@ -106,6 +106,15 @@ class ScaffoldTests(AdoptionCase):
     @verifies("scenario.scaffold.vendored-external")
     def test_vendored_code_becomes_external_material_of_its_user(self):
         worktree = self.open()
+        # Vendored code is never also a child's entry (surveyed before the scaffold, since a
+        # survey after it needs a fresh workspace).
+        overlapping = json.loads(json.dumps(PROPOSAL))
+        overlapping["externals"] = [
+            {"path": "src/checkout/", "used_by": "module.checkout", "reason": "r"}
+        ]
+        _, envelope = self.survey(overlapping)
+        self.assertEqual("inconsistent_proposal", envelope["error"]["code"])
+        self.assertIn("overlaps a child's entries", envelope["error"]["detail"])
         vendored = json.loads(json.dumps(PROPOSAL))
         vendored["externals"] = [
             {
@@ -147,14 +156,6 @@ class ScaffoldTests(AdoptionCase):
         self.assertEqual(
             [], [f.message for f in report.findings if f.strictness == "error"]
         )
-        # Vendored code is never also a child's entry.
-        overlapping = json.loads(json.dumps(PROPOSAL))
-        overlapping["externals"] = [
-            {"path": "src/checkout/", "used_by": "module.checkout", "reason": "r"}
-        ]
-        _, envelope = self.survey(overlapping)
-        self.assertEqual("inconsistent_proposal", envelope["error"]["code"])
-        self.assertIn("overlaps a child's entries", envelope["error"]["detail"])
 
     @verifies("scenario.scaffold.vendored-external")
     def test_vendored_code_inside_a_child_narrows_that_child(self):
