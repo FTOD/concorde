@@ -315,7 +315,9 @@ def _git(worktree: Path, *arguments: str, check: bool = True):
         cwd=worktree,
         check=check,
         capture_output=True,
-        env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
+        # Paths are passed literally: a changed path such as ``[id].tsx`` is never a glob that
+        # also selects other paths, which could lie outside the grant.
+        env={**os.environ, "GIT_OPTIONAL_LOCKS": "0", "GIT_LITERAL_PATHSPECS": "1"},
     )
 
 
@@ -513,6 +515,8 @@ def prepare(ctx: RunContext):
                 f"{len(state.reviewed)} path(s) with contents, {len(state.named)} by name "
                 "only",
             ),
+            *(evidence("diff-path", path, "with contents") for path in state.reviewed),
+            *(evidence("diff-path", path, "by name only") for path in state.named),
         ]
         checked = None
     try:
@@ -871,6 +875,8 @@ def _judge(
             review.findings,
             review.context_identity,
             defined,
+            review.earlier,
+            review.settled,
         )
         found.extend(reported)
         if stop is not None:

@@ -142,10 +142,14 @@ def report(
     findings: list[dict],
     identity: str,
     documents: dict[str, str | None],
+    earlier: list[dict] | None = None,
+    settled: dict | None = None,
 ) -> tuple[list[dict], Stop | None]:
     """Report every finding of one Module; returns the host evidence and, when the Issue store
     refused a report, the Module's stop. Each finding gets its ``issue``. ``documents`` gives the
-    document that defines each finding's basis."""
+    document that defines each finding's basis; ``earlier`` and ``settled`` are the Module's
+    earlier Issues offered and how the review settled them, which an unreported finding's earlier
+    Issue joins as carried."""
     return review_issues.report(
         ctx,
         module,
@@ -159,6 +163,8 @@ def report(
             documents.get(finding["basis"]),
         ),
         review="code review",
+        earlier=earlier,
+        settled=settled,
     )
 
 

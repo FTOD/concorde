@@ -10,6 +10,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from concorde.execution.checks import checks as check_service
+from concorde.execution.checks.check_executor import CheckSandboxError
 from concorde.method.code_review.operation import REVIEW_SCHEMA
 from concorde.worker_harness import claude_backend
 from concorde.worker_harness.runs import read_record
@@ -317,6 +319,57 @@ class CodeReviewTests(unittest.TestCase):
         self.assertNotIn("HELPER = 3", prompt)
         self.assertIn("+SECRET = 2", prompt)
         self.assertIn("+EXTRA = 1", prompt)
+
+    def test_a_changed_path_with_glob_characters_selects_only_itself(self):
+        # ``src/a/[id].py`` as a Git pathspec would also match ``src/a/i.py``; the readable
+        # path must not bring in the contents of an unreadable one that its glob matches.
+        (self.worktree / "src/a/[id].py").write_text("PAGE = 1\n")
+        (self.worktree / "src/a/i.py").write_text("OTHER = 2\n")
+        (self.worktree / "tools").mkdir()
+        (self.worktree / "tools/x").write_text("HIDDEN = 3\n")
+        (self.worktree / "tools/[x]").write_text("SHOWN = 4\n")
+        from concorde.method.code_review import operation as code_review
+
+        reviewed = ["src/a/[id].py"]
+        diff = code_review.diff_text(self.worktree, self.task["base_commit"], reviewed)
+        self.assertIn("+PAGE = 1", diff)
+        self.assertNotIn("OTHER = 2", diff)
+        diff = code_review.diff_text(
+            self.worktree, self.task["base_commit"], ["tools/[x]"]
+        )
+        self.assertIn("+SHOWN = 4", diff)
+        self.assertNotIn("HIDDEN = 3", diff)
+        _, envelope = self.change()
+        self.assertEqual("ok", envelope["status"], envelope)
+        self.assertIn("src/a/[id].py", envelope["output"]["reviewed_paths"])
+        self.assertIn("tools/[x]", envelope["output"]["named_only_paths"])
+        _, prompt = self.worker(envelope)
+        self.assertNotIn("HIDDEN = 3", prompt)
+        self.assertNotIn("SHOWN = 4", prompt)
+
+    def test_a_review_stopping_at_its_checks_names_the_diffs_paths(self):
+        (self.worktree / "tools").mkdir()
+        (self.worktree / "tools/helper.py").write_text("HELPER = 3\n")
+
+        def unavailable(*arguments, **options):
+            raise CheckSandboxError("no namespaces here")
+
+        with patch.object(check_service, "execute_check", unavailable):
+            _, envelope = self.change()
+        self.assertEqual("failed", envelope["status"], envelope)
+        self.assertEqual("checks_unavailable", envelope["error"]["code"])
+        self.assertIsNone(envelope["output"])
+        self.assertEqual(
+            [
+                ("src/a/calc.py", "with contents"),
+                ("tools/helper.py", "by name only"),
+            ],
+            [
+                (item["ref"], item["detail"])
+                for item in envelope["host_evidence"]
+                if item["kind"] == "diff-path"
+            ],
+        )
 
     def test_a_deleted_changed_file_may_be_a_location(self):
         (self.worktree / "src/new.py").unlink()
@@ -662,6 +715,8 @@ class CodeReviewTests(unittest.TestCase):
 
     @verifies("scenario.code-review.store-refusal")
     def test_a_refusal_of_the_issue_store_is_an_error_not_an_issue(self):
+        standing = self.earlier("standing")
+        before = self.issues()
         interrupted = self.root / ".concorde/tasks/interrupted"
         interrupted.mkdir(parents=True)
         head = subprocess.run(
@@ -689,12 +744,21 @@ class CodeReviewTests(unittest.TestCase):
                 }
             )
         )
-        status, envelope = self.change(finding(), finding(kind="defect"))
+        status, envelope = self.change(
+            finding(earlier=standing), finding(kind="defect")
+        )
         self.assertEqual((1, "failed"), (status, envelope["status"]), envelope)
         entry = self.module_entry(envelope)
         self.assertEqual("incomplete", entry["outcome"])
         self.assertEqual([None, None], [item["issue"] for item in entry["findings"]])
-        self.assertEqual({}, self.issues())
+        # Nothing was appended to the earlier Issue the first finding named: no finding claims
+        # it as `earlier`, and it is carried.
+        for item in entry["findings"]:
+            self.assertNotIn("earlier", item)
+        self.assertEqual(
+            [standing], [item["issue"] for item in entry["earlier_issues"]["carried"]]
+        )
+        self.assertEqual(before, self.issues())
         [cause] = envelope["error"]["causes"]
         self.assertEqual("issues_unreported", cause["code"])
         [store] = cause["causes"]

@@ -199,7 +199,7 @@ F2 "the Spec already states the retry limit in req.payments.retry"` starts the s
 | `failed` | `plan_unreadable` | `input` | the plan file is missing, unreadable, not UTF-8 text or empty |
 | `failed` | `iteration_mismatch` | `input` | more than one `plan_review` input, a previous finding not answered exactly once, an answer to no previous finding, or an answer without a previous iteration; lists every problem |
 | `failed` | `unresolved_basis` | `capability` | a basis that does not resolve in the bound Modules' Spec context, or a `violation` without one; names every such finding |
-| `failed` | `inconsistent_review` | `capability` | responses not exactly one per previous finding, a maintained finding not restated exactly once, a restated finding that continues no maintained one, or a finding about a Module that is not bound; lists every inconsistency |
+| `failed` | `inconsistent_review` | `capability` | two findings with the same id, responses not exactly one per previous finding, a maintained finding not restated exactly once, a restated finding that continues no maintained one, or a finding about a Module that is not bound; lists every inconsistency |
 
 The two `input` failures stop the run before the reviewer launches. Only an `ok` run carries a
 report; the reviewer's own answer stays in the `worker` field of every run it reached.

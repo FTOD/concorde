@@ -123,7 +123,8 @@ reviewer and need no answer.
 
 ### req.understanding.plan-review-responses — The reviewer answers the previous iteration
 
-The `plan_review` Operation SHALL end the run `failed` with `inconsistent_review` when the
+The `plan_review` Operation SHALL end the run `failed` with `inconsistent_review` when two of the
+reviewer's findings have the same id, when the
 reviewer's responses are not exactly one per finding of the previous iteration, when a maintained
 finding is not restated by exactly one finding, when a finding restates a finding that is not
 maintained, or when a finding names a Module that is not bound.

@@ -14,8 +14,9 @@ The survey and code_to_spec hosts SHALL compute their workers' grants for [task 
 
 The survey host SHALL give its worker no writable path.
 
-The survey withholds the [Spec](../../glossary.json#concept.spec) side of the `code-to-spec`
-grant, which the Protocol permits, so the survey may also run unbound.
+The survey withholds every writable level of the `code-to-spec` grant, which the Protocol permits:
+it reads the code and the [Specs](../../glossary.json#concept.spec) its grant names and writes
+nothing, so it may also run unbound.
 
 ### req.adoption.survey-change-fails — A change during a survey fails it
 
@@ -35,20 +36,32 @@ The code_to_spec host SHALL list, in its worker's brief, every structural error 
 
 ### req.adoption.tests-linked-by-host — The host alone marks tests
 
-The code_to_spec host SHALL add a `verifies` decorator to each existing Python test in a Module's implementation file that a scenario promise of a described Module names in its `tests`, unless the decorated file would not parse or the file already binds the name `verifies` at module level to something other than the host's no-op helper or an import of Concorde's `verifies` decorator from `concorde.spec.verification`.
+The code_to_spec host SHALL add a `verifies` decorator to each existing Python test in a Module's implementation file that a scenario promise of a described Module names in its `tests`, unless the file defines that test more than once, the decorated file would not parse or cannot be written, the file already binds the name `verifies` at module level to something other than the host's no-op helper or an import of Concorde's `verifies` decorator from `concorde.spec.verification`, or no such helper or import stands at the file's top level before the test while the file binds the name.
 
-A decorator in such a file would call the project's own `verifies`, whatever it does, so the host
-leaves the file untouched and reports the link in `unlinked_tests`.
+A test is found in the module or a class body, also under a control-flow statement such as a
+top-level `if` or `try`, but never inside a function, as the coverage check finds it. A decorator
+in a file with a binding of its own would call the project's own `verifies`, whatever it does, and
+one above a test that the helper or import follows, or that only a branch binds, could find no
+`verifies` when the module is imported, so the host leaves the file untouched and reports the link
+in `unlinked_tests`. A module-level binding is any statement, `except` clause, assignment expression
+or match pattern that binds the name outside a function or class body.
 
-A test that already declares the scenario gets no second decorator.
+A test that already declares the scenario gets no second decorator, and a link named more than once
+gets one.
 
 ### req.adoption.test-edits-limited — Test files get decorators and one helper only
 
-The code_to_spec host SHALL change an existing test file only by adding `verifies` decorators and, once in a file that does not already bind the name `verifies` at its top level, a two-line no-op definition of `verifies`.
+The code_to_spec host SHALL change an existing test file only by adding `verifies` decorators and, once in a file that does not already bind the name `verifies` at its top level, a two-line no-op definition of `verifies` with at most the blank lines that make two on each side of it, keeping every byte already in the file, its line endings included.
+
+Each line it adds ends as the file's lines end, and a decorator takes the indentation of the line
+it is added above, so that linking a test changes only the lines it adds.
 
 ### req.adoption.unlinked-reported — Links not made are reported
 
 The code_to_spec host SHALL list in the result's `unlinked_tests` every test a scenario promise names that it did not link, with the reason.
+
+A test file that cannot be written is one such reason: the host replaces a file only through a new
+file beside it, so the original stays whole, and it goes on to link the next file.
 
 ### req.adoption.no-bash — Adoption workers cannot run code
 
@@ -66,7 +79,9 @@ A survey or code_to_spec worker SHALL NOT be able to add or remove a [Module](..
 The survey and code_to_spec hosts SHALL write every path of their worker's claims that begins with the worktree's absolute path, or its real path, followed by `/`, relative to the worktree before checking it: a survey's child entries, external paths, check inputs and open questions' evidence, and a code_to_spec run's promise `tests` and open questions' evidence.
 
 A worker's tools take absolute paths, and such a path names exactly one project path. Any other path
-is left as the worker wrote it, and the checks report it.
+is left as the worker wrote it, and the checks report it: an open question's evidence that is still
+absolute, a line suffix such as `:12` allowed, fails a survey with `inconsistent_proposal` and a
+code_to_spec run with `inconsistent_description`.
 
 ## Honest description
 
@@ -123,11 +138,15 @@ workflow stops for exactly these points without knowing Adoption's contracts.
 
 ### req.adoption.proposal-checked — A proposal fits the worktree
 
-The survey host SHALL end the run `failed` with every inconsistency listed when the proposal names a child identity or title that is already registered or repeated, two children whose documents would share a folder, an entry that the surveyed Module's realizations do not cover or that does not exist, a `uses` target that is neither another child nor a registered Module, a check for a Module that is neither the surveyed Module nor a child, a check that is already configured or proposed twice, a check input that is not a canonical project-relative path, an external that is not a path the surveyed Module binds, is a child's entry or a directory containing one, takes Concorde installation files, is proposed twice or is used by neither the surveyed Module nor a child, or a decision or open question identity used twice.
+The survey host SHALL end the run `failed` with every inconsistency listed when the proposal names a child identity or title that is already registered or repeated, two children whose documents would share a folder, an entry that the surveyed Module's realizations do not cover, that lies in a directory their exclusion rule skips, that is reached through a symbolic link or that does not exist, a `uses` target that is neither another child nor a registered Module, a check for a Module that is neither the surveyed Module nor a child, a check that is already configured or proposed twice, a check input that is not a canonical project-relative path, an external that is not a path the surveyed Module binds, is a child's entry or a directory containing one, takes Concorde installation files, is proposed twice or is used by neither the surveyed Module nor a child, a decision or open question identity used twice, or an open question's evidence that is an absolute path.
 
 ### req.adoption.inventory — The survey worker gets an inventory
 
 The survey host SHALL give its worker, as task material, every file the surveyed Module binds with its size in lines, apart from its Concorde installation.
+
+The inventory is a file of the run's [trace node](../../glossary.json#concept.trace-node) that the
+worker may read beside its grant; the brief names it with a summary, so that no number of files
+makes the brief too long and none is left out.
 
 ### req.adoption.installation-stays — Concorde's own files stay where they are
 
@@ -135,6 +154,17 @@ The survey host SHALL end the run `failed` with `inconsistent_proposal` when a c
 
 The skill, workflows and agents Concorde installed configure the agents, not the project, and the
 installer replaces them on every update.
+
+### req.adoption.survey-after-scaffold — A scaffold's writes need a fresh workspace
+
+The survey host SHALL end a bound survey `failed` with `fresh_workspace_required`, before launching a worker, when the surveyed Module's entry metadata names a contained Module or an external inclusion that the same metadata at the workspace's base commit does not name.
+
+These are the additions a scaffold makes to the Module it applies a proposal to, so the workspace
+already holds a scaffold's writes: the Module has been narrowed and its children registered, and a
+survey replayed there would propose against them, while nothing undoes them. Revising a survey after
+its scaffold ran requires a fresh workspace, in which the survey runs again with the answers that
+revise it; the survey undoes nothing in the first workspace. An unbound survey has no workspace a
+scaffold could have written to.
 
 ### req.adoption.one-module-surveyed — One Module per survey
 

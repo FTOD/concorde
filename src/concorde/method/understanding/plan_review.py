@@ -138,22 +138,29 @@ REVIEWER_OUTPUT: dict = {
 PLAN_DIFF_LIMIT = 100_000
 
 
+class _Answer(argparse.Action):
+    """Append one ``--accept`` or ``--reject`` to the one list both share, so that the answers
+    keep the order the caller gave them in."""
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        finding, text = values
+        given = list(getattr(namespace, self.dest, None) or [])
+        given.append({"finding": finding, "answer": self.const, "text": text})
+        setattr(namespace, self.dest, given)
+
+
 def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--plan", required=True)
-    parser.add_argument(
-        "--accept",
-        nargs=2,
-        action="append",
-        default=[],
-        metavar=("FINDING", "TEXT"),
-    )
-    parser.add_argument(
-        "--reject",
-        nargs=2,
-        action="append",
-        default=[],
-        metavar=("FINDING", "TEXT"),
-    )
+    for option, answer in (("--accept", "accepted"), ("--reject", "rejected")):
+        parser.add_argument(
+            option,
+            nargs=2,
+            action=_Answer,
+            const=answer,
+            dest="answers",
+            default=[],
+            metavar=("FINDING", "TEXT"),
+        )
 
 
 # --- step 1: the plan --------------------------------------------------------------------------
@@ -207,14 +214,8 @@ def read_plan(ctx: RunContext):
 
 
 def answers(ctx: RunContext) -> list[dict]:
-    """The caller's answers in the order given: every --accept, then every --reject."""
-    return [
-        {"finding": finding, "answer": "accepted", "text": text}
-        for finding, text in ctx.arguments.accept
-    ] + [
-        {"finding": finding, "answer": "rejected", "text": text}
-        for finding, text in ctx.arguments.reject
-    ]
+    """The caller's ``--accept`` and ``--reject`` answers in the order given."""
+    return list(ctx.arguments.answers)
 
 
 def iteration_problems(
@@ -442,8 +443,14 @@ def inconsistencies(
     findings: list[dict],
     modules: list[str],
 ) -> list[str]:
-    """Every way the review fails to answer the previous iteration or names an unbound Module."""
+    """Every way the review repeats a finding id, fails to answer the previous iteration or
+    names an unbound Module."""
     problems = []
+    current = [item["id"] for item in findings]
+    for finding in sorted(set(current)):
+        count = current.count(finding)
+        if count > 1:
+            problems.append(f"{count} findings have the id {finding}")
     earlier = [item["id"] for item in (previous or {}).get("findings") or []]
     answered = [item["finding"] for item in responses]
     for finding in earlier:

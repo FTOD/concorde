@@ -61,21 +61,28 @@ other commit it creates that subject, making the commit even when it changes not
 ### req.delivery.commit-verified — The commit is proven to hold what was staged
 
 Delivery SHALL end a run that created a delivery commit `ok` only when that commit's tree is the
-tree `git write-tree` recorded from the index after staging, its only parent is the validated head,
-it is the head of the bound branch and the worktree is clean, and otherwise fail with
-`commit_unverified`, naming every difference, and take the commit off the branch as
+tree `git write-tree` recorded from the index after staging, its subject is exactly the subject of
+the delivery message Delivery gave Git, its only parent is the validated head, it is the head of the bound
+branch and the worktree is clean, and otherwise fail with `commit_unverified`, naming every
+difference, and take the commit off the branch as
 [req.delivery.rejected-removed](#req.delivery.rejected-removed) requires.
 
-The repository's commit hooks run normally, and a hook may change what is committed; the recorded
-tree shows each path it changed, so the commit is exactly what was validated or the run says it is
-not.
+The repository's commit hooks run normally, and a hook may change what is committed or the message
+it is committed with; the recorded tree shows each path it changed and the subject whether it still
+marks a delivery, so the commit is exactly what was validated, marked as a delivery, or the run says
+it is not. A hook that only adds to the body, such as a `Change-Id` trailer, changes no mark and is
+accepted.
+The commit verified is the one `git commit` names as the one it created, never a commit a
+post-commit hook made on top of it.
 
 ### req.delivery.rejected-removed — A rejected commit does not stay on the branch
 
 When a delivery commit Delivery created in the run does not verify, Delivery SHALL move the bound
 branch back to the validated head, only while that head is the commit's only parent and the branch
 still points at the commit, leave the index and the worktree as they are, and say in the run's
-error that it took the commit off the branch, or otherwise that the commit stays and why.
+error that it took the commit off the branch, or otherwise that the commit stays and why: that the
+branch no longer points at it, naming the commit it points at, or that Git refused to move a branch
+that still points at it, with Git's account.
 
 A rejected commit left at the head would carry the subject that alone marks a delivery, so whoever
 reads the branch could take it for one, as
@@ -92,10 +99,17 @@ Restoring the index while undoing an uncommitted delivery, as
 off the branch, as [req.delivery.rejected-removed](#req.delivery.rejected-removed) requires, removes
 only the commit the same run created.
 
-### req.delivery.atomic — A failed commit leaves the validated workspace
+### req.delivery.atomic — A failed commit gives the validated index back
 
-When staging or the commit fails, Delivery SHALL restore the workspace and its index to the state
-the readiness examined.
+When staging or the commit fails, Delivery SHALL restore the index to the state the readiness
+examined, leave the worktree as it is, and name in the run's summary and error every worktree path
+whose mode or content is no longer what the readiness examined.
+
+A failing commit hook, such as a formatter that rewrites files and then rejects the commit, may
+leave edits in the worktree that the developer wants, so Delivery keeps them and names them rather
+than undoing them, as
+[scenario.delivery.hook-edits-kept](scenarios.md#scenario.delivery.hook-edits-kept) shows; nothing
+unvalidated is delivered, since the next delivery validates the worktree as it then is.
 
 ## Records
 

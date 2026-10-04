@@ -89,6 +89,14 @@ change and the test report are in the
 - AND it names the scenario or requirement concerned, the likely cause and whether the code, a test, the Spec or the environment is at fault
 - BUT the result status is `ok`, because the run itself succeeded
 
+### scenario.implementation.test-failures-unaccounted — Failures must interpret exactly the failed checks
+
+- GIVEN a test run whose configured check failed
+- WHEN the worker returns `failures` without an entry for that check, or with one for a check that passed
+- THEN the Operation resumes the worker once with every mismatch
+- AND when the worker's next `failures` hold one entry for the failed check and no other, the result has status `ok` with them
+- BUT when they still do not, the result has status `failed` with `failures_unaccounted` naming each mismatch
+
 ### scenario.implementation.test-change — A change during a test run fails it
 
 - GIVEN a test run whose write audit finds a changed or new file in the workspace, outside the paths Git ignores

@@ -101,7 +101,7 @@ of [resume rounds](../glossary.json#concept.resume-round) (default 3).
 | --- | --- | --- | --- |
 | 1 | Compute the grant for the task type and Modules from the workspace's Specs through Spec core, lower every writable level to read when the provider withholds writes, which gives the **effective grant**, freeze it with the [context identity](../glossary.json#concept.context-identity) of the computed grant and convert it into the grant input | the step, Spec core | the Specs cannot be loaded or a [Module](../glossary.json#concept.module) is unknown |
 | 2 | Compose the task instructions: the provider's prompt, the plain definitions of the glossary terms the bound Modules' documents use, and the rules for a promise the Spec does not state (report it as a [Spec gap](../glossary.json#concept.spec-gap), never infer it) and a path outside the grant | the step, Spec core | — |
-| 3 | Hand everything to Workers, which resolves the worker's backend, model and level and generates the [worker settings](../glossary.json#concept.worker-settings), the tool list and the [brief](../glossary.json#concept.brief) | Workers | the configuration cannot be read or is not valid, or the backend is not installed |
+| 3 | Hand everything to Workers, which resolves the worker's backend, model and level and generates the [worker settings](../glossary.json#concept.worker-settings), the tool list and the [brief](../glossary.json#concept.brief) | Workers | the configuration cannot be read or is not valid, the worker's entries set no model, the backend is not installed, or the model map is missing, unreadable or gives the model no id for the backend: `worker_model_unavailable` |
 | 4 | Launch the worker with its own [run directory](../glossary.json#concept.run-directory) inside the run's trace node and wait for its worker result | Workers | launch error, timeout or a result that fails its schema |
 | 5 | Audit the workspace's changes against the grant | Workers | any write outside the grant's writable paths |
 | 6 | When the worker ended `ok` with a clean audit, call the step's round validation | Workers, the step | a worker result `blocked` or `failed`: the step ends with the worker's status, without validation or resume |
@@ -174,10 +174,11 @@ The step's outcome maps to the result status as follows; the first matching row 
 | --- | --- |
 | Glossary ownership violation found after the worker run (step 9), whatever else happened | `failed` |
 | Grant not computable, worker backend or model not settled, launch error, timeout, invalid worker result, audit or glossary ownership violation | `failed` |
+| The worker run's record ended `failed` for any other reason, such as Workers' `deletion_failed` or `validation_unavailable` | `failed` |
 | Worker result status `failed` | `failed` |
 | Worker result status `blocked` | `blocked` |
 | Checks still failing after the last round | `failed` |
-| Worker result status `ok`, audit clean, every check passed | `ok`, unless a later provider step stops the run |
+| Worker result status `ok`, audit clean, every check passed, and the worker run's record ended `ok` | `ok`, unless a later provider step stops the run |
 
 The steps and the statuses their exits give, as one flow:
 
@@ -208,7 +209,7 @@ validation -> workers.record: "a check still fails, rounds used up" {style.strok
 workers.launch -> workers.record: launch error {style.stroke-dash: 3}
 workers.audit -> workers.record: "violation, timeout, limit reached, invalid result, worker blocked or failed" {style.stroke-dash: 3}
 step.grant -> failed: Specs not loaded, Module unknown {style.stroke-dash: 3}
-workers.prepare -> failed: configuration invalid, backend missing {style.stroke-dash: 3}
+workers.prepare -> failed: "configuration invalid, no model,\nbackend missing, model map missing,\nunreadable or without the model's id" {style.stroke-dash: 3}
 workers.record -> ownership
 ownership -> failed: "an entry outside the grant changed" {style.stroke-dash: 3}
 ownership -> ok: "worker ok, audit clean, no check failing"
@@ -225,11 +226,12 @@ between the computed grant and the effective grant the worker harness receives: 
 computed grant, so the evidence still names the Specs the grant came from.
 
 The run keeps the worker result in the result's `worker` field unchanged and adds as its own
-evidence the grant, the context identity, the audit, each check with its command, exit code and log
-path, the rounds used, the transcript path and the worker's standard error. It never moves a
-statement of the worker into `summary` or `host_evidence`; the summary of a worker-backed result
-states the status and what the run verified, and the caller reads the worker's own account in
-`worker`.
+evidence the grant, the context identity, the audit, each check by its id, which names the
+configured command, with its status, exit code and log path, the rounds used, the transcript path
+and the worker's standard error. It never moves a statement of the worker into `summary` or
+`host_evidence`; the summary of a worker-backed result states the status and what the run
+verified, and the caller reads the worker's own account in `worker`, as
+[Execution requires](../execution/requirements.md#req.execution.claims-apart) of every run.
 
 ## Errors of the worker sequence
 

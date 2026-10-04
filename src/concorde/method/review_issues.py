@@ -328,6 +328,26 @@ def _report(ctx: RunContext, value: dict, provenance: dict) -> dict:
         )["receipt"]
 
 
+def _unclaim(
+    findings: list[dict], earlier: list[dict] | None, settled: dict | None
+) -> None:
+    """Take ``earlier`` from every finding that was not reported, whose earlier Issue was not
+    appended to and so is carried in ``settled``, in the order ``earlier`` offered them."""
+    unappended = {
+        finding.pop("earlier")
+        for finding in findings
+        if finding["issue"] is None and finding.get("earlier")
+    }
+    if not unappended or settled is None:
+        return
+    carried = {item["issue"] for item in settled["carried"]} | unappended
+    settled["carried"] = [
+        {key: item[key] for key in ("issue", "severity", "tier", "title")}
+        for item in earlier or []
+        if item["issue"] in carried
+    ]
+
+
 def report(
     ctx: RunContext,
     module: str,
@@ -337,6 +357,8 @@ def report(
     *,
     review: str,
     skipped: Skipped = _never,
+    earlier: list[dict] | None = None,
+    settled: dict | None = None,
 ) -> tuple[list[dict], Stop | None]:
     """Report every finding of one Module that is not ``skipped``; returns the host evidence and,
     when the issues command refused a report, the Module's stop. Each finding gets its ``issue``,
@@ -344,7 +366,9 @@ def report(
 
     ``issue_report`` gives the Issue report of the finding at a position, counted from 1, without
     ``issue_id`` and ``expected_revision``; ``review`` names the review in the stop, such as
-    ``code review``."""
+    ``code review``. A finding left unreported keeps no ``earlier``, since nothing was appended to
+    that Issue, which still stands and so joins the ``carried`` of ``settled``, the review's
+    settlement of ``earlier``, the Issues it offered."""
     for finding in findings:
         finding["issue"] = None
     found: list[dict] = []
@@ -363,10 +387,10 @@ def report(
             if skipped(finding):
                 continue
             value = issue_report(position, finding)
-            earlier = finding.get("earlier")
-            if earlier:
-                revision = call(ctx, "show", earlier)["revision"]
-                value.update(issue_id=earlier, expected_revision=revision)
+            named = finding.get("earlier")
+            if named:
+                revision = call(ctx, "show", named)["revision"]
+                value.update(issue_id=named, expected_revision=revision)
             receipt = _report(ctx, value, provenance)
             finding["issue"] = receipt["issue_id"]
             found.append(
@@ -374,13 +398,15 @@ def report(
                     "issue",
                     receipt["issue_id"],
                     f"{module} finding {position}: "
-                    f"{'appended to' if earlier else 'created'} the Issue, report "
+                    f"{'appended to' if named else 'created'} the Issue, report "
                     f"{receipt['report_id']}",
                 )
             )
     except Absent:
+        _unclaim(findings, earlier, settled)
         return [evidence("issues-not-recorded", module, NOT_RECORDED)], None
     except Refusal as refusal:
+        _unclaim(findings, earlier, settled)
         reported = sum(1 for finding in findings if finding["issue"])
         stop = ctx.fail(
             "failed",

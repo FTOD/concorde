@@ -53,11 +53,12 @@ Concrete situations that show the [requirements](requirements.md) at work. The
 - WHEN the worker ends `blocked` proposing `specs/a/rules.md` for that Module
 - THEN the Operation creates `specs/a/rules.md` and its metadata, empty and owned by the Module, and adds it to the Module's `owns` and the registry mirror
 - AND it launches a second worker whose brief names the created document, and that worker fills it
-- AND the result lists the document under `created_documents` and `changed_documents`, with `document-created` evidence, and two worker runs
+- AND the result lists the document under `created_documents`, and the document, its metadata and the entry's metadata `specs/a/module.md.json` under `changed_documents`, with `document-created` evidence, and two worker runs
+- AND a document proposed below the entry's folder, such as `specs/a/details/rules.md`, is created the same way, linking to the entry as `../module.md`
 
 ### scenario.specification.document-refused — A proposal outside the bound Modules creates nothing
 
-- GIVEN a worker that ends `blocked` proposing a document of a Module the run is not bound to, or a path outside the folder of the bound Module's entry
+- GIVEN a worker that ends `blocked` proposing a document of a Module the run is not bound to, a path outside the folder of the bound Module's entry, or the same path twice
 - WHEN the Operation judges the proposals
 - THEN it creates no document and launches no second worker
 - AND the result has status `blocked` with `document-refused` evidence naming the reason

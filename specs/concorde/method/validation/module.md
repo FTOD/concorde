@@ -71,7 +71,7 @@ remeasure -> save: "digest unchanged"
 save -> ok: "no blocking finding"
 save -> blocked: "blocking findings"
 branch -> failed: no {style.stroke-dash: 3}
-measure -> failed: "Git cannot report\nthe changes" {style.stroke-dash: 3}
+measure -> failed: "Git, a changed path or the\nconfiguration cannot be read" {style.stroke-dash: 3}
 checks -> failed: "boundary unavailable,\nor a check input changed" {style.stroke-dash: 3}
 remeasure -> failed: "digest changed" {style.stroke-dash: 3}
 ```
@@ -112,7 +112,7 @@ which it also saves as `readiness.json` in its
 | `ok` | — | — | the workspace is ready |
 | `blocked` | `not_deliverable` | `decision` | one cause per finding: `check` (exit code, log tail) or `component` (rule, location, message) |
 | `failed` | `wrong_branch` | `permission` | the workspace's head is not on the branch its binding names |
-| `failed` | `measurement_failed` | `environment` | Git's or the configuration's error as cause |
+| `failed` | `measurement_failed` | `environment` | the measurement's error as cause: `git_failed` (Git cannot report the changes), `path_unreadable` (a changed path cannot be read) or `config_unreadable` (the configuration or a checks file cannot be read) |
 | `failed` | `checks_unavailable` | `environment` | Check execution's error as cause |
 | `failed` | `inputs_changed` | `environment` | the workspace changed mid-run; Check execution's `stale_evidence` as cause when a check noticed it |
 
@@ -170,7 +170,7 @@ validation always covers the whole workspace, since a
 | # | Step | Actor | Stops when |
 | --- | --- | --- | --- |
 | 1 | Require the workspace's head to be on the branch its binding names | host | wrong or detached branch (`failed`) |
-| 2 | Measure inputs: head, base, changed paths' modes and digests, config digest, combined | host, read-only Git | Git can't report the changes (`failed`) |
+| 2 | Measure inputs: head, base, changed paths' modes and digests, config digest, combined | host, read-only Git | Git can't report the changes, or a changed path or the configuration can't be read (`failed`) |
 | 3 | Validate the workspace's Spec structure: errors block, warnings are kept | Spec core | — (Specs that fail to load skip steps 4–6) |
 | 4 | Require every changed path be accounted for, as the `unbound` kind lists | host, Spec core | — |
 | 5 | Derive the changed Modules via the impact indexes | Spec core | — |
@@ -183,10 +183,13 @@ reported once, at step 4. When the Specs fail to load, steps 4–6 are skipped a
 itself blocks, naming the file and the loader's error. One of the run's Modules that the loaded
 registry does not register is a structural blocking finding. At step 6, Check execution's
 `check_sandbox_unavailable` fails the run with `checks_unavailable`, and its `stale_evidence` with
-`inputs_changed`; any other error it raises for a Module's checks, such as a missing check input or
-an invalid check, is a blocking `check` finding naming the Modules whose checks could not run, and
-the other Modules' checks still run. Each of these keeps Check execution's own error link as its
-cause. Since structural validation does not read checks files, which belong to Check execution,
+`inputs_changed`; any other error it raises for a Module's checks, such as a missing check input,
+an invalid check or an operating-system error, which Check execution's link names `system_error`,
+is a blocking `check` finding naming the Modules whose checks could not run, and the other Modules'
+checks still run: each Module's own checks are run apart, reading only that Module's checks file.
+Each of these keeps Check execution's own error link as its cause. The checks such a failed call
+finished before the error keep their results, which Validation reads back from the checks' trace
+nodes, since the call itself returns none. Since structural validation does not read checks files, which belong to Check execution,
 step 6 is also where a checks file whose input is missing or escapes the worktree, or whose check is
 malformed, is found: before any check runs, Check execution's `validate_checks` judges every checks
 file and every declared input of the project, so that such a problem blocks, as one `check`
@@ -240,7 +243,9 @@ bound-workspace fixture Delivery's tests share.
   each result's check identity as `check`, its Module, status and exit code, its measured
   digest as `measured_digest` and its log path relative to the run's trace node,
   `checks/<check>/output.log`; a timeout's exit code becomes null and the log digest is dropped. A boundary
-  it cannot establish fails the run.
+  it cannot establish fails the run. When a call fails after some of its checks ran, Validation
+  relies on each check's trace node ([contract](../../execution/checks/service.md#contract.checks.check-trace))
+  for the result of every check that finished.
 - <a id="uses-workflows"></a>**Workflows** defines the
   [step output convention](../../workflows/contracts.md#contract.workflows.step-output), the
   `workflow` object of a run's output, in which every task-validation run that decided a readiness

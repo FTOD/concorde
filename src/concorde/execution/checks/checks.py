@@ -232,14 +232,16 @@ def checks_files(worktree: Path) -> list[tuple[str, str]]:
     return result
 
 
-def configured_checks(worktree: Path) -> list[dict]:
+def configured_checks(worktree: Path, modules=None) -> list[dict]:
     """The worktree's configured checks in configuration order, each carrying after its ``id``
     the ``module`` its file is named after; ``invalid_check`` for a checks file or entry that
     breaks the format. ``argv``, ``env``, ``when`` and ``timeout_seconds`` are checked when the
-    check runs."""
+    check runs. Given ``modules``, only their checks files are read."""
     root = Path(worktree)
     result, seen = [], {}
     for path, module in checks_files(root):
+        if modules is not None and module not in modules:
+            continue
         try:
             value = decode((root / path).read_text(encoding="utf-8"))
         except (OSError, UnicodeError, KernelError) as error:
@@ -433,7 +435,7 @@ def measured_digest(
     it selected and the digest of every file holding one of them, since another selection runs
     other tests."""
     root = Path(worktree)
-    checks = configured_checks(root) if checks is None else checks
+    checks = configured_checks(root, [check["module"]]) if checks is None else checks
     revision = check_revision(
         root, checks, check["module"], (measured or {}).get(check["module"], ())
     )
@@ -569,8 +571,9 @@ def run_checks(
     (``module``) or to the selective checks (``selective``), which run once for the whole
     selection."""
     worktree = Path(worktree)
-    checks = configured_checks(worktree)
     selected = list(dict.fromkeys(modules))
+    # Each Module's own checks need only its own checks file.
+    checks = configured_checks(worktree, selected if kinds == "module" else None)
     tests = list(tests or ())
     # Each Module's files once, since every check is measured before and after it runs.
     measured = {module: tuple(files) for module, files in (measured or {}).items()}

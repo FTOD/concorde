@@ -117,6 +117,23 @@ commit and output are defined in the [contracts](contracts.md).
 - AND the index and the worktree hold what the commit held, the hook's version of `src/a/calc.py` staged
 - AND the branch holds no delivery commit, so a following `delivery` validates the workspace as it now is
 
+### scenario.delivery.hook-changed-message — A commit message hook that rewrites the subject is caught
+
+- GIVEN a workspace that is ready, with a commit-msg hook that prefixes the subject with a ticket, `[T-1] `
+- WHEN the workspace is delivered
+- THEN Git creates the commit with the subject `[T-1] concorde: deliver t1`
+- BUT its subject is not the delivery subject, so the result has status `failed` with `commit_unverified`, naming the subject it carries and the one it should
+- AND Delivery takes the commit off the branch: the head is again the validated head and the branch holds no delivery commit
+
+### scenario.delivery.hook-edits-kept — A failing hook's worktree edits are kept and named
+
+- GIVEN a workspace that is ready, with a pre-commit hook that rewrites `src/a/calc.py` in the worktree and then rejects the commit, as a formatter hook does
+- WHEN the workspace is delivered
+- THEN the result has status `failed` with `commit_failed`
+- AND the index is restored as the readiness examined it
+- BUT the worktree keeps the hook's version of `src/a/calc.py`, and the run's summary and error name `src/a/calc.py` as not as the readiness examined it
+- AND the branch holds no delivery commit
+
 ### scenario.delivery.stage-refused — Git refuses to stage a change
 
 - GIVEN a workspace that is ready, with changes staged before the delivery, an intent-to-add path, a skip-worktree and an assume-unchanged flag, and a Git clean filter that refuses one of its changed files, which the readiness's checks do not read through Git

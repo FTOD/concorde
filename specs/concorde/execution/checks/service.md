@@ -26,13 +26,17 @@ entries; each entry has:
 | `timeout_seconds` | A positive, finite time limit |
 | `inputs` | Project-relative files or directories the result depends on, beyond the Module's own implementation files |
 
-Check execution validates every checks file whenever it reads the checks: a file that is not
+Check execution validates every checks file it reads: a file that is not
 valid JSON, which includes a repeated field and the constants `NaN` and `Infinity`, holds another field or an entry with a field the table does not name, a file whose name
 is not a Module identity, an `id` used twice in the project, an input that is not a canonical
 project-relative path or one that escapes the worktree, through a directory that is a symbolic link,
 is refused with `invalid_check`, naming the
 file and the entry; its `validate_checks(worktree)` does the same alone, for a caller that wants
-the checks files judged before any check runs, as Method's `task-validation` does. The service
+the checks files judged before any check runs, as Method's `task-validation` does. A call of
+`run_checks` narrowed to the ordinary checks (`kinds` `module`) reads only the checks files of the
+selected Modules, and the measurement after a check only the file of the check's own Module, so that
+a malformed checks file of another Module never stops their checks; an `id` used twice is then found
+only when both files are read, as `validate_checks` reads them all. The service
 validates `argv`, `env`, `when` and `timeout_seconds` of every check it keeps, before it runs the
 first command. An input names a
 regular file or a directory; below a directory the service measures every regular file outside

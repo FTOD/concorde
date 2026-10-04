@@ -150,10 +150,25 @@ the survey and a later survey or code_to_spec the run whose questions it answers
 [unbound](../../glossary.json#concept.unbound-run), in the primary worktree, to show the
 developer a proposal before any task exists. The host gives the worker, as task material, an
 inventory of every file the surveyed Module binds with its size in lines, so the worker can plan
-what to read in a large codebase instead of opening everything. The files of the surveyed Module's
-Concorde installation realization, the skill, workflows and agents the installer placed, are left
-out of it and stay with the surveyed Module: a proposal that gives one of them to a child fails,
-since they configure the agents, not the project, and the installer replaces them on every update.
+what to read in a large codebase instead of opening everything. The inventory is a file of the
+run's [trace node](../../glossary.json#concept.trace-node), which the worker may read beside its
+grant, and the brief names it with a summary, the number of files and lines in all and under each
+top-level path, so that no number of files makes the brief too long and none is left out. The
+files of the surveyed Module's Concorde installation realization, the skill, workflows and agents
+the installer placed, are left out of it and stay with the surveyed Module: a proposal that gives
+one of them to a child fails, since they configure the agents, not the project, and the installer
+replaces them on every update.
+
+A survey proposes against the Module as it is, so it never runs in a workspace in which a scaffold
+has already written to the surveyed Module: it ends `failed` with `fresh_workspace_required`
+before any worker starts. Revising a survey after its scaffold ran requires a fresh workspace, a
+new task in Concorde, in which the survey runs again, with the answers that revise it; nothing the
+scaffold or a later run wrote in the first workspace is undone, and whether that workspace is kept
+or discarded is the task level's decision. The host tells a scaffold's writes from the surveyed
+Module's entry metadata alone: a Module it contains, or an external inclusion it has, that the
+same metadata at the workspace's base commit did not have, which are exactly the additions a
+scaffold makes to the Module it applies a proposal to
+([req.adoption.survey-after-scaffold](requirements.md#req.adoption.survey-after-scaffold)).
 
 **Scaffold.** The execution command `concorde scaffold` of
 [Scaffold](../scaffold/module.md), with no worker, applies exactly one proposal admitted
@@ -178,10 +193,10 @@ how the children compose and the files that stayed with it.
 `ok` when the worker completed its proposal or description, whatever decisions and open questions it
 lists. It is `blocked` when the worker could not do the work at all or when a code_to_spec change
 adds a structural error; the [error chain](../../glossary.json#concept.error-chain) then names
-each finding as a cause. It is `failed` when the request or the answers are invalid, the host could
-not run the worker, the audit found a write outside the grant, or the output is inconsistent, with
-every inconsistency listed in the Operation's own link. Every code is in the
-[error table](contracts.md#errors).
+each finding as a cause. It is `failed` when the request or the answers are invalid, a survey's
+workspace already holds a scaffold's writes, the host could not run the worker, the audit found a
+write outside the grant, or the output is inconsistent, with every inconsistency listed in the
+Operation's own link. Every code is in the [error table](contracts.md#errors).
 
 ## Why it is built this way
 
@@ -193,8 +208,8 @@ registry is outside every Module's write set.
 
 The `code-to-spec` task type is what makes this legal: it reads the bound Modules'
 ImplementationScope and writes their SpecScope, which no other task type combines. The survey runs
-under the same task type with the Spec side withheld, as the Protocol lets a harness give less than
-a type assigns, so it can read code and write nothing. As for `specify`, the code_to_spec brief
+under the same task type with every writable level withheld, as the Protocol lets a harness give
+less than a type assigns, so it reads the code and the Specs its grant names and writes nothing. As for `specify`, the code_to_spec brief
 states the rules for writing Spec documents and ends with the project's copy of Spec writing
 guidelines, since no grant shows the [Protocol copy](../../glossary.json#concept.protocol-copy).
 That guide includes the overview, Required format, Writing guidance and templates: both
@@ -246,9 +261,9 @@ The **Survey Operation** realization declares the `SURVEY` provider and its step
 
 | # | Step | Actor | Stops the run when |
 | --- | --- | --- | --- |
-| 1 | Check the answers; compute the inventory of the surveyed Module's bound files | host, Spec core | invalid answers (`failed`, `invalid_answers`); not exactly one Module (`failed`, `invalid_request`); Specs cannot load (`failed`, `specs_unloadable`) |
+| 1 | Check the answers; in a bound workspace, compare the surveyed Module's entry metadata with the workspace's base commit; write the inventory of the surveyed Module's bound files to the run's trace node | host, Spec core | invalid answers (`failed`, `invalid_answers`); not exactly one Module (`failed`, `invalid_request`); Specs cannot load, now or at the base commit (`failed`, `specs_unloadable`); a scaffold's writes (`failed`, `fresh_workspace_required`) |
 | 2 | Compute and freeze the `code-to-spec` grant with every writable level withheld | Operation, Spec core | the grant cannot be computed (`failed`, `grant_unavailable`) |
-| 3 | Generate settings, tools and the brief with inventory, answers and inputs | Workers | — |
+| 3 | Generate settings, tools and the brief with the inventory file, readable beside the grant, its summary, answers and inputs | Workers | — |
 | 4 | Launch the worker and wait for its result | Workers, worker | launch error or timeout (`failed`); worker `blocked` or `failed` (passed on) |
 | 5 | Audit: nothing is writable, so any change is a violation | Workers | any change (`failed`) |
 | 6 | Write the paths inside the worktree relative to it and record the decisions; check the proposal against the worktree and the answers; add the remaining entries | host | an inconsistency, a decision without a valid choice or an answer not followed (`failed`, `inconsistent_proposal`) |
@@ -277,13 +292,23 @@ A scenario the worker took from existing tests names them in its promise's `test
 `verifies` decorator above each named test that exists in a Module's implementation file, and
 once per file a two-line no-op definition of `verifies` after the file's docstring and imports,
 so that the project's tests stay free of any import of Concorde and run the same in the project's
-own environment, while the coverage check sees which test verifies which scenario. It adds
-nothing else, adds nothing twice, and leaves a file untouched when the decorated file would not
-parse. A file that already binds `verifies` at module level keeps that binding: the host adds only
-decorators when the binding is its own no-op helper, however formatted, or an import of Concorde's
-decorator from `concorde.spec.verification`, and otherwise leaves the file untouched and reports
-each of its links in `unlinked_tests`, because a decorator would call the project's own `verifies`,
-whatever it does. Only Python tests are linked.
+own environment, while the coverage check sees which test verifies which scenario. A test is found
+where the coverage check finds it: in the module or a class body, also under a control-flow
+statement such as a top-level `if` or `try`, never inside a function; a name defined there more
+than once is reported, since which definition is the test cannot be told. The host adds nothing
+else, adds nothing twice, and leaves every byte already in the file as it was, its line endings and
+blank lines included: what it inserts takes the file's own line ending and indentation, and the
+blank lines it adds around the helper only make up the two that set it apart. It leaves a file
+untouched when the decorated file would not parse or cannot be written, and replaces a file only
+through a new file beside it, so that a failed write leaves the original whole; the links of such a
+file are reported, and the next file is linked all the same. A file that already binds `verifies`
+at module level, by any statement, `except` clause, assignment expression or match pattern,
+keeps that binding: the host adds only decorators when the binding is its own no-op helper,
+however formatted, or an import of Concorde's decorator from `concorde.spec.verification`, standing
+at the file's top level before the test, and otherwise leaves the file untouched and reports each
+of its links in `unlinked_tests`, because a decorator would call the project's own `verifies`,
+whatever it does, or find no `verifies` at all when the module is imported. Only Python tests are
+linked.
 
 Unlike `specify`, every structural error in a described Module's own documents counts as the
 run's, even one the baseline already had: the worker rewrites those documents, and a retry must not

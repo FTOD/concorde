@@ -10,6 +10,7 @@ import tempfile
 import unittest
 from contextlib import contextmanager
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from concorde.worker_harness import claude_backend
@@ -19,6 +20,7 @@ from concorde.method.implementation.operation import (
     CODE_CHANGE_SCHEMA,
     TEST_REPORT_SCHEMA,
     _latest_checks,
+    code_change,
 )
 from concorde.method.workers import interpreter_roots
 from concorde.spec.repository import SpecRepository
@@ -309,6 +311,43 @@ class ImplementTests(unittest.TestCase):
         )
         self.assertIn("deletion-refused", self.kinds(envelope))
 
+    def test_the_file_lists_are_the_net_change_of_the_run(self):
+        # A tracked file already deleted before the run and written again is created; a file
+        # the worker created and then proposed for deletion is in no list.
+        (self.worktree / "src/a/old.py").unlink()
+        scratch = f"{self.worktree}/src/a/scratch.py"
+        _, envelope = self.implement(
+            [
+                {
+                    "writes": {
+                        f"{self.worktree}/src/a/old.py": "OLD = 2\n",
+                        scratch: "",
+                    },
+                    "result": {"proposed_deletions": [scratch]},
+                }
+            ]
+        )
+        self.assertEqual("ok", envelope["status"], envelope)
+        output = envelope["output"]
+        self.assertFalse((self.worktree / "src/a/scratch.py").exists())
+        self.assertEqual(
+            ([], ["src/a/old.py"], []),
+            (
+                output["changed_files"],
+                output["created_files"],
+                output["deleted_files"],
+            ),
+        )
+
+    def test_a_workers_own_deletion_is_a_deleted_file(self):
+        status, envelope = self.implement(
+            [{"removes": [f"{self.worktree}/src/a/old.py"]}]
+        )
+        self.assertEqual((1, "failed"), (status, envelope["status"]), envelope)
+        output = envelope["output"]
+        self.assertEqual(["src/a/old.py"], output["deleted_files"])
+        self.assertEqual([], output["changed_files"])
+
     def test_admitted_inputs_reach_the_worker(self):
         _, first = self.implement([{}])
         self.assertEqual("ok", first["status"], first)
@@ -447,6 +486,67 @@ class TestOperationTests(unittest.TestCase):
         self.assertIn("### Log of check.a", round_one)
         self.assertIn("check.a (module.a): failed", round_one)
 
+    @verifies("scenario.implementation.test-failures-unaccounted")
+    def test_failures_must_interpret_exactly_the_failed_checks(self):
+        (self.worktree / "src/a/flag").write_text("broken")
+        failure = {
+            "check": "check.a",
+            "concerns": ["scenario.a.answer"],
+            "cause": "the flag file says broken",
+            "fault": "code",
+            "locations": ["src/a/flag:1"],
+        }
+        wrong = {**failure, "check": "check.other"}
+        status, envelope = self.run_test(
+            [
+                {"result": {"output": {"failures": [wrong], "notes": []}}},
+                {"result": {"output": {"failures": [failure], "notes": []}}},
+            ]
+        )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        self.assertEqual([failure], envelope["output"]["failures"])
+        record, _ = self.worker_round(envelope)
+        self.assertEqual(
+            ["initial", "repair"], [item["prompt"] for item in record["rounds"]]
+        )
+        repair = record["rounds"][0]["validation"]
+        self.assertIn("check check.a did not pass and has 0 failures entries", repair)
+        self.assertIn("names check.other, which the host did not run", repair)
+
+    @verifies("scenario.implementation.test-failures-unaccounted")
+    def test_failures_still_unaccounted_after_the_resume_fail_the_run(self):
+        (self.worktree / "src/a/flag").write_text("broken")
+        status, envelope = self.run_test([{}, {}])
+        self.assertEqual((1, "failed"), (status, envelope["status"]), envelope)
+        self.assertIsNone(envelope["output"])
+        link = link_at(envelope["error"], "operation")
+        self.assertEqual(
+            ("failures_unaccounted", "capability"),
+            (link["code"], link["unhandled"]["reason"]),
+        )
+        self.assertIn("check check.a did not pass", link["detail"])
+        self.assertIn("check", [item["kind"] for item in envelope["host_evidence"]])
+        record, _ = self.worker_round(envelope)
+        self.assertEqual(2, len(record["rounds"]))
+
+    def test_a_failure_of_a_passing_check_is_unaccounted(self):
+        failure = {
+            "check": "check.a",
+            "concerns": [],
+            "cause": "none",
+            "fault": "unknown",
+            "locations": [],
+        }
+        status, envelope = self.run_test(
+            [
+                {"result": {"output": {"failures": [failure], "notes": []}}},
+                {"result": {"output": {"failures": [], "notes": []}}},
+            ]
+        )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        record, _ = self.worker_round(envelope)
+        self.assertIn("names check.a, which passed", record["rounds"][0]["validation"])
+
     @verifies("scenario.implementation.test-change")
     def test_a_change_during_a_test_run_fails_it(self):
         status, envelope = self.run_test(
@@ -477,6 +577,28 @@ class ContractTests(unittest.TestCase):
         }
         self.assertEqual([failed], _latest_checks(record))
         self.assertEqual([], _latest_checks({"rounds": [{"round": 1}]}))
+
+    def test_a_dangling_symbolic_link_is_a_file_of_the_change(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            worktree = Path(temporary)
+            (worktree / "kept").symlink_to(worktree / "nowhere")
+            (worktree / "made").symlink_to(worktree / "nowhere")
+            ctx = SimpleNamespace(
+                worktree=worktree, arguments=SimpleNamespace(goal="link")
+            )
+            record = {
+                "rounds": [{"audit": {"changed": ["kept", "made", "gone"]}}],
+                "worker_result": {"summary": "linked", "output": {"addresses": []}},
+            }
+            change = code_change(ctx, record, {"kept", "gone"}, "linked")
+        self.assertEqual(
+            (["kept"], ["made"], ["gone"]),
+            (
+                change["changed_files"],
+                change["created_files"],
+                change["deleted_files"],
+            ),
+        )
 
     def test_the_output_schemas_are_the_contracts(self):
         contracts = {

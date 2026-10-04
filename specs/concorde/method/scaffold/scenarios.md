@@ -13,6 +13,7 @@ shapes are in the [contracts](contracts.md).
 - THEN `specs/shop/checkout/module.md` and `specs/shop/inventory/module.md` exist with their metadata, each stating its purpose and, in a section Not yet specified after it, that its core concepts, behaviour and design are not yet specified
 - AND the root's entry contains both with an explaining paragraph each at the end of its `Parts` section, and its realization no longer binds `src/checkout/` or `src/inventory/`
 - AND the root still binds every other file it bound under `src/`, here `src/db.py`
+- AND a realization the root declares in a document other than its entry is narrowed the same way, in the same [file transaction](../../glossary.json#concept.file-transaction), and the record's `parent_entries_after` is what the root's documents bind after it
 - AND the registry has both records
 - BUT the project configuration and the checks files are unchanged, and the proposed check stays in the survey's proposal
 - AND the worktree validates with no new error
@@ -24,6 +25,7 @@ shapes are in the [contracts](contracts.md).
 - AND `src/checkout/` was removed from the workspace after the survey
 - WHEN the main agent runs the scaffold with that survey as input
 - THEN the result is `blocked` with `stale_proposal` naming the missing entry
+- AND each mismatch is a cause of its own in the [error chain](../../glossary.json#concept.error-chain)
 - AND no file was written
 
 ### scenario.scaffold.target-exists — An existing target is never replaced
@@ -48,6 +50,13 @@ shapes are in the [contracts](contracts.md).
 - WHEN the main agent runs the scaffold with that survey as input
 - THEN the result is `failed` with `scaffold_invalid` and one cause for each structural error the scaffold would add
 - AND every file of the workspace is as before the scaffold, and no folder of a proposed child exists
+
+### scenario.scaffold.write-failed — A refused write names every file not restored
+
+- GIVEN a survey whose proposal fits the workspace
+- WHEN the operating system refuses one of the scaffold's writes
+- THEN the result is `failed` with `write_failed`, reason `environment`, Spec core's error as its cause, and every file of the workspace is as before
+- AND when the scaffold's files would add a structural error and the operating system refuses to remove the created `specs/shop/checkout/module.md` while the transaction restores the workspace, the result is `failed` with `write_failed` instead of `scaffold_invalid`, naming that file as still holding the scaffold's content and telling to remove it, while every other file is as before
 
 ### scenario.scaffold.refused-input — The scaffold needs one survey of its workspace
 

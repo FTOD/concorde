@@ -1806,7 +1806,8 @@
           "target": "module.checks",
           "meaning": "#uses-checks",
           "relies_on": [
-            "req.checks.service-link"
+            "req.checks.service-link",
+            "contract.checks.check-trace"
           ]
         },
         {

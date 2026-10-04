@@ -11,17 +11,20 @@ deliver and scaffold, the [brownfield workflow](../glossary.json#concept.brownfi
 the [standard worker sequence](../glossary.json#concept.standard-worker-sequence) by which every
 one of its workers is bounded by the Specs.
 
-Method is where the other parts meet. The Spec tooling computes a grant but launches nothing; the
+Method is where the other parts meet. The [Spec tooling](../spec-tooling/module.md) computes a grant
+but launches nothing; the
 worker harness launches a worker under a grant it is given but reads no [Spec](../glossary.json#concept.spec); Execution runs a
 definition's steps but knows no particular Operation; Workflows orders runs but knows no particular
 procedure. Method's definitions and steps connect them: they take the grant from the Spec tooling,
-hand it to the worker harness with a round validation, register their Operations and commands with
+hand it to the worker harness with a
+[round validation](../worker-harness/workers/launch.md#round-validation), register their Operations and commands with
 Execution, fill the output convention Workflows reads, and contribute the brownfield workflow's
 script. A project that installs Method therefore installs the spec, worker harness, execution,
 workflow and kernel parts with it; the issues part stays optional.
 
 Method never chooses the next run, asks the developer anything or changes a Spec on its own
-initiative: the task level, directly or through a workflow, orders its runs, and a promise the Spec
+initiative: the task level of the [levels of work](../module.md#the-levels-of-work), directly or
+through a workflow, orders its runs, and a promise the Spec
 does not state stops the run as a [Spec gap](../glossary.json#concept.spec-gap).
 
 ## Core concepts
@@ -45,7 +48,7 @@ registers these definitions with Execution, whose
 | `spec_review` | [Spec review](spec-review/module.md) | `review-spec` | `reviewer`, `checker` | yes | no | [review findings](../glossary.json#concept.review-finding) and a verdict ([contract](spec-review/operation.md#contract.spec-review.payload)) |
 | `spec_panel` | [Spec review](spec-review/module.md) | `review-spec`; `review-architecture` for its architects, and for its chair when it has an architect | `reviewer1` … `reviewer5`, `architect1`, `architect2`, `chair` | yes | no | a panel report merged from independent reviews, and a verdict ([contract](spec-review/panel.md#contract.spec-review.panel-payload)) |
 | `code_review` | [Code review](code-review/module.md) | `review-code` | `worker` | yes (`--base` for a change review) | no | a code review report of a change or of whole Modules, and a verdict ([contract](code-review/contracts.md#contract.code-review.review)) |
-| `survey` | [Adoption](adoption/module.md) | `code-to-spec`, Specs withheld | `worker` | yes | no | a [decomposition proposal](adoption/contracts.md#contract.adoption.decomposition) |
+| `survey` | [Adoption](adoption/module.md) | `code-to-spec`, writes withheld | `worker` | yes | no | a [decomposition proposal](adoption/contracts.md#contract.adoption.decomposition) |
 | `code_to_spec` | [Adoption](adoption/module.md) | `code-to-spec` | `worker` | no | Specs of the bound Modules, the registry mirror and the `verifies` links of the existing tests it describes | a [Spec description](adoption/contracts.md#contract.adoption.spec-description) |
 
 "May change" covers both what a worker's grant makes writable and what the provider's own host
@@ -67,29 +70,30 @@ the same way. `plan_review`'s findings judge a plan within one run and always st
 <a id="concept.standard-worker-sequence"></a>
 
 Each Operation's control flow is a step table in its provider's Spec, which the runner runs in
-order until one step stops the run. A worker-backed step follows the
-**[standard worker sequence](../glossary.json#concept.standard-worker-sequence)**:
+order until one step stops the run. **Admission** comes first, once per run: before any of its
+provider's own steps, every Operation checks all the workers it may launch against the
+[worker configuration](../glossary.json#concept.worker-configuration) and the
+[model map](../glossary.json#concept.model-map), and the configuration's Operation names and worker
+ids against every Operation the installed parts register, so that a run never stops at a later
+worker, after earlier ones ran, for a configuration or model-map problem it could have found first
+([what admission checks](workers.md#admitting-the-workers)). Then each worker-backed step follows
+the **[standard worker sequence](../glossary.json#concept.standard-worker-sequence)** for the one
+worker it launches:
 
-1. **Admit.** Before any of its provider's own steps, every Operation checks all the workers it may
-   launch against the [worker configuration](../glossary.json#concept.worker-configuration) and
-   the [model map](../glossary.json#concept.model-map), and the configuration's Operation names and
-   worker ids against every Operation the installed parts register, so that a run never stops at a
-   later worker, after earlier ones ran, for a configuration or model-map problem it could have
-   found first ([what admission checks](workers.md#admitting-the-workers)).
-2. **Bound.** The step computes the [grant](../glossary.json#concept.grant) for the task type and
-   Modules from the **workspace's** Specs through Spec core, lowers every writable level to read when
+1. **Bound.** The step computes the [grant](../glossary.json#concept.grant) for the task type and
+   Modules from the **workspace's** Specs through [Spec core](../spec-tooling/spec/module.md), lowers every writable level to read when
    its provider withholds writes, freezes the result with the computed grant's
    [context identity](../glossary.json#concept.context-identity), and converts it into the worker
    harness's input format.
-3. **Instruct.** It composes the task instructions: the provider's prompt, the definitions of the
+2. **Instruct.** It composes the task instructions: the provider's prompt, the definitions of the
    glossary terms the bound Modules use, and the rules about Spec gaps and paths outside the grant.
-4. **Launch.** It hands the grant, the instructions, the worker's identity and the
+3. **Launch.** It hands the grant, the instructions, the worker's identity and the
    **round validation** to the worker harness, which prepares the settings and the
    [brief](../glossary.json#concept.brief), launches the worker, runs the
    [write audit](../glossary.json#concept.write-audit), calls the round validation after each clean
    round, resumes the worker with what it reports to repair while rounds remain, and writes the
    [run record](../glossary.json#concept.run-record).
-5. **Decide.** It keeps the [worker result](../glossary.json#concept.worker-result) unchanged and
+4. **Decide.** It keeps the [worker result](../glossary.json#concept.worker-result) unchanged and
    decides what the outcome means for the run.
 
 The round validation is Method's, and checks in this order: first glossary ownership, which ends
@@ -154,7 +158,7 @@ method.definitions -> issues: "reviews report findings to,\nwhere installed"
 
 ```d2 illustrative
 direction: down
-admit: "Admit every worker:\nconfiguration and model map"
+admit: "Run admission, before any provider step:\nevery worker against configuration and model map"
 grant: "Compute the grant from the workspace's\nSpecs and freeze it with its context identity"
 instruct: "Compose the task instructions"
 wh: Worker harness {
@@ -180,8 +184,10 @@ wh.record -> ownership -> decide
 A worker-backed run's result carries the worker's own
 [worker result](../glossary.json#concept.worker-result) unchanged, beside the evidence the run's
 steps produced — grant, context identity, write audit, each check's exit code and log,
-[resume rounds](../glossary.json#concept.resume-round) used, transcript path, worker stderr — so the caller reads the claim as a claim and the
-evidence as fact. An `implement` worker that claims the goal is done while one check still fails
+[resume rounds](../glossary.json#concept.resume-round) used, transcript path, worker stderr — so the
+caller reads the claim as a claim and the evidence as fact. This is how Method's steps meet
+Execution's [requirement](../execution/requirements.md#req.execution.claims-apart) that worker
+claims stay the worker's, which binds the runner and every step. An `implement` worker that claims the goal is done while one check still fails
 after the last resume round ends the run `failed`, its claim kept unchanged and its chain naming
 the Operation, Workers' rounds and the check's log.
 
@@ -393,8 +399,8 @@ themselves; [How a run is executed](../execution/runner.md) is the canonical acc
 <a id="uses-checks"></a>
 
 **Check execution** runs the project's configured checks for Method's round validations, for
-`test` and for the readiness of `task-validation` and `delivery`, returning each result's command,
-exit code and log as evidence. It reads no Spec: Method names the Modules whose checks run, the
+`test` and for the readiness of `task-validation` and `delivery`, returning each result's check id,
+status, exit code and log as evidence. It reads no Spec: Method names the Modules whose checks run, the
 files each one's results depend on, the tests a selective check runs and the interpreter, all from
 the workspace's Specs and configuration. Method relies on two promises: a check's direct writes to the
 filesystem are confined to its own scratch, the workspace being mounted read-only, and a result is

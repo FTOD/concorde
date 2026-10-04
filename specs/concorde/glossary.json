@@ -658,7 +658,7 @@
       "id": "concept.standard-worker-sequence",
       "title": "Standard worker sequence",
       "owner": "module.method",
-      "definition": "The fixed sequence by which a step of a Method Operation launches one worker: it admits the worker against the worker configuration and model map, computes and freezes the grant from the workspace's Specs, composes the task instructions, and hands the grant and its round validation to the worker harness, which prepares the settings and brief, launches the worker, audits it, resumes it with what the round validation reports and records the worker run.",
+      "definition": "The fixed sequence by which a step of a Method Operation launches one worker, once the run's admission has checked every worker it may launch against the worker configuration and model map: it computes and freezes the grant from the workspace's Specs, composes the task instructions, and hands the grant and its round validation to the worker harness, which prepares the settings and brief, launches the worker, audits it, resumes it with what the round validation reports and records the worker run.",
       "explanation": "specs/concorde/method/module.md#concept.standard-worker-sequence"
     },
     {

@@ -58,9 +58,9 @@ task's [decision log](../../glossary.json#concept.decision-log) Tasks commits wh
 ### Delivering a workspace
 
 A run of `delivery` goes through eleven steps. Every step before 8 leaves the workspace as it was,
-so a blocked delivery, or one that reports a delivery commit it found, changes nothing; steps 8 and
-9 are undone together when step 9 fails, and a commit that does not verify in step 10 is taken off
-the branch again, leaving the index and the worktree as the commit left them:
+so a blocked delivery, or one that reports a delivery commit it found, changes nothing; the index
+step 8 recorded is given back when step 9 fails, and a commit that does not verify in step 10 is
+taken off the branch again, leaving the index and the worktree as the commit left them:
 
 ```d2 illustrative
 direction: down
@@ -94,7 +94,7 @@ readiness -> failed: "measurement, checks\nor inputs fail" {style.stroke-dash: 3
 ready -> blocked: "no: not_ready" {style.stroke-dash: 3}
 tests -> blocked: "no: unverified_scenarios" {style.stroke-dash: 3}
 index -> failed: "index_unrecorded" {style.stroke-dash: 3}
-commit -> failed: "Git refuses: 8 and 9 undone" {style.stroke-dash: 3}
+commit -> failed: "Git refuses: the index given back" {style.stroke-dash: 3}
 verify -> failed: "mismatch: commit_unverified,\nthe commit taken off the branch" {style.stroke-dash: 3}
 ```
 
@@ -144,15 +144,15 @@ Every other rule applies unchanged.
 | `blocked` | `nothing_to_deliver` | `decision` | no commit since the base commit and no uncommitted change (`git` evidence) |
 | `blocked` | `not_ready` | `decision` | the whole workspace is not ready; Validation's `not_deliverable` link is the cause, with one cause per finding |
 | `blocked` | `unverified_scenarios` | `decision` | the workspace changed code while a scenario it added or changed has no verifying test; names each with its document |
-| `failed` | — | — | `wrong_branch`, Validation's `measurement_failed`, `checks_unavailable` or `inputs_changed`, an index Git cannot record (`index_unrecorded`), Git refusing (`stage_failed`, `commit_failed`) or a commit that does not verify, the one it made, which it takes off the branch again, or the delivery commit it found at the head (`commit_unverified`) |
+| `failed` | — | — | `wrong_branch`, Validation's `measurement_failed`, `checks_unavailable` or `inputs_changed`, an index Git cannot record (`index_unrecorded`), Git refusing (`stage_failed`, `commit_failed`) or a commit that does not verify, the one it made, which it takes off the branch again, one Git did not name, or the delivery commit it found at the head (`commit_unverified`) |
 
 The error is the run's own link of level `command`, with the actor `Command delivery <run-id>
 (workspace <workspace>)`. Every `blocked` code carries a host evidence `ref` of the same name and
 an explanation of its own reason; a blocked delivery writes nothing in the workspace, and the fix is
 to do more work or end the task, or to repair the findings and run `delivery` again. A `failed` Git
 refusal — a hook, a missing author identity — carries the hook's output as `git` evidence and a
-`component` cause with the Git command's exit status and output; the workspace is left as
-validated. An index with unmerged paths, from a merge not finished, is `index_unrecorded` with the
+`component` cause with the Git command's exit status and output; the index is left as validated,
+and any worktree file a failing hook changed is kept and named. An index with unmerged paths, from a merge not finished, is `index_unrecorded` with the
 reason `decision` and the paths as `git` evidence, since resolving or aborting the merge is the
 task level's decision; any other Git refusal to record the index is `index_unrecorded` with the
 reason `environment`. Either way its cause is the `git write-tree`, `git ls-tree` or
@@ -207,8 +207,8 @@ level is: the commit names the workspace, which the binding names, and nothing e
 | 6 | When the workspace changed code, require a test declaring that it verifies every scenario it added or changed since its base commit, unless `--adoption` | host, Spec core, read-only Git | an unverified scenario (`blocked`, `unverified_scenarios`, naming each with its document) |
 | 7 | Report the delivery commit step 2 noted, numbered among the delivery commits on the branch | host | it noted one (`ok`, `recovered`) |
 | 8 | Record the index with Git | host, Git | the index cannot be recorded (`failed`, `index_unrecorded`) |
-| 9 | Stage every change; record the staged tree; commit | host, Git | Git refuses (`failed`; undone, index restored) |
-| 10 | Verify the commit is head, its tree the staged tree, parent validated, worktree clean | host, read-only Git | mismatch (`failed`, `commit_unverified`; the commit taken off the branch) |
+| 9 | Stage every change; record the staged tree; commit, taking the commit Git names | host, Git | Git refuses (`failed`; the index restored, a hook's worktree edits kept and named) |
+| 10 | Verify the commit is head, its tree the staged tree, its subject the delivery subject, parent validated, worktree clean | host, read-only Git | mismatch (`failed`, `commit_unverified`; the commit taken off the branch) |
 | 11 | Return the commit as the output, numbered after the delivery commits on the branch | host | — |
 
 Every step before 8 leaves the workspace as it was — Validation writes its check nodes and the
@@ -217,18 +217,26 @@ delivery, and one that reports a delivery commit it found, changes nothing in th
 delivery commit found at the head is validated exactly as new work would be, by steps 3 to 6: its
 subject and its one parent show only that Delivery may have created it, not that what it holds is
 ready, so a commit a rejected run left behind, or one another hand gave the subject, is reported
-only once its workspace is ready again. Steps 8 and 9 are undone together when step 9 fails
-(`measurement_failed` while staging, `stage_failed`, `commit_failed`): the index is given back as
-step 8 recorded it, so the workspace is again what the readiness describes. Step 8 records the index with Git's own means rather than a copy Delivery
+only once its workspace is ready again. When step 9 fails (`measurement_failed` while staging,
+`stage_failed`, `commit_failed`), the index is given back as step 8 recorded it. Delivery never
+undoes an edit of the worktree: a failing commit hook, such as a formatter that rewrites files and
+then rejects the commit, may leave edits the developer wants. So Delivery measures the worktree
+again with Validation's input measurement and names, in the run's summary and detail, every path
+whose mode or content is not what the readiness examined, which it keeps; when there is none, the
+workspace is again what the readiness describes. The next delivery validates whatever the worktree
+then holds. Step 8 records the index with Git's own means rather than a copy Delivery
 would keep: `git write-tree` for its entries, which `git read-tree` restores; the paths `git
 ls-files` lists that the tree lacks, which are intent-to-add entries a tree cannot hold and
 `git add -N` marks again; and the skip-worktree and assume-unchanged flags `git ls-files -v`
 shows, which `git update-index` sets again. So changes staged before the delivery, including a
-staged version the worktree has changed since, stay staged. Every part of the undo is attempted
-even when another fails; each part that fails — the index, the intent-to-add entries or a kind of
-flag — is named in the run's summary and detail, which then say the
-workspace is not as the readiness examined it, and is a `component` cause of its error with the
-file system's or Git's own account. A
+staged version the worktree has changed since, stay staged. Restoring the intent-to-add entries
+and each kind of flag is attempted even when another of them fails; when Git refuses to read the
+recorded tree back into the index, none of them is attempted, since they apply only to an index
+that was read back, and the run's summary and detail say that they were not restored. Each part
+that fails — the index, the intent-to-add entries or a kind of flag — is named in the run's summary
+and detail, which then say the index is not as the readiness examined it, and is a `component`
+cause of its error with Git's own account; when the worktree cannot be measured again, they say so,
+with the measurement's account as a `component` cause. A
 `commit_unverified` failure of step 10 comes after the commit exists, and a commit Delivery rejected
 must not stay where it would be read as a delivery: Delivery moves the bound branch back to the
 validated head with `git update-ref`, only while the validated head is the commit's only parent and
@@ -237,15 +245,27 @@ them, so that what a hook changed stays there to be inspected. Its error says th
 taken off the branch and names it, and the run's trace node still references it as `commit`, since
 the run created it. When the head is not such a commit, such as after a hook committed again on
 top, or Git refuses the move, Delivery moves nothing, so that it never takes off a commit it did not
-create, and the error says that the commit stays and why, with Git's account as a `component`
-cause when Git refused; repairing the branch is then the task level's decision. See the [requirements](requirements.md) and
+create, and the error says that the commit stays and why — the branch no longer points at it,
+naming the commit it points at, or Git refused to move a branch that still points at it — with
+`git update-ref`'s account as a `component` cause; repairing the branch is then the task level's
+decision. See the [requirements](requirements.md) and
 [scenarios](scenarios.md).
 
 Delivery proves what it committed rather than assuming it. The repository's commit hooks run
 normally, and a pre-commit hook may change a file and stage it again, so the commit Git creates can
 hold content the readiness never examined while the worktree is still clean. Step 9 therefore
 records the tree of the staged index with `git write-tree` just before `git commit`, and step 10
-compares it with the new commit's tree, naming every path that differs. A delivery commit is
+compares it with the new commit's tree, naming every path that differs. A commit message hook may
+likewise rewrite the message, such as by prefixing a ticket to the subject, which would leave a
+commit without the subject that marks a delivery; step 10 also compares the commit's subject with
+the delivery subject, naming the subject the commit carries, while a hook that only adds to the
+body, such as a `Change-Id` trailer, is accepted. The commit step 10 verifies, and the
+run's trace node references, is the one `git commit` names on its standard output as the one it
+created: Git prints it once its post-commit hook has run and gives every hook's standard output to
+its standard error, so a post-commit hook that commits again on top cannot pass its commit off as
+the delivery commit, as the branch head would. The branch's reflog would not do, since a repository
+may switch it off, nor the first commit on top of the validated head, which a hook amending the
+commit replaces. When Git names no commit, the run fails `commit_unverified` and moves nothing. A delivery commit is
 recognised in step 2 by its subject alone, which any commit can carry; Delivery reports the head as
 delivered only when it also has exactly one parent, as every commit it creates has, so that a merge
 commit reworded with the subject is not taken for a delivery, and only once steps 3 to 6 found its

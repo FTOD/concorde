@@ -87,6 +87,7 @@ test: test {
   worker: "Read-only worker interprets\nthe check results"
   output: "Test report"
   grant -> checks -> worker -> output
+  worker -> worker: "a failed check not interpreted once:\nresume once with the mismatches" {style.stroke-dash: 3}
 }
 ```
 
@@ -128,7 +129,8 @@ uncommitted.
 
 `test`'s `status` is `ok` whenever the checks were interpreted, passing or not; `blocked` when the
 worker could not interpret them; `failed` when the checks or the worker could not be run, the worker
-ended `failed`, or the audit found any change. Only `ok` carries a report; the host evidence of any
+ended `failed`, the audit found any change, or the worker's `failures` still do not hold exactly one
+entry per check that did not pass after its resume round (`failures_unaccounted`). Only `ok` carries a report; the host evidence of any
 other run still lists the check results. Running `test` again is safe.
 
 ## How implement is built
@@ -204,8 +206,9 @@ check results describe the worktree before them; a caller that needs checks of t
 | 2 | Run the configured checks of the bound Modules and of every Module that uses one of them outside any worker, logs kept in the run directory | Operation, Check execution | a check cannot start (`failed`) |
 | 3 | Generate settings, tools and the brief with the focus and failing-log tails | Workers | — |
 | 4 | Launch the worker and wait for its worker result | Workers, worker | launch error/timeout (`failed`); worker `blocked`/`failed` (passed on) |
-| 5 | Audit: read-only grant, so any change the audit observes is a violation; write the run record | Workers | any observed change (`failed`) |
-| 6 | Return the run's output | Operation, Execution runner | — |
+| 5 | Audit: read-only grant, so any change the audit observes is a violation | Workers | any observed change (`failed`) |
+| 6 | After a clean audit of a worker that ended `ok`, call the round validation, which checks that `failures` holds exactly one entry per check that did not pass and none for a check that passed; while it does not and the one resume round is left, resume the session with every mismatch and repeat 4–6; write the run record | Workers, Operation | — |
+| 7 | Check the `failures` once more and return the run's output | Operation, Execution runner | `failures` still not one entry per check that did not pass (`failed`, `failures_unaccounted`) |
 
 The `test` worker can only read and search (Read, Glob and Grep on Claude Code) and never runs a
 command: running checks is the Operation's own evidence. The check logs are material: the brief

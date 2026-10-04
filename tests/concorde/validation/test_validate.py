@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import unittest
 from pathlib import Path
@@ -14,7 +15,13 @@ from concorde.execution.checks.check_executor import CheckSandboxError
 from concorde.spec.repository import SpecRepository
 from concorde.spec.verification import verifies
 from concorde.method.validation.command import READINESS_SCHEMA, TASK_VALIDATION
-from concorde.method.validation.measurement import measure
+from concorde.method.validation.measurement import (
+    measure,
+    path_digest,
+    real_path,
+    recorded_path,
+    sha256,
+)
 from tests.concorde.support.paths import REPOSITORY_ROOT
 from tests.concorde.support.spec_project import read_checks, write_checks
 from tests.concorde.validation.project import (
@@ -350,6 +357,186 @@ class ValidateTests(unittest.TestCase):
             ["configured checks"],
             [item["ref"] for item in readiness["blocking"] if item["kind"] == "check"],
         )
+
+    @verifies("scenario.validation.non-utf8-path")
+    def test_a_path_that_is_not_utf8_is_recorded_losslessly(self):
+        (self.worktree / "src/a/calc.py").write_text(FIXED)
+        root = os.fsencode(self.worktree)
+        try:
+            for name in (b"src/a/caf\xe9.py", b"stray\xff.txt"):
+                with open(root + b"/" + name, "wb") as stream:
+                    stream.write(b"x = 1\n")
+        except OSError as error:  # a filesystem that refuses such names
+            self.skipTest(f"the filesystem refuses a name that is not UTF-8: {error}")
+        base = git(self.worktree, "rev-parse", "HEAD")
+        inputs = measure(self.worktree, base)
+        self.assertEqual(
+            # Sorted by the bytes of the paths: "caf\xe9" before "calc".
+            ['"src/a/caf\\351.py"', "src/a/calc.py", '"stray\\377.txt"'],
+            [item["path"] for item in inputs["changed"]],
+        )
+        self.assertEqual(
+            os.fsencode(real_path(inputs["changed"][0]["path"])), b"src/a/caf\xe9.py"
+        )
+        self.assertEqual(inputs, measure(self.worktree, base))
+        # A path beginning with a double quote is quoted too, so a record names one path.
+        for path in ('"quoted', "back\\slash", "caf\udce9\\"):
+            self.assertEqual(path, real_path(recorded_path(path)))
+        self.assertEqual('"\\"quoted"', recorded_path('"quoted'))
+        status, envelope = self.project.validate()
+        self.assertEqual((status, envelope["status"]), (1, "blocked"), envelope)
+        readiness = envelope["output"]
+        self.assertEqual(inputs, readiness["inputs"])
+        # The file Module A binds is accounted for; the other is named as it is recorded.
+        self.assertEqual(
+            [("unbound", '"stray\\377.txt"')],
+            [(item["kind"], item["ref"]) for item in readiness["blocking"]],
+        )
+
+    def test_an_unreadable_changed_path_fails_the_measurement(self):
+        if os.geteuid() == 0:
+            self.skipTest("root reads every file")
+        calc = self.worktree / "src/a/calc.py"
+        calc.write_text(FIXED)
+        calc.chmod(0)
+        self.addCleanup(calc.chmod, 0o644)
+        status, envelope = self.project.validate()
+        self.assertEqual((status, envelope["status"]), (1, "failed"), envelope)
+        error = envelope["error"]
+        self.assertEqual(
+            ("measurement_failed", "environment"),
+            (error["code"], error["unhandled"]["reason"]),
+        )
+        [cause] = error["causes"]
+        self.assertEqual(
+            ("Validation measurement", "path_unreadable"),
+            (cause["actor"], cause["code"]),
+        )
+        self.assertIn("src/a/calc.py", cause["detail"])
+        self.assertEqual(
+            ["path_unreadable"], [e["ref"] for e in evidence_of(envelope, "git")]
+        )
+
+    def test_a_directory_that_is_no_repository_of_its_own_is_measured_by_the_index(
+        self,
+    ):
+        commit = "a" * 40
+        subprocess.run(
+            [
+                "git",
+                "update-index",
+                "--add",
+                "--cacheinfo",
+                f"160000,{commit},vendor/lib",
+            ],
+            cwd=self.worktree,
+            check=True,
+        )
+        (self.worktree / "vendor/lib").mkdir(parents=True)
+        # Not initialized: Git inside it would report the enclosing repository's head.
+        self.assertEqual(
+            sha256(b"gitlink:" + commit.encode()),
+            path_digest(self.worktree, "vendor/lib"),
+        )
+        # A repository of its own whose head names no commit, which the index does not record.
+        nested = self.worktree / "nested"
+        nested.mkdir()
+        git(nested, "init", "-q")
+        self.assertEqual(sha256(b"gitlink:"), path_digest(self.worktree, "nested"))
+
+    def test_a_symlinked_configuration_is_measured_by_its_link_text(self):
+        base = git(self.worktree, "rev-parse", "HEAD")
+        config = self.worktree / ".concorde/config.json"
+        content = config.read_bytes()
+        for name in ("one.json", "two.json"):
+            (self.worktree / ".concorde" / name).write_bytes(content)
+        config.unlink()
+        config.symlink_to("one.json")
+        first = measure(self.worktree, base)["config_digest"]
+        config.unlink()
+        config.symlink_to("two.json")
+        self.assertNotEqual(first, measure(self.worktree, base)["config_digest"])
+
+    def test_a_malformed_checks_file_blocks_only_once_and_other_checks_run(self):
+        (self.worktree / "src/a/calc.py").write_text(FIXED)
+        (self.worktree / ".concorde/checks/module.other.json").write_text(
+            json.dumps({"checks": [{"id": "check.other", "bogus": True}]})
+        )
+        readiness = self.project.validate()[1]["output"]
+        blocking = [item for item in readiness["blocking"] if item["kind"] == "check"]
+        self.assertEqual(["configured checks"], [item["ref"] for item in blocking])
+        self.assertIn("invalid_check", blocking[0]["detail"])
+        self.assertEqual(
+            [("check.a", "passed")],
+            [(item["check"], item["status"]) for item in readiness["checks"]],
+        )
+
+    def test_a_later_check_error_keeps_the_results_of_checks_that_ran(self):
+        # Check execution validates every check before its first command, so a later check
+        # fails only while it runs, here refused by the operating system.
+        (self.worktree / "src/a/flag").write_text("broken")
+        [check] = read_checks(self.worktree)
+        write_checks(self.worktree, [check, {**check, "id": "check.a2", "inputs": []}])
+        real = check_service.execute_check
+        calls = []
+
+        def second_refused(*arguments, **options):
+            calls.append(arguments)
+            if len(calls) > 1:
+                raise PermissionError(13, "Permission denied", "checks/a_check.py")
+            return real(*arguments, **options)
+
+        with patch.object(check_service, "execute_check", second_refused):
+            status, envelope = self.project.validate()
+        self.assertEqual((status, envelope["status"]), (1, "blocked"), envelope)
+        readiness = envelope["output"]
+        self.assertEqual(
+            [("check.a", "failed", 1, "checks/check.a/output.log")],
+            [
+                (item["check"], item["status"], item["exit_code"], item["log"])
+                for item in readiness["checks"]
+            ],
+        )
+        self.assertEqual(
+            [("check", "check.a"), ("check", "module.a")],
+            [
+                (item["kind"], item["ref"])
+                for item in readiness["blocking"]
+                if item["kind"] == "check"
+            ],
+        )
+        self.assertIn(
+            "system_error: PermissionError", readiness["blocking"][-1]["detail"]
+        )
+        causes = envelope["error"]["causes"]
+        self.assertEqual(
+            ["check_failed", "system_error"],
+            [
+                cause["code"]
+                for cause in causes
+                if cause["level"] in ("check", "component")
+            ][-2:],
+        )
+
+    def test_an_operating_system_error_of_check_execution_is_a_check_finding(self):
+        (self.worktree / "src/a/calc.py").write_text(FIXED)
+
+        def refused(*arguments, **options):
+            raise PermissionError(13, "Permission denied", "checks/a_check.py")
+
+        with patch.object(check_service, "execute_check", refused):
+            status, envelope = self.project.validate()
+        self.assertEqual((status, envelope["status"]), (1, "blocked"), envelope)
+        readiness = envelope["output"]
+        [finding] = readiness["blocking"]
+        self.assertEqual(("check", "module.a"), (finding["kind"], finding["ref"]))
+        self.assertIn("system_error: PermissionError", finding["detail"])
+        [cause] = envelope["error"]["causes"]
+        self.assertEqual(
+            ("Check execution", "system_error", "environment"),
+            (cause["actor"], cause["code"], cause["unhandled"]["reason"]),
+        )
+        self.assertEqual([], readiness["checks"])
 
     @verifies("scenario.validation.checks-configuration")
     def test_a_changed_check_command_changes_the_configuration_digest(self):

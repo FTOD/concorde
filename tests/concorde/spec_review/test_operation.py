@@ -489,10 +489,13 @@ class SpecReviewTests(unittest.TestCase):
 
     @verifies("scenario.spec-review.issues-refused")
     def test_a_refused_report_stops_the_module_and_is_no_issue(self):
+        standing = self.earlier("obvious-fix", "standing")
+        before = self.issues()
         goal = "Review the Specs.\nFAKE-PLANS: " + json.dumps(
             {
                 "reviewer module.a": reviewer(
-                    finding("specs/a/module.md"), finding("specs/a/obligations.md")
+                    finding("specs/a/module.md", earlier=standing),
+                    finding("specs/a/obligations.md"),
                 )
             }
         )
@@ -533,7 +536,14 @@ class SpecReviewTests(unittest.TestCase):
         (module,) = envelope["output"]["modules"]
         self.assertEqual("incomplete", module["outcome"])
         self.assertEqual([None, None], [item["issue"] for item in module["findings"]])
-        self.assertEqual({}, self.issues())
+        # Nothing was appended to the earlier Issue the first finding named: no finding claims
+        # it as `earlier`, and it is carried.
+        for item in module["findings"]:
+            self.assertNotIn("earlier", item)
+        self.assertEqual(
+            [standing], [item["issue"] for item in module["earlier_issues"]["carried"]]
+        )
+        self.assertEqual(before, self.issues())
         [cause] = envelope["error"]["causes"]
         self.assertEqual("issues_unreported", cause["code"])
         [store] = cause["causes"]

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import posixpath
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -29,12 +30,12 @@ from ...execution.context import (
     Stop,
     evidence,
 )
-from ..specs import spec_cause, spec_finding
-from ..workers import operation, run_worker
 from ..prompts import (
     load_prompt,
     protocol_guide,
 )
+from ..specs import spec_cause, spec_finding
+from ..workers import operation, run_worker
 
 MODULE_ID = {"type": "string", "pattern": "^module\\."}
 FINDING = {
@@ -163,6 +164,9 @@ class State:
     records: list = field(default_factory=list)
     # The reading files of the documents the host created for the worker.
     created: list = field(default_factory=list)
+    # Every file the host wrote creating them: the reading files, their metadata and the metadata
+    # of the entries whose ``owns`` registers them.
+    written: list = field(default_factory=list)
     validation: dict | None = None
 
 
@@ -263,8 +267,8 @@ REPAIR_ROUNDS = 2
 
 def validation_repair(ctx: RunContext) -> str | None:
     """After a round: the errors the baseline did not have, as a resume prompt, or None."""
-    from ..prompts import spec_repair_prompt
     from ...spec.validation import validate_repository
+    from ..prompts import spec_repair_prompt
 
     errors = [
         finding
@@ -306,27 +310,40 @@ def document_refusal(ctx: RunContext, proposal: dict) -> str | None:
 def create_documents(ctx: RunContext, proposals: list[dict]):
     """Create every proposed document, empty and owned by its Module, or none of them.
 
-    Returns the created reading files and the evidence; a proposal the host refuses leaves every
-    proposal uncreated, since the worker's change needs all of them.
+    Returns the created reading files, every file written to create them and the evidence; a
+    proposal the host refuses leaves every proposal uncreated, since the worker's change needs all
+    of them. A path proposed more than once is refused, every time it is proposed, before any
+    write, so that no document is created twice.
     """
     from ...spec.registry import registry_command
 
+    paths = [Path(proposal["path"]).as_posix() for proposal in proposals]
     refusals = [
         (proposal, reason)
-        for proposal in proposals
-        if (reason := document_refusal(ctx, proposal)) is not None
+        for proposal, path in zip(proposals, paths)
+        if (
+            reason := "the path is proposed more than once"
+            if paths.count(path) > 1
+            else document_refusal(ctx, proposal)
+        )
+        is not None
     ]
     if refusals:
-        return [], [
-            evidence("document-refused", proposal["path"], reason)
-            for proposal, reason in refusals
-        ]
+        return (
+            [],
+            [],
+            [
+                evidence("document-refused", proposal["path"], reason)
+                for proposal, reason in refusals
+            ],
+        )
     repository = state(ctx).repository
-    created, found = [], []
+    created, written, found = [], [], []
     for proposal in proposals:
         module, path = proposal["module"], proposal["path"]
         entry = repository.modules[module].primary_document
-        link = Path(entry).relative_to(Path(path).parent).as_posix()
+        # The created document may lie below the entry's folder, so the link may climb.
+        link = posixpath.relpath(entry, posixpath.dirname(path))
         title = repository.modules[module].title
         reading = ctx.worktree / path
         reading.parent.mkdir(parents=True, exist_ok=True)
@@ -360,6 +377,7 @@ def create_documents(ctx: RunContext, proposals: list[dict]):
             json.dumps(metadata, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
         )
         created.append(path)
+        written += [path, path + ".json", entry + ".json"]
         found.append(
             evidence(
                 "document-created",
@@ -369,7 +387,7 @@ def create_documents(ctx: RunContext, proposals: list[dict]):
         )
     registry = registry_command(ctx.worktree, write=True)
     found.append(evidence("registry", registry.status, "after creating documents"))
-    return created, found
+    return created, written, found
 
 
 def launch(ctx: RunContext, created: list[str]):
@@ -426,10 +444,11 @@ def change(ctx: RunContext):
         and proposals
         and not violated(record, outcome)
     ):
-        created, notes = create_documents(ctx, proposals)
+        created, written, notes = create_documents(ctx, proposals)
         found += notes
         if created:
             current.created = created
+            current.written = written
             outcome = launch(ctx, created)
             record = ctx.last_record
             current.records.append(record)
@@ -523,7 +542,7 @@ def observe(ctx: RunContext):
             for item in each.get("rounds") or []
             for path in (item.get("audit") or {}).get("changed", [])
         }
-        | set(current.created)
+        | set(current.written)
     )
     deleted = sorted({path for each in records for path in each.get("deleted") or []})
     affected, notes = affected_modules(ctx, set(changed) | set(deleted))

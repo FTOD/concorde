@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ...kernel.errors import link
+from ...kernel.tracing import node as trace_node
 from ...execution.context import (
     Continue,
     RunContext,
@@ -44,7 +45,7 @@ from ...spec.validation import (
     validate_repository,
 )
 from ...workflows.output import step_output
-from .measurement import MeasurementError, current_branch, measure
+from .measurement import MeasurementError, current_branch, measure, real_path
 
 SHA256 = {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
 COMMIT = {"type": "string", "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"}
@@ -234,8 +235,8 @@ def measurement_failed(ctx: RunContext, error: MeasurementError) -> Stop:
         f"the changes of {ctx.worktree} since {ctx.base_commit} cannot be "
         f"measured: {error.code}: {error}",
         reason="environment",
-        explanation="the measurement reads Git and the configuration; the command cannot "
-        "repair either",
+        explanation="the measurement reads Git, the changed paths and the configuration; the "
+        "command cannot repair them",
         evidence=[evidence("git", error.code, str(error))],
         causes=[
             component(
@@ -243,14 +244,16 @@ def measurement_failed(ctx: RunContext, error: MeasurementError) -> Stop:
                 error.code,
                 str(error),
                 "environment",
-                "Git or the configuration could not be read",
+                "Git, a changed path or the configuration could not be read",
             )
         ],
-        options=(
-            ["restore .concorde/config.json and the files under .concorde/checks/"]
-            if error.code == "config_unreadable"
-            else ["repair the worktree's Git state"]
-        ),
+        options=[
+            {
+                "config_unreadable": "restore .concorde/config.json and the files under "
+                ".concorde/checks/",
+                "path_unreadable": "make the changed path readable, or remove it",
+            }.get(error.code, "repair the worktree's Git state")
+        ],
     )
 
 
@@ -303,7 +306,9 @@ def validate_structure(ctx: RunContext):
                 )
     result = validate_repository(ctx.worktree)
     changed = {
-        item["path"] for item in state.inputs["changed"] if item["digest"] is not None
+        real_path(item["path"])
+        for item in state.inputs["changed"]
+        if item["digest"] is not None
     }
     for item in result.findings:
         if item.rule_id == "CONCORDE-SOURCE-008":
@@ -357,7 +362,7 @@ def require_accounted(ctx: RunContext):
         for entry in repository.external_inclusions(module)
     ]
     for item in state.inputs["changed"]:
-        path = item["path"]
+        path = real_path(item["path"])
         if item["digest"] is None:
             continue  # a deletion leaves nothing to bind
         if (
@@ -374,7 +379,7 @@ def require_accounted(ctx: RunContext):
         block(
             state,
             "unbound",
-            path,
+            item["path"],
             "no Module binds this changed path and it is neither a Spec document member "
             "nor a control record",
         )
@@ -385,9 +390,53 @@ def derive_changed_modules(ctx: RunContext):
     state = _state(ctx)
     if state.repository is None:
         return Continue()
-    paths = [item["path"] for item in state.inputs["changed"]]
+    paths = [real_path(item["path"]) for item in state.inputs["changed"]]
     state.changed_modules = affected_modules(state.repository, paths)
     return Continue()
+
+
+def _failure(error: BaseException) -> str:
+    """The code and message of an error Check execution or Spec core raised for some checks; an
+    operating-system error is Check execution's ``system_error``, as ``service_error`` links it."""
+    if isinstance(error, OSError):
+        return f"system_error: {type(error).__name__}: {error}"
+    return f"{error.code}: {error}"
+
+
+def _finished(trace_directory: Path, before: set[str]) -> list[dict]:
+    """The check results of the checks a call of Check execution that then failed had finished,
+    read back, in the order they ran, from the check nodes it wrote (contract.checks.check-trace)
+    in folders that were not in ``trace_directory`` before the call."""
+    folders = sorted(trace_directory.iterdir()) if trace_directory.is_dir() else []
+    finished = []
+    for folder in folders:
+        record = None if folder.name in before else trace_node.read(folder)
+        if not record or record.get("kind") != "check" or not record.get("ended_at"):
+            continue
+        content = (record.get("content") or {}).get("data") or {}
+        # A check that ended with its own status, not one the service stopped.
+        if content.get("status") not in ("passed", "failed", "timeout") or (
+            record.get("outcome") != content["status"]
+        ):
+            continue
+        log = next(
+            (item for item in record["artifacts"] if item["path"] == "output.log"), {}
+        )
+        finished.append(
+            (
+                record["started_at"],
+                {
+                    "check_id": record["metadata"]["check"],
+                    "module": record["metadata"]["module"],
+                    "status": content["status"],
+                    "exit_code": content["exit_code"],
+                    "source_digest": content["source_digest"],
+                    "log": (folder / "output.log").as_posix(),
+                    "log_digest": log.get("digest") or "",
+                },
+            )
+        )
+    return [result for _, result in sorted(finished, key=lambda item: item[0])]
 
 
 def run_configured_checks(ctx: RunContext):
@@ -400,19 +449,25 @@ def run_configured_checks(ctx: RunContext):
     trace_directory = ctx.run_dir / "checks"
     found = []
     # Every checks file and declared input of the project is judged first, so that a problem
-    # of a Module whose checks do not run still blocks; one a Module's checks raise again
-    # below is not reported twice.
-    judged = None
+    # of a Module whose checks do not run still blocks; one raised again below, by a Module's
+    # checks or the selection's, is not reported twice.
+    reported = set()
     try:
         validate_checks(ctx.worktree)
-    except CheckError as error:
-        judged = f"{error.code}: {error}"
-        block(state, "check", "configured checks", judged, service_error(error))
-        found.append(evidence("check", "configured checks", judged))
+    except (CheckError, OSError) as error:
+        failure = _failure(error)
+        reported.add(failure)
+        block(state, "check", "configured checks", failure, service_error(error))
+        found.append(evidence("check", "configured checks", failure))
     # Each Module's own checks, then the selective checks once for the whole selection.
     groups = [(module, [module], "module") for module in selected]
     groups.append((", ".join(selected), selected, "selective"))
     for label, modules, kinds in groups:
+        before = (
+            {folder.name for folder in trace_directory.iterdir()}
+            if trace_directory.is_dir()
+            else set()
+        )
         try:
             results = run_module_checks(
                 ctx.worktree,
@@ -422,52 +477,62 @@ def run_configured_checks(ctx: RunContext):
                 kinds=kinds,
                 repository=state.repository,
             )
-        except (CheckError, SpecError) as error:
-            if error.code == "check_sandbox_unavailable":
+        except (CheckError, SpecError, OSError) as error:
+            code = getattr(error, "code", None)
+            if code == "check_sandbox_unavailable":
                 stop = ctx.checks_unavailable(error, modules)
                 stop.evidence[:0] = found
                 return stop
-            if error.code == "stale_evidence":
+            if code == "stale_evidence":
                 return inputs_changed(ctx, found, str(error), service_error(error))
-            if f"{error.code}: {error}" == judged:
-                continue
-            block(state, "check", label, f"{error.code}: {error}", service_error(error))
-            found.append(evidence("check", label, f"{error.code}: {error}"))
+            # The checks the call finished before it failed keep their results.
+            record_results(ctx, state, found, _finished(trace_directory, before))
+            failure = _failure(error)
+            if failure not in reported:
+                reported.add(failure)
+                block(state, "check", label, failure, service_error(error))
+                found.append(evidence("check", label, failure))
             continue
-        for result in results:
-            log = Path(result["log"])
-            try:
-                log = log.relative_to(ctx.run_dir)
-            except ValueError:
-                pass
-            timeout = result["status"] == "timeout"
-            entry = {
-                "check": result["check_id"],
-                "module": result["module"],
-                "status": result["status"],
-                "exit_code": None if timeout else result["exit_code"],
-                "measured_digest": result["source_digest"],
-                "log": log.as_posix(),
-            }
-            state.checks.append(entry)
-            exit_text = "timed out" if timeout else f"exit {result['exit_code']}"
-            found.append(
-                evidence(
-                    "check",
-                    entry["check"],
-                    f"{entry['status']}, {exit_text}; log {result['log']}",
-                )
-            )
-            if result["status"] != "passed":
-                block(
-                    state,
-                    "check",
-                    entry["check"],
-                    f"{entry['module']} check {entry['status']} ({exit_text}); "
-                    f"log {result['log']}",
-                    check_error(result),
-                )
+        record_results(ctx, state, found, results)
     return Continue(evidence=found)
+
+
+def record_results(ctx: RunContext, state: State, found: list, results: list[dict]):
+    """Keep Check execution's check results in the readiness, and each that did not pass as a
+    blocking finding."""
+    for result in results:
+        log = Path(result["log"])
+        try:
+            log = log.relative_to(ctx.run_dir)
+        except ValueError:
+            pass
+        timeout = result["status"] == "timeout"
+        entry = {
+            "check": result["check_id"],
+            "module": result["module"],
+            "status": result["status"],
+            "exit_code": None if timeout else result["exit_code"],
+            "measured_digest": result["source_digest"],
+            "log": log.as_posix(),
+        }
+        state.checks.append(entry)
+        exit_text = "timed out" if timeout else f"exit {result['exit_code']}"
+        found.append(
+            evidence(
+                "check",
+                entry["check"],
+                f"{entry['status']}, {exit_text}; log {result['log']}",
+            )
+        )
+        if result["status"] != "passed":
+            block(
+                state,
+                "check",
+                entry["check"],
+                f"{entry['module']} check {entry['status']} ({exit_text}); "
+                f"log {result['log']}",
+                check_error(result),
+            )
 
 
 def inputs_changed(

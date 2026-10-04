@@ -4,14 +4,17 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from concorde.method.adoption.records import (
     ANSWERS_SCHEMA,
     DECOMPOSITION_SCHEMA,
     SPEC_DESCRIPTION_SCHEMA,
 )
+from concorde.worker_harness import claude_backend
 from concorde.worker_harness.runs import read_record
 from concorde.spec.verification import verifies
 from tests.concorde.support.adoption_case import (
@@ -26,6 +29,14 @@ from tests.concorde.support.brownfield_project import git
 
 
 class AdoptionTests(AdoptionCase):
+    def inventory(self, prompt: str) -> str:
+        """The inventory file a survey brief names, which the worker may read beside its grant."""
+        path = re.search(
+            r"is in the file (\S+inventory\.txt), which you may read", prompt
+        )
+        self.assertIsNotNone(path, prompt)
+        return Path(path[1]).read_text()
+
     def test_the_schemas_are_the_contracts(self):
         path = "specs/concorde/method/adoption/contracts.md"
         for identity, schema in (
@@ -41,7 +52,15 @@ class AdoptionTests(AdoptionCase):
     @verifies("scenario.adoption.survey-proposes")
     def test_a_survey_proposes_children(self):
         worktree = self.open()
-        status, envelope = self.survey()
+        generated: list[dict] = []
+        original = claude_backend.worker_settings
+
+        def spy(*args, **kwargs):
+            generated.append(original(*args, **kwargs))
+            return generated[-1]
+
+        with mock.patch.object(claude_backend, "worker_settings", side_effect=spy):
+            status, envelope = self.survey()
         self.assertEqual(0, status, envelope)
         output = envelope["output"]
         self.assertEqual(
@@ -69,8 +88,21 @@ class AdoptionTests(AdoptionCase):
         fake = self.worker_round(envelope)
         tools = fake["tools"]
         self.assertEqual("Read,Glob,Grep", tools)
-        self.assertIn("src/checkout/api.py", fake["prompt"])
-        self.assertRegex(fake["prompt"], r"\d+\s+src/inventory/stock\.py")
+        # The brief names the inventory file, readable beside the grant, and summarizes it.
+        inventory = self.inventory(fake["prompt"])
+        self.assertIn("src/checkout/api.py", inventory)
+        self.assertRegex(inventory, r"(?m)^\s*\d+  src/inventory/stock\.py$")
+        self.assertEqual(
+            len(inventory.splitlines()),
+            int(re.search(r"(\d+) file\(s\), \d+ line\(s\) in all", fake["prompt"])[1]),
+        )
+        self.assertRegex(fake["prompt"], r"\d+ file\(s\) +\d+ line\(s\)  src/\n")
+        self.assertNotIn("src/inventory/stock.py", fake["prompt"])
+        [settings] = generated
+        listing = re.search(r"is in the file (\S+inventory\.txt)", fake["prompt"])[1]
+        self.assertIn(
+            os.path.realpath(listing), settings["sandbox"]["filesystem"]["allowRead"]
+        )
         self.assertIn(
             "grant-withheld", {item["kind"] for item in envelope["host_evidence"]}
         )
@@ -88,11 +120,7 @@ class AdoptionTests(AdoptionCase):
         self.assertEqual([".claude/skills/concorde/SKILL.md"], installation["entries"])
         status, envelope = self.survey()
         self.assertEqual(0, status, envelope)
-        inventory = (
-            self.worker_round(envelope)["prompt"]
-            .split("with their size in lines:", 1)[1]
-            .split("```\n\n", 1)[0]
-        )
+        inventory = self.inventory(self.worker_round(envelope)["prompt"])
         self.assertIn("src/checkout/api.py", inventory)
         self.assertNotIn(".claude/skills/concorde/SKILL.md", inventory)
         grabbing = json.loads(json.dumps(PROPOSAL))
@@ -294,6 +322,101 @@ class AdoptionTests(AdoptionCase):
         _, envelope = self.survey(outside)
         self.assertEqual("inconsistent_proposal", envelope["error"]["code"])
         self.assertIn(f"{worktree.parent}/src/checkout/", envelope["error"]["detail"])
+
+    @verifies("scenario.adoption.survey-inconsistent")
+    def test_an_entry_the_parent_never_bound_is_refused(self):
+        worktree = self.open()
+        # A directory the exclusion rule skips below src/, and one reached through a symbolic
+        # link, both lie under the parent's src/ by their names, but the parent binds neither.
+        (worktree / "src/build").mkdir()
+        (worktree / "src/build/generated.py").write_text("X = 1\n")
+        (worktree / "src/real/sub").mkdir(parents=True)
+        (worktree / "src/real/sub/a.py").write_text("A = 1\n")
+        (worktree / "src/alias").symlink_to(worktree / "src/real")
+        for entry in ("src/build/", "src/alias/sub/", "src/alias/sub/a.py"):
+            with self.subTest(entry=entry):
+                proposal = json.loads(json.dumps(PROPOSAL))
+                proposal["children"][1]["entries"] = [entry]
+                _, envelope = self.survey(proposal)
+                self.assertEqual("inconsistent_proposal", envelope["error"]["code"])
+                self.assertIn(
+                    f"entry {entry} does not exist or is not bound by module.shop",
+                    envelope["error"]["detail"],
+                )
+        vendored = json.loads(json.dumps(PROPOSAL))
+        vendored["externals"] = [
+            {"path": "src/build/", "used_by": "module.shop", "reason": "vendored"}
+        ]
+        _, envelope = self.survey(vendored)
+        self.assertEqual("inconsistent_proposal", envelope["error"]["code"])
+        self.assertIn(
+            "external src/build/ is not an existing path", envelope["error"]["detail"]
+        )
+
+    @verifies("scenario.adoption.survey-absolute-paths")
+    def test_open_question_evidence_outside_the_worktree_fails_the_survey(self):
+        worktree = self.open()
+        outside = json.loads(json.dumps(PROPOSAL))
+        outside["open_questions"] = [
+            {
+                **RETRY_QUESTION,
+                "module": "module.shop",
+                "evidence": [
+                    "src/checkout/api.py:3",
+                    f"{worktree.parent}/elsewhere.py:12",
+                ],
+            }
+        ]
+        _, envelope = self.survey(outside)
+        self.assertEqual("inconsistent_proposal", envelope["error"]["code"])
+        self.assertIn(
+            f"open question q.payment-retry's evidence '{worktree.parent}/elsewhere.py:12' is "
+            "an absolute path outside the worktree",
+            envelope["error"]["detail"],
+        )
+        self.assertNotIn("'src/checkout/api.py:3'", envelope["error"]["detail"])
+
+    @verifies("scenario.adoption.survey-after-scaffold")
+    def test_a_survey_after_its_scaffold_needs_a_fresh_workspace(self):
+        first = self.scaffolded()
+        head = git(self.worktree, "rev-parse", "HEAD")
+        status_before = git(self.worktree, "status", "--porcelain")
+        answers = self.project.answers(
+            {
+                "id": "d.db-helper",
+                "question": DB_HELPER["question"],
+                "answer": "a Module of its own",
+                "answered_by": "main-agent",
+            }
+        )
+        status, envelope = self.survey(PROPOSAL, "--answers", answers, "--input", first)
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+        error = envelope["error"]
+        self.assertEqual("fresh_workspace_required", error["code"])
+        self.assertEqual("scope", error["unhandled"]["reason"])
+        self.assertIn("module.shop contains module.checkout", error["detail"])
+        self.assertIn("module.shop contains module.inventory", error["detail"])
+        self.assertIn("fresh workspace", error["unhandled"]["explanation"])
+        self.assertEqual([], envelope["worker_runs"])
+        # Nothing the scaffold wrote is undone, and nothing else changes.
+        self.assertEqual(head, git(self.worktree, "rev-parse", "HEAD"))
+        self.assertEqual(status_before, git(self.worktree, "status", "--porcelain"))
+        self.assertTrue((self.worktree / "specs/project/checkout/module.md").is_file())
+        # A Module the scaffold created, which holds no scaffold's writes, is surveyed as usual.
+        alone = {**PROPOSAL, "children": [], "checks": [], "decisions": []}
+        status, envelope = self.project.run(
+            "survey",
+            "--task",
+            "adopt",
+            "--modules",
+            "module.checkout",
+            "--goal",
+            self.project.plan([{"result": {"output": alone}}]),
+        )
+        self.assertEqual(0, status, envelope)
+        # An unbound survey in the primary worktree has no scaffold behind it.
+        status, envelope = self.survey(task=False)
+        self.assertEqual(0, status, envelope)
 
     def test_an_answered_survey_question_must_be_settled(self):
         self.open()
@@ -547,6 +670,28 @@ class AdoptionTests(AdoptionCase):
         self.assertIn(
             "decision d.layout chose 'write-scenarios', which names none of its "
             "options (one-document, scenarios)",
+            envelope["error"]["detail"],
+        )
+        # Evidence outside the worktree stays absolute and fails the run.
+        outside = f"{self.worktree.parent}/payment.py:7"
+        _, envelope = self.describe(
+            [
+                {
+                    "result": {
+                        "output": {
+                            **claims,
+                            "open_questions": [
+                                {**RETRY_QUESTION, "evidence": [outside]}
+                            ],
+                        }
+                    }
+                }
+            ]
+        )
+        self.assertEqual("inconsistent_description", envelope["error"]["code"])
+        self.assertIn(
+            f"open question q.payment-retry's evidence '{outside}' is an absolute path "
+            "outside the worktree",
             envelope["error"]["detail"],
         )
 

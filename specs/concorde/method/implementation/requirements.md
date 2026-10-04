@@ -77,6 +77,15 @@ The test worker's tool list SHALL NOT include Bash or any other tool that runs a
 
 The test Operation SHALL let its worker read the log of every check the Operation ran for the run, whether the check passed or not.
 
+### req.implementation.test-failures-accounted — Each failed check is interpreted once
+
+The test Operation SHALL end the run `failed` with `failures_unaccounted` when its worker's
+`failures`, after one resume round with every mismatch, do not hold exactly one entry per check that
+did not pass, named by that check's identity, and none for a check that passed.
+
+The resume round is given only when the first answer does not hold; the entries' contents stay the
+worker's interpretation.
+
 ### req.implementation.host-check-facts — Check outcomes come from the Operation
 
 The check outcomes in a code change or a test report SHALL be the

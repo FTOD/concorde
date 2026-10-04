@@ -18,6 +18,15 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from ...execution.checks.checks import configured_checks
+from ...execution.context import (
+    Continue,
+    RunContext,
+    command,
+    evidence,
+)
+from ...kernel.errors import link
+from ...workflows.output import step_output
 from ..adoption.records import (
     DECOMPOSITION_SCHEMA,
     EXTERNAL,
@@ -27,14 +36,6 @@ from ..adoption.records import (
     narrowed_entries,
     obj,
     proposal_problems,
-)
-from ...execution.checks.checks import configured_checks
-from ...workflows.output import step_output
-from ...execution.context import (
-    Continue,
-    RunContext,
-    command,
-    evidence,
 )
 from ..specs import admission, spec_cause, spec_finding
 
@@ -82,6 +83,19 @@ def local(identity: str) -> str:
 
 def anchor(identity: str) -> str:
     return local(identity).replace(".", "-")
+
+
+def mismatch(detail: str, actor: str = "Adoption proposal check") -> dict:
+    """The cause link of one way the proposal no longer fits the worktree."""
+    return link(
+        "component",
+        actor,
+        "proposal_mismatch",
+        detail,
+        reason="input",
+        explanation="the proposal was computed from the worktree as the survey saw it, which "
+        "has changed since",
+    )
 
 
 def admit(ctx: RunContext):
@@ -179,6 +193,7 @@ def recheck(ctx: RunContext):
             explanation="the worktree changed since the survey; whether to survey again or "
             "undo the change is the main agent's decision",
             evidence=[evidence("mismatch", module, item) for item in problems],
+            causes=[mismatch(item) for item in problems],
             options=["run survey again and scaffold the new run"],
         )
     result = validate_repository(ctx.worktree)
@@ -301,20 +316,10 @@ def parent_reading(text: str, children: list[dict]) -> str:
     return before + paragraphs.rstrip("\n") + "\n" + ("\n" + after if after else "")
 
 
-def parent_metadata(
-    value: dict,
-    children: list[dict],
-    replaced: dict[str, list[str]],
-    includes: list[dict] = (),
-) -> dict:
+def narrowed_metadata(value: dict, replaced: dict[str, list[str]]) -> dict:
+    """A copy of one document's metadata whose realizations bind what ``replaced`` leaves them; a
+    realization left with no entry is removed."""
     value = json.loads(json.dumps(value))
-    value["module"]["contains"] = list(value["module"]["contains"]) + [
-        {"target": child["id"], "meaning": f"#contains-{anchor(child['id'])}"}
-        for child in children
-    ]
-    value["module"]["includes"] = list(value["module"].get("includes") or []) + list(
-        includes
-    )
     kept = []
     for record in value.get("defines") or []:
         if record.get("type") != "realization":
@@ -331,6 +336,38 @@ def parent_metadata(
         kept.append(record)
     value["defines"] = kept
     return value
+
+
+def parent_metadata(
+    value: dict,
+    children: list[dict],
+    replaced: dict[str, list[str]],
+    includes: list[dict] = (),
+) -> dict:
+    """The parent entry's metadata: its realizations narrowed, the children contained and the
+    vendored code it uses included."""
+    value = narrowed_metadata(value, replaced)
+    value["module"]["contains"] = list(value["module"]["contains"]) + [
+        {"target": child["id"], "meaning": f"#contains-{anchor(child['id'])}"}
+        for child in children
+    ]
+    value["module"]["includes"] = list(value["module"].get("includes") or []) + list(
+        includes
+    )
+    return value
+
+
+def realization_entries(values: list[dict]) -> list[str]:
+    """The union of the realization entries the given metadata values declare."""
+    return sorted(
+        {
+            entry
+            for value in values
+            for record in value.get("defines") or []
+            if record.get("type") == "realization"
+            for entry in record.get("entries") or []
+        }
+    )
 
 
 def plan(ctx: RunContext):
@@ -388,6 +425,7 @@ def plan(ctx: RunContext):
                     reason="decision",
                     explanation="the scaffold only creates documents; it never replaces one",
                     evidence=[evidence("exists", path, "")],
+                    causes=[mismatch(f"{path} exists in {root}", "Scaffold plan")],
                     options=["remove the file or survey again with another identity"],
                 )
         changes.append(file_change(root, entry, child_reading(child, titles)))
@@ -417,22 +455,40 @@ def plan(ctx: RunContext):
         changes.append(
             file_change(root, parent.entry, parent_reading(parent_text, children))
         )
+    after_entries = before_entries
     if children or externals:
         parent_value = json.loads(
             (root / (parent.entry + ".json")).read_text(encoding="utf-8")
         )
+        after_values = [
+            parent_metadata(parent_value, children, replaced, parent_includes)
+        ]
         changes.append(
             file_change(
                 root,
                 parent.entry + ".json",
-                json.dumps(
-                    parent_metadata(parent_value, children, replaced, parent_includes),
-                    indent=2,
-                    ensure_ascii=False,
-                )
-                + "\n",
+                json.dumps(after_values[0], indent=2, ensure_ascii=False) + "\n",
             )
         )
+        # The parent may declare realizations in documents other than its entry; each of them
+        # is narrowed in the same transaction, so no file stays bound by parent and child.
+        for document in sorted(
+            {item.document for item in repository.realizations(module)} - {parent.entry}
+        ):
+            value = json.loads(
+                (root / (document + ".json")).read_text(encoding="utf-8")
+            )
+            narrowed = narrowed_metadata(value, replaced)
+            after_values.append(narrowed)
+            if narrowed != value:
+                changes.append(
+                    file_change(
+                        root,
+                        document + ".json",
+                        json.dumps(narrowed, indent=2, ensure_ascii=False) + "\n",
+                    )
+                )
+        after_entries = realization_entries(after_values)
         registry_path = repository.registry_path
         registry = json.loads((root / registry_path).read_text(encoding="utf-8"))
         for record in registry["modules"]:
@@ -460,11 +516,6 @@ def plan(ctx: RunContext):
         changes.append(file_change(root, registry_path, serialize(registry)))
     # The proposal's checks are never configured here: a command a model chose after reading
     # code runs only once the developer accepted it.
-    after_entries = (
-        sorted({entry for items in replaced.values() for entry in items})
-        if children or externals
-        else before_entries
-    )
     ctx.state["changes"] = changes
     ctx.state["record"] = {
         "parent": module,
@@ -512,6 +563,27 @@ def handoff(children: list[dict], created: list[dict]) -> dict:
     )
 
 
+def unrestored(root: Path, changes: list[dict]) -> list[str]:
+    """The files of a failed transaction that still hold the scaffold's new content, observed in
+    the worktree: the ones its file transaction could not restore. A file that cannot be read is
+    listed too, since nothing shows it was restored."""
+    from ...spec.repository_base import digest
+
+    left = []
+    for change in changes:
+        path = root / change["path"]
+        try:
+            data = path.read_bytes() if path.exists() else None
+        except OSError:
+            left.append(change["path"])
+            continue
+        if data is None or digest(data) == change["before_digest"]:
+            continue
+        if data == change["content"].encode():
+            left.append(change["path"])
+    return left
+
+
 def apply(ctx: RunContext):
     """Step 4: one file transaction, kept only when validation finds no new error."""
     from ...spec.changes import apply_files
@@ -553,6 +625,9 @@ def apply(ctx: RunContext):
                 (ctx.worktree / folder).rmdir()
             except OSError:
                 pass
+        left = unrestored(ctx.worktree, changes)
+        if left or error.code not in {"scaffold_invalid", "stale_proposal"}:
+            return write_failed(ctx, record, changes, left, error, new)
         if error.code == "scaffold_invalid":
             listing = "; ".join(
                 f"{f.rule_id} {f.source or ''}: {f.message}" for f in new
@@ -605,6 +680,67 @@ def apply(ctx: RunContext):
                 f"created {', '.join(item['id'] for item in record['created']) or 'nothing'}",
             )
         ],
+    )
+
+
+def write_failed(
+    ctx: RunContext,
+    record: dict,
+    changes: list[dict],
+    left: list[str],
+    error,
+    new: list,
+):
+    """Stop ``failed`` with ``write_failed``: the file transaction failed for a reason other than
+    a stale file or a new structural error, or could not restore every file it wrote; ``left``
+    are the files still holding the scaffold's content and ``new`` the structural errors its
+    validation found, if it got that far."""
+    restored = [change["path"] for change in changes if change["path"] not in left]
+    created = {change["path"] for change in changes if change["before_digest"] is None}
+    if left:
+        summary = (
+            f"The scaffold's file transaction failed ({error.code}) and {len(left)} file(s) "
+            "still hold the scaffold's content; repair them before anything else."
+        )
+        state = (
+            f"{', '.join(left)} still hold the scaffold's new content, which its file "
+            "transaction could not restore; "
+            + (
+                f"every other file it would write is as before: {', '.join(restored)}"
+                if restored
+                else "no other file was to be written"
+            )
+        )
+        remove = [path for path in left if path in created]
+        restore = [path for path in left if path not in created]
+        repair = [
+            *(["remove " + ", ".join(remove)] if remove else []),
+            *(
+                ["restore " + ", ".join(restore) + " from version control"]
+                if restore
+                else []
+            ),
+        ]
+        options = [
+            " and ".join(repair) + ", then run scaffold again once the cause is fixed"
+        ]
+    else:
+        summary = f"The scaffold's file transaction failed ({error.code}); every file was restored."
+        state = "every file it would write is as before: " + ", ".join(restored)
+        options = ["fix the cause named below, then run scaffold again"]
+    return ctx.fail(
+        "failed",
+        "write_failed",
+        summary,
+        f"writing the Modules proposed by survey {record['survey_run']} in {ctx.worktree} "
+        f"failed: {error.code}: {error}; {state}",
+        reason="environment",
+        explanation="the scaffold writes its files through Spec core's file transaction and "
+        "cannot repair what the operating system refused",
+        evidence=[evidence("unrestored", path, "") for path in left]
+        + [evidence("new-error", f.rule_id, f"{f.source}: {f.message}") for f in new],
+        causes=[spec_cause(error)],
+        options=options,
     )
 
 
