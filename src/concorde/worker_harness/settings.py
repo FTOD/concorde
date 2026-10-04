@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -67,9 +68,10 @@ def tool_set(tool_sets: dict, task_type: str, grant: dict | None) -> str:
     """The tool set of one backend for a task type, read-only when the grant writes nothing.
 
     A task type whose Protocol row writes no set gets the read-only set on every backend, which
-    is how ``review-architecture`` gets the tools of ``review-spec`` without a row of its own. A harness may also give less than a
-    task type assigns, such as a survey's ``code-to-spec`` grant with the Spec side withheld; such
-    a worker gets no tool that changes files either.
+    is how ``review-architecture`` gets the tools of ``review-spec`` without a row of its own. A
+    grant may also give less than its task type assigns, such as the read-only grant of a run that
+    may not change its worktree, every ``rw`` entry lowered to ``ro``; such a worker gets no tool
+    that changes files either.
     """
     if task_type in WRITING_NOTHING:
         return tool_sets[READ_ONLY_TASK_TYPE]
@@ -139,9 +141,16 @@ def entry_problem(entry) -> str | None:
         return "its path is missing or not a non-empty string"
     if path.startswith("/"):
         return f"its path {path!r} is absolute, not relative to the task worktree"
-    if ".." in path.rstrip("/").split("/"):
+    segments = path.removesuffix("/").split("/")
+    if ".." in segments:
         return f"its path {path!r} leaves the task worktree through '..'"
-    if level not in RANK:
+    if "" in segments or "." in segments:
+        return (
+            f"its path {path!r} is not in canonical form: it has an empty or '.' segment, "
+            "where a path names each directory once, separated by single slashes"
+        )
+    # A level that is not a string, such as a list, is never looked up: it cannot be hashed.
+    if not isinstance(level, str) or level not in RANK:
         return f"its level {level!r} is none of {', '.join(sorted(RANK))}"
     return None
 
@@ -177,13 +186,12 @@ class GrantView:
                 self.exact[path] = level
 
     def level(self, relative: str) -> str | None:
-        best = self.exact.get(relative)
-        for directory, level in self.directories:
-            if relative.startswith(directory) and (
-                best is None or RANK[level] > RANK[best]
-            ):
-                best = level
-        return best
+        """The level of the most specific entry covering ``relative``: its exact entry, else the
+        longest directory entry above it, so a file a grant lists apart from its directory keeps
+        its own level."""
+        if relative in self.exact:
+            return self.exact[relative]
+        return self.directory_level(relative)
 
     def paths(self, *levels: str) -> list[str]:
         return sorted(
@@ -201,14 +209,21 @@ class GrantView:
         return False
 
     def directory_level(self, directory: str) -> str | None:
-        """The level a directory entry gives every file below ``directory``, if any."""
-        best = None
-        for path, level in self.directories:
-            if directory.startswith(path) and (
-                best is None or RANK[level] > RANK[best]
-            ):
-                best = level
-        return best
+        """The level the longest directory entry at or above ``directory`` gives, if any."""
+        covering = [
+            (len(path), level)
+            for path, level in self.directories
+            if directory.startswith(path)
+        ]
+        return max(covering)[1] if covering else None
+
+    def uniform_below(self, directory: str, level: str) -> bool:
+        """Whether no entry strictly below ``directory`` (``a/b/``) gives another level than
+        ``level``, so that one rule may stand for the whole directory."""
+        return not any(
+            path.startswith(directory) and path != directory and other != level
+            for path, other in [*self.exact.items(), *self.directories]
+        )
 
 
 def grant_view(grant) -> GrantView:
@@ -257,12 +272,10 @@ def worktree_rules(
             if child.is_dir() and not child.is_symlink():
                 below = relative + "/"
                 covering = view.directory_level(below)
-                if covering == "rw":
+                uniform = covering is not None and view.uniform_below(below, covering)
+                if covering == "rw" and uniform:
                     continue
-                if covering == "ro" and not any(
-                    level == "rw" and path.startswith(below)
-                    for path, level in view.exact.items()
-                ):
+                if covering == "ro" and uniform:
                     rules.append(_rule("Edit", child, True))
                     continue
                 if not view.readable_below(below) and not kept(child):
@@ -463,7 +476,9 @@ def worker_settings(
                     "hooks": [
                         {
                             "type": "command",
-                            "command": f"{python} {(run.control / 'write_hook.py').as_posix()}",
+                            "command": shlex.join(
+                                [python, (run.control / "write_hook.py").as_posix()]
+                            ),
                         }
                     ],
                 }

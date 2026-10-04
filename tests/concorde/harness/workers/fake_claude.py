@@ -1,8 +1,11 @@
 """A deterministic stand-in for ``claude -p`` used by the worker tests.
 
 The test puts a plan in the worker instructions as ``FAKE-PLAN: <json>``: a list of rounds, each
-with ``writes`` (absolute path to content), ``removes`` (absolute paths to delete), ``result`` (the structured output, merged over a valid
-``ok`` result), and optional ``sleep``, ``spawn`` (start a detached sleeper that records its PID),
+with ``writes`` (absolute path to content), ``removes`` (absolute paths to delete), ``chmods``
+(absolute path to mode), ``commands`` (argument lists to run), ``result`` (the structured output,
+merged over a valid ``ok`` result), and optional ``early_session`` (name the session and write its
+transcript first, as Claude Code does, before any ``sleep``), ``sleep``, ``linger`` (seconds to
+sleep after printing the envelope), ``spawn`` (start a detached sleeper that records its PID),
 ``raw`` (print this instead of an envelope), ``envelope`` (fields merged over the result envelope,
 such as an error subtype), ``no_structured`` (omit the structured output) or ``actions``
 (``[tool, input]`` pairs printed first as ``stream-json`` assistant tool uses). Like Claude Code it
@@ -64,11 +67,22 @@ def main() -> int:
         json.dumps({"argv": sys.argv[1:], "env": dict(os.environ), "prompt": prompt})
     )
     step = state["plan"][min(number, len(state["plan"])) - 1]
+    session = (step.get("envelope") or {}).get("session_id", f"fake-session-{number}")
+    if step.get("early_session"):
+        transcribe(session, number)
+        print(
+            json.dumps({"type": "system", "subtype": "init", "session_id": session}),
+            flush=True,
+        )
     for path, content in step.get("writes", {}).items():
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         Path(path).write_text(content)
     for path in step.get("removes", []):
         Path(path).unlink()
+    for path, mode in step.get("chmods", {}).items():
+        os.chmod(path, int(mode, 8))
+    for command in step.get("commands", []):
+        subprocess.run(command, check=True, capture_output=True)
     if step.get("spawn"):
         child = subprocess.Popen(
             [sys.executable, "-c", "import time; time.sleep(120)"],
@@ -101,12 +115,8 @@ def main() -> int:
         "result": "",
     }
     envelope.update(step.get("envelope", {}))
-    config = os.environ.get("CLAUDE_CONFIG_DIR")
-    if config and envelope.get("session_id"):
-        # Where Claude Code keeps a session's transcript.
-        transcript = Path(config) / "projects/fake" / f"{envelope['session_id']}.jsonl"
-        transcript.parent.mkdir(parents=True, exist_ok=True)
-        transcript.write_text(json.dumps({"type": "user", "round": number}) + "\n")
+    if envelope.get("session_id"):
+        transcribe(envelope["session_id"], number)
     if not step.get("no_structured"):
         result = {**BASE, **step.get("result", {})}
         if result["status"] in ("blocked", "failed") and "error" not in step.get(
@@ -114,8 +124,19 @@ def main() -> int:
         ):
             result["error"] = ERROR
         envelope["structured_output"] = result
-    print(json.dumps(envelope))
+    print(json.dumps(envelope), flush=True)
+    if step.get("linger"):
+        time.sleep(step["linger"])
     return 0
+
+
+def transcribe(session: str, number: int) -> None:
+    """Write the session's transcript where Claude Code keeps it."""
+    config = os.environ.get("CLAUDE_CONFIG_DIR")
+    if config and session:
+        transcript = Path(config) / "projects/fake" / f"{session}.jsonl"
+        transcript.parent.mkdir(parents=True, exist_ok=True)
+        transcript.write_text(json.dumps({"type": "user", "round": number}) + "\n")
 
 
 if __name__ == "__main__":

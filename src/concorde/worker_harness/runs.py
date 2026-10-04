@@ -10,25 +10,12 @@ from __future__ import annotations
 import os
 import secrets
 import shutil
-import subprocess
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
 from ..kernel.tracing import layout
 from .settings import RunPaths
-
-
-def primary_root(worktree: Path) -> Path:
-    """The primary worktree of the repository ``worktree`` belongs to."""
-    common = subprocess.run(
-        ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
-        cwd=worktree,
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout.strip()
-    return Path(os.path.realpath(common)).parent
 
 
 def now() -> str:
@@ -142,6 +129,7 @@ def read_record(root: Path, run_id: str) -> dict:
         "deletions_refused": data["deletions_refused"],
         "deletions_absent": data["deletions_absent"],
         "deletions_failed": data["deletions_failed"],
+        "trace_failures": data["trace_failures"],
         "status": node["status"],
         "error": node["error"],
         "run_directory": folder.as_posix(),
@@ -162,16 +150,61 @@ def _absolute(value, folder: Path):
     return value
 
 
-def remove_runtime(paths: RunPaths) -> None:
-    """Remove a run's runtime directory, with its credential copies, once the worker has ended."""
-    shutil.rmtree(paths.root, ignore_errors=True)
+def remove_runtime(paths: RunPaths) -> str | None:
+    """Remove a run's runtime directory, with its credential copies, once the worker has ended.
+
+    The credential copies in ``config/`` go first, on their own. A directory the worker's tools
+    made unwritable or unreadable, such as a toolchain's cache in its home, is opened up and the
+    removal tried once more. Returns None once the directory is gone, otherwise what remains and
+    the operating system's error."""
+    errors: list[str] = []
+    for directory in (paths.config, paths.root):
+        error = _remove(directory)
+        if error is not None:
+            _open_up(directory)
+            error = _remove(directory)
+        if error is not None:
+            errors.append(error)
+    if not os.path.lexists(paths.root):
+        return None
+    return (
+        f"the runtime directory {paths.root} could not be removed"
+        + (
+            ", with the credential copies in its config/"
+            if os.path.lexists(paths.config)
+            else ""
+        )
+        + ": "
+        + ("; ".join(dict.fromkeys(errors)) or "it still exists")
+    )
+
+
+def _remove(directory: Path) -> str | None:
+    try:
+        shutil.rmtree(directory)
+    except FileNotFoundError:
+        return None
+    except OSError as error:
+        return f"{error.filename or directory}: {error.strerror or error}"
+    return None
+
+
+def _open_up(directory: Path) -> None:
+    """Make ``directory`` and every directory below it readable and writable by its owner."""
+    try:
+        os.chmod(directory, 0o700)
+        entries = list(os.scandir(directory))
+    except OSError:
+        return
+    for entry in entries:
+        if entry.is_dir(follow_symlinks=False):
+            _open_up(Path(entry.path))
 
 
 __all__ = [
     "create_run",
     "new_run_id",
     "now",
-    "primary_root",
     "read_record",
     "remove_runtime",
 ]

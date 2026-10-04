@@ -37,6 +37,9 @@ absolute, `<runtime>` being the runtime directory:
 }
 ```
 
+The hook's command names the Python interpreter and the hook's path, each quoted for the shell, so
+that a path holding a space or a quote stays one word.
+
 ### Deny rules
 
 Claude Code applies `Read` deny rules to its file tools and also to the Bash sandbox: a path a rule
@@ -50,8 +53,9 @@ directories. They are generated from the grant and the file tree:
 | a `names` file | `Read` and `Edit` |
 | a `ro` file | `Edit` |
 | a `rw` file | none |
+| a directory covered by a `rw` directory entry with no entry below it of another level | none |
 | a task-worktree directory with no `ro` or `rw` path below it | one `Read` and one `Edit` rule on `<dir>/**` instead of rules per file |
-| a directory covered by a `ro` directory entry with no `rw` path below it | one `Edit` rule on `<dir>/**` |
+| a directory covered by a `ro` directory entry with no entry below it of another level | one `Edit` rule on `<dir>/**` |
 | a `.git` entry of the task worktree met by the walk, at any depth | `Read` and `Edit` on the path and below |
 | each Git administrative path Workers hands over: the common Git directory, the worktree's Git directory, every `.git` entry of the worktree and the Git directories they point to | `Read` and `Edit` on the path and below |
 | inside the user's home and inside the primary worktree, every entry that leads neither to the task worktree, to the runtime directory's `work/` or `home/`, nor to a runtime path | `Read` and `Edit` on the entry and below; a home that holds none of them is denied as a whole |
@@ -72,8 +76,14 @@ such a file itself, since it writes only `rw` paths.
 The hook is `write_hook.py` copied into the runtime directory's `control/` with the task worktree and the grant's
 `rw`, `ro` and `names` lists embedded, generated from the same grant as the deny rules. It receives
 Claude Code's PreToolUse JSON on standard input and resolves `tool_input.file_path` to an absolute
-path without following a final symbolic link. The rows are tried from the top and the first that
-matches decides. The hook sees only the grant, not which Module declares an ungranted path, so its
+path with every symbolic link resolved, the final one included, and also a final link whose target
+does not exist yet: a write is judged by the file it would change, never by a link's own name, so a
+link at a `rw` path lets a write through only when its target is `rw` too, and a link elsewhere lets
+one through when its target is `rw`. A path's level is that of the grant's most specific entry for it: its exact entry,
+else the longest directory entry above it, as everywhere the Harness reads a grant. The rows are
+tried from the top and the first that matches decides; a denial reached through a final link names the file judged followed by
+`(the target of the symbolic link <path>)`, and one outside the task worktree says the path is a
+symbolic link to that target. The hook sees only the grant, not which Module declares an ungranted path, so its
 reason for one covers both cases: an undeclared file and a file of a Module the task is not bound
 to.
 
@@ -101,9 +111,9 @@ On the Claude Code backend:
 | `implement` | `Read,Glob,Grep,Edit,Write,Bash` |
 
 Every task type whose row in the Protocol's task-type table writes no set gets the read-only set of
-the first row, which is how `review-architecture`, reading every Module's Specs and writing nothing,
-gets the tools of `review-spec` on both backends. A grant with no writable path, such as a survey's
-`code-to-spec` grant with the [Spec](../../glossary.json#concept.spec) side withheld, gets that set too
-whatever its task type. WebFetch, WebSearch, the agent tool and notebook editing are never listed. A
+the first row, which is how `review-architecture`, reading every Module's [Specs](../../glossary.json#concept.spec) and writing nothing,
+gets the tools of `review-spec` on both backends. A grant with no writable path, such as the
+read-only grant of a run that may not change its worktree, every `rw` entry lowered to `ro`, gets
+that set too whatever its task type. WebFetch, WebSearch, the agent tool and notebook editing are never listed. A
 `test` worker runs no command itself: its [Operation](../../glossary.json#concept.operation) runs the
 [configured checks](../../glossary.json#concept.configured-check) and gives it their results.
