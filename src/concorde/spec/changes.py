@@ -21,7 +21,27 @@ def apply_files(
     root: Path, changes: list[dict], allowed: set[str], *, verify=None
 ) -> list[str]:
     backups: dict[str, bytes | None] = {}
-    paths = [x.get("path") for x in changes]
+    if not isinstance(changes, list):
+        raise SpecError(
+            f"a change set is a list of changes, not a {type(changes).__name__}",
+            "invalid_proposal",
+        )
+    for position, item in enumerate(changes):
+        if not isinstance(item, dict) or not isinstance(item.get("path"), str):
+            raise SpecError(
+                f"change {position} is not an object with a string path",
+                "invalid_proposal",
+            )
+        if item.get("before_digest") is not None and not isinstance(
+            item["before_digest"], str
+        ):
+            raise SpecError(
+                f"the change of {item['path']!r} has a before_digest that is neither a "
+                "digest nor null",
+                "invalid_proposal",
+                path=item["path"],
+            )
+    paths = [x["path"] for x in changes]
     if not changes or len(set(paths)) != len(changes):
         repeated = sorted({path for path in paths if paths.count(path) > 1})
         raise SpecError(

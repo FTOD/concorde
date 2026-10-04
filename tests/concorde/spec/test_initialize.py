@@ -543,6 +543,30 @@ class ProposalBindingTests(unittest.TestCase):
             forged["data"]["files"][2]["content"] += "\nAn extra promise.\n"
             refused({"proposal": forged, "proposal_digest": named}, "invalid_proposal")
             refused({"proposal": proposal}, "invalid_input")
+            # A proposal that is not exactly the typed value propose returns, even with its own
+            # digest, is refused: an extra envelope field, no data, data overriding the
+            # envelope, a malformed file record or no object at all.
+            for label, change in (
+                ("extra field", lambda p: p.update(note="x")),
+                ("no data", lambda p: p.pop("data")),
+                (
+                    "data overrides type_id",
+                    lambda p: p["data"].update(type_id="concorde-other"),
+                ),
+                ("malformed file", lambda p: p["data"]["files"].append(["x"])),
+                (
+                    "file without content",
+                    lambda p: p["data"]["files"][0].pop("content"),
+                ),
+            ):
+                with self.subTest(label):
+                    malformed = copy.deepcopy(proposal)
+                    change(malformed)
+                    refused(
+                        {"proposal": malformed, "proposal_digest": digest(malformed)},
+                        "invalid_proposal",
+                    )
+            refused({"proposal": [], "proposal_digest": digest([])}, "invalid_proposal")
             # A new project file changes what propose would return: the proposal is stale.
             (root / "tool.py").write_text("print('tool')\n")
             refused({"proposal": proposal, "proposal_digest": named}, "stale_proposal")

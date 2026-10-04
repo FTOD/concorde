@@ -26,11 +26,33 @@ _KEY = re.compile(r"^[A-Za-z_][A-Za-z0-9_.-]*$")
 _INTEGER = re.compile(r"^-?[0-9]+$")
 
 
+def _unique_pairs(items: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in items:
+        if key in result:
+            raise ValueError(f"duplicate key '{key}'")
+        result[key] = value
+    return result
+
+
+def _key(text: str, source: str, line: int) -> str:
+    key = text.strip()
+    if key == "<<":
+        raise FrontMatterError(
+            "unsupported YAML tag, anchor, alias, or merge key", source, line
+        )
+    if not _KEY.fullmatch(key):
+        raise FrontMatterError("invalid mapping key", source, line)
+    return key
+
+
 def _scalar(value: str, source: str, line: int) -> Any:
     value = value.strip()
     if not value:
         return None
-    if any(token in value for token in ("&", "*", "!", "<<:")):
+    # A tag, anchor or alias opens a node; inside a quoted or plain scalar these characters are
+    # ordinary text.
+    if value.startswith(("&", "*", "!")):
         raise FrontMatterError(
             "unsupported YAML tag, anchor, alias, or merge key", source, line
         )
@@ -46,11 +68,13 @@ def _scalar(value: str, source: str, line: int) -> Any:
         return int(value)
     if value.startswith("[") or value.startswith("{"):
         try:
-            return json.loads(value)
+            return json.loads(value, object_pairs_hook=_unique_pairs)
         except json.JSONDecodeError as error:
             raise FrontMatterError(
                 "inline collections must use JSON-compatible syntax", source, line
             ) from error
+        except ValueError as error:
+            raise FrontMatterError(str(error), source, line) from error
     if value.startswith('"'):
         try:
             return json.loads(value)
@@ -104,23 +128,33 @@ def _parse_block(
                 continue
             if ":" in item:
                 key, raw_value = item.split(":", 1)
-                if not _KEY.fullmatch(key.strip()):
-                    raise FrontMatterError("invalid mapping key", source, line)
+                key = _key(key, source, line)
                 record: dict[str, Any] = {}
                 if raw_value.strip():
-                    record[key.strip()] = _scalar(raw_value, source, line)
+                    record[key] = _scalar(raw_value, source, line)
                     index += 1
                 else:
                     value, index = _parse_block(tokens, index + 1, indent + 2, source)
-                    record[key.strip()] = value
+                    record[key] = value
                 if (
                     index < len(tokens)
                     and tokens[index][1] == indent + 2
                     and not tokens[index][2].startswith("-")
                 ):
+                    start = index
                     continuation, index = _parse_block(
                         tokens, index, indent + 2, source
                     )
+                    for repeated in record.keys() & continuation.keys():
+                        repeat_line = next(
+                            number
+                            for number, level, text in tokens[start:index]
+                            if level == indent + 2
+                            and text.split(":", 1)[0].strip() == repeated
+                        )
+                        raise FrontMatterError(
+                            f"duplicate key '{repeated}'", source, repeat_line
+                        )
                     record.update(continuation)
                 container.append(record)
                 continue
@@ -130,9 +164,7 @@ def _parse_block(
             if text.startswith("-") or ":" not in text:
                 raise FrontMatterError("expected key: value mapping", source, line)
             key, raw_value = text.split(":", 1)
-            key = key.strip()
-            if not _KEY.fullmatch(key):
-                raise FrontMatterError("invalid mapping key", source, line)
+            key = _key(key, source, line)
             if key in container:
                 raise FrontMatterError(f"duplicate key '{key}'", source, line)
             if raw_value.strip():

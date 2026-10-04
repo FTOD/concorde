@@ -240,7 +240,7 @@ class CheckTests(unittest.TestCase):
     def test_a_term_used_without_a_link_is_a_warning(self):
         topic = DocumentSource(
             "# Rules\n\nEvery Thing store is small, and a Provider fills it.\n\n## Keeping\n\n"
-            "Thing names start sentences without counting. A kept Thing stays.\n\n"
+            "Thing names start sentences without counting. Kept Things stay.\n\n"
             '<a id="concept.provider.thing-store"></a>\n\n'
             "A [thing store](@glossary#concept.provider.thing-store) keeps things together.\n",
             {
@@ -269,7 +269,7 @@ class CheckTests(unittest.TestCase):
             lambda value: value["module"]["owns"].append("specs/provider/rules.md"),
         )
         # "Thing store" is linked; "Thing" inside it, the Module title "Provider" and the word
-        # that opens a sentence are no uses; "A kept Thing" is.
+        # that opens a sentence are no uses; "Kept Things", a plural, is.
         findings = self.project.findings("CHK.term.unlinked")
         self.assertEqual(
             [("warning", "specs/provider/rules.md", "concept.provider.thing", 7)],
@@ -282,8 +282,8 @@ class CheckTests(unittest.TestCase):
         # One link anywhere in the document settles every use.
         self.edit(
             "specs/provider/rules.md",
-            "A kept Thing stays.",
-            "A kept [Thing](../glossary.json#concept.provider.thing) stays.",
+            "Kept Things stay.",
+            "Kept [Things](../glossary.json#concept.provider.thing) stay.",
         )
         self.assertEqual([], self.project.findings("CHK.term.unlinked"))
 
@@ -415,6 +415,14 @@ class CheckTests(unittest.TestCase):
         (finding,) = self.project.findings("CHK.term.link")
         self.assertEqual("specs/glossary.json", finding.source)
         self.assertIn("concept.provider.label", finding.message)
+        # A term link in a definition that names a path is refused, though its concept exists.
+        self.glossary(
+            "concept.provider.thing",
+            definition="One stored [thing](module.md#concept.provider.thing) value.",
+        )
+        (finding,) = self.project.findings("CHK.term.link")
+        self.assertEqual("specs/glossary.json", finding.source)
+        self.assertIn("module.md#concept.provider.thing", finding.message)
 
     @verifies(
         "scenario.spec.term-links",

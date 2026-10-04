@@ -32,7 +32,7 @@ repository, so its workers run in its own `.claude/worktrees/`, and the Harness 
 metadata from them wherever it lies. The tool refuses a root, the default or `CONCORDE_E2E_ROOT`,
 that lies inside this checkout, since Claude Code loads every `CLAUDE.md` above a session's working
 directory and would give each session of a test project there Concorde's own development
-instructions. Test projects are throwaway: the developer reads a test project's Specs, runs and
+instructions. Test projects are throwaway: the developer reads a test project's [Specs](../glossary.json#concept.spec), runs and
 records, and removes its directory when the test is done, or prepares the next one under another
 name.
 

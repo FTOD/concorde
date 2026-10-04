@@ -56,8 +56,8 @@ def _record(unit, identity: str):
 def node_definitions(repository, path: str) -> dict[str, str]:
     """The canonical definition text of every node a document defines.
 
-    Requirements, scenarios and contracts are defined by their section; a contract also by its
-    parsed fence. Realizations are defined by their metadata record, and the entry's ``module``
+    Requirements and scenarios are defined by their section, a contract by its parsed fence alone,
+    so that a change of another contract in its section leaves it unchanged. Realizations are defined by their metadata record, and the entry's ``module``
     block defines the Module's own identity. Each value also names the document, so a node that
     moves to another document counts as changed. Concepts are defined by their glossary entries:
     ``path`` naming the glossary compares every entry.
@@ -86,9 +86,6 @@ def node_definitions(repository, path: str) -> dict[str, str]:
                 for key, value in contract.items()
                 if key not in {"line", "source", "owner"}
             }
-            parts["section"] = (
-                anchor.raw if anchor else _region(reading, contract.get("line") or 1)
-            )
         else:
             parts["record"] = _record(unit, node.id)
         result[node.id] = canonical(parts)
@@ -99,14 +96,33 @@ def node_definitions(repository, path: str) -> dict[str, str]:
     return result
 
 
+def _readings(old, new, paths) -> list[str]:
+    """``paths`` with each document's metadata member replaced by its reading path, so that a
+    caller may pass the member paths a change touched; the glossary stays as named."""
+    documents = set(old.units) | set(new.units)
+    glossaries = {old.glossary_path, new.glossary_path}
+    result: list[str] = []
+    for path in paths:
+        if (
+            path not in glossaries
+            and path.endswith(".md.json")
+            and path[: -len(".json")] in documents
+        ):
+            path = path[: -len(".json")]
+        if path not in result:
+            result.append(path)
+    return result
+
+
 def changed_documents(old, new, paths=None) -> tuple[str, ...]:
     """Reading paths of documents whose reading or metadata bytes differ between two revisions.
 
-    A document present in only one revision is changed. ``paths`` limits the comparison.
+    A document present in only one revision is changed. ``paths`` limits the comparison to the
+    documents whose reading or metadata member it names.
     """
     candidates = set(old.units) | set(new.units)
     if paths is not None:
-        candidates &= set(paths)
+        candidates &= set(_readings(old, new, paths))
     changed = []
     for path in sorted(candidates):
         before, after = old.units.get(path), new.units.get(path)
@@ -121,11 +137,11 @@ def changed_documents(old, new, paths=None) -> tuple[str, ...]:
 
 
 def changed_nodes(old, new, paths) -> tuple[str, ...]:
-    """Identities whose definition differs between two revisions of the given documents and,
-    when ``paths`` names it, the glossary."""
+    """Identities whose definition differs between two revisions of the documents whose reading
+    or metadata member ``paths`` names and, when it names it, the glossary."""
     before: dict[str, str] = {}
     after: dict[str, str] = {}
-    for path in paths:
+    for path in _readings(old, new, paths):
         if path in old.units or path == old.glossary_path:
             before.update(node_definitions(old, path))
         if path in new.units or path == new.glossary_path:

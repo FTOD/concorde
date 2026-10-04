@@ -62,7 +62,7 @@ but to be settled above the task: a decision of kind `decision`, a choice the ru
 or of kind `question`, an [open question](../glossary.json#concept.open-question) it could not
 settle. Which of its items are decision points is the producing Operation's own rule, which its
 [Spec](../glossary.json#concept.spec) states: Method's survey, for instance, declares every
-decision it took itself, because how a project splits into Modules shapes all later
+decision it took itself, because how a project splits into [Modules](../glossary.json#concept.module) shapes all later
 work, and every open question, while a `code_to_spec` decision such as a concept's name is ordinary,
 only reported among the run's decisions, and the workflow never stops for it. Workflows interprets
 no point; it only counts those an answer has not settled. Workflows does not say who settles a

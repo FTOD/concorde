@@ -466,8 +466,8 @@ The **Execution guidance** is the part's sections of the [main-session
 guidance](../glossary.json#concept.main-session-guidance), kept in `prompts/guidance/execution/` and
 registered under `guidance` in the part's registration, which
 [Distribution](../distribution/module.md#guidance-composition) composes after Coordination's working
-method wherever the part is installed: the project skill's "Runs", "Read results" and "Unbound
-runs", and the `CLAUDE.md` block's sentence on unbound runs. Each section says what happens where a
+method wherever the part is installed: the project skill's sections `Runs`, `Read results` and
+`Unbound runs`, and the `CLAUDE.md` block's sentence on unbound runs. Each section says what happens where a
 part it mentions is not installed.
 
 ## The children

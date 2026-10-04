@@ -129,7 +129,7 @@ own code lives with their Modules.
 Each execution command's steps live with the Module that provides it. A provider's definition
 declares the command's name, its steps, the contract of its output, the arguments of its own, and
 its own admission of the run's Modules, which in Method's commands checks them against the
-workspace's Specs, except where the command diagnoses those Specs itself, as `task-validation`
+workspace's [Specs](../../glossary.json#concept.spec), except where the command diagnoses those Specs itself, as `task-validation`
 does, and so begins even when they cannot be loaded. The runner parses those arguments with its
 own, refuses a run without a binding, admits the inputs, runs the definition's admission and steps,
 checks the output against its contract and wraps it in the run result. What an admitted input must

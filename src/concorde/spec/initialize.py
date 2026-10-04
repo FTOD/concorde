@@ -20,12 +20,14 @@ from .repository import (
 from .typed_data import (
     DIGEST,
     PATH,
+    TypedDataError,
     array,
     checked_path,
     decode,
     obj,
     register,
     typed,
+    validate_typed,
 )
 from .validation import validate_repository
 
@@ -606,7 +608,18 @@ def initialize(root: Path, package: Path, data: dict) -> dict:
                 "/proposal",
             )
         proposal = data["proposal"]
-        # Apply accepts only the exact proposal propose returned, named by its digest.
+        # Apply accepts only a complete typed value of the proposal type, in exactly the shape
+        # propose returns, named by its digest.
+        try:
+            validate_typed(proposal, "concorde-project-proposal", "/proposal")
+        except TypedDataError as error:
+            raise SpecError(
+                f"the proposal is not a concorde-project-proposal@{PROPOSAL_VERSION} typed "
+                f"value: {error.field or '/proposal'}: {error}",
+                "invalid_proposal",
+                "/proposal",
+                causes=[error],
+            ) from error
         if proposal_digest(proposal) != data["proposal_digest"]:
             raise SpecError(
                 "proposal_digest is not the digest of the given proposal",
