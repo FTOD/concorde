@@ -148,6 +148,36 @@ class Cancelled(Exception):
     pass
 
 
+class _Signals:
+    """The handler of ``SIGINT`` and ``SIGTERM`` for one run.
+
+    Armed, from the binding check to the end of the execution, a signal raises ``Cancelled``,
+    once. Otherwise it is held: one that arrives while the first records are created cancels the
+    run as soon as it is armed, and one that arrives once the execution ended changes nothing, so
+    that the checkout removal, the composition and the finish are never cut short.
+    """
+
+    def __init__(self):
+        self.armed = False
+        self.held: str | None = None
+
+    def __call__(self, signum, frame):
+        name = signal.Signals(signum).name
+        if self.armed:
+            self.armed = False
+            raise Cancelled(name)
+        self.held = self.held or name
+
+    def arm(self) -> None:
+        if self.held is not None:
+            held, self.held = self.held, None
+            raise Cancelled(held)
+        self.armed = True
+
+    def disarm(self) -> None:
+        self.armed = False
+
+
 class DefinitionFailed(Exception):
     """An unexpected exception of a definition's admission or runtime-path resolver, which the
     runner turns into a failed result as it does a step's."""
@@ -500,31 +530,34 @@ def execute(
     )
     stop: Stop | None = None
     checkout: Checkout | None = None
-    # The run lock is held from before the first progress file until after the result: whoever
-    # reads the run store tells a running run from a dead one by it, from any PID namespace. Its
-    # file is removed as the block ends. A run whose first records cannot be created runs no step.
-    records = contextlib.ExitStack()
+    signals = _Signals()
+    previous = {
+        sig: signal.signal(sig, signals) for sig in (signal.SIGINT, signal.SIGTERM)
+    }
     try:
-        run_dir.mkdir(parents=True, exist_ok=True)
-        records.enter_context(
-            run_lock(store, identity, f"{chosen.name} run {identity}")
-        )
-        node = _start_node(chosen, context, words)
-        # The first progress file is a record the run cannot do without: a detaching command
-        # announces the run by it, and a run without one runs no step.
-        _progress(context, required=True, phase="running", step=None)
-    except (OSError, TraceError) as error:
-        with contextlib.suppress(OSError):
-            records.close()
-        raise RunUnrecorded(
-            _unrecorded(kind, name, identity, run_dir, error)
-        ) from error
-    with records:
-        previous = {
-            sig: signal.signal(sig, _cancel) for sig in (signal.SIGINT, signal.SIGTERM)
-        }
-        with contextlib.ExitStack() as held:
+        # The run lock is held from before the first progress file until after the result:
+        # whoever reads the run store tells a running run from a dead one by it, from any PID
+        # namespace. Its file is removed as the block ends. A run whose first records cannot be
+        # created runs no step.
+        records = contextlib.ExitStack()
+        try:
+            run_dir.mkdir(parents=True, exist_ok=True)
+            records.enter_context(
+                run_lock(store, identity, f"{chosen.name} run {identity}")
+            )
+            node = _start_node(chosen, context, words)
+            # The first progress file is a record the run cannot do without: a detaching
+            # command announces the run by it, and a run without one runs no step.
+            _progress(context, required=True, phase="running", step=None)
+        except (OSError, TraceError) as error:
+            with contextlib.suppress(OSError):
+                records.close()
+            raise RunUnrecorded(
+                _unrecorded(kind, name, identity, run_dir, error)
+            ) from error
+        with records, contextlib.ExitStack() as held:
             try:
+                signals.arm()
                 try:
                     if broken is not None:
                         raise broken
@@ -550,6 +583,8 @@ def execute(
                         held.callback(checkout.close)
                         _progress(context, step=None)
                     stop = _resolve(chosen, context, arguments)
+                    if stop is None:
+                        stop = _steps(chosen, context, node, words)
                 except (RunError, KernelError, Refused) as refusal:
                     stop = _refused(chosen, context, refusal)
                 except DefinitionFailed as failed:
@@ -560,21 +595,33 @@ def execute(
                         f"The {failed.part} of {chosen.name} raised "
                         f"{type(failed.error).__name__}: {failed.error}",
                     )
-                if stop is None:
-                    stop = _steps(chosen, context, node, words)
+                except Cancelled:
+                    raise
+                except Exception as error:  # noqa: BLE001 -- the runner's own failure
+                    _end_step(context, "raised")
+                    stop = context.exception(
+                        f"Execution runner ({prog(kind, name)})",
+                        error,
+                        "host_error",
+                        f"The runner of {chosen.name} raised {type(error).__name__} "
+                        f"outside every step: {error}",
+                    )
+                signals.disarm()
             except Cancelled as cancelled:
+                signals.disarm()
                 _end_step(context, "cancelled")
                 stop = _cancelled(chosen, context, cancelled)
             finally:
-                for sig, handler in previous.items():
-                    signal.signal(sig, handler)
+                signals.disarm()
+            # From here on a signal is held: the checkout is removed and the result composed and
+            # written whatever arrives meanwhile.
             if checkout is not None:
-                context.evidence.extend(checkout.close())
+                context.evidence.extend(_close(checkout))
             envelope = _envelope(chosen, context, stop, started)
             status = 0 if envelope["status"] == "ok" else 1
-            # The result is written while the lock is still held, so a run admitted after this one
-            # always finds it written. Seeing the result does not mean the lock is free: it is
-            # released only when this block ends. It is published whole or not at all.
+            # The result is written while the lock is still held, so a run admitted after this
+            # one always finds it written. Seeing the result does not mean the lock is free: it
+            # is released only when this block ends. It is published whole or not at all.
             written = None
             try:
                 _publish(
@@ -594,7 +641,27 @@ def execute(
                 # Leaving the blocks releases the locks; the run is lost to every observer.
                 unsaved = _unsaved(kind, name, context, envelope, written, error)
                 raise ResultUnsaved(1, envelope, unsaved) from error
+    finally:
+        for sig, handler in previous.items():
+            signal.signal(sig, handler)
     return status, envelope
+
+
+def _close(checkout: Checkout) -> list[dict]:
+    """Remove the unbound checkout; what it could not remove, or an error of the removal itself,
+    as ``checkout-not-removed`` evidence, which never changes the result's status."""
+    try:
+        return checkout.close()
+    except Exception as error:  # noqa: BLE001 -- reported, as a refused removal is
+        return [
+            evidence(
+                "checkout-not-removed",
+                checkout.path.as_posix(),
+                f"removing the checkout raised {type(error).__name__}: {error}; whatever "
+                f"is left is removed with git worktree remove --force {checkout.path} and "
+                "git worktree prune",
+            )
+        ]
 
 
 def _publish(path: Path, text: str) -> None:
@@ -611,16 +678,22 @@ def _publish(path: Path, text: str) -> None:
         Path(temporary).unlink(missing_ok=True)
 
 
-def _unrecorded(kind: str, name: str, identity: str, folder: Path, error) -> dict:
+def _unrecorded(
+    kind: str,
+    name: str,
+    identity: str,
+    folder: Path,
+    error,
+    records: str = "its folder, run lock, trace.json or run progress file",
+) -> dict:
     """The runner's link for a run whose first records could not be created."""
     label = prog(kind, name)
     return errors.link(
         "component",
         f"Execution runner ({label})",
         "run_unrecorded",
-        f"run {identity} of {name} could not create its first records in {folder} (its folder, "
-        f"run lock, trace.json or run progress file): {errors.exception_detail(error)}; no step "
-        "ran and no result is written",
+        f"run {identity} of {name} could not create its first records in {folder} ({records}): "
+        f"{errors.exception_detail(error)}; no step ran and no result is written",
         reason="environment",
         explanation="the runner never works on a run it cannot record, and cannot repair the "
         "run store",
@@ -810,6 +883,7 @@ def _progress(context: RunContext, *, required: bool = False, **fields) -> None:
     state.setdefault("started_at", state["updated_at"])
     state.setdefault("phase", "running")
     state.setdefault("status", None)
+    state.setdefault("summary", None)
     state.setdefault("waiting_for", None)
     temporary = path.with_suffix(".json.tmp")
     try:
@@ -841,9 +915,16 @@ def _steps(chosen: Provider, context: RunContext, node: Node, words) -> Stop | N
                 "outcome": "running",
             }
         )
-        node.update(content=_node_content(chosen, context, words, None, None))
+        # The node says which step runs; like a later progress file, a failed write of it
+        # never changes the run, whose node is written again after its result.
+        with contextlib.suppress(OSError, TraceError):
+            node.update(content=_node_content(chosen, context, words, None, None))
         try:
             outcome = step(context)
+            if not isinstance(outcome, (Continue, Stop)):
+                raise TypeError(
+                    f"the step returned {type(outcome).__name__}, neither continue nor stop"
+                )
         except Cancelled:
             raise
         except Exception as error:  # noqa: BLE001 -- a step error is a failed result
@@ -911,33 +992,89 @@ def _envelope(chosen: Provider, context: RunContext, stop: Stop | None, started:
     }
     try:
         validate(envelope, RESULT_SCHEMA)
+        _check_own_link(chosen, envelope["error"])
         if status == "ok" and chosen.output_schema is not None:
             validate(envelope["output"], chosen.output_schema)
     except KernelError as problem:
-        invalid = evidence(
-            "invalid-output", problem.field, f"{problem.field or '/'}: {problem}"
-        )
-        envelope["host_evidence"].append(invalid)
-        envelope.update(
-            status="failed",
-            summary="The run produced an invalid result: "
-            f"{problem.field or '/'}: {problem}",
-            output=None,
-            error=context.fail(
-                "failed",
-                "invalid_result",
-                "invalid result",
-                f"the result of {chosen.name} does not satisfy the run result contract or its "
-                f"output contract at {problem.field or '/'}: {problem}",
-                reason="capability",
-                explanation="the runner never returns a result that breaks its contract and "
-                "cannot repair one",
-                evidence=[invalid],
-                causes=[error] if isinstance(error, dict) and "level" in error else [],
-                options=[f"report an Issue against {chosen.name}"],
-            ).error,
-        )
+        envelope = _replaced(chosen, context, envelope, problem)
+        # The replacement keeps only what satisfies the contract; one that still breaks it is
+        # a defect of the runner itself, which no result may hide.
+        validate(envelope, RESULT_SCHEMA)
     return envelope
+
+
+def _check_own_link(chosen: Provider, error) -> None:
+    """``KernelError`` unless a result's error, when it has one, is the run's own link, of the
+    level of its definition's kind."""
+    level = "operation" if chosen.kind == "operation" else "command"
+    if error is not None and error.get("level") != level:
+        raise KernelError(
+            "invalid_input",
+            f"the result's error is a link of level {error.get('level')!r}, not the run's own "
+            f"link of level {level!r}",
+            field="/error/level",
+        )
+
+
+def _valid(value, schema: dict) -> bool:
+    """Whether ``value`` satisfies ``schema``, resolved against the run result's definitions."""
+    try:
+        validate(value, {**schema, "$defs": RESULT_SCHEMA["$defs"]})
+    except KernelError:
+        return False
+    return True
+
+
+def _replaced(chosen: Provider, context: RunContext, envelope: dict, problem) -> dict:
+    """The ``failed`` result that replaces an invalid one: the runner's ``invalid_result`` link,
+    no output, and of what the steps left only what satisfies the run result contract."""
+    where = problem.field or "/"
+    item = RESULT_SCHEMA["properties"]["host_evidence"]["items"]
+    kept = [entry for entry in envelope["host_evidence"] if _valid(entry, item)]
+    dropped = len(envelope["host_evidence"]) - len(kept)
+    invalid = evidence(
+        "invalid-output",
+        problem.field,
+        f"{where}: {problem}"
+        + (
+            f"; {dropped} host evidence item(s) breaking the contract were left out"
+            if dropped
+            else ""
+        ),
+    )
+    previous = envelope["error"]
+    keep_cause = _valid(previous, {"$ref": "#/$defs/error"})
+    modules = [item for item in envelope["modules"] if isinstance(item, str) and item]
+    return {
+        **envelope,
+        "commit": envelope["commit"]
+        if _valid(envelope["commit"], RESULT_SCHEMA["properties"]["commit"])
+        else None,
+        "modules": modules,
+        "status": "failed",
+        "summary": f"The run produced an invalid result: {where}: {problem}",
+        "output": None,
+        "worker": envelope["worker"]
+        if _valid(envelope["worker"], RESULT_SCHEMA["properties"]["worker"])
+        else None,
+        "worker_runs": [
+            item for item in envelope["worker_runs"] if isinstance(item, str) and item
+        ],
+        "host_evidence": [*kept, invalid],
+        "error": context.fail(
+            "failed",
+            "invalid_result",
+            "invalid result",
+            f"the result of {chosen.name} does not satisfy the run result contract or its "
+            f"output contract at {where}: {problem}",
+            reason="capability",
+            explanation="the runner never returns a result that breaks its contract and "
+            "cannot repair one",
+            evidence=[invalid],
+            causes=[previous] if keep_cause and previous is not None else [],
+            options=[f"report an Issue against {chosen.name}"],
+        ).error,
+    }
 
 
 def detach(
@@ -949,8 +1086,9 @@ def detach(
     run identity is chosen here and handed to the runner, which writes its progress file as its
     first act, in the lobby for a bound run; this returns once that file exists, in the lobby or
     in the node the run moved to on entering its workspace, with status 0 and the run's identity,
-    node and lobby, or with status 1 and an error link when the runner ended or stayed silent
-    before writing it.
+    node and lobby, or with status 1 and an error link when the runner could not be started, or
+    ended or stayed silent before writing it. ``RunUnrecorded`` when the run's folder or the
+    runner's output cannot be created, so that no runner starts.
     """
     words = [word for word in words if word != "--detach"]
     arguments, chosen = parse(kind, name, words)
@@ -965,33 +1103,75 @@ def detach(
     node_folder = _node_folder(arguments, store, identity, bound)
     lobby = store.lobby_folder(identity) if bound is not None else None
     run_dir = lobby or node_folder
-    run_dir.mkdir(parents=True, exist_ok=True)
     environment = dict(os.environ, **{RUN_ID_VARIABLE: identity})
     environment["PYTHONPATH"] = os.pathsep.join(
         [str(SOURCE_ROOT)]
         + ([environment["PYTHONPATH"]] if environment.get("PYTHONPATH") else [])
     )
     output = run_dir / "host.out"
-    with output.open("wb") as stream:
-        # The runner is the host's `concorde` command run again, which loads the definitions the
-        # installed parts register before it runs this one.
-        process = subprocess.Popen(
-            [
-                sys.executable,
-                "-m",
-                "concorde",
-                *(["run"] if kind == "operation" else []),
-                name,
-                *words,
-            ],
-            cwd=here,
-            env=environment,
-            stdin=subprocess.DEVNULL,
-            stdout=stream,
-            stderr=subprocess.STDOUT,
-            start_new_session=True,
-        )
     progress = node_folder / layout.PROGRESS
+    announced = {
+        "run_id": identity,
+        "kind": chosen.kind,
+        "name": chosen.name,
+        "host_pid": None,
+        "trace": node_folder.as_posix(),
+        "progress": progress.as_posix(),
+        "result": (node_folder / layout.RESULT).as_posix(),
+        "lobby": lobby.as_posix() if lobby else None,
+    }
+    # The run's folder and the runner's output are its first records: without them no runner
+    # starts, as a foreground run whose first records cannot be created runs no step.
+    try:
+        run_dir.mkdir(parents=True, exist_ok=True)
+        stream = output.open("wb")
+    except OSError as error:
+        with contextlib.suppress(OSError):
+            run_dir.rmdir()
+        raise RunUnrecorded(
+            _unrecorded(
+                kind,
+                name,
+                identity,
+                run_dir,
+                error,
+                "its folder or the runner's output host.out",
+            )
+        ) from error
+    try:
+        with stream:
+            # The runner is the host's `concorde` command run again, which loads the definitions
+            # the installed parts register before it runs this one.
+            process = subprocess.Popen(
+                [
+                    sys.executable,
+                    "-m",
+                    "concorde",
+                    *(["run"] if kind == "operation" else []),
+                    name,
+                    *words,
+                ],
+                cwd=here,
+                env=environment,
+                stdin=subprocess.DEVNULL,
+                stdout=stream,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+            )
+    except OSError as error:
+        # No runner started, so nothing of the run may remain.
+        shutil.rmtree(run_dir, ignore_errors=True)
+        return 1, {
+            **announced,
+            "error": _detach_failed(
+                kind,
+                name,
+                f"the detached runner of {chosen.name} could not be started for run "
+                f"{identity}: {errors.exception_detail(error)}; no step ran and its folder "
+                f"{run_dir} was removed",
+            ),
+        }
+    announced["host_pid"] = process.pid
     # The lobby first: a run moves from it into its node, never back.
     places = [run_dir / layout.PROGRESS, progress] if lobby else [progress]
 
@@ -1003,16 +1183,6 @@ def detach(
         if process.poll() is not None or time.monotonic() > deadline:
             break
         time.sleep(0.05)
-    announced = {
-        "run_id": identity,
-        "kind": chosen.kind,
-        "name": chosen.name,
-        "host_pid": process.pid,
-        "trace": node_folder.as_posix(),
-        "progress": progress.as_posix(),
-        "result": (node_folder / layout.RESULT).as_posix(),
-        "lobby": lobby.as_posix() if lobby else None,
-    }
     if written():
         return 0, announced
     ended = process.poll()
@@ -1047,19 +1217,21 @@ def detach(
         + f" before announcing run {identity}, so no step ran and its folder {run_dir} was "
         f"removed; its output ended with: {tail or '(nothing)'}"
     )
-    return 1, {
-        **announced,
-        "error": errors.link(
-            "component",
-            f"Execution runner ({prog(kind, name)} --detach)",
-            "detach_failed",
-            detail,
-            reason="environment",
-            explanation="the runner only starts the detached process; it cannot repair one "
-            "that ends or hangs before its first write",
-            options=["run the same command without --detach to see it fail directly"],
-        ),
-    }
+    return 1, {**announced, "error": _detach_failed(kind, name, detail)}
+
+
+def _detach_failed(kind: str, name: str, detail: str) -> dict:
+    """The detaching command's link for a runner that never announced its run."""
+    return errors.link(
+        "component",
+        f"Execution runner ({prog(kind, name)} --detach)",
+        "detach_failed",
+        detail,
+        reason="environment",
+        explanation="the runner only starts the detached process; it cannot repair one "
+        "that cannot start, or ends or hangs before its first write",
+        options=["run the same command without --detach to see it fail directly"],
+    )
 
 
 def _usage(kind: str, name: str | None) -> str:
@@ -1092,6 +1264,11 @@ def run_main(kind: str, name: str | None, words) -> int:
         except UsageError as error:
             sys.stderr.write(f"{label}: {error}\n")
             return 2
+        except RunUnrecorded as unrecorded:
+            sys.stderr.write(
+                f"{label} failed:\n" + errors.render(unrecorded.link) + "\n"
+            )
+            return 1
         sys.stdout.write(json.dumps(announced, indent=2) + "\n")
         return status
     try:

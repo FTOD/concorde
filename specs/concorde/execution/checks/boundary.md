@@ -15,7 +15,7 @@ CheckResult(stdout: bytes, stderr: bytes, returncode: int, timed_out: bool = Fal
 
 `execute_check` in `src/concorde/execution/checks/check_executor.py` is trusted host code; no argument comes
 from a registry, a task or a model except the command itself. It refuses, with
-`CheckSandboxError(RuntimeError)`, an empty command, a project that is not a directory, a
+`CheckSandboxError(RuntimeError)`, an empty command, a project that is missing or not a directory, a
 nonpositive or nonfinite timeout, a platform other than Linux, a project at `/` or under `/proc`,
 `/dev` or `/sys`, a missing root-owned system bubblewrap, missing namespace or process file
 descriptor support, a failed sandbox setup, and the absence of any writable temporary directory
@@ -30,6 +30,7 @@ this runner's command outcome, not the [check result](../../glossary.json#concep
 | Exit | `returncode` is the exit status, or `128 + signal` for a signal |
 | Timeout (sandbox setup included) | `timed_out=True`, `returncode=-1`, captured partial output |
 | Cancellation (`cancel_event` set, or interrupt) | `CheckCancelled(KeyboardInterrupt)` after cleanup, carrying the drained output |
+| Another exception interrupting the wait, such as a caller's signal handler raising its own cancellation | that exception unchanged after cleanup, carrying the drained output as `check_output` |
 
 Every outcome carries both output streams whole; the check service saves them as the check's log.
 
@@ -40,7 +41,8 @@ Every outcome carries both output streams whole; the check service saves them as
 ## Scratch and environment
 
 The scratch is created below the first of the process temporary directory, an inherited
-`CONCORDE_CHECK_TMPDIR`, `/tmp` and `/var/tmp` that lies outside the project, and holds `tmp/`,
+`CONCORDE_CHECK_TMPDIR`, `/tmp` and `/var/tmp` that lies outside the project and in which it can be
+created, a process without a usable temporary directory going on to the next, and holds `tmp/`,
 `cache/`, `reports/` and `shm/`. The command's environment is the caller's `environment`, passed
 whole, with these values set:
 

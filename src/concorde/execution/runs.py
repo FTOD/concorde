@@ -32,7 +32,7 @@ from pathlib import Path
 
 from ..kernel import errors, locking
 from ..kernel.refusal import KernelError
-from ..kernel.schema import register
+from ..kernel.schema import register, validate
 from ..kernel.tracing.kinds import NodeKind, register as register_kinds
 from ..kernel.tracing import layout, locks, reader, roots
 
@@ -413,6 +413,15 @@ def admit_inputs(
                 "input_not_admissible",
                 f"--input {identity} has no readable result at {result_path(store, identity)}",
             )
+        try:
+            validate(result, RESULT_SCHEMA)
+        except KernelError as problem:
+            raise RunError(
+                "input_not_admissible",
+                f"--input {identity} has a result that does not satisfy the current run result "
+                f"contract at {problem.field or '/'}: {problem}; a result an older Concorde "
+                "wrote is not admitted",
+            ) from None
         if result.get("workspace") != workspace:
             owner = result.get("workspace") or "no workspace"
             here = workspace or "no workspace"
