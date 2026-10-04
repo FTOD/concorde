@@ -657,6 +657,14 @@ backend -> extension: pi applies
 dir -> settings: holds
 ```
 
+<a id="uses-distribution"></a>
+
+**Distribution** installs the worker harness from the
+[part registration](../../glossary.json#concept.part-registration) Workers keeps,
+`src/concorde/worker_harness/registration.json`. Workers relies on that file meeting Distribution's
+[registration contract](../../distribution/contracts.md#contract.distribution.part-registration),
+and imports nothing of Distribution.
+
 <a id="uses-tracing"></a>
 
 **Tracing** gives the worker run and each round the shape and place of a

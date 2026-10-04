@@ -203,7 +203,8 @@ order — **Purpose**, **Usage** and **Design**, where Design shows how the Modu
 and how it works with the Modules around it — every term is defined once in the project's
 glossary and linked where it is used, and every node and relation is declared exactly once. A Module's context is computed from its own declarations, one
 level deep, and its write sets are its own documents and the files its realizations bind. The
-Protocol also defines the six **task types** and the access level each assigns to every boundary
+Protocol also defines the eight **task types** (understand, specify, implement, test, review-spec,
+review-code, code-to-spec and review-architecture) and the access level each assigns to every boundary
 set. A project needs neither Concorde nor a particular agent runtime to use it.
 
 ## Develop Concorde

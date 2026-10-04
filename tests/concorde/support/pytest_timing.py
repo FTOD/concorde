@@ -211,7 +211,8 @@ def fingerprint(tests: list[str], root: Path = ROOT) -> dict:
     environment = {
         "platform": platform.system(),
         "machine": platform.machine(),
-        "bytecode_disabled": os.environ.get("PYTHONDONTWRITEBYTECODE") == "1",
+        # Python's effective setting, from `-B` or any nonempty PYTHONDONTWRITEBYTECODE.
+        "bytecode_disabled": bool(sys.dont_write_bytecode),
     }
     parts = {
         "input": digest(entries) if complete else None,

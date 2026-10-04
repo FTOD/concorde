@@ -54,7 +54,9 @@ CATALOG_ENTRY = re.compile(r"concorde(?:\.\w+)+(?::\w+)?")
 def parts_table() -> dict[str, set[str]]:
     """Each part of req.concorde.part-dependencies' table with the parts it depends on."""
     text = PARTS_TABLE.read_text(encoding="utf-8")
-    section = text.split("\n### req.concorde.part-dependencies ", 1)[1].split("\n#", 1)[0]
+    section = text.split("\n### req.concorde.part-dependencies ", 1)[1].split("\n#", 1)[
+        0
+    ]
     table = {}
     for line in section.splitlines():
         if not line.startswith("|"):
@@ -220,6 +222,38 @@ class PartDependencyTests(unittest.TestCase):
         ]
         self.assertIn(NOT_PARTS[reached], {use["target"] for use in uses})
         self.assertTrue(hasattr(importlib.import_module(module), attribute))
+
+    def test_every_registration_is_bound_by_a_module_that_uses_its_contract(self):
+        # req.concorde.part-dependencies: a part meets Distribution's registration contract
+        # through a declared `uses`, so the Module binding a part's registration declares it.
+        modules, binders = {}, {}
+        for metadata in sorted((REPOSITORY_ROOT / "specs").rglob("*.md.json")):
+            value = json.loads(metadata.read_text(encoding="utf-8"))
+            owner_id = value["document"]["owner"]
+            if "module" in value:
+                modules[owner_id] = value["module"]
+            for node in value.get("defines", []):
+                for entry in node.get("entries") or []:
+                    if isinstance(entry, str) and entry.endswith("/registration.json"):
+                        binders.setdefault(entry, []).append(owner_id)
+        for directory in PART_DIRECTORIES.values():
+            path = f"src/concorde/{directory}/registration.json"
+            with self.subTest(registration=path):
+                self.assertEqual(1, len(binders.get(path, [])), f"{path} is bound once")
+                if binders[path][0] == "module.distribution":
+                    continue
+                relied = {
+                    item
+                    for use in modules[binders[path][0]].get("uses", [])
+                    if use["target"] == "module.distribution"
+                    for item in use.get("relies_on", [])
+                }
+                self.assertIn(
+                    "contract.distribution.part-registration",
+                    relied,
+                    f"{binders[path][0]} binds {path} without a `uses` of Distribution "
+                    "relying on contract.distribution.part-registration",
+                )
 
     def test_every_part_registers_itself_with_its_dependencies(self):
         table = parts_table()
