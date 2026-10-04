@@ -124,7 +124,7 @@ finding creates a new Issue. The report is:
 | `evidence` | the cited document, described by its anchor or line |
 | `issue_id`, `expected_revision` | for an append only: the earlier Issue and its revision |
 
-The Operation supplies its provenance:
+The Operation supplies the report's provenance:
 
 - `invocation_id` is the run identity.
 - `agent` is `operation`.
@@ -146,9 +146,9 @@ Module's reporting. Examples include:
 
 In that case, the Module is `incomplete` with `issues_unreported`. The cause of that error is the
 store's error. The Operation reports no further finding of that Module. It never records the refusal
-as an Issue. It goes on with the next Module. Since nothing was appended to that Issue, a finding
-left unreported keeps no `earlier`. That Issue is `carried`. The Operation never closes or
-reopens an Issue.
+as an Issue. It goes on with the next Module. A finding left unreported keeps no `earlier`, since
+nothing was appended to the earlier Issue it named. That Issue is `carried`. The Operation never
+closes or reopens an Issue.
 
 ### Without the issues part
 
