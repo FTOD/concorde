@@ -1470,36 +1470,89 @@ def _open_task(
         "merging": None,
         "closed": None,
     }
-    with task_locked(primary, task_id):
-        node = Node(
-            folder,
-            task_id,
-            "task",
-            content_type=TASK_TRACE,
-            metadata={
-                "task": task_id,
-                "modules": list(modules),
-                "branch": branch,
-                "base_commit": base_commit,
-                "concorde_commit": concorde_commit(),
-                "protocol_version": protocol_version(primary),
-            },
-            content={
-                "goal": goal,
-                "worktree": os.path.realpath(worktree),
-                "transitions": [{"state": "open", "at": stamp}],
-                "escalations": [],
-                "closing": None,
-            },
-        )
-        node.keep("record", RECORD)
-        node.keep("decision-log", DECISIONS)
-        node.start()
-        _write(record_path(primary, task_id), _serialize(record))
-        log = folder / DECISIONS
-        if not log.exists():
-            log.write_text(f"# Decision log: {task_id}\n\nGoal: {goal}\n")
+    try:
+        with task_locked(primary, task_id):
+            _start_task(primary, task_id, folder, record)
+    except (OSError, TaskError) as error:
+        raise _undo_open(primary, task_id, worktree, branch, error) from error
     return record
+
+
+def _start_task(primary: Path, task_id: str, folder: Path, record: dict) -> None:
+    """Write the new task's trace node, record and decision log; the caller holds its lock."""
+    modules, branch, goal = record["modules"], record["branch"], record["goal"]
+    base_commit, stamp = record["base_commit"], record["created_at"]
+    node = Node(
+        folder,
+        task_id,
+        "task",
+        content_type=TASK_TRACE,
+        metadata={
+            "task": task_id,
+            "modules": list(modules),
+            "branch": branch,
+            "base_commit": base_commit,
+            "concorde_commit": concorde_commit(),
+            "protocol_version": protocol_version(primary),
+        },
+        content={
+            "goal": goal,
+            "worktree": record["worktree"],
+            "transitions": [{"state": "open", "at": stamp}],
+            "escalations": [],
+            "closing": None,
+        },
+    )
+    node.keep("record", RECORD)
+    node.keep("decision-log", DECISIONS)
+    node.start()
+    if node.failure is not None:
+        raise OSError(
+            f"its trace node {folder / layout.TRACE} cannot be written: {node.failure}"
+        )
+    _write(record_path(primary, task_id), _serialize(record))
+    log = folder / DECISIONS
+    if not log.exists():
+        log.write_text(f"# Decision log: {task_id}\n\nGoal: {goal}\n")
+
+
+def _undo_open(
+    primary: Path, task_id: str, worktree: Path, branch: str, error: BaseException
+) -> TaskError:
+    """Remove what an open added before writing its task failed, the worktree, branch and task
+    folder, and the refusal saying so, naming whatever could not be removed and how to."""
+    folder = task_folder(primary, task_id)
+    left = []
+    removed = _git(
+        primary, "worktree", "remove", "--force", str(worktree), check=False
+    )
+    if removed.returncode != 0:
+        left.append(
+            f"the worktree {worktree} (`git worktree remove --force {worktree}`: "
+            f"{removed.stderr.strip() or 'no output'})"
+        )
+    deleted = _git(primary, "branch", "-D", branch, check=False)
+    if deleted.returncode != 0:
+        left.append(
+            f"the branch {branch} (`git branch -D {branch}`: "
+            f"{deleted.stderr.strip() or 'no output'})"
+        )
+    shutil.rmtree(folder, ignore_errors=True)
+    if folder.exists():
+        left.append(f"the task folder {folder}")
+    task_lock_path(primary, task_id).unlink(missing_ok=True)
+    undone = (
+        "the open was undone: the worktree, branch and task folder it had added are removed, "
+        "so the task can be opened again once the cause is fixed"
+        if not left
+        else "the open could not undo everything it had added: "
+        + "; ".join(left)
+        + " remain, and must be removed before the task is opened again"
+    )
+    return TaskError(
+        "record_unwritable",
+        f"the new task {task_id} could not be recorded in {folder}: {error}; {undone}",
+    )
 
 
 def _prune(primary: Path) -> None:

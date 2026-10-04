@@ -32,6 +32,13 @@ records and error codes are defined in the [contracts](contracts.md).
 - THEN the command fails with `task_exists`, `branch_exists` or `path_exists`
 - AND no record, branch or worktree is created or changed
 
+### scenario.tasks.open-unrecorded — An open that cannot record its task undoes itself
+
+- GIVEN a primary worktree whose file system refuses the new task's record after the worktree and its binding were written
+- WHEN the main agent opens a task named `severity`
+- THEN the command fails with `record_unwritable`, naming the file system's error and that the open was undone
+- AND neither the branch `concorde/severity`, its worktree nor the task's folder remains, so the same open succeeds once the cause is fixed
+
 ### scenario.tasks.open-not-ignored — Refuse a worktree the primary would track
 
 - GIVEN a primary worktree whose `.gitignore` does not ignore `.claude/worktrees/`

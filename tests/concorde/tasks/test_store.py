@@ -321,6 +321,28 @@ class TaskStoreTests(unittest.TestCase):
         self.assertFalse(self.folder("t3").exists())
         self.assertEqual("", git(self.root, "branch", "--list", "concorde/t3"))
 
+    @verifies("scenario.tasks.open-unrecorded")
+    def test_an_open_that_cannot_record_its_task_undoes_itself(self):
+        def refusing(path, data):
+            raise OSError(28, "No space left on device")
+
+        with patch.object(store, "_write", refusing):
+            status, value = self.command(
+                "open", "t1", "--goal", "g", "--modules", "module.a"
+            )
+        self.assertEqual(1, status, value)
+        validate(value["error"], ERROR_SCHEMA)
+        self.assertEqual("record_unwritable", value["error"]["code"])
+        self.assertIn("No space left on device", value["error"]["detail"])
+        self.assertIn("the open was undone", value["error"]["detail"])
+        self.assertFalse(self.folder("t1").exists())
+        self.assertFalse((self.root / ".claude/worktrees/t1").exists())
+        self.assertEqual("", git(self.root, "branch", "--list", "concorde/t1"))
+        status, value = self.command(
+            "open", "t1", "--goal", "g", "--modules", "module.a"
+        )
+        self.assertEqual(0, status, value)
+
     @verifies("scenario.tasks.open-not-ignored")
     def test_a_worktree_the_primary_would_track_is_refused(self):
         (self.root / ".gitignore").write_text(".concorde/runs/\n")

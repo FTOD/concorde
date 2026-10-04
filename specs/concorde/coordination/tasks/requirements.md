@@ -220,7 +220,9 @@ every other task worktree.
 A refused task command or record update SHALL leave every record, branch and worktree unchanged.
 
 The exceptions are refusals that say so themselves: `binding_failed`, where `concorde task open`
-leaves the worktree and branch it had added, naming them and how to remove them; and three `concorde task merge` refusals: `rollback_failed`, where Git would not
+leaves the worktree and branch it had added, naming them and how to remove them; a
+`record_unwritable` of `concorde task open`, which removes the worktree, branch and task folder it
+had added before refusing and names any of them it could not remove and how to; and three `concorde task merge` refusals: `rollback_failed`, where Git would not
 restore the primary branch and the task stays `merging`; a `check_failed` whose checks created
 paths, which the reset leaves in the primary worktree and the refusal names; and a close that
 failed after the merge and its checks succeeded, which leaves the checked merge in place and the
