@@ -96,10 +96,12 @@ def develop_source(package: str | Path) -> dict:
             f"{package} is not one: {found}",
         )
     own, common = (
-        Path(_git_path(package, "rev-parse", "--path-format=absolute", option))
+        Path(
+            _git_path(package, "rev-parse", "--path-format=absolute", option)
+        ).resolve()
         for option in ("--git-dir", "--git-common-dir")
     )
-    if own.resolve() != common.resolve():
+    if own != common:
         raise DevelopError(
             "develop_source_not_primary",
             f"{package} is a linked worktree of the Concorde repository whose "
