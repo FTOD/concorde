@@ -595,9 +595,8 @@ commands:
 <task-id> --resume` reruns the checks that merge recorded. It then closes the task as merged or
   undoes the merge exactly as an uninterrupted merge does. Otherwise, it refuses with
   `not_resumable`.
-- When the primary branch's head is the merge commit, `concorde task merge
-<task-id> --abort` resets the primary branch to the commit before the merge. The command returns
-  the task to delivered.
+- `concorde task merge <task-id> --abort` resets the primary branch to the commit before the merge
+  when its head is the merge commit. Either way, the command returns the task to delivered.
 
 Under either of these conditions, both commands refuse with `merge_diverged`, touching nothing:
 
@@ -640,8 +639,9 @@ task's Issues as follows:
 - The merge closes as `resolved`, with the merge commit as evidence, each Issue of the task's
   `resolves` that is still open.
 - The merge reports each Issue it could not close as a warning, never as a refusal of the merge.
-- A failure of the Issues, whatever it is, never keeps the merge from ending the task's sessions and
-  printing its result.
+
+A failure of the Issues, whatever it is, never keeps the merge from ending the task's sessions and
+printing its result.
 
 The fix is on the primary branch only once the merge stands, so an Issue closes with its merge and
 never earlier. A task that ends without merging closes none. Where the issues part is not installed,

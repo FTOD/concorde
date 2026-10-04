@@ -43,10 +43,10 @@ Every tool returns one text content item holding one JSON value. A refusal sets 
 value is `{"error": <link>}`, a link of the
 [error contract](../../kernel/tracing/contracts.md#contract.tracing.error). This is the unchanged
 link of the component that refused. For a refusal of Tasks, the link is
-`Tasks (concorde task <command>)`. Otherwise, it is the tool's own `component` link of actor
-`Concorde project MCP server (<tool>)`. The host's own refusals, such as `call_failed` and
-`no_project`, are [Distribution's](../../distribution/contracts.md#refusals-of-the-host). The tools'
-own refusal codes are:
+`Tasks (concorde task <command>)`. When the tool itself refused, it is the tool's own `component`
+link of actor `Concorde project MCP server (<tool>)`. The host's own refusals, such as `call_failed`
+and `no_project`, are [Distribution's](../../distribution/contracts.md#refusals-of-the-host). The
+refusal codes are:
 
 | Code | Reason | When |
 | --- | --- | --- |

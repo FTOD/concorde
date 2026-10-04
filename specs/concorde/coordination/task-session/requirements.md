@@ -120,11 +120,12 @@ delivered task's session has reported and waits.
 
 ### req.task-session.transcript-kept — A task session's transcript moves to the history
 
-When a task ends, Task sessions SHALL handle the transcript of each of its task sessions as follows:
+When a task ends, Task sessions SHALL act as follows:
 
-- Copy the transcript into that session's [trace node](../../glossary.json#concept.trace-node)
-  before the task's folder moves to the [history](../../glossary.json#concept.history).
-- Never write into the history afterwards.
+- It copies the transcript of each of the task's sessions into that session's
+  [trace node](../../glossary.json#concept.trace-node) before the task's folder moves to the
+  [history](../../glossary.json#concept.history).
+- It never writes into the history afterwards.
 
 The transcript is found by the session's full session id, which Claude Code's own list of sessions
 gives. It is never found by a pattern that could match another session's. A transcript that cannot
@@ -144,15 +145,18 @@ When a task ends, Task sessions SHALL write the following into each task session
 
 The figures are written into the node, not computed when a trace is read, because retention later
 removes the transcript they come from while the node stays. When Claude Code does not report a state
-as `done` or `failed`, the status stays `unknown`.
+as `done` or `failed`, the status is `unknown`.
 
 ### req.task-session.removed — An ended task leaves no task session in Claude's session list
 
-Once a task ends by any outcome, Task sessions SHALL, as a best effort, remove each of its task
-sessions whose transcript it kept from Claude's session list with `claude rm`.
+Once a task ends by any outcome, Task sessions SHALL remove its task sessions from Claude's session
+list as follows:
 
-If that best effort fails, the close remains successful. When a session's transcript was not kept or
-`claude rm` failed, the close's warnings name each session not removed, with these details:
+- It removes each task session whose transcript it kept, with `claude rm`.
+- The removal is a best effort, whose failure leaves the close as it succeeded.
+
+When a session's transcript was not kept or `claude rm` failed, the close's warnings name each
+session not removed, with these details:
 
 - The whole reason.
 - The command that removes it by hand.

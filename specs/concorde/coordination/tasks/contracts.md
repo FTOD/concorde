@@ -1030,8 +1030,8 @@ Each exception says what it left behind:
 
 - `open`'s `binding_failed`.
 - `merge`'s `rollback_failed`.
-- A `check_failed` whose checks created paths.
-- A close that failed after the merge.
+- `merge`'s `check_failed` whose checks created paths.
+- `merge`'s close that failed after the merge.
 - The refusals of `close` and `escalate` after a step they could not undo (below).
 
 A malformed command line prints the same shape with the code `invalid_command` and exits with status
@@ -1114,7 +1114,7 @@ left with `concorde issues recover --root <primary worktree>`. A merge closes ea
 with `concorde issues close <issue> --reason resolved --note <note> --evidence <item>… --root
 <primary worktree>`. As
 [Tracing](../../kernel/tracing/contracts.md#handing-a-lock-on) describes, the merge hands the merge
-lock it holds on to each command. The merge reads each command's answer or its
+lock it holds on to each of these commands. The merge reads each command's answer or its
 `{"error": <link>}`. Execution's runs are read through these interfaces:
 
 - Its [run result](../../execution/contracts.md#contract.execution.run-result).

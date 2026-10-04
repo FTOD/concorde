@@ -17,7 +17,7 @@ The guidance SHALL tell the main agent to make every [Spec](../../glossary.json#
 meaning or code behaviour change in a task, never in the primary worktree except an approved
 [small change](#req.main-session.small-change).
 
-Besides such a change, only these activities take place in the primary worktree:
+Besides such a change, only these changes are made in the primary worktree:
 
 - Housekeeping that regenerates derived files, such as the registry mirror after a merge.
 - The commit of the worker configuration alone
@@ -219,8 +219,7 @@ becomes of its result.
 The task-session guidance SHALL tell a task session to copy the decisions and problems of a
 [workflow result](../../glossary.json#concept.workflow-result) into the task's decision log.
 
-Workflows never writes them into the log. In no-ask mode, the decisions were taken without the
-developer.
+Workflows never writes them into the log. In no-ask mode, they were taken without the developer.
 
 ### req.main-session.no-task-questions — Questions need no task
 
@@ -245,13 +244,12 @@ An unbound run launches only reading workers.
 ### req.main-session.workflows — Preset tasks run their workflow
 
 The guidance SHALL tell the main agent to have a task that follows a known procedure run through its
-[workflow](../../glossary.json#concept.workflow), by naming these items in its task brief:
+[workflow](../../glossary.json#concept.workflow), which the task session starts inside the task
+worktree, by naming in its task brief:
 
 - The workflow.
 - Its Module.
 - Its mode.
-
-The task session starts the workflow inside the task worktree.
 
 ### req.main-session.workflow-mode — The developer chooses the workflow mode
 
@@ -281,8 +279,8 @@ those commands. When a merge's checks fail, Tasks undoes the merge.
 
 ### req.main-session.merge-interrupted — An interrupted merge is finished first
 
-When a `concorde task` command is refused with `merge_incomplete`, the guidance SHALL tell the main
-agent to finish the named task's merge before anything else.
+The guidance SHALL tell the main agent, when a `concorde task` command is refused with
+`merge_incomplete`, to finish the named task's merge before anything else.
 
 Unless [An unfinished merge that cannot resume is aborted](#req.main-session.merge-abort) applies,
 the main agent finishes the merge with `concorde task merge <task> --resume`, which checks the merge
@@ -290,9 +288,8 @@ again.
 
 ### req.main-session.merge-abort — An unfinished merge that cannot resume is aborted
 
-When either condition below applies, the guidance SHALL tell the main agent to finish an
-interrupted merge with `concorde task merge
-<task> --abort`:
+The guidance SHALL tell the main agent to finish an interrupted merge with
+`concorde task merge <task> --abort` when either of these conditions holds:
 
 - The merge commit is no longer the primary branch's head.
 - `--resume` answers `not_resumable`.
@@ -306,15 +303,15 @@ decision.
 
 ### req.main-session.task-session-merge-refusal — A task session passes a merge refusal on
 
-When a task session's escalation is refused with `merge_incomplete` or `merge_busy`, the
-task-session guidance SHALL tell that session to send the refusal, unchanged, to the main agent.
+The task-session guidance SHALL tell a task session whose escalation is refused with
+`merge_incomplete` or `merge_busy` to send that refusal, unchanged, to the main agent.
 
 A task session has no authority to finish a merge.
 
 ### req.main-session.merge-conflict — The task session resolves a merge conflict
 
-When merging a task fails with `merge_conflict`, the guidance SHALL tell the main agent to have the
-task's session merge the primary branch into its task branch.
+The guidance SHALL tell the main agent, when merging a task fails with `merge_conflict`, to have
+the task's session merge the primary branch into its task branch.
 
 The session then delivers again
 ([A task session merges the primary branch when asked](#req.main-session.task-session-primary-merge)).
@@ -323,8 +320,8 @@ agent's.
 
 ### req.main-session.update-merge — An update reaches the open tasks through their sessions
 
-When a `concorde update` asks to merge the primary branch into each open task, the guidance SHALL
-tell the main agent to have each listed task's session perform that merge.
+The guidance SHALL tell the main agent, when a `concorde update` asks to merge the primary branch
+into each open task, to have each listed task's session make that merge.
 
 An update that installs a new Protocol copy lists the open tasks
 ([Distribution](../../distribution/module.md)). Those tasks' worktrees still carry the previous
@@ -335,8 +332,8 @@ Merging the task into the primary branch and rebasing stay forbidden to the sess
 
 ### req.main-session.task-session-primary-merge — A task session merges the primary branch when asked
 
-When the main agent asks after a `merge_conflict` or a `concorde update`, the task-session guidance
-SHALL tell a task session to merge the primary branch into its task branch.
+The task-session guidance SHALL tell a task session to merge the primary branch into its task
+branch when the main agent asks for it after a `merge_conflict` or after a `concorde update`.
 
 The session then resolves the conflicts within the task's goal. The session verifies and commits the
 merge. The session validates and delivers again with the applicable commands:
@@ -449,15 +446,13 @@ session. Its context is only its [brief](../../glossary.json#concept.brief), as 
 Each tool Coordination registers with the
 [project MCP server](../../glossary.json#concept.project-mcp-server) whose
 [contracts](contracts.md#tools) row names a `concorde` command SHALL answer and refuse exactly as
-that command does when it waits for no lock.
+that command does when it waits for no lock, as follows:
 
-The tool answers from these, read afresh from the primary worktree for that call:
+- It answers and refuses from the [task records](../../glossary.json#concept.task-record), traces
+  and locks of the primary worktree, read afresh for that call.
+- It adds no other rule of its own.
 
-- The [task records](../../glossary.json#concept.task-record).
-- The traces.
-- The locks.
-
-The tool adds no other rule of its own. Those tools are:
+Those tools are:
 
 - The query `task_list`.
 - The query `task_show`.
@@ -517,7 +512,7 @@ in the task's trace and, without a channel, return `concorde task wait <task> --
 command.
 
 The merge may outlive the server. The close that ends the merge removes the task's workspace lock
-before the merge writes its answer. The attempt's folder moves with the task to the history.
+before the merge has written its answer. The attempt's folder moves with the task to the history.
 Whatever became of the server, `task_show` and `trace_show` find that folder from the task. The
 merge-end wait returns only once that answer is complete
 ([Tasks](../tasks/requirements.md#req.tasks.merge-attempt-lock)).
@@ -592,8 +587,8 @@ to wake. A wait for something that never happens would otherwise block forever.
 
 ### req.main-session.project-mcp-fallback — Without a channel the server says so
 
-When the server does not know its session listens as a channel, these calls SHALL say so and return
-the `concorde task wait` command for background Bash:
+When the server does not know its session to listen to it as a channel, these calls SHALL say so and
+return the `concorde task wait` command for background Bash:
 
 - `task_merge`
 - `register_wait` for something that has not happened yet
@@ -635,8 +630,8 @@ wait.
 
 ### req.main-session.project-mcp-no-channel — Without a channel the returned command runs in the background
 
-The guidance SHALL tell the main agent, when no channel is available, to run the
-`concorde task wait` command that `task_merge` or `register_wait` returns in background Bash.
+The guidance SHALL tell the main agent to run the `concorde task wait` command that `task_merge` or
+`register_wait` returns in background Bash when no channel is available.
 
 ### req.main-session.project-mcp-ask-again — A woken session asks for the lock again
 
@@ -821,8 +816,8 @@ An unbound run belongs to no task, so no decision log or escalation records it.
 
 ### req.main-session.unbound-failure-task — Work from a failed unbound run carries its chain
 
-When an unbound run's failure leads to work, the guidance SHALL tell the main agent to open a task
-for that work.
+The guidance SHALL tell the main agent, when the failure of an unbound run leads to work, to open a
+task for that work.
 
 ### req.main-session.unbound-failure-escalated — The task escalates with the run's result file
 
@@ -873,7 +868,7 @@ file the work needs outside the directories its Modules' realizations bind:
 
 - The session creates the file before it launches the [worker](../../glossary.json#concept.worker)
   that fills it.
-- The session gives the file the least content its format needs to be valid.
+- The session creates it with the least content its format needs to be valid.
 
 No worker creates such a file because:
 
@@ -890,7 +885,7 @@ would make the proposal fail.
 
 The task-session guidance SHALL tell a task session to add each implementation file it created for a
 worker to the `entries` of the right realization of its [Module](../../glossary.json#concept.module)
-before launching that worker.
+before launching the worker that fills it.
 
 It checks the binding with [Spec core](../../spec-tooling/spec/module.md)'s
 `concorde spec-validation` and commits the file and the binding together.
@@ -906,8 +901,8 @@ reviewed.
 
 ### req.main-session.task-session-plan-review-iterates — A task session answers every finding until the plan is accepted
 
-For a task session that runs `plan_review`, the task-session guidance SHALL tell the session to
-answer every finding of one iteration as follows:
+The task-session guidance SHALL tell a task session that runs `plan_review` to answer every finding
+of one iteration as follows:
 
 - With `--accept` or `--reject` in the next run.
 - With the previous run as `--input`.
@@ -918,9 +913,9 @@ a finding of the previous one unanswered.
 
 ### req.main-session.task-session-plan-review-disagreement — A continuing disagreement is escalated
 
-When the reviewer maintains a finding after the task session rejected it and the session still
-rejects it, the task-session guidance SHALL tell the session to escalate instead of running
-`plan_review` again on it.
+The task-session guidance SHALL tell a task session to escalate a finding the reviewer maintains
+after the session rejected it, and that the session still rejects, instead of running `plan_review`
+again on it.
 
 Such a finding is a disagreement the session cannot settle within its task. When the session now
 accepts a maintained finding's renewed reasoning, the session answers with `--accept`. For such an
@@ -941,9 +936,9 @@ The task-session guidance SHALL tell a task session to give the decisions of a
 
 ### req.main-session.task-session-workflow-failure — A task session escalates a failed workflow with its result
 
-When, within the task, a task session cannot repair a
-[workflow result](../../glossary.json#concept.workflow-result) that is not `ok`, the task-session
-guidance SHALL tell the session to escalate, naming the saved workflow result with `--error-file`.
+The task-session guidance SHALL tell a task session to escalate a
+[workflow result](../../glossary.json#concept.workflow-result) that is not `ok` and that it cannot
+repair within the task, naming the saved workflow result with `--error-file`.
 
 A workflow that ended `awaiting_decision` is such a result: its chain names each pending
 [decision point](../../glossary.json#concept.decision-point) with its options and recommendation.
@@ -963,8 +958,8 @@ to the developer.
 
 ### req.main-session.task-session-reports — A task session reports its end
 
-When the task session delivers the task or cannot go further, the task-session guidance SHALL tell
-the task session to report to the main agent.
+The task-session guidance SHALL tell a task session to report to the main agent when it has
+delivered the task or cannot go further.
 
 ### req.main-session.task-session-report-recorded — A task session records every report before sending it
 
@@ -983,11 +978,9 @@ Code session's name does not survive a restart or resume.
 
 ### req.main-session.task-session-report-resent — A lost report is sent again after the rebind
 
-When a task session's message reaches no session of the printed name, the task-session guidance
-SHALL tell the task session to wait and resend the same report:
-
-- Wait in background Bash with `concorde task wait <task> --rebound <that name>`.
-- Send the report to the name the command returns.
+The task-session guidance SHALL tell a task session whose message reaches no session of the printed
+name to wait in background Bash with `concorde task wait <task> --rebound <that name>` and send the
+same report to the name it returns.
 
 ### req.main-session.answers-recorded — The main agent records its answers
 
@@ -1013,10 +1006,8 @@ since it cannot tell whether one was sent.
 
 ### req.main-session.reconcile-after-restart — A main agent whose name changed lists its tasks first
 
-When ListAgents reports for the main agent's session a name other than the one it gave its tasks,
-the guidance SHALL tell the main agent to list before anything else:
-
-- Tasks not ended whose record names the main agent's former name.
+The guidance SHALL tell the main agent, when ListAgents reports another name for its session than it
+gave its tasks, to list before anything else the tasks not ended that still name the former one.
 
 An ended task cannot be rebound. Because the task's end answered its reports, the task has no report
 left unanswered. Therefore, listing the task would only look like work pending.
@@ -1125,16 +1116,13 @@ instead of settling it.
 
 ### req.main-session.issues-severity — Work starts from the most severe Issues
 
-The guidance SHALL give every session that records an Issue and the main agent these instructions:
+The guidance SHALL give these two instructions:
 
-- Every session that records an Issue gives each report one of the
-  [severities](../../glossary.json#concept.issue-severity), saying what each means:
-  - `critical`.
-  - `high`.
-  - `medium`.
-  - `low`.
-- The main agent chooses which Issues a task takes up from the open Issues listed by severity, most
-  severe first.
+- It tells every session that records an Issue to give each report one of the
+  [severities](../../glossary.json#concept.issue-severity) `critical`, `high`, `medium` and `low`,
+  and it says what each means.
+- It tells the main agent to choose which Issues a task takes up from the open Issues listed by
+  severity, most severe first.
 
 The severity says how much a problem matters, never who fixes it. The tier decides who fixes it.
 
@@ -1204,8 +1192,8 @@ both refusals to the main agent:
 
 - Once the cause named by a `recovery_failed` refusal is fixed, a record that refusal left
   uncommitted is put back by `concorde issues recover`.
-- An Issue record whose change no Issue write made is inspected and reverted, never committed by
-  hand. `uncommitted_change` or a merge's `primary_dirty` names that record.
+- An Issue record whose change no Issue write made, which `uncommitted_change` or a merge's
+  `primary_dirty` names, is inspected and reverted, never committed by hand.
 - A merge puts back by itself what a killed Issue write left.
 
 Recovery is the Issue system's own repair of its records in the primary worktree. A session that
