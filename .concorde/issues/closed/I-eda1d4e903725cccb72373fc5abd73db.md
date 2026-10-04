@@ -4,7 +4,7 @@
 {
   "schema_version": 4,
   "id": "I-eda1d4e903725cccb72373fc5abd73db",
-  "status": "open",
+  "status": "closed",
   "reports": [
     {
       "id": "sha256:5e72e185763198857adc37a6674f37c514350405e0679e3da4fb82af7583d90e",
@@ -85,6 +85,18 @@
       }
     }
   ],
-  "dispositions": []
+  "dispositions": [
+    {
+      "reason": "resolved",
+      "note": "Fixed by task fix-open-workflows, merged into the primary branch at 3e0e6838daca08100a8fe4cc072945ee01bce7be.",
+      "evidence": [
+        "merge commit 3e0e6838daca08100a8fe4cc072945ee01bce7be",
+        "task fix-open-workflows"
+      ],
+      "duplicate_of": null,
+      "actor": "main-agent",
+      "created_at": "2026-10-04T02:44:00.331915+00:00"
+    }
+  ]
 }
 ```
