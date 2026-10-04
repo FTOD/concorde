@@ -4,7 +4,7 @@
 {
   "schema_version": 4,
   "id": "I-657d8b78fbee5eef9a0f8441f27c3fbc",
-  "status": "open",
+  "status": "closed",
   "reports": [
     {
       "id": "sha256:5c869323d6154a3a49e9408ea005fe8eb69ba2fb17edad2393c8fda6db49ea6d",
@@ -81,6 +81,18 @@
       }
     }
   ],
-  "dispositions": []
+  "dispositions": [
+    {
+      "reason": "resolved",
+      "note": "Fixed by task fix-open-worker-harness, merged into the primary branch at 29fd888f6ba4e29480b0d2429561b42e6c5b200c.",
+      "evidence": [
+        "merge commit 29fd888f6ba4e29480b0d2429561b42e6c5b200c",
+        "task fix-open-worker-harness"
+      ],
+      "duplicate_of": null,
+      "actor": "main-agent",
+      "created_at": "2026-10-04T02:58:05.485218+00:00"
+    }
+  ]
 }
 ```
