@@ -472,13 +472,22 @@ class ValidateTests(unittest.TestCase):
         )
 
     def test_a_later_check_error_keeps_the_results_of_checks_that_ran(self):
+        # Check execution validates every check before its first command, so a later check
+        # fails only while it runs, here refused by the operating system.
         (self.worktree / "src/a/flag").write_text("broken")
         [check] = read_checks(self.worktree)
-        write_checks(
-            self.worktree,
-            [check, {**check, "id": "check.a2", "when": "never", "inputs": []}],
-        )
-        status, envelope = self.project.validate()
+        write_checks(self.worktree, [check, {**check, "id": "check.a2", "inputs": []}])
+        real = check_service.execute_check
+        calls = []
+
+        def second_refused(*arguments, **options):
+            calls.append(arguments)
+            if len(calls) > 1:
+                raise PermissionError(13, "Permission denied", "checks/a_check.py")
+            return real(*arguments, **options)
+
+        with patch.object(check_service, "execute_check", second_refused):
+            status, envelope = self.project.validate()
         self.assertEqual((status, envelope["status"]), (1, "blocked"), envelope)
         readiness = envelope["output"]
         self.assertEqual(
@@ -496,10 +505,12 @@ class ValidateTests(unittest.TestCase):
                 if item["kind"] == "check"
             ],
         )
-        self.assertIn("when 'never'", readiness["blocking"][-1]["detail"])
+        self.assertIn(
+            "system_error: PermissionError", readiness["blocking"][-1]["detail"]
+        )
         causes = envelope["error"]["causes"]
         self.assertEqual(
-            ["check_failed", "invalid_check"],
+            ["check_failed", "system_error"],
             [
                 cause["code"]
                 for cause in causes
