@@ -44,6 +44,38 @@ def _git(package: Path, *argv: str) -> subprocess.CompletedProcess:
         ) from error
 
 
+def _git_path(package: Path, *argv: str) -> str:
+    """The one path a Git query prints, kept whole whatever characters it holds."""
+    done = _git(package, *argv)
+    path = done.stdout.rstrip("\n")
+    if done.returncode != 0 or not path:
+        raise DevelopError(
+            "develop_source_unreadable",
+            f"`git -C {package} {' '.join(argv)}` failed "
+            f"({done.stderr.strip() or 'it printed no path'}); a develop install needs Git "
+            "to check the Concorde repository it installs from",
+        )
+    return path
+
+
+def _primary_worktree(package: Path, common: Path) -> str:
+    """Where the primary worktree of ``package``'s repository is, as far as Git records it.
+
+    Git records it only as the parent of a common directory named ``.git`` or as
+    ``core.worktree``; a repository made with ``--separate-git-dir`` records neither, and then
+    the common directory is all a refusal can name.
+    """
+    if common.name == ".git":
+        return f"primary worktree is {common.parent}"
+    configured = _git(package, "config", "--get", "core.worktree").stdout.rstrip("\n")
+    if configured:
+        return f"primary worktree is {(common / configured).resolve()}"
+    return (
+        f"Git directory is {common}, which records no path for the primary worktree (the "
+        "worktree whose `.git` file points to it)"
+    )
+
+
 def develop_source(package: str | Path) -> dict:
     """The repository, branch and commit a develop install of ``package`` installs from.
 
@@ -52,7 +84,7 @@ def develop_source(package: str | Path) -> dict:
     """
     package = Path(package).resolve()
     top = _git(package, "rev-parse", "--show-toplevel")
-    if top.returncode != 0 or Path(top.stdout.strip()).resolve() != package:
+    if top.returncode != 0 or Path(top.stdout.rstrip("\n")).resolve() != package:
         found = (
             f"it lies inside the worktree {top.stdout.strip()}"
             if top.returncode == 0
@@ -63,16 +95,16 @@ def develop_source(package: str | Path) -> dict:
             f"a develop install is made from the root of a Concorde repository's worktree, but "
             f"{package} is not one: {found}",
         )
-    directories = _git(
-        package, "rev-parse", "--path-format=absolute", "--git-dir", "--git-common-dir"
+    own, common = (
+        Path(_git_path(package, "rev-parse", "--path-format=absolute", option))
+        for option in ("--git-dir", "--git-common-dir")
     )
-    own, common = (Path(line).resolve() for line in directories.stdout.split())
-    if own != common:
+    if own.resolve() != common.resolve():
         raise DevelopError(
             "develop_source_not_primary",
-            f"{package} is a linked worktree of the Concorde repository whose primary "
-            f"worktree is {common.parent}; a develop install is made from the primary "
-            "worktree, since a task worktree disappears once its branch is merged",
+            f"{package} is a linked worktree of the Concorde repository whose "
+            f"{_primary_worktree(package, common)}; a develop install is made from the "
+            "primary worktree, since a task worktree disappears once its branch is merged",
         )
     branch = _git(package, "symbolic-ref", "--quiet", "--short", "HEAD")
     if branch.returncode != 0:

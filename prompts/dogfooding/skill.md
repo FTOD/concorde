@@ -148,8 +148,8 @@ chain of a defect of the Issue system.
 
 The developer tells you when the fix is merged, or you see its Issue closed with
 `concorde issues list --root <source>`, which only reads. Then, from the primary worktree and
-while no Operation, workflow or task session is running, run `concorde update`: it refuses while an
-Operation run is still running, installs the new Concorde and, where the spec part is installed,
+while no run of an Operation or execution command, workflow or task session is running, run
+`concorde update`: it refuses while such a run is still running, installs the new Concorde and, where the spec part is installed,
 leaves the project unvalidated until `concorde spec-validation` passes. Start nothing until the update
 ends, no run, task session or other `concorde` command in any worktree of the project: its check
 does not stop what starts after it, and that may find Concorde half replaced. When the update asks
