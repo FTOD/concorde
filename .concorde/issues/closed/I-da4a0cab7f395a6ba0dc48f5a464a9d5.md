@@ -4,7 +4,7 @@
 {
   "schema_version": 4,
   "id": "I-da4a0cab7f395a6ba0dc48f5a464a9d5",
-  "status": "open",
+  "status": "closed",
   "reports": [
     {
       "id": "sha256:5f1789cef650c20b27cf8e26be7659bf1bc3f101332ed139e0b90cfb63a532c0",
@@ -43,6 +43,18 @@
       }
     }
   ],
-  "dispositions": []
+  "dispositions": [
+    {
+      "reason": "resolved",
+      "note": "Fixed by task fix-open-trace-producers, merged into the primary branch at 8b5193b1767b00de6148f883e1289d21c164aaea.",
+      "evidence": [
+        "merge commit 8b5193b1767b00de6148f883e1289d21c164aaea",
+        "task fix-open-trace-producers"
+      ],
+      "duplicate_of": null,
+      "actor": "main-agent",
+      "created_at": "2026-10-04T03:46:21.179775+00:00"
+    }
+  ]
 }
 ```
