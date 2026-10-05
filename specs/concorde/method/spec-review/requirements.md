@@ -95,9 +95,9 @@ The refusal makes the Module's review `incomplete`. It travels in the result's
 
 ### req.spec-review.host-verdict — The Operation derives the verdict
 
-The [Operation](../../glossary.json#concept.operation) SHALL derive a
-[Spec](../../glossary.json#concept.spec) review's or Spec panel's verdict by the rule of that
-Operation's payload contract, never from a worker's statement.
+The verdict of a [Spec](../../glossary.json#concept.spec) review or a Spec panel SHALL be derived
+by the [Operation](../../glossary.json#concept.operation) by the rule of that Operation's payload
+contract, never taken from a worker's statement.
 
 ### req.spec-review.no-structural-substitute — Structural errors stop a Module's review
 
