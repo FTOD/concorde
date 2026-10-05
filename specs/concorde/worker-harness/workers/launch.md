@@ -674,17 +674,11 @@ Protocol task types.
 
 ### req.workers.malformed-grant — Nothing is generated from a malformed grant
 
-Before it generates any settings, write hook or [permission extension](../../glossary.json#concept.permission-extension), the host SHALL refuse to launch a worker whose grant has a malformed entry.
-
-An entry is malformed when it is not an object with both of these:
-
-- a non-empty path relative to the task worktree
-- a level of `rw`, `ro` or `names`
+Before it generates any settings, write hook or [permission extension](../../glossary.json#concept.permission-extension), the host SHALL refuse to launch a worker whose grant has an entry that is not an object with a non-empty path relative to the task worktree and a level of `rw`, `ro` or `names`.
 
 ### req.workers.malformed-grant-named — A malformed grant's refusal names the entry
 
-For a malformed grant, the host SHALL name the first malformed entry and what is wrong with it
-in the refusal.
+The refusal of a malformed grant SHALL name the first malformed entry and what is wrong with it.
 
 ### req.workers.unchanged-across-rounds — The run's configuration never changes between rounds
 
@@ -697,10 +691,7 @@ For every round of the run, the host SHALL keep the following unchanged:
 
 ### req.workers.write-allowlist — Only `rw` paths are writable by file tools
 
-On the Claude Code backend, the write hook SHALL deny every Edit or Write whose resolved target
-is not in the grant's `rw` list.
-
-The resolved target has every symbolic link resolved, the final one included.
+On the Claude Code backend, the write hook SHALL deny every Edit or Write whose target, with every symbolic link resolved, the final one included, is not in the grant's `rw` list.
 
 A write is judged by the file it would change. Only when its target is `rw` too does a symbolic
 link at a `rw` path let a write through. The judgement is tighter than a link's own name. The
@@ -738,21 +729,14 @@ On the Claude Code backend, the worker settings SHALL disable unsandboxed comman
 
 ### req.workers.working-directory — The worker never works in the worktree
 
-A worker SHALL use its runtime directory's `work/` directory as its working directory.
+A worker's working directory SHALL be its runtime directory's `work/` directory.
 
 Since the runtime directory is a private directory of its own under the system's temporary
 directory, `work/` is never the worktree and lies outside the run directory.
 
 ### req.workers.working-directory-not-denied — A run the deny rules would disable is refused
 
-When a deny rule the host generated covers any directory listed below, the host SHALL refuse to
-launch a worker.
-
-The directories are in the runtime directory:
-
-- `work/`
-- `home/`
-- `tmp/`
+When a deny rule the host generated covers the runtime directory's `work/`, `home/` or `tmp/`, the host SHALL refuse to launch a worker.
 
 ### req.workers.tool-paths-absolute — Tools take absolute paths
 
@@ -813,12 +797,11 @@ launch:
 
 ### req.workers.model-map-named — A refusal of the model map names the map
 
-In every refusal the model map causes, the configuration reader SHALL name the map's file.
+Every refusal the model map causes SHALL name the map's file.
 
 ### req.workers.model-map-entry — An unmapped model's refusal names the entry to add
 
-When the map gives a worker's model no id for its backend, the configuration reader SHALL name
-the exact entry to add to the map in the refusal.
+The refusal of a worker whose model the map gives no id for its backend SHALL name the exact entry to add to the map.
 
 ### req.workers.model-map-whole-operation — An Operation's workers are checked against the map at once
 
@@ -829,11 +812,7 @@ When asked to check one Operation's workers against the model map, the configura
 
 ### req.workers.refusal-reason — Every refusal before a run has its fixed reason
 
-For every refusal of the configuration reader, the reader SHALL supply the following:
-
-- the code that [Refusals before a run](#refusals-before-a-run) list for it
-- the reason that section lists for it
-- a message naming the file the refusal concerns
+Every refusal of the configuration reader SHALL carry the code and reason that [Refusals before a run](#refusals-before-a-run) list for it and a message naming the file it concerns.
 
 ### req.workers.proxy-passed — A worker's model calls use the host's proxy
 
@@ -876,11 +855,7 @@ The host SHALL start at most the configured number of resume rounds in one run.
 
 ### req.workers.latest-session — Resume from the newest session
 
-Each resume round SHALL continue the run's latest session.
-
-On the Claude Code backend, the latest session's identifier is the session identifier the
-previous round returned. On the pi backend, the latest session's identifier is the session
-identifier the run fixed at its first round.
+Each resume round SHALL continue the run's latest session: on the Claude Code backend the session identifier the previous round returned, on the pi backend the session identifier the run fixed at its first round.
 
 ### req.workers.claims-apart — Worker claims stay claims
 
@@ -889,14 +864,7 @@ observed itself.
 
 ### req.workers.error-chain — A failed run explains itself
 
-Every run that does not end `ok` SHALL carry Workers' error link with the causes listed in
-[Errors](#errors).
-
-Those causes are the alternatives below:
-
-- the worker's own error
-- the agent process's link (Claude Code's or pi's)
-- the links the round validation names
+Every run that does not end `ok` SHALL carry Workers' error link with the worker's own error, the agent process's link (Claude Code's or pi's) or the links the round validation names as its causes, as listed in [Errors](#errors).
 
 ### req.workers.host-deletes — Only the host deletes
 

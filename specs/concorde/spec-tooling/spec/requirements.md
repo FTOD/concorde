@@ -10,9 +10,8 @@ belongs to the Module as a whole.
 
 Spec core SHALL NOT import code of any other Concorde Module, the Kernel's included.
 
-Other Modules' schemas, policies and file locations reach Spec core only as call arguments or
-through a type's typed value registration.
-The registration route is for a type of the spec part's own Modules.
+Other Modules' schemas, policies and file locations reach Spec core only as call arguments or,
+for a type of the spec part's own Modules, through its typed value registration.
 
 The utilities Spec core shares in kind with the Kernel are its own copy: typed values, file
 transactions, schema checking and digests.
@@ -148,19 +147,15 @@ The digest covers only those inputs. It excludes the following:
 - The list of version-controlled files.
 - The contents of the tests scanned for verification declarations.
 
-While the digest stays the same, findings about bindings, unbound files and scenario coverage can
-change.
+Since the digest excludes them, findings about bindings, unbound files and scenario coverage can
+change while the digest stays the same.
 
 ## Registry mirror
 
 ### req.spec.registry-mirror-only — Regeneration changes only mirrored fields
 
-Regenerating the registry SHALL do the following:
-
-- Rewrite only the mirrored fields of the Modules it already records.
-- Leave each record's identity unchanged.
-- Leave each record's entry path unchanged.
-- Leave the set of recorded Modules unchanged.
+Regenerating the registry SHALL rewrite only the mirrored fields of the Modules it already records,
+leaving each record's identity and entry path and the set of recorded Modules unchanged.
 
 The mirrored fields are every field of the entry's `module` block: `title`, `owns`, `contains`,
 `uses`, `includes` and `participates`, and `glossary` in the one block that declares it.
@@ -373,7 +368,7 @@ An owner's code may therefore be loaded twice.
 ### req.spec.transaction-all-or-nothing — A transaction applies completely or not at all
 
 A [file transaction](../../glossary.json#concept.file-transaction) SHALL either write every listed
-file with its new content or, if a write or its final check fails during execution, leave every
+file with its new content or, when a write or its final check fails while the process runs, leave every
 listed file with its original bytes.
 
 The guarantee covers only failures the process observes as an exception.
@@ -445,13 +440,8 @@ Applying SHALL accept an initial proposal only when all these conditions hold:
 - The proposal comes with a proposal digest that is the digest of that value.
 - The proposal's source digest is the project's current one.
 
-These checks establish the following, not that propose produced the proposal:
-
-- The proposal's shape.
-- The proposal's integrity.
-- The proposal's freshness.
-
-Any caller can compute the proposal digest.
+These checks establish the proposal's shape, its integrity and its freshness. They do not
+establish that propose produced the proposal, since any caller can compute the proposal digest.
 An applied proposal is also held to the following:
 
 - The allowed files.
@@ -485,25 +475,19 @@ The realization locates files. It promises nothing about them.
 
 ### req.spec.init-installation-apart — Concorde's own files are bound apart
 
-Except for the files the installer's receipt lists as amended, the initial Module stub SHALL bind
-the receipt's files outside `.concorde/` in their own realization, Concorde installation, and not
-among the existing project files.
+The initial Module stub SHALL bind the files the installer's receipt names outside `.concorde/`,
+other than the files it lists as amended, in a realization of their own, Concorde installation,
+and not among the existing project files.
 
 The installer's skill and workflows configure the agents, not the project.
 The project's `.gitignore` and `CLAUDE.md`, which the installer only amends, stay the project's files.
 
 ### req.spec.installation-follows-record — The installation realization follows the receipt
 
-Binding the installation of an initialized project SHALL do the following:
-
-- Add as an exact entry of its Concorde installation realization every file that meets all these
-  conditions:
-  - The installer's receipt names the file outside `.concorde/`.
-  - The receipt does not name the file as amended.
-  - The file exists.
-  - No realization binds the file by its exact path.
-- Remove from that realization every entry that no longer exists.
-- Write nothing else.
+Binding the installation of an initialized project SHALL add, as an exact entry of its Concorde
+installation realization, every file the installer's receipt names outside `.concorde/`, other than
+the amended ones, that exists and that no realization binds by its exact path, and remove from
+that realization every entry that no longer exists, writing nothing else.
 
 Installation binding never unbinds an existing file.
 Installation binding never adds a directory entry.
