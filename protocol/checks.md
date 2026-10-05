@@ -115,7 +115,7 @@ document and in every concept definition. That chapter's
 
 | Identity | Statement | Strictness |
 | --- | --- | --- |
-| `CHK.style.sentence-length` | No sentence of prose has more than 35 words. | warning |
+| `CHK.style.sentence-length` | No sentence of prose has more than 35 words, and no concept definition has more than 50 words. | warning |
 | `CHK.style.semicolon` | No sentence of prose contains a semicolon. | warning |
 | `CHK.style.one-obligation` | No sentence of prose contains more than one requirement keyword. | warning |
 
@@ -139,7 +139,7 @@ These checks are weaker than the obligations they serve:
 | `CHK.contrasts.required` | Collisions that normalization misses. Unrelated same-named nodes also trigger it; declaring the `contrasts` with its reason is then the correct answer, not an escape. |
 | `CHK.view.edges` | That a drawn label describes the declared relation accurately. |
 | `CHK.participates.version` | That the participant behaves as the contract says; that is implementation conformance. |
-| `CHK.style.sentence-length` | That a sentence of 35 words or fewer is short enough, or that a sentence carries one fact. |
+| `CHK.style.sentence-length` | That a sentence of 35 words or fewer, or a definition of 50 words or fewer, is short enough, or that a sentence carries one fact. |
 | `CHK.style.one-obligation` | That a sentence with one keyword carries one obligation. A sentence that joins two obligations under one keyword is not reported. |
 
 The checks do not check any of the following:

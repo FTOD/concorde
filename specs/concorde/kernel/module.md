@@ -202,8 +202,9 @@ The Kernel never defines these delivering command rules:
 - What the delivering command must check first
 - Which changes the delivery commit holds
 
-In Concorde, Method's `delivery` validates the whole workspace first.
-Where the method part is not installed, Coordination's `task deliver` runs the checks it is given.
+In Concorde, Method's `delivery` makes the delivery commit after it validates the whole workspace.
+Where the method part is not installed, Coordination's `task deliver` makes it after the checks it
+is given pass.
 Whoever reads deliveries relies on this convention alone, not on the part that made the commit
 ([exact rule](contracts.md#delivery-commit)). Coordination deriving that a task is delivered is
 one such reader.

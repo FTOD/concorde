@@ -59,6 +59,19 @@ Every level of work in Concorde leaves one
 - The files that level keeps next to the record.
 - The folders of the nodes below it.
 
+The record holds these fields:
+
+- The identity of the node.
+- Its kind.
+- Its times.
+- Its status.
+- Its own usage.
+- Its error link.
+- Its metadata.
+- Its artifacts.
+- Its references.
+- The content of its producer.
+
 Each of the following is a node:
 
 - A task.
@@ -74,6 +87,12 @@ Each of the following is a node:
 
 The tree of nodes below one task, or below one
 [unbound run](../../glossary.json#concept.unbound-run), is a **[trace](../../glossary.json#concept.trace)**.
+The nodes nest as the work did:
+
+- Below a task lie its task sessions, its merge attempts and its workspace.
+- Below the workspace lie its workflow and its runs.
+- Below a run lie its checks and its worker runs.
+- Below a worker run lie its rounds.
 
 ### Trace roots
 

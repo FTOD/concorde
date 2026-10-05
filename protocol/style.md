@@ -26,6 +26,11 @@ A descriptive sentence SHOULD have 25 words or fewer. Split a longer sentence in
 or move its details into a list. Count every word of a link's text. Count an inline code span as
 one word. `CHK.style.sentence-length` reports a sentence of more than 35 words.
 
+A concept definition is one sentence that must identify its term. It can need more words than a
+sentence of a reading. Keep it as short as identifying its term allows, and move every other detail
+into the term's explanation. `CHK.style.sentence-length` reports a concept definition of more than
+50 words.
+
 ### Lists for three or more
 
 When a sentence would name three or more conditions, cases, steps or items, write a vertical list.
@@ -93,7 +98,8 @@ of the reading as a reader sees it:
 - Each paragraph and each list item is split into sentences by the sentence-break rule of
   `CHK.concept.definition`.
 
-A concept definition is one sentence, so the checks measure it as one sentence.
+A concept definition is one sentence, so the checks measure it as one sentence. Its length bound is
+50 words instead of 35.
 
 The other rules need a reader's judgment. A review judges them as part of readability, by the
 criteria of [Evaluating a Spec](evaluation.md#readability). A text with no style warning can still

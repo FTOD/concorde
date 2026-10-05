@@ -178,6 +178,11 @@ depend on its installed parts:
 - With the workflow part, a project has the `workflow_step` tool its workflows' step agents call.
 - When a part is not installed, its tool is absent.
 
+A fresh process of the Concorde that the primary worktree's `concorde` runs at that moment answers
+each call. The server takes locks without waiting. It hands a lock it was granted to the detached
+process that does the work. When a wait the session registered is over, the server wakes the
+session through a Claude Code channel.
+
 Each tool's part owns these aspects of the tool:
 
 - Its behaviour.

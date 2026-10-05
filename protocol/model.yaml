@@ -15,7 +15,7 @@
 # CHK.registry.mirror requires to be equal; the registry is never a
 # declaration site.
 
-protocol: "16.2.0"
+protocol: "16.3.0"
 model_version: 1
 
 context_channels:

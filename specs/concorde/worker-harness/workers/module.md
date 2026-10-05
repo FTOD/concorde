@@ -96,8 +96,15 @@ node of the Operation run that launched the worker. The host keeps what analysis
 there.
 
 The **[runtime directory](../../glossary.json#concept.runtime-directory)** holds what the worker
-needs only while it runs. This is a short private directory under `/tmp`. When the run ends, the
-host removes the runtime directory.
+needs only while it runs. This is a short private directory under `/tmp`. It holds these items:
+
+- The generated configuration of the worker.
+- The copies of the credentials.
+- The home directory of the worker.
+- Its temporary directory.
+- Its working directory.
+
+When the run ends, the host removes the runtime directory.
 
 <a id="concept.progress-file"></a>
 
@@ -226,7 +233,18 @@ the [permission extension](../../glossary.json#concept.permission-extension) app
 The **[worker configuration](../../glossary.json#concept.worker-configuration)** of a worktree is
 its tracked `.concorde/workers.json`. This is the only source of a worker's model and reasoning
 level. It names every model by a **project model name**, such as `gpt-6-astra` or `claude-opus-5-5`.
-A project model name depends on no installation.
+A project model name depends on no installation. Every worker launch requires the file. A worktree
+without it runs no worker. The configuration holds these entries:
+
+- The enabled models, each named by a project model name and each with an optional reasoning level
+  of its own.
+- A backend, a model and a reasoning level for every worker.
+- A backend, a model and a reasoning level for the workers of one Operation.
+- A backend, a model and a reasoning level for one worker, by its worker id.
+- The limits of every worker launch.
+- The runtime paths that workers may read.
+
+For each field, the most specific entry that sets it wins.
 
 The configuration keys its entries by Operation and by
 **[worker id](../../glossary.json#concept.worker-id)**. The worker id is the stable name a caller
@@ -239,7 +257,10 @@ The worker ids are the ids each Operation lists.
 
 The **[model map](../../glossary.json#concept.model-map)** is how one machine reaches those models.
 It is a JSON file of the user, outside every repository. The map is never committed. The map gives
-each project model name its local model id on pi, on Claude Code or on both.
+each project model name its local model id on pi, on Claude Code or on both. Its path is
+`~/.config/concorde/models.json`, unless `CONCORDE_MODEL_MAP` or `XDG_CONFIG_HOME` places it
+elsewhere. When the map gives a worker's model no id for the worker's backend, the worker is
+refused.
 
 ## Overview
 
