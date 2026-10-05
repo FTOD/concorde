@@ -154,11 +154,7 @@ Without `--prior`, `prior_run_id` is `null`. `--json=PATH` replaces whatever the
 
 ### req.concorde.test-prior-compare — A prior run is compared by its fingerprint
 
-When `--prior=PATH` names the JSON report of an earlier run, the pytest evidence plugin SHALL record `same_declared_inputs` as follows:
-
-- When this run has complete input and known runtime facts, it records whether that report's
-  fingerprint `digest` equals this run's.
-- Otherwise, it records `null`.
+When `--prior=PATH` names the JSON report of an earlier run, the pytest evidence plugin SHALL record as `same_declared_inputs` whether that report's fingerprint `digest` equals this run's when this run's input is complete and its runtime facts are known, and `null` otherwise.
 
 Without `--prior` too, `same_declared_inputs` is `null`. Since equal digests of incomplete input or
 unknown runtime facts prove nothing, this value is `null`. When it is `true`, the terminal says
@@ -166,10 +162,7 @@ so. In that case, the terminal also says that the environment is covered only in
 
 ### req.concorde.test-counting — The totals count the tests that ran
 
-The pytest evidence plugin SHALL count in the report's `totals` one unit per collected test that ran, with these details:
-
-- When any of its subtests fails, the unit fails.
-- The number of collected tests appears beside the units as `collected`.
+The pytest evidence plugin SHALL count in the report's `totals` one unit per collected test that ran, a unit failing when any of its subtests fails, beside the number of collected tests as `collected`.
 
 When every collected test runs, the units sum to the collected count because subtests are not
 counted on their own. When a run stops early through `-x` or a crashed xdist worker, it has fewer

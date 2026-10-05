@@ -7,13 +7,9 @@ concrete situations.
 
 ### req.dogfooding.clean-primary-source — Only a clean primary worktree is installed from
 
-Unless its source meets all these conditions, Concorde SHALL refuse a
-[develop install](../glossary.json#concept.develop-install), and every update of one, before
-anything is written:
-
-- The source is the root of the primary worktree of its Git repository.
-- The source is on a branch.
-- The source has no uncommitted or untracked change.
+A [develop install](../glossary.json#concept.develop-install), and every update of one, SHALL be
+refused before anything is written unless the Concorde it installs from is the root of the primary
+worktree of its Git repository, on a branch, with no uncommitted or untracked change.
 
 ### req.dogfooding.refusal-names-reason — A refused source names its reason
 
@@ -87,18 +83,11 @@ an [Issue report](../glossary.json#concept.issue-report) with all of the followi
 
 ### req.dogfooding.ok-run-defect — A defect in an `ok` run is the main agent's own link
 
-For a run that ended `ok` and still did something wrong, the develop guidance SHALL require a
-defect report with the following:
-
-- Its whole error chain is the main agent's own link without causes.
-- The link cites the run.
-- In a task, the link is the one `concorde task escalate` records when it names none of the
-  following:
-  - A run.
-  - A file.
-  - An escalation.
-- Outside a task, the link is one written by hand in the shape of the Framework's
-  [error contract](../kernel/tracing/contracts.md#contract.tracing.error).
+The develop guidance SHALL require the defect report of a run that ended `ok` and still did
+something wrong to carry, as its whole error chain, the main agent's own link without causes,
+citing the run: in a task the link `concorde task escalate` records when it names no run, file or
+escalation, and outside a task one written by hand in the shape of the Framework's
+[error contract](../kernel/tracing/contracts.md#contract.tracing.error).
 
 Such a run reported no error, so there is no chain to extend.
 
@@ -112,14 +101,11 @@ error, if any.
 
 ### req.dogfooding.issue-system-defect — A defect of the Issue system travels as its error chain
 
-For a [Concorde defect](../glossary.json#concept.concorde-defect) of Concorde's Issue system itself,
-the develop guidance SHALL require the following hand-over:
-
-- The failure's whole [error chain](../glossary.json#concept.error-chain) with the main agent's own
-  link on top.
-- The error chain written to `.concorde/runs/defects/`.
-- The error chain named to the developer.
-- Never a [defect report](../glossary.json#concept.defect-report).
+The develop guidance SHALL require a [Concorde defect](../glossary.json#concept.concorde-defect) of
+Concorde's Issue system itself to be handed over as the failure's whole
+[error chain](../glossary.json#concept.error-chain) with the main agent's own link on top, written
+to `.concorde/runs/defects/` and named to the developer, and never as a
+[defect report](../glossary.json#concept.defect-report).
 
 A defect report is an [Issue report](../glossary.json#concept.issue-report).
 An Issue system failure is never recorded as an Issue

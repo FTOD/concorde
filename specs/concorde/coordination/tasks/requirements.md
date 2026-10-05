@@ -37,24 +37,18 @@ Tasks SHALL NOT delete a task record or a decision log, including when the task 
 ### req.tasks.decision-log-committed — An ended task's decision log is in Git
 
 When a task ends, Tasks SHALL commit its decision log on the primary branch at
-`.concorde/decisions/<history key>.md` exactly as the log stands once its closing is appended, as
-follows:
-
-- `concorde task merge` commits the log in the merge commit it makes, with the closing its close
-  then appends.
-- When the primary branch does not already hold the log so, a close commits the log in a commit of
-  that file alone.
+`.concorde/decisions/<history key>.md` exactly as the log stands once its closing is appended:
+`concorde task merge` in the merge commit it makes, with the closing its close then appends, and
+any close whose primary branch does not already hold the log so, in a commit of that file alone.
 
 The copy in Git is what outlives [Tracing](../../kernel/tracing/module.md)'s retention. The task's
 folder keeps its own log, which the copy never replaces.
 
 ### req.tasks.log-commit-alone — Committing a log commits nothing else
 
-A close that commits a decision log SHALL act as follows:
-
-- It leaves every other change of the primary worktree, staged or not, as it was.
-- When Git refuses that commit, it refuses with `decision_log_uncommitted`, commits nothing and
-  leaves the task's folder current.
+A close that commits a decision log SHALL leave every other change of the primary worktree, staged
+or not, as it was, and refuse with `decision_log_uncommitted`, committing nothing and leaving the
+task's folder current, when Git refuses that commit.
 
 The same close run again commits the log and finishes the close.
 
@@ -92,18 +86,12 @@ second copy can disagree with it.
 
 ### req.tasks.no-foreign-writes — Tasks writes nothing the workspace's runs record
 
-Tasks SHALL NOT write any of the following, apart from the exceptions listed below:
-
-- The [run store](../../glossary.json#concept.run-store).
-- A [workflow record](../../glossary.json#concept.workflow-record).
-- A [delivery commit](../../glossary.json#concept.delivery-commit).
-
-The exceptions are:
-
-- Holding a task's [workspace lock](../../glossary.json#concept.workspace-lock).
-- When the task is closed, moving the task's whole folder, workspace folder included, to the
-  history.
-- Where the method part is not installed, the delivery commit of `task deliver`.
+Tasks SHALL NOT write the [run store](../../glossary.json#concept.run-store), a
+[workflow record](../../glossary.json#concept.workflow-record) or a
+[delivery commit](../../glossary.json#concept.delivery-commit), apart from holding a task's
+[workspace lock](../../glossary.json#concept.workspace-lock), moving the task's whole folder,
+workspace folder included, to the history when the task is closed, and the delivery commit of
+`task deliver` where the method part is not installed.
 
 The lock file lives under `.concorde/locks/workspaces/`. While Tasks merges or closes the task, its
 holder is named there. Nothing else in the lock file is written.
@@ -123,7 +111,7 @@ Outside the primary worktree, the following commands SHALL refuse to run:
 
 ### req.tasks.worktree-ignored — A worktree inside the primary is ignored there
 
-Unless Git ignores its worktree path in the primary worktree, Tasks SHALL refuse to open a task.
+Tasks SHALL refuse to open a task unless Git ignores its worktree path in the primary worktree.
 
 ### req.tasks.one-worktree — One branch and one worktree per task
 
@@ -292,8 +280,8 @@ SHALL NOT remove a worktree that has uncommitted changes.
 Closing or merging a task SHALL NOT change the repository's configuration that every worktree
 shares, `.git/config` of the primary worktree.
 
-The task's worktree is removed with its submodules' checkouts and their repositories. The submodules
-stay registered for the primary worktree and every other task worktree.
+The task's worktree is removed with its submodules' checkouts and their repositories, but the
+submodules stay registered for the primary worktree and every other task worktree.
 
 ### req.tasks.refusal-inert — A refusal changes nothing
 
@@ -374,13 +362,10 @@ a warning of the close.
 
 ### req.tasks.merge-exact-commit — A merge merges the commit it checked
 
-Even when the primary branch could fast-forward, `concorde task merge` SHALL merge the task branch's
-head that its checks before the merge accepted, in a merge commit with these properties:
-
-- The merge uses the head's commit identity, never the branch by name.
-- The merge commit's second parent is that head.
-- The merge commit's trailer `Concorde-Task` names the task.
-- The merge commit adds the task's decision log.
+`concorde task merge` SHALL merge, by its commit identity, the task branch's head that its checks
+before the merge accepted, never the branch by name, in a merge commit whose second parent is that
+head, whose trailer `Concorde-Task` names the task and which adds the task's decision log, even when
+the primary branch could fast-forward.
 
 A commit added to the task branch after those checks is therefore never merged unchecked. Closing
 the task as merged then refuses with `not_merged`, since the branch's head is no longer its latest
@@ -398,13 +383,9 @@ nothing to merge. No merge commit is made. The merge does the following:
 ### req.tasks.merge-workspace-locked — No run of a task changes it while it is merged or closed
 
 `concorde task merge` and `concorde task close` SHALL hold the task's
-[workspace lock](../../glossary.json#concept.workspace-lock), wait up to `--wait` seconds and refuse
-with `workspace_busy` under these terms:
-
-- The commands take the workspace lock before the merge lock and hold it to the end.
-- The commands wait for the workspace lock inside the command.
-- When a run still holds the workspace lock after that wait, the commands refuse, naming the lock's
-  holder and changing nothing.
+[workspace lock](../../glossary.json#concept.workspace-lock), taken before the merge lock and held
+to the end, waiting for it inside the command up to `--wait` seconds, and refuse with
+`workspace_busy`, naming the lock's holder and changing nothing, when a run still holds it then.
 
 Neither holds the merge lock while it waits for the workspace lock.
 
@@ -525,10 +506,8 @@ A merge refused before `git merge` is governed by
 ### req.tasks.merge-update-validated — An unvalidated update is validated by every merge
 
 While the primary worktree holds the mark of a `concorde update` not validated since, and where the
-spec part is installed, `concorde task merge` SHALL validate the merged result as follows:
-
-- The merge runs `concorde spec-validation` after the `--check` commands it was given, unless they
-  include it.
+spec part is installed, `concorde task merge` SHALL run `concorde spec-validation` on the merged
+result after the `--check` commands it was given, unless they include it.
 
 [Distribution](../../distribution/module.md) promises that nothing merges before an update is
 validated. Otherwise, the checks a merge is given replace the default, so they could leave that
@@ -537,10 +516,8 @@ merge of a task that repairs what the update found still lifts the barrier.
 
 ### req.tasks.merge-default-check — A merge without checks runs the Spec validation where it can
 
-`concorde task merge`, given no `--check`, SHALL handle checks on the merged result as follows:
-
-- Where the spec part is installed, the merge runs `concorde spec-validation`.
-- Otherwise, the merge runs no check and says so in its answer.
+`concorde task merge` given no `--check` SHALL run `concorde spec-validation` on the merged result
+where the spec part is installed, and otherwise run no check and say so in its answer.
 
 ### req.tasks.merging-recorded — A merge is recorded before it touches the primary branch
 
@@ -554,22 +531,10 @@ merge of a task that repairs what the update found still lifts the barrier.
 
 ### req.tasks.merge-incomplete-refused — Nothing builds on an unchecked merge
 
-While a task is stored as `merging` and no live process holds the merge lock, these commands SHALL
-refuse for every task, changing nothing, with the result and details below:
-
-- `concorde task open`
-- `merge`
-- `close`
-- `session`
-- `escalate`
-
-The refusal uses `merge_incomplete` and names:
-
-- The merging task.
-- The commit before its merge.
-- Its merge commit.
-- The primary branch's head.
-- The `--resume` and `--abort` recovery.
+While a task is stored as `merging` and no live process holds the merge lock, `concorde task open`,
+`merge`, `close`, `session` and `escalate` SHALL refuse with `merge_incomplete`, for every task and
+changing nothing, naming the merging task, the commit before its merge, its merge commit, the
+primary branch's head and the `--resume` and `--abort` recovery.
 
 The exceptions are `merge --resume` and `merge --abort` of the merging task itself. These commands
 are never refused:
@@ -591,15 +556,14 @@ While that process still holds the lock, a `session` or `escalate` of the mergin
 
 ### req.tasks.merge-recovery — An interrupted merge is resumed or aborted
 
-Only on the main agent's request, Tasks SHALL finish an interrupted merge through these recovery
-commands:
+Tasks SHALL finish an interrupted merge only on the main agent's request, through these commands:
 
-- When the primary branch's head is still the interrupted merge's commit, `concorde task merge
-<task-id> --resume` reruns the checks that merge recorded. It then closes the task as merged or
-  undoes the merge exactly as an uninterrupted merge does. Otherwise, it refuses with
-  `not_resumable`.
-- `concorde task merge <task-id> --abort` resets the primary branch to the commit before the merge
-  when its head is the merge commit. Either way, the command returns the task to delivered.
+- `concorde task merge <task-id> --resume`, which reruns the checks that merge recorded when the
+  primary branch's head is still the interrupted merge's commit, and otherwise refuses with
+  `not_resumable`. After those checks it closes the task as merged or undoes the merge exactly as an
+  uninterrupted merge does.
+- `concorde task merge <task-id> --abort`, which resets the primary branch to the commit before the
+  merge when its head is the merge commit, and returns the task to delivered.
 
 Under either of these conditions, both commands refuse with `merge_diverged`, touching nothing:
 
@@ -636,12 +600,9 @@ naming the part, and a task resolves nothing.
 
 ### req.tasks.merge-closes-resolved — A merge closes the Issues its task resolves
 
-Once its checks pass and while it holds the merge lock, `concorde task merge` SHALL act on the
-task's Issues as follows:
-
-- The merge closes as `resolved`, with the merge commit as evidence, each Issue of the task's
-  `resolves` that is still open.
-- The merge reports each Issue it could not close as a warning, never as a refusal of the merge.
+Once its checks passed and while it holds the merge lock, `concorde task merge` SHALL close as
+`resolved`, with the merge commit as evidence, each Issue of the task's `resolves` that is still
+open, and report each it could not close as a warning, never as a refusal of the merge.
 
 A failure of the Issues, whatever it is, never keeps the merge from ending the task's sessions and
 printing its result.
@@ -652,11 +613,9 @@ no task resolves an Issue and a merge closes none.
 
 ### req.tasks.merge-own-sources — A merge runs the Concorde it started with
 
-Even when the merge changes Concorde's code in the primary worktree, `concorde task merge` SHALL run
-every step after the merge that it runs in its own process on the Concorde code its process started
-with.
-
-These steps include closing the task and its sessions.
+`concorde task merge` SHALL run every step after the merge that it runs in its own process,
+closing the task and its sessions, on the Concorde code its process started with, even when the
+merge changes that code in the primary worktree.
 
 A merge of a task that changed Concorde itself changes the files of the running Concorde under its
 own process. A module it first needs after the merge would otherwise be the merged version, mixed
@@ -685,12 +644,9 @@ back or left as no Issue write's.
 
 ### req.tasks.merge-nothing-outside — A merge refuses what changed outside every task's reach
 
-Before merging, `concorde task merge` SHALL act on an uncommitted or untracked path outside the
-task's own worktree as follows:
-
-- In the worktree of a task that has ended, it refuses the path, naming each such worktree with its
-  task and its paths.
-- In the worktree of another task that has delivered and waits, it warns without refusing.
+`concorde task merge` SHALL refuse, before merging, an uncommitted or untracked path in the
+worktree of a task that has ended, naming each such worktree with its task and its paths, and warn
+without refusing about one in the worktree of another task that has delivered and waits.
 
 A task changes nothing outside its own worktree. Its session's shell is held to that by its guidance
 alone ([req.task-session.no-sandbox](../task-session/requirements.md#req.task-session.no-sandbox)),
@@ -717,11 +673,9 @@ whichever details below are concerned, and why Tasks cannot handle it:
 
 ### req.tasks.escalation-kept — Escalations keep their whole chain
 
-An escalation SHALL record the escalating session's link in the task's trace node and the decision
-log with causes as follows:
-
-- When the escalation names errors, the link's causes are the escalated errors unchanged.
-- When the escalation names no error, the escalation records that link alone, with no causes.
+An escalation SHALL record the escalated errors unchanged as the causes of the escalating session's
+link, in the task's trace node and the decision log, and an escalation that names no error that
+link alone, with no causes.
 
 ## Delivering without Method
 
@@ -750,16 +704,10 @@ checks.
 
 ### req.tasks.deliver-convention — The delivery commit follows the Kernel's convention
 
-`concorde task deliver` SHALL handle delivery according to these cases:
-
-- With a clean worktree, when the head already is a delivery commit of the workspace that verifies,
-  the command reports that head as delivered without committing.
-- Otherwise, the command commits every change of the task's worktree that Git does not ignore as one
-  commit with these properties:
-
-  - The subject is `concorde: deliver <task-id>`.
-  - The body is the task's goal.
-  - The only parent is the task branch's head.
+`concorde task deliver` SHALL commit every change of the task's worktree that Git does not ignore
+as one commit with the subject `concorde: deliver <task-id>`, the task's goal as body and the task
+branch's head as its only parent, and report a head that already is a delivery commit of the
+workspace that verifies, with a clean worktree, as delivered without committing.
 
 The commit follows the Kernel's [convention](../../kernel/contracts.md#delivery-commit), so Tasks
 derives `delivered` from it as from any delivery commit.
@@ -768,13 +716,9 @@ derives `delivered` from it as from any delivery commit.
 
 ### req.tasks.main-named — The record names the main agent's session to report to
 
-Tasks SHALL keep each task record's information about the
-[main agent](../../glossary.json#concept.main-agent)'s sessions as follows:
-
-- The record names the main agent's session its task sessions report to.
-- Only recording a task session started with `--main` or `concorde task rebind` changes the session
-  the record names for reports.
-- The record keeps every session named for the task before, in order.
+Tasks SHALL keep in each task record the [main agent](../../glossary.json#concept.main-agent)'s
+session its task sessions report to, changed only by recording a task session started with
+`--main` and by `concorde task rebind`, with every session named for the task before, in order.
 
 A Claude Code session's name does not survive a restart or resume of the session. For that reason,
 the name a task session was started with may no longer reach anyone. The record holds the name that
@@ -795,25 +739,19 @@ The message is then only the wake-up: a message that reaches nobody loses nothin
 
 ### req.tasks.report-answered — An answer marks a report answered, once
 
-`concorde task answer` SHALL handle each named report of the task record as follows:
-
-- When the report has an answer, the command refuses with `already_answered` and never replaces the
-  answer.
-- Otherwise, the command records the main agent's answer on the report and appends the answer to the
-  decision log.
+`concorde task answer` SHALL record the main agent's answer on each named report of the task
+record and append it to the decision log, refusing with `already_answered` a report that has an
+answer, which it never replaces.
 
 A report without an answer is unanswered. A main agent that lost its messages reads unanswered
 reports first.
 
 ### req.tasks.end-settles-reports — A task's end answers its unanswered reports
 
-When `concorde task merge` or `concorde task close` ends a task, Tasks SHALL answer every still
-unanswered report of its record as follows:
-
-- Tasks records the answer in the write that ends the task.
-- That merge or close answers the report, not the main agent.
-- The answer says how the task ended.
-- The closing entry of the decision log names that answer with those reports.
+When `concorde task merge` or `concorde task close` ends a task, Tasks SHALL answer every report of
+its record still unanswered, in the write that ends the task, as answered by that merge or close
+and not by the main agent, with an answer saying how the task ended, which the closing entry of
+the decision log names with those reports.
 
 Once its task ends, nobody may answer a report. For that reason, a report left unanswered then would
 look pending forever to a main agent reading the task after a restart.
@@ -828,18 +766,15 @@ that still name its former name.
 
 ### req.tasks.old-records-read — A record written before its main is read with one
 
-Tasks SHALL read older task records according to these cases:
+Tasks SHALL read a task record written before the current version by its `schema_version`:
 
-- A task record of `schema_version` 2 predates the record naming the main agent's sessions and
-  holding reports. Tasks reads it as follows:
-
-  - The record names the sessions its task sessions' nodes name.
-  - The latest session is its main.
-  - The record holds no reports.
-- A record of `schema_version` 3 predates an answer saying who gave it. Tasks reads it as holding
-  answers the main agent gave.
-- A record of `schema_version` 4 or earlier predates a task naming the Issues it resolves. Tasks
-  reads it as resolving none.
+- A record of `schema_version` 2, written before the record named the main agent's sessions and
+  held reports, as naming the sessions its task sessions' nodes name, the latest as its main, and
+  holding no reports.
+- A record of `schema_version` 3, written before an answer said who gave it, as holding answers the
+  main agent gave.
+- A record of `schema_version` 4 or earlier, written before a task named the Issues it resolves, as
+  resolving none.
 
 Tasks open across the change keep working. Their next change writes the current version. Their
 trace is unchanged, so a task worktree that still runs an earlier Concorde escalates there as
