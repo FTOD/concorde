@@ -37,6 +37,7 @@ DECLARED = {
     "code_review": ("worker",),
     "survey": ("worker",),
     "code_to_spec": ("worker",),
+    "general": ("worker", "reviewer"),
 }
 
 

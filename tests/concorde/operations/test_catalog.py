@@ -115,6 +115,7 @@ class CatalogTests(unittest.TestCase):
                 "code_review": "module.code-review",
                 "survey": "module.adoption",
                 "code_to_spec": "module.adoption",
+                "general": "module.general-work",
                 "task-validation": "module.validation",
                 "delivery": "module.delivery",
                 "scaffold": "module.scaffold",

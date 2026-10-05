@@ -137,6 +137,12 @@ only the map. Tests never read that map.
 Concorde's own Operations and worker agents may be used on this checkout.
 They are still in early development, so using them is optional.
 Whenever direct work is more reliable, do the work directly.
+When you hand bounded work to an AI, never run `pi` or `claude` yourself.
+A program you start this way takes the developer's whole configuration.
+That configuration loads the developer's packages, tools and this checkout's `CLAUDE.md`.
+The program then believes it is a Concorde main agent, and nothing bounds its writes.
+Run `python3 scripts/concorde.py run general` instead.
+Its worker runs isolated, under a grant, and a second worker reviews the result.
 @prompts/dogfooding/common/observe-runs.md
 If any of the following shows an obvious problem, fix it directly in the sources:
 

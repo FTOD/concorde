@@ -7,6 +7,8 @@ changing a project, built from the other parts. It provides:
 
 - The [Operations](../glossary.json#concept.operation) in which AI workers understand, specify,
   implement, test and review a project.
+- The Operation `general`, in which a worker does free-form work under a chosen task type's grant
+  and a second worker reviews it.
 - The Adoption route that describes code which came before its Specs.
 - The [execution commands](../glossary.json#concept.execution-command) that decide readiness,
   deliver and scaffold.
@@ -79,6 +81,7 @@ Method registers these definitions with Execution, whose
 | `code_review` | [Code review](code-review/module.md) | `review-code` | `worker` | yes (`--base` for a change review) | no | a code review report of a change or of whole Modules, and a verdict ([contract](code-review/contracts.md#contract.code-review.review)) |
 | `survey` | [Adoption](adoption/module.md) | `code-to-spec`, writes withheld | `worker` | yes | no | a [decomposition proposal](adoption/contracts.md#contract.adoption.decomposition) |
 | `code_to_spec` | [Adoption](adoption/module.md) | `code-to-spec` | `worker` | no | Specs of the bound Modules, the registry mirror and the `verifies` links of the existing tests it describes | a [Spec description](adoption/contracts.md#contract.adoption.spec-description) |
+| `general` | [General work](general-work/module.md) | the one `--type` names, for both workers; writes withheld for the reviewer, and for the worker with `--read-only` | `worker`, `reviewer` | yes, read-only | what the named type's grant makes writable | the worker's answer, the observed change and an independent review with a verdict ([contract](general-work/contracts.md#contract.general-work.result)) |
 
 "May change" covers both what a worker's grant makes writable and what the provider's own host
 steps change in the workspace. Each provider's Spec gives the rule. Method registers three
@@ -357,10 +360,11 @@ The sections are registered under `guidance` in the part's registration. Whereve
 installed, [Distribution](../distribution/module.md#guidance-composition) composes them after
 Coordination's working method. They are:
 
-- The project skill's "Operations", with the brownfield workflow.
+- The project skill's "Operations", with `general` and the brownfield workflow.
 - The [task-session](../glossary.json#concept.task-session) prompt's "Method's Operations", with:
   - Preparing the workers' environment.
   - `plan_review`.
+  - `general` for free-form AI work, instead of an agent program started directly.
   - Delivering with `task-validation` and `delivery`.
   - The reviews.
 - The `CLAUDE.md` block's sentence on `brownfield`.
@@ -430,6 +434,16 @@ returns one run result through the ordinary steps.
 Specs for a project whose code came before them. A read-only survey proposes child Modules. The
 execution command `scaffold` creates them between the two Operations. `code-to-spec` workers
 describe each Module's code. The brownfield workflow usually runs them in that order.
+
+<a id="contains-general-work"></a>
+
+**General work** provides `general`. A worker does free-form work that the caller's instruction
+describes. The grant of a task type the caller names bounds it. A second worker, the reviewer,
+then judges the result against the instruction, changing nothing. The Operation observes the change
+itself, from Git trees of the worktree before and after the worker. It derives the verdict from
+the reviewer's findings. The findings stay in the run result and never become Issues. `general`
+is how the task level runs bounded AI work that no other Operation fits, instead of starting an
+agent program itself. It may run unbound with a type that writes nothing or with `--read-only`.
 
 <a id="contains-validation"></a>
 

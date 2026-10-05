@@ -68,6 +68,7 @@ their worker ids as follows:
 - Most Operations with one worker name theirs `worker`.
 - `plan_review` names its worker `reviewer`.
 - `spec_review` names its workers `reviewer` and `checker`.
+- `general` names its workers `worker` and `reviewer`.
 
 Where the method part is installed, `spec_panel` names its workers as follows:
 

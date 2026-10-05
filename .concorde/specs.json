@@ -714,6 +714,50 @@
       "participates": []
     },
     {
+      "id": "module.general-work",
+      "title": "General work",
+      "entry": "specs/concorde/method/general-work/module.md",
+      "owns": [
+        "specs/concorde/method/general-work/module.md",
+        "specs/concorde/method/general-work/requirements.md",
+        "specs/concorde/method/general-work/scenarios.md",
+        "specs/concorde/method/general-work/contracts.md"
+      ],
+      "contains": [],
+      "uses": [
+        {
+          "target": "module.operations",
+          "meaning": "#uses-operations"
+        },
+        {
+          "target": "module.execution",
+          "meaning": "#uses-execution",
+          "relies_on": [
+            "concept.execution-runner",
+            "concept.run-result",
+            "concept.unbound-run",
+            "concept.unbound-checkout"
+          ]
+        },
+        {
+          "target": "module.workers",
+          "meaning": "#uses-workers"
+        },
+        {
+          "target": "module.spec",
+          "meaning": "#uses-spec"
+        }
+      ],
+      "includes": [
+        {
+          "kind": "document",
+          "target": "document.tracing.contracts",
+          "reason": "the Framework's error contract, which this Module's errors follow"
+        }
+      ],
+      "participates": []
+    },
+    {
       "id": "module.harness",
       "title": "Harness",
       "entry": "specs/concorde/worker-harness/harness/module.md",
@@ -1107,6 +1151,10 @@
         {
           "target": "module.adoption",
           "meaning": "#contains-adoption"
+        },
+        {
+          "target": "module.general-work",
+          "meaning": "#contains-general-work"
         },
         {
           "target": "module.validation",
