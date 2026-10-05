@@ -115,9 +115,12 @@ Tasks SHALL refuse to open a task unless Git ignores its worktree path in the pr
 
 ### req.tasks.one-worktree — One branch and one worktree per task
 
-Opening a task SHALL create exactly one new branch `concorde/<task-id>` and one new worktree
-checked out on it, at `.claude/worktrees/<task-id>` of the primary worktree and nowhere else, where
-every worktree workers work in lives.
+Opening a task SHALL create exactly one new branch and one new worktree as follows:
+
+- The new branch is `concorde/<task-id>`.
+- The new worktree is checked out on that branch.
+- The new worktree is at `.claude/worktrees/<task-id>` of the primary worktree and nowhere else,
+  where every worktree workers work in lives.
 
 When any of the following is already taken, opening refuses, so no two tasks ever share a branch or
 a worktree:
@@ -277,8 +280,8 @@ SHALL NOT remove a worktree that has uncommitted changes.
 Closing or merging a task SHALL NOT change the repository's configuration that every worktree
 shares, `.git/config` of the primary worktree.
 
-The task's worktree is removed with its submodules' checkouts and their repositories, but the submodules
-stay registered for the primary worktree and every other task worktree.
+The task's worktree is removed with its submodules' checkouts and their repositories, but the
+submodules stay registered for the primary worktree and every other task worktree.
 
 ### req.tasks.refusal-inert — A refusal changes nothing
 
