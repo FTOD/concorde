@@ -1,6 +1,6 @@
 # Spec Protocol
 
-Concorde Spec Protocol **16.3** describes a project as a set of Modules connected by declared
+Concorde Spec Protocol **16.4** describes a project as a set of Modules connected by declared
 relations. Each Module explains one responsibility. Concorde Spec Protocol serves two purposes:
 
 1. **Understanding** — a human grasps these quickly from the project's specification, ultimately
@@ -72,7 +72,7 @@ declared relations or are marked illustrative.
    - Checked D2 diagrams.
    - Illustrative blocks.
 9. [Migration](migration.md) — what changed from version 10, in 11.1, in 13, 13.1, 13.2, 13.3, 14,
-   15, 15.1, 16, 16.1, 16.2, 16.2.1 and 16.3.
+   15, 15.1, 16, 16.1, 16.2, 16.2.1, 16.3 and 16.4.
 10. [`model.yaml`](model.yaml) — the machine-readable vocabulary.
 11. Templates: [Module](templates/module.md) and [Scenario fragment](templates/scenario.md).
 

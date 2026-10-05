@@ -75,7 +75,8 @@ you can establish in the Specs as one finding:
 Judge the sentences by the Sentence style as part of `readability`. The style checks already
 report these problems:
 
-- Every sentence of more than 35 words, and every concept definition of more than 50 words.
+- Every sentence of more than 35 words, and every concept definition of more than 50 words. The
+  statement of a requirement is not measured.
 - Every semicolon in prose.
 - Every sentence with more than one requirement keyword.
 
@@ -85,10 +86,24 @@ Do not report those. Report what no check decides, such as:
 - A run of clauses that should be a list.
 - A condition that comes after its statement.
 
+Report also each drift that a rewrite for shorter sentences can cause. Each drift changes what the
+text means:
+
+- One obligation split into separate rules, such as a list whose items are obligations of their
+  own instead of conditions of the statement.
+- A condition, exception or failure moved out of the statement of its requirement.
+- A condition moved away from what it limits, such as a limit of one action placed before the
+  subject of the whole obligation.
+- The subject of an obligation changed to a party that does not bear it, or an actor that the text
+  did not name before.
+- A dropped word that links or limits facts, such as "since", "because", "so that", "only", "each",
+  "every" or "never".
+
 Group the instances of one kind in one document into one finding. In that finding, quote the worst
 of them.
 While a reader still understands the sentence correctly, such a finding is a `suggestion` of
 severity `low`. When a reader cannot tell who must act or what is required, the finding is blocking.
+A drift that changes what a requirement requires or who bears it is blocking too.
 
 A missing helpful diagram is a `readability` `suggestion`. For that finding:
 

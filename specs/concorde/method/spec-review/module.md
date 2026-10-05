@@ -279,9 +279,17 @@ these problems as warnings:
 - Sentences with several requirement keywords.
 
 A reviewer therefore does not report them again. A reviewer reports what no check decides, such as
-a requirement that hides its actor in the passive voice. It groups the instances of one kind in one
-document into one finding. While a reader still understands the text correctly, such a finding is
-a `suggestion`.
+a requirement that hides its actor in the passive voice. It also reports each drift that a rewrite
+for shorter sentences can cause:
+
+- One obligation split into separate rules.
+- A condition moved out of its requirement's statement or away from what it limits.
+- The subject of an obligation changed, or an actor added that the text did not name.
+- A dropped word that links or limits facts, such as "since", "only" or "every".
+
+It groups the instances of one kind in one document into one finding. While a reader still
+understands the text correctly, such a finding is a `suggestion`. A drift that changes what a
+requirement requires or who bears it is blocking.
 
 <a id="realization.spec-review.panel"></a>
 

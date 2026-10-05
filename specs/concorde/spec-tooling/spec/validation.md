@@ -26,7 +26,7 @@ strictness. Validation evaluates all of them. They fall into seven families:
 | Relations | Relations at the wrong site, unresolved targets, composition cycles, registry drift, bad bindings, unbound files, name collisions, contract participation | a [Module](../../glossary.json#concept.module) that uses itself, or a file no Module binds |
 | Views | Mermaid blocks, checked D2 diagrams outside `module` reading or outside the semantic subset, and checked diagrams whose shapes, nesting or edges assert something undeclared | a Module drawn inside another that does not contain it |
 | Reconciliation | A declaration that requires a definition the Module's context does not contain | a `relates` to another Module's realization whose document the Module never selects |
-| Style | A sentence of a document's reading with more than 35 words, a concept definition with more than 50 words, a semicolon in prose or a sentence with more than one requirement keyword, in a document's reading or a concept definition (warnings) | a requirement that joins three conditions with semicolons |
+| Style | A sentence of a document's reading with more than 35 words except a requirement's statement, a concept definition with more than 50 words, a semicolon in prose or a sentence with more than one requirement keyword, in a document's reading or a concept definition (warnings) | a requirement that joins three conditions with semicolons |
 
 The style checks measure the Protocol's *Sentence style* (`protocol/style.md`) in the prose of
 every document and in every concept definition. They see the prose as a reader sees it. They leave
@@ -39,7 +39,9 @@ out:
 - HTML anchors are left out.
 
 A link counts as its text. An inline code span counts as one word. Each paragraph and each list
-item is split into sentences by the sentence-break rule that `CHK.concept.definition` uses.
+item is split into sentences by the sentence-break rule that `CHK.concept.definition` uses. The
+length check skips the statement of a requirement, the first sentence after its heading, since that
+sentence keeps one obligation with all its conditions.
 
 Most families look at one document at a time. A relation's target, a registry record or a context
 selection lives elsewhere. Therefore, Relations and Reconciliation look across the whole project.

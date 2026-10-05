@@ -400,6 +400,45 @@ class CheckTests(unittest.TestCase):
         self.assertIn("sentence of 51 words, more than 50", finding.message)
 
     @verifies("scenario.spec.style-warnings")
+    def test_a_requirement_statement_is_not_measured_for_length(self):
+        long = " ".join(["word"] * 35)
+        self.edit(
+            "specs/provider/obligations.md",
+            "The provider SHALL keep every stored thing.\n",
+            f"The provider SHALL keep every stored thing, {long}, so that none is lost.\n\n"
+            f"An explanation {long} end.\n\n"
+            f"- A condition {long} end.\n",
+        )
+        found = [
+            (f.line, f.message)
+            for f in self.project.findings("CHK.style.sentence-length")
+            if f.source == "specs/provider/obligations.md"
+        ]
+        # Only the explanation and the list item are measured: the statement keeps its one
+        # obligation whole, whatever its length.
+        self.assertEqual(2, len(found), found)
+        self.assertTrue(found[0][1].startswith("sentence of 38 words"), found)
+        self.assertTrue(found[1][1].startswith("sentence of 38 words"), found)
+        self.assertNotIn(
+            "The provider SHALL", " ".join(message for _, message in found)
+        )
+
+    @verifies("scenario.spec.style-warnings")
+    def test_a_requirement_statement_keeps_the_other_style_checks(self):
+        self.edit(
+            "specs/provider/obligations.md",
+            "The provider SHALL keep every stored thing.\n",
+            "The provider SHALL keep every stored thing; it MUST NOT lose one.\n",
+        )
+        rules = {
+            f.rule_id
+            for f in self.project.validate().findings
+            if f.source == "specs/provider/obligations.md"
+            and f.rule_id.startswith("CHK.style.")
+        }
+        self.assertEqual({"CHK.style.semicolon", "CHK.style.one-obligation"}, rules)
+
+    @verifies("scenario.spec.style-warnings")
     def test_only_prose_is_measured_as_a_reader_sees_it(self):
         text = (
             "---\naudience: shared\n---\n\n"
