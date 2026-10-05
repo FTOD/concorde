@@ -165,7 +165,7 @@ No ordinary subprocess and no weaker boundary is used instead.
 
 ### req.checks.fresh-scratch — Every run has its own scratch
 
-For every run, the check runner SHALL provide a new writable scratch directory outside the project.
+Every run SHALL receive a new writable scratch directory outside the project.
 
 ### req.checks.scratch-removed — A scratch outlives no process of its run
 

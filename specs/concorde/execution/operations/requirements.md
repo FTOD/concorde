@@ -48,11 +48,9 @@ remain, Adoption's `code_to_spec` ends `blocked`
 
 ### req.operations.model-work-only — Every Operation has model work
 
-Every Operation in the catalog SHALL do both of these:
-
-- declare at least one [worker id](../../glossary.json#concept.worker-id)
-- ask the worker harness to launch at least one AI worker on a run whose worker step settles the
-  worker's grant, backend and model
+Every Operation in the catalog SHALL declare at least one
+[worker id](../../glossary.json#concept.worker-id) and ask the worker harness to launch at least
+one AI worker on a run whose worker step settles the worker's grant, backend and model.
 
 When a run is refused before that worker step, it launches no worker. For example, when a run's
 [worker configuration](../../glossary.json#concept.worker-configuration) cannot be read, the run is

@@ -105,12 +105,8 @@ records of that trace.
 
 ### req.checks.timing-passive — Recording never changes the work
 
-When recording, persisting or failing to persist a diagnostic span, the timing recorder SHALL NOT
-change these aspects of the work the span describes:
-
-- the outcome
-- the retry behaviour
-- the authority
+Recording, persisting or failing to persist a diagnostic span SHALL NOT change the outcome, the
+retry behaviour or the authority of the work it describes.
 
 A sink failure marks the trace incomplete. The sink failure writes one
 `CONCORDE_TIMING_INCOMPLETE` line to standard error. Nothing else follows from the sink failure.
@@ -128,12 +124,8 @@ A diagnostic span SHALL NOT contain any of this content:
 
 ### req.checks.timing-unknown — Unreported figures stay unknown
 
-For any of these figures that the observed work did not report, the timing recorder SHALL record
-and summarize the figure as null, never as zero:
-
-- a count
-- a duration
-- a context figure
+A count, duration or context figure that the observed work did not report SHALL be recorded and
+summarized as null, never as zero.
 
 ### req.checks.timing-per-process — Durations are never compared across processes
 

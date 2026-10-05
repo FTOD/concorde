@@ -414,12 +414,8 @@ The check's own `env` and the scratch settings of [the boundary](boundary.md) ar
 
 ### req.checks.measured-input-unchanged — A check cannot vouch for input that changed
 
-When any of the following measured inputs differ after the run from before it, the service SHALL
-fail the configured check run with `stale_evidence`:
-
-- implementation files
-- check inputs
-- selected tests
+When the implementation files, check inputs or selected tests it measured differ after the run
+from before it, a configured check run SHALL fail with `stale_evidence`.
 
 ### req.checks.selection-measured — A selective result names its selection
 

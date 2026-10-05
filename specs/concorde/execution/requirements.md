@@ -9,12 +9,8 @@ The [scenarios](scenarios.md) show the obligations at work.
 
 ### req.execution.binding-read-only — The binding is only read
 
-No part of Execution SHALL do any of the following to a
-[workspace binding](../glossary.json#concept.workspace-binding):
-
-- write it
-- change it
-- remove it
+No part of Execution SHALL write, change or remove a
+[workspace binding](../glossary.json#concept.workspace-binding).
 
 ### req.execution.no-task-knowledge — Execution knows no task
 
@@ -28,7 +24,7 @@ No part of Execution SHALL read or write any of this state, so that everything a
 
 No part of Execution SHALL read a [Spec](../glossary.json#concept.spec).
 
-So the runner treats the [Modules](../glossary.json#concept.module) a run names as names. A
+So the runner treats the [Modules](../glossary.json#concept.module) a run names as names, and a
 definition that reads the Specs admits them itself, as Method's do. Execution installs and runs
 with the kernel part alone.
 
@@ -61,15 +57,14 @@ before any step:
 
 Every `concorde run` or [execution command](../glossary.json#concept.execution-command) started in
 a Git worktree, whose whole command line is accepted and names a known
-[Operation](../glossary.json#concept.operation) or command, SHALL write exactly one run result in
-every case except these:
+[Operation](../glossary.json#concept.operation) or command, SHALL write exactly one run result,
+also when the run is refused, fails or is cancelled by `SIGINT` or `SIGTERM`, except when any of
+these conditions holds:
 
 - It was started with `--detach` and reported `detach_failed`.
 - Its first records could not be created (`run_unrecorded`).
 - A final write of its records failed (`result_unsaved`).
 - Its runner was killed by a signal it cannot handle, such as `SIGKILL`, before writing the result.
-
-Every case includes a run that is refused, fails or is cancelled by `SIGINT` or `SIGTERM`.
 
 A malformed command line, including one with an unknown argument, starts no run and writes no
 result (exit status 2). A command line started outside every Git worktree also starts no run and
@@ -135,12 +130,8 @@ A run result SHALL carry an error exactly when its status is not `ok`.
 
 ### req.execution.error-chain — The run's own link is on top of what it received
 
-The run result SHALL place the run's own link at the top of its error, with errors from these
-sources as its causes:
-
-- the worker runs the run called
-- the checks the run called
-- the components the run called
+The top link of a run result's error SHALL be the run's own link, with the errors of the worker
+runs, checks or components the run called as its causes.
 
 ### req.execution.reasons — The run says why it cannot handle the error
 
@@ -158,9 +149,9 @@ The run's own link SHALL name all of these:
 
 ### req.execution.output-checked — Outputs match their contract
 
-Before writing results failing the run result contract or `ok` results whose `output` fails the
-definition's output contract, the runner SHALL replace them by `failed` results satisfying the run
-result contract.
+The runner SHALL replace a result that fails the run result contract, or an `ok` result whose
+`output` fails the definition's output contract, by a `failed` result that satisfies the run
+result contract before writing it.
 
 Of what the steps left, the replacement keeps only what satisfies the contract, as
 [Composing the result](runner.md#composing-the-result) says. A result fails the contract when its
@@ -194,15 +185,13 @@ While a run waits for its workspace's lock, its
 
 ### req.execution.workspace-wait-continues — A waiting run goes on once the lock is free
 
-With `--wait <seconds>`, the runner SHALL do both of these:
-
-- take a busy workspace's lock as soon as it is free within that time
-- go on with the run from its admission, as for a run that found the workspace free
+With `--wait <seconds>`, the runner SHALL take a busy workspace's lock as soon as it is free within
+that time and go on with the run from its admission, as for a run that found the workspace free.
 
 ### req.execution.unbound-read-only — Only a definition that allows it runs unbound
 
-Only for a definition that allows unbound runs SHALL the runner admit an
-[unbound run](../glossary.json#concept.unbound-run).
+An [unbound run](../glossary.json#concept.unbound-run) SHALL be admitted only for a definition that
+allows unbound runs.
 
 ### req.execution.no-writing-worker — An unbound run launches no writing worker
 
@@ -345,12 +334,8 @@ inadmissible input. No version field or migration exists, since runs are short-l
 
 ### req.execution.detached-same-run — A detached run is an ordinary run
 
-A run started with `--detach` SHALL do each of the following exactly as the same run started
-without it:
-
-- check
-- record
-- report
+A run started with `--detach` SHALL check, record and report exactly as the same run started
+without it.
 
 ### req.execution.detached-announced — A detached run is announced once it exists
 
@@ -371,8 +356,8 @@ wait runs out, the command reports `detach_failed` instead.
 
 A command started with `--detach` SHALL end the runner before it reports `detach_failed`.
 
-So an unannounced runner never starts its run later. Running the command again starts a new run
-with nothing to repeat.
+So an unannounced runner never starts its run later, and so running the command again starts a new
+run with nothing to repeat.
 
 ### req.execution.detach-failed-leaves-nothing — An unannounced run leaves nothing behind
 
@@ -395,7 +380,7 @@ writes all of the following:
 - its final `trace.json`
 
 However the runner ends, the operating system releases the lock. So a run is running exactly
-while its run lock is held. A run without a result whose lock nobody holds is lost
+while its run lock is held. So a run without a result whose lock nobody holds is lost
 ([Run progress file](runner.md#run-progress-file)). Whoever prepared a workspace reads its runs
 through this lock and the records the [run store](../glossary.json#concept.run-store) keeps. The
 run store keeps those records in the workspace folder and the [lobby](runner.md#the-lobby). To
