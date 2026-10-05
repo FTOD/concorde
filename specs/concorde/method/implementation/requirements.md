@@ -89,17 +89,15 @@ whether the check passed or not.
 
 ### req.implementation.test-failures-accounted — Each failed check is interpreted once
 
-When, after one resume round with every mismatch, its worker's `failures` violate any of these
-conditions, the test Operation SHALL end the run `failed` with `failures_unaccounted`:
+The test Operation SHALL end the run `failed` with `failures_unaccounted` when its worker's
+`failures`, after one resume round with every mismatch, do not hold exactly one entry per check that
+did not pass, named by that check's identity, and none for a check that passed.
 
-- They hold exactly one entry per check that did not pass.
-- Each entry is named by that check's identity.
-- They hold no entry for a check that passed.
-
-The test Operation gives the resume round only when the first answer does not hold. The
-entries' contents stay the worker's interpretation.
+The resume round is given only when the first answer does not hold. The entries' contents stay the
+worker's interpretation.
 
 ### req.implementation.host-check-facts — Check outcomes come from the Operation
 
-The Operation SHALL use its recorded [check results](../../glossary.json#concept.check-result) as
-the check outcomes in a code change or a test report, never the worker's statement of them.
+The check outcomes in a code change or a test report SHALL be the
+[check results](../../glossary.json#concept.check-result) the Operation recorded, never the worker's
+statement of them.

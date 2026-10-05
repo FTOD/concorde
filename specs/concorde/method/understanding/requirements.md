@@ -99,15 +99,13 @@ The `plan_review` Operation SHALL brief its reviewer with the goal of the worksp
 [workspace binding](../../glossary.json#concept.workspace-binding) lies in the worktree the run
 starts in.
 
-A worktree without a binding has no goal to review the plan against. The run is refused there.
+A worktree without a binding has no goal to review the plan against, so the run is refused there.
 
 ### req.understanding.plan-review-kept — The reviewed plan is kept
 
-The `plan_review` Operation SHALL do both of these:
-
-- Keep an exact copy of the plan file it reviews in the run's
-  [trace node](../../glossary.json#concept.trace-node).
-- Return that copy's path and the digest of its bytes in the report.
+The `plan_review` Operation SHALL keep an exact copy of the plan file it reviews in the run's
+[trace node](../../glossary.json#concept.trace-node) and return that copy's path and the digest of
+its bytes in the report.
 
 Before any worker launches, a plan file with any of these problems ends the run `failed` with
 `plan_unreadable`:
@@ -119,14 +117,11 @@ Before any worker launches, a plan file with any of these problems ends the run 
 
 ### req.understanding.plan-review-read-only — The reviewer reads Specs and code and writes nothing
 
-The `plan_review` Operation SHALL run one reviewer under all of these constraints:
-
-- The reviewer has [worker id](../../glossary.json#concept.worker-id) `reviewer`.
-- The reviewer runs under the bound Modules' `review-code`
-  [grant](../../glossary.json#concept.grant).
-- The reviewer has no writable path.
-- The Operation runs no [configured check](../../glossary.json#concept.configured-check).
-- The reviewer has no [resume round](../../glossary.json#concept.resume-round).
+The `plan_review` Operation SHALL run one reviewer,
+[worker id](../../glossary.json#concept.worker-id) `reviewer`, under the bound Modules'
+`review-code` [grant](../../glossary.json#concept.grant), with no writable path, no
+[configured check](../../glossary.json#concept.configured-check) and no
+[resume round](../../glossary.json#concept.resume-round).
 
 Any violation the [write audit](../../glossary.json#concept.write-audit) finds ends the run
 `failed`. The changed paths are host evidence.

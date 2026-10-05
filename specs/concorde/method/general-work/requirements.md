@@ -62,10 +62,8 @@ writable level lowered to read.
 
 ### req.general-work.review-material — The reviewer sees the instruction and the change
 
-The `general` Operation SHALL give the reviewer the instruction, the observed change and the
-earlier content of every changed file.
-
-The worker's answer is given too, marked as a claim to check.
+The `general` Operation SHALL give the reviewer the instruction, the observed change, the earlier
+content of every changed file and the worker's answer, marked as a claim to check.
 
 ### req.general-work.verdict — The verdict follows the findings
 

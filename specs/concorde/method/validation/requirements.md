@@ -66,9 +66,9 @@ therefore needs no binding of its own.
 
 ### req.validation.read-only — A task-validation run changes nothing in the workspace
 
-Outside its own [trace node](../../glossary.json#concept.trace-node) and the locks directory its
-binding names, a `task-validation` run SHALL NOT change any file, index entry, branch or commit of
-the workspace.
+A `task-validation` run SHALL NOT change any file, index entry, branch or commit of the workspace
+outside its own [trace node](../../glossary.json#concept.trace-node) and the locks directory its
+binding names.
 
 ## The workflow handoff
 
@@ -81,7 +81,5 @@ For every task-validation run that decided a readiness, the output SHALL carry t
 - When the workspace is not ready, a `blocking` item naming the blocking findings.
 
 A run that found the workspace not ready ends `blocked`. This stops a workflow already. The
-`blocking` item says the same in the convention. A workflow reads only the convention of a run's
-output. The decision therefore never depends on a run's status alone
-([contracts](contracts.md#readiness)).
-
+`blocking` item says the same in the convention, which is all a workflow reads of a run's output, so
+that the decision never depends on a run's status alone ([contracts](contracts.md#readiness)).

@@ -51,39 +51,31 @@ not installed, there are none. In that case, the workers receive none.
 
 ### req.spec-review.reports-issues — Every finding that stands becomes an Issue where Issues exist
 
-For every finding its checker did not dispute or its chair merged into the panel report, the
-Operation SHALL do the following:
-
-- Wherever the issues part is installed, report it as an
-  [Issue report](../../glossary.json#concept.issue-report) through the Issue store.
-- Otherwise, keep it in its result with its tier and severity.
-- In that case, record nothing outside the run.
-- In that case, say in its result that the findings were not recorded as Issues.
+The Operation SHALL report every finding its checker did not dispute, or its chair merged into the
+panel report, as an [Issue report](../../glossary.json#concept.issue-report) through the Issue store
+wherever the issues part is installed, and otherwise keep every such finding in its result with its
+tier and severity, recording nothing outside the run and saying in its result that the findings were
+not recorded as Issues.
 
 A worker never writes an Issue. The Operation reports in bound and unbound runs alike. Issues is an
 [optional integration](../../glossary.json#concept.optional-integration) of the method part. The
-review's judgement and its verdict are the same either way. Without Issues, the verdict follows
-from the blocking findings that stand. Otherwise, it follows from the Issues they became.
+review's judgement and its verdict are the same either way. Without Issues, the verdict follows from
+the blocking findings that stand. Otherwise, it follows from the Issues they became.
 
 ### req.spec-review.blank-earlier — An empty earlier names no Issue
 
-The Operation SHALL handle the `earlier` of a worker's finding as follows:
-
-- When it is empty or blank, treat it as naming no earlier Issue, as if the field were left out.
-- For every other `earlier`, check it against the earlier Issues the Operation offered.
+The Operation SHALL treat a worker's finding whose `earlier` is empty or blank as naming no earlier
+Issue, as if the field were left out, while every other `earlier` is checked against the earlier
+Issues it offered.
 
 A worker may write an empty `earlier` for a new finding instead of leaving the field out. Refusing
 its whole result for it would lose every other finding of that worker.
 
 ### req.spec-review.finding-path — A finding whose path does not hold is rejected alone
 
-When a worker's findings name a path that is not one of the workspace, the Operation SHALL do all
-of these:
-
-- Resume the worker once, with those paths to correct.
-- Then report no finding whose path still does not hold.
-- List each such finding as rejected with the reason.
-- Still report every other finding of that worker.
+The Operation SHALL resume a worker whose findings name a path that is not one of the workspace
+once, with those paths to correct, and then report no finding whose path still does not hold,
+listing it as rejected with the reason and still reporting every other finding of that worker.
 
 A path that does not hold is a slip of one finding. The worker gets one chance to correct it.
 Afterwards, it costs only that finding. The Module is not made `incomplete` for it.
