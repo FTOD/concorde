@@ -69,47 +69,36 @@ as its only parent.
 
 ### req.delivery.marked — Every delivery commit is marked by its subject
 
-Delivery SHALL do all of these:
-
-- Give every delivery commit the subject `concorde: deliver <workspace>`.
-- Give no other commit it creates that subject.
-- Make the commit even when it changes nothing.
+Delivery SHALL give every delivery commit the subject `concorde: deliver <workspace>` and give no
+other commit it creates that subject, making the commit even when it changes nothing.
 
 ### req.delivery.commit-verified — The commit is proven to hold what was staged
 
-For a run that created a delivery commit, Delivery SHALL apply these rules:
+Delivery SHALL end a run that created a delivery commit `ok` only when all of these conditions hold,
+and otherwise fail with `commit_unverified`, naming every difference, and take the commit off the
+branch as [req.delivery.rejected-removed](#req.delivery.rejected-removed) requires:
 
-- End the run `ok` only when all of these conditions hold:
-  - The commit's tree is the tree `git write-tree` recorded from the index after staging.
-  - Its subject is exactly the subject of the delivery message Delivery gave Git.
-  - Its only parent is the validated head.
-  - It is the head of the bound branch.
-  - The worktree is clean.
-- Otherwise, fail with `commit_unverified`, naming every difference.
-- In that failure case, take the commit off the branch as
-  [req.delivery.rejected-removed](#req.delivery.rejected-removed) requires.
+- The commit's tree is the tree `git write-tree` recorded from the index after staging.
+- Its subject is exactly the subject of the delivery message Delivery gave Git.
+- Its only parent is the validated head.
+- It is the head of the bound branch.
+- The worktree is clean.
 
-The repository's commit hooks run normally. A hook may change what is committed or the message
-it is committed with. The recorded tree shows each path it changed. The subject shows whether it
-still marks a delivery. Thus, the commit is exactly what was validated and marked as a delivery,
-or the run says it is not. A hook that only adds to the body, such as a `Change-Id` trailer,
-changes no mark and is accepted.
-The commit verified is the one `git commit` names as the one it created, never a commit a
-post-commit hook made on top of it.
+The repository's commit hooks run normally. A hook may change what is committed or the message it is
+committed with. The recorded tree shows each path it changed. The subject shows whether it still
+marks a delivery. Thus, the commit is exactly what was validated, marked as a delivery, or the run
+says it is not. A hook that only adds to the body, such as a `Change-Id` trailer, changes no mark
+and is accepted. The commit verified is the one `git commit` names as the one it created, never a
+commit a post-commit hook made on top of it.
 
 ### req.delivery.rejected-removed — A rejected commit does not stay on the branch
 
-When a delivery commit Delivery created in the run does not verify, Delivery SHALL do all of
-these:
-
-- Move the bound branch back to the validated head only while both of these conditions hold:
-  - That head is the commit's only parent.
-  - The branch still points at the commit.
-- Leave the index and the worktree as they are.
-- Say in the run's error that it took the commit off the branch or, otherwise, that the commit
-  stays and why, with the applicable account:
-  - The branch no longer points at it, naming the commit it points at.
-  - Git refused to move a branch that still points at it, with Git's account.
+When a delivery commit Delivery created in the run does not verify, Delivery SHALL move the bound
+branch back to the validated head, only while that head is the commit's only parent and the branch
+still points at the commit, leave the index and the worktree as they are, and say in the run's error
+that it took the commit off the branch, or otherwise that the commit stays and why: that the branch
+no longer points at it, naming the commit it points at, or that Git refused to move a branch that
+still points at it, with Git's account.
 
 A rejected commit left at the head would carry the subject that alone marks a delivery. Whoever
 reads the branch could therefore take it for one, as
@@ -118,11 +107,8 @@ The index and the worktree keep what the commit held, so that what a hook change
 
 ### req.delivery.history-kept — History is never rewritten
 
-Delivery SHALL NOT do any of these:
-
-- Amend, rebase, merge or push any commit.
-- Move its branch to a commit other than the delivery commit it creates or, when it rejects that
-  commit, back to the head it validated.
+Delivery SHALL NOT amend, rebase, merge or push any commit, nor move its branch to a commit other
+than the delivery commit it creates or, when it rejects that commit, back to the head it validated.
 
 Restoring the index while undoing an uncommitted delivery, as
 [req.delivery.atomic](#req.delivery.atomic) requires, changes no commit. Taking a rejected commit
@@ -131,16 +117,13 @@ only the commit the same run created.
 
 ### req.delivery.atomic — A failed commit gives the validated index back
 
-When staging or the commit fails, Delivery SHALL do all of these:
-
-- Restore the index to the state the readiness examined.
-- Leave the worktree as it is.
-- Name in the run's summary and error every worktree path whose mode or content is no longer what
-  the readiness examined.
+When staging or the commit fails, Delivery SHALL restore the index to the state the readiness
+examined, leave the worktree as it is, and name in the run's summary and error every worktree path
+whose mode or content is no longer what the readiness examined.
 
 A failing commit hook, such as a formatter that rewrites files and then rejects the commit, may
-leave edits in the worktree that the developer wants. Delivery therefore keeps them and names
-them rather than undoing them, as
+leave edits in the worktree that the developer wants. Delivery therefore keeps them and names them
+rather than undoing them, as
 [scenario.delivery.hook-edits-kept](scenarios.md#scenario.delivery.hook-edits-kept) shows. Nothing
 unvalidated is delivered, since the next delivery validates the worktree as it then is.
 
@@ -174,10 +157,9 @@ delivery created none. Its trace still leads to the delivery it reported.
 
 ### req.delivery.recovered-verified — A delivered head is verified before it is reported
 
-Delivery SHALL apply these rules to an existing delivery commit at the branch head:
-
-- Report it as delivered only when it has exactly one parent.
-- Otherwise, fail with `commit_unverified`, naming the mismatch and committing nothing.
+Delivery SHALL report an existing delivery commit at the branch head as delivered only when it has
+exactly one parent, and otherwise fail with `commit_unverified`, naming the mismatch and committing
+nothing.
 
 A delivery commit is recognised by its subject alone. Any commit can carry that subject. A commit
 with another number of parents, such as a merge given the subject, cannot be one Delivery created,
@@ -185,15 +167,12 @@ as [scenario.delivery.recover-unverified](scenarios.md#scenario.delivery.recover
 
 ### req.delivery.recovered-revalidated — A delivered head is validated again before it is reported
 
-Delivery SHALL apply these rules to an existing delivery commit at the branch head:
+Delivery SHALL report an existing delivery commit at the branch head as delivered only when a
+readiness it decided in the same run over every commit since the base commit is ready and, unless
+the run was given `--adoption`, every scenario the workspace added or changed with code has a
+verifying test, and otherwise end `blocked` as a new delivery would, with `not_ready` or
+`unverified_scenarios`, committing nothing.
 
-- Report it as delivered only when all of these conditions hold:
-  - A readiness Delivery decided in the same run over every commit since the base commit is ready.
-  - Unless the run was given `--adoption`, every scenario the workspace added or changed with code
-    has a verifying test.
-- Otherwise, end `blocked` as a new delivery would, with `not_ready` or `unverified_scenarios`,
-  committing nothing.
-
-The subject and the one parent show only that Delivery may have created the commit. They never
-show that what it holds is ready, as
+The subject and the one parent show only that Delivery may have created the commit. They never show
+that what it holds is ready, as
 [scenario.delivery.recover-not-ready](scenarios.md#scenario.delivery.recover-not-ready) shows.

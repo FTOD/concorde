@@ -108,9 +108,5 @@ it created.
 
 ### req.specification.observed-facts — The result reports what the Operation observed
 
-The Operation SHALL compute these parts of the Spec change from the workspace, never take them
-from the worker's result:
-
-- The changed documents.
-- The affected Modules.
-- The validation findings.
+The Spec change's changed documents, affected Modules and validation findings SHALL be computed by
+the Operation from the workspace, never taken from the worker's result.

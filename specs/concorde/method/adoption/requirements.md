@@ -70,7 +70,8 @@ function. This includes tests under a control-flow statement such as a top-level
 A decorator in a file with a binding of its own would call the project's own `verifies`, whatever
 it does. When the helper or import follows a test, a decorator above that test could find no
 `verifies` when the module is imported. The same risk applies when only a branch binds the name.
-In these cases, the host leaves the file untouched and reports the link in `unlinked_tests`.
+In these cases, the host therefore leaves the file untouched and reports the link in
+`unlinked_tests`.
 A module-level binding is any of these that binds the name outside a function or class body:
 
 - A statement.
@@ -83,16 +84,13 @@ gets one.
 
 ### req.adoption.test-edits-limited — Test files get decorators and one helper only
 
-The code_to_spec host SHALL change an existing test file only as follows, keeping every byte
-already in the file, its line endings included:
+The code_to_spec host SHALL change an existing test file only by adding `verifies` decorators and,
+once in a file that does not already bind the name `verifies` at its top level, a two-line no-op
+definition of `verifies` with at most the blank lines that make two on each side of it, keeping
+every byte already in the file, its line endings included.
 
-- Add `verifies` decorators.
-- Once in a file that does not already bind the name `verifies` at its top level, add a two-line
-  no-op definition of `verifies`.
-- With that definition, add at most the blank lines that make two on each side of it.
-
-Each line it adds ends as the file's lines end. A decorator takes the indentation of the line it
-is added above. Linking a test therefore changes only the lines it adds.
+Each line it adds ends as the file's lines end. A decorator takes the indentation of the line it is
+added above. Both hold so that linking a test changes only the lines it adds.
 
 ### req.adoption.unlinked-reported — Links not made are reported
 
@@ -104,7 +102,7 @@ file beside it, so the original stays whole. It goes on to link the next file.
 
 ### req.adoption.no-bash — Adoption workers cannot run code
 
-The survey and code_to_spec workers SHALL NOT receive a tool that runs commands.
+The survey and code_to_spec workers SHALL NOT be given a tool that runs commands.
 
 Reading the code establishes what it does. Running it would make the description depend on the
 environment of one run. It would also let a worker change files through a command.
@@ -209,8 +207,8 @@ Every `ok` survey and code_to_spec run SHALL list these under the
 
 A decision that follows an answer is no decision point, since it is already settled. The lists
 repeat what the Spec description or
-[decomposition proposal](../../glossary.json#concept.decomposition-proposal) holds, in the shape
-any workflow reads. A workflow therefore stops for exactly these points without knowing Adoption's
+[decomposition proposal](../../glossary.json#concept.decomposition-proposal) holds, in the shape any
+workflow reads, so that a workflow stops for exactly these points without knowing Adoption's
 contracts.
 
 ## Survey
@@ -297,8 +295,8 @@ a file or launching a worker when either condition holds:
 
 ### req.adoption.own-errors-count — Errors in the described documents always count
 
-Whether or not the baseline had it, the code_to_spec host SHALL count every structural error in a
-document a described Module owns as introduced by the run.
+The code_to_spec host SHALL count every structural error located in a document a described Module
+owns as introduced by the run, whether or not the baseline had it.
 
 The worker rewrites those documents. A retry after a failed attempt would otherwise take that
 attempt's errors as the project's and let the same errors pass.

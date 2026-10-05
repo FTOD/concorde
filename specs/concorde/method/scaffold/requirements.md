@@ -25,9 +25,8 @@ The scaffold host SHALL add a registry record for every created child.
 ### req.scaffold.vendored-external — Vendored code is never a Module
 
 The scaffold SHALL make every path the survey proposes as vendored third-party code an external
-inclusion of the [Module](../../glossary.json#concept.module) that uses it, bound by no Module.
-
-This way, no worker describes or reviews it as the project's code.
+inclusion of the [Module](../../glossary.json#concept.module) that uses it, bound by no Module, so
+that no worker describes or reviews it as the project's code.
 
 ### req.scaffold.input — The scaffold applies one survey of its workspace
 
@@ -52,22 +51,16 @@ they accept.
 
 ### req.scaffold.rechecked — The proposal is checked again before writing
 
-The scaffold host SHALL do all of these before writing:
-
-- Check the proposal against the workspace again.
-- When the proposal no longer fits, end the run `blocked` with `stale_proposal`.
-- In that case, list every mismatch as a cause of its error.
+The scaffold host SHALL check the proposal against the workspace again before writing, ending the
+run `blocked` with `stale_proposal` and every mismatch listed, each a cause of its error, when it no
+longer fits.
 
 ### req.scaffold.no-overwrite — The scaffold never replaces a file
 
 The scaffold host SHALL end the run `blocked` with `stale_proposal`, naming the existing file or the
-folder of the child that would hold it, when either of these holds:
-
-- A file it would create exists.
-- A child's folder already exists, even one that holds no file it would create.
-
-A child's existing folder is refused too, since the scaffold creates files only in folders it
-creates.
+folder of the child that would hold it, when a file it would create exists or a child's folder
+already exists, even one that holds no file it would create, since the scaffold creates files only
+in folders it creates.
 
 ### req.scaffold.atomic — A scaffold is kept whole or not at all
 
@@ -86,7 +79,7 @@ naming every file that still holds the scaffold's content:
 
 When every file was restored, a stale file stays `stale_proposal` and a new structural error stays
 `scaffold_invalid`. When the transaction cannot restore a file, the run becomes `write_failed`,
-whatever made the transaction fail. The workspace is then not as before, and the
+whatever made the transaction fail, since the workspace is then not as before and the
 [main agent](../../glossary.json#concept.main-agent) must repair it.
 
 ### req.scaffold.parent-narrowed — A child's paths leave the parent
@@ -115,23 +108,22 @@ Every entry the scaffold creates SHALL state the survey's purpose.
 
 ### req.scaffold.stub-unspecified — A scaffolded entry states what is unknown
 
-In a section Not yet specified that follows its Purpose, every entry the scaffold creates SHALL
-say that the Module's core concepts, behaviour and design are not yet specified.
+Every entry the scaffold creates SHALL say, in a section Not yet specified that follows its Purpose,
+that the Module's core concepts, behaviour and design are not yet specified.
 
 The section stands where the reading order of an entry puts the core concepts and the overview.
 Thus, a reader meets the unknowns before the parts. A `Parts` section follows, which explains the
-realization binding the child's code. Then a `Collaborations` section explains each proposed
-`uses`.
+realization binding the child's code. Then a `Collaborations` section explains each proposed `uses`.
 
 ## The workflow handoff
 
 ### req.scaffold.step-output — The created Modules reach a workflow script
 
-Under the [step output convention](../../workflows/contracts.md#contract.workflows.step-output),
-the output of every `ok` scaffold run SHALL carry `data.created_modules`: every Module the run
-created, in its record's order, each with the `uses` the survey proposed among the created Modules.
+The output of every `ok` scaffold run SHALL carry, under the
+[step output convention](../../workflows/contracts.md#contract.workflows.step-output),
+`data.created_modules`: every Module the run created, in its record's order, each with the `uses`
+the survey proposed among the created Modules.
 
 A [workflow script](../../glossary.json#concept.workflow-script) reads only what the convention
-hands it. This is how the [brownfield workflow](../../glossary.json#concept.brownfield-workflow)
+hands it, so this is how the [brownfield workflow](../../glossary.json#concept.brownfield-workflow)
 orders its descriptions ([contracts](contracts.md)).
-

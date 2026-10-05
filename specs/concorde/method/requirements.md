@@ -16,19 +16,16 @@ Every worker-backed step of a Method Operation SHALL compute grants from these S
 
 ### req.method.models-placed-first — Every worker is placed before the first launches
 
-Every run of a Method Operation SHALL do both of these:
-
-- Before it launches its first worker, check every worker its Operation may launch against the
-  [worker configuration](../glossary.json#concept.worker-configuration) and the
-  [model map](../glossary.json#concept.model-map).
-- Launch none when either of these conditions holds:
-  - The configuration names an Operation or [worker id](../glossary.json#concept.worker-id) that no
-    installed part registers.
-  - The map gives no local id to a model one of those workers is configured to run on.
+Every run of a Method Operation SHALL check every worker its Operation may launch against the
+[worker configuration](../glossary.json#concept.worker-configuration) and the
+[model map](../glossary.json#concept.model-map) before it launches its first worker, launching none
+when the configuration names an Operation or [worker id](../glossary.json#concept.worker-id) that no
+installed part registers or the map gives no local id to a model one of those workers is configured
+to run on.
 
 The names are checked against every Operation the installed parts register, as Execution's
-[Operation catalog](../glossary.json#concept.operation-catalog) lists them, not only Method's. Thus,
-a project's own Operations keep their entries. The admission does not check these:
+[Operation catalog](../glossary.json#concept.operation-catalog) lists them, not only Method's, so a
+project's own Operations keep their entries. The admission does not check these:
 
 - A worker the configuration gives no model.
 - A backend that is not installed.
@@ -84,8 +81,8 @@ Method asks it at both of these times:
   the run without another round.
 - After every worker run, once more against the workspace as the worker harness left it.
 
-Thus, neither a round that ended `blocked` or `failed` nor a deletion carried out after the last
-validation escapes it.
+Method asks at both times so that neither a round that ended `blocked` or `failed` nor a deletion
+carried out after the last validation escapes it.
 
 ### req.method.gaps-never-repaired — Spec gaps and grant denials are never repaired
 
@@ -121,18 +118,14 @@ the procedure go on:
 ### req.method.brownfield-providers-first — Providers are described before their consumers
 
 The brownfield workflow SHALL describe the created Modules in the order of the `uses` among them
-that the scaffold hands it, following these rules:
+that the scaffold hands it, condensed into strongly connected groups: each time, of the groups whose
+used groups are all described, the one whose first Module the scaffold lists first, and the Modules
+of one group in the order the scaffold lists them.
 
-- Condense the Modules into strongly connected groups.
-- Each time, among groups whose used groups are all described, choose the group whose first Module
-  the scaffold lists first.
-- Describe the Modules of one group in the order the scaffold lists them.
-
-Without a cycle among the created Modules, every group is one Module. In that case, each is
-described after every created Module it uses. Modules that use each other form one group. One of
-them is described before a Module it uses. The worker describing it reads the used Module's stub or
-description as it stands then. Every created Module is still described once, and the surveyed Module
-last.
+Without a cycle among the created Modules, every group is one Module, so each is described after
+every created Module it uses. Modules that use each other form one group. One of them is described
+before a Module it uses. The worker describing it reads the used Module's stub or description as it
+stands then. Every created Module is still described once, and the surveyed Module last.
 
 ### req.method.brownfield-stops — The procedure stops where its mode says
 
