@@ -31,23 +31,14 @@ Whether a problem stops the task is decided separately.
 
 ### req.issues.caller-provenance — Provenance comes from the command
 
-The bookkeeping command SHALL handle every provenance field of a report as follows:
-
-- Unless its caller gives the whole provenance in a provenance file of its own with `--provenance`,
-  supply every provenance field itself.
-- Never take a provenance field from the report file.
+The bookkeeping command SHALL supply every provenance field of a report itself, unless its caller gives the whole provenance in a provenance file of its own with `--provenance`, and never take one from the report file.
 
 A report file with a provenance field is refused as malformed, because a report has no such field.
 A caller that gives `--provenance` vouches for it, as a library caller of the store does.
 
 ### req.issues.main-agent-actor — The command attributes Issue writes to the session
 
-The bookkeeping command SHALL record this value as the source agent of each report whose provenance it supplies and as the actor of each disposition it writes:
-
-- `main-agent`, unless the [project MCP server](../glossary.json#concept.project-mcp-server)'s Issue
-  tools call the command.
-- When those tools call the command, the calling session: `task-session` in a task worktree bound
-  as a workspace and `main-agent` in any other.
+The bookkeeping command SHALL record as the source agent of each report whose provenance it supplies and the actor of each disposition it writes `main-agent`, or, called by the [project MCP server](../glossary.json#concept.project-mcp-server)'s Issue tools, the calling session: `task-session` in a task worktree bound as a workspace and `main-agent` in any other.
 
 This is attribution by the command and the tools, not authentication or a restriction on the
 store's library callers. Workers never record or dispose Issues. An
@@ -81,11 +72,8 @@ not refused even where the spec part is not installed.
 
 ### req.issues.report-evidence-present — A report's evidence exists
 
-The bookkeeping command SHALL refuse a report when both these conditions hold:
-
-- The command supplies the report's provenance.
-- One of the report's evidence paths does not exist in the worktree it reports from or, for a
-  report with an origin, in the origin project.
+The bookkeeping command SHALL refuse a report whose provenance it supplies and one of whose evidence paths does not exist in the
+worktree it reports from or, for a report with an origin, in the origin project.
 
 ### req.issues.report-error-chain — A report's error chain follows the error contract
 
@@ -127,14 +115,9 @@ severities existed keeps its reports without one unchanged. That record stays va
 
 ### req.issues.own-failures — The Issue system never reports itself
 
-In every refusal that is a failure of the Issue system itself, the bookkeeping command and the
-project MCP server's Issue tools SHALL say the following:
-
-- The refusal's error chain is carried in one of these:
-  - The [decision log](../glossary.json#concept.decision-log).
-  - An escalation.
-  - The [run result](../glossary.json#concept.run-result).
-- The refusal's error chain is never reported as an Issue.
+The bookkeeping command and the project MCP server's Issue tools SHALL say, in every refusal that is
+a failure of the Issue system itself, that its error chain is carried in the [decision log](../glossary.json#concept.decision-log),
+escalation or [run result](../glossary.json#concept.run-result) and never reported as an Issue.
 
 An Issue system that failed cannot be trusted to record its own failure. Therefore, a session that
 relies on it to do so would wait for ever
@@ -212,12 +195,9 @@ A closed Issue keeps its reports and dispositions, so it can be shown and reopen
 
 ### req.issues.status-folder — A record lies in the folder of its status
 
-The Issue store SHALL write an Issue's record according to these rules:
-
-- Write an open Issue's record at `.concorde/issues/<id>.md`.
-- Write a closed Issue's record at `.concorde/issues/closed/<id>.md`.
-- When a write changes the record's status or finds it in the other folder, move it into the folder
-  its status names in that write's commit.
+The Issue store SHALL write an open Issue's record at `.concorde/issues/<id>.md` and a closed
+Issue's at `.concorde/issues/closed/<id>.md`, moving it there in the commit of the write that
+changes its status or finds it in the other folder.
 
 The records seen directly in `.concorde/issues/` are therefore the open Issues. Reads find a
 record in either folder. When an Issue is committed in both folders, reads refuse it.
@@ -229,12 +209,9 @@ The store check reports each of these with its repair
 
 ### req.issues.archive — Misplaced records are moved into their folder
 
-The bookkeeping command's `archive` SHALL move every committed record of the primary worktree
-whose folder does not match its status as follows:
-
-- Move the record into the folder its status names.
-- Keep the record unchanged.
-- Move the records in one commit under the merge lock.
+The bookkeeping command's `archive` SHALL move every committed record of the primary worktree whose
+folder does not match its status into the folder its status names, unchanged, in one commit under
+the merge lock.
 
 It leaves an Issue committed in both folders and a record holding a change no Issue write made.
 The reason is that moving either would decide what only its inspection can.
@@ -242,10 +219,8 @@ With nothing to move, it commits nothing.
 
 ### req.issues.archive-reported — Archive names what it moved and left
 
-The bookkeeping command's `archive` SHALL name the following:
-
-- Each record it moved, with the path it moved from and to.
-- Each misplaced record it left, with the reason it left it.
+The bookkeeping command's `archive` SHALL name each record it moved, with the path it moved from and
+to, and each misplaced record it left, with the reason it left it.
 
 Whoever runs it learns which records still need inspection without reading the commit.
 
@@ -291,12 +266,9 @@ In these cases, a reader sees the records as they were committed:
 
 ### req.issues.uncommitted-recovered — Uncommitted records are put back before any write
 
-Before it reads the record it changes, every Issue write SHALL recover every record an earlier
-write published but did not commit:
-
-- Put the record back to its committed version, or remove it when no commit holds it.
-- Perform this recovery under the [merge lock](../glossary.json#concept.merge-lock).
-- Commit nothing during this recovery.
+Before it reads the record it changes, every Issue write SHALL put back to its committed version,
+or remove when no commit holds it, every record an earlier write published but did not commit,
+under the [merge lock](../glossary.json#concept.merge-lock) and committing nothing.
 
 A write that left such a record gave no receipt, so putting it back loses nothing acknowledged.
 Its writer may repeat the write. When a write fails after publishing its record, it puts the
@@ -340,10 +312,7 @@ As a result, writes never overlap any of these:
 
 ### req.issues.no-write-during-merge — No Issue write while a merge is unfinished
 
-Where the coordination part is installed, while a task's merge into the primary branch is unfinished, the Issue store SHALL refuse every write in both cases:
-
-- The store took the merge lock.
-- Its caller holds the merge lock.
+Where the coordination part is installed, the Issue store SHALL refuse every write, whether it took the merge lock or its caller holds it, while a task's merge into the primary branch is unfinished.
 
 As a result, a write
 never commits between a merge commit and the checks that decide whether it stays. The store
@@ -374,10 +343,7 @@ the call. The command's own writes wait instead, up to their wait.
 
 ### req.issues.own-check — Issues checks its own records
 
-Issue records SHALL be validated as a project check only by the Issue store's check, with these details:
-
-- The check is `concorde issues check` and the tool `issue_check`.
-- This Module's [configured check](../glossary.json#concept.configured-check) runs it.
+Issue records SHALL be validated as a project check only by the Issue store's check, `concorde issues check` and the tool `issue_check`, which this Module's [configured check](../glossary.json#concept.configured-check) runs.
 
 The Spec tooling knows nothing of Issues, so `concorde spec-validation` never reads a record.
 Whenever this Module's configured check runs, the records are still checked. Where the project
@@ -386,11 +352,9 @@ validate every record they return as well. This validation is no project check.
 
 ### req.issues.commit-alone — An Issue commit commits its record alone
 
-The Issue store SHALL commit each report, disposition or archive on the primary branch as follows:
-
-- Each report or disposition is a commit of that record alone.
-- When the write moved the record, the commit includes the path the record left.
-- An archive is one commit of only the records it moves, with the paths they left.
+The Issue store SHALL commit each report or disposition as a commit of that record alone on the
+primary branch, with the path it left when the write moved it, and an archive as one commit of the
+records it moves, with the paths they left, and only them.
 
 Other changes of the primary worktree, staged or not, stay as they were. When Git refuses a
 write's commit, the write puts its record back. The write then refuses, as the

@@ -23,13 +23,11 @@ whoever checks it must load its owner, as [Typed values](contracts.md#typed-valu
 
 ### req.kernel.binding-whole — A broken binding is refused whole
 
-The Kernel's binding reader SHALL refuse a [workspace binding](../glossary.json#concept.workspace-binding) with `binding_unreadable` or `binding_invalid` when any of these conditions holds:
+The Kernel's binding reader SHALL refuse a [workspace binding](../glossary.json#concept.workspace-binding) with `binding_unreadable` or `binding_invalid`, never returning part of it, when any of these conditions holds:
 
 - The binding cannot be read.
 - The binding breaks the [binding contract](contracts.md#contract.kernel.workspace-binding).
 - The binding names a workspace folder that does not exist.
-
-On such a refusal, the binding reader SHALL never return part of the binding.
 
 ### req.kernel.binding-own-root — A copied binding is refused
 
@@ -55,7 +53,7 @@ A merge commit given the subject is thereby never taken for a delivery, whatever
 
 ### req.kernel.registration-stable — A registration never changes
 
-When a type identity is already registered with another version or schema, the Kernel SHALL refuse its registration with `duplicate_type` while keeping the existing registration in force.
+Registering a type identity already registered with another version or schema SHALL be refused with `duplicate_type`, the existing registration staying in force.
 
 Registering it again with the same version and an equal schema changes nothing, so that a part's code
 may be loaded twice.
@@ -80,9 +78,7 @@ When any file's current bytes or existence do not match its change's `before_dig
 
 ### req.kernel.transaction-restored — A failed transaction restores what it wrote
 
-When a write or the final check of a file transaction fails while its process runs, the transaction SHALL attempt the following before it reports the failure:
-
-- Restore every file it wrote, or remove every file it created.
+When a write or the final check of a file transaction fails while its process runs, the transaction SHALL attempt to restore every file it wrote, or remove every file it created, before it reports the failure.
 
 When the operating system refuses a restoration, that refusal does not stop the other restorations.
 The failure then names the files not restored, as
@@ -106,17 +102,11 @@ When the operating system refuses a file transaction's restoration, the transact
 
 ### req.kernel.busy-lock-named — A busy lock is refused naming its holder
 
-When a [workspace lock](../glossary.json#concept.workspace-lock) or [merge lock](../glossary.json#concept.merge-lock) taker gives up waiting, the Kernel SHALL refuse the taker with these details:
+A taker of the [workspace lock](../glossary.json#concept.workspace-lock) or the [merge lock](../glossary.json#concept.merge-lock) that gives up waiting SHALL be refused with `workspace_busy` or `merge_busy`, naming the holder its holder line names.
 
-- The code is `workspace_busy` or `merge_busy`.
-- The refusal names the holder that the lock's holder line names.
-
-When both these conditions hold, the Kernel refuses a taker with `workspace_retired` instead:
-
-- The taker waited for a workspace lock whose holder removed its file meanwhile.
-- The taker asked not to take a new file.
-
-The reason is that the taker never holds the lock of a workspace that was retired while the taker waited.
+A taker that waited for a workspace lock whose holder removed its file meanwhile, and that asked not
+to take a new file, is refused with `workspace_retired` instead. It is refused so that it never
+holds the lock of a workspace that was retired while it waited.
 
 ## Refusals
 
@@ -125,7 +115,7 @@ The reason is that the taker never holds the lock of a workspace that was retire
 Every refusal of the Kernel's library SHALL carry these details:
 
 - A stable code.
-- The JSON pointer of the offending value or the path of the offending file. It is empty when the
+- The JSON pointer of the offending value or the path of the offending file, empty when the
   refusal concerns the whole input.
 - A message that describes the refusal completely.
 
