@@ -45,9 +45,22 @@ class WaitTests(unittest.TestCase):
         return status, json.loads(output.getvalue())
 
     def later(self, seconds, action):
-        timer = threading.Timer(seconds, action)
+        """Run ``action`` in a thread after ``seconds``; once the returned timer is joined, the
+        returned list holds what the action raised, or None."""
+        outcome = []
+
+        def run():
+            try:
+                action()
+            except Exception as error:
+                outcome.append(error)
+            else:
+                outcome.append(None)
+
+        timer = threading.Timer(seconds, run)
         timer.start()
         self.addCleanup(timer.cancel)
+        return timer, outcome
 
     @verifies("scenario.tasks.wait-task")
     def test_a_task_wait_returns_when_the_state_is_reached(self):
@@ -78,7 +91,7 @@ class WaitTests(unittest.TestCase):
 
     @verifies("scenario.tasks.wait-task-unreachable")
     def test_a_task_that_ended_elsewhere_ends_the_wait(self):
-        self.later(
+        closing, closed = self.later(
             0.3,
             lambda: store.close_task(
                 self.root, "t1", "completed", note="done", errors=[]
@@ -87,6 +100,9 @@ class WaitTests(unittest.TestCase):
         status, value = self.command(
             "wait", "t1", "--until", "delivered", "--timeout", "30"
         )
+        closing.join()
+        # A close that failed leaves the task open, and the wait rightly runs to its timeout.
+        self.assertEqual([None], closed)
         self.assertEqual(1, status, value)
         validate(value["error"], ERROR_SCHEMA)
         self.assertEqual("wait_unreachable", value["error"]["code"])
@@ -114,18 +130,18 @@ class WaitTests(unittest.TestCase):
         status, value = self.command("wait", "t1", "--rebound", "concorde-7d")
         self.assertEqual((0, "concorde-8e"), (status, value["main"]))
 
-        # A task that ends meanwhile ends the wait once its record is closed, whether or not
-        # the close can then commit its decision log in the fixture's primary worktree.
-        def close():
-            with contextlib.suppress(store.TaskError):
-                store.close_task(self.root, "t1", "completed", note="done", errors=[])
-
-        closing = threading.Timer(0.3, close)
-        closing.start()
+        # A task that ends meanwhile ends the wait once its record is closed.
+        closing, closed = self.later(
+            0.3,
+            lambda: store.close_task(
+                self.root, "t1", "completed", note="done", errors=[]
+            ),
+        )
         status, value = self.command(
             "wait", "t1", "--rebound", "concorde-8e", "--timeout", "30"
         )
         closing.join()
+        self.assertEqual([None], closed)
         self.assertEqual(1, status, value)
         self.assertEqual("wait_unreachable", value["error"]["code"])
         status, value = self.command("wait", "--rebound", "concorde-8e")

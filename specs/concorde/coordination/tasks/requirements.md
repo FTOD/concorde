@@ -191,6 +191,9 @@ A `merging` task is shown as `merging`. Otherwise, the task's derived state foll
 As for Delivery, a new path Git cannot version is no uncommitted change. One example is a path a
 sandbox hides behind a `/dev/null` mount.
 
+Deriving the state SHALL change no file, the worktree's Git index included. Thus a task shown,
+listed or waited for while it is closed or merged never makes that close or merge fail.
+
 ### req.tasks.delivery-verified — Only a delivery commit that verifies counts
 
 Tasks SHALL count a task as delivered, and merge it or close it as merged, only under this
