@@ -350,3 +350,25 @@ from its neighbours. Now:
 
 Every specification valid under 16.2.1 stays valid. A definition of 36 to 50 words is no longer
 reported. Nothing needs to change.
+
+## Version 16.4
+
+Version 16.4 makes clear how [Sentence style](style.md) applies to a requirement. Rewrites for
+shorter sentences changed what requirements meant. They split one obligation into a list of
+separate rules. They moved conditions away from what they limit, changed the subject of an
+obligation and dropped words such as "since", "only" and "every". Now:
+
+- [Requirements](style.md#requirements) says that the statement of a requirement keeps its one
+  obligation in one sentence, with its conditions, exceptions and failures. A list below the
+  statement gives conditions of that obligation, never new obligations.
+- A condition stays next to what it limits. The subject of an obligation is the party that bears
+  it, and a rewrite never introduces an actor that the text did not name.
+- [The links between facts](style.md#the-links-between-facts) says that a rewrite keeps every word
+  that links or limits facts.
+- `CHK.style.sentence-length` does not measure the statement of a requirement. A sentence of a
+  reading keeps the bound of 35 words, and a concept definition keeps 50.
+- [Evaluating a Spec](evaluation.md#readability) reports these drifts as part of readability.
+
+Every specification valid under 16.3 stays valid. A requirement statement of more than 35 words
+is no longer reported. Nothing needs to change. A requirement that an earlier rewrite split or
+changed may be restored to one sentence.

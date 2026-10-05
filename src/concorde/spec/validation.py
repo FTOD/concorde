@@ -69,7 +69,8 @@ REMEDIATION = {
     ),
     "CHK.style.sentence-length": (
         "Split the sentence into shorter sentences of one fact each, or move its conditions or "
-        "items into a list; see the Protocol's Sentence style."
+        "items into a list, and keep every word that carries meaning; see the Protocol's "
+        "Sentence style."
     ),
     "CHK.style.semicolon": "Write separate sentences or a list instead of the semicolon.",
     "CHK.style.one-obligation": (

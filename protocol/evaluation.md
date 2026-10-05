@@ -120,9 +120,21 @@ concerns that other Module. Its own evaluation judges it. The criteria fall into
   - Three or more conditions, cases or items stand in a list, not in a run of clauses.
   - A condition comes before the statement it limits.
   - Simple tenses say what is true and what happens.
+- A text in this style still says what it means. An evaluation reports each of these drifts, which
+  a rewrite for shorter sentences can cause:
+  - One obligation split into separate rules, such as a list whose items are obligations of their
+    own instead of conditions of the statement.
+  - A condition, exception or failure moved out of the statement of its requirement.
+  - A condition moved away from what it limits, such as a limit of one action placed before the
+    subject of the whole obligation.
+  - The subject of an obligation changed to a party that does not bear it, or an actor that the
+    text did not name before.
+  - A dropped word that links or limits facts, such as "since", "because", "so that", "only",
+    "each", "every" or "never".
 - While a reader still understands it correctly, a sentence that breaks the style is advisory.
   When the reader cannot tell who must act or what is required, it is blocking. A requirement that
-  hides its actor in the passive voice is an example.
+  hides its actor in the passive voice is an example. A drift that changes what a requirement
+  requires or who bears it is blocking too.
 
 ### Obligations
 

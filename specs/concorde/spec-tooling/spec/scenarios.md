@@ -183,6 +183,7 @@ to it.
 - BUT a link counts as its text
 - BUT an inline code span counts as one word
 - BUT a definition of 50 words or fewer is not too long
+- BUT the statement of a requirement is not measured for length, however long it is
 
 ### scenario.spec.concept-local — A concept only its owner uses
 
