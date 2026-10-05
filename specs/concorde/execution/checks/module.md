@@ -87,6 +87,13 @@ steps:
 - saves logs
 - returns one **check result** per check
 
+A check result records these items:
+
+- The check and its Module.
+- The status and the exit code.
+- The digest of the input it measured.
+- The saved log with the digest of that log.
+
 Each check result also names each write of the check's trace node the operating system refused.
 After the run, a digest mismatch fails with `stale_evidence`, because the result would vouch for
 input that changed. A stored result stays valid only while a fresh measurement matches it.

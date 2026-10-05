@@ -77,6 +77,8 @@ of work it wants isolated, the main agent opens a task with:
   [workspace](../../glossary.json#concept.workspace) named after the task.
 - A folder of its own in the primary worktree.
 
+When the task ends, the folder moves to the [history](../../glossary.json#concept.history).
+
 Parallelism exists only between tasks. No tasks share a worktree. The Kernel's
 [workspace lock](../../glossary.json#concept.workspace-lock) lets each workspace do one thing at a
 time. A task's goal and Modules are those named at open and never change. When a run names further

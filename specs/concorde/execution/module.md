@@ -184,7 +184,10 @@ run is the same. The run progress file names these things:
 - in which step
 
 The **[run lock](../glossary.json#concept.run-lock)**, `locks/runs/<run-id>.lock`, tells whether the
-runner still lives. [Following a long run](#following-a-long-run) explains how an observer uses
+runner still lives. Only the run's runner locks it. The runner locks it before the first run
+progress file and holds it until after the result. The runner removes the file as it exits. An
+observer in any PID namespace tells by the lock whether the run still runs.
+[Following a long run](#following-a-long-run) explains how an observer uses
 both.
 
 <a id="detached-namespace"></a>
