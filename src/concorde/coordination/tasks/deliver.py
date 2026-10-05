@@ -281,6 +281,7 @@ def _special(worktree: Path) -> list[str]:
     content of the task and would make ``git add`` refuse the whole delivery."""
     raw = store._git(
         worktree,
+        "--no-optional-locks",
         "status",
         "--porcelain",
         "-z",

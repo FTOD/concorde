@@ -1301,10 +1301,10 @@ class RunnerTests(unittest.TestCase):
             ("command", "task-validation"), (announced["kind"], announced["name"])
         )
         # Its progress file exists once announced: in the lobby, or in its node once it entered
-        # its workspace.
+        # its workspace. The lobby first: a run moves from it into its node, never back.
         self.assertTrue(
-            Path(announced["progress"]).is_file()
-            or (Path(announced["lobby"]) / "status.json").is_file()
+            (Path(announced["lobby"]) / "status.json").is_file()
+            or Path(announced["progress"]).is_file()
         )
         folder = self.records / "tasks/t1/workspace/runs" / announced["run_id"]
         self.assertEqual(

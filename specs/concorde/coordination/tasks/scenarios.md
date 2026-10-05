@@ -169,6 +169,14 @@ A commit on the task branch past its base, or an uncommitted change in its workt
   Delivery leaves it out
 - BUT a new file beside it makes the task `active`
 
+### scenario.tasks.state-read-only — Deriving the state leaves the index as it is
+
+- GIVEN an open task with a tracked file whose modification time changed and whose content did not
+- WHEN the main agent shows the task
+- THEN the task is `open`
+- AND the worktree's Git index is the same file with the same modification time
+- AND no `index.lock` is left beside it
+
 ### scenario.tasks.merge-sandbox-masks — A path a sandbox masks does not block a merge
 
 - GIVEN a delivered task

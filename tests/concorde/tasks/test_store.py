@@ -1205,6 +1205,26 @@ class TaskStoreTests(unittest.TestCase):
         (worktree / "notes.txt").write_text("a real change\n")
         self.assertEqual("active", shown()["record"]["state"])
 
+    @verifies("scenario.tasks.state-read-only")
+    def test_deriving_the_state_leaves_the_index_as_it_is(self):
+        self.project.open_task("t1")
+        worktree = self.project.worktree("t1")
+        index = Path(
+            git(worktree, "rev-parse", "--path-format=absolute", "--git-path", "index")
+        )
+        # A new modification time with the same content: a plain `git status` would refresh
+        # the index's stat data and replace the index through index.lock.
+        tracked = worktree / "src/a/calc.py"
+        stat = tracked.stat()
+        os.utime(tracked, ns=(stat.st_atime_ns, stat.st_mtime_ns + 5_000_000_000))
+        before = index.stat()
+        self.assertEqual("open", self.state())
+        after = index.stat()
+        self.assertEqual(
+            (before.st_ino, before.st_mtime_ns), (after.st_ino, after.st_mtime_ns)
+        )
+        self.assertFalse(index.with_name("index.lock").exists())
+
     @verifies("scenario.tasks.delivery-unverified")
     def test_a_delivery_commit_that_does_not_verify_is_not_delivered(self):
         self.project.open_task("t1")

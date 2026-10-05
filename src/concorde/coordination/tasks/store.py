@@ -1649,19 +1649,28 @@ def _changes(worktree: Path) -> list[str]:
     """The worktree's uncommitted changes as ``git status`` entries, changes inside a submodule
     included whatever its ``ignore`` setting, without the new paths Git cannot version: a sandbox's ``/dev/null`` mounts of paths
     such as ``.bashrc`` are neither a file, a symbolic link nor a directory, are no content of the
-    task, and Delivery leaves them out as well."""
+    task, and Delivery leaves them out as well. It only reads: without optional locks Git
+    neither refreshes nor rewrites the worktree's index, so a reader never holds ``index.lock``
+    while a close or merge removes the worktree. A worktree removed while it is read has no
+    changes."""
     if not worktree.exists():
         return []
-    raw = _git(
-        worktree,
-        "status",
-        "--porcelain",
-        "-z",
-        "--no-renames",
-        "--untracked-files=all",
-        "--ignore-submodules=none",
-        check=False,
-    ).stdout
+    try:
+        raw = _git(
+            worktree,
+            "--no-optional-locks",
+            "status",
+            "--porcelain",
+            "-z",
+            "--no-renames",
+            "--untracked-files=all",
+            "--ignore-submodules=none",
+            check=False,
+        ).stdout
+    except TaskError:
+        if worktree.exists():
+            raise
+        return []
     entries = [entry for entry in raw.split("\0") if entry]
     changes = []
     for entry in entries:
