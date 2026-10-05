@@ -22,8 +22,8 @@ Those workers may run on pi.
 
 ### req.task-session.boundary — A task session's file tools write only its task
 
-Task sessions SHALL write a boundary that lets a task session's file-writing tools change only the
-task worktree and its [decision log](../../glossary.json#concept.decision-log).
+The boundary Task sessions writes for a task session SHALL let the session's file-writing tools
+change only the task worktree and its [decision log](../../glossary.json#concept.decision-log).
 
 The file-writing tools are Edit and Write. The
 [session boundary](../../glossary.json#concept.session-boundary)'s hook checks these tools. The hook
@@ -33,13 +33,9 @@ Issue command, as the runs it starts do.
 
 ### req.task-session.no-sandbox — A task session's shell is not restricted
 
-Task sessions SHALL write a boundary that restricts nothing but a task session's file-writing tools
-and carries no sandbox, so that the session's commands reach everything the machine offers:
-
-- Every path.
-- Every process.
-- Every socket.
-- Every network host.
+The boundary Task sessions writes for a task session SHALL restrict nothing but its file-writing
+tools, carrying no sandbox, so that the session's commands reach every path, process, socket and
+network host the machine offers.
 
 A task session must change nothing outside its task worktree. Nothing else about the session is
 restricted. The task-session [guidance](../../glossary.json#concept.main-session-guidance) and
@@ -68,11 +64,9 @@ the session registered never woke the session. Told so, `register_wait` answers 
 
 ### req.task-session.mcp-approval — A task session is never asked to approve a project MCP server
 
-Task sessions SHALL write settings for a task session that do the following:
-
-- Disable the project `.mcp.json` entry `concorde`.
-- Enable every other `.mcp.json` server the session loads that the primary worktree approved.
-- Disable every one the primary worktree never approved.
+The settings Task sessions writes for a task session SHALL disable the project `.mcp.json` entry
+`concorde`, enable every other `.mcp.json` server the session loads that the primary worktree
+approved, and disable every one the primary worktree never approved.
 
 Nobody answers Claude Code's dialog "New MCP server found in this project" in a background session,
 which otherwise waits on it for ever. The `--mcp-config` server replaces the entry `concorde`. A
@@ -88,8 +82,9 @@ Before it starts a task session, Task sessions SHALL write that session's bounda
 
 ### req.task-session.recorded — A started session is recorded
 
-Only after Claude Code reports a task session started, Task sessions SHALL record the session as a
-node of the task's [trace](../../glossary.json#concept.trace), through Tasks' record updates.
+Task sessions SHALL record a task session as a node of the task's
+[trace](../../glossary.json#concept.trace), through Tasks' record updates, only after Claude Code
+reports it started.
 
 A session that did not start leaves the task unchanged. A started session's record can be refused
 because the task was closed meanwhile or its node cannot be written. When that record is refused,
@@ -120,12 +115,9 @@ delivered task's session has reported and waits.
 
 ### req.task-session.transcript-kept — A task session's transcript moves to the history
 
-When a task ends, Task sessions SHALL act as follows:
-
-- It copies the transcript of each of the task's sessions into that session's
-  [trace node](../../glossary.json#concept.trace-node) before the task's folder moves to the
-  [history](../../glossary.json#concept.history).
-- It never writes into the history afterwards.
+When a task ends, Task sessions SHALL copy the transcript of each of its task sessions into that
+session's [trace node](../../glossary.json#concept.trace-node) before the task's folder moves to the
+[history](../../glossary.json#concept.history), and never write into the history afterwards.
 
 The transcript is found by the session's full session id, which Claude Code's own list of sessions
 gives. It is never found by a pattern that could match another session's. A transcript that cannot
@@ -149,11 +141,9 @@ as `done` or `failed`, the status is `unknown`.
 
 ### req.task-session.removed — An ended task leaves no task session in Claude's session list
 
-Once a task ends by any outcome, Task sessions SHALL remove its task sessions from Claude's session
-list as follows:
-
-- It removes each task session whose transcript it kept, with `claude rm`.
-- The removal is a best effort, whose failure leaves the close as it succeeded.
+Once a task has ended, by any outcome, Task sessions SHALL remove each of its task sessions whose
+transcript it kept from Claude's session list with `claude rm`, as a best effort whose failure
+leaves the close as it succeeded.
 
 When a session's transcript was not kept or `claude rm` failed, the close's warnings name each
 session not removed, with these details:

@@ -82,9 +82,7 @@ dependency. It depends on no part. It reads only the registrations of the parts 
 
 ### req.concorde.absent-part-stated — An absent part is stated, not failed
 
-When an optional integration's part is not installed, the part that owns the integration SHALL
-skip it with a statement naming the missing part, never making the rest of the work it belongs to
-fail.
+An optional integration whose part is not installed SHALL be skipped with a statement that names the missing part, never making the rest of the work it belongs to fail.
 
 When a part is not installed, its command or MCP tool is absent rather than present and broken.
 A command that needs it is refused naming the part.
@@ -92,9 +90,7 @@ A command that needs it is refused naming the part.
 ### req.concorde.one-version — All parts carry one version
 
 Every part SHALL carry the version number of the [Concorde repository](glossary.json#concept.concorde-repository)
-it was built from.
-
-This number is the same for every part.
+it was built from, the same for every part.
 
 ## Runtime
 
@@ -111,10 +107,7 @@ pi workers.
 
 ### req.concorde.worker-program — Workers run on the configured program
 
-Whatever program the main agent runs on, every worker SHALL run on one of these programs:
-
-- The program its worktree's worker configuration chooses for it.
-- Pi, when that configuration chooses none.
+Every worker SHALL run on the agent program the worktree's worker configuration chooses for it, and on pi when it chooses none, whatever program the main agent runs on.
 
 When a worker's chosen program is not installed, the worker is refused, never moved to the other
 program.
@@ -129,10 +122,7 @@ Therefore, a Claude Code main agent may run pi workers as well as Claude Code wo
 
 ### req.concorde.worker-models-per-worktree — Worker models belong to the worktree
 
-Every worker SHALL take its model and reasoning level from the worker configuration of the checkout its run works in:
-
-- For a bound run, the worktree of the run's workspace.
-- For an unbound run, the configuration committed in the unbound checkout.
+The model and reasoning level of every worker SHALL come from the worker configuration of the checkout its run works in: the worktree of the run's workspace for a bound run, and the configuration committed in the unbound checkout for an unbound run.
 
 ### req.concorde.worker-models-tracked — The worker models are tracked with the project
 
@@ -144,9 +134,7 @@ The worker configuration SHALL be a file tracked by Git, so that:
 ### req.concorde.worker-models-install-independent — The tracked configuration names no installation's model ids
 
 The worker configuration SHALL name every model by a project model name that depends on no
-installation.
-
-Each program's local model id remains in the user's untracked
+installation, leaving each program's local model id to the user's untracked
 [model map](glossary.json#concept.model-map).
 
 ### req.concorde.worker-models-explicit — Worker models change only on request
@@ -157,13 +145,8 @@ A worktree's worker configuration SHALL change only by an explicit request of th
 
 ### req.concorde.halves-apart — The lower half knows no task
 
-None of these SHALL read or write a [task record](glossary.json#concept.task-record), a
-[decision log](glossary.json#concept.decision-log) or any other record Coordination keeps of a task:
-
-- An [Operation](glossary.json#concept.operation).
-- An [execution command](glossary.json#concept.execution-command).
-- A workflow.
-- A worker.
+No [Operation](glossary.json#concept.operation), [execution command](glossary.json#concept.execution-command), workflow or worker SHALL read or write a [task record](glossary.json#concept.task-record), a
+[decision log](glossary.json#concept.decision-log) or any other record Coordination keeps of a task.
 
 The halves are those of the root's [Two halves, one seam](module.md#two-halves-one-seam).
 The upper half is Coordination. The lower half comprises the parts that do the work in a
@@ -187,7 +170,7 @@ it. Keeping every piece of shared state on one side lets either half change with
 
 ### req.concorde.operations-are-ai — An Operation involves a model
 
-Unless its run is refused before its first worker starts, every Operation SHALL launch at least one AI worker in that run.
+Every Operation SHALL launch at least one AI worker in each of its runs that is not refused before its first worker starts.
 
 This classifies what an Operation is rather than forcing a launch. A run refused at admission
 launches none. A run whose first worker is refused at launch also launches none. Deterministic work that a task
@@ -265,23 +248,7 @@ link in the chain is marked with the level `worker`.
 
 ### req.concorde.detailed-errors — Errors are reported in detail
 
-Every actor listed below SHALL report a failure to its parent as an error link that describes it completely:
-
-- Every Operation.
-- Every execution command.
-- Every worker.
-- Every step.
-- Every `concorde` command except Spec tooling's deterministic commands and Distribution's `build`
-  and `protocol-manifest`.
-- The main agent.
-
-The complete description includes the following:
-
-- What failed.
-- Where it failed.
-- The exact message or output.
-- The evidence.
-- What was tried.
+Every Operation, execution command, worker, step, `concorde` command other than Spec tooling's deterministic commands and Distribution's `build` and `protocol-manifest`, and the main agent SHALL report a failure to its parent as an error link that describes it completely: what failed, where, the exact message or output, the evidence and what was tried.
 
 None of the following alone is ever the whole report:
 
@@ -300,10 +267,8 @@ When a Module cannot handle such a record, it translates the record into a link
 
 ### req.concorde.error-chain — An unhandled error keeps its chain
 
-When an actor cannot handle an error received from a child, that actor SHALL pass the child's
-error unchanged as a cause of its own link.
-
-That link states the reason the actor cannot handle the error.
+An actor that cannot handle an error it received from a child SHALL pass the child's error on
+unchanged as a cause of its own link, which states the reason the actor cannot handle the error.
 
 The reasons are the fixed set of the [error contract](kernel/tracing/contracts.md#contract.tracing.error).
 The last receiver thereby reads one reason per level, from where the error started up to itself.

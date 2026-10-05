@@ -42,17 +42,10 @@ Without that approval the change runs in a task like any other.
 
 ### req.main-session.worktree-own-concorde — A task runs its worktree's Concorde
 
-For every `concorde` command that works on the task's workspace, the task-session guidance SHALL
-tell a task session to use the task worktree's own `concorde` command from there, never the primary
-worktree's.
-
-Examples are:
-
-- `spec-validation`
-- `build`
-- `run <operation>`
-- `task-validation`
-- `delivery`
+The task-session guidance SHALL tell a task session to run every `concorde` command that works on the
+task's workspace, such as `spec-validation`, `build`, `run <operation>`, `task-validation` and
+`delivery`, as the task worktree's own `concorde` command, from the task worktree, never as the
+primary worktree's.
 
 That command reads these items of the task worktree, which only the task branch holds:
 
@@ -172,12 +165,10 @@ workflow step as a process of the server and waits for the workflow step there.
 
 ### req.main-session.task-session-quiet-before-validation — A task session stops its background commands before validating
 
-The task-session guidance SHALL tell a task session, before validating and delivering, to let every
-workspace run finish and stop every other background command it started, confirming each ended,
-before the applicable commands:
-
-- `task-validation` or `delivery` where the method part is installed.
-- `task deliver` otherwise.
+The task-session guidance SHALL tell a task session to let every run of its workspace finish and to
+stop every other background command it started, confirming each ended, before it validates and
+delivers: before `task-validation` or `delivery` where the method part is installed, and before
+`task deliver` otherwise.
 
 A run that still runs holds the [workspace lock](../../glossary.json#concept.workspace-lock), which
 refuses both commands. Since `delivery` commits every uncommitted change, a command still writing in
@@ -243,13 +234,9 @@ An unbound run launches only reading workers.
 
 ### req.main-session.workflows — Preset tasks run their workflow
 
-The guidance SHALL tell the main agent to have a task that follows a known procedure run through its
-[workflow](../../glossary.json#concept.workflow), which the task session starts inside the task
-worktree, by naming in its task brief:
-
-- The workflow.
-- Its Module.
-- Its mode.
+The guidance SHALL tell the main agent to have a task that follows a known procedure run through
+its [workflow](../../glossary.json#concept.workflow), by naming the workflow, its Module and its
+mode in its task brief for the task session to start inside the task worktree.
 
 ### req.main-session.workflow-mode — The developer chooses the workflow mode
 
@@ -446,11 +433,9 @@ session. Its context is only its [brief](../../glossary.json#concept.brief), as 
 Each tool Coordination registers with the
 [project MCP server](../../glossary.json#concept.project-mcp-server) whose
 [contracts](contracts.md#tools) row names a `concorde` command SHALL answer and refuse exactly as
-that command does when it waits for no lock, as follows:
-
-- It answers and refuses from the [task records](../../glossary.json#concept.task-record), traces
-  and locks of the primary worktree, read afresh for that call.
-- It adds no other rule of its own.
+that command does when it waits for no lock, from the
+[task records](../../glossary.json#concept.task-record), traces and locks of the primary worktree
+read afresh for that call, adding no other rule of its own.
 
 Those tools are:
 
@@ -530,18 +515,12 @@ When what it waits for already happened, its answer carries the value that comma
 
 ### req.main-session.project-mcp-no-wait — The server never waits for a workspace or merge lock
 
-When another process holds a required lock, the server SHALL refuse its tool's call at once with
-`workspace_busy` or `merge_busy`, naming these details as the holder line gives them:
+A tool of the server that needs a [workspace lock](../../glossary.json#concept.workspace-lock) or
+the [merge lock](../../glossary.json#concept.merge-lock) SHALL be refused at once, with
+`workspace_busy` or `merge_busy`, when another process holds it, naming the lock file and the
+holder's command, process, start time, Claude Code session and task as the holder line gives them.
 
-- The lock file.
-- The holder's command.
-- The holder's process.
-- The holder's start time.
-- The holder's Claude Code session.
-- The holder's task.
-
-The required lock is a [workspace lock](../../glossary.json#concept.workspace-lock) or the
-[merge lock](../../glossary.json#concept.merge-lock). The tool takes those locks without waiting. A
+The tool takes those locks without waiting. A
 refused call releases every lock it took. A task's record lock is no such lock. Every change of a
 task record holds its record lock for that one update only. For that reason, a short write waits for
 the record lock as the command does, briefly. At worst, the short write waits while a close asks
@@ -555,10 +534,9 @@ within moments. Examples of short writes are:
 
 ### req.main-session.project-mcp-handover — A granted lock belongs to the work
 
-When `task_merge` has both locks, the server SHALL hand them to the merge process it starts so that:
-
-- The locks release exactly when that process ends, however it ends.
-- Neither the server ending nor its session ending releases the locks.
+When `task_merge` has both locks, the server SHALL hand them to the merge process it starts, so
+that they are released exactly when that process ends, however it ends, and never by the server or
+its session ending.
 
 The call's process follows this sequence:
 
@@ -587,13 +565,9 @@ to wake. A wait for something that never happens would otherwise block forever.
 
 ### req.main-session.project-mcp-fallback — Without a channel the server says so
 
-When the server does not know its session to listen to it as a channel, these calls SHALL say so and
-return the `concorde task wait` command for background Bash:
-
-- `task_merge`
-- `register_wait` for something that has not happened yet
-
-The returned command returns when the same thing happens.
+When the server does not know its session to listen to it as a channel, `task_merge`, and
+`register_wait` for something that has not happened yet, SHALL say so and return the
+`concorde task wait` command that returns when the same thing happens, for background Bash.
 
 A `register_wait` for something that already happened answers at once with that answer, channel or
 not ([`register_wait` answers with its registration](#req.main-session.project-mcp-wait-answer)).
@@ -606,13 +580,9 @@ that lock before the merge writes its whole answer
 
 ### req.main-session.project-mcp-errors — Every refusal is an error link
 
-The server SHALL make every refusal an [error chain](../../glossary.json#concept.error-chain) link:
-the refusing component's own link unchanged, or the server's own `component` link with the following
-details:
-
-- Its reason.
-- Its explanation.
-- Its options.
+Every refusal of the server SHALL be an [error chain](../../glossary.json#concept.error-chain)
+link: the refusing component's own link unchanged, or the server's own `component` link with its
+reason, explanation and options.
 
 ### req.main-session.project-mcp-guidance — The guidance says how to start with a channel
 
@@ -709,11 +679,9 @@ works and that the change reaches the primary branch when the task merges.
 
 ### req.main-session.batched-decisions — Decisions go up together
 
-The task-session guidance SHALL tell a task session the following about every decision its task
-needs that is not its own:
-
-- The session gathers these decisions and escalates them together in one report.
-- The session does this instead of waiting for an answer in the middle of its work.
+The task-session guidance SHALL tell a task session to gather every decision its task needs that is
+not its own and escalate them together in one report, instead of waiting for an answer in the
+middle of its work.
 
 A task never asks the developer in place: the developer is asked only from the main session.
 
@@ -863,12 +831,10 @@ A task session records every escalation and then sends them together with SendMe
 
 ### req.main-session.task-session-prepares-workers — A task session prepares the workers' environment
 
-The task-session guidance SHALL tell a task session the following about every new implementation
-file the work needs outside the directories its Modules' realizations bind:
-
-- The session creates the file before it launches the [worker](../../glossary.json#concept.worker)
-  that fills it.
-- The session creates it with the least content its format needs to be valid.
+The task-session guidance SHALL tell a task session to create every new implementation file the
+work needs outside the directories its Modules' realizations bind, with the least content its
+format needs to be valid, before it launches the [worker](../../glossary.json#concept.worker) that
+fills it.
 
 No worker creates such a file because:
 
@@ -902,11 +868,8 @@ reviewed.
 ### req.main-session.task-session-plan-review-iterates — A task session answers every finding until the plan is accepted
 
 The task-session guidance SHALL tell a task session that runs `plan_review` to answer every finding
-of one iteration as follows:
-
-- With `--accept` or `--reject` in the next run.
-- With the previous run as `--input`.
-- Until the verdict is `accepted`.
+of one iteration with `--accept` or `--reject` in the next run, with the previous run as `--input`,
+until the verdict is `accepted`.
 
 [Understanding](../../method/understanding/module.md) refuses a next run that leaves
 a finding of the previous one unanswered.
@@ -1116,13 +1079,10 @@ instead of settling it.
 
 ### req.main-session.issues-severity — Work starts from the most severe Issues
 
-The guidance SHALL give these two instructions:
-
-- It tells every session that records an Issue to give each report one of the
-  [severities](../../glossary.json#concept.issue-severity) `critical`, `high`, `medium` and `low`,
-  and it says what each means.
-- It tells the main agent to choose which Issues a task takes up from the open Issues listed by
-  severity, most severe first.
+The guidance SHALL tell every session that records an Issue to give each report one of the
+[severities](../../glossary.json#concept.issue-severity) `critical`, `high`, `medium` and `low`,
+saying what each means, and the main agent to choose which Issues a task takes up from the open
+Issues listed by severity, most severe first.
 
 The severity says how much a problem matters, never who fixes it. The tier decides who fixes it.
 
@@ -1187,14 +1147,11 @@ failure leads to work.
 
 ### req.main-session.issues-recovery — The guidance knows how Issue records are put back
 
-The guidance SHALL tell the main agent the following recovery rules and tell task sessions to leave
-both refusals to the main agent:
-
-- Once the cause named by a `recovery_failed` refusal is fixed, a record that refusal left
-  uncommitted is put back by `concorde issues recover`.
-- An Issue record whose change no Issue write made, which `uncommitted_change` or a merge's
-  `primary_dirty` names, is inspected and reverted, never committed by hand.
-- A merge puts back by itself what a killed Issue write left.
+The guidance SHALL tell the main agent that a record a `recovery_failed` refusal left uncommitted is
+put back by `concorde issues recover` once the cause the refusal names is fixed, that an Issue
+record whose change no Issue write made, which `uncommitted_change` or a merge's `primary_dirty`
+names, is inspected and reverted and never committed by hand, and that a merge puts back by itself
+what a killed Issue write left, and tell task sessions to leave both refusals to the main agent.
 
 Recovery is the Issue system's own repair of its records in the primary worktree. A session that
 commits or discards such a record by hand may record what no write made, or lose what one did.

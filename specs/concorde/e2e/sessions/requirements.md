@@ -77,9 +77,6 @@ with `wait_exceeded`, naming:
 
 ### req.headless-sessions.logs-kept — Every round is kept
 
-The driver SHALL keep these in the session directory, also for a session that ends with a failed
-round or fails with `wait_exceeded`:
-
-- Each round's output and standard error.
-- The session's record. For a session that fails with `wait_exceeded`, the record ends
-  `wait_exceeded` and names the run progress file of the run that outlived the wait.
+The driver SHALL keep each round's output and standard error and the session's record in the session
+directory, including for a session that ends with a failed round or fails with `wait_exceeded`,
+whose record ends `wait_exceeded` and names the run progress file of the run that outlived the wait.
