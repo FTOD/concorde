@@ -59,7 +59,8 @@ these details:
 
 - its name
 - its providing [Module](../../glossary.json#concept.module)
-- the [task type](../../glossary.json#concept.task-type) of its workers
+- the [task type](../../glossary.json#concept.task-type) of its workers, or none when each run
+  names it
 - the [worker ids](../../glossary.json#concept.worker-id) of every worker it may launch
 - its steps
 - its arguments
@@ -87,7 +88,7 @@ The **Operation catalog** lists the definitions of the installed parts, one per 
 definition, the catalog lists these details:
 
 - its providing Module
-- its task type
+- its task type, or that each run names it
 - its worker ids
 - whether it may run unbound
 - whether it may change the workspace

@@ -17,6 +17,7 @@ from .adoption.code_to_spec import CODE_TO_SPEC
 from .adoption.survey import SURVEY
 from .code_review.operation import CODE_REVIEW
 from .delivery.command import DELIVERY
+from .general_work.operation import GENERAL
 from .implementation.operation import IMPLEMENT, TEST
 from .scaffold.command import SCAFFOLD
 from .spec_review.operation import SPEC_REVIEW
@@ -41,6 +42,7 @@ DEFINED_OPERATIONS = tuple(
         (CODE_REVIEW, "module.code-review"),
         (SURVEY, "module.adoption"),
         (CODE_TO_SPEC, "module.adoption"),
+        (GENERAL, "module.general-work"),
     )
 )
 DEFINED_COMMANDS = tuple(

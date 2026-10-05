@@ -1,0 +1,66 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.general-work.module",
+    "owner": "module.general-work",
+    "role": "module"
+  },
+  "module": {
+    "title": "General work",
+    "owns": [
+      "specs/concorde/method/general-work/module.md",
+      "specs/concorde/method/general-work/requirements.md",
+      "specs/concorde/method/general-work/scenarios.md",
+      "specs/concorde/method/general-work/contracts.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.operations",
+        "meaning": "#uses-operations"
+      },
+      {
+        "target": "module.execution",
+        "meaning": "#uses-execution",
+        "relies_on": [
+          "concept.execution-runner",
+          "concept.run-result",
+          "concept.unbound-run",
+          "concept.unbound-checkout"
+        ]
+      },
+      {
+        "target": "module.workers",
+        "meaning": "#uses-workers"
+      },
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec"
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.tracing.contracts",
+        "reason": "the Framework's error contract, which this Module's errors follow"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "realization.general-work.operation",
+      "type": "realization",
+      "title": "General work Operation",
+      "meaning": "#realization.general-work.operation",
+      "entries": [
+        "src/concorde/method/general_work/",
+        "prompts/workers/general.md",
+        "prompts/workers/general-review.md",
+        "tests/concorde/general_work/"
+      ]
+    }
+  ],
+  "relations": [],
+  "extensions": {}
+}

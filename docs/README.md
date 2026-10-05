@@ -139,6 +139,7 @@ print one JSON result. Run them inside a task's worktree, whose workspace bindin
 | `test`            | The host's check results interpreted by a read-only worker.                                                                          |
 | `spec_review`     | Review findings and a verdict on the bound Modules' Specs.                                                                           |
 | `code_review`     | Findings, recorded as Issues, and a verdict on the task's code changes or, with `--scope module`, on each named Module's whole code. |
+| `general`         | Free-form work under the grant of the task type `--type` names, and an independent review of the result against the instruction.     |
 | `task-validation` | (command) Readiness: structural validation and the configured checks of the changed Modules.                                         |
 | `delivery`        | (command) The validated commit of the task's change on the task branch.                                                              |
 

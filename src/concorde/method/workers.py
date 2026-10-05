@@ -124,12 +124,13 @@ ENVIRONMENT_HANDLING = (
 
 
 def declared_workers() -> dict[str, tuple[str, ...]]:
-    """Every Operation the installed parts register that launches workers, with its worker ids:
-    the names a worker configuration may use."""
+    """Every Operation the installed parts register, with its worker ids: the names a worker
+    configuration may use. An Operation whose runs each name their task type, such as
+    ``general``, declares none and is listed all the same."""
     return {
         name: OPERATIONS.get(name).workers
         for name in OPERATIONS
-        if OPERATIONS.get(name).task_type is not None
+        if OPERATIONS.get(name).kind == "operation"
     }
 
 

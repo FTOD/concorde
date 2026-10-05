@@ -39,6 +39,13 @@ validate and deliver the task:
 
   A maintained finding whose renewed reasoning convinces you is no disagreement. Accept it and
   revise the plan.
+- **Run free-form AI work through `general`.** For bounded AI work that no other Operation fits,
+  run `concorde run general --type <task type> --instruction-file <file>`. Never start `pi`,
+  `claude` or another agent program yourself for it. Such a program takes your configuration and
+  its writes are not bounded. `general` runs the work under the grant of the type you name. A
+  second worker reviews the result against your instruction and reports findings. It never fixes
+  them. Read the verdict. Keep, revise or revert the change yourself. Record each choice in the
+  decision log.
 - **Deliver.** `concorde task-validation` shows what would block. `concorde delivery` validates
   the whole workspace again. It creates the delivery commit on the task branch. That commit alone
   marks the task delivered. Where the "Deliver" step above, or "Merging the primary branch", says

@@ -40,6 +40,10 @@
         "meaning": "#contains-adoption"
       },
       {
+        "target": "module.general-work",
+        "meaning": "#contains-general-work"
+      },
+      {
         "target": "module.validation",
         "meaning": "#contains-validation"
       },
