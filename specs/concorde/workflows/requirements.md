@@ -12,7 +12,7 @@ When a worktree's [workspace binding](../glossary.json#concept.workspace-binding
 
 ### req.workflows.steps-are-runs — Every step is an ordinary run
 
-In the workspace it runs in, a [workflow step](../glossary.json#concept.workflow-step) SHALL start its run only as `concorde run <operation> --detach` or `concorde <command> --detach` of that workspace's own `concorde`.
+A [workflow step](../glossary.json#concept.workflow-step) SHALL start its run only as `concorde run <operation> --detach` or `concorde <command> --detach` of the workspace's own `concorde`, in the workspace the step runs in.
 
 The workflow leaves worker launches and service calls inside the run. What
 [step agents](../glossary.json#concept.step-agent) may do is stated in
@@ -54,10 +54,7 @@ twice.
 
 ### req.workflows.restart-generation — A restart runs a step once more
 
-When given a restart label, a step SHALL add it to the step key after `#`, so that:
-
-- The step starts one new run for that label.
-- While that step is current, the step finds that run on every later call with the same label.
+A step given a restart label SHALL add it to the step key after `#`, so that it starts one new run for that label and finds that run on every later call with the same label while that step is current.
 
 A step that a rerun of an earlier step superseded is never found again, even under the label it
 was restarted with. Asking for that label again starts a new run under the same key.
@@ -81,10 +78,9 @@ workflow lock.
 
 ### req.workflows.workspace-retired — Nothing is written into a retired workspace
 
-The step and report commands SHALL NOT create or write any file or folder in the workspace folder before both conditions hold:
-
-- They hold the workflow lock.
-- The binding read again matches the binding read when the command started.
+The step and report commands SHALL NOT create or write any file or folder in the workspace folder
+before they hold the workflow lock and the binding read again matches the binding read when the
+command started.
 
 The commands take the workflow lock without ever taking a lock file that was removed or replaced
 while they waited for it. In any of these cases, the commands refuse with `workspace_retired`,
@@ -121,10 +117,7 @@ is recorded nowhere. Its outcome alone carries the `workspace_retired` link.
 
 ### req.workflows.bounded-wait — A step call waits a bounded time
 
-`concorde workflow step` SHALL return within the following bound, exiting with status 3 when the run has not finished:
-
-- Its `--wait` seconds.
-- Plus at most 90 seconds for the announcement of a run it starts.
+`concorde workflow step` SHALL return within its `--wait` seconds, plus at most 90 seconds for the announcement of a run it starts, exiting with status 3 when the run has not finished.
 
 It waits for the workflow lock, as for the workspace lock, only within the bound. When another
 step or report command still holds the workflow lock as the bound ends, the call does the
@@ -151,10 +144,7 @@ When given answers, a step SHALL pass them to its run with `--answers`, written 
 
 ### req.workflows.answers-input — An answered step admits the run that asked
 
-When given answers, a step SHALL admit input as follows:
-
-- When the base key has an `ok` run, admit with `--input` the latest `ok` run of the same base key, even when a rerun superseded that run.
-- When the base key has no `ok` run, admit no `--input`.
+A step given answers SHALL admit with `--input` the latest `ok` run of the same base key, even when a rerun superseded that run, and admit no `--input` when the base key has no `ok` run.
 
 The answers refer to that run's questions. Answers without an `ok` run to refer to are outside the
 ordinary flow. This is because a step that did not end `ok` has no pending decision point in the
@@ -171,7 +161,7 @@ When a key is already recorded for another [Operation](../glossary.json#concept.
 
 ### req.workflows.no-operation-knowledge — Workflows reads only the step output convention
 
-Under the [step output convention](contracts.md#contract.workflows.step-output), the step and report commands SHALL read only the `workflow` object from a run's output, passing its `data` to the script unchanged and uninterpreted.
+The step and report commands SHALL read of a run's output only its `workflow` object under the [step output convention](contracts.md#contract.workflows.step-output), passing its `data` to the script unchanged and uninterpreted.
 
 So no Operation or command is known to Workflows by name. A run declares the following:
 
@@ -199,10 +189,7 @@ No part of Workflows SHALL do any of the following:
 
 ### req.workflows.interactive-stops — Interactive runs stop at decision points
 
-A workflow in interactive mode SHALL end right after a step in either case below, before starting another step:
-
-- The step did not end `ok`.
-- The step's output has [decision points](../glossary.json#concept.decision-point) its answers did not settle.
+A workflow in interactive mode SHALL end right after a step that did not end `ok` or whose output has [decision points](../glossary.json#concept.decision-point) its answers did not settle, before starting another step.
 
 ### req.workflows.answers-any-settler — An answer settles its point whoever gave it
 
@@ -218,6 +205,7 @@ The main agent puts the rest to the developer.
 ### req.workflows.no-ask-continues — No-ask runs never stop for a decision
 
 A workflow in no-ask mode SHALL NOT end at a decision point.
+
 ### req.workflows.no-ask-describe-continues — A step the procedure goes past does not end a no-ask run
 
 When its procedure goes past a step that did not end `ok`, a workflow in no-ask mode SHALL NOT end at that step.
@@ -232,10 +220,7 @@ The step is still reported as a problem with its error chain.
 
 ### req.workflows.report-from-records — The result is built from what the runs recorded
 
-`concorde workflow report` SHALL build the [workflow result](../glossary.json#concept.workflow-result) only from the following sources, never from values a step agent returned:
-
-- The workspace's workflow record.
-- The saved [run results](../glossary.json#concept.run-result).
+`concorde workflow report` SHALL build the [workflow result](../glossary.json#concept.workflow-result) only from the workspace's workflow record and the saved [run results](../glossary.json#concept.run-result), never from values a step agent returned.
 
 ### req.workflows.complete-report — Nothing is left out of the report
 
@@ -268,10 +253,7 @@ When its status is not `ok`, a workflow result SHALL carry an error link with th
 
 ### req.workflows.lost-step — A step that vanished is named
 
-A workflow result SHALL report the following as lost, with a `workflow` link naming the step key and what was observed:
-
-- Every current step whose run has no result and no running runner or never started.
-- Every key the script reported with `--lost` whose base key has no current step.
+A workflow result SHALL report as lost, with a `workflow` link naming the step key and what was observed, every current step whose run has no result and no running runner or never started, and every key the script reported with `--lost` whose base key has no current step.
 
 The record wins over the script. A reported key with a current step keeps what its run shows:
 
@@ -287,10 +269,7 @@ A step still starting whose run never started is one with all these characterist
 
 ### req.workflows.lost-first — A first step lost before any record is reported
 
-For a workspace with no workflow record, `concorde workflow report` SHALL do the following when given `--workflow` and a `--lost` key:
-
-- Build a `failed` workflow result naming that workflow.
-- Save that result.
+`concorde workflow report` given `--workflow` and a `--lost` key SHALL build and save a `failed` workflow result naming that workflow for a workspace that has no workflow record.
 
 Step agents that returned nothing for the first step, such as three that mistyped its request,
 leave no record. The script still knows its workflow and mode and passes them.
@@ -368,11 +347,7 @@ When the session's worktree has no usable [workspace binding](../glossary.json#c
 
 ### req.workflows.script-repeats — The script, not a model, waits for a run
 
-While a step's outcome says the run is still running, the Claude Code step function SHALL ask for that step again with these limits:
-
-- Each call waits at most 100 seconds.
-- The function makes at most 200 calls of that step.
-- After those calls, the function resolves to the last outcome that said the run was running.
+The Claude Code step function SHALL ask for a step again while its outcome says the run is still running, each call waiting at most 100 seconds, for at most 200 calls of that step, after which it resolves to the last outcome that said the run was running.
 
 The cap is about five and a half hours of waiting.
 It is a guard against a run that never ends, not a limit of the run.
@@ -408,10 +383,7 @@ A finished or lost step always has its run.
 
 ### req.workflows.relay-asked-again — A relay that is no answer is asked again
 
-After an outcome that is no answer, the Claude Code step function SHALL ask its step agent again until either limit is reached:
-
-- Three outcomes in a row have been no answer.
-- The step's 200 calls are spent.
+The Claude Code step function SHALL ask its step agent again after an outcome that is no answer until three outcomes in a row have been no answer or the step's 200 calls are spent.
 
 ### req.workflows.relay-exhausted — A step without an answer is reported lost
 

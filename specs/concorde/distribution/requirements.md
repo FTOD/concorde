@@ -25,13 +25,7 @@ those locations. Each new prompt root adds its own owned location in the same ch
 
 ### req.distribution.skills-rendered — Every skill is rendered with its front matter
 
-The build SHALL render each skill as `generated/skills/<name>/SKILL.md` with these contents in order:
-
-- Front matter with the skill's `name` and a double-quoted `description`.
-- The skill's composition or the render of its prompt root.
-
-The skill `concorde` is composed of every part's skill section.
-The skill `concorde-development` comes from `prompts/development/skill.md`.
+The build SHALL render each skill, `concorde` composed of every part's skill section and `concorde-development` from `prompts/development/skill.md`, as `generated/skills/<name>/SKILL.md`: front matter with the skill's `name` and a double-quoted `description`, followed by that composition or the render of its prompt root.
 
 The installer places the `concorde` skill from its rendered file, so an installed project and Concorde's
 own source checkout load the same text.
@@ -51,11 +45,7 @@ one, the build SHALL fail.
 
 ### req.distribution.prompt-includes — A prompt includes another by a line of its own
 
-When a line `@<path>.md [KEY=value ...]` starts at column one of a prompt, the build SHALL expand
-it as follows:
-
-- Use the prompt at that repository-relative path.
-- Fill each `{KEY}` placeholder of the included prompt with the line's value for it.
+The build SHALL expand a line `@<path>.md [KEY=value ...]` that starts at column one of a prompt as the prompt at that repository-relative path, each `{KEY}` placeholder of the included prompt filled with the line's value for it.
 
 Every Markdown file under `prompts/` is a prompt. The Protocol's own chapters under `protocol/` are
 prompts too. Together with the prompts under `prompts/protocol/`, those chapters are its Protocol
@@ -87,14 +77,7 @@ The Protocol's own chapters are plain Markdown. They count as `shared`.
 
 ### req.distribution.include-once — A prompt is reached at most once within one root
 
-When a root reaches one prompt by a second include line, the build SHALL refuse the root with
-`CONCORDE-PROMPT-DIAMOND-001`, naming:
-
-- The prompt.
-- Both include chains from the root that reach the prompt.
-
-This applies whatever values the lines give. It applies whether the lines are in the same prompt
-or in two prompts that both include the reached prompt.
+The build SHALL refuse with `CONCORDE-PROMPT-DIAMOND-001`, naming the prompt and both include chains from the root that reach it, a root that reaches one prompt by a second include line, whatever values the lines give, whether in the same prompt or through two prompts that both include it.
 
 An include cycle is refused as well. Nothing is deduplicated.
 A text needed twice in one root is kept in two prompts.
@@ -187,8 +170,7 @@ The build SHALL give every part the version `concorde.json` names, so that every
 
 ### req.distribution.registration-only — Distribution reaches a part only through its registration
 
-Only through an installed part's [part registration](../glossary.json#concept.part-registration),
-Distribution SHALL perform these actions for that part:
+Distribution SHALL perform each of these actions for an installed part only through that part's [part registration](../glossary.json#concept.part-registration):
 
 - Route commands to it.
 - Present its MCP tools.
@@ -203,20 +185,11 @@ its registration names.
 
 ### req.distribution.composed-from-registrations — The command and the server offer only installed parts
 
-Each of these SHALL offer exactly what is listed for it:
-
-- The installed `concorde` command offers the distribution commands and the commands the installed
-  parts register.
-- The [project MCP server](../glossary.json#concept.project-mcp-server) offers the MCP tools the
-  installed parts register whose required parts are all installed.
+The installed `concorde` command SHALL offer exactly the distribution commands and the commands the installed parts register, and the [project MCP server](../glossary.json#concept.project-mcp-server) exactly the MCP tools they register whose required parts are all installed.
 
 ### req.distribution.absent-part-named — A command of an absent part names the part
 
-When a part of the package registers a command but the project has not installed that part, the
-`concorde` command SHALL refuse the command, naming:
-
-- That part.
-- How to install it.
+The `concorde` command SHALL refuse a command that a part of the package registers but the project has not installed, naming that part and how to install it.
 
 The command prints the refusal as `{"error": <link>}` with the code `part_missing`.
 The command exits with status 1. The printed refusal is the one refusal by which another part tells that a part
@@ -228,10 +201,7 @@ When two parts register the same command or the same MCP tool name, the build SH
 
 ### req.distribution.composed-guidance — The guidance is composed of the installed parts
 
-The installed [main-session guidance](../glossary.json#concept.main-session-guidance) SHALL have these contents in order and no section of a part that is not installed:
-
-- Coordination's working method.
-- The rendered guidance section of every other installed part, in the order of the parts.
+The installed [main-session guidance](../glossary.json#concept.main-session-guidance) SHALL be Coordination's working method followed by the rendered guidance section of every other installed part, in the order of the parts, and hold no section of a part that is not installed.
 
 This holds for each of its three compositions:
 
@@ -248,10 +218,7 @@ and the `CLAUDE.md` block alone. There is no task-session prompt in this case.
 
 ### req.distribution.guidance-absent-parts — A guidance section stands without the parts it may lack
 
-Each of these sections SHALL say what happens where a part it may be composed without is not installed, wherever it names a command or project MCP tool of that part:
-
-- Every guidance section a part registers.
-- Dogfooding's develop section.
+Every guidance section a part registers, and Dogfooding's develop section, SHALL say what happens where a part it may be composed without is not installed, wherever it names a command or project MCP tool of that part.
 
 A section may be composed without every part that neither its own part depends on nor, for a
 task-session section, Coordination does. The develop section may be composed without every part
@@ -260,18 +227,11 @@ something the project lacks.
 
 ### req.distribution.glossary-import — The CLAUDE.md block imports the glossary
 
-Where the spec part is installed, the installed `CLAUDE.md` block SHALL import as follows:
-
-- When the project's registry declares a glossary, import that glossary.
-- When the project's registry declares none, import nothing.
+Where the spec part is installed, the installed `CLAUDE.md` block SHALL import the glossary the project's registry declares, and nothing when none is declared.
 
 ### req.distribution.receipt-complete — The receipt names every owned file
 
-The installer's receipt SHALL list these files:
-
-- Under `files`, every file Concorde owns in the project, whether or not this install wrote it.
-- Under `defaults`, those of them that are Concorde-owned defaults, including a default an earlier
-  receipt named that is still in place.
+The installer's receipt SHALL list under `files` every file Concorde owns in the project, whether or not this install wrote it, and under `defaults` those of them that are Concorde-owned defaults, a default an earlier receipt named that is still in place included.
 
 No install removes a default its earlier receipt names, since a default holds the project's own
 data ([Installing into a project](module.md#installing-into-a-project)).
@@ -282,10 +242,7 @@ The installer's receipt SHALL list under `amended` the project's own files that 
 
 ### req.distribution.installer-own-permissions — The installer adds only its own permission rules
 
-The installer SHALL change the project's `.claude/settings.json` only by:
-
-- Adding the missing permission rules its workflows need.
-- Removing the rules it recorded in its receipt and no longer ships.
+The installer SHALL change the project's `.claude/settings.json` only by adding the missing permission rules its workflows need and removing the rules it recorded in its receipt and no longer ships.
 
 Every other setting, including rules the developer wrote that equal one of Concorde's, stays as
 it was.
@@ -299,18 +256,15 @@ The refusal is `settings_invalid`.
 ### req.distribution.installer-project-mcp — The installer registers the project MCP server
 
 The installer SHALL register the [project MCP server](../glossary.json#concept.project-mcp-server)
-in the project's `.mcp.json` with these details:
-
-- The server name is `concorde`.
-- The server runs as `.concorde/bin/concorde
+in the project's `.mcp.json` as the server `concorde`, run as `.concorde/bin/concorde
 project-mcp`.
 
 ### req.distribution.installer-mcp-kept — The installer keeps the rest of `.mcp.json`
 
 The installer SHALL change the project's `.mcp.json` only in its server `concorde`.
 
-Every other server and setting stays as it was. When a file's `concorde` entry is already the one
-above, the installer does not write the file.
+Every other server and setting stays as it was. A file whose `concorde` entry is already the one
+above is not written.
 
 ### req.distribution.installer-mcp-checked — An unusable `.mcp.json` is refused first
 
@@ -320,11 +274,7 @@ The refusal is `mcp_config_invalid`.
 
 ### req.distribution.own-python — Concorde runs in its own Python environment
 
-The installed `concorde` command SHALL run Concorde with these restrictions:
-
-- It uses only the interpreter of its own environment under `.concorde/framework/python/`.
-- It ignores the caller's Python path settings.
-- It ignores user site-packages.
+The installed `concorde` command SHALL run Concorde only with the interpreter of its own environment under `.concorde/framework/python/`, ignoring the caller's Python path settings and user site-packages.
 
 ### req.distribution.idle-install — An install is refused while an installed part reports work running
 
@@ -363,11 +313,7 @@ configuration.
 
 ### req.distribution.installer-keeps-installation-bound — Installed files stay bound
 
-Where the spec part is installed in an initialized project, the installer SHALL do the following after it writes the receipt:
-
-- It brings the Concorde installation realization in step with the receipt through Spec core.
-- It thereby binds every file the receipt names outside `.concorde/`, other than the amended ones,
-  whether the file was installed before or after initialization.
+Where the spec part is installed, in an initialized project, the installer SHALL, after writing the receipt, bring the Concorde installation realization in step with the receipt through Spec core, so that every file the receipt names outside `.concorde/`, other than the amended ones, is bound whether it was installed before or after initialization.
 
 The binding is [Spec core's](../spec-tooling/spec/requirements.md#req.spec.installation-follows-record).
 When an installed file exists and no realization binds it by its exact path, the file is added.
@@ -426,11 +372,7 @@ It reports the removal as `CONCORDE-UPDATE-002`.
 
 ### req.distribution.installer-fresh-guidance — Only a fresh build is installed
 
-When either condition holds, the installer SHALL refuse the package with `stale_build` before writing anything:
-
-- The package's [build manifest](../glossary.json#concept.build-manifest) records a missing or
-  changed source or output.
-- The package lacks a render or file the installed parts place.
+The installer SHALL refuse with `stale_build`, before writing anything, a package whose [build manifest](../glossary.json#concept.build-manifest) records a missing or changed source or output, or that lacks a render or file the installed parts place.
 
 Freshness is judged by the digests the build manifest records, never by file times. The rendered
 [main-session guidance](../glossary.json#concept.main-session-guidance) is one such render, so stale
@@ -451,22 +393,13 @@ The docsite renders the Specs' diagrams with it.
 
 ### req.distribution.installer-d2-first — The d2 archive is checked before anything is written
 
-When it installs `d2`, the installer SHALL perform these steps before it writes anything else into the project:
-
-- Fetch the pinned archive.
-- Check the pinned archive.
+When it installs `d2`, the installer SHALL fetch and check the pinned archive before it writes anything else into the project.
 
 A failed or tampered download therefore leaves the project untouched.
 
 ### req.distribution.installer-programs-first — Missing programs refuse before anything is written
 
-When either condition holds, the installer SHALL refuse before writing anything into the project:
-
-- `uv` is not on `PATH`.
-- All these conditions hold:
-  - `npm` is not on `PATH`.
-  - The pi runtime is to be installed.
-  - The pi runtime is not already in place.
+The installer SHALL refuse, before writing anything into the project, when `uv` is not on `PATH`, or when `npm` is not on `PATH` and the pi runtime is to be installed and not already in place.
 
 The refusals are `uv_missing` and `npm_missing`. The steps that run those programs can still fail
 after the first write. A write itself can also fail
@@ -480,7 +413,7 @@ Nothing is rolled back: what the earlier steps wrote stays. The receipt is repla
 every other installed file. Therefore, when a failure occurs before the receipt's replacement, the
 previous receipt stays. A failure after the replacement happens while one of these steps runs:
 
-- The installer binds the installed files.
+- The installed files are bound.
 - An update rebinds the Protocol.
 - An update writes its mark.
 
@@ -516,19 +449,13 @@ so an install without the template could not scaffold a site.
 
 ### req.distribution.installer-docsite-template-first — An unsafe docsite template installs nothing
 
-Where both conditions hold, the installer SHALL refuse with `invalid_docsite_template` before it writes anything into the project:
-
-- The spec part is installed.
-- Views' template inventory rejects the package's docsite template as missing or unsafe.
+Where the spec part is installed and Views' template inventory rejects the package's docsite template as missing or unsafe, the installer SHALL refuse with `invalid_docsite_template` before it writes anything into the project.
 
 ## The project MCP server
 
 ### req.distribution.mcp-current-code — Every call answers with the current Concorde
 
-The project MCP server SHALL answer every call of a registered tool with a process of the Concorde described below, never with Concorde code the server loaded before that call:
-
-- It is the Concorde that the `concorde` command of the worktree the tool's current registration
-  names ([serving](#req.distribution.mcp-current-serving)) runs when the call arrives.
+The project MCP server SHALL answer every call of a registered tool with a process of the Concorde that the `concorde` command of the worktree the tool's current registration names ([serving](#req.distribution.mcp-current-serving)) runs when the call arrives, never with Concorde code the server loaded before that call.
 
 So, while a session runs, a merge or a `concorde update` changes the code that answers the session's
 next call in these respects ([Serving a call](module.md#serving-a-call)):
@@ -557,9 +484,7 @@ tools again.
 
 ### req.distribution.mcp-tools-changed — The session hears that its tools changed
 
-When the tools of the Concorde that answered a call differ from those the server last listed to its session, the server SHALL tell the session that its tools changed.
-
-A listing the server fetched without giving it to the session does not count as listed.
+When the tools of the Concorde that answered a call differ from those the server last listed to its session, a listing it fetched without giving it to the session not counting as listed, the server SHALL tell the session that its tools changed.
 
 A part installed or removed by an update thereby adds or removes its tools in a running session,
 since the session then lists them again ([listed](#req.distribution.mcp-tools-listed-current)).
@@ -570,20 +495,14 @@ When a `tools/list` request from its session arrives, the project MCP server SHA
 
 ### req.distribution.mcp-channel-override — The environment may decide the channel
 
-Before and instead of reading the command lines of the processes above it, the project MCP server SHALL judge its session as follows:
-
-- When `CONCORDE_CHANNEL` is `1`, the session is a channel.
-- When `CONCORDE_CHANNEL` is `0`, the session is not a channel.
+The project MCP server SHALL judge its session a channel when `CONCORDE_CHANNEL` is `1` and not when it is `0`, before and instead of reading the command lines of the processes above it.
 
 A background task session's server is started with `CONCORDE_CHANNEL=0`. Claude Code never wakes a
 background session with channel events, so the waits it registers must name their commands.
 
 ### req.distribution.mcp-call-failed — A call without an answer is refused
 
-When a call's process ends without an answer or exceeds its time without an answer, the project MCP server SHALL refuse the call with its own `call_failed` link, which names these:
-
-- The command.
-- The end of what the process printed.
+When the process of a call ends, or exceeds its time, without an answer, the project MCP server SHALL refuse the call with its own `call_failed` link naming the command and the end of what it printed.
 
 What the process printed is the end of each of its two streams, standard output and standard error.
 This includes the streams of a process stopped at its time limit.

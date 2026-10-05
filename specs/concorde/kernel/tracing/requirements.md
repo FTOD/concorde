@@ -20,10 +20,8 @@ with content of the type the node kinds table names for its kind.
 
 ### req.tracing.written-at-start — A node exists from its start
 
-The producer of a trace node SHALL write its `trace.json` at both of these times:
-
-- Before the work the node records begins.
-- Again when that work ends.
+The producer of a trace node SHALL write its `trace.json` before the work the node records begins,
+and write it again when that work ends.
 
 Because the producer writes the record before work begins, a node whose process dies still says what it was and when it started.
 When the node's run lock tells that nobody writes it any more, the reading command shows the node
@@ -34,19 +32,17 @@ The evidence or warning names the node's file and the error.
 
 ### req.tracing.own-usage — A node records only its own consumption
 
-A trace node SHALL record in its `usage` only what the node itself consumed, never what the nodes
-below it consumed.
+A trace node's `usage` SHALL record only what the node itself consumed, never what the nodes below
+it consumed.
 
 The reading command rolls usage up over a subtree.
 This counts each token once only because no node repeats its children's usage.
 
 ### req.tracing.reported-usage — Usage is what the agent program reported
 
-A trace node SHALL record in its `usage`:
-
-- The figures the agent program reported or recorded for the node's work.
-- Null for a figure the agent program did not report.
-- Never a figure Concorde computed from prices or estimates of its own.
+A trace node's `usage` SHALL hold the figures the agent program reported or recorded for the node's
+work, and null for a figure it did not report, never a figure Concorde computed from prices or
+estimates of its own.
 
 When its task ends, a task session's node takes the figures from Claude Code's records of the session
 ([Task sessions](../../coordination/task-session/requirements.md#req.task-session.node-finished)).
@@ -54,15 +50,13 @@ A worker round's node takes the figures from its agent process's result.
 
 ### req.tracing.observed-metadata — Metadata is observed, not claimed
 
-A trace node SHALL record in its `metadata` only facts that the Concorde code that writes the node
-observed itself, never a statement taken from a [worker result](../../glossary.json#concept.worker-result).
+A trace node's `metadata` SHALL hold only facts the Concorde code that writes the node observed
+itself, never a statement taken from a [worker result](../../glossary.json#concept.worker-result).
 
 ### req.tracing.relative-paths — A trace refers to its files and nodes relatively
 
-A trace node SHALL refer to its own files and other nodes only as follows, never by an absolute path:
-
-- It refers to its own files only by paths relative to its folder.
-- It refers to other nodes only by their identities.
+A trace node SHALL refer to its own files only by paths relative to its folder and to other nodes
+only by their identities, never by an absolute path.
 
 When a node keeps an error link or a worker's claim, it keeps it exactly as reported, with the paths it named then.
 The node's own references never depend on the retained error link or worker's claim.
@@ -74,10 +68,9 @@ machine, a task's trace reads the same.
 
 ### req.tracing.created-or-found — A reference tells what the node created from what it found
 
-A [trace node](../../glossary.json#concept.trace-node) SHALL reference commits with these relations:
-
-- Only when the node itself created the commit, it uses `commit`.
-- When an earlier node created a commit that the node found and reports, it uses `found_commit`.
+A [trace node](../../glossary.json#concept.trace-node) SHALL reference a commit with the relation
+`commit` only when the node itself created it, and one an earlier node created, which it found and
+reports, with `found_commit`.
 
 Because these relations distinguish created work from found work, a reader that follows a node's `commit` references finds only the work of that node.
 For the same reason, the reader still reaches the existing work a node reported, as
@@ -153,8 +146,8 @@ For a root whose part is not installed:
 
 ### req.tracing.locks-apart — Locks lie apart from records
 
-Concorde SHALL keep every lock it takes as a file under `.concorde/locks/` that holds nothing but its
-current holder.
+Every lock Concorde takes SHALL be a file under `.concorde/locks/` that holds nothing but its current
+holder.
 
 ### req.tracing.run-lock-removed — A run lock ends with its runner
 
@@ -181,9 +174,7 @@ Therefore, when the process that adopted the lock ends, the lock is released.
 
 ### req.tracing.history-unchanged — A closed root is not changed
 
-No Concorde command SHALL change a file inside a folder of a trace root its part registered as closed, such as Coordination's [history](../../glossary.json#concept.history).
-
-Retention only removes such a folder whole or removes its conversation records.
+No Concorde command SHALL change a file inside a folder of a trace root its part registered as closed, such as Coordination's [history](../../glossary.json#concept.history), except that retention only removes such a folder whole or removes its conversation records.
 
 The one exception is the one the registering part names. For the history, this exception is the
 merge that closed the task. The reason is that the close moves the task's folder while the merge
@@ -193,22 +184,11 @@ and `messages.log` of its attempt's node there
 
 ### req.tracing.conversations-shorter — Conversation records have their own retention
 
-Retention SHALL treat a folder of a closed trace root as follows:
-
-- It removes the folder's conversation records when the folder's top node ended longer ago than the
-  period its part registered for them.
-- It leaves every other file of that folder in place until the folder itself expires.
-
-For Coordination's history, that period is the configuration's `conversation_days`, 30 by default.
+Retention SHALL remove the conversation records of a folder of a closed trace root whose top node ended longer ago than the period its part registered for them, for Coordination's history the configuration's `conversation_days`, 30 by default, and leave every other file of that folder in place until the folder itself expires.
 
 ### req.tracing.retention-explicit — Traces are removed only at defined points
 
-Traces SHALL be removed only by these means, and only for nodes that have ended:
-
-- `concorde trace prune`.
-- The retention step that a part that registers a trace root runs.
-
-Coordination's retention step at the start of `task open` and `task close` is an example.
+Traces SHALL be removed only by `concorde trace prune` and by the retention step a part that registers a trace root runs, such as Coordination's at the start of `task open` and `task close`, and only nodes that have ended.
 
 No background process removes traces. When a node's run lock is held or the node has no end, the
 node is never removed.
