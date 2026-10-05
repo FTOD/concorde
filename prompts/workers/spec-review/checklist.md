@@ -75,7 +75,7 @@ you can establish in the Specs as one finding:
 Judge the sentences by the Sentence style as part of `readability`. The style checks already
 report these problems:
 
-- Every sentence of more than 35 words.
+- Every sentence of more than 35 words, and every concept definition of more than 50 words.
 - Every semicolon in prose.
 - Every sentence with more than one requirement keyword.
 

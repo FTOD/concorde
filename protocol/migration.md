@@ -336,3 +336,17 @@ Version 16.2.1 rewrites the Protocol's own chapters and templates in [Sentence s
 The wording changes. No rule, check, field or task type changes.
 
 Every specification valid under 16.2 stays valid. Nothing needs to change.
+
+## Version 16.3
+
+Version 16.3 gives concept definitions their own length bound. A definition is one sentence that
+identifies its term. At 35 words, a definition lost its articles or the details that tell its term
+from its neighbours. Now:
+
+- `CHK.style.sentence-length` reports a concept definition of more than 50 words. A sentence of a
+  reading keeps the bound of 35 words.
+- [Sentence style](style.md#short-sentences) says that a definition stays as short as identifying
+  its term allows. Every other detail belongs in the term's explanation.
+
+Every specification valid under 16.2.1 stays valid. A definition of 36 to 50 words is no longer
+reported. Nothing needs to change.

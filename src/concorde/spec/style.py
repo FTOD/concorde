@@ -3,7 +3,8 @@
 The style's rules are inspired by the structural rules of ASD-STE100 Simplified Technical English;
 only the few a program decides are measured here, and each is reported at strictness ``warning``:
 
-- ``CHK.style.sentence-length``: a sentence of more than ``SENTENCE_LIMIT`` words;
+- ``CHK.style.sentence-length``: a sentence of more than ``SENTENCE_LIMIT`` words, or a concept
+  definition of more than ``DEFINITION_LIMIT`` words;
 - ``CHK.style.semicolon``: a semicolon in prose;
 - ``CHK.style.one-obligation``: a sentence with more than one normative keyword.
 
@@ -24,6 +25,9 @@ from .syntax import HTML_ANCHOR, INLINE_CODE, LINK, LIST_ITEM, SENTENCE_BREAK
 # The sentence length above which a sentence is reported. The style's target is 25 words or
 # fewer, and the check warns only where a sentence is clearly too long to read in one pass.
 SENTENCE_LIMIT = 35
+# The length above which a concept definition is reported. A definition is one sentence that must
+# identify its term, so it may be longer than a sentence of a reading.
+DEFINITION_LIMIT = 50
 # A normative keyword of the Protocol's requirement language, a NOT after it included.
 KEYWORD = re.compile(r"\b(?:MUST|SHALL|SHOULD|MAY)(?: NOT)?\b")
 WORD = re.compile(r"[^\W_]")
@@ -146,16 +150,17 @@ def sentences(text: str) -> list[Sentence]:
     return found
 
 
-def style_problems(text: str) -> list[StyleProblem]:
-    """Every violation of the decidable style rules in the prose of a Markdown text."""
+def style_problems(text: str, limit: int = SENTENCE_LIMIT) -> list[StyleProblem]:
+    """Every violation of the decidable style rules in the prose of a Markdown text, a sentence
+    being too long above ``limit`` words."""
     problems: list[StyleProblem] = []
     for sentence in sentences(text):
-        if sentence.words > SENTENCE_LIMIT:
+        if sentence.words > limit:
             problems.append(
                 StyleProblem(
                     "CHK.style.sentence-length",
                     sentence.line,
-                    f"sentence of {sentence.words} words, more than {SENTENCE_LIMIT}: "
+                    f"sentence of {sentence.words} words, more than {limit}: "
                     f"{_quote(sentence.text)}",
                 )
             )

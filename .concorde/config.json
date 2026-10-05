@@ -1,8 +1,8 @@
 {
   "profile_version": 19,
   "protocol": {
-    "version": "16.2.1",
-    "digest": "sha256:f1d00f75c107a660e91d649a71d16f51d2528ffab5464689113fc675fb74d178"
+    "version": "16.3.0",
+    "digest": "sha256:8e513f106d7e70fa88932959f70cb539897fe231fab8a537b28c5ea51956374f"
   },
   "python": ".venv/bin/python"
 }

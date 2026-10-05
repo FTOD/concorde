@@ -35,7 +35,7 @@ from .repository_base import (
     overlaps,
     read_file,
 )
-from .style import style_problems
+from .style import DEFINITION_LIMIT, style_problems
 from .syntax import (
     LINK,
     NODE_PREFIXES,
@@ -1338,7 +1338,7 @@ class Checks:
         for concept in sorted(
             repository.concept_nodes.values(), key=lambda item: item.id
         ):
-            for problem in style_problems(concept.definition or ""):
+            for problem in style_problems(concept.definition or "", DEFINITION_LIMIT):
                 self.add(
                     problem.check,
                     repository.glossary_path,

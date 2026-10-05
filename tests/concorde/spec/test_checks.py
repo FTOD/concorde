@@ -347,8 +347,9 @@ class CheckTests(unittest.TestCase):
             "provider",
             lambda value: value["module"]["owns"].append("specs/provider/rules.md"),
         )
+        # A definition is measured against its own, longer bound: 72 words.
         update_glossary_entry(
-            self.root, "concept.provider.thing", definition=f"One {long} value."
+            self.root, "concept.provider.thing", definition=f"One {long} {long} value."
         )
         found = self.project.validate()
         self.assertEqual("success", found.status)
@@ -372,6 +373,31 @@ class CheckTests(unittest.TestCase):
                 and (f.source == "specs/provider/rules.md" or f.subject_id)
             ),
         )
+
+    @verifies("scenario.spec.style-warnings")
+    def test_a_definition_is_measured_against_fifty_words(self):
+        words = " ".join(["word"] * 48)
+        update_glossary_entry(
+            self.root, "concept.provider.thing", definition=f"One {words} value."
+        )
+        self.assertEqual(
+            [],
+            [
+                f
+                for f in self.project.findings("CHK.style.sentence-length")
+                if f.subject_id
+            ],
+        )
+        update_glossary_entry(
+            self.root, "concept.provider.thing", definition=f"One {words} more value."
+        )
+        (finding,) = [
+            f
+            for f in self.project.findings("CHK.style.sentence-length")
+            if f.subject_id
+        ]
+        self.assertEqual("concept.provider.thing", finding.subject_id)
+        self.assertIn("sentence of 51 words, more than 50", finding.message)
 
     @verifies("scenario.spec.style-warnings")
     def test_only_prose_is_measured_as_a_reader_sees_it(self):

@@ -172,7 +172,7 @@ to it.
 - GIVEN a document whose prose has a sentence of more than 35 words
 - AND its prose has a sentence with a semicolon
 - AND its prose has a sentence with two requirement keywords
-- AND a glossary entry whose definition has more than 35 words
+- AND a glossary entry whose definition has more than 50 words
 - WHEN the validator runs
 - THEN it reports a `CHK.style.sentence-length`, a `CHK.style.semicolon` and a
   `CHK.style.one-obligation` warning
@@ -182,6 +182,7 @@ to it.
 - BUT fences, headings, tables and inline code are no prose
 - BUT a link counts as its text
 - BUT an inline code span counts as one word
+- BUT a definition of 50 words or fewer is not too long
 
 ### scenario.spec.concept-local — A concept only its owner uses
 
