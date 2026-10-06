@@ -1,0 +1,41 @@
+{
+  "architecture": {
+    "commit": null,
+    "context_identity": "sha256:bbbea96f9a6504b3f745cc7ac4e9906b45faed67b0bde1835ab6937d7b02e09b",
+    "judged_at": "2026-10-06T19:53:54Z",
+    "run": "r-20261006T193742-project_review-4cbffb26"
+  },
+  "modules": {
+    "module.project-review": {
+      "code_review": {
+        "code_digest": "sha256:412d6ca8ce8a201f3ea22a6c307098e31fe5495b733466c4d8012fe0d36c70c5",
+        "commit": null,
+        "context_identity": "sha256:b034ae5ba5ca8df96579c4ff52ba04aa5288b798fa8ae7fb5030c986d900b8d3",
+        "judged_at": "2026-10-06T19:53:54Z",
+        "run": "r-20261006T193742-project_review-4cbffb26"
+      },
+      "panel": {
+        "commit": null,
+        "context_identity": "sha256:b034ae5ba5ca8df96579c4ff52ba04aa5288b798fa8ae7fb5030c986d900b8d3",
+        "judged_at": "2026-10-06T19:53:54Z",
+        "run": "r-20261006T193742-project_review-4cbffb26"
+      }
+    },
+    "module.scaffold": {
+      "code_review": {
+        "code_digest": "sha256:7ecb92623ef3140e3cdcc7ee4a767f7afe18108078ab0bb3d7c7b13093a0b610",
+        "commit": null,
+        "context_identity": "sha256:50dd3a90e073cb7860403921d05db9aca50ffdbb650a18efc1c90b0fa321661c",
+        "judged_at": "2026-10-06T19:53:54Z",
+        "run": "r-20261006T193742-project_review-4cbffb26"
+      },
+      "panel": {
+        "commit": null,
+        "context_identity": "sha256:50dd3a90e073cb7860403921d05db9aca50ffdbb650a18efc1c90b0fa321661c",
+        "judged_at": "2026-10-06T19:53:54Z",
+        "run": "r-20261006T193742-project_review-4cbffb26"
+      }
+    }
+  },
+  "schema_version": 1
+}
