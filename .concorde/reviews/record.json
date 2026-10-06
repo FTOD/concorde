@@ -8,18 +8,34 @@
   "modules": {
     "module.project-review": {
       "code_review": {
-        "code_digest": "sha256:500bf7c30b5282144220b4a3ebe056fdd0706a86c3cc7d03a66355faa6655ec9",
+        "code_digest": "sha256:c765f198b68fb383a8782004fb171c3597a74805296268db1949b6613d6f76a0",
         "commit": null,
-        "context_identity": "sha256:1dd07c00a40cfd5c905e78ce60a3f1f3d001d499bdc969780488be3e1f7bb8ec",
-        "judged_at": "2026-10-06T20:08:49Z",
+        "context_identity": "sha256:6ad3677af15f07309512a1abd3628bae74ad989aa51a6c1df9201f11dba948a3",
+        "judged_at": "2026-10-06T20:17:36Z",
         "resolved": [
+          {
+            "issue": "I-148d8bf755f8596aa666e8b46180b146",
+            "revision": "sha256:28175a2431cdf3fba329699d3e952933c9d9149fe3056f5caf833ec2c58457c9"
+          },
+          {
+            "issue": "I-2b2ca389814a593683aaab936f7fce23",
+            "revision": "sha256:4912487ceda9f0faf5b1cf9934fdf5674919c2cd61d5c3645ceec87c6f1f358b"
+          },
           {
             "issue": "I-3bf12471259c5b67a2a8775895aa12ea",
             "revision": "sha256:7de09b50534d8b0af87c932c9844ac735195eb7d408b379c8d3ffacf6deb0468"
           },
           {
+            "issue": "I-3fd5bc7d1d8f510aa7d4f3a24d104c5c",
+            "revision": "sha256:720b549dff13ead50dcf3ce6f864e04eb59f0b612891b87524867fd3e9e5ada1"
+          },
+          {
             "issue": "I-4abca839abf758ada2708cd1613dffa3",
             "revision": "sha256:5f7305da34d11ed9dc8d6fa6fb9a49caec00b4afcf5c467eeaad27e5e4d476c7"
+          },
+          {
+            "issue": "I-7388602044fc57aebe2207dd6befaf4d",
+            "revision": "sha256:78addfa72dcd7c4e93af3e2da32dccd1405b88df6832127f58061a2d6c627756"
           },
           {
             "issue": "I-a53277664baf5aafa1d0a07748cb495f",
@@ -38,12 +54,12 @@
             "revision": "sha256:ebd8faaf546a1aa8cac740381a5f22a251f1a828e0f3ae3dbcbbab8effeafc1c"
           }
         ],
-        "run": "r-20261006T200244-project_review-9fa730ff"
+        "run": "r-20261006T201155-project_review-dee010b9"
       },
       "panel": {
         "commit": null,
-        "context_identity": "sha256:1dd07c00a40cfd5c905e78ce60a3f1f3d001d499bdc969780488be3e1f7bb8ec",
-        "judged_at": "2026-10-06T20:08:49Z",
+        "context_identity": "sha256:6ad3677af15f07309512a1abd3628bae74ad989aa51a6c1df9201f11dba948a3",
+        "judged_at": "2026-10-06T20:17:36Z",
         "resolved": [
           {
             "issue": "I-2293a17feffd59119713a5d6673f12fd",
@@ -54,8 +70,8 @@
             "revision": "sha256:54aac8dd8a6ac5d912ea175c770efd608b66cc2e4029f5113aaff27699809cbd"
           },
           {
-            "issue": "I-982a7fd5908655b890ebbdeac10ced68",
-            "revision": "sha256:c147c88245410f0083b19d752549cf968a4d81d7bf5d557801bcece25557b642"
+            "issue": "I-7116eb0a771759468ccecebba79a3663",
+            "revision": "sha256:bef67f26fa3ce6a5e09f0e79d4f20c99506e883f8bcf0f26226b7d420e72dead"
           },
           {
             "issue": "I-9bb314ac6b8b5264a25fbeeafb88c505",
@@ -68,9 +84,13 @@
           {
             "issue": "I-d83becc1c974521885b934f0925c82a0",
             "revision": "sha256:7b21605980f6cb4df779f9d8e622846999938af78c58217a611d5769e608a517"
+          },
+          {
+            "issue": "I-f84119e0853a54d9b58d00c4bea53acc",
+            "revision": "sha256:d840517726878901d8a022e3633ac675c2f074d0d2ba5a4118b932d0b57c4d51"
           }
         ],
-        "run": "r-20261006T200244-project_review-9fa730ff"
+        "run": "r-20261006T201155-project_review-dee010b9"
       }
     },
     "module.scaffold": {
