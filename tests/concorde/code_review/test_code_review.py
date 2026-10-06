@@ -664,7 +664,7 @@ class CodeReviewTests(unittest.TestCase):
         named = self.earlier("named")
         gone = self.earlier("gone")
         standing = self.earlier("standing", tier="decision-needed")
-        other = self.earlier("spec problem", operation="spec_review")
+        other = self.earlier("spec problem", operation="spec_panel")
         _, envelope = self.change(
             finding(earlier=named, tier="preferred-fix"),
             finding(earlier="I-" + "f" * 32),

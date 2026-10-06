@@ -85,7 +85,7 @@ open,active,delivered,merging` and rebinds each with `concorde task rebind`; a t
 message reached nobody waits for that with `concorde task wait <task> --rebound <former>`.
 
 A question that changes nothing, such as how a Module works today, needs no task: `understand`,
-`spec_review` and `code_review` also run from the primary worktree without one.
+`spec_panel` and `code_review` also run from the primary worktree without one.
 
 ## Install into a Git project
 
@@ -137,7 +137,7 @@ print one JSON result. Run them inside a task's worktree, whose workspace bindin
 | `specify`         | A change of the bound Modules' own Spec documents; structural validation afterwards.                                                 |
 | `implement`       | A code change within the bound Modules' realization; configured checks with resume rounds.                                           |
 | `test`            | The host's check results interpreted by a read-only worker.                                                                          |
-| `spec_review`     | Review findings and a verdict on the bound Modules' Specs.                                                                           |
+| `spec_panel`      | Findings, recorded as Issues, and a verdict on the bound Modules' Specs, from a panel of reviewers, architects and a chair.          |
 | `code_review`     | Findings, recorded as Issues, and a verdict on the task's code changes or, with `--scope module`, on each named Module's whole code. |
 | `general`         | Free-form work under the grant of the task type `--type` names, and an independent review of the result against the instruction.     |
 | `task-validation` | (command) Readiness: structural validation and the configured checks of the changed Modules.                                         |

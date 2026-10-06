@@ -63,7 +63,6 @@ Say in your report which Issues the task resolves.
 
 **After a review.** Where the method part is installed, these tools report every finding themselves:
 
-- `spec_review`
 - `spec_panel`
 - `code_review`
 

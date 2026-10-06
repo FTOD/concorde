@@ -14,7 +14,7 @@ import sys
 import unittest
 from pathlib import Path
 
-from concorde.distribution.install import install
+from concorde.distribution.install import OWN_PYTHON, install
 from concorde.spec.verification import verifies
 from concorde.coordination.tasks import store as task_store
 from tests.concorde.distribution.test_distribution import fake_d2, package_copy
@@ -24,6 +24,35 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 from tests.concorde.validation.project import ValidationProject, evidence_of, git
 
 COMMAND = [sys.executable, str(REPOSITORY_ROOT / "scripts/concorde.py")]
+
+
+def lend_dependencies(project: Path) -> None:
+    """Give an install made without its Python dependencies an environment that imports them.
+
+    Installing the locked dependencies would need the network, and ``spec_panel`` runs its panel as
+    a LangGraph graph. The installed environment is replaced by one on the interpreter running the
+    tests, whose packages it reads through a ``.pth`` file.
+    """
+    import site
+    import venv
+
+    target = project / OWN_PYTHON
+    venv.create(target, clear=True, symlinks=True)
+    purelib = subprocess.run(
+        [
+            str(target / "bin/python"),
+            "-E",
+            "-s",
+            "-c",
+            "import sysconfig; print(sysconfig.get_path('purelib'))",
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+    (Path(purelib) / "tests-dependencies.pth").write_text(
+        "".join(f"{path}\n" for path in site.getsitepackages())
+    )
 
 
 def implement_plan(writes: dict) -> str:
@@ -117,6 +146,7 @@ class BrownfieldFlowTests(unittest.TestCase):
             fetch=fake_d2(self, package),
             dependencies=False,
         )
+        lend_dependencies(project)
         claude_workers(project)
         concorde = str(project / ".concorde/bin/concorde")
 
@@ -247,7 +277,8 @@ class BrownfieldFlowTests(unittest.TestCase):
             ],
             ["Modules to describe: module.project", [{"result": {"output": claims()}}]],
             ["Your role: reviewer.", [{"result": {"output": {"findings": []}}}]],
-            ["Your role: checker.", [{"result": {"output": {"checks": []}}}]],
+            ["Your role: architect.", [{"result": {"output": {"findings": []}}}]],
+            ["Your role: chair.", [{"result": {"output": {"findings": []}}}]],
         ]
         (base / "routes.json").write_text(json.dumps(routes))
         fake = base / "claude"
@@ -295,7 +326,7 @@ class BrownfieldFlowTests(unittest.TestCase):
                 "describe:module.inventory",
                 "describe:module.checkout",
                 "describe:module.project",
-                "spec_review",
+                "spec_panel",
                 "validate",
                 "delivery",
                 "report",
@@ -322,6 +353,9 @@ class BrownfieldFlowTests(unittest.TestCase):
         result = json.loads((workflow / record["reports"][-1]["path"]).read_text())
         self.assertEqual("ok", result["status"], json.dumps(result, indent=2)[:4000])
         self.assertEqual("adopt", result["workspace"])
+        # The review step ran the default panel and found nothing.
+        (review,) = [step for step in result["steps"] if step["key"] == "spec_panel"]
+        self.assertEqual("ok", review["status"], review)
         self.assertEqual(["d.db-helper"], [item["id"] for item in result["decisions"]])
         self.assertEqual(
             ["d.db-helper", "q.payment-retry"],

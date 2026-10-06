@@ -137,8 +137,9 @@ for (const id of described) {
 }
 
 note("Reviewing the Specs")
-const reviewed = await step("spec_review", ["spec_review", "--modules", described.join(",")])
-if (broken(reviewed) || (INTERACTIVE && !ok(reviewed))) return await finish(reviewed, "spec_review")
+// The panel runs with its defaults: three reviewers, two architects and the chair per Module.
+const reviewed = await step("spec_panel", ["spec_panel", "--modules", described.join(",")])
+if (broken(reviewed) || (INTERACTIVE && !ok(reviewed))) return await finish(reviewed, "spec_panel")
 
 note("Validating the workspace")
 const validation = await step("validate", ["task-validation"])

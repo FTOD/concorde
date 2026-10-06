@@ -138,7 +138,6 @@ primary worktree. In Concorde, these are Method's reading Operations:
 
 - `understand`
 - `survey`
-- `spec_review`
 - `spec_panel`
 - `code_review`
 

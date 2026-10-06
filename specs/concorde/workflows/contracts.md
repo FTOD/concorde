@@ -1342,7 +1342,7 @@ Its Markdown rendering is saved at `<n>.md`.
     "workspace": "adopt",
     "mode": "no-ask",
     "status": "ok",
-    "summary": "workflow brownfield of workspace adopt is ok after survey ok, scaffold ok, describe:module.checkout ok, describe:module.inventory failed, describe:module.shop ok, spec_review ok, validate ok, delivery ok; 1 problem(s), 1 decision(s), 2 decision point(s), 0 deviation(s), 2 note(s)",
+    "summary": "workflow brownfield of workspace adopt is ok after survey ok, scaffold ok, describe:module.checkout ok, describe:module.inventory failed, describe:module.shop ok, spec_panel ok, validate ok, delivery ok; 1 problem(s), 1 decision(s), 2 decision point(s), 0 deviation(s), 2 note(s)",
     "steps": [
       {
         "key": "survey",
@@ -1395,16 +1395,16 @@ Its Markdown rendering is saved at `<n>.md`.
         "summary": "code_to_spec finished for module.shop."
       },
       {
-        "key": "spec_review",
-        "name": "spec_review",
+        "key": "spec_panel",
+        "name": "spec_panel",
         "modules": [
           "module.checkout",
           "module.inventory",
           "module.shop"
         ],
-        "run_id": "r-20260925T105000-spec_review-1b2c3d4e",
+        "run_id": "r-20260925T105000-spec_panel-1b2c3d4e",
         "status": "ok",
-        "summary": "spec_review finished for module.checkout, module.inventory, module.shop."
+        "summary": "spec_panel finished for module.checkout, module.inventory, module.shop."
       },
       {
         "key": "validate",
@@ -1498,10 +1498,10 @@ Its Markdown rendering is saved at `<n>.md`.
         }
       },
       {
-        "step": "spec_review",
-        "run_id": "r-20260925T105000-spec_review-1b2c3d4e",
+        "step": "spec_panel",
+        "run_id": "r-20260925T105000-spec_panel-1b2c3d4e",
         "kind": "review",
-        "text": "spec_review verdict accepted: module.checkout accepted, module.inventory accepted, module.shop accepted",
+        "text": "spec_panel verdict accepted: module.checkout accepted, module.inventory accepted, module.shop accepted",
         "data": {
           "verdict": "accepted",
           "modules": [

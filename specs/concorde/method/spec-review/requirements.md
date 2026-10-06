@@ -18,8 +18,10 @@ worktree it started in.
 
 ### req.spec-review.review-spec-grant — Reviewers read under a review-spec grant
 
-Every reviewer and checker SHALL run under the `review-spec` grant of exactly one reviewed Module,
-computed from the Specs of the worktree the run works on.
+Every reviewer SHALL run under the `review-spec` grant of exactly one reviewed Module, computed
+from the Specs of the worktree the run works on.
+
+The chair of a panel without architects runs under the same grant.
 
 ### req.spec-review.architect-grant — Architects read under a review-architecture grant
 
@@ -27,7 +29,8 @@ Every architect SHALL run under the `review-architecture` grant of exactly one r
 computed from the Specs of the worktree the run works on.
 
 An architect therefore reads every Module's Specs and the names of the project's code, never its
-contents.
+contents. The chair of a panel with architects runs under the same grant, so that it can check an
+architect's finding against the other Modules' Specs it cites.
 
 ### req.spec-review.own-documents — Only the Module's own documents can block
 
@@ -43,16 +46,14 @@ it can establish in one run rather than stopping at the first.
 
 ### req.spec-review.earlier-issues — Workers receive the earlier Issues
 
-Before it judges, every worker of a Spec review or a Spec panel SHALL receive the reviewed
-Module's earlier Issues.
+Before it judges, every worker of a Spec panel SHALL receive the reviewed Module's earlier Issues.
 
-The [definition](operation.md#earlier-issues) says which Issues those are. Where the issues part is
+The [definition](panel.md#earlier-issues) says which Issues those are. Where the issues part is
 not installed, there are none. In that case, the workers receive none.
 
 ### req.spec-review.reports-issues — Every finding that stands becomes an Issue where Issues exist
 
-The Operation SHALL report every finding its checker did not dispute, or its chair merged into the
-panel report, as an [Issue report](../../glossary.json#concept.issue-report) through the Issue store
+The Operation SHALL report every finding its chair merged into the panel report as an [Issue report](../../glossary.json#concept.issue-report) through the Issue store
 wherever the issues part is installed, and otherwise keep every such finding in its result with its
 tier and severity, recording nothing outside the run and saying in its result that the findings were
 not recorded as Issues.
@@ -95,9 +96,9 @@ The refusal makes the Module's review `incomplete`. It travels in the result's
 
 ### req.spec-review.host-verdict — The Operation derives the verdict
 
-The verdict of a [Spec](../../glossary.json#concept.spec) review or a Spec panel SHALL be derived
-by the [Operation](../../glossary.json#concept.operation) by the rule of that Operation's payload
-contract, never taken from a worker's statement.
+The verdict of a [Spec](../../glossary.json#concept.spec) panel SHALL be derived by the
+[Operation](../../glossary.json#concept.operation) by the rule of its payload contract, never taken
+from a worker's statement.
 
 ### req.spec-review.no-structural-substitute — Structural errors stop a Module's review
 
@@ -113,7 +114,8 @@ under.
 ### req.spec-review.claims-stay-claims — Worker claims stay claims
 
 The [run result](../../glossary.json#concept.run-result) SHALL keep worker findings, severities, tiers,
-checker statuses and resolutions apart from the evidence the Operation produced itself.
+the chair's merges, notes and rejections and the resolutions apart from the evidence the Operation
+produced itself.
 
 ## Panel
 

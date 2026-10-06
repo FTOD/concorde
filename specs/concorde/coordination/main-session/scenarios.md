@@ -390,8 +390,7 @@ also illustrates
 
 - GIVEN the rendered main-session guidance
 - WHEN a main agent needs to understand or review a Module without changing it
-- THEN it is told that `understand`, `survey`, `spec_review`, `spec_panel` and `code_review` also
-  run unbound
+- THEN it is told that `understand`, `survey`, `spec_panel` and `code_review` also run unbound
 - AND it is told that such unbound runs run in a worktree without a
   [workspace binding](../../glossary.json#concept.workspace-binding), such as the primary worktree
 - AND it is told that such unbound runs have `workspace` null in their result
@@ -488,7 +487,7 @@ This illustrates [translating a Spec tooling error](requirements.md#req.main-ses
 ### scenario.main-session.unbound-failure — The guidance brings a failed unbound run to the developer whole
 
 - GIVEN the rendered main-session guidance
-- AND an [unbound run](../../glossary.json#concept.unbound-run) of `spec_review` in the primary
+- AND an [unbound run](../../glossary.json#concept.unbound-run) of `spec_panel` in the primary
   worktree that ended `failed`
 - WHEN a main agent reads how to handle its result
 - THEN it is told that the decision log and `concorde task escalate` cover the runs of a task
@@ -553,7 +552,7 @@ This illustrates [severity deciding what is fixed first](requirements.md#req.mai
 ### scenario.main-session.review-issues — The guidance acts on a review's Issues
 
 - GIVEN the rendered main-session and task-session guidance
-- WHEN a task session reads what to do after `spec_review`, `spec_panel` or `code_review`
+- WHEN a task session reads what to do after `spec_panel` or `code_review`
 - THEN it is told that the review reported every finding as an Issue
 - AND it is told that the result names those Issues with the earlier Issues that stand and those
   found resolved

@@ -1125,15 +1125,15 @@ class ReportTests(unittest.TestCase):
             output=describe_output("module.checkout", [QUESTION]),
         )
         self.record(
-            "spec_review",
-            "spec_review",
+            "spec_panel",
+            "spec_panel",
             output={
                 "verdict": "changes_required",
                 "workflow": step_output(
                     notes=[
                         {
                             "kind": "review",
-                            "text": "spec_review verdict changes_required: "
+                            "text": "spec_panel verdict changes_required: "
                             "module.checkout changes_required",
                             "data": {
                                 "verdict": "changes_required",
@@ -1186,13 +1186,13 @@ class ReportTests(unittest.TestCase):
             QUESTION,
         )
         self.assertEqual(
-            [("survey", "proposed-check"), ("spec_review", "review")],
+            [("survey", "proposed-check"), ("spec_panel", "review")],
             [(n["step"], n["kind"]) for n in result["notes"]],
         )
         # The review note is listed unchanged, with its step and run.
         review = result["notes"][1]
         self.assertEqual(
-            "spec_review verdict changes_required: module.checkout changes_required",
+            "spec_panel verdict changes_required: module.checkout changes_required",
             review["text"],
         )
         self.assertEqual(2, review["data"]["modules"][0]["blocking"])
@@ -1221,7 +1221,7 @@ class ReportTests(unittest.TestCase):
         self.assertIn("Workflow brownfield report: ok", rendering)
         self.assertIn("q.retry", rendering)
         self.assertIn("check.checkout.tests", rendering)
-        self.assertIn("spec_review verdict changes_required", rendering)
+        self.assertIn("spec_panel verdict changes_required", rendering)
         log = self.primary / ".concorde/tasks/adopt/decisions.md"
         if log.exists():
             self.assertNotIn("Workflow brownfield report", log.read_text())
@@ -1436,7 +1436,7 @@ class ScriptTests(unittest.TestCase):
             "describe:module.shop": self.outcome(
                 "describe:module.shop", "code_to_spec"
             ),
-            "spec_review": self.outcome("spec_review", "spec_review"),
+            "spec_panel": self.outcome("spec_panel", "spec_panel"),
             "validate": self.outcome(
                 "validate", "task-validation", data={"ready": True}
             ),
@@ -1456,17 +1456,17 @@ class ScriptTests(unittest.TestCase):
                 "describe:module.inventory",
                 "describe:module.checkout",
                 "describe:module.shop",
-                "spec_review",
+                "spec_panel",
                 "validate",
                 "delivery",
                 "report",
             ],
             [call["key"] for call in run["calls"]],
         )
-        review = next(c for c in run["calls"] if c["key"] == "spec_review")
+        review = next(c for c in run["calls"] if c["key"] == "spec_panel")
         self.assertEqual(
             [
-                "spec_review",
+                "spec_panel",
                 "--modules",
                 "module.inventory,module.checkout,module.shop",
             ],

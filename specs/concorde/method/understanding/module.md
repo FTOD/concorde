@@ -41,7 +41,7 @@ and a plan was requested, the plan names:
 
 The task level creates and binds those new files before the run that fills them. The next runs are:
 
-- The Operations `understand`, `specify`, `implement`, `test`, `spec_review` and `code_review`.
+- The Operations `understand`, `specify`, `implement`, `test`, `spec_panel` and `code_review`.
 - The [execution commands](../../glossary.json#concept.execution-command) `task-validation` and
   `delivery` that end a task's work.
 

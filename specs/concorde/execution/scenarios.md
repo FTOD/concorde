@@ -52,10 +52,10 @@ and commands.
 
 - GIVEN a primary worktree with `module.a`
 - WHEN the [main agent](../glossary.json#concept.main-agent) runs
-  `concorde run spec_review --modules module.a` there
-- THEN the reviewer runs in an [unbound checkout](../glossary.json#concept.unbound-checkout) of the
+  `concorde run spec_panel --modules module.a` there
+- THEN every worker runs in an [unbound checkout](../glossary.json#concept.unbound-checkout) of the
   primary worktree's `HEAD`
-- AND the reviewer uses the grant its steps compute from that checkout's Specs
+- AND every worker uses the grant its steps compute from that checkout's Specs
 - AND the result has `workspace` null
 - AND the result names that `HEAD` as `commit`
 - AND the result is saved in the trace node `.concorde/unbound/<run-id>/` of the primary worktree
@@ -64,7 +64,7 @@ and commands.
 ### scenario.execution.unbound-bound-input-refused — An unbound run refuses the output of a bound run
 
 - GIVEN a primary worktree with `module.a` and a run of a task's workspace that ended `ok`
-- WHEN the main agent runs `concorde run spec_review --modules module.a --input <that run>` in the
+- WHEN the main agent runs `concorde run spec_panel --modules module.a --input <that run>` in the
   primary worktree
 - THEN before any step, the run is refused with `input_not_admissible`
 - AND its error names the run as one of that workspace, not of no workspace

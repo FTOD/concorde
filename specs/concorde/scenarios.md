@@ -22,7 +22,7 @@ Modules achieve together.
 - WHEN the main agent opens a task bound to the root Module
 - AND the task's task session runs the [brownfield workflow](glossary.json#concept.brownfield-workflow) in its worktree in no-ask [mode](glossary.json#concept.workflow-mode)
 - AND the survey proposes child Modules, every `code_to_spec` run ends `ok` and `task-validation` finds the workspace ready
-- THEN the workflow runs `survey`, `scaffold`, one `code_to_spec` per described Module, `spec_review`, `task-validation` and `delivery` in the task's worktree, one run at a time
+- THEN the workflow runs `survey`, `scaffold`, one `code_to_spec` per described Module, `spec_panel`, `task-validation` and `delivery` in the task's worktree, one run at a time
 - AND the delivered task branch holds child Modules whose entries describe the code they bind
 - AND no implementation file changed except existing tests, which gained only the `verifies` declarations and helper that [Adoption](method/adoption/requirements.md#req.adoption.test-edits-limited) adds
 - AND the [workflow result](glossary.json#concept.workflow-result) lists every decision the workflow took and every [open question](glossary.json#concept.open-question) about intent it did not write as a promise
@@ -58,7 +58,7 @@ problem ([Workflows](workflows/requirements.md#req.workflows.no-ask-describe-con
 ### scenario.concorde.method-without-issues — A review keeps its findings without the issues part
 
 - GIVEN a project in which Method is installed with the parts it depends on, without the issues and coordination parts
-- WHEN the developer runs a Spec review whose reviewer reports a finding
+- WHEN the developer runs a review whose reviewer reports a finding
 - THEN the run result keeps the finding and states that the issues part is not installed
 - AND the run does not fail because of it
 

@@ -83,7 +83,6 @@ The session handles Issues by tier:
 
 Where the method part is installed, these reviews report each finding as an Issue:
 
-- `spec_review`
 - `spec_panel`
 - `code_review`
 

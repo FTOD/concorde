@@ -23,7 +23,7 @@ from common import E2EError, run
 # round of repairing their review findings precedes the issue. This exception to "review gaps
 # wait for a person" holds for end-to-end cases only, which is why it lives here.
 REPAIR_INTENT = (
-    "Repair every blocking finding of the Spec review given as input, in the documents of the "
+    "Repair every blocking finding of the Spec panel given as input, in the documents of the "
     "Modules it names. These Specs describe the project's existing code: change what the Specs "
     "say, never the code, keep every promise true to what the code does, and where a repair "
     "would need a decision about intended behaviour, write an open question instead of a "
@@ -109,9 +109,9 @@ def repair_specs(
     def stopped(name: str) -> dict:
         return {"task": task, "modules": modules, "steps": steps, "stopped_at": name}
 
-    review = step("spec_review", ["spec_review", "--modules", bound])
+    review = step("spec_panel", ["spec_panel", "--modules", bound])
     if review is None:
-        return stopped("spec_review")
+        return stopped("spec_panel")
     if (review.get("output") or {}).get("verdict") != "accepted":
         if (
             step(
@@ -129,8 +129,8 @@ def repair_specs(
             is None
         ):
             return stopped("specify")
-        if step("spec_review_again", ["spec_review", "--modules", bound]) is None:
-            return stopped("spec_review_again")
+        if step("spec_panel_again", ["spec_panel", "--modules", bound]) is None:
+            return stopped("spec_panel_again")
     for name in ("task-validation", "delivery"):
         if step(name, [name]) is None:
             return stopped(name)

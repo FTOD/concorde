@@ -1,1 +1,1 @@
-"""Spec review: the ``spec_review`` Operation, which judges Specs through review-spec workers."""
+"""Spec review: the ``spec_panel`` Operation, which judges Specs through a panel of review workers."""

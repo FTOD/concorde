@@ -769,14 +769,11 @@ class GuidanceTests(unittest.TestCase):
                 "When your task fixed it, add it to your task with `concorde task resolve`",
             ),
             (session, "close it with `issue_close` as `resolved`"),
-            (
-                session,
-                "`spec_review`, `spec_panel` and `code_review` report every finding",
-            ),
+            (session, "`spec_panel` and `code_review` report every"),
             (session, "of kind `spec-challenge` says the Spec, not the code, is wrong"),
             (session, "so escalate it rather than change the promise"),
             (skill, "these reviews report each finding as an Issue"),
-            (skill, "(`spec_review`, `spec_panel`, `code_review`)"),
+            (skill, "(`spec_panel`, `code_review`)"),
             (skill, "the task session closes the resolved Issues"),
             (
                 skill,

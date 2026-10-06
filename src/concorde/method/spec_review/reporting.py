@@ -4,8 +4,7 @@ The project's Issues, which the primary worktree keeps, are the review's memory.
 judge a Module, the host reads the Module's earlier Issues: its open Issues one of whose reports a
 review Operation made, and every worker receives them. Reading, settling and reporting them are
 every review's, in ``method.review_issues``; this module adds what is the Spec review's own:
-the workers' view of the earlier Issues, the disputed findings it reports nowhere and the Issue
-report of a Spec finding.
+the workers' view of the earlier Issues and the Issue report of a Spec finding.
 """
 
 from __future__ import annotations
@@ -17,7 +16,7 @@ from .. import review_issues
 from ..review_issues import SEVERITIES, TIERS, Refusal, is_blocking
 
 # The Operations whose reports make an Issue one of a Module's earlier Issues.
-REVIEW_OPERATIONS = ("spec_review", "spec_panel")
+REVIEW_OPERATIONS = ("spec_panel",)
 ISSUE = r"^I-[0-9a-f]{32}$"
 
 
@@ -52,16 +51,10 @@ def material(earlier: list[dict] | None) -> str:
     )
 
 
-def _disputed(finding: dict) -> bool:
-    """A finding the checker disputed, which is reported nowhere."""
-    return (finding.get("check") or {}).get("status") == "disputed"
-
-
 def settle(earlier: list[dict], findings: list[dict], resolved: list[dict]) -> dict:
     """Which offered earlier Issue each finding names and which the review resolves, as
-    ``review_issues.settle`` decides; a disputed finding names none, so the Issue it named is
-    carried."""
-    return review_issues.settle(earlier, findings, resolved, skipped=_disputed)
+    ``review_issues.settle`` decides."""
+    return review_issues.settle(earlier, findings, resolved)
 
 
 def _kind(dimension: str) -> tuple[str, str | None]:
@@ -129,9 +122,9 @@ def report(
     earlier: list[dict] | None = None,
     settled: dict | None = None,
 ) -> tuple[list[dict], object | None]:
-    """Report every finding the checker did not dispute; returns the host evidence and, when the
-    Issue store refused a report, the Module's stop. Each finding gets its ``issue``; an
-    unreported finding's earlier Issue joins ``settled``'s carried, in ``earlier``'s order."""
+    """Report every finding; returns the host evidence and, when the Issue store refused a
+    report, the Module's stop. Each finding gets its ``issue``; an unreported finding's earlier
+    Issue joins ``settled``'s carried, in ``earlier``'s order."""
     return review_issues.report(
         ctx,
         module,
@@ -141,7 +134,6 @@ def report(
             ctx.name, ctx.run_id, f"{module}/{position}", finding
         ),
         review="review",
-        skipped=_disputed,
         earlier=earlier,
         settled=settled,
     )
