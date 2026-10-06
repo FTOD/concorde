@@ -33,13 +33,13 @@ RUNS = [
     "specify",
     "implement",
     "test",
-    "spec_review",
+    "spec_panel",
     "code_review",
     "task-validation",
     "delivery",
 ]
 
-# contract.understanding.assessment, version 4
+# contract.understanding.assessment, version 5
 # (specs/concorde/execution/operations/understanding/contracts.md)
 ASSESSMENT_SCHEMA: dict = {
     "type": "object",

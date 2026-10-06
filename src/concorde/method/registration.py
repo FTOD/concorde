@@ -20,7 +20,6 @@ from .delivery.command import DELIVERY
 from .general_work.operation import GENERAL
 from .implementation.operation import IMPLEMENT, TEST
 from .scaffold.command import SCAFFOLD
-from .spec_review.operation import SPEC_REVIEW
 from .spec_review.panel import SPEC_PANEL
 from .specification.operation import SPECIFY
 from .understanding.operation import UNDERSTAND
@@ -37,7 +36,6 @@ DEFINED_OPERATIONS = tuple(
         (SPECIFY, "module.specification"),
         (IMPLEMENT, "module.implementation"),
         (TEST, "module.implementation"),
-        (SPEC_REVIEW, "module.spec-review"),
         (SPEC_PANEL, "module.spec-review"),
         (CODE_REVIEW, "module.code-review"),
         (SURVEY, "module.adoption"),

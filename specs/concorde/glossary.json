@@ -46,7 +46,7 @@
       "id": "concept.brownfield-workflow",
       "title": "Brownfield workflow",
       "owner": "module.method",
-      "definition": "The workflow that describes a project whose code came before its Specs: survey, scaffold, code_to_spec per Module, spec review, task validation and delivery.",
+      "definition": "The workflow that describes a project whose code came before its Specs: survey, scaffold, code_to_spec per Module, Spec panel, task validation and delivery.",
       "explanation": "specs/concorde/method/module.md#concept.brownfield-workflow",
       "relates": [
         {
@@ -506,7 +506,7 @@
       "id": "concept.review-verdict",
       "title": "Review verdict",
       "owner": "module.spec-review",
-      "definition": "The outcome of a Spec review or a Spec panel, derived by the Operation from the Issues that stand for each reviewed Module: `accepted`, `changes_required` or `incomplete`.",
+      "definition": "The outcome of a Spec panel, derived by the Operation from the Issues that stand for each reviewed Module: `accepted`, `changes_required` or `incomplete`.",
       "explanation": "specs/concorde/method/spec-review/module.md#concept.review-verdict",
       "relates": [
         {

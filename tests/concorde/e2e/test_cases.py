@@ -194,7 +194,7 @@ class CaseTests(unittest.TestCase):
         )
         self.assertIsNone(value["stopped_at"])
         self.assertEqual(
-            ["spec_review", "specify", "spec_review", "task-validation", "delivery"],
+            ["spec_panel", "specify", "spec_panel", "task-validation", "delivery"],
             [argv[0] for argv in operations],
         )
         # The runs work on the task worktree's binding: none of them names the task.
@@ -213,7 +213,7 @@ class CaseTests(unittest.TestCase):
             ]
         )
         self.assertEqual(
-            ["spec_review", "task-validation", "delivery"], [a[0] for a in operations]
+            ["spec_panel", "task-validation", "delivery"], [a[0] for a in operations]
         )
         # A step that does not end ok stops the repair, and the task is not merged.
         value, commands, _ = repair(
@@ -237,7 +237,7 @@ class CaseTests(unittest.TestCase):
                 (["task-validation"], ["task-validation"]),
                 (["delivery", "--adoption"], ["delivery", "--adoption"]),
                 (["scaffold", "--input", "r-x"], ["scaffold", "--input", "r-x"]),
-                (["spec_review", "--modules", "module.a"], ["run", "spec_review"]),
+                (["spec_panel", "--modules", "module.a"], ["run", "spec_panel"]),
             ):
                 with self.subTest(command=argv[0]):
                     value = cases.concorde_run(str(fake), where, argv)

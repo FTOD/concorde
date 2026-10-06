@@ -646,7 +646,7 @@ When a caller asks for a worker, it declares the Operations and the ids of the w
 launch. In Concorde, every Operation lists them in the Operation catalog. Examples are:
 
 - `spec_panel`'s workers, whose ids are listed below
-- `spec_review`'s `reviewer` and `checker`
+- `general`'s `worker` and `reviewer`
 - `worker` for an Operation with one worker
 
 The `spec_panel` worker ids are:

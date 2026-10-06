@@ -32,7 +32,7 @@ whether to go on from these:
 The script does not decide which items stop an interactive run either. The survey and the
 code_to_spec runs declare their [decision points](../glossary.json#concept.decision-point) under
 the [step output convention](../workflows/contracts.md#contract.workflows.step-output), as
-[Adoption](adoption/module.md#decisions-and-open-questions) says. The Spec review reports its
+[Adoption](adoption/module.md#decisions-and-open-questions) says. The Spec panel reports its
 verdict there as a note. Thus, without Workflows knowing any of these Operations, the workflow
 result lists these:
 
@@ -51,7 +51,7 @@ direction: down
 survey: "survey"
 scaffold: "scaffold"
 describe: "describe:<id>\nproviders first, then <module>"
-review: "spec_review"
+review: "spec_panel"
 validate: "validate\n(task-validation)"
 delivery: "delivery --adoption"
 report: "workflow report"
@@ -101,8 +101,8 @@ code_to_spec runs then describe the Modules, providers first and the root last:
 - `module.shop`.
 
 Thus, the worker describing `module.checkout` reads the description of `module.inventory` rather
-than its stub. A spec_review run reviews the three Modules. A `task-validation` run decides
-whether the workspace is ready. Since it is, `delivery --adoption` makes the
+than its stub. A `spec_panel` run, with three reviewers, two architects and a chair per Module,
+reviews the three Modules. A `task-validation` run decides whether the workspace is ready. Since it is, `delivery --adoption` makes the
 [delivery commit](../glossary.json#concept.delivery-commit) on the task branch. The flag declares
 that the workspace describes code which already existed. Linking the tests the scenarios were
 taken from adds `verifies` decorators to test files. This counts as changed code. The flag exempts
@@ -118,7 +118,7 @@ Each run is a step with its own key, listed in the workspace's
 - `describe:module.inventory`.
 - `describe:module.checkout`.
 - `describe:module.shop`.
-- `spec_review`.
+- `spec_panel`.
 - `validate`.
 - `delivery`.
 
@@ -187,7 +187,7 @@ that decision, the main agent puts it to the developer.
 | 1 | `survey` | Operation `survey --modules <module>` | always | not `ok`; interactive with [decision points](../glossary.json#concept.decision-point) not answered |
 | 2 | `scaffold` | [execution command](../glossary.json#concept.execution-command) `scaffold --input <survey run>` | the survey is `ok` | not `ok` |
 | 3 | `describe:<id>` | Operation `code_to_spec --modules <id>` | for each created [Module](../glossary.json#concept.module), providers before the Modules that use them, Modules that use each other in the scaffold's order, then `<module>` | interactive, and either not `ok` or with open questions not answered |
-| 4 | `spec_review` | Operation `spec_review --modules <module and created Modules>` | always after 3 | interactive and not `ok` |
+| 4 | `spec_panel` | Operation `spec_panel --modules <module and created Modules>`, with its default reviewers and architects | always after 3 | interactive and not `ok` |
 | 5 | `validate` | execution command `task-validation` | always after 4 | not `ok`, or readiness not ready |
 | 6 | `delivery` | execution command `delivery --adoption` | validation ready | — |
 | 7 | — | `concorde workflow report` | always, last | — |
@@ -214,6 +214,11 @@ for it. A `describe` step that did not end `ok` does not end a no-ask workflow. 
 - The Module keeps its stub or partial description.
 - Task validation decides whether the workspace can still be delivered.
 - The problem is reported.
+
+The review step runs `spec_panel` with its defaults rather than a lighter panel. The survey
+proposed the new Modules' boundaries and nobody has judged them yet. The architects judge how each
+new Module fits among the others. Several independent reviewers judge each description written from
+code.
 
 Spec review findings are reported, not repaired, because repairing a
 [Spec](../glossary.json#concept.spec) needs a decision.

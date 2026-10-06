@@ -76,8 +76,7 @@ Method registers these definitions with Execution, whose
 | `specify` | [Specification](specification/module.md) | `specify` | `worker` | no | Specs of the bound Modules, including documents it creates, and the registry mirror | a [Spec change](../glossary.json#concept.spec-change) ([contract](specification/contracts.md#contract.specification.spec-change)) |
 | `implement` | [Implementation](implementation/module.md) | `implement` | `worker` | no | code of the bound Modules | [a code change](implementation/contracts.md#contract.implementation.code-change) |
 | `test` | [Implementation](implementation/module.md) | `test` | `worker` | no | no | a test report ([contract](implementation/contracts.md#contract.implementation.test-report)) |
-| `spec_review` | [Spec review](spec-review/module.md) | `review-spec` | `reviewer`, `checker` | yes | no | [review findings](../glossary.json#concept.review-finding) and a verdict ([contract](spec-review/operation.md#contract.spec-review.payload)) |
-| `spec_panel` | [Spec review](spec-review/module.md) | `review-spec`; `review-architecture` for its architects, and for its chair when it has an architect | `reviewer1` … `reviewer5`, `architect1`, `architect2`, `chair` | yes | no | a panel report merged from independent reviews, and a verdict ([contract](spec-review/panel.md#contract.spec-review.panel-payload)) |
+| `spec_panel` | [Spec review](spec-review/module.md) | `review-spec`; `review-architecture` for its architects, and for its chair when it has an architect | `reviewer1` … `reviewer5`, `architect1`, `architect2`, `chair` | yes | no | [review findings](../glossary.json#concept.review-finding) in a panel report merged from independent reviews, and a verdict ([contract](spec-review/panel.md#contract.spec-review.panel-payload)) |
 | `code_review` | [Code review](code-review/module.md) | `review-code` | `worker` | yes (`--base` for a change review) | no | a code review report of a change or of whole Modules, and a verdict ([contract](code-review/contracts.md#contract.code-review.review)) |
 | `survey` | [Adoption](adoption/module.md) | `code-to-spec`, writes withheld | `worker` | yes | no | a [decomposition proposal](adoption/contracts.md#contract.adoption.decomposition) |
 | `code_to_spec` | [Adoption](adoption/module.md) | `code-to-spec` | `worker` | no | Specs of the bound Modules, the registry mirror and the `verifies` links of the existing tests it describes | a [Spec description](adoption/contracts.md#contract.adoption.spec-description) |
@@ -93,9 +92,9 @@ execution commands besides:
   again and makes the workspace's [delivery commit](../glossary.json#concept.delivery-commit).
 - [Scaffold](scaffold/module.md)'s `scaffold`, which creates the child Modules a survey proposed.
 
-Where the issues part is installed, the findings of `spec_review`, `spec_panel` and `code_review`
-become [Issues](../glossary.json#concept.issue) of the project. Elsewhere each finding stays in the
-run result. The verdict is derived from the findings' tiers the same way. `plan_review`'s findings
+Where the issues part is installed, the findings of `spec_panel` and `code_review` become
+[Issues](../glossary.json#concept.issue) of the project. Elsewhere each finding stays in the run
+result. The verdict is derived from the findings' tiers the same way. `plan_review`'s findings
 judge a plan within one run. They always stay in its report
 ([requirements](requirements.md#optional-integrations)).
 
@@ -420,8 +419,8 @@ Acting on a finding is the task level's decision.
 
 <a id="contains-spec-review"></a>
 
-**Spec review** provides `spec_review` and `spec_panel`: reviewers read the bound Modules' Specs and
-return findings, changing nothing. The findings stay the workers' claims. The provider derives
+**Spec review** provides `spec_panel`: reviewers read the bound Modules' Specs and return findings,
+changing nothing. The findings stay the workers' claims. The provider derives
 the verdict from them. Where the issues part is installed, the provider reports each as an
 [Issue](../glossary.json#concept.issue), in bound and unbound runs alike. The primary worktree keeps
 those Issues, so the workspace does not change. `spec_panel` is the one provider whose steps run a
@@ -598,7 +597,7 @@ checks and a review's verdict reach the [workflow result](../glossary.json#conce
 <a id="uses-issues"></a>
 
 **Issues** is an [optional integration](../glossary.json#concept.optional-integration). Where the
-issues part is installed, `spec_review`, `spec_panel` and `code_review` do these:
+issues part is installed, `spec_panel` and `code_review` do these:
 
 - Report each finding as an Issue of the Module it concerns.
 - Read the earlier Issues of a reviewed Module.

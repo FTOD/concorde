@@ -41,8 +41,8 @@ agent of Concorde's, for these purposes:
 - To keep its architecture served over MCP.
 - To keep its architecture published.
 
-Judging whether a Spec is good enough for its reader calls a model, so the Spec reviews are Method's
-Operations, not this part's.
+Judging whether a Spec is good enough for its reader calls a model, so the Spec review is a Method
+Operation, not this part's.
 
 ## Overview
 
@@ -115,7 +115,7 @@ these actors:
 The command reports every finding of the [structural checks](../glossary.json#concept.structural-check)
 in one run. While it reports an error, the change is not ready. Structure is all it proves.
 A review judges whether the Specs explain enough for their reader.
-Where the method part is installed, Method's `spec_review` and `spec_panel` Operations run that review.
+Where the method part is installed, Method's `spec_panel` Operation runs that review.
 
 Every later run in that worktree computes its workers'
 [grants](../glossary.json#concept.grant) from those Specs. The grants are the paths each may read and

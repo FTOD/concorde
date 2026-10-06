@@ -1012,7 +1012,6 @@
           "target": "module.spec-review",
           "meaning": "#uses-spec-review",
           "relies_on": [
-            "contract.spec-review.payload",
             "contract.spec-review.panel-payload",
             "req.spec-review.reports-issues",
             "req.spec-review.never-disposes",
@@ -1394,7 +1393,6 @@
       "entry": "specs/concorde/method/spec-review/module.md",
       "owns": [
         "specs/concorde/method/spec-review/module.md",
-        "specs/concorde/method/spec-review/operation.md",
         "specs/concorde/method/spec-review/panel.md",
         "specs/concorde/method/spec-review/requirements.md",
         "specs/concorde/method/spec-review/scenarios.md"

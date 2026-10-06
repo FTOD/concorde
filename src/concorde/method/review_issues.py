@@ -49,9 +49,6 @@ NOT_RECORDED = (
     "the findings were not recorded as Issues, since the issues part is not installed"
 )
 
-# A finding the review reports nowhere, such as one its checker disputed.
-Skipped = Callable[[dict], bool]
-
 
 class Refusal(Exception):
     """A refusal of the issues command, or a failure to run it: ``link`` is its error link."""
@@ -83,10 +80,6 @@ def review_output(operation: str, verdict: str, modules: list[dict]) -> dict:
             }
         ]
     )
-
-
-def _never(finding: dict) -> bool:
-    return False
 
 
 def installed(ctx: RunContext) -> bool | None:
@@ -247,22 +240,20 @@ def settle(
     findings: list[dict],
     resolved: list[dict],
     *,
-    skipped: Skipped = _never,
     unoffered: str = "a finding names no earlier Issue offered",
 ) -> dict:
     """Which offered earlier Issue each finding names and which the review resolves.
 
-    A finding keeps ``earlier`` only when it names an offered Issue no other finding named and it
-    is not ``skipped``, whose Issue is carried; a resolution counts only for an offered Issue no
-    finding named and none resolved before. Every other name is listed under ``ignored``, a
-    finding's unoffered one with the reason ``unoffered``; every offered Issue neither named nor
-    resolved is carried."""
+    A finding keeps ``earlier`` only when it names an offered Issue no other finding named; a
+    resolution counts only for an offered Issue no finding named and none resolved before. Every
+    other name is listed under ``ignored``, a finding's unoffered one with the reason
+    ``unoffered``; every offered Issue neither named nor resolved is carried."""
     offered = {item["issue"]: item for item in earlier}
     named: set[str] = set()
     ignored: list[dict] = []
     for finding in findings:
         name = finding.pop("earlier", None)
-        if not (name or "").strip() or skipped(finding):
+        if not (name or "").strip():
             continue
         if name not in offered:
             ignored.append({"issue": name, "reason": unoffered})
@@ -356,13 +347,12 @@ def report(
     issue_report: Callable[[int, dict], dict],
     *,
     review: str,
-    skipped: Skipped = _never,
     earlier: list[dict] | None = None,
     settled: dict | None = None,
 ) -> tuple[list[dict], Stop | None]:
-    """Report every finding of one Module that is not ``skipped``; returns the host evidence and,
-    when the issues command refused a report, the Module's stop. Each finding gets its ``issue``,
-    which stays None where the issues part is not installed.
+    """Report every finding of one Module; returns the host evidence and, when the issues command
+    refused a report, the Module's stop. Each finding gets its ``issue``, which stays None where
+    the issues part is not installed.
 
     ``issue_report`` gives the Issue report of the finding at a position, counted from 1, without
     ``issue_id`` and ``expected_revision``; ``review`` names the review in the stop, such as
@@ -384,8 +374,6 @@ def report(
     }
     try:
         for position, finding in enumerate(findings, 1):
-            if skipped(finding):
-                continue
             value = issue_report(position, finding)
             named = finding.get("earlier")
             if named:

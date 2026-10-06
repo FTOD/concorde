@@ -1,73 +1,66 @@
 # Spec review scenarios
 
 Concrete situations of [Spec review](module.md). The step sequence and the payload are in the
-[Operation definition](operation.md), and those of the
-Spec panel in its [definition](panel.md).
+[Spec panel definition](panel.md). Unless a scenario says otherwise, each panel has two reviewers
+and no architect.
 
 ## Reviewing
 
 ### scenario.spec-review.accepted — A clear Spec is accepted and its suggestions recorded
 
 - GIVEN a workspace whose [Module](../../glossary.json#concept.module) A validates without errors and has no earlier Issues
-- AND a reviewer that finds only suggestions in A's documents
-- WHEN the caller runs `spec_review` for Module A
+- AND a panel whose reviewers find only suggestions in A's documents, which the chair merges into one suggestion
+- WHEN the caller runs `spec_panel` for Module A
 - THEN the verdict is `accepted` and A's outcome carries the [context identity](../../glossary.json#concept.context-identity) of its `review-spec` grant
-- AND each suggestion is returned and recorded as a new [Issue](../../glossary.json#concept.issue) of A with the tier `suggestion`, committed on the primary branch
+- AND the suggestion is returned and recorded as a new [Issue](../../glossary.json#concept.issue) of A with the tier `suggestion`, committed on the primary branch
 - BUT no file of the workspace changes
 
 ### scenario.spec-review.changes-required — All blocking findings in one result
 
-- GIVEN a Module A and a reviewer that reports two findings of blocking tiers about A's own documents: a requirement with two obligations, `obvious-fix`, and an entry that never shows a normal interaction, `decision-needed`
-- WHEN the caller runs `spec_review` for Module A
+- GIVEN a Module A and a chair whose report has two findings of blocking tiers about A's own documents: a requirement with two obligations, `obvious-fix`, and an entry that never shows a normal interaction, `decision-needed`
+- WHEN the caller runs `spec_panel` for Module A
 - THEN the verdict is `changes_required`
 - AND both problems are returned in the same result, each with its path, dimension, severity, tier, evidence, suggestion and the Issue it was recorded as
 - AND each Issue's report carries the problem's severity, tier, title, problem, impact and evidence
 
-### scenario.spec-review.checker — The checker disputes a finding
-
-- GIVEN a reviewer that reports one blocking finding the [Spec](../../glossary.json#concept.spec) does not support
-- WHEN the caller runs `spec_review` with `--check-findings`
-- THEN the checker marks that finding `disputed` with a reason
-- AND the finding is still returned, naming no Issue, and no Issue is recorded for it
-- BUT it does not make the verdict `changes_required`
-
 ### scenario.spec-review.several-modules — Each Module is reviewed on its own
 
 - GIVEN Modules A and B without earlier Issues, where A uses B
-- WHEN the caller runs `spec_review` for Modules A and B
-- THEN one reviewer runs per Module, each under its own Module's `review-spec` grant
-- AND a blocking problem A's reviewer notices in a B document becomes a `suggestion` naming B, recorded as an Issue owned by B
+- WHEN the caller runs `spec_panel` for Modules A and B
+- THEN each Module has its own panel, whose reviewers run under that Module's `review-spec` grant
+- AND a blocking problem A's chair reports in a B document becomes a `suggestion` naming B, recorded as an Issue owned by B
 - AND the verdict combines both Modules' outcomes
 
 ### scenario.spec-review.unbound-reports — An unbound review reports to the project's Issues
 
-- GIVEN the primary worktree, without a [workspace binding](../../glossary.json#concept.workspace-binding), whose Module A's Specs have one problem
-- WHEN the caller runs `spec_review` for Module A there
-- THEN the problem is recorded as an Issue of the project, whose report names the `spec_review` run and no task
+- GIVEN the primary worktree, without a [workspace binding](../../glossary.json#concept.workspace-binding), whose Module A's [Specs](../../glossary.json#concept.spec) have one problem
+- WHEN the caller runs `spec_panel` for Module A there
+- THEN the problem is recorded as an Issue of the project, whose report names the `spec_panel` run and no task
 - AND the primary worktree has no change but the Issue's commit
 
 ### scenario.spec-review.without-issues — Without the issues part the findings stay in the result
 
 - GIVEN a project whose `concorde` does not offer `issues`, the issues part not being installed
-- WHEN `spec_review` reviews a Module whose reviewer returns a finding of a blocking tier
+- WHEN `spec_panel` reviews a Module whose chair reports a finding of a blocking tier
 - THEN the Module is `changes_required`, its finding keeps `issue` null and its `earlier_issues` is null
-- AND the reviewer received no earlier Issue and the result's summary says the findings were not recorded as Issues
+- AND every worker received no earlier Issue and the result's summary says the findings were not recorded as Issues
 - BUT no Issue is recorded
 
 ## Earlier Issues
 
 ### scenario.spec-review.earlier-issues — A repeated review builds on the earlier Issues
 
-- GIVEN the project's open Issues I1 and I2 of `module.a`, of blocking tiers, and I3, a `suggestion`, all reported by earlier Spec reviews
+- GIVEN the project's open Issues I1 and I2 of `module.a`, of blocking tiers, and I3, a `suggestion`, all reported by earlier Spec panels
 - AND I4, open and owned by `module.a` but reported by a [task session](../../glossary.json#concept.task-session)
-- WHEN a reviewer, given I1, I2 and I3 but not I4, reports the problem of I2 changed but still blocking, one new suggestion, and I3 and an unknown I9 resolved
+- WHEN the workers, given I1, I2 and I3 but not I4, report the problem of I2 changed but still blocking and one new suggestion
+- AND the chair merges both and resolves I3 and an unknown I9
 - THEN I2 receives the changed finding as a new report, the new suggestion is recorded as a new Issue, and I1, I3 and I4 are unchanged
 - AND the result lists I1 as carried with its severity, tier and title, I3 as resolved with the reason and I9 as ignored
 - AND the outcome is `changes_required`, since the carried I1 and the reported I2 are of blocking tiers
 
 ### scenario.spec-review.blank-earlier — An empty earlier names no earlier Issue
 
-- GIVEN a reviewer that returns three new findings, the first with `earlier` empty, the second with `earlier` blank and the third naming an Issue that was not offered
+- GIVEN a chair whose report has three new findings, the first with `earlier` empty, the second with `earlier` blank and the third naming an Issue that was not offered
 - WHEN the Operation reports the findings
 - THEN the run ends `ok` and each finding is recorded as a new Issue, none naming an earlier Issue
 - AND only the Issue the third named is listed as ignored
@@ -77,27 +70,27 @@ Spec panel in its [definition](panel.md).
 - GIVEN a reviewer whose finding names a path outside the workspace
 - WHEN the Operation checks the reviewer's result
 - THEN it resumes the reviewer once, its repair naming that path
-- AND when the resumed reviewer returns the finding with a path of the workspace, it is reported and nothing is rejected
+- AND when the resumed reviewer returns the finding with a path of the workspace, it is labelled for the chair and nothing is rejected
 
 ### scenario.spec-review.finding-path — A finding whose path does not hold is rejected alone
 
 - GIVEN a reviewer that returns, also after its one [resume round](../../glossary.json#concept.resume-round), a finding naming a path outside the workspace and a finding that holds
-- WHEN the Operation reports the findings
-- THEN the first is listed under the Module's `rejected` with the reason and as `invalid-output` evidence, and is reported as no Issue
-- AND the second is reported as an Issue, the Module is `changes_required` and the run ends `ok`
-- AND in a panel, a worker's such finding is rejected unlabelled, and a merged finding of the chair's that names such a path turns its labels into rejections
+- WHEN the Operation normalizes the reviewer's findings
+- THEN the first is listed unlabelled under that reviewer's `rejected` with the reason and as `invalid-output` evidence, and is reported as no Issue
+- AND the second is labelled, and once the chair merges it, it is reported as an Issue, the Module is `changes_required` and the run ends `ok`
+- AND a merged finding of the chair's that names such a path turns its labels into rejections
 
 ### scenario.spec-review.last-blocker-resolved — Resolving the last blocking Issue accepts the Module
 
-- GIVEN the open Issue I1 of `module.a`, of a blocking tier, reported by an earlier Spec review, and no other earlier Issue
-- WHEN a reviewer, given that Issue, reports no finding and I1 resolved with a reason
+- GIVEN the open Issue I1 of `module.a`, of a blocking tier, reported by an earlier Spec panel, and no other earlier Issue
+- WHEN the workers, given that Issue, report no finding and the chair resolves I1 with a reason
 - THEN the outcome and the verdict are `accepted`
 - AND the result lists I1 as resolved with that reason
 - BUT I1 stays open, for the task to close
 
 ### scenario.spec-review.issues-refused — A refusal of the Issue store stops the reporting
 
-- GIVEN a Module A whose reviewer reports two findings
+- GIVEN a Module A whose chair reports two findings
 - AND a task's merge into the primary branch that is unfinished
 - WHEN the Operation reports A's findings
 - THEN the store refuses the first report and no Issue is recorded
@@ -110,19 +103,19 @@ Spec panel in its [definition](panel.md).
 ### scenario.spec-review.structural-errors — A structurally invalid Spec is not reviewed
 
 - GIVEN a Module A whose Specs fail a [structural check](../../glossary.json#concept.structural-check)
-- WHEN the caller runs `spec_review` for Module A
-- THEN no reviewer is launched for A
+- WHEN the caller runs `spec_panel` for Module A
+- THEN no worker is launched for A
 - AND A's outcome is `incomplete`, with the structural findings as host evidence
 - AND the verdict is `incomplete`
 
-### scenario.spec-review.worker-blocked — A reviewer that cannot finish
+### scenario.spec-review.worker-blocked — A chair that cannot finish
 
-- GIVEN a Spec review of Module A whose reviewer ends `blocked`
+- GIVEN a Spec panel of Module A whose chair ends `blocked`
 - WHEN the [Operation](../../glossary.json#concept.operation) collects its result
 - THEN A's outcome is `incomplete` and the verdict is `incomplete`
-- AND the result's error is the Operation's `review_incomplete` link whose cause for A ends in the reviewer's own link with its detail, attempts and options unchanged
+- AND the result's error is the Operation's `panel_incomplete` link whose cause for A ends in the chair's own link with its detail, attempts and options unchanged
 
-### scenario.spec-review.audit-change — A reviewer that changed a file
+### scenario.spec-review.audit-change — A worker that changed a file
 
 - GIVEN a reviewer after which the worktree has a changed file
 - WHEN the Operation audits the worktree

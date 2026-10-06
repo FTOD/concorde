@@ -222,7 +222,7 @@ workflow inside that task's worktree, one step after another:
    existing tests each scenario comes from; Concorde then marks those tests with a small
    `verifies` decorator (defined in the test file itself, so your tests never import Concorde),
    the only change it makes outside your Specs;
-4. `spec_review`, `task-validation` and `delivery`.
+4. `spec_panel` with its defaults, `task-validation` and `delivery`.
 
 The workers describe behaviour as it is. When they cannot tell whether something is intended,
 such as an error that is silently ignored, they write no promise about it and report an **open
@@ -476,7 +476,7 @@ uses copies of your pi `auth.json` and `models.json` and nothing else from your 
 
 ### Operations outside a task
 
-`understand`, `survey`, `spec_review`, `spec_panel` and `code_review` (a change review with
+`understand`, `survey`, `spec_panel` and `code_review` (a change review with
 `--base`, a Module review without) also run **unbound**, in a worktree that is no task's workspace,
 such as your primary checkout. Such a run changes no Spec or code, so the main agent uses it to
 answer a question or review a Module before you agree on a change, without opening a task:
@@ -531,22 +531,23 @@ concorde task-validation
 concorde delivery
 ```
 
-| Operation                   | Worker       | What it does                                                                                                                                                                                    |
-| --------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `understand`                | reads only   | Assesses what the Modules promise and whether the Spec suffices; returns a plan with `--plan`.                                                                                                  |
-| `plan_review`               | reads only   | Optional: reviews a plan the task session wrote (`--plan`) against the task's goal, the Specs and the code; reports findings and a verdict.                                                     |
-| `specify`                   | writes Specs | Changes the bound Modules' own Spec documents.                                                                                                                                                  |
-| `implement`                 | writes code  | Changes the bound Modules' code; the host runs your checks and resumes the worker on failures (`--rounds` limits the rounds).                                                                   |
-| `test`                      | reads only   | The host runs your checks; the worker interprets the results (`--focus` narrows it).                                                                                                            |
-| `spec_review`               | reads only   | Reviews the bound Modules' Specs and reports every finding as an Issue, building on the Issues earlier reviews reported (`--check-findings` has each finding checked).                          |
-| `code_review`               | reads only   | Reviews the task's code changes against the Specs (`--base`, `--focus`), or with `--scope module` each named Module's whole code against all its Specs, and reports every finding as an Issue.  |
-| `general`                   | as `--type`  | Does free-form work from your instruction (`--instruction`, `--instruction-file`) under the grant of the task type `--type` names (`--read-only` withholds writes); a second worker reviews it. |
-| `task-validation` (command) | none         | Deterministic: structural validation and the checks of the changed Modules; decides readiness.                                                                                                  |
-| `delivery` (command)        | none         | Deterministic: validates the whole workspace again, then commits it on the task branch; the delivery commit is the record that the task was delivered.                                          |
+| Operation                   | Worker       | What it does                                                                                                                                                                                                                                 |
+| --------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `understand`                | reads only   | Assesses what the Modules promise and whether the Spec suffices; returns a plan with `--plan`.                                                                                                                                               |
+| `plan_review`               | reads only   | Optional: reviews a plan the task session wrote (`--plan`) against the task's goal, the Specs and the code; reports findings and a verdict.                                                                                                  |
+| `specify`                   | writes Specs | Changes the bound Modules' own Spec documents.                                                                                                                                                                                               |
+| `implement`                 | writes code  | Changes the bound Modules' code; the host runs your checks and resumes the worker on failures (`--rounds` limits the rounds).                                                                                                                |
+| `test`                      | reads only   | The host runs your checks; the worker interprets the results (`--focus` narrows it).                                                                                                                                                         |
+| `spec_panel`                | reads only   | Reviews the bound Modules' Specs with several reviewers (`--reviewers`, 3 by default), architects (`--architects`, 2 by default) and a chair, and reports every merged finding as an Issue, building on the Issues earlier reviews reported. |
+| `code_review`               | reads only   | Reviews the task's code changes against the Specs (`--base`, `--focus`), or with `--scope module` each named Module's whole code against all its Specs, and reports every finding as an Issue.                                               |
+| `general`                   | as `--type`  | Does free-form work from your instruction (`--instruction`, `--instruction-file`) under the grant of the task type `--type` names (`--read-only` withholds writes); a second worker reviews it.                                              |
+| `task-validation` (command) | none         | Deterministic: structural validation and the checks of the changed Modules; decides readiness.                                                                                                                                               |
+| `delivery` (command)        | none         | Deterministic: validates the whole workspace again, then commits it on the task branch; the delivery commit is the record that the task was delivered.                                                                                       |
 
-Spec reviews report every finding as an **Issue** of the project, with its severity and tier, from
-the Operation itself; `spec_panel` adds two architects that judge how the Module fits among all the
-Modules, and a chair that merges every finding and gives it its severity and tier. Each reviewer receives the
+The Spec review, `spec_panel`, reports every finding as an **Issue** of the project, with its
+severity and tier, from the Operation itself. Its reviewers judge each Module's own Specs
+independently, two architects judge how the Module fits among all the Modules, and a chair merges
+every finding and gives it its severity and tier. Each reviewer receives the
 Issues earlier reviews reported for the Module, so a repeated review reports only what is new or
 changed and lists the Issues it found resolved, and a Module stays `changes_required` while any
 blocking Issue still stands. The review never fixes or closes an Issue: the task session fixes them

@@ -8,9 +8,9 @@ Method's Operations and execution commands do bounded work in a bound workspace.
 its worktree with that worktree's own `concorde`. Where the coordination part is installed, the
 workspace is a task's. In that case, the task session starts them inside the task worktree. Without
 that part, nothing in Concorde binds a worktree. In that case, they run in a workspace something
-else prepared. Only the reading Operations `understand`, `survey`, `spec_review`, `spec_panel` and
-`code_review` run anywhere else, unbound (see "Unbound runs"). So does `general` with a task
-type that writes nothing or with `--read-only`.
+else prepared. Only the reading Operations `understand`, `survey`, `spec_panel` and `code_review`
+run anywhere else, unbound (see "Unbound runs"). So does `general` with a task type that writes
+nothing or with `--read-only`.
 
 ```bash
 concorde run understand  --goal "<question>" [--plan]
@@ -18,7 +18,7 @@ concorde run plan_review --plan <file> [--input <run-id> --accept|--reject <find
 concorde run specify     --intent "<what the Spec should say>"
 concorde run implement   --goal "<what to build>" [--input <run-id>]
 concorde run test
-concorde run spec_review
+concorde run spec_panel  [--reviewers <2-5>] [--architects <0-2>]
 concorde run code_review   [--scope module]
 concorde run general     --type <task type> (--instruction "<text>" | --instruction-file <file>) [--read-only]
 concorde task-validation
@@ -71,7 +71,7 @@ unrealizable. Use it for a whole-Module check after a large change, on code writ
 Specs or by an earlier version, or on a project just adopted with the brownfield workflow.
 
 When run unbound in the primary worktree, it needs only `--modules`. Where the issues part is
-installed, the reviews (`spec_review`, `spec_panel`, `code_review`) report their findings as Issues,
+installed, the reviews (`spec_panel`, `code_review`) report their findings as Issues,
 as "Issues" says. Otherwise, they keep their findings in their run result, where you read them.
 
 **Brownfield.** Concorde works Spec first. Only when Concorde was just installed and initialized in

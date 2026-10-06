@@ -49,7 +49,7 @@ nothing. You have no tool that writes. Any change to the task worktree fails the
     - The project-relative `path`.
     - A `reason`.
   - The ordered `steps`. Each step names in `run` an Operation among `understand`, `specify`,
-    `implement`, `test`, `spec_review` and `code_review`, or one of the commands `task-validation`
+    `implement`, `test`, `spec_panel` and `code_review`, or one of the commands `task-validation`
     and `delivery`. Each step also names its `modules` and `purpose`.
   - The open `decisions` the main agent has to take.
 

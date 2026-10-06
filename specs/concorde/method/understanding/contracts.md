@@ -12,7 +12,7 @@ own `--goal` argument.
 ```concorde-contract
 {
   "id": "contract.understanding.assessment",
-  "version": 4,
+  "version": 5,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -89,7 +89,7 @@ own `--goal` argument.
                         "specify",
                         "implement",
                         "test",
-                        "spec_review",
+                        "spec_panel",
                         "code_review",
                         "task-validation",
                         "delivery"
@@ -110,7 +110,7 @@ own `--goal` argument.
       }
     }
   },
-  "semantics": "One assessment of the bound Modules' Specs for the stated goal, as proposed by the understand worker. goal is the --goal argument, set by the Operation's steps. modules has one entry per bound Module summarizing what it promises that matters for the goal, taken only from its Spec context. sufficient is true when the Specs state every promise the goal relies on: for a goal that asks what the Modules promise, every promise the answer needs; for a goal that changes them, every existing promise the change relies on, and where each new promise the change adds belongs, so that the change can be planned. A new promise the change adds is never a gap: it becomes a specify step of the plan. gaps lists each Spec gap, a promise the goal relies on that the Specs do not state, including where a new promise belongs when no bound Module's Spec says so: the Module and the project-relative document where the promise belongs, what is missing, why the goal needs it and a suggested repair; gaps is empty exactly when sufficient is true. plan is null unless --plan was given and sufficient is true. A plan names the Modules to change, in new_files the project-relative files the change needs that do not exist yet, each with the Module that will bind it, for the task level to create and bind before the run that fills them, the ordered runs to start next, each with its Modules and purpose, and the decisions left to the task level. A step's run names an Operation (understand, specify, implement, test, spec_review or code_review) or one of the execution commands task-validation and delivery that end a task's work. Every Module identity must exist in the Specs of the worktree the run works on, and gaps, sufficient, plan and the --plan argument must agree as stated above, with exactly one modules entry per bound Module and none for a Module that is not bound; the Operation's steps check both. Everything else is the worker's claim and is never restated by the Operation as fact.",
+  "semantics": "One assessment of the bound Modules' Specs for the stated goal, as proposed by the understand worker. goal is the --goal argument, set by the Operation's steps. modules has one entry per bound Module summarizing what it promises that matters for the goal, taken only from its Spec context. sufficient is true when the Specs state every promise the goal relies on: for a goal that asks what the Modules promise, every promise the answer needs; for a goal that changes them, every existing promise the change relies on, and where each new promise the change adds belongs, so that the change can be planned. A new promise the change adds is never a gap: it becomes a specify step of the plan. gaps lists each Spec gap, a promise the goal relies on that the Specs do not state, including where a new promise belongs when no bound Module's Spec says so: the Module and the project-relative document where the promise belongs, what is missing, why the goal needs it and a suggested repair; gaps is empty exactly when sufficient is true. plan is null unless --plan was given and sufficient is true. A plan names the Modules to change, in new_files the project-relative files the change needs that do not exist yet, each with the Module that will bind it, for the task level to create and bind before the run that fills them, the ordered runs to start next, each with its Modules and purpose, and the decisions left to the task level. A step's run names an Operation (understand, specify, implement, test, spec_panel or code_review) or one of the execution commands task-validation and delivery that end a task's work. Every Module identity must exist in the Specs of the worktree the run works on, and gaps, sufficient, plan and the --plan argument must agree as stated above, with exactly one modules entry per bound Module and none for a Module that is not bound; the Operation's steps check both. Everything else is the worker's claim and is never restated by the Operation as fact.",
   "example": {
     "goal": "let Issue reports carry a severity",
     "modules": [

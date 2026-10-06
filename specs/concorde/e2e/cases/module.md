@@ -133,10 +133,10 @@ The round, with its one branch and the exit every step shares:
 ```d2 illustrative
 direction: down
 open: "task open, in the project"
-review: "spec_review"
+review: "spec_panel"
 accepted: "Verdict accepted?" {shape: diamond}
 specify: "specify, with the review as input"
-again: "spec_review again, findings reported"
+again: "spec_panel again, findings reported"
 validate: "task-validation"
 delivery: "delivery"
 merge: "task merge" {shape: oval}
@@ -271,7 +271,7 @@ This keeps the repair from changing code.
 
 <a id="uses-spec-review"></a>
 
-**Spec review** provides the `spec_review` Operation.
+**Spec review** provides the `spec_panel` Operation. The round runs it with its defaults.
 The round reads its [verdict](../../glossary.json#concept.review-verdict) to decide whether to repair.
 The run ends `ok` for `accepted` and `changes_required` alike.
 

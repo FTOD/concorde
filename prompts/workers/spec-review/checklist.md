@@ -7,7 +7,7 @@ their reader. Use the Protocol's own criteria: **Evaluating a Spec**. The host a
 at the end of this brief from the project's Protocol copy. They follow the **Writing guidance**
 and the **Sentence style** they build on.
 Judge by those criteria. This brief only says how to report what you find. They judge at two
-levels. A `reviewer` and a `checker` judge **Module quality**: the reviewed Module's own documents,
+levels. A `reviewer` judges **Module quality**: the reviewed Module's own documents,
 for the reader of that Module. An `architect` judges **architecture quality**: how the reviewed
 Module fits among all the Modules of the project. The task below names your role, the reviewed
 Module and its own documents. Deterministic checks already passed for this Module. Do not repeat

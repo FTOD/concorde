@@ -63,7 +63,6 @@
         "target": "module.spec-review",
         "meaning": "#uses-spec-review",
         "relies_on": [
-          "contract.spec-review.payload",
           "contract.spec-review.panel-payload",
           "req.spec-review.reports-issues",
           "req.spec-review.never-disposes",

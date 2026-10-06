@@ -7,7 +7,7 @@ worker audits their findings against the Specs, merges them into one panel repor
 merged finding its tier. The host labels every worker finding, checks that the chair accounted for
 each label exactly once, reports the report's findings as Issues and derives the outcome:
 
-1. ``validate_modules`` (shared with ``spec_review``): load and validate the Specs.
+1. ``validate_modules`` (shared review steps, in ``review``): load and validate the Specs.
 2. ``panel_modules``: per remaining Module, read its earlier Issues, run the panel graph, a
    LangGraph ``StateGraph`` (the reviewers and architects fan out in parallel, ``gather`` joins
    them, ``chair`` merges and the host's accounting sends the report back to the chair once when a
@@ -38,7 +38,7 @@ from ..prompts import (
 )
 from ...spec.schema import validate
 from .. import review_issues
-from . import operation as review
+from . import review
 from . import reporting
 
 TASK_TYPE = "review-spec"
@@ -333,19 +333,15 @@ class Panel:
         return result.output or {}, found, identity, None
 
     def _normalized(self, claimed: list[dict]):
-        """The findings normalized as Spec review does, in the order claimed with None for each
-        rejected one, the host's corrections and the rejected findings with their reasons."""
+        """The findings normalized, in the order claimed with None for each rejected one, the
+        host's corrections and the rejected findings with their reasons."""
         findings, corrections, rejected = review._normalize(
             self.ctx, self.subject, claimed
         )
         cleaned = [
             None
             if item is None
-            else {
-                key: value
-                for key, value in item.items()
-                if key not in ("check", "issue")
-            }
+            else {key: value for key, value in item.items() if key != "issue"}
             for item in findings
         ]
         return cleaned, corrections, rejected
@@ -627,10 +623,7 @@ def panel_modules(ctx: RunContext):
             explanation="LangGraph is one of Concorde's runtime dependencies, which the "
             "installer puts in Concorde's own environment; this interpreter lacks it",
             evidence=[evidence("host-error", "langgraph", str(error))],
-            options=[
-                "install Concorde again, or run `uv sync` in a source checkout",
-                "run spec_review instead",
-            ],
+            options=["install Concorde again, or run `uv sync` in a source checkout"],
         )
     prompt = load_prompt("panel-spec")
     found: list[dict] = []

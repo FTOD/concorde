@@ -153,7 +153,7 @@ def writing_step(ctx):
 
 
 READER = operation(
-    "spec_review",
+    "spec_panel",
     "review-spec",
     False,
     (reading_step,),
@@ -258,7 +258,7 @@ class RunnerTests(unittest.TestCase):
                     "implement": WORKER,
                     "test": RAISING,
                     "understand": ADMITTED,
-                    "spec_review": READER,
+                    "spec_panel": READER,
                     "code_review": WRITER,
                 },
             ),
@@ -431,7 +431,7 @@ class RunnerTests(unittest.TestCase):
                     "enabled_models": {"fast": {}, "sonnet": {}},
                     "operations": {
                         "implement": {"workers": {"worker": {"model": "fast"}}},
-                        "spec_review": {
+                        "spec_panel": {
                             "workers": {
                                 "worker": {"backend": "claude", "model": "sonnet"}
                             }
@@ -470,7 +470,7 @@ class RunnerTests(unittest.TestCase):
         self.assertIn("Concorde's default worker backend", shown["detail"])
         self.assertIn("model fast as local/fast", shown["detail"])
         status, envelope = self.project.run(
-            "spec_review",
+            "spec_panel",
             "--task",
             "t1",
             "--goal",
@@ -480,7 +480,7 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
         record = self.worker_record(envelope)
         self.assertEqual(
-            ("claude", "operations.spec_review.workers.worker"),
+            ("claude", "operations.spec_panel.workers.worker"),
             (record["backend"], record["backend_source"]),
         )
 
@@ -488,7 +488,7 @@ class RunnerTests(unittest.TestCase):
     def test_an_unbound_run_works_on_a_checkout_of_its_worktree(self):
         before = store.load_task(self.root, "t1")
         status, envelope = self.project.run(
-            "spec_review",
+            "spec_panel",
             "--modules",
             "module.a",
             "--goal",
@@ -496,7 +496,7 @@ class RunnerTests(unittest.TestCase):
         )
         self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
         self.assertEqual(
-            ("operation", "spec_review"), (envelope["kind"], envelope["name"])
+            ("operation", "spec_panel"), (envelope["kind"], envelope["name"])
         )
         self.assertIsNone(envelope["workspace"])
         self.assertEqual(["module.a"], envelope["modules"])
@@ -530,7 +530,7 @@ class RunnerTests(unittest.TestCase):
         self.assertIsNone(self.run_status(envelope, "t1"))
         validate(envelope, RESULT_SCHEMA)
         status, envelope = self.project.run(
-            "spec_review", "--modules", "module.a", "--input", envelope["run_id"]
+            "spec_panel", "--modules", "module.a", "--input", envelope["run_id"]
         )
         self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
         # An Operation that needs a binding is refused in an unbound worktree.
@@ -547,7 +547,7 @@ class RunnerTests(unittest.TestCase):
         # The binding of the worktree the run starts in decides its workspace: no argument
         # names it, and a run there is never unbound.
         status, envelope = self.project.run(
-            "spec_review",
+            "spec_panel",
             "--goal",
             OperationProject.plan([{}]),
             cwd=self.worktree / "src",
@@ -596,7 +596,7 @@ class RunnerTests(unittest.TestCase):
         status, bound_run = self.implement([{}])
         self.assertEqual(0, status, bound_run)
         status, envelope = self.project.run(
-            "spec_review", "--modules", "module.a", "--input", bound_run["run_id"]
+            "spec_panel", "--modules", "module.a", "--input", bound_run["run_id"]
         )
         self.assertEqual(1, status)
         self.assertIn(
@@ -1780,7 +1780,7 @@ class RunnerTests(unittest.TestCase):
         _, first = self.project.run("task-validation", "--task", "t1")
         _, second = self.project.run("test", "--task", "t1")
         _, unbound = self.project.run(
-            "spec_review",
+            "spec_panel",
             "--modules",
             "module.a",
             "--goal",

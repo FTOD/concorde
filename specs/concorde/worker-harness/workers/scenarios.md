@@ -637,13 +637,13 @@ the run. [The run mechanics](launch.md) give these exact details:
 - AND both programs are installed
 - AND a [worker configuration](../../glossary.json#concept.worker-configuration) whose default
   gives a pi model
-- AND the configuration puts `spec_review`'s worker `checker` on `claude` with a Claude Code model
+- AND the configuration puts `spec_panel`'s worker `reviewer2` on `claude` with a Claude Code model
   and a level
-- WHEN the choices of `spec_review`'s `reviewer` and `checker` are resolved
-- THEN the reviewer runs on pi with the default's model, as the local id the
+- WHEN the choices of `spec_panel`'s `reviewer1` and `reviewer2` are resolved
+- THEN `reviewer1` runs on pi with the default's model, as the local id the
   [model map](../../glossary.json#concept.model-map) gives it on pi
 - AND the choice names that id and the map
-- AND the checker runs on `claude` with the model and level of its own entry
+- AND `reviewer2` runs on `claude` with the model and level of its own entry
 
 ### scenario.workers.backend-default — Without a configuration entry a worker runs on pi
 
@@ -657,16 +657,16 @@ the run. [The run mechanics](launch.md) give these exact details:
 ### scenario.workers.backend-missing — A worker whose backend is not installed is refused
 
 - GIVEN a command started from a Claude Code session
-- AND a worker configuration that puts `spec_review`'s worker `checker` on `claude`
+- AND a worker configuration that puts `spec_panel`'s worker `reviewer2` on `claude`
 - AND no `pi` command is installed
-- WHEN the choices of `implement`'s worker and of `spec_review`'s `checker` are resolved
+- WHEN the choices of `implement`'s worker and of `spec_panel`'s `reviewer2` are resolved
 - THEN the worker that runs on pi is refused with `backend_missing`
 - AND the refusal names the worker
 - AND the refusal names the source of its backend
 - AND the refusal names the command it looked for
 - AND the refusal names how to choose Claude Code for the worker
 - AND the worker never runs on Claude Code instead
-- BUT the checker, on `claude`, still resolves
+- BUT `reviewer2`, on `claude`, still resolves
 
 ### scenario.workers.models-listed — The installed program's models are the candidates
 
@@ -753,12 +753,12 @@ the run. [The run mechanics](launch.md) give these exact details:
 ### scenario.workers.model-unresolved — A worker whose configuration names no model is refused
 
 - GIVEN a worker configuration whose default sets only a level
-- AND the configuration names a model for `spec_review`'s default
+- AND the configuration names a model for `general`'s default
 - AND the configuration puts `spec_panel`'s `chair` on `claude` without a model
-- WHEN the choice of `spec_review`'s `checker` is resolved
+- WHEN the choice of `general`'s `reviewer` is resolved
 - AND the choice of `implement`'s worker is resolved
 - AND the choice of `spec_panel`'s `chair` is resolved
-- THEN the checker gets the model of its Operation's default
+- THEN the reviewer gets the model of its Operation's default
 - AND `implement`'s worker and the chair are refused with `model_unresolved`
 - AND each refusal names the worker
 - AND each refusal names every entry its model may come from, from its own entry to the default

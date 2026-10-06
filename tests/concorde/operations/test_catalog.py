@@ -110,7 +110,6 @@ class CatalogTests(unittest.TestCase):
                 "specify": "module.specification",
                 "implement": "module.implementation",
                 "test": "module.implementation",
-                "spec_review": "module.spec-review",
                 "spec_panel": "module.spec-review",
                 "code_review": "module.code-review",
                 "survey": "module.adoption",

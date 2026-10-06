@@ -23,7 +23,6 @@ DECLARED = {
     "specify": ("worker",),
     "implement": ("worker",),
     "test": ("worker",),
-    "spec_review": ("reviewer", "checker"),
     "spec_panel": (
         "reviewer1",
         "reviewer2",
@@ -104,15 +103,15 @@ class WorkerModelTests(unittest.TestCase):
             ),
         )
 
-    def _checker_on_claude(self) -> dict:
+    def _reviewer2_on_claude(self) -> dict:
         config = {
             "schema_version": 2,
             "enabled_models": _enabled("a-pi", "opus"),
             "default": {"model": "a-pi"},
             "operations": {
-                "spec_review": {
+                "spec_panel": {
                     "workers": {
-                        "checker": {
+                        "reviewer2": {
                             "backend": "claude",
                             "model": "opus",
                             "reasoning": "high",
@@ -128,12 +127,12 @@ class WorkerModelTests(unittest.TestCase):
     @verifies("scenario.workers.backend-configured")
     def test_workers_run_on_pi_unless_their_configuration_chooses_claude_code(self):
         session = dict(self.environ, CLAUDECODE="1")
-        config = self._checker_on_claude()
+        config = self._reviewer2_on_claude()
         reviewer = models.worker_choice(
-            config, DECLARED, "spec_review", "reviewer", session
+            config, DECLARED, "spec_panel", "reviewer1", session
         )
-        checker = models.worker_choice(
-            config, DECLARED, "spec_review", "checker", session
+        second = models.worker_choice(
+            config, DECLARED, "spec_panel", "reviewer2", session
         )
         self.assertEqual(
             ("pi", "a-pi", "local/a-pi", str(self.map)),
@@ -147,23 +146,23 @@ class WorkerModelTests(unittest.TestCase):
         self.assertEqual(
             (
                 "claude",
-                "operations.spec_review.workers.checker",
+                "operations.spec_panel.workers.reviewer2",
                 "opus",
-                "operations.spec_review.workers.checker",
+                "operations.spec_panel.workers.reviewer2",
                 "high",
             ),
             (
-                checker["backend"],
-                checker["backend_source"],
-                checker["model"],
-                checker["model_source"],
-                checker["reasoning"],
+                second["backend"],
+                second["backend_source"],
+                second["model"],
+                second["model_source"],
+                second["reasoning"],
             ),
         )
 
     @verifies("scenario.workers.backend-missing")
     def test_a_worker_whose_backend_is_not_installed_is_refused(self):
-        config = self._checker_on_claude()
+        config = self._reviewer2_on_claude()
         missing = dict(
             self.environ, CLAUDECODE="1", CONCORDE_PI=str(self.base / "nowhere")
         )
@@ -180,7 +179,7 @@ class WorkerModelTests(unittest.TestCase):
             self.assertIn(part, str(raised.exception))
         self.assertEqual(
             "claude",
-            models.worker_choice(config, DECLARED, "spec_review", "checker", missing)[
+            models.worker_choice(config, DECLARED, "spec_panel", "reviewer2", missing)[
                 "backend"
             ],
         )
@@ -384,15 +383,15 @@ class WorkerModelTests(unittest.TestCase):
             "enabled_models": _enabled("a-pi"),
             "default": {"reasoning": "high"},
             "operations": {
-                "spec_review": {"default": {"model": "a-pi"}},
+                "general": {"default": {"model": "a-pi"}},
                 "spec_panel": {"workers": {"chair": {"backend": "claude"}}},
             },
         }
         self.assertEqual(
             "a-pi",
-            models.worker_choice(
-                config, DECLARED, "spec_review", "checker", self.environ
-            )["model"],
+            models.worker_choice(config, DECLARED, "general", "reviewer", self.environ)[
+                "model"
+            ],
         )
         for operation, worker, entries in (
             (

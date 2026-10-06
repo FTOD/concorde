@@ -178,7 +178,7 @@ This illustrates [the precondition of `protocol-manifest`](requirements.md#req.d
 ### scenario.distribution.part-missing — A command or tool of a part not installed names the part
 
 - GIVEN a project installed without the issues and execution parts
-- WHEN the developer runs `concorde issues list` or `concorde run spec_review`, or a session calls the project MCP server's `issue_list`, `run_result` or `register_wait` for a run
+- WHEN the developer runs `concorde issues list` or `concorde run spec_panel`, or a session calls the project MCP server's `issue_list`, `run_result` or `register_wait` for a run
 - THEN each is refused with `{"error": <link>}` whose code is `part_missing`, naming the part the command or tool belongs to, or the part it needs, and how to install it
 - AND the command exits with status 1
 - AND the server lists neither the issues part's tools nor the coordination part's `run_result` and `task_resolve`, which need the execution and issues parts

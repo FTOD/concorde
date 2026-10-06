@@ -600,7 +600,6 @@ The guidance tells the main agent that these also run
 
 - `understand`
 - `survey`
-- `spec_review`
 - `spec_panel`
 - `code_review` (a change review with `--base`, a Module review without)
 
@@ -743,7 +742,6 @@ preserving history. On `stale_issue`, read the record again before deciding to r
 **After a review.** These review Operations report every finding as an Issue with the severity and
 tier their reviewer or chair gave it:
 
-- `spec_review`
 - `spec_panel`
 - `code_review`
 
@@ -1258,10 +1256,10 @@ document.
 
 <a id="uses-spec-review"></a>
 
-**Spec review** provides `spec_review` and `spec_panel`. Where the issues part is installed, the
-guidance relies on each reporting every finding that stands as an Issue of the Module it concerns.
-The guidance relies on each closing none. It also relies on each naming the following in its result
-([result](../../method/spec-review/operation.md#contract.spec-review.payload)):
+**Spec review** provides `spec_panel`. Where the issues part is installed, the guidance relies on
+it reporting every finding that stands as an Issue of the Module it concerns. The guidance relies on
+it closing none. It also relies on it naming the following in its result
+([result](../../method/spec-review/panel.md#contract.spec-review.panel-payload)):
 
 - Each finding's Issue.
 - The earlier Issues that still stand.

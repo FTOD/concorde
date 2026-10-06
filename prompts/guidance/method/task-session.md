@@ -51,9 +51,9 @@ validate and deliver the task:
   marks the task delivered. Where the "Deliver" step above, or "Merging the primary branch", says
   to validate and deliver, these are the commands.
 
-**Reviews.** Where the issues part is installed, `spec_review`, `spec_panel` and `code_review`
-report every finding as an Issue, as "Issues" says. Otherwise they keep them in their run result,
-where you read them. Either way fixing is later `specify` or `implement` work of your task, never
+**Reviews.** Where the issues part is installed, `spec_panel` and `code_review` report every
+finding as an Issue, as "Issues" says. Otherwise they keep them in their run result, where you
+read them. Either way fixing is later `specify` or `implement` work of your task, never
 the review's. The verdict `changes_required` means a blocking finding still stands. A
 `code_review` finding of kind `spec-challenge` says the Spec, not the code, is wrong. It is usually
 `decision-needed`, so escalate it rather than change the promise. `code_review --scope module`

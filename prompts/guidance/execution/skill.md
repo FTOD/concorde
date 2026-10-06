@@ -58,7 +58,6 @@ binding such as the primary worktree. These Operations are:
 
 - `understand`
 - `survey`
-- `spec_review`
 - `spec_panel`
 - `code_review` (a change review with `--base`, a Module review without)
 

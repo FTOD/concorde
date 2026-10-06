@@ -26,15 +26,15 @@ Concrete situations that show the [requirements](requirements.md) of
 
 - GIVEN an adopted case whose Spec review requires changes
 - WHEN the developer runs `repair-specs` for it
-- THEN a task over the named [Modules](../../glossary.json#concept.module) runs, in its worktree, `spec_review`, then `specify` with that review as input and an intent to change the [Specs](../../glossary.json#concept.spec) and never the code
-- AND the task then runs `spec_review` once more, `task-validation` and `delivery`, and is merged
+- THEN a task over the named [Modules](../../glossary.json#concept.module) runs, in its worktree, `spec_panel`, then `specify` with that review as input and an intent to change the [Specs](../../glossary.json#concept.spec) and never the code
+- AND the task then runs `spec_panel` once more, `task-validation` and `delivery`, and is merged
 - AND no run names the task: each works on the worktree's [workspace binding](../../glossary.json#concept.workspace-binding)
 
 ### scenario.swe-bench-cases.repair-accepted — An accepted review needs no repair
 
 - GIVEN an adopted case whose Spec review accepts its Specs
 - WHEN the developer runs `repair-specs` for it
-- THEN the task runs `spec_review`, `task-validation` and `delivery`
+- THEN the task runs `spec_panel`, `task-validation` and `delivery`
 - BUT it runs no `specify` and no second review
 
 ### scenario.swe-bench-cases.repair-stopped — A step that does not end ok stops the repair

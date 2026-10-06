@@ -671,7 +671,7 @@ class PartsTests(unittest.TestCase):
         self.assertNotIn("run", offered)
         for argv, part in (
             (("issues", "list"), "issues"),
-            (("run", "spec_review"), "execution"),
+            (("run", "spec_panel"), "execution"),
         ):
             with self.subTest(argv=argv):
                 refused = framework_command(project, *argv)

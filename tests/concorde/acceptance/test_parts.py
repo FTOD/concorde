@@ -24,7 +24,7 @@ from tests.concorde.distribution.test_distribution import (
     package_copy,
     which,
 )
-from tests.concorde.spec_review.test_operation import FAKE_REVIEWER, finding, reviewer
+from tests.concorde.code_review.test_code_review import FAKE_REVIEWER, finding, reviewer
 from tests.concorde.support.operation_project import claude_workers
 
 # What Distribution's own directory adds to the Framework copy's package beside the parts.
@@ -210,7 +210,7 @@ class SpecAloneTests(PartialInstall):
         (root / "site-proposal.json").unlink()
         for argv, part in (
             (("task", "list"), "coordination"),
-            (("run", "spec_review"), "execution"),
+            (("run", "spec_panel"), "execution"),
             (("issues", "list"), "issues"),
             (("trace", "list"), "kernel"),
             (("task-validation",), "method"),
@@ -282,7 +282,7 @@ class CoordinationAloneTests(PartialInstall):
         self.assertEqual("closed", closed["record"]["state"], closed)
         for argv, part in (
             (("spec-validation",), "spec"),
-            (("run", "spec_review"), "execution"),
+            (("run", "spec_panel"), "execution"),
             (("issues", "list"), "issues"),
             (("delivery",), "method"),
         ):
@@ -353,11 +353,9 @@ class ExecutionWithoutMethodTests(PartialInstall):
         # No workflow of an installed part, so no workflow and no rule for its step agents.
         self.assertFalse((root / ".claude/workflows").exists())
         self.assertEqual([], receipt["permissions"])
-        refused = self.concorde(root, "run", "spec_review")
+        refused = self.concorde(root, "run", "spec_panel")
         self.assertNotEqual(0, refused.returncode, refused.stdout + refused.stderr)
-        self.assertIn(
-            "unknown operation 'spec_review'", refused.stdout + refused.stderr
-        )
+        self.assertIn("unknown operation 'spec_panel'", refused.stdout + refused.stderr)
         self.assertNotIn("part_missing", refused.stdout)
         # A workspace prepared by hand, as Coordination would, for the workflow to run in.
         folder = root / ".concorde/workspaces/w1"
@@ -473,27 +471,35 @@ class MethodWithoutIssuesTests(PartialInstall):
         self.answer(root, "init", "--apply", "--proposal", str(proposal))
         committed(root, "install and describe the project")
         claude_workers(root)
+        # A Module review: this install leaves out the Python dependencies, so spec_panel, whose
+        # panel is a LangGraph graph, could not run here.
         plans = json.dumps(
             {
-                "reviewer module.project": reviewer(
-                    finding("specs/project/module.md", module="module.project")
+                "module.project": reviewer(
+                    finding(
+                        "specs/project/module.md",
+                        module="module.project",
+                        locations=["app.py:1"],
+                        evidence="app.py:1 prints app",
+                    )
                 )
             }
         )
         fake = self.package.parent / "claude"
-        fake.write_text(
-            f"#!/bin/sh\nFAKE_REVIEW_PLANS='{plans}' "
-            f'exec "{sys.executable}" "{FAKE_REVIEWER}" "$@"\n'
-        )
+        fake.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{FAKE_REVIEWER}" "$@"\n')
         fake.chmod(0o755)
         home = self.package.parent / "home"
         (home / ".claude").mkdir(parents=True)
         done = self.concorde(
             root,
             "run",
-            "spec_review",
+            "code_review",
+            "--scope",
+            "module",
             "--modules",
             "module.project",
+            "--focus",
+            f"FAKE-PLANS: {plans}",
             env={"CONCORDE_CLAUDE": str(fake), "HOME": str(home)},
         )
         result = json.loads(done.stdout)

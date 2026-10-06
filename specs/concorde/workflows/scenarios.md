@@ -150,7 +150,7 @@ shapes are in the [contracts](contracts.md).
 - THEN it runs survey
 - AND it then runs scaffold
 - AND it then runs the three code_to_spec steps, one after another
-- AND it then runs spec_review
+- AND it then runs spec_panel
 - AND it then runs task-validation
 - AND it then runs `delivery --adoption`
 - AND the workflow result lists the survey's decisions
@@ -243,7 +243,7 @@ shapes are in the [contracts](contracts.md).
 
 ### scenario.workflows.reviews-reported — The notes of the runs reach the result
 
-- GIVEN a no-ask brownfield workflow whose `spec_review` step ends `ok`
+- GIVEN a no-ask brownfield workflow whose `spec_panel` step ends `ok`
 - AND that step declares in its output a review note with the verdict `changes_required`
 - AND that review note includes one Module's outcome with a count of two blocking findings
 - AND the workflow's survey declared a note for each check it proposes

@@ -9,7 +9,6 @@
     "title": "Spec review",
     "owns": [
       "specs/concorde/method/spec-review/module.md",
-      "specs/concorde/method/spec-review/operation.md",
       "specs/concorde/method/spec-review/panel.md",
       "specs/concorde/method/spec-review/requirements.md",
       "specs/concorde/method/spec-review/scenarios.md"
@@ -85,7 +84,7 @@
     {
       "id": "realization.spec-review.operation",
       "type": "realization",
-      "title": "Review Operations",
+      "title": "Review Operation",
       "meaning": "#realization.spec-review.operation",
       "entries": [
         "src/concorde/method/spec_review/",
@@ -98,7 +97,6 @@
       "title": "Reviewer brief",
       "meaning": "#realization.spec-review.checklist",
       "entries": [
-        "prompts/workers/review-spec.md",
         "prompts/workers/spec-review/"
       ]
     },
@@ -124,12 +122,6 @@
       "source": "realization.spec-review.operation",
       "verb": "launches reviewers through",
       "target": "module.workers"
-    },
-    {
-      "type": "relates",
-      "source": "realization.spec-review.operation",
-      "verb": "hands reviewers",
-      "target": "realization.spec-review.checklist"
     },
     {
       "type": "relates",

@@ -6,20 +6,17 @@ Spec review judges whether the Specs of one or more Modules are good enough for 
 No deterministic check can establish this. Where the issues part is installed, Spec review records
 every problem it finds as an [Issue](../../glossary.json#concept.issue) of the project.
 Where it is not installed, Spec review records every problem in its run result alone. It provides
-two Operations.
+one Operation, `spec_panel`.
 
-A Spec review is one run of the `spec_review` Operation. For each named
-[Module](../../glossary.json#concept.module), a headless `review-spec` worker reads its
-[Spec context](../../glossary.json#concept.spec-context). The worker judges it by the Protocol's
-criteria of Module quality. It returns every blocking finding in one pass.
+A Spec panel is one run of `spec_panel`. For each named
+[Module](../../glossary.json#concept.module), several reviewers each read its
+[Spec context](../../glossary.json#concept.spec-context) and judge it independently by the
+Protocol's criteria of Module quality. From every Module's Specs, two architects judge it by the
+criteria of architecture quality. A chair audits all their findings. It merges them into one
+report. Thus, one worker's blind spots and false alarms do not decide what reaches the project.
 
-A Spec panel is one run of `spec_panel`. Several reviewers review each Module independently.
-From every Module's Specs, two architects judge it by the criteria of architecture quality.
-A chair audits all their findings. It merges them into one report. Thus, one worker's blind spots and
-false alarms do not decide what reaches the project.
-
-Where Issues exist, both Operations report every finding that stands as an Issue. Both derive a
-verdict from the blocking findings and Issues that stand. Neither Operation does any of these things:
+Where Issues exist, the Operation reports every finding that stands as an Issue. It derives a
+verdict from the blocking findings and Issues that stand. It does none of these things:
 
 - Edit a [Spec](../../glossary.json#concept.spec).
 - Repair a finding.
@@ -30,8 +27,8 @@ verdict from the blocking findings and Issues that stand. Neither Operation does
 
 ## Core concepts
 
-A Spec review and a Spec panel both return findings. They report each as an Issue. They derive a
-verdict from the Issues that stand.
+A Spec panel returns findings. It reports each as an Issue. It derives a verdict from the Issues
+that stand.
 
 <a id="concept.review-finding"></a>
 
@@ -57,18 +54,16 @@ When the Spec can be relied upon but could serve its reader better, the tier is 
 Otherwise, the blocking tier says who may fix it: `obvious-fix`, `preferred-fix` or
 `decision-needed`. The severity says how much the problem matters to a reader or a task relying on
 the Spec. It ranges from `critical` down to `low`. A worker reports every blocking finding it can
-establish in one pass. Thus, one round of changes can address them all. `--check-findings` has a
-second worker mark each finding of a Spec review `confirmed` or `disputed` with a reason. A Module
-without findings needs no checker.
+establish in one pass. Thus, one round of changes can address them all.
 
-**Earlier Issues** are the open Issues of a reviewed Module that an earlier Spec review or Spec
-panel reported. Every worker receives them before it judges. A problem already recorded is
-therefore reported again only when it changed, as a finding naming that Issue and never as a new
-one. As **resolved**, the worker lists every earlier Issue the Specs no longer have.
-It gives its reason for each. An earlier Issue it neither names nor resolves still stands,
-**carried**. The Operation, never a worker, writes the Issues. When a finding names an earlier
-Issue, the Operation appends it to that Issue. It records any other finding as a new Issue. It
-closes none. The Operation lists the resolved Issues in the result for the task to close.
+**Earlier Issues** are the open Issues of a reviewed Module that an earlier Spec panel reported.
+Every worker receives them before it judges. A problem already recorded is therefore reported again
+only when it changed, as a finding naming that Issue and never as a new one. As **resolved**, a
+worker lists every earlier Issue the Specs no longer have. It gives its reason for each. The chair
+settles what its report names and resolves. An earlier Issue the report neither names nor resolves
+still stands, **carried**. The Operation, never a worker, writes the Issues. When a finding names
+an earlier Issue, the Operation appends it to that Issue. It records any other finding as a new
+Issue. It closes none. The Operation lists the resolved Issues in the result for the task to close.
 
 Earlier Issues exist only where the issues part is installed. Without it, a review does the
 following:
@@ -97,10 +92,11 @@ Examples of the last case include these:
 - Failed structural validation.
 - A blocked or failed worker.
 - An audit-found change.
+- A chair report that still loses a finding.
 - A refusal of the Issue store.
 
-The [step table](operation.md#host-sequence) gives every cause. The verdict carries every reviewed
-Module's context identity. Once any of those Specs changes, the verdict stops applying. Acting on
+The [step table](panel.md#host-sequence) gives every cause. The verdict carries every reviewed
+Module's context identities. Once any of those Specs changes, the verdict stops applying. Acting on
 the Issues is later work of the task, by their tier. It is never the review's work. Spec review
 itself changes no Spec.
 
@@ -111,68 +107,19 @@ lost ([definition](panel.md)).
 
 ## Overview
 
-### A Spec review
-
-Spec review follows the ordinary step sequence of a worker-backed Operation. It omits the writing
-steps a `review-spec` grant makes moot. For each named Module, it takes these steps:
-
-- It validates first.
-- It freezes one grant.
-- It reads the Module's earlier Issues.
-- It launches one reviewer.
-- It audits for changes.
-- It optionally runs the checker.
-- It reports the findings as Issues.
-- It derives the Module's outcome.
-
-The numbers in the diagram are those of the [step table](operation.md#host-sequence):
-
-```d2 illustrative
-direction: down
-core: "Spec core" {
-  validate: "1. Load the Specs,\nvalidate the Module"
-  grant: "2. Compute and freeze the\nreview-spec grant with\nits context identity"
-}
-op: "Operation" {
-  earlier: "3. Read the Module's\nearlier Issues"
-  audit: "5. Audit: nothing changed"
-  report: "7. Normalize the findings,\nreport each as an Issue,\noutcome from the Issues that stand"
-  verdict: "Verdict over\nevery named Module" {shape: page}
-}
-workers: "Worker runs" {
-  reviewer: "4. Reviewer: one pass,\nevery blocking finding"
-  checker: "6. Checker, with --check-findings:\nconfirmed or disputed"
-}
-issues: "Issues of the project" {shape: cylinder}
-core.validate -> core.grant
-core.grant -> op.earlier
-issues -> op.earlier: "open Issues\nreviews reported"
-op.earlier -> workers.reviewer
-workers.reviewer -> op.audit
-op.audit -> workers.checker: "findings\nto check"
-workers.checker -> op.report: "after its audit"
-op.audit -> op.report: otherwise
-op.report -> issues: "append or create"
-op.report -> op.verdict: "after the\nlast Module"
-```
-
-The diagram shows the normal path. On a Spec core structural error, the Operation marks the Module
-`incomplete`. It does not send the Module to a worker to judge a Spec that won't load. The Module
-is also `incomplete` in any of these cases:
-
-- No grant can be computed for it.
-- Its earlier Issues cannot be read.
-- The reviewer or checker ends `blocked`/`failed`.
-- An audit finds a change.
-- The Issue store refuses a report.
-
-Only a loading error fails the whole run. Otherwise, the Operation still reviews the other Modules.
-
 ### A Spec panel
 
 A **Spec panel** serves a caller who wants to rely on a review more than on one reviewer.
 One reviewer's findings vary from run to run and are sometimes wrong. A Spec panel also judges how
 the Module fits the project. One Module's context cannot give that.
+
+For each named Module, the Operation takes these steps:
+
+- It validates first.
+- It reads the Module's earlier Issues.
+- It runs the Module's panel, each worker under a frozen grant, each followed by an audit.
+- It reports the merged findings as Issues.
+- It derives the Module's outcome.
 
 By default, three reviewers review the Module at the same time. Each reviews it on its own by the
 Module quality criteria. By the architecture quality criteria, two architects each judge the
@@ -221,17 +168,15 @@ The [definition](panel.md#the-panel-graph) gives the exact graph and its control
 
 ```d2
 review: Spec review {
-  host: Review Operations {
+  host: Review Operation {
     "src/concorde/method/spec_review/"
   }
   checklist: Reviewer brief {
-    "prompts/workers/review-spec.md"
     "prompts/workers/spec-review/"
   }
   panel: Panel brief {
     "prompts/workers/panel-spec.md"
   }
-  host -> checklist: hands reviewers
   host -> panel: hands the panel
   panel -> checklist: shares the checklist of
 }
@@ -239,9 +184,9 @@ review: Spec review {
 
 <a id="realization.spec-review.operation"></a>
 
-**Review Operations** runs that sequence through Workers. It reports through the Issue store.
-It returns the run's output. In this version, it reviews Modules one after another. It runs the Spec
-panel as well. It shares these parts with the Spec review:
+**Review Operation** runs that sequence through Workers. It reports through the Issue store. It
+returns the run's output. In this version, it panels Modules one after another. It keeps the parts
+any review of Specs shares apart from the panel's own:
 
 - The first step.
 - The earlier Issues.
@@ -250,8 +195,7 @@ panel as well. It shares these parts with the Spec review:
 
 <a id="realization.spec-review.checklist"></a>
 
-**Reviewer brief** is the checklist every worker of both Operations receives. It includes these
-items:
+**Reviewer brief** is the checklist every panel worker receives. It includes these items:
 
 - The Protocol's *Evaluating a Spec* as the criteria.
 - A finding's shape and its tiers.
@@ -264,7 +208,6 @@ The Operation also supplies these items:
 - The reviewed Module's own documents.
 - The workspace's goal.
 - The earlier Issues.
-- For a checker, the numbered findings to check.
 
 The criteria are the Protocol's. The brief does not restate them. Thus, every worker judges by the
 same bar as a Spec's author reads. The Operation appends them from the project's [Protocol
@@ -303,14 +246,14 @@ role and seat or attempt. For the chair, it supplies these items:
 
 ## Running a review
 
-The caller runs a **Spec review** in either case:
+The caller runs a **Spec panel** in either case:
 
 - A [Spec change](../../glossary.json#concept.spec-change) is ready to be judged, typically after
   `specify` and before implementation.
 - The caller doubts that an existing Spec is clear enough to hand to workers.
 
 ```text
-concorde run spec_review --modules module.checkout,module.inventory [--check-findings]
+concorde run spec_panel --modules module.checkout,module.inventory [--reviewers 3] [--architects 2]
 ```
 
 The command waits for the result. With `--detach`, it is a
@@ -325,13 +268,8 @@ In a worktree without a binding, such as the primary worktree, it is an
 Either way its Issues go to the project's Issues. The primary worktree keeps them. Whenever every
 Module could be reviewed and its Issues written, status is `ok`. When the verdict is `incomplete`,
 status is `blocked`/`failed`. No other verdict gives that status. The result still carries every
-reviewed Module's findings.
-
-A Spec panel is run the same way as a Spec review:
-
-```text
-concorde run spec_panel --modules module.checkout [--reviewers 3] [--architects 2]
-```
+reviewed Module's findings. When only the Module's own Specs are in question, `--architects 0`
+leaves the architects out. Fewer reviewers make a cheaper panel. A panel has at least two.
 
 The result names these Issues:
 
@@ -385,13 +323,12 @@ details:
 - Their tier.
 - Their latest report.
 
-The worker names the Issue a finding updates or the Issue the Specs no longer have. The Operation
-keeps what no worker may decide:
+The worker names the Issue a finding updates or the Issue the Specs no longer have. The chair
+names it for the merged finding. The Operation keeps what no worker may decide:
 
 - It accepts a match only with an earlier Issue it offered.
 - It ignores any other match.
 - It lists any other match.
-- It reports nothing a checker disputed.
 - It records the Issues itself with the run's provenance.
 - It derives the outcome from the Issues that stand.
 
@@ -411,24 +348,23 @@ the Issue it was written to or none. Once the store works again, the task can re
 
 Without a per-Module record of what was last judged, there is nothing to compare with. Even for
 unchanged Specs the last review judged, each run reviews again. A repeated review of unchanged
-Specs costs a worker run. When it does not find an Issue changed, it changes no such Issue.
+Specs costs a panel. When it does not find an Issue changed, it changes no such Issue.
 
 For each Module, a review runs through its Issues like this
-([step table](operation.md#host-sequence)):
+([step table](panel.md#host-sequence)):
 
 ```d2 illustrative
 direction: down
 read: "Read the Module's open Issues\nthat reviews reported"
-launch: "Launch the workers with the\nearlier Issues, then audit"
-check: "Checker, with --check-findings\nand at least one finding"
-match: "Each kept finding:\nnames an earlier Issue?" {shape: diamond}
+launch: "Run the panel with the\nearlier Issues, auditing each worker"
+match: "Each finding of the report:\nnames an earlier Issue?" {shape: diamond}
 append: "Append it to that Issue"
 create: "Record a new Issue"
 failed: "Store refused?" {shape: diamond}
 outcome: "Outcome from the Issues that\nstand: reported now or carried" {shape: page}
 unreported: "Module incomplete:\nissues_unreported" {shape: page}
 
-read -> launch -> check -> match
+read -> launch -> match
 match -> append: yes
 match -> create: no
 append -> failed
@@ -493,15 +429,15 @@ chair is an ordinary worker run.
 The Operation keeps what no worker may decide:
 
 - It labels each finding.
-- It normalizes every finding as a Spec review does.
+- It normalizes every finding.
 - It checks the chair's accounting.
 - It reports the Issues.
 - It derives the outcome.
 
 When a report loses a finding, the Operation sends it back rather than repairing it, since only the
 chair judges findings. When the report still loses a finding after the chair's second attempt, the
-Module is `incomplete`. The reviews still stay in the result, and the Operation reports nothing. When a worker does not finish, the panel stops
-before the chair. Thus, a report never silently rests on fewer reviews than asked for.
+Module is `incomplete`. The reviews still stay in the result, and the Operation reports nothing.
+When a worker does not finish, the panel stops before the chair. Thus, a report never silently rests on fewer reviews than asked for.
 
 ### What a worker sees
 
@@ -522,7 +458,7 @@ Spec review is part of Method, the part that composes the others. It has these r
 - It reaches an agent only through Workers in the worker harness.
 - Where the issues part is installed, it records its findings through Issues.
 - Like every Operation, it runs through the Execution runner.
-- Method registers its two Operations with that runner.
+- Method registers its Operation with that runner.
 
 ```d2
 review: Spec review
@@ -546,11 +482,11 @@ Module can be reviewed at all. Its [grants](../../glossary.json#concept.grant) w
 may read. They bind the verdict to those Specs. They do so per Module and
 [task type](../../glossary.json#concept.task-type):
 
-- `review-spec` for a reviewer, checker and chair.
-- `review-architecture` for an architect.
+- `review-spec` for a reviewer, and for the chair of a panel without architects.
+- `review-architecture` for an architect, and for the chair of a panel with architects.
 
 When loading fails, the run fails with the loading error as host evidence. When a grant is
-rejected, that Module's review is `incomplete`.
+rejected, that Module's panel is `incomplete`.
 
 <a id="uses-workers"></a>
 
@@ -559,14 +495,14 @@ grant over as data through its
 [standard worker sequence](../../glossary.json#concept.standard-worker-sequence). Workers do these
 things:
 
-- Launch each reviewer, checker, architect and chair with only its
+- Launch each reviewer, architect and chair with only its
   [brief](../../glossary.json#concept.brief).
-- Return its [worker result](../../glossary.json#concept.worker-result) extended with findings,
-  checks or a panel report.
+- Return its [worker result](../../glossary.json#concept.worker-result) extended with findings or
+  a panel report.
 - Audit for changes.
 - Keep a [run record](../../glossary.json#concept.run-record).
 
-When a worker ends `blocked`/`failed` or an audit finds a change, that Module's review or panel is
+When a worker ends `blocked`/`failed` or an audit finds a change, that Module's panel is
 `incomplete`. The error link of that worker or audit travels in the result's [error
 chain](../../glossary.json#concept.error-chain) unchanged.
 
@@ -590,18 +526,18 @@ code. Through that command, it relies on the store to do these things:
 It relies on the [tiers](../../glossary.json#concept.issue-tier) for what a finding blocks. It
 relies on the [severities](../../glossary.json#concept.issue-severity) for how much a finding
 matters. The Operation supplies each report's provenance itself, as an Operation's host may. It
-uses `report --provenance` for this. When the store refuses, the Module's review is `incomplete`.
+uses `report --provenance` for this. When the store refuses, the Module's panel is `incomplete`.
 The store's error is the cause. The Operation never retries it. It never records it as an Issue.
 
 <a id="uses-operations"></a>
 
 **Operations**, Execution's Operation framework, defines the
-[Operation](../../glossary.json#concept.operation) concept. Method registers `spec_review` and
-`spec_panel` with it as Operations. They may run unbound. They change nothing in the workspace.
-Method registers their [worker ids](../../glossary.json#concept.worker-id) too
+[Operation](../../glossary.json#concept.operation) concept. Method registers `spec_panel` with
+it as an Operation. It may run unbound. It changes nothing in the workspace. Method registers its
+[worker ids](../../glossary.json#concept.worker-id) too
 ([Method](../module.md#the-operations-and-commands-it-provides)). Spec review relies on that
 definition for dispatch with its arguments. By the rules every review shares, it relies on Method's
-review Issue helpers to do these things with its [earlier Issues](operation.md#earlier-issues):
+review Issue helpers to do these things with its [earlier Issues](panel.md#earlier-issues):
 
 - Read them.
 - Settle them.
@@ -609,13 +545,13 @@ review Issue helpers to do these things with its [earlier Issues](operation.md#e
 
 It supplies only these things:
 
-- Its two Operations.
-- The disputed findings it reports nowhere.
+- Its Operation.
+- The workers' view of the earlier Issues.
 - The Issue report of a finding.
 
 <a id="uses-execution"></a>
 
-**Execution**'s [runner](../../glossary.json#concept.execution-runner) runs both Operations' steps
+**Execution**'s [runner](../../glossary.json#concept.execution-runner) runs the Operation's steps
 from `concorde run`. It does these things:
 
 - Reads the [workspace binding](../../glossary.json#concept.workspace-binding).
