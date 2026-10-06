@@ -8,17 +8,69 @@
   "modules": {
     "module.project-review": {
       "code_review": {
-        "code_digest": "sha256:412d6ca8ce8a201f3ea22a6c307098e31fe5495b733466c4d8012fe0d36c70c5",
+        "code_digest": "sha256:500bf7c30b5282144220b4a3ebe056fdd0706a86c3cc7d03a66355faa6655ec9",
         "commit": null,
-        "context_identity": "sha256:b034ae5ba5ca8df96579c4ff52ba04aa5288b798fa8ae7fb5030c986d900b8d3",
-        "judged_at": "2026-10-06T19:53:54Z",
-        "run": "r-20261006T193742-project_review-4cbffb26"
+        "context_identity": "sha256:1dd07c00a40cfd5c905e78ce60a3f1f3d001d499bdc969780488be3e1f7bb8ec",
+        "judged_at": "2026-10-06T20:08:49Z",
+        "resolved": [
+          {
+            "issue": "I-3bf12471259c5b67a2a8775895aa12ea",
+            "revision": "sha256:7de09b50534d8b0af87c932c9844ac735195eb7d408b379c8d3ffacf6deb0468"
+          },
+          {
+            "issue": "I-4abca839abf758ada2708cd1613dffa3",
+            "revision": "sha256:5f7305da34d11ed9dc8d6fa6fb9a49caec00b4afcf5c467eeaad27e5e4d476c7"
+          },
+          {
+            "issue": "I-a53277664baf5aafa1d0a07748cb495f",
+            "revision": "sha256:fdfe660a342ac333a055c6ca6d8e7de4e253194a222b7f39c8dac3c7eb186fc5"
+          },
+          {
+            "issue": "I-a808a1fca277556ea3a2e530578f041a",
+            "revision": "sha256:5d3e6d8f3325cfe465b79abeed494d2f7ca45e04260dccb302fbc1c5e30ad250"
+          },
+          {
+            "issue": "I-b1596d99db2d5804bd90c6eb887aa4a7",
+            "revision": "sha256:38784f91d7ea3eec0b4d7ce400baacbd564d77abeb07ad174ae0aa18da388496"
+          },
+          {
+            "issue": "I-b419f2d5f4505f49bc0220d5da078c0a",
+            "revision": "sha256:ebd8faaf546a1aa8cac740381a5f22a251f1a828e0f3ae3dbcbbab8effeafc1c"
+          }
+        ],
+        "run": "r-20261006T200244-project_review-9fa730ff"
       },
       "panel": {
         "commit": null,
-        "context_identity": "sha256:b034ae5ba5ca8df96579c4ff52ba04aa5288b798fa8ae7fb5030c986d900b8d3",
-        "judged_at": "2026-10-06T19:53:54Z",
-        "run": "r-20261006T193742-project_review-4cbffb26"
+        "context_identity": "sha256:1dd07c00a40cfd5c905e78ce60a3f1f3d001d499bdc969780488be3e1f7bb8ec",
+        "judged_at": "2026-10-06T20:08:49Z",
+        "resolved": [
+          {
+            "issue": "I-2293a17feffd59119713a5d6673f12fd",
+            "revision": "sha256:58e9e312ec67e777cd000f4da2503220faeec85c8da3c83bc94a718760aca9ae"
+          },
+          {
+            "issue": "I-5570bd5d427e5f3aa80841d118b3d84f",
+            "revision": "sha256:54aac8dd8a6ac5d912ea175c770efd608b66cc2e4029f5113aaff27699809cbd"
+          },
+          {
+            "issue": "I-982a7fd5908655b890ebbdeac10ced68",
+            "revision": "sha256:c147c88245410f0083b19d752549cf968a4d81d7bf5d557801bcece25557b642"
+          },
+          {
+            "issue": "I-9bb314ac6b8b5264a25fbeeafb88c505",
+            "revision": "sha256:492c659a35c9cb00e777a3dec4f0fc1874b4277145cab7bb4dd6526352e7e4d8"
+          },
+          {
+            "issue": "I-d67a43294325508cab48fe06e9d48553",
+            "revision": "sha256:ff7e6f6173f9f472be66120e24e71b53283e71386d8739fd4eb604916524090b"
+          },
+          {
+            "issue": "I-d83becc1c974521885b934f0925c82a0",
+            "revision": "sha256:7b21605980f6cb4df779f9d8e622846999938af78c58217a611d5769e608a517"
+          }
+        ],
+        "run": "r-20261006T200244-project_review-9fa730ff"
       }
     },
     "module.scaffold": {
