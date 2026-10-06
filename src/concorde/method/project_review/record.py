@@ -6,10 +6,12 @@ that every worktree and collaborator of the project shares it. It is read from t
 worktree's last commit, never from its files or from the examined checkout. Only the host of a
 ``project_review`` run writes it: under the primary worktree's merge lock it merges the parts the
 run judged into the committed record, publishes the file and commits that one file on the primary
-branch before it answers, as an Issue write commits its record. It refuses, changing nothing,
-while a task's merge into the primary branch is unfinished, while the file holds a change no commit
-holds, and when the committed record is not a valid one. When anything fails after the file was
-published, it puts the file back to its committed version before it refuses.
+branch before it answers, as an Issue write commits its record. A valid record left uncommitted by
+a write that was interrupted is put back to its committed version first. It refuses, changing
+nothing, while the file holds any other change no commit holds and when the committed record is
+not a valid one. When anything fails after the file was published, it puts the file back to its
+committed version before it refuses. It reads no task record: an Operation never does
+(``req.concorde.halves-apart``).
 """
 
 from __future__ import annotations
@@ -28,8 +30,6 @@ from ...spec.schema import ContractError, validate
 
 PATH = ".concorde/reviews/record.json"
 SCHEMA_VERSION = 1
-# Where the coordination part keeps its current tasks' records (contract.tasks.task-record).
-TASK_RECORDS = ".concorde/tasks"
 ACTOR = "Project review (review record)"
 
 _IDENTITY = {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
@@ -40,12 +40,31 @@ _JUDGED = {
 }
 
 
+# The earlier Issues a part found resolved, each at the revision it had once the run ended.
+_RESOLVED = {
+    "type": "array",
+    "items": {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["issue", "revision"],
+        "properties": {
+            "issue": {"type": "string", "pattern": "^I-[0-9a-f]{32}$"},
+            "revision": _IDENTITY,
+        },
+    },
+}
+
+
 def _entry(*identities: str) -> dict:
     return {
         "type": "object",
         "additionalProperties": False,
         "required": [*identities, *_JUDGED],
-        "properties": {**{name: _IDENTITY for name in identities}, **_JUDGED},
+        "properties": {
+            **{name: _IDENTITY for name in identities},
+            **_JUDGED,
+            "resolved": _RESOLVED,
+        },
     }
 
 
@@ -176,27 +195,6 @@ def text(record: dict) -> str:
     return json.dumps(record, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
 
 
-def _unfinished_merge(primary: Path) -> str | None:
-    """The task stored as ``merging`` in the primary worktree, read through Tasks' task record
-    format, or None; also None where the coordination part keeps no tasks. A task record that
-    cannot be read cannot be told not to be merging, so it refuses the write."""
-    folder = primary / TASK_RECORDS
-    if not folder.is_dir():
-        return None
-    for path in sorted(folder.glob("*/task.json")):
-        try:
-            value = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError) as error:
-            raise RecordError(
-                "unreadable_task_record",
-                f"the task record {path} cannot be read ({error}), so the review record cannot "
-                "tell whether that task's merge into the primary branch is unfinished",
-            ) from None
-        if isinstance(value, dict) and value.get("state") == "merging":
-            return value.get("id") or path.parent.name
-    return None
-
-
 def _put_back(primary: Path) -> str | None:
     """Put the record file back to its committed version, or remove it when none is committed;
     what went wrong, or None."""
@@ -240,14 +238,17 @@ def publish(
         ) from None
 
 
+def _leftover(primary: Path) -> bool:
+    """Whether the record file holds a valid record no commit holds, as a write interrupted after
+    publishing it leaves it."""
+    try:
+        _parsed((primary / PATH).read_bytes())
+    except (OSError, RecordError):
+        return False
+    return True
+
+
 def _publish(primary: Path, update: Callable[[dict], dict], message: str) -> str | None:
-    merging = _unfinished_merge(primary)
-    if merging is not None:
-        raise RecordError(
-            "merge_incomplete",
-            f"task {merging} was interrupted while being merged into the primary branch of "
-            f"{primary}; no review record is committed on top of an unfinished merge",
-        )
     branch = _git(primary, "symbolic-ref", "-q", "--short", "HEAD")
     if branch.returncode != 0:
         raise RecordError(
@@ -265,6 +266,24 @@ def _publish(primary: Path, update: Callable[[dict], dict], message: str) -> str
         "--",
         PATH,
     )
+    if status.returncode == 0 and status.stdout.strip() and _leftover(primary):
+        left = _put_back(primary)
+        if left is not None:
+            raise RecordError(
+                "recovery_failed",
+                f"{PATH} of the primary worktree {primary} holds a record an interrupted write "
+                f"left uncommitted, and putting it back failed: {left}",
+            )
+        status = _git(
+            primary,
+            "--no-optional-locks",
+            "status",
+            "--porcelain=v1",
+            "--untracked-files=all",
+            "--ignored",
+            "--",
+            PATH,
+        )
     if status.returncode != 0 or status.stdout.strip():
         raise RecordError(
             "uncommitted_change",

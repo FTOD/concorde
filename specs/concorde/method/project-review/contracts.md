@@ -1878,7 +1878,7 @@ Where the issues part is not installed, the report has the same shape:
       }
     }
   },
-  "semantics": "The outcome of one project review. verdict is the highest outcome among modules in the order accepted, changes_required, incomplete, and incomplete also when deterministic.complete or architecture.complete is false or the Issues that stand could not be read. full repeats --full. validation counts the errors and warnings of the examined worktree's structural validation. checks has one item per configured check result of the covered Modules, in the shape of the code review report's checks. deterministic.findings lists every deterministic problem the run established: phase check for a configured check that failed or timed out, coverage for a Module's scenarios no verification declaration names, unowned for the tracked files bound to no Module, which belong to the root Module; title, tier and severity are fixed per kind by the Operation, subjects names the check, the scenarios or the files, issue is the Issue that states the problem, null where the issues part is not installed or the store refused, and earlier, present only when the problem had an open Issue of its Module, kind and title, names it. unowned lists those files. earlier_issues is null where the issues part is not installed; otherwise carried lists the open deterministic Issues that still stand unchanged and resolved those whose problem the run no longer finds, for a task to close. complete is false when the checks could not run or the store refused. architecture.state is reviewed, skipped when the review-architecture context identity of every Module equals the recorded one, or left_out with --architects 0; context_identity is that identity, null when left out; review is the Spec panel payload of one Module, contract.spec-review.panel-payload, for the subject project when reviewed, else null; complete is false when the review stopped or its Issues could not all be written. modules has one item per covered Module in the registry's order. identities are what its parts would judge: spec the context identity of its review-spec grant, code that of its review-code grant and code_digest the digest of the paths and bytes of the files it binds, each null when no grant could be computed. panel and code_review each have state reviewed, skipped when the record holds the same identities, or not_run when the Module failed structural validation or has no grant, and review, the Module's item of contract.spec-review.panel-payload or of contract.code-review.review when reviewed, else null. standing lists the open Issues that spec_panel, code_review or project_review made for the Module and that no part of the run found resolved, with their severity, tier and title; where the issues part is not installed it is empty. outcome is incomplete when the Module failed structural validation, a part of it stopped or its Issues could not all be written, changes_required when an Issue of a blocking tier stands for it, or where the issues part is not installed when a finding of a blocking tier of this run concerns it, and accepted otherwise. standing counts the Issues that stand for every covered Module by severity and by tier, unrated for a report without one. record names the review record's path, whether this run committed it, that commit, the Modules and whether the architecture this run recorded. workflow is the object of Workflows' step output convention, which defines its fields: one review note whose data holds the verdict and each Module's outcome with its count of blocking Issues that stand. Findings, tiers, severities and resolutions inside each review are worker claims; everything else is the Operation's. A behaviour or field change increments the version.",
+  "semantics": "The outcome of one project review. verdict is the highest outcome among modules in the order accepted, changes_required, incomplete, and incomplete also when deterministic.complete or architecture.complete is false or the Issues that stand could not be read. full repeats --full. validation counts the errors and warnings of the examined worktree's structural validation. checks has one item per configured check result of the work stage of the covered Modules, in the shape of the code review report's checks. deterministic.findings lists every deterministic problem the run established: phase check for a configured check that failed or timed out, coverage for a Module's scenarios no verification declaration names, unowned for the tracked files bound to no Module, which belong to the root Module; title, tier and severity are fixed per kind by the Operation, subjects names the check, the scenarios or the files, issue is the Issue that states the problem, null where the issues part is not installed or the store refused, and earlier, present only when the problem had an open Issue of its Module, kind and title, names it. unowned lists those files. earlier_issues is null where the issues part is not installed; otherwise carried lists the open deterministic Issues that still stand unchanged and resolved those whose problem the run no longer finds, for a task to close. complete is false when the checks could not run or the store refused. architecture.state is reviewed, skipped when the review-architecture context identity of every Module equals the recorded one, or left_out with --architects 0; context_identity is that identity, null when left out; review is the Spec panel payload of one Module, contract.spec-review.panel-payload, for the subject project when reviewed, else null; complete is false when the review stopped or its Issues could not all be written. modules has one item per covered Module in the registry's order. identities are what its parts would judge: spec the context identity of its review-spec grant, code that of its review-code grant and code_digest the digest of the paths and bytes of the files it binds, each null when no grant could be computed. panel and code_review each have state reviewed, skipped when the record holds the same identities, or not_run when the Module failed structural validation or has no grant, and review, the Module's item of contract.spec-review.panel-payload or of contract.code-review.review when reviewed, else null. standing lists the open Issues that spec_panel, code_review or project_review made for the Module and that no part of the run found resolved and no skipped part's record entry lists resolved at their current revision, with their severity, tier and title; where the issues part is not installed it is empty. outcome is incomplete when the Module failed structural validation, a part of it stopped, its Issues could not all be written, its checks could not run or one of its deterministic problems could not be written, changes_required when an Issue of a blocking tier stands for it, or where the issues part is not installed when a finding of a blocking tier of this run concerns it, and accepted otherwise. standing counts the Issues that stand for the covered Modules alone by severity and by tier, unrated for a report without one. record names the review record's path, whether this run committed it, that commit, the Modules and whether the architecture this run recorded. workflow is the object of Workflows' step output convention, which defines its fields: one review note whose data holds the verdict and each Module's outcome with its count of blocking Issues that stand. Findings, tiers, severities and resolutions inside each review are worker claims; everything else is the Operation's. A behaviour or field change increments the version.",
   "example": {
     "verdict": "changes_required",
     "full": false,
@@ -2123,6 +2123,27 @@ Where the issues part is not installed, the report has the same shape:
               "judged_at": {
                 "type": "string",
                 "minLength": 1
+              },
+              "resolved": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "issue",
+                    "revision"
+                  ],
+                  "properties": {
+                    "issue": {
+                      "type": "string",
+                      "pattern": "^I-[0-9a-f]{32}$"
+                    },
+                    "revision": {
+                      "type": "string",
+                      "pattern": "^sha256:[0-9a-f]{64}$"
+                    }
+                  }
+                }
               }
             }
           }
@@ -2166,6 +2187,27 @@ Where the issues part is not installed, the report has the same shape:
                 "judged_at": {
                   "type": "string",
                   "minLength": 1
+                },
+                "resolved": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "issue",
+                      "revision"
+                    ],
+                    "properties": {
+                      "issue": {
+                        "type": "string",
+                        "pattern": "^I-[0-9a-f]{32}$"
+                      },
+                      "revision": {
+                        "type": "string",
+                        "pattern": "^sha256:[0-9a-f]{64}$"
+                      }
+                    }
+                  }
                 }
               }
             },
@@ -2206,6 +2248,27 @@ Where the issues part is not installed, the report has the same shape:
                 "judged_at": {
                   "type": "string",
                   "minLength": 1
+                },
+                "resolved": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "issue",
+                      "revision"
+                    ],
+                    "properties": {
+                      "issue": {
+                        "type": "string",
+                        "pattern": "^I-[0-9a-f]{32}$"
+                      },
+                      "revision": {
+                        "type": "string",
+                        "pattern": "^sha256:[0-9a-f]{64}$"
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -2214,7 +2277,7 @@ Where the issues part is not installed, the report has the same shape:
       }
     }
   },
-  "semantics": "The review record, .concorde/reviews/record.json of the primary branch, the one file in which project_review keeps what its last review of each part judged. architecture is null until an architecture review completed; otherwise context_identity is the review-architecture context identity of every Module it judged. modules maps a Module identity to its parts: panel holds the context identity of the Module's review-spec grant its last completed Spec panel judged, code_review the context identity of its review-code grant and code_digest the digest of the paths and bytes of the files it bound when its last completed code review judged it. Every entry names the run that judged it, the commit an unbound run examined, null for a run in a bound workspace, and judged_at, the UTC time the run recorded it. A part is recorded only once its workers finished and all of its Issues were written; a later run merges its own entries over the earlier ones and keeps every other. A behaviour or field change increments the version.",
+  "semantics": "The review record, .concorde/reviews/record.json of the primary branch, the one file in which project_review keeps what its last review of each part judged. architecture is null until an architecture review completed; otherwise context_identity is the review-architecture context identity of every Module it judged. modules maps a Module identity to its parts: panel holds the context identity of the Module's review-spec grant its last completed Spec panel judged, code_review the context identity of its review-code grant and code_digest the digest of the paths and bytes of the files it bound when its last completed code review judged it. Every entry names the run that judged it, the commit an unbound run examined, null for a run in a bound workspace, judged_at, the UTC time the run recorded it, and resolved, present only when the part found earlier Issues resolved that were still open when the run ended, each with the revision it had then: while that revision is unchanged, a run that skips the part counts the Issue resolved. A part is recorded only once its workers finished and all of its Issues were written; a later run merges its own entries over the earlier ones and keeps every other. A behaviour or field change increments the version.",
   "example": {
     "schema_version": 1,
     "architecture": {
@@ -2236,7 +2299,13 @@ Where the issues part is not installed, the report has the same shape:
           "code_digest": "sha256:3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c",
           "run": "r-20261007T090000-project_review-1a2b3c4d",
           "commit": "2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f",
-          "judged_at": "2026-10-07T09:12:44Z"
+          "judged_at": "2026-10-07T09:12:44Z",
+          "resolved": [
+            {
+              "issue": "I-3123456789abcdef0123456789abcdef",
+              "revision": "sha256:8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b"
+            }
+          ]
         }
       },
       "module.inventory": {

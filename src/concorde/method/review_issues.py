@@ -250,6 +250,7 @@ def open_issues(
             {
                 "issue": record["id"],
                 "module": row["owner_target_id"] or row["target_id"],
+                "revision": row["revision"],
                 "severity": latest.get("severity"),
                 "tier": latest.get("tier"),
                 "title": latest["title"],

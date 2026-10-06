@@ -37,7 +37,7 @@ every Module the examined worktree registers. It judges them in these parts:
 | Part | What it judges | Workers |
 | --- | --- | --- |
 | Validation | the whole project's structure, by Spec core's [structural checks](../../glossary.json#concept.structural-check) | none |
-| Checks | every configured check of every covered Module | none |
+| Checks | every configured check of every covered Module, except a check marked to run only when readiness is decided | none |
 | Coverage | the scenarios of every covered Module that no [verification declaration](../../glossary.json#concept.verification-declaration) names | none |
 | Unowned files | the files Git tracks that no Module binds | none |
 | Architecture review | every Module's place among the others, once for the project | `architect1`, `architect2`, `arch_chair` |
@@ -73,13 +73,23 @@ The identity of each part is computed by the Operation from the examined worktre
 | Part | Its identity |
 | --- | --- |
 | Spec panel | the [context identity](../../glossary.json#concept.context-identity) of the Module's `review-spec` [grant](../../glossary.json#concept.grant) |
-| Code review | the context identity of the Module's `review-code` grant, and the digest of the paths and bytes of every file the Module binds |
+| Code review | the context identity of the Module's `review-code` grant, and the **code digest** of the Module |
 | Architecture review | the context identity of the `review-architecture` grant of every Module |
 
-A context identity changes whenever a Spec source it selects changes. The code's digest changes
-whenever a bound file changes. A part whose identity equals the recorded one is **skipped**. Each
+The code digest is the `sha256:` digest of the canonical JSON of a list. The list holds one
+`[path, digest]` pair per file the Module binds, in path order. Each digest is the `sha256:` digest
+of that file's bytes. A context identity changes whenever a Spec source it selects changes. The code
+digest changes whenever a bound file changes. A code reviewer may read every Module's code, but only
+its own Module's code decides whether it is judged again. A change of another Module's code is
+judged by that Module's own code review. A part whose identity equals the recorded one is **skipped**. Each
 identity is a digest of content, not of a place. So a record entry holds wherever the content was
 judged: in a task's workspace, in the primary worktree or by another collaborator.
+
+Each entry also lists the earlier Issues its part found resolved, each with its
+[revision](../../glossary.json#concept.issue-revision) once the run ended. A skipped part did not
+judge again, so the resolutions of its last judgment still hold. An Issue it found resolved
+therefore does not stand while its revision is unchanged. Only a task closes it. An Issue with a
+newer report stands again.
 
 The record is Git-tracked. It is shared by every worktree and collaborator of the project. It is
 read from the primary worktree's last commit. It is never read from the examined checkout. After the
@@ -88,6 +98,17 @@ when its workers finished and all of its Issues were written. The Operation comm
 on the primary branch under the [merge lock](../../glossary.json#concept.merge-lock), as an Issue
 write commits its record. The examined checkout stays untouched.
 
+The record changes only through such a commit. When the record file holds a valid record no commit
+holds, a write was interrupted after it published the file. The next write puts that file back
+first. It refuses any other change of the file with `uncommitted_change`, changing nothing. When the
+committed record is not valid, nothing is skipped, and the write refuses with `record_invalid`.
+
+The Operation reads no [task record](../../glossary.json#concept.task-record), as no Operation does
+([req.concorde.halves-apart](../../requirements.md#req.concorde.halves-apart)). So it cannot tell an
+unfinished task merge on the primary branch. A record committed on top of such a merge keeps
+`task merge --resume` and `--abort` from finishing it. The run's Issue writes refuse an unfinished
+merge themselves, which makes those parts incomplete and unrecorded.
+
 A skipped part changes no Issue. Its Module's outcome comes from the Issues that stand. That is
 why skipping needs the issues part. Where the issues part is not installed, nothing is skipped and
 no record is written. `--full` reviews every part whatever the record says. It still records what
@@ -95,17 +116,17 @@ it judged.
 
 ### Deterministic findings
 
-Three problems need no worker to establish. Each is reported as an Issue of a fixed title, tier and
-severity:
+Three problems need no worker to establish:
 
-| Problem | The Issue's Module | Title | Tier | Severity |
-| --- | --- | --- | --- | --- |
-| A configured check failed | the check's Module | `Configured check <check> does not pass` | `obvious-fix` | `high` |
-| A configured check timed out | the check's Module | `Configured check <check> does not pass` | `decision-needed` | `medium` |
-| Scenarios that no verification declaration names | their Module | `Scenarios of <module> that no test verifies` | `obvious-fix` | `medium` |
-| Tracked files bound to no Module | the root Module | `Tracked files bound to no Module` | `decision-needed` | `medium` |
+- A configured check that failed or timed out.
+- The scenarios of a covered Module that no verification declaration names. The Operation reads the
+  declarations of every file a Module binds, as structural validation does. It counts a scenario of
+  a Module without code too.
+- The files Git tracks that no Module binds. When Git cannot list them, they are not examined.
 
-A failed check is an obvious problem whose fix the task fixing it finds in the log. A timed-out
+Each is reported as an Issue of a fixed title, tier and severity, which
+[req.project-review.deterministic-issues](requirements.md#req.project-review.deterministic-issues)
+gives. A failed check is an obvious problem whose fix the task fixing it finds in the log. A timed-out
 check may be an environment problem as well as a code problem, so its fix is uncertain. A scenario
 no test verifies has an obvious fix: a test that declares it. A file no Module binds needs a
 decision about the Module it belongs to.
@@ -159,7 +180,10 @@ The phase decides which reviews offer an Issue as an earlier Issue:
   ([Spec review](../spec-review/panel.md#earlier-issues)).
 - A Module's code review offers its Issues of `code_review` and of the `code-review` phase, as
   `code_review` does ([Code review](../code-review/module.md#earlier-issues)).
-- The architecture review offers every open Issue of the `architecture` phase.
+- The architecture review offers every open Issue of the `architecture` phase. It does not offer an
+  architecture finding of `spec_panel`, since nothing in a `spec_panel` report tells its
+  architects' findings from its reviewers'. Such an Issue is offered to the next `spec_panel` of
+  its Module.
 
 Thus `project_review`, `spec_panel` and `code_review` build on each other's Issues rather than
 reporting a problem again. Within one run, the report key of a phase other than `report` begins with
@@ -175,6 +199,14 @@ Every other such Issue **stands** for the Module that owns it. A Module's outcom
   Issues could not all be written.
 - `changes_required`, when an Issue of a blocking tier stands for it.
 - `accepted`, otherwise.
+
+A Module is also `incomplete` when its checks could not run, or when one of its deterministic
+problems could not be written.
+
+`--modules` narrows which Modules the run covers. The Issues that stand are counted for the covered
+Modules alone. An architecture finding about a Module the run does not cover stands for that Module.
+It counts in the next run that covers it. A Module that fails structural validation is still judged
+by the architecture review, which reads every Module's Specs as they are written.
 
 The project's verdict is the highest Module outcome in the order `accepted`, `changes_required`,
 `incomplete`. It is also `incomplete` in these cases:
@@ -243,9 +275,9 @@ It may run unbound, since it launches only reading workers.
 | # | Step | Actor | Stops when |
 | --- | --- | --- | --- |
 | 1 | Admit every worker against the worker configuration and the [model map](../../glossary.json#concept.model-map) | Method | a worker cannot be configured (`failed`) |
-| 2 | Validate the whole project. Compute each covered Module's identities and the architecture's. Read the review record. Decide what is skipped | Operation, Spec core | Specs that do not load, Issues that cannot be read (`failed`); a Module with a structural error or no grant is `incomplete` and not reviewed |
-| 3 | Run every covered Module's configured checks. Find the uncovered scenarios and the unowned files. Settle them with their earlier Issues and report them | Operation, Check execution, Issues | — (checks that cannot run, or a refusal of the Issue store, make the project `incomplete`) |
-| 4 | Unless skipped or left out, run the architecture review: read its earlier Issues, run the panel graph without reviewers, report the chair's findings with phase `architecture` | Operation, Workers, Issues | — (a stop makes the project `incomplete`) |
+| 2 | Validate the whole project. Compute each covered Module's identities and the architecture's. Read the review record. Decide what is skipped | Operation, Spec core | Specs that do not load, Issues that cannot be read (`failed`); a Module with a structural error or no grant is `incomplete` and not reviewed; a record that cannot be read skips nothing |
+| 3 | Run every covered Module's configured checks of the work stage. Find the uncovered scenarios and the unowned files. Settle them with their earlier Issues and report them | Operation, Check execution, Issues | — (checks that cannot run, or a refusal of the Issue store, make the project and the Modules concerned `incomplete`) |
+| 4 | Unless skipped or left out, run the architecture review: read its earlier Issues, run the panel graph without reviewers, report the chair's findings with phase `architecture` | Operation, Workers, Issues | — (a stop, a grant that cannot be computed or LangGraph missing makes the project `incomplete`) |
 | 5 | Run every Spec panel and code review not skipped, at most `--parallel` at once. A Spec panel runs as `spec_panel` runs one Module's panel without architects, with phase `spec-panel`. A code review runs as `code_review --scope module` reviews one Module, with phase `code-review` | Operation, Workers, Issues | — (a stop makes that Module `incomplete`) |
 | 6 | Merge the completed parts into the review record and commit it on the primary branch | Operation, Kernel | — (a refusal fails the run with `record_unpublished`; the verdict stands) |
 | 7 | Read the Issues that stand. Derive each Module's outcome and the verdict. Return the result | Operation, Issues | — |
@@ -290,8 +322,7 @@ code change. So an entry needs no history to compare. It holds wherever the cont
 in Git and shared by every collaborator. An unbound run may change nothing in what it examines. It
 may only publish through a commit of its own under the merge lock. The Issues are such commits
 ([Execution](../../execution/requirements.md#req.execution.unbound-origin-untouched)). The record
-follows the same rule. It is refused while a task's merge is unfinished, since a commit on top of
-that merge would keep the merge from being resumed or undone.
+follows the same rule.
 
 **Checks run on every run.** A Module whose own code is unchanged can still fail its tests when a
 Module it uses changes. Checks cost no model spend. So they run for every covered Module, skipped
@@ -366,10 +397,14 @@ is installed, it keeps the project's Issues, which every part reads and writes. 
 installed, every finding stays in the result, nothing is skipped and no record is written. A
 failure of the Issue system is never reported as an Issue. It stays an error chain in the result.
 
-<a id="uses-tasks"></a>
+<a id="uses-validation"></a>
 
-**Tasks** is an optional integration. Before the record's commit, Project review reads the current
-[task records](../../glossary.json#concept.task-record), in the
-[file Tasks defines](../../coordination/tasks/contracts.md#contract.tasks.record). While one of them is
-stored `merging`, it refuses the commit, as the Issue store does. Where the coordination part is not
-installed, there are no task records to read.
+**Validation** gives the rule by which a changed path is accounted for in a
+[readiness](../../glossary.json#concept.readiness). Project review applies the same rule to every
+tracked file to find the files bound to no Module.
+
+<a id="uses-workflows"></a>
+
+**Workflows** defines the
+[step output convention](../../workflows/contracts.md#contract.workflows.step-output). The result
+carries its `workflow` object, with one review note, as every review's does.

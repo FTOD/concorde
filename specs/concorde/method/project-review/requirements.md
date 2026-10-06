@@ -12,11 +12,16 @@ When `--modules` is not given, the `project_review` [Operation](../../glossary.j
 SHALL cover every [Module](../../glossary.json#concept.module) the examined worktree registers, in a
 bound and an [unbound run](../../glossary.json#concept.unbound-run) alike.
 
-### req.project-review.module-parts — A Spec panel and a code review per Module
+### req.project-review.module-panel — A Spec panel per Module
 
-For each covered Module whose part is not skipped, the Operation SHALL run a
-[Spec](../../glossary.json#concept.spec) panel of
-`--reviewers` reviewers and a chair without architects, and a code review of Module scope.
+For each covered Module whose Spec panel is not skipped, the Operation SHALL run a
+[Spec](../../glossary.json#concept.spec) panel of `--reviewers` reviewers and a chair without
+architects.
+
+### req.project-review.module-code-review — A code review per Module
+
+For each covered Module whose code review is not skipped, the Operation SHALL run a code review of
+Module scope, whether or not its Spec panel is skipped.
 
 ### req.project-review.architecture-once — One architecture review per run
 
@@ -42,18 +47,35 @@ branch.
 
 ## Deterministic findings
 
-### req.project-review.deterministic-every-run — The deterministic parts run on every run
+### req.project-review.checks-every-run — The checks run on every run
 
-On every run, the Operation SHALL run every [configured check](../../glossary.json#concept.configured-check)
-of every covered Module, find each covered Module's scenarios that no
-[verification declaration](../../glossary.json#concept.verification-declaration) names, and find the
-files Git tracks that no Module binds, whether or not a part of that Module's review is skipped.
+On every run, whether or not a part of a Module's review is skipped, the Operation SHALL run every
+[configured check](../../glossary.json#concept.configured-check) of the work stage of every covered
+Module.
+
+### req.project-review.coverage-every-run — Uncovered scenarios are found on every run
+
+On every run, the Operation SHALL find each covered Module's scenarios that no
+[verification declaration](../../glossary.json#concept.verification-declaration) in a file a Module
+binds names.
+
+### req.project-review.unowned-every-run — Unowned files are found on every run
+
+On every run in which Git lists the tracked files, the Operation SHALL find the files Git tracks that
+no Module binds.
 
 ### req.project-review.deterministic-issues — Each deterministic problem is one Issue
 
-The Operation SHALL report each failed or timed-out check, each covered Module's uncovered scenarios
-and the files bound to no Module as one [Issue](../../glossary.json#concept.issue) each, with the
-title, tier and severity the [deterministic findings](module.md#deterministic-findings) table gives.
+Where the issues part is installed, the Operation SHALL report each failed or timed-out check, each
+covered Module's uncovered scenarios and the files bound to no Module as one
+[Issue](../../glossary.json#concept.issue) each, with this title, tier and severity:
+
+| Problem | The Issue's Module | Title | Tier | Severity |
+| --- | --- | --- | --- | --- |
+| A configured check failed | the check's Module | `Configured check <check> does not pass` | `obvious-fix` | `high` |
+| A configured check timed out | the check's Module | `Configured check <check> does not pass` | `decision-needed` | `medium` |
+| Scenarios that no verification declaration names | their Module | `Scenarios of <module> that no test verifies` | `obvious-fix` | `medium` |
+| Tracked files bound to no Module | the root Module | `Tracked files bound to no Module` | `decision-needed` | `medium` |
 
 ### req.project-review.deterministic-earlier — An unchanged problem writes nothing
 
@@ -70,9 +92,9 @@ that Module's open Issue of that kind as resolved, leaving it open for a task to
 
 ### req.project-review.skip-unchanged — A part whose input is unchanged is skipped
 
-Unless `--full` is given, the Operation SHALL skip a Module's Spec panel, a Module's code review or
-the architecture review when the identity of what it would judge equals the identity the
-[review record](module.md#the-review-record) holds for that part.
+Unless `--full` is given, where the issues part is installed, the Operation SHALL skip a Module's
+Spec panel, a Module's code review or the architecture review when the identity of what it would
+judge equals the identity the [review record](module.md#the-review-record) holds for that part.
 
 ### req.project-review.no-skip-without-issues — Nothing is skipped without Issues
 
@@ -86,14 +108,25 @@ of its Issues were written.
 
 ### req.project-review.record-commit — The record is committed alone under the merge lock
 
-The Operation SHALL commit the review record alone on the primary branch while it holds the
-[merge lock](../../glossary.json#concept.merge-lock), before it returns its result.
+When a completed part changes the review record, the Operation SHALL commit the record alone on the
+primary branch while it holds the [merge lock](../../glossary.json#concept.merge-lock), before it
+returns its result.
 
 ### req.project-review.record-refused — A refused record fails the run, not the verdict
 
-When a task's merge is unfinished, the record file holds a change no commit holds, or the commit
-fails, the Operation SHALL leave the committed record as it was and end the run `failed` with
-`record_unpublished` while keeping the verdict in its output.
+When the committed record is not valid, the record file holds a change other than a valid record
+an interrupted write left, or the commit fails, the Operation SHALL leave the committed record as
+it was and end the run `failed` with `record_unpublished` while keeping the verdict in its output.
+
+### req.project-review.record-leftover — An interrupted write's record is put back
+
+When the record file holds a valid record no commit holds, the Operation SHALL put the file back to
+its committed version before it writes the record.
+
+### req.project-review.skipped-resolutions — A skipped part's resolutions still hold
+
+When a part is skipped, the Operation SHALL count as resolved each Issue that part's record entry
+lists as resolved whose revision is unchanged.
 
 ## Issues and the verdict
 
@@ -105,9 +138,15 @@ provenance `phase` of the part that made it:
 
 ### req.project-review.outcome-standing — Outcomes come from the Issues that stand
 
-After every part, the Operation SHALL derive each complete Module's outcome from the open Issues
-that `spec_panel`, `code_review` or `project_review` made for it and that no part of the run found
-resolved: `changes_required` when one of a blocking tier stands, `accepted` otherwise.
+Where the issues part is installed, after every part, the Operation SHALL derive each complete
+Module's outcome from the open Issues that `spec_panel`, `code_review` or `project_review` made for
+it and that no part of the run found resolved: `changes_required` when one of a blocking tier
+stands, `accepted` otherwise.
+
+### req.project-review.outcome-findings — Without Issues, outcomes come from the findings
+
+Where the issues part is not installed, the Operation SHALL derive each complete Module's outcome
+from the findings of this run that concern it, as from the Issues they would become.
 
 ### req.project-review.issue-failures — A failure of the Issue system is never an Issue
 

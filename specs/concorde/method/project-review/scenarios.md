@@ -15,7 +15,7 @@ record's shapes are in the [contracts](contracts.md).
 
 ### scenario.project-review.skips-unchanged — A repeated review skips what is unchanged
 
-- GIVEN a project that a `project_review` judged, and that has not changed since
+- GIVEN a project with the issues part, whose every part a `project_review` completed and recorded, and that has not changed since
 - WHEN the main agent runs `project_review` again
 - THEN no worker runs, and every Spec panel, code review and the architecture review is skipped
 - AND each Module's outcome comes from the Issues that stand for it
@@ -23,7 +23,7 @@ record's shapes are in the [contracts](contracts.md).
 
 ### scenario.project-review.code-change — A code change reviews only that Module's code
 
-- GIVEN a judged project, then a commit that changes only the code of one Module
+- GIVEN a project with the issues part, whose every part a `project_review` completed and recorded, then a commit that changes only the code of one Module
 - WHEN the main agent runs `project_review` again
 - THEN only that Module's code review runs
 - AND an earlier Issue the code reviewer finds resolved no longer stands, but stays open for a task to close
@@ -37,7 +37,7 @@ record's shapes are in the [contracts](contracts.md).
 
 ### scenario.project-review.failed-check — A failed check is an Issue until it passes
 
-- GIVEN a Module whose [configured check](../../glossary.json#concept.configured-check) fails on the examined commit
+- GIVEN a Module whose [configured check](../../glossary.json#concept.configured-check) fails on the examined commit, and whose code review is not skipped
 - WHEN the main agent runs `project_review`
 - THEN the check's failure is an Issue of that Module, `obvious-fix` and `high`, of phase `check`
 - AND the Module's code reviewer receives the failed check's result and log
@@ -63,7 +63,27 @@ record's shapes are in the [contracts](contracts.md).
 - THEN the run covers every Module the workspace registers
 - AND the record is committed on the primary branch, not on the task branch
 
+### scenario.project-review.narrowed — --modules narrows what the verdict counts
+
+- GIVEN a project whose Module A has Issues that stand
+- WHEN the main agent runs `project_review --modules` naming Module B alone
+- THEN the result covers Module B alone, and the Issues that stand are counted for Module B alone
+- AND when `--modules` names Modules out of the registry's order, the result lists them in that order
+
 ## Issues and the record
+
+### scenario.project-review.skipped-resolutions — A skipped part keeps what it found resolved
+
+- GIVEN a code review of `project_review` that found an earlier Issue resolved, which no task closed yet
+- WHEN a later `project_review` skips that code review, since its Module is unchanged
+- THEN that Issue does not stand for the Module, while its revision is unchanged
+- BUT it stays open until a task closes it
+
+### scenario.project-review.record-leftover — An interrupted write's record is put back
+
+- GIVEN a primary worktree whose review record file holds a valid record no commit holds, as a write interrupted before its commit leaves it
+- WHEN `project_review` publishes its record
+- THEN the file is put back to its committed version first, and the new record is committed
 
 ### scenario.project-review.shared-earlier — spec_panel builds on project_review's Issues
 
@@ -80,7 +100,7 @@ record's shapes are in the [contracts](contracts.md).
 
 ### scenario.project-review.record-refused — A record with an uncommitted change is refused
 
-- GIVEN a primary worktree whose review record file holds a change no commit holds
+- GIVEN a primary worktree whose review record file holds a change no commit holds, which is not a valid record
 - WHEN the main agent runs `project_review`
 - THEN the reviews complete and their Issues are written
 - BUT the record is not written, and the run ends `failed` with `record_unpublished` naming the uncommitted change, its verdict still in the output

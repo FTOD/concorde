@@ -53,7 +53,8 @@
         "meaning": "#uses-checks",
         "relies_on": [
           "concept.configured-check",
-          "concept.check-result"
+          "concept.check-result",
+          "concept.read-only-check-boundary"
         ]
       },
       {
@@ -86,15 +87,25 @@
         "relies_on": [
           "concept.issue",
           "concept.issue-report",
+          "concept.issue-revision",
           "concept.issue-tier",
-          "concept.issue-severity"
+          "concept.issue-severity",
+          "contract.issues.report",
+          "contract.issues.receipt"
         ]
       },
       {
-        "target": "module.tasks",
-        "meaning": "#uses-tasks",
+        "target": "module.validation",
+        "meaning": "#uses-validation",
         "relies_on": [
-          "contract.tasks.record"
+          "concept.readiness"
+        ]
+      },
+      {
+        "target": "module.workflows",
+        "meaning": "#uses-workflows",
+        "relies_on": [
+          "contract.workflows.step-output"
         ]
       }
     ],
@@ -103,6 +114,21 @@
         "kind": "document",
         "target": "document.tracing.contracts",
         "reason": "the Framework's error contract, which this Module's errors follow"
+      },
+      {
+        "kind": "document",
+        "target": "document.spec.contracts",
+        "reason": "Spec core's library of grants, context identities, validation and verification declarations the host steps call"
+      },
+      {
+        "kind": "document",
+        "target": "document.checks.service",
+        "reason": "Check execution's service, whose work stage decides which configured checks the review runs"
+      },
+      {
+        "kind": "document",
+        "target": "document.kernel.contracts",
+        "reason": "the merge lock and the file transaction the review record is committed through"
       }
     ],
     "participates": []

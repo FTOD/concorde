@@ -4,8 +4,8 @@
 Three kinds of problem need no worker to establish:
 
 - ``check``: a configured check of a covered Module that failed or timed out;
-- ``coverage``: the scenarios of a covered Module that no verification declaration names, as Spec
-  core's structural validation reports them (``CONCORDE-COVERAGE-001``);
+- ``coverage``: the scenarios of a covered Module that no verification declaration in a file any
+  Module binds names, read as Spec core's structural validation reads them;
 - ``unowned``: the files Git tracks in the examined worktree that Validation's rule for a changed
   path would not account for: no Spec document member, glossary, control record, generated or build
   output or external material, and bound by no Module.
@@ -25,6 +25,7 @@ from pathlib import Path
 from ...execution.context import RunContext, Stop
 from ...kernel.schema import digest
 from ...spec.repository_base import bound_by, control_path, covers
+from ...spec.verification import scan_declarations
 from ...spec.validation import (
     build_path,
     generated,
@@ -33,7 +34,6 @@ from ...spec.validation import (
 )
 from .. import review_issues
 
-COVERAGE_RULE = "CONCORDE-COVERAGE-001"
 PHASES = ("check", "coverage", "unowned")
 # The tier and severity of each kind of problem.
 GRADES = {
@@ -157,23 +157,30 @@ def check_problems(
 
 
 def coverage_problems(
-    ctx: RunContext, repository, validation, modules: list[str], identities: dict
+    ctx: RunContext, repository, modules: list[str], identities: dict
 ) -> list[Problem]:
-    """One problem per covered Module with a scenario no verification declaration names."""
-    nodes = repository.scenario_nodes
+    """One problem per covered Module with a scenario no verification declaration names. A test
+    file that cannot be read declares nothing, as for structural validation, which reports it."""
+    listed = sorted(
+        {
+            path
+            for module in repository.modules
+            for path in repository.bound_files(module)
+        }
+    )
+    declared = {
+        item.scenario_id for item in scan_declarations(repository.root, listed, [])
+    }
     uncovered: dict[str, list] = {}
-    for item in validation.findings:
-        if item.rule_id != COVERAGE_RULE or item.subject_id not in nodes:
-            continue
-        node = nodes[item.subject_id]
-        if node.owner in modules:
-            uncovered.setdefault(node.owner, []).append(item)
+    for scenario in repository.scenario_nodes.values():
+        if scenario.owner in modules and scenario.id not in declared:
+            uncovered.setdefault(scenario.owner, []).append(scenario)
     found = []
     for module, items in sorted(uncovered.items()):
-        items.sort(key=lambda item: item.subject_id)
+        items.sort(key=lambda item: item.id)
         tier, severity = GRADES["coverage"]
-        scenarios = [item.subject_id for item in items]
-        documents = sorted({item.source for item in items})
+        scenarios = [item.id for item in items]
+        documents = sorted({item.document for item in items})
         found.append(
             Problem(
                 "coverage",
@@ -186,8 +193,8 @@ def coverage_problems(
                 "declare each scenario in the tests that exercise it, or write such a test.",
                 "Nothing that runs shows these promised situations to hold, so a change that "
                 "breaks one passes every check.",
-                f"{ctx.name} run {ctx.run_id} took Spec core's structural validation of the "
-                f"examined worktree, which reports {COVERAGE_RULE} for each of them.",
+                f"{ctx.name} run {ctx.run_id} read the verification declarations of every file "
+                "a Module binds in the examined worktree; none names these scenarios.",
                 [
                     {"path": path, "description": "defines scenarios no test verifies"}
                     for path in documents[:LISTED]
@@ -199,12 +206,12 @@ def coverage_problems(
     return found
 
 
-def unowned_paths(repository) -> list[str]:
+def unowned_paths(repository) -> list[str] | None:
     """The files Git tracks in the repository's worktree that Validation's rule for a changed
-    path would not account for, submodules left out."""
+    path would not account for, submodules left out; None when Git cannot list them."""
     listed = version_controlled(repository.root)
     if listed is None:
-        return []
+        return None
     files, _ = listed
     members = set(repository.source_documents) | (
         {repository.glossary_path} if repository.glossary_path else set()
@@ -312,8 +319,8 @@ def settle_and_report(
                     settlement.resolved.append(
                         {
                             "issue": item["issue"],
-                            "reason": f"{ctx.name} run {ctx.run_id} no longer finds this "
-                            f"{phase} problem of {module}",
+                            "reason": f"{ctx.name} run {ctx.run_id} no longer finds "
+                            f"this {phase} problem of {module}: {item['title']}",
                         }
                     )
                     continue

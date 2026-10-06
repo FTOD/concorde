@@ -440,7 +440,7 @@ class ProjectReviewTests(unittest.TestCase):
     def test_a_record_with_an_uncommitted_change_is_refused(self):
         self.first()
         path = self.root / record.PATH
-        path.write_text(path.read_text().replace('"run"', '"run" ', 1))
+        path.write_text(path.read_text() + "edited by hand\n")
         status, envelope = self.review(None, "--full")
         self.assertEqual((1, "failed"), (status, envelope["status"]))
         error = envelope["error"]
@@ -451,6 +451,76 @@ class ProjectReviewTests(unittest.TestCase):
         # The reviews completed and their verdict stands; only the record was not written.
         self.assertEqual("changes_required", envelope["output"]["verdict"])
         self.assertFalse(envelope["output"]["record"]["published"])
+
+    @verifies("scenario.project-review.record-leftover")
+    def test_a_record_an_interrupted_write_left_is_put_back(self):
+        self.first()
+        path = self.root / record.PATH
+        committed = path.read_text()
+        # What a write interrupted between publishing and committing leaves: a valid record.
+        value = json.loads(committed)
+        value["modules"]["module.b"]["panel"]["run"] = "r-interrupted"
+        path.write_text(json.dumps(value))
+        status, envelope = self.review(None, "--full")
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        self.assertTrue(envelope["output"]["record"]["published"])
+        self.assertEqual(
+            envelope["run_id"],
+            record.read(self.root)["modules"]["module.b"]["panel"]["run"],
+        )
+        self.assertEqual(
+            "",
+            subprocess.run(
+                ["git", "status", "--porcelain", "--", record.PATH],
+                cwd=self.root,
+                capture_output=True,
+                text=True,
+                check=True,
+            ).stdout,
+        )
+
+    @verifies("scenario.project-review.skipped-resolutions")
+    def test_a_skipped_part_keeps_what_its_last_judgment_resolved(self):
+        first = self.first()
+        earlier = self.issue_of(first, "add subtracts")
+        (self.root / "src/a/calc.py").write_text("def add(a, b):\n    return a + b\n")
+        commit(self.root, "fix add")
+        self.review(
+            {
+                "code module.a 1": worker(
+                    findings=[],
+                    resolved=[{"issue": earlier, "reason": "add returns a + b now."}],
+                )
+            }
+        )
+        judged = record.read(self.root)["modules"]["module.a"]["code_review"]
+        self.assertEqual([earlier], [item["issue"] for item in judged["resolved"]])
+        # The Issue stays open until a task closes it, but a run that skips the code review
+        # still counts it resolved.
+        status, envelope = self.review()
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        a = self.module(envelope)
+        self.assertEqual("skipped", a["code_review"]["state"])
+        self.assertNotIn(earlier, [item["issue"] for item in a["standing"]])
+        self.assertEqual("open", self.issues()[earlier]["status"])
+
+    @verifies("scenario.project-review.narrowed")
+    def test_a_narrowed_review_counts_only_its_modules(self):
+        self.first()
+        status, envelope = self.review(None, "--modules", "module.b", "--full")
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        output = envelope["output"]
+        self.assertEqual(["module.b"], [item["module"] for item in output["modules"]])
+        # module.a's Issues stand for module.a, which this run does not cover.
+        self.assertEqual(
+            {"issues": 1, "blocking": 1},
+            {key: output["standing"][key] for key in ("issues", "blocking")},
+        )
+        status, envelope = self.review(None, "--modules", "module.b,module.a")
+        self.assertEqual(
+            ["module.a", "module.b"],
+            [item["module"] for item in envelope["output"]["modules"]],
+        )
 
     @verifies("scenario.project-review.shared-earlier")
     def test_spec_panel_offers_what_project_review_recorded(self):
