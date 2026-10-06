@@ -87,8 +87,9 @@ report.
 
 ### req.project-review.deterministic-resolved — A problem gone is listed resolved
 
-When a kind of deterministic problem the run examined is gone for a Module, the Operation SHALL list
-that Module's open Issue of that kind as resolved, leaving it open for a task to close.
+When the run examined a Module's deterministic problems of one kind and found none with the title
+of an open Issue of that Module and kind, the Operation SHALL list that Issue as resolved, leaving
+it open for a task to close.
 
 ## Skipping and the record
 
@@ -100,8 +101,11 @@ judge equals the identity the [review record](module.md#the-review-record) holds
 
 ### req.project-review.no-skip-without-issues — Nothing is skipped without Issues
 
-Where the issues part is not installed, the Operation SHALL run every part, writing no review
-record.
+Where the issues part is not installed, the Operation SHALL skip no part by its identity.
+
+### req.project-review.no-record-without-issues — No record without Issues
+
+Where the issues part is not installed, the Operation SHALL write no review record.
 
 ### req.project-review.record-completed — Only completed parts are recorded
 
@@ -127,8 +131,9 @@ its committed version before it writes the record.
 
 ### req.project-review.skipped-resolutions — A skipped part's resolutions still hold
 
-When a part is skipped, the Operation SHALL count as resolved each Issue that part's record entry
-lists as resolved whose revision is unchanged since the part was offered it.
+The Operation SHALL count an earlier Issue as resolved only while its revision equals the one
+offered to the part that found it resolved, whether that part ran in this run or its record entry
+lists the resolution for a skipped part.
 
 ## Issues and the verdict
 

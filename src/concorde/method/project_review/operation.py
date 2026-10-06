@@ -984,17 +984,24 @@ def _remembered(ctx: RunContext, revisions: dict[str, str]) -> set[str]:
     }
 
 
-def _resolved(ctx: RunContext) -> set[str]:
-    """Every earlier Issue a part of this run found resolved."""
+def _resolved(ctx: RunContext, revisions: dict[str, str]) -> set[str]:
+    """Every earlier Issue a part of this run found resolved and that is unchanged since the
+    part was offered it: a report appended meanwhile is content the part never judged."""
     state = _state(ctx)
     found: set[str] = set()
-    summaries = [subject.summary for subject in review._state(ctx).reviews.values()]
+    parts = [
+        (subject.summary, subject.earlier)
+        for subject in review._state(ctx).reviews.values()
+    ]
     if state.architecture is not None:
-        summaries.append(state.architecture.summary)
+        parts.append((state.architecture.summary, state.architecture.earlier))
     if state.code is not None:
-        summaries += [item.settled for item in state.code.reviews.values()]
-    for summary in summaries:
-        found.update(item["issue"] for item in (summary or {}).get("resolved", []))
+        parts += [(item.settled, item.earlier) for item in state.code.reviews.values()]
+    for summary, earlier in parts:
+        found.update(
+            item["issue"]
+            for item in _resolutions(summary, earlier, revisions).get("resolved", [])
+        )
     if state.settlement is not None:
         found.update(item["issue"] for item in state.settlement.resolved)
     return found
@@ -1080,9 +1087,8 @@ def derive_verdict(ctx: RunContext):
                 options=["repair the Issue records (issue_check), then run again"],
             )
             stops.append(("standing Issues", standing_stop))
-        resolved = _resolved(ctx) | _remembered(
-            ctx, {row["issue"]: row["revision"] for row in rows}
-        )
+        revisions = {row["issue"]: row["revision"] for row in rows}
+        resolved = _resolved(ctx, revisions) | _remembered(ctx, revisions)
         standing: dict[str, list[dict]] = {}
         for row in rows:
             if row["issue"] not in resolved and row["module"] in subjects:

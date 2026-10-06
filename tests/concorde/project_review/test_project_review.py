@@ -622,6 +622,19 @@ class ContractTests(unittest.TestCase):
                 code_digest(Repository(), "module.a"),
             )
 
+        class Accented(Repository):
+            def bound_files(self, module):
+                return ["src/caf\u00e9.py"]
+
+        with patch(
+            "concorde.method.project_review.operation.read_file",
+            return_value=b"VALUE = 0\n",
+        ):
+            self.assertEqual(
+                "sha256:d67f0d5e66b3f32653a082cdf39b2541a13dbfeacbff198d9c42004307c715e1",
+                code_digest(Accented(), "module.a"),
+            )
+
     def test_the_output_schemas_are_the_contracts(self):
         contracts = {
             item["id"]: item

@@ -85,7 +85,9 @@ identity is a digest of content, not of a place. So a record entry holds whereve
 judged: in a task's workspace, in the primary worktree or by another collaborator.
 
 Each entry also lists the earlier Issues its part found resolved, each with the
-[revision](../../glossary.json#concept.issue-revision) the part was offered. An Issue that took a
+[revision](../../glossary.json#concept.issue-revision) the part was offered. One rule holds for
+every resolution, of this run or remembered: it counts only while the Issue's revision equals the
+one offered. An Issue that took a
 report after the part read it is not listed, since its resolution judged older content. A skipped
 part did not judge again, so the resolutions of its last judgment still hold. An Issue it found
 resolved therefore does not stand while its revision is unchanged. Only a task closes it. An Issue
@@ -157,7 +159,11 @@ The Operation, not a worker, settles them:
   is written.
 - When they changed, the Operation appends a report to the earlier Issue.
 - When there is no earlier Issue, it creates one.
-- When a kind of problem the run examined is gone, the earlier Issue is listed as resolved.
+- When the run examined the Module's problems of that kind and none has the Issue's title, the
+  Issue is listed as resolved. One check repaired while another still fails resolves the repaired
+  check's Issue alone. A check removed from the configuration no longer fails, so its Issue is
+  resolved too. Checks that could not run, or files Git could not list, were not examined, so
+  their Issues are carried.
 
 The Operation closes no Issue.
 

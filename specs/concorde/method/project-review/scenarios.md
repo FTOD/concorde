@@ -31,13 +31,13 @@ record's shapes are in the [contracts](contracts.md).
 
 ### scenario.project-review.full — --full reviews everything
 
-- GIVEN a judged project that has not changed since
+- GIVEN a project with configured workers whose every part a `project_review` completed and recorded, and that has not changed since
 - WHEN the main agent runs `project_review --full`
 - THEN every Spec panel, code review and the architecture review runs again
 
 ### scenario.project-review.failed-check — A failed check is an Issue until it passes
 
-- GIVEN a project with the issues part, and a Module whose [configured check](../../glossary.json#concept.configured-check) fails on the examined commit, and whose code review is not skipped
+- GIVEN a project with the issues part and configured workers, and a structurally valid Module whose [configured check](../../glossary.json#concept.configured-check) fails on the examined commit, and whose code review is not skipped
 - WHEN the main agent runs `project_review`
 - THEN the check's failure is an Issue of that Module, `obvious-fix` and `high`, of phase `check`
 - AND the Module's code reviewer receives the failed check's result and log
@@ -59,17 +59,17 @@ record's shapes are in the [contracts](contracts.md).
 
 ### scenario.project-review.bound — A bound run reviews the whole workspace
 
-- GIVEN a project with the issues part, and a task worktree whose binding names one Module
+- GIVEN a project with the issues part, configured workers and structurally valid Modules, and a task worktree whose binding names one Module
 - WHEN the [task session](../../glossary.json#concept.task-session) runs `project_review` there without `--modules`
 - THEN the run covers every Module the workspace registers
-- AND the record is committed on the primary branch, not on the task branch
+- AND when its parts complete and change the record, the record is committed on the primary branch, not on the task branch
 
 ### scenario.project-review.narrowed — --modules narrows what the verdict counts
 
 - GIVEN a project whose Module A has Issues that stand
 - WHEN the main agent runs `project_review --modules` naming Module B alone
 - THEN the result covers Module B alone, and the Issues that stand are counted for Module B alone
-- AND when `--modules` names Modules out of the registry's order, the result lists them in that order
+- AND when `--modules` names both Modules in the reverse of the registry's order, the result lists them in the registry's order
 
 ## Issues and the record
 
