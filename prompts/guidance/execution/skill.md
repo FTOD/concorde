@@ -60,6 +60,7 @@ binding such as the primary worktree. These Operations are:
 - `survey`
 - `spec_panel`
 - `code_review` (a change review with `--base`, a Module review without)
+- `project_review` (every registered Module without `--modules`)
 
 They work on a throwaway checkout of that worktree's `HEAD`, with the Modules you name in
 `--modules`. A task merged there meanwhile therefore does not disturb them. They do not examine

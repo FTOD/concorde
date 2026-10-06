@@ -8,8 +8,8 @@ Method's Operations and execution commands do bounded work in a bound workspace.
 its worktree with that worktree's own `concorde`. Where the coordination part is installed, the
 workspace is a task's. In that case, the task session starts them inside the task worktree. Without
 that part, nothing in Concorde binds a worktree. In that case, they run in a workspace something
-else prepared. Only the reading Operations `understand`, `survey`, `spec_panel` and `code_review`
-run anywhere else, unbound (see "Unbound runs"). So does `general` with a task type that writes
+else prepared. Only the reading Operations `understand`, `survey`, `spec_panel`, `code_review` and
+`project_review` run anywhere else, unbound (see "Unbound runs"). So does `general` with a task type that writes
 nothing or with `--read-only`.
 
 ```bash
@@ -20,6 +20,7 @@ concorde run implement   --goal "<what to build>" [--input <run-id>]
 concorde run test
 concorde run spec_panel  [--reviewers <2-5>] [--architects <0-2>]
 concorde run code_review   [--scope module]
+concorde run project_review [--modules <ids>] [--full] [--parallel <1-8>] [--reviewers <2-5>] [--architects <0-2>]
 concorde run general     --type <task type> (--instruction "<text>" | --instruction-file <file>) [--read-only]
 concorde task-validation
 concorde delivery
@@ -71,8 +72,30 @@ unrealizable. Use it for a whole-Module check after a large change, on code writ
 Specs or by an earlier version, or on a project just adopted with the brownfield workflow.
 
 When run unbound in the primary worktree, it needs only `--modules`. Where the issues part is
-installed, the reviews (`spec_panel`, `code_review`) report their findings as Issues,
-as "Issues" says. Otherwise, they keep their findings in their run result, where you read them.
+installed, the reviews (`spec_panel`, `code_review`, `project_review`) report their findings as
+Issues, as "Issues" says. Otherwise, they keep their findings in their run result, where you read
+them.
+
+**Project review.** `project_review` reviews the whole project in one run. Run it unbound in the
+primary worktree, in background Bash, when the developer wants to know how the project stands. It
+needs no task. It runs these parts:
+
+- The project's structural validation.
+- Every configured check of every Module.
+- A search for the scenarios no test verifies and the files no Module binds.
+- One architecture review of the whole project, by `architect1`, `architect2` and `arch_chair`.
+- A Spec panel per Module, by `reviewer1` to `reviewer5` and `chair`, without architects.
+- A Module review of each Module's code, by `code_reviewer`.
+
+It skips each panel, code review or architecture review whose Specs and code are unchanged since a
+review last judged them. The review record `.concorde/reviews/record.json` keeps what was judged.
+The run commits that record on the primary branch itself. Never edit or commit it by hand. A
+skipped part's Module takes its outcome from the Issues that stand. `--full` reviews everything
+again. `--modules` narrows the per-Module parts. `--architects 0` leaves the architecture review
+out. Without the issues part, nothing is skipped. The result gives each Module's outcome, the
+project's verdict and the Issues that stand counted by severity and tier. Choose what to fix from
+those Issues as "Issues" says. A review of every Module launches several workers per Module.
+When only a few Modules changed, the skipping keeps a repeated review cheap.
 
 **Brownfield.** Concorde works Spec first. Only when Concorde was just installed and initialized in
 a project whose code came before its Specs, describe that code with the `brownfield` workflow.

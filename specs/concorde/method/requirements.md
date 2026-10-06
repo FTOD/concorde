@@ -151,30 +151,33 @@ The brownfield workflow's script SHALL name `delivery` as its procedure's last s
 
 ## Optional integrations
 
-The review Operations whose findings may become Issues are `spec_panel` and `code_review`. `plan_review` judges a plan the task level wrote. Its findings are identified within
+The review Operations whose findings may become Issues are `spec_panel`, `code_review` and
+`project_review`. `plan_review` judges a plan the task level wrote. Its findings are identified within
 its run and judged blocking or advisory rather than by [Issue tier](../glossary.json#concept.issue-tier).
 Whatever parts are installed, its findings stay in its report and never become Issues.
 
 ### req.method.issues-optional — Review verdicts do not need the issues part
 
-`spec_panel` and `code_review` SHALL derive their verdict whether or not the issues part is
-installed.
+`spec_panel`, `code_review` and `project_review` SHALL derive their verdict whether or not the
+issues part is installed.
 
 ### req.method.findings-kept — Every review finding stays in the run result
 
-`spec_panel` and `code_review` SHALL return every finding they report in their
+`spec_panel`, `code_review` and `project_review` SHALL return every finding they report in their
 [run result](../glossary.json#concept.run-result), whether or not the issues part is installed.
 
 ### req.method.issues-where-installed — Findings become Issues only where Issues are installed
 
-Where the issues part is installed, `spec_panel` and `code_review` SHALL report their findings as
+Where the issues part is installed, `spec_panel`, `code_review` and `project_review` SHALL report
+their findings as
 [Issues](../glossary.json#concept.issue).
 
 Each review's own [Spec](../glossary.json#concept.spec) gives the shape.
 
 ### req.method.issues-absent-stated — Findings not recorded as Issues are said to be so
 
-Where the issues part is not installed, `spec_panel` and `code_review` SHALL state in their result
+Where the issues part is not installed, `spec_panel`, `code_review` and `project_review` SHALL
+state in their result
 that the findings were not recorded as Issues.
 
 That statement is how the [optional integration](../glossary.json#concept.optional-integration)

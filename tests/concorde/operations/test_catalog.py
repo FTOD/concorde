@@ -112,6 +112,7 @@ class CatalogTests(unittest.TestCase):
                 "test": "module.implementation",
                 "spec_panel": "module.spec-review",
                 "code_review": "module.code-review",
+                "project_review": "module.project-review",
                 "survey": "module.adoption",
                 "code_to_spec": "module.adoption",
                 "general": "module.general-work",

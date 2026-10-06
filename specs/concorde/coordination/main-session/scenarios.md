@@ -390,7 +390,8 @@ also illustrates
 
 - GIVEN the rendered main-session guidance
 - WHEN a main agent needs to understand or review a Module without changing it
-- THEN it is told that `understand`, `survey`, `spec_panel` and `code_review` also run unbound
+- THEN it is told that `understand`, `survey`, `spec_panel`, `code_review` and `project_review` also
+  run unbound
 - AND it is told that such unbound runs run in a worktree without a
   [workspace binding](../../glossary.json#concept.workspace-binding), such as the primary worktree
 - AND it is told that such unbound runs have `workspace` null in their result
@@ -548,6 +549,18 @@ illustrates [escalating a decision](requirements.md#req.main-session.issues-deci
 - BUT the severity is not said to decide who fixes an Issue, which stays the tier's
 
 This illustrates [severity deciding what is fixed first](requirements.md#req.main-session.issues-severity).
+
+### scenario.main-session.project-review — The guidance reviews the whole project without a task
+
+- GIVEN the rendered main-session guidance
+- WHEN a main agent wants to know how the whole project stands
+- THEN it is told to run `project_review` unbound in the primary worktree, in background Bash,
+  without a task
+- AND it is told which parts the review runs, with their worker ids
+- AND it is told that the review skips what is unchanged since a review last judged it, which the
+  review record keeps, and that `--full` reviews everything again
+- AND it is told never to edit or commit the review record by hand
+- AND it is told to choose what to fix from the Issues that stand
 
 ### scenario.main-session.review-issues — The guidance acts on a review's Issues
 

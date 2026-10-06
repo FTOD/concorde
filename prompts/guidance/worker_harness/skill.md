@@ -76,6 +76,12 @@ Where the method part is installed, `spec_panel` names its workers as follows:
 - `architect2`
 - `chair`
 
+Where the method part is installed, `project_review` names its workers as follows:
+
+- `reviewer1` to `reviewer5` and `chair` for each Module's Spec panel.
+- `architect1`, `architect2` and `arch_chair` for the architecture review.
+- `code_reviewer` for each Module's code review.
+
 Each entry may set these fields:
 
 - a `backend` (`pi` or `claude`)
