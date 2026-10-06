@@ -1,0 +1,158 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.project-review.module",
+    "owner": "module.project-review",
+    "role": "module"
+  },
+  "module": {
+    "title": "Project review",
+    "owns": [
+      "specs/concorde/method/project-review/module.md",
+      "specs/concorde/method/project-review/requirements.md",
+      "specs/concorde/method/project-review/scenarios.md",
+      "specs/concorde/method/project-review/contracts.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.spec-review",
+        "meaning": "#uses-spec-review",
+        "relies_on": [
+          "contract.spec-review.panel-payload",
+          "concept.review-finding"
+        ]
+      },
+      {
+        "target": "module.code-review",
+        "meaning": "#uses-code-review",
+        "relies_on": [
+          "contract.code-review.review"
+        ]
+      },
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec",
+        "relies_on": [
+          "concept.structural-check",
+          "concept.grant",
+          "concept.context-identity",
+          "concept.verification-declaration"
+        ]
+      },
+      {
+        "target": "module.workers",
+        "meaning": "#uses-workers",
+        "relies_on": [
+          "concept.worker-id",
+          "concept.run-record"
+        ]
+      },
+      {
+        "target": "module.checks",
+        "meaning": "#uses-checks",
+        "relies_on": [
+          "concept.configured-check",
+          "concept.check-result"
+        ]
+      },
+      {
+        "target": "module.operations",
+        "meaning": "#uses-operations",
+        "relies_on": [
+          "concept.operation"
+        ]
+      },
+      {
+        "target": "module.execution",
+        "meaning": "#uses-execution",
+        "relies_on": [
+          "concept.execution-runner",
+          "concept.run-result",
+          "concept.unbound-run"
+        ]
+      },
+      {
+        "target": "module.kernel",
+        "meaning": "#uses-kernel",
+        "relies_on": [
+          "concept.merge-lock",
+          "concept.file-transaction"
+        ]
+      },
+      {
+        "target": "module.issues",
+        "meaning": "#uses-issues",
+        "relies_on": [
+          "concept.issue",
+          "concept.issue-report",
+          "concept.issue-tier",
+          "concept.issue-severity"
+        ]
+      },
+      {
+        "target": "module.tasks",
+        "meaning": "#uses-tasks",
+        "relies_on": [
+          "contract.tasks.record"
+        ]
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.tracing.contracts",
+        "reason": "the Framework's error contract, which this Module's errors follow"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "realization.project-review.operation",
+      "type": "realization",
+      "title": "Project review Operation",
+      "meaning": "#realization.project-review.operation",
+      "entries": [
+        "src/concorde/method/project_review/",
+        "tests/concorde/project_review/"
+      ]
+    },
+    {
+      "id": "realization.project-review.architecture",
+      "type": "realization",
+      "title": "Architecture brief",
+      "meaning": "#realization.project-review.architecture",
+      "entries": [
+        "prompts/workers/project-architecture.md"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "realization.project-review.operation",
+      "verb": "runs the Spec panels of",
+      "target": "module.spec-review"
+    },
+    {
+      "type": "relates",
+      "source": "realization.project-review.operation",
+      "verb": "runs the Module reviews of",
+      "target": "module.code-review"
+    },
+    {
+      "type": "relates",
+      "source": "realization.project-review.operation",
+      "verb": "reports findings as Issues through",
+      "target": "module.issues"
+    },
+    {
+      "type": "relates",
+      "source": "realization.project-review.operation",
+      "verb": "hands the architecture review",
+      "target": "realization.project-review.architecture"
+    }
+  ],
+  "extensions": {}
+}

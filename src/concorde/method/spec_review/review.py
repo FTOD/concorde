@@ -199,6 +199,8 @@ class ReviewRun:
 
     reviews: dict[str, ModuleReview]
     repository: SpecRepository | None = None
+    # The whole project's structural validation, as the first step found it.
+    validation: object | None = None
 
 
 def _state(ctx: RunContext) -> ReviewRun:
@@ -259,6 +261,7 @@ def validate_modules(ctx: RunContext):
             options=["repair the configuration, registry or Protocol binding"],
         )
     state.repository = repository
+    state.validation = result
     found = []
     for module, review in reviews.items():
         if module not in repository.modules:
@@ -465,11 +468,11 @@ def path_repair(ctx: RunContext, result: dict) -> str | None:
     )
 
 
-def read_earlier(ctx: RunContext, review: ModuleReview) -> list[dict]:
-    """The Module's earlier Issues, or its stop when the project's Issues cannot be read; returns
-    the host evidence."""
+def read_earlier(ctx: RunContext, review: ModuleReview, sources=None) -> list[dict]:
+    """The Module's earlier Issues, of ``sources`` or else ``spec_panel``'s, or its stop when the
+    project's Issues cannot be read; returns the host evidence."""
     try:
-        review.earlier = reporting.earlier_issues(ctx, review.module)
+        review.earlier = reporting.earlier_issues(ctx, review.module, sources)
     except reporting.Refusal as refusal:
         review.stop = ctx.fail(
             "failed",
@@ -504,16 +507,27 @@ def read_earlier(ctx: RunContext, review: ModuleReview) -> list[dict]:
 
 
 def report_findings(
-    ctx: RunContext, review: ModuleReview, resolved: list[dict], identity: str | None
+    ctx: RunContext,
+    review: ModuleReview,
+    resolved: list[dict],
+    identity: str | None,
+    phase: str = "report",
 ) -> list[dict]:
-    """Settle the earlier Issues and report the findings as Issues; returns the host evidence."""
+    """Settle the earlier Issues and report the findings as Issues with the provenance ``phase``;
+    returns the host evidence."""
     review.summary = reporting.settle(review.earlier or [], review.findings, resolved)
     review.settled = True
     if review.earlier is None:
         # No earlier Issue was read, so none is carried or resolved.
         review.summary = None
     found, stop = reporting.report(
-        ctx, review.module, review.findings, identity, review.earlier, review.summary
+        ctx,
+        review.module,
+        review.findings,
+        identity,
+        review.earlier,
+        review.summary,
+        phase=phase,
     )
     if stop is not None:
         review.stop = stop

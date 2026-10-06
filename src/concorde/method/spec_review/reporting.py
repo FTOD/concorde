@@ -15,16 +15,17 @@ from ...execution.context import RunContext
 from .. import review_issues
 from ..review_issues import SEVERITIES, TIERS, Refusal, is_blocking
 
-# The Operations whose reports make an Issue one of a Module's earlier Issues.
-REVIEW_OPERATIONS = ("spec_panel",)
+# The reports that make an Issue one of a Module's earlier Issues for ``spec_panel``: its own, and
+# those of the Spec panels and the architecture review of ``project_review``, by their phase.
+REVIEW_SOURCES = {"spec_panel": None, "project_review": ("spec-panel", "architecture")}
 ISSUE = r"^I-[0-9a-f]{32}$"
 
 
-def earlier_issues(ctx: RunContext, module: str) -> list[dict] | None:
-    """The Module's open Issues a review reported, each as its latest report states it; None
-    where the issues part is not installed. Raises ``Refusal`` when the project's Issues cannot be
-    read."""
-    return review_issues.earlier_issues(ctx, module, REVIEW_OPERATIONS)
+def earlier_issues(ctx: RunContext, module: str, sources=None) -> list[dict] | None:
+    """The Module's open Issues one of ``sources`` reported, ``REVIEW_SOURCES`` by default, each
+    as its latest report states it; None where the issues part is not installed. Raises
+    ``Refusal`` when the project's Issues cannot be read."""
+    return review_issues.earlier_issues(ctx, module, sources or REVIEW_SOURCES)
 
 
 def material(earlier: list[dict] | None) -> str:
@@ -121,10 +122,11 @@ def report(
     identity: str | None,
     earlier: list[dict] | None = None,
     settled: dict | None = None,
+    phase: str = "report",
 ) -> tuple[list[dict], object | None]:
-    """Report every finding; returns the host evidence and, when the Issue store refused a
-    report, the Module's stop. Each finding gets its ``issue``; an unreported finding's earlier
-    Issue joins ``settled``'s carried, in ``earlier``'s order."""
+    """Report every finding with the provenance ``phase``; returns the host evidence and, when the
+    Issue store refused a report, the Module's stop. Each finding gets its ``issue``; an
+    unreported finding's earlier Issue joins ``settled``'s carried, in ``earlier``'s order."""
     return review_issues.report(
         ctx,
         module,
@@ -136,12 +138,13 @@ def report(
         review="review",
         earlier=earlier,
         settled=settled,
+        phase=phase,
     )
 
 
 __all__ = [
     "ISSUE",
-    "REVIEW_OPERATIONS",
+    "REVIEW_SOURCES",
     "SEVERITIES",
     "TIERS",
     "earlier_issues",

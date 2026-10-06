@@ -279,7 +279,11 @@ def _stop_value(stop: Stop) -> dict:
 
 
 class Panel:
-    """The panel of one Module: the graph's nodes, bound to the run and the Module's review."""
+    """The panel of one Module: the graph's nodes, bound to the run and the Module's review.
+
+    ``project_review`` runs the same graph for its project-wide architecture review: architects
+    alone with a chair of its own worker id (``chair_worker``), bound to every Module
+    (``modules``), told what they review by its own ``section``."""
 
     def __init__(
         self,
@@ -288,17 +292,24 @@ class Panel:
         prompt: str,
         reviewers: int,
         architects: int,
+        *,
+        chair_worker: str = "chair",
+        modules: list[str] | None = None,
+        section=None,
     ):
         self.ctx = ctx
         self.subject = subject
         self.prompt = prompt
         self.seats = {"reviewer": reviewers, "architect": architects}
+        self.chair_worker = chair_worker
+        self.modules = list(modules or [subject.module])
+        self.section = section or review._task_section
 
     def _brief(self, role: str, section: str, material: str = "") -> str:
         return (
             self.prompt
             + "\n"
-            + review._task_section(self.ctx, self.subject, role)
+            + self.section(self.ctx, self.subject, role)
             + "\n"
             + section
             + "\n"
@@ -321,7 +332,7 @@ class Panel:
             task_type=task_type,
             output_schema=schema,
             rounds=review_issues.CITATION_ROUNDS,
-            modules=[self.subject.module],
+            modules=self.modules,
             worker=worker,
             validate=lambda value: review.path_repair(self.ctx, value),
         )
@@ -438,8 +449,8 @@ class Panel:
             "decision",
             causes=[item["stop"]["error"] for item in failed],
             options=[
-                "address each worker's cause, then run spec_panel again",
-                "run spec_panel with fewer --reviewers or --architects",
+                f"address each worker's cause, then run {self.ctx.name} again",
+                f"run {self.ctx.name} with fewer --reviewers or --architects",
             ],
         )
         return {**identities, "stop": _stop_value(stop)}
@@ -471,7 +482,7 @@ class Panel:
         # The chair checks architects' findings against the other Modules' Specs they cite.
         wide = self.seats["architect"] > 0
         output, found, identity, stop = self._launch(
-            "chair",
+            self.chair_worker,
             ARCHITECTURE_TASK_TYPE if wide else TASK_TYPE,
             self._brief("chair", section, "".join(material)),
             CHAIR_OUTPUT,
@@ -541,7 +552,7 @@ class Panel:
                     for problem in problems
                 ],
                 options=[
-                    "run spec_panel again",
+                    f"run {self.ctx.name} again",
                     "read the reviews in the payload directly",
                 ],
             )
@@ -596,7 +607,9 @@ def _panels(ctx: RunContext) -> dict[str, PanelState]:
     return ctx.__dict__.setdefault("spec_panel", {})
 
 
-def _report(ctx: RunContext, subject: review.ModuleReview, state: PanelState):
+def _report(
+    ctx: RunContext, subject: review.ModuleReview, state: PanelState, phase: str
+):
     """Step 4: settle the earlier Issues the chair's report names and report its findings."""
     report = state["report"]
     subject.findings = _findings(report, claims=True)
@@ -605,60 +618,90 @@ def _report(ctx: RunContext, subject: review.ModuleReview, state: PanelState):
         subject,
         report["resolved"],
         state["architecture_identity"] or state["context_identity"],
+        phase,
     )
 
 
-def panel_modules(ctx: RunContext):
-    """Steps 2 to 4: the earlier Issues, the panel graph and the Issue reports per Module."""
+def langgraph_missing(ctx: RunContext) -> Stop | None:
+    """Stop ``failed`` when this Python cannot import LangGraph, which every panel runs on."""
     try:
         import langgraph.graph  # noqa: F401
     except ImportError as error:
         return ctx.fail(
             "failed",
             "langgraph_unavailable",
-            "spec_panel needs LangGraph, which this Python cannot import.",
+            f"{ctx.name} needs LangGraph, which this Python cannot import.",
             f"the interpreter running the Execution runner cannot import langgraph ({error}); "
-            "spec_panel runs its panel as a LangGraph graph",
+            f"{ctx.name} runs its panels as a LangGraph graph",
             reason="environment",
             explanation="LangGraph is one of Concorde's runtime dependencies, which the "
             "installer puts in Concorde's own environment; this interpreter lacks it",
             evidence=[evidence("host-error", "langgraph", str(error))],
             options=["install Concorde again, or run `uv sync` in a source checkout"],
         )
+    return None
+
+
+def run_panel(
+    ctx: RunContext,
+    panel: Panel,
+    *,
+    sources=None,
+    phase: str = "report",
+    earlier: bool = True,
+) -> tuple[list[dict], PanelState | None]:
+    """Steps 2 to 4 for one subject: read its earlier Issues of ``sources`` unless the caller
+    already set them (``earlier`` False), run the panel graph and report the chair's findings
+    with the provenance ``phase``; returns the host evidence and the graph's final state, None
+    when the panel never ran. The subject's stop is set when it is incomplete."""
+    subject = panel.subject
+    found: list[dict] = []
+    if earlier:
+        found.extend(review.read_earlier(ctx, subject, sources))
+        if subject.stop is not None:
+            return found, None
+    drawing = ctx.run_dir / "panel-graph.mmd"
+    if not drawing.exists():
+        drawing.write_text(panel.graph().get_graph().draw_mermaid())
+        found.append(evidence("graph", drawing.as_posix(), "the panel graph"))
+    try:
+        state = panel.run()
+    except Exception as error:  # noqa: BLE001 -- a graph or node defect is recorded with its trace
+        subject.stop = ctx.exception(
+            f"Spec panel graph ({subject.module})",
+            error,
+            "panel_graph_failed",
+            f"The panel of {subject.module} stopped on an unexpected error.",
+        )
+        found.extend(subject.stop.evidence)
+        return found, None
+    subject.context_identity = state["context_identity"]
+    found.extend(state["evidence"])
+    if state["stop"]:
+        stop = state["stop"]
+        subject.stop = Stop(stop["status"], stop["summary"], [], stop["error"])
+        return found, state
+    found.extend(_report(ctx, subject, state, phase))
+    return found, state
+
+
+def panel_modules(ctx: RunContext):
+    """Steps 2 to 4: the earlier Issues, the panel graph and the Issue reports per Module."""
+    missing = langgraph_missing(ctx)
+    if missing is not None:
+        return missing
     prompt = load_prompt("panel-spec")
     found: list[dict] = []
     for subject in review._state(ctx).reviews.values():
         if subject.stop is not None:
             continue
-        found.extend(review.read_earlier(ctx, subject))
-        if subject.stop is not None:
-            continue
         panel = Panel(
             ctx, subject, prompt, ctx.arguments.reviewers, ctx.arguments.architects
         )
-        drawing = ctx.run_dir / "panel-graph.mmd"
-        if not drawing.exists():
-            drawing.write_text(panel.graph().get_graph().draw_mermaid())
-            found.append(evidence("graph", drawing.as_posix(), "the panel graph"))
-        try:
-            state = panel.run()
-        except Exception as error:  # noqa: BLE001 -- a graph or node defect is recorded with its trace
-            subject.stop = ctx.exception(
-                f"Spec panel graph ({subject.module})",
-                error,
-                "panel_graph_failed",
-                f"The panel of {subject.module} stopped on an unexpected error.",
-            )
-            found.extend(subject.stop.evidence)
-            continue
-        _panels(ctx)[subject.module] = state
-        subject.context_identity = state["context_identity"]
-        found.extend(state["evidence"])
-        if state["stop"]:
-            stop = state["stop"]
-            subject.stop = Stop(stop["status"], stop["summary"], [], stop["error"])
-            continue
-        found.extend(_report(ctx, subject, state))
+        evidence_found, state = run_panel(ctx, panel)
+        found.extend(evidence_found)
+        if state is not None:
+            _panels(ctx)[subject.module] = state
     return Continue(evidence=found)
 
 
@@ -681,7 +724,7 @@ def _findings(report: dict, *, claims: bool) -> list[dict]:
     ]
 
 
-def _module_payload(subject: review.ModuleReview, state: PanelState | None) -> dict:
+def module_payload(subject: review.ModuleReview, state: PanelState | None) -> dict:
     state = state or {}
     report = state.get("report") or {"findings": [], "rejected": []}
     return {
@@ -714,7 +757,7 @@ def derive_verdict(ctx: RunContext):
     panels = _panels(ctx)
     subjects = list(review._state(ctx).reviews.values())
     modules = [
-        _module_payload(subject, panels.get(subject.module)) for subject in subjects
+        module_payload(subject, panels.get(subject.module)) for subject in subjects
     ]
     verdict = max((item["outcome"] for item in modules), key=OUTCOMES.index)
     payload = {
@@ -803,5 +846,9 @@ __all__ = [
     "OUTPUTS",
     "PAYLOAD_SCHEMA",
     "SPEC_PANEL",
+    "Panel",
     "account",
+    "langgraph_missing",
+    "module_payload",
+    "run_panel",
 ]

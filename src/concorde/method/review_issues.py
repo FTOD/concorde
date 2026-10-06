@@ -7,7 +7,8 @@ which ``concorde`` tells by refusing ``issues`` as a command it does not offer, 
 no earlier Issues, report nothing outside the run and say so in their result.
 
 Before a review judges a Module, the host reads the Module's earlier Issues: its open Issues one of
-whose reports one of the review's Operations made. The review reports only what is new or what
+whose reports one of the review's sources made, an Operation or one provenance phase of an
+Operation's reports, since ``project_review`` makes several kinds of review. The review reports only what is new or what
 changed in an earlier Issue (naming it as ``earlier``) and lists the earlier Issues the Module no
 longer has as ``resolved``; an earlier Issue it neither names nor resolves is carried and still
 stands. The host, never a worker, then reports every finding through the command with the
@@ -26,7 +27,7 @@ import json
 import os
 import subprocess
 import tempfile
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from pathlib import Path
 
 from ..execution.context import RunContext, Stop, evidence
@@ -172,13 +173,36 @@ def call(ctx: RunContext, *words: str) -> dict:
     return answer
 
 
+def sources_of(sources: Iterable[str] | Mapping[str, Iterable[str] | None]) -> dict:
+    """``sources`` as a mapping of each Operation to the provenance phases of its reports that
+    count, None for every phase: a plain list of Operations counts every phase of each."""
+    if isinstance(sources, Mapping):
+        return {
+            operation: None if phases is None else frozenset(phases)
+            for operation, phases in sources.items()
+        }
+    return {operation: None for operation in sources}
+
+
+def made_by(source: dict, sources: Mapping[str, frozenset | None]) -> bool:
+    """Whether a report's provenance ``source`` is one of ``sources``, as ``sources_of`` gives
+    them."""
+    if source.get("operation") not in sources:
+        return False
+    phases = sources[source["operation"]]
+    return phases is None or source.get("phase") in phases
+
+
 def earlier_issues(
-    ctx: RunContext, module: str, operations: Iterable[str]
+    ctx: RunContext,
+    module: str,
+    sources: Iterable[str] | Mapping[str, Iterable[str] | None],
 ) -> list[dict] | None:
-    """The Module's open Issues one of ``operations`` reported, each as its latest report states
-    it; None where the issues part is not installed. Raises ``Refusal`` when the project's Issues
-    cannot be read."""
-    operations = set(operations)
+    """The Module's open Issues one of whose reports one of ``sources`` made, each as its latest
+    report states it; ``sources`` names Operations, every report of each counting, or maps each
+    Operation to the provenance phases of its reports that count. None where the issues part is
+    not installed. Raises ``Refusal`` when the project's Issues cannot be read."""
+    sources = sources_of(sources)
     try:
         rows = call(ctx, "list", "--module", module, "--status", "open")["issues"]
     except Absent:
@@ -188,14 +212,44 @@ def earlier_issues(
         if (row["owner_target_id"] or row["target_id"]) != module:
             continue
         record = call(ctx, "show", row["id"])["issue"]
-        if not any(
-            item["source"]["operation"] in operations for item in record["reports"]
-        ):
+        if not any(made_by(item["source"], sources) for item in record["reports"]):
             continue
         latest = record["reports"][-1]["report"]
         found.append(
             {
                 "issue": record["id"],
+                "severity": latest.get("severity"),
+                "tier": latest.get("tier"),
+                "title": latest["title"],
+                "description": latest["description"],
+                "evidence": latest["evidence"],
+            }
+        )
+    return found
+
+
+def open_issues(
+    ctx: RunContext, sources: Iterable[str] | Mapping[str, Iterable[str] | None]
+) -> list[dict] | None:
+    """Every open Issue of the project one of whose reports one of ``sources`` made, as
+    ``earlier_issues`` reads a Module's, each with the Module that owns it as ``module``; None
+    where the issues part is not installed. Raises ``Refusal`` when the project's Issues cannot be
+    read."""
+    sources = sources_of(sources)
+    try:
+        rows = call(ctx, "list", "--status", "open")["issues"]
+    except Absent:
+        return None
+    found = []
+    for row in rows:
+        record = call(ctx, "show", row["id"])["issue"]
+        if not any(made_by(item["source"], sources) for item in record["reports"]):
+            continue
+        latest = record["reports"][-1]["report"]
+        found.append(
+            {
+                "issue": record["id"],
+                "module": row["owner_target_id"] or row["target_id"],
                 "severity": latest.get("severity"),
                 "tier": latest.get("tier"),
                 "title": latest["title"],
@@ -349,6 +403,7 @@ def report(
     review: str,
     earlier: list[dict] | None = None,
     settled: dict | None = None,
+    phase: str = "report",
 ) -> tuple[list[dict], Stop | None]:
     """Report every finding of one Module; returns the host evidence and, when the issues command
     refused a report, the Module's stop. Each finding gets its ``issue``, which stays None where
@@ -358,7 +413,8 @@ def report(
     ``issue_id`` and ``expected_revision``; ``review`` names the review in the stop, such as
     ``code review``. A finding left unreported keeps no ``earlier``, since nothing was appended to
     that Issue, which still stands and so joins the ``carried`` of ``settled``, the review's
-    settlement of ``earlier``, the Issues it offered."""
+    settlement of ``earlier``, the Issues it offered. ``phase`` is the provenance phase of every
+    report, which tells apart the kinds of review one Operation makes."""
     for finding in findings:
         finding["issue"] = None
     found: list[dict] = []
@@ -366,7 +422,7 @@ def report(
         "invocation_id": ctx.run_id,
         "agent": "operation",
         "operation": ctx.name,
-        "phase": "report",
+        "phase": phase,
         "target_id": module,
         "context_id": identity,
         "change_id": ctx.workspace_name,
@@ -375,6 +431,10 @@ def report(
     try:
         for position, finding in enumerate(findings, 1):
             value = issue_report(position, finding)
+            if phase != "report":
+                # One run of an Operation making several kinds of review keys each kind's
+                # reports apart, since one report key of a run identifies one Issue.
+                value["report_key"] = f"{phase}/{value['report_key']}"
             named = finding.get("earlier")
             if named:
                 revision = call(ctx, "show", named)["revision"]
@@ -427,9 +487,12 @@ __all__ = [
     "earlier_issues",
     "installed",
     "is_blocking",
+    "made_by",
+    "open_issues",
     "review_output",
     "report",
     "settle",
+    "sources_of",
     "statement",
     "without_blank_earlier",
 ]

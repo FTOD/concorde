@@ -17,6 +17,9 @@ from .. import review_issues
 from ..review_issues import SEVERITIES, TIERS, Refusal, is_blocking
 
 OPERATION = "code_review"
+# The reports that make an Issue one of a Module's earlier Issues for ``code_review``: its own,
+# and those of the Module-scope code reviews of ``project_review``, by their phase.
+REVIEW_SOURCES = {OPERATION: None, "project_review": ("code-review",)}
 ISSUE = r"^I-[0-9a-f]{32}$"
 # The Issue type and subtype of each kind of finding.
 CLASSIFICATION = {
@@ -31,10 +34,10 @@ LOCATION = re.compile(r"^(?P<path>.+?)(?::(?P<first>[0-9]+)(?:-(?P<last>[0-9]+))
 
 
 def earlier_issues(ctx: RunContext, module: str) -> list[dict] | None:
-    """The Module's open Issues a code review reported, each as its latest report states it;
-    None where the issues part is not installed. Raises ``Refusal`` when the project's Issues
-    cannot be read."""
-    found = review_issues.earlier_issues(ctx, module, (OPERATION,))
+    """The Module's open Issues a code review reported, in ``code_review`` or ``project_review``,
+    each as its latest report states it; None where the issues part is not installed. Raises
+    ``Refusal`` when the project's Issues cannot be read."""
+    found = review_issues.earlier_issues(ctx, module, REVIEW_SOURCES)
     if found is None:
         return None
     return [{"issue": item["issue"], "module": module, **item} for item in found]
@@ -89,7 +92,12 @@ def location(text: str) -> tuple[str, int | None, int | None] | None:
 
 
 def issue_report(
-    run_id: str, scope: str, key: str, finding: dict, basis_document: str | None
+    run_id: str,
+    scope: str,
+    key: str,
+    finding: dict,
+    basis_document: str | None,
+    operation: str = OPERATION,
 ) -> dict:
     """The Issue report of one finding, without ``issue_id`` and ``expected_revision``."""
     kind, subtype = CLASSIFICATION[finding["kind"]]
@@ -127,7 +135,7 @@ def issue_report(
         "description": f"{finding['problem']}\n\nSuggested repair: {finding['suggestion']}",
         "impact": finding["impact"],
         "basis": (
-            f"{OPERATION} run {run_id} ({scope} review) judged {places} against "
+            f"{operation} run {run_id} ({scope} review) judged {places} against "
             f"{finding['basis']} and reported a {finding['kind']}: {finding['evidence']}"
         ),
         "owner_target_id": finding["module"],
@@ -144,12 +152,13 @@ def report(
     documents: dict[str, str | None],
     earlier: list[dict] | None = None,
     settled: dict | None = None,
+    phase: str = "report",
 ) -> tuple[list[dict], Stop | None]:
-    """Report every finding of one Module; returns the host evidence and, when the Issue store
-    refused a report, the Module's stop. Each finding gets its ``issue``. ``documents`` gives the
-    document that defines each finding's basis; ``earlier`` and ``settled`` are the Module's
-    earlier Issues offered and how the review settled them, which an unreported finding's earlier
-    Issue joins as carried."""
+    """Report every finding of one Module with the provenance ``phase``; returns the host evidence
+    and, when the Issue store refused a report, the Module's stop. Each finding gets its
+    ``issue``. ``documents`` gives the document that defines each finding's basis; ``earlier`` and
+    ``settled`` are the Module's earlier Issues offered and how the review settled them, which an
+    unreported finding's earlier Issue joins as carried."""
     return review_issues.report(
         ctx,
         module,
@@ -161,10 +170,12 @@ def report(
             f"{module}/{position}",
             finding,
             documents.get(finding["basis"]),
+            ctx.name,
         ),
         review="code review",
         earlier=earlier,
         settled=settled,
+        phase=phase,
     )
 
 
@@ -172,6 +183,7 @@ __all__ = [
     "CLASSIFICATION",
     "ISSUE",
     "OPERATION",
+    "REVIEW_SOURCES",
     "SEVERITIES",
     "TIERS",
     "earlier_issues",
