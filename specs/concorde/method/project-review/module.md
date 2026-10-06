@@ -76,20 +76,21 @@ The identity of each part is computed by the Operation from the examined worktre
 | Code review | the context identity of the Module's `review-code` grant, and the **code digest** of the Module |
 | Architecture review | the context identity of the `review-architecture` grant of every Module |
 
-The code digest is the `sha256:` digest of the canonical JSON of a list. The list holds one
-`[path, digest]` pair per file the Module binds, in path order. Each digest is the `sha256:` digest
-of that file's bytes. A context identity changes whenever a Spec source it selects changes. The code
+The [record contract](contracts.md#contract.project-review.record) defines the code digest exactly.
+It changes whenever a file the Module binds changes, appears or disappears. A context identity changes whenever a Spec source it selects changes. The code
 digest changes whenever a bound file changes. A code reviewer may read every Module's code, but only
 its own Module's code decides whether it is judged again. A change of another Module's code is
 judged by that Module's own code review. A part whose identity equals the recorded one is **skipped**. Each
 identity is a digest of content, not of a place. So a record entry holds wherever the content was
 judged: in a task's workspace, in the primary worktree or by another collaborator.
 
-Each entry also lists the earlier Issues its part found resolved, each with its
-[revision](../../glossary.json#concept.issue-revision) once the run ended. A skipped part did not
-judge again, so the resolutions of its last judgment still hold. An Issue it found resolved
-therefore does not stand while its revision is unchanged. Only a task closes it. An Issue with a
-newer report stands again.
+Each entry also lists the earlier Issues its part found resolved, each with the
+[revision](../../glossary.json#concept.issue-revision) the part was offered. An Issue that took a
+report after the part read it is not listed, since its resolution judged older content. A skipped
+part did not judge again, so the resolutions of its last judgment still hold. An Issue it found
+resolved therefore does not stand while its revision is unchanged. Only a task closes it. An Issue
+with a newer report stands again. When the open Issues cannot be listed to bind the resolutions,
+nothing is recorded.
 
 The record is Git-tracked. It is shared by every worktree and collaborator of the project. It is
 read from the primary worktree's last commit. It is never read from the examined checkout. After the
@@ -98,9 +99,10 @@ when its workers finished and all of its Issues were written. The Operation comm
 on the primary branch under the [merge lock](../../glossary.json#concept.merge-lock), as an Issue
 write commits its record. The examined checkout stays untouched.
 
-The record changes only through such a commit. When the record file holds a valid record no commit
-holds, a write was interrupted after it published the file. The next write puts that file back
-first. It refuses any other change of the file with `uncommitted_change`, changing nothing. When the
+The record changes only through such a commit. Every run that could skip takes the merge lock once
+to check the record, even when it has nothing new to record. When the record file holds a valid
+record no commit holds, a write was interrupted after it published the file. The run puts that file
+back first. It refuses any other change of the file with `uncommitted_change`, changing nothing. When the
 committed record is not valid, nothing is skipped, and the write refuses with `record_invalid`.
 
 The Operation reads no [task record](../../glossary.json#concept.task-record), as no Operation does
@@ -200,8 +202,8 @@ Every other such Issue **stands** for the Module that owns it. A Module's outcom
 - `changes_required`, when an Issue of a blocking tier stands for it.
 - `accepted`, otherwise.
 
-A Module is also `incomplete` when its checks could not run, or when one of its deterministic
-problems could not be written.
+A Module is also `incomplete` when its checks could not run, when one of its deterministic
+problems could not be written, or when an architecture finding about it could not be written.
 
 `--modules` narrows which Modules the run covers. The Issues that stand are counted for the covered
 Modules alone. An architecture finding about a Module the run does not cover stands for that Module.

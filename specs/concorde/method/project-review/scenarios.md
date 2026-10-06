@@ -7,7 +7,7 @@ record's shapes are in the [contracts](contracts.md).
 
 ### scenario.project-review.whole-project — A first review runs every part
 
-- GIVEN a project of two [Modules](../../glossary.json#concept.module) that no `project_review` judged before
+- GIVEN a project with the issues part, of two structurally valid [Modules](../../glossary.json#concept.module) that no `project_review` judged before, whose workers are configured
 - WHEN the [main agent](../../glossary.json#concept.main-agent) runs `project_review` unbound in the primary worktree
 - THEN each Module's [Spec](../../glossary.json#concept.spec) panel and code review run, and the architecture review runs once, every worker under its own [worker id](../../glossary.json#concept.worker-id)
 - AND every finding is an [Issue](../../glossary.json#concept.issue) of the Module it concerns, whose report names the part that made it as its `phase`
@@ -37,7 +37,7 @@ record's shapes are in the [contracts](contracts.md).
 
 ### scenario.project-review.failed-check — A failed check is an Issue until it passes
 
-- GIVEN a Module whose [configured check](../../glossary.json#concept.configured-check) fails on the examined commit, and whose code review is not skipped
+- GIVEN a project with the issues part, and a Module whose [configured check](../../glossary.json#concept.configured-check) fails on the examined commit, and whose code review is not skipped
 - WHEN the main agent runs `project_review`
 - THEN the check's failure is an Issue of that Module, `obvious-fix` and `high`, of phase `check`
 - AND the Module's code reviewer receives the failed check's result and log
@@ -53,12 +53,13 @@ record's shapes are in the [contracts](contracts.md).
 
 - GIVEN a Module whose Specs fail structural validation
 - WHEN the main agent runs `project_review`
-- THEN no worker reviews that Module, its outcome is `incomplete` and the record gets no entry for it
-- AND the other Modules are reviewed, and the run ends `blocked` with the Module's structural errors in its [error chain](../../glossary.json#concept.error-chain)
+- THEN neither a Spec panel nor a code review runs for that Module, its outcome is `incomplete`, and the record gets no Spec panel or code review entry for it
+- AND the architecture review still reads its Specs as they are written, when the architecture grant can be computed
+- AND the other Modules' Spec panels and code reviews run unless skipped, and the run ends `blocked` with the Module's structural errors in its [error chain](../../glossary.json#concept.error-chain)
 
 ### scenario.project-review.bound — A bound run reviews the whole workspace
 
-- GIVEN a task worktree whose binding names one Module
+- GIVEN a project with the issues part, and a task worktree whose binding names one Module
 - WHEN the [task session](../../glossary.json#concept.task-session) runs `project_review` there without `--modules`
 - THEN the run covers every Module the workspace registers
 - AND the record is committed on the primary branch, not on the task branch

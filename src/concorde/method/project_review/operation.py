@@ -337,8 +337,9 @@ class ProjectReview:
     unowned: list[str] = field(default_factory=list)
     settlement: findings.Settlement | None = None
     deterministic_stops: list[Stop] = field(default_factory=list)
-    # The covered Modules whose deterministic problems are not all known or written.
-    deterministic_modules: set[str] = field(default_factory=set)
+    # The Modules whose deterministic problems are not all known or written, or which an
+    # architecture finding concerns that was not written: their outcome cannot come from Issues.
+    unrecorded: set[str] = field(default_factory=set)
     # The reviews.
     architecture: review.ModuleReview | None = None
     architecture_panel: dict | None = None
@@ -571,7 +572,7 @@ def deterministic(ctx: RunContext):
         stop = ctx.checks_unavailable(error, covered)
         state.deterministic_stops.append(stop)
         # Whether these Modules' checks pass is unknown, and so is their outcome.
-        state.deterministic_modules.update(covered)
+        state.unrecorded.update(covered)
         found.extend(stop.evidence)
     found += [
         evidence(
@@ -623,7 +624,7 @@ def deterministic(ctx: RunContext):
     if stop is not None:
         state.deterministic_stops.append(stop)
         # A Module whose problem was not written cannot take its outcome from its Issues.
-        state.deterministic_modules.update(
+        state.unrecorded.update(
             problem.module for problem in problems if problem.issue is None
         )
         found.extend(stop.evidence)
@@ -714,6 +715,11 @@ def review_architecture(ctx: RunContext):
     )
     found.extend(reported)
     state.architecture_panel = final
+    if subject.stop is not None and subject.settled and state.issues:
+        # A refusal of the Issue store left these findings without their Issue.
+        state.unrecorded.update(
+            item["module"] for item in subject.findings if item.get("issue") is None
+        )
     if final is not None:
         subject.context_identity = final["architecture_identity"]
     return Continue(evidence=found)
@@ -809,13 +815,18 @@ def review_modules(ctx: RunContext):
 # --- step 6: the review record -----------------------------------------------------------------
 
 
-def _resolutions(summary: dict | None, revisions: dict[str, str]) -> dict:
+def _resolutions(
+    summary: dict | None, earlier: list[dict] | None, revisions: dict[str, str]
+) -> dict:
     """The record's ``resolved`` of a part: each earlier Issue it found resolved that is still
-    open, with the revision it has now."""
+    open at the revision the part was offered, with that revision. An Issue that took a report
+    after the part read it is left out: its resolution judged older content."""
+    offered = {item["issue"]: item.get("revision") for item in earlier or []}
     found = [
-        {"issue": item["issue"], "revision": revisions[item["issue"]]}
+        {"issue": item["issue"], "revision": offered[item["issue"]]}
         for item in (summary or {}).get("resolved", [])
-        if item["issue"] in revisions
+        if offered.get(item["issue"])
+        and revisions.get(item["issue"]) == offered[item["issue"]]
     ]
     return {"resolved": found} if found else {}
 
@@ -839,7 +850,7 @@ def _completed(ctx: RunContext, revisions: dict[str, str]) -> tuple[dict, dict |
             entries.setdefault(module, {})["panel"] = {
                 "context_identity": identities.spec,
                 **judged,
-                **_resolutions(subject.summary, revisions),
+                **_resolutions(subject.summary, subject.earlier, revisions),
             }
         coded = state.code.reviews.get(module) if state.code else None
         if (
@@ -851,7 +862,7 @@ def _completed(ctx: RunContext, revisions: dict[str, str]) -> tuple[dict, dict |
                 "context_identity": identities.code,
                 "code_digest": identities.code_digest,
                 **judged,
-                **_resolutions(coded.settled, revisions),
+                **_resolutions(coded.settled, coded.earlier, revisions),
             }
     architecture = None
     subject = state.architecture
@@ -864,7 +875,7 @@ def _completed(ctx: RunContext, revisions: dict[str, str]) -> tuple[dict, dict |
         architecture = {
             "context_identity": state.architecture_identity,
             **judged,
-            **_resolutions(subject.summary, revisions),
+            **_resolutions(subject.summary, subject.earlier, revisions),
         }
     return entries, architecture
 
@@ -879,21 +890,25 @@ def publish_record(ctx: RunContext):
             row["id"]: row["revision"]
             for row in review_issues.call(ctx, "list", "--status", "open")["issues"]
         }
-    except (review_issues.Refusal, review_issues.Absent) as error:
-        # Without the revisions no resolution can be remembered; the parts are still recorded.
-        revisions = {}
-        ctx.evidence.append(
-            evidence(
-                "review-record",
-                record.PATH,
-                f"the open Issues could not be listed, so no resolution is recorded: {error}",
-            )
+    except review_issues.Refusal as refusal:
+        # Without the revisions no resolution can be recorded reliably, so nothing is.
+        state.record_stop = ctx.fail(
+            "failed",
+            "record_unpublished",
+            "The review record could not be published.",
+            f"the open Issues could not be listed to record the resolutions of this run's "
+            f"parts, so the review record {record.PATH} was not written: {refusal}",
+            reason="environment",
+            explanation="a part is recorded with the resolutions it found, which the host "
+            "binds to the Issues' revisions; a failure of the Issue system is never reported "
+            "as an Issue",
+            causes=[refusal.link],
+            options=[
+                "repair the Issue records (issue_check), then run project_review again"
+            ],
         )
+        return Continue(evidence=state.record_stop.evidence)
     entries, architecture = _completed(ctx, revisions)
-    if not entries and architecture is None:
-        return Continue(
-            evidence=[evidence("review-record", record.PATH, "nothing new to record")]
-        )
 
     def update(current: dict) -> dict:
         for module, parts in entries.items():
@@ -929,8 +944,8 @@ def publish_record(ctx: RunContext):
             ],
         )
         return Continue(evidence=state.record_stop.evidence)
-    state.recorded = sorted(entries)
-    state.recorded_architecture = architecture is not None
+    state.recorded = sorted(entries) if state.published else []
+    state.recorded_architecture = bool(state.published) and architecture is not None
     return Continue(
         evidence=[
             evidence(
@@ -938,7 +953,9 @@ def publish_record(ctx: RunContext):
                 state.published or record.PATH,
                 f"recorded {len(entries)} Module(s)"
                 + (" and the architecture" if architecture is not None else "")
-                + ("" if state.published else "; the record was unchanged"),
+                + ("" if state.published else "; the record was unchanged")
+                if entries or architecture is not None
+                else "nothing new to record; the record was checked",
             )
         ]
     )
@@ -1073,7 +1090,11 @@ def derive_verdict(ctx: RunContext):
                     {key: row[key] for key in ("issue", "severity", "tier", "title")}
                 )
     else:
-        standing = _standing_from_findings(ctx)
+        standing = {
+            module: items
+            for module, items in _standing_from_findings(ctx).items()
+            if module in subjects
+        }
     modules = []
     for module, subject in subjects.items():
         coded = state.code.reviews.get(module) if state.code else None
@@ -1090,11 +1111,7 @@ def derive_verdict(ctx: RunContext):
         for name, stop in incomplete:
             if all(stop is not other for _, other in stops):
                 stops.append((name, stop))
-        if (
-            incomplete
-            or standing_stop is not None
-            or module in state.deterministic_modules
-        ):
+        if incomplete or standing_stop is not None or module in state.unrecorded:
             outcome = "incomplete"
         elif any(review_issues.is_blocking(item["tier"]) for item in own):
             outcome = "changes_required"

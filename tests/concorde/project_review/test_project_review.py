@@ -13,7 +13,7 @@ from unittest.mock import patch
 from concorde.issues.store import list_issues, read_issue
 from concorde.method import review_issues
 from concorde.method.project_review import record
-from concorde.method.project_review.operation import PAYLOAD_SCHEMA
+from concorde.method.project_review.operation import PAYLOAD_SCHEMA, code_digest
 from concorde.worker_harness.runs import read_record
 from concorde.spec.repository import SpecRepository
 from concorde.spec.schema import validate
@@ -452,6 +452,31 @@ class ProjectReviewTests(unittest.TestCase):
         self.assertEqual("changes_required", envelope["output"]["verdict"])
         self.assertFalse(envelope["output"]["record"]["published"])
 
+    def test_a_run_with_nothing_new_still_refuses_a_changed_record(self):
+        self.first()
+        path = self.root / record.PATH
+        path.write_text(path.read_text() + "edited by hand\n")
+        status, envelope = self.review()
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+        self.assertEqual([], envelope["worker_runs"])
+        (cause,) = envelope["error"]["causes"]
+        self.assertIn("uncommitted_change", cause["detail"])
+
+    def test_a_narrowed_review_without_issues_counts_only_its_modules(self):
+        with without_issues():
+            status, envelope = self.review(
+                {
+                    "reviewer module.a 1": worker(findings=[spec_finding()]),
+                    "chair module.a 1": worker(findings=[merged("r1.1")], rejected=[]),
+                },
+                "--modules",
+                "module.b",
+            )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        # The architecture review and the unowned files concern module.a, which the run does
+        # not cover; only module.b's uncovered scenario counts.
+        self.assertEqual(1, envelope["output"]["standing"]["issues"])
+
     @verifies("scenario.project-review.record-leftover")
     def test_a_record_an_interrupted_write_left_is_put_back(self):
         self.first()
@@ -581,6 +606,22 @@ class ProjectReviewTests(unittest.TestCase):
 
 
 class ContractTests(unittest.TestCase):
+    def test_the_code_digest_is_the_contracts_example(self):
+        class Repository:
+            root = Path(self.id()).parent
+
+            def bound_files(self, module):
+                return ["src/new.py"]
+
+        with patch(
+            "concorde.method.project_review.operation.read_file",
+            return_value=b"VALUE = 0\n",
+        ):
+            self.assertEqual(
+                "sha256:d3cd0b526c5ffd5461366f21cca18eee4ea7319ab82a0fcb02c1635f1720a9c3",
+                code_digest(Repository(), "module.a"),
+            )
+
     def test_the_output_schemas_are_the_contracts(self):
         contracts = {
             item["id"]: item

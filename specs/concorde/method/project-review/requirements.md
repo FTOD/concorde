@@ -14,14 +14,16 @@ bound and an [unbound run](../../glossary.json#concept.unbound-run) alike.
 
 ### req.project-review.module-panel — A Spec panel per Module
 
-For each covered Module whose Spec panel is not skipped, the Operation SHALL run a
+For each covered Module that passes structural validation, whose grants can be computed and whose
+Spec panel is not skipped, the Operation SHALL run a
 [Spec](../../glossary.json#concept.spec) panel of `--reviewers` reviewers and a chair without
 architects.
 
 ### req.project-review.module-code-review — A code review per Module
 
-For each covered Module whose code review is not skipped, the Operation SHALL run a code review of
-Module scope, whether or not its Spec panel is skipped.
+For each covered Module that passes structural validation, whose grants can be computed and whose
+code review is not skipped, the Operation SHALL run a code review of Module scope, whether or not
+its Spec panel is skipped.
 
 ### req.project-review.architecture-once — One architecture review per run
 
@@ -126,7 +128,7 @@ its committed version before it writes the record.
 ### req.project-review.skipped-resolutions — A skipped part's resolutions still hold
 
 When a part is skipped, the Operation SHALL count as resolved each Issue that part's record entry
-lists as resolved whose revision is unchanged.
+lists as resolved whose revision is unchanged since the part was offered it.
 
 ## Issues and the verdict
 

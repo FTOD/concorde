@@ -223,6 +223,9 @@ def earlier_issues(
                 "title": latest["title"],
                 "description": latest["description"],
                 "evidence": latest["evidence"],
+                # The revision offered, for a caller that remembers a resolution; workers never
+                # receive it (``offered``).
+                "revision": row["revision"],
             }
         )
     return found
@@ -259,6 +262,14 @@ def open_issues(
             }
         )
     return found
+
+
+def offered(earlier: list[dict]) -> list[dict]:
+    """The earlier Issues as a worker receives them: without their revision."""
+    return [
+        {key: value for key, value in item.items() if key != "revision"}
+        for item in earlier
+    ]
 
 
 # The resume rounds a review gives a worker to correct citations that do not hold.
@@ -489,6 +500,7 @@ __all__ = [
     "installed",
     "is_blocking",
     "made_by",
+    "offered",
     "open_issues",
     "review_output",
     "report",

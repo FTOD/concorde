@@ -65,7 +65,7 @@ def material(earlier: list[dict] | None) -> str:
         "severity or tier, or it has changed, report it as a finding of the same Module with "
         "`earlier` set to its identity. If the code no longer has the problem, list it in `resolved` with the reason. "
         "Only a problem none of them covers is a new finding.\n\n```json\n"
-        + json.dumps(earlier, indent=2, ensure_ascii=False)
+        + json.dumps(review_issues.offered(earlier), indent=2, ensure_ascii=False)
         + "\n```\n"
     )
 
