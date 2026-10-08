@@ -573,10 +573,17 @@ class WorkerModelTests(unittest.TestCase):
         plain = models.load(self.base, DECLARED)
         self.assertEqual(models.LIMITS, models.limits(plain))
         self.assertEqual((".venv", "node_modules"), models.runtime(plain))
-        self.save(dict(enabled, limits={"max_turns": 50, "rounds": 1}, runtime=["env"]))
+        self.save(
+            dict(
+                enabled,
+                limits={"max_turns": 50, "rounds": 1, "retries": 2},
+                runtime=["env"],
+            )
+        )
         config = models.load(self.base, DECLARED)
         self.assertEqual(
-            {**models.LIMITS, "max_turns": 50, "rounds": 1}, models.limits(config)
+            {**models.LIMITS, "max_turns": 50, "rounds": 1, "retries": 2},
+            models.limits(config),
         )
         self.assertEqual(("env",), models.runtime(config))
 

@@ -293,7 +293,7 @@ worker models](module.md#choosing-worker-models) explains this file.
 ```concorde-contract
 {
   "id": "contract.workers.worker-configuration",
-  "version": 9,
+  "version": 10,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -467,6 +467,14 @@ worker models](module.md#choosing-worker-models) explains this file.
           "rounds": {
             "type": "integer",
             "minimum": 0
+          },
+          "retries": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "retry_delay_seconds": {
+            "type": "number",
+            "minimum": 0
           }
         }
       },
@@ -481,7 +489,7 @@ worker models](module.md#choosing-worker-models) explains this file.
       }
     }
   },
-  "semantics": "The worker configuration .concorde/workers.json of a worktree, tracked by Git and edited directly. schema_version is 2. enabled_models is required and not empty: it names every model an entry may choose by its project model name, letters, digits, '.', '_' and '-' starting with a letter or digit, which depends on no installation, each with an optional reasoning level of its own. default, operations.<operation>.default and operations.<operation>.workers.<worker id> each may set backend (pi or claude), model (a name of enabled_models) and reasoning; operation and worker names are labels: the caller that asks for a worker declares the Operations and worker ids it may launch, against which the whole file's names are checked, and reasoning must be a level of the effective backend. For each field the most specific entry that sets it wins, a backend no more than a model or a level. A backend no entry sets is pi. The level is that of the entry that chose the model or of a more specific one, otherwise the model's own, otherwise one a less specific entry sets, otherwise none, which leaves the program's own default level. A worker whose entries set no model is refused with model_unresolved, and an entry naming a model outside enabled_models with model_not_enabled; the model map of the machine gives the model's local id on the worker's backend (contract.workers.model-map). limits sets timeout_seconds per round (default 1800), max_turns (default 200), max_budget_usd (default none) and rounds of resume (default 3) for every worker launch; runtime lists the paths Bash may read besides the grant, relative to the workspace or absolute (default .venv and node_modules, each only when it exists). A worktree without the file runs no worker (config_missing). Duplicate keys, unknown fields, Operations or workers the caller does not declare, a model name that is not a project model name, levels the backend does not know and any other schema_version are refused with config_invalid when a worker launches, schema_version 1, whose models were one program's local ids, with how to rewrite it; so is a worktree without this file that still has the retired untracked .concorde/worker-models.json.",
+  "semantics": "The worker configuration .concorde/workers.json of a worktree, tracked by Git and edited directly. schema_version is 2. enabled_models is required and not empty: it names every model an entry may choose by its project model name, letters, digits, '.', '_' and '-' starting with a letter or digit, which depends on no installation, each with an optional reasoning level of its own. default, operations.<operation>.default and operations.<operation>.workers.<worker id> each may set backend (pi or claude), model (a name of enabled_models) and reasoning; operation and worker names are labels: the caller that asks for a worker declares the Operations and worker ids it may launch, against which the whole file's names are checked, and reasoning must be a level of the effective backend. For each field the most specific entry that sets it wins, a backend no more than a model or a level. A backend no entry sets is pi. The level is that of the entry that chose the model or of a more specific one, otherwise the model's own, otherwise one a less specific entry sets, otherwise none, which leaves the program's own default level. A worker whose entries set no model is refused with model_unresolved, and an entry naming a model outside enabled_models with model_not_enabled; the model map of the machine gives the model's local id on the worker's backend (contract.workers.model-map). limits sets timeout_seconds per round (default 1800), max_turns (default 200), max_budget_usd (default none), rounds of resume (default 3), retries, the retry rounds a run may start after transient model-service errors (default 5), and retry_delay_seconds, the delay before the first retry, doubled before each further one and jittered (default 15) (launch.md#retries), for every worker launch; runtime lists the paths Bash may read besides the grant, relative to the workspace or absolute (default .venv and node_modules, each only when it exists). A worktree without the file runs no worker (config_missing). Duplicate keys, unknown fields, Operations or workers the caller does not declare, a model name that is not a project model name, levels the backend does not know and any other schema_version are refused with config_invalid when a worker launches, schema_version 1, whose models were one program's local ids, with how to rewrite it; so is a worktree without this file that still has the retired untracked .concorde/worker-models.json.",
   "example": {
     "schema_version": 2,
     "enabled_models": {
@@ -761,7 +769,7 @@ contents are these values.
 ```concorde-contract
 {
   "id": "contract.workers.worker-round-trace",
-  "version": 4,
+  "version": 5,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -773,6 +781,7 @@ contents are these values.
       "audit",
       "evidence",
       "validation",
+      "transient",
       "agent"
     ],
     "properties": {
@@ -783,7 +792,8 @@ contents are these values.
       "prompt": {
         "enum": [
           "initial",
-          "repair"
+          "repair",
+          "retry"
         ]
       },
       "session": {
@@ -861,12 +871,48 @@ contents are these values.
           }
         ]
       },
+      "transient": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "error",
+              "retried",
+              "delay_seconds"
+            ],
+            "properties": {
+              "error": {
+                "type": "string",
+                "minLength": 1
+              },
+              "retried": {
+                "type": "boolean"
+              },
+              "delay_seconds": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
       "agent": {
         "type": "object"
       }
     }
   },
-  "semantics": "The data of the typed value concorde-worker-round-trace, the content of one worker round's trace node. round is its number from 1; prompt says what the worker was given: the brief (initial) or what the caller's round validation reported to repair (repair). session is the agent session the round ran in, exit the agent process's exit status (null when it could not be started), audit the host's audit after the round, or null when the round ended before it: verdict is clean or violation, changed lists every worktree-relative path created, changed or deleted since the snapshot, and violations each violation as a string, HEAD or index for a changed Git state, the path of a file created or changed outside rw and the path followed by a space and (deleted) for a deleted file (launch.md#audit); evidence the values the caller's round validation returned to keep with the round, in the caller's own shape, such as Concorde's check results with their logs as paths relative to this node's folder, empty when none ran, and validation the outcome of the round validation (clean, the text to repair, or why it could not validate), null when none ran. agent is what the agent program reported about the round, as its backend reads it: under claude, the result envelope's subtype, is_error, num_turns, total_cost_usd, permission_denials (the tool calls Claude Code refused, each with its tool name, tool use id and input), modelUsage (each model's tokens and cost) and duration_api_ms, each as the envelope gave it and null when it gave none; or under pi, its last stop reason, turn count and cost. The round's tokens, cost, turns and duration are its usage; its standard error is the artifact stderr.log, and the nodes the round validation placed in its folder, such as check nodes, lie below it. A behaviour or field change increments the version.",
+  "semantics": "The data of the typed value concorde-worker-round-trace, the content of one worker round's trace node. round is its number from 1; prompt says what the worker was given: the brief (initial), what the caller's round validation reported to repair (repair), or, after a round a transient model-service error ended, the retry prompt that continues its session or, with no session to continue and nothing changed, the brief again (retry). session is the agent session the round ran in, exit the agent process's exit status (null when it could not be started), audit the host's audit after the round, or null when the round ended before it: verdict is clean or violation, changed lists every worktree-relative path created, changed or deleted since the snapshot, and violations each violation as a string, HEAD or index for a changed Git state, the path of a file created or changed outside rw and the path followed by a space and (deleted) for a deleted file (launch.md#audit); evidence the values the caller's round validation returned to keep with the round, in the caller's own shape, such as Concorde's check results with their logs as paths relative to this node's folder, empty when none ran, and validation the outcome of the round validation (clean, the text to repair, or why it could not validate), null when none ran. transient is null unless the agent program ended the round with a transient model-service error (launch.md#retries); then error is the error message it reported, retried whether the host started a retry round after it, and delay_seconds how long the host waited before that retry round, null when it started none. agent is what the agent program reported about the round, as its backend reads it: under claude, the result envelope's subtype, is_error, num_turns, total_cost_usd, permission_denials (the tool calls Claude Code refused, each with its tool name, tool use id and input), modelUsage (each model's tokens and cost) and duration_api_ms, each as the envelope gave it and null when it gave none; or under pi, its last stop reason, turn count and cost. The round's tokens, cost, turns and duration are its usage; its standard error is the artifact stderr.log, and the nodes the round validation placed in its folder, such as check nodes, lie below it. A behaviour or field change increments the version.",
   "example": {
     "round": 1,
     "prompt": "initial",
@@ -891,6 +937,7 @@ contents are these values.
       }
     ],
     "validation": null,
+    "transient": null,
     "agent": {
       "claude": {
         "subtype": "success",
@@ -934,7 +981,7 @@ nodes are the record that is kept.
 ```concorde-contract
 {
   "id": "contract.workers.worker-run-record",
-  "version": 3,
+  "version": 4,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -1237,7 +1284,8 @@ nodes are the record that is kept.
             "prompt": {
               "enum": [
                 "initial",
-                "repair"
+                "repair",
+                "retry"
               ]
             },
             "session": {
@@ -1320,13 +1368,42 @@ nodes are the record that is kept.
             },
             "validation": {
               "type": "string"
+            },
+            "transient": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "error",
+                "retried",
+                "delay_seconds"
+              ],
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "retried": {
+                  "type": "boolean"
+                },
+                "delay_seconds": {
+                  "anyOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  ]
+                }
+              }
             }
           }
         }
       }
     }
   },
-  "semantics": "The value the host returns to its caller, in Concorde an Operation's step, when a worker run ends, however it ends, so that the caller reads the audits and the round validation's evidence without reading a file; it is never written itself, and the record kept is the run's trace node and its rounds' nodes (contract.workers.worker-run-trace, contract.workers.worker-round-trace), from which runs.read_record rebuilds it but for worktree, stderr_tail and runtime_directory. It holds the run node's content and, as that node keeps them, its identity run_id, status (ok, blocked or failed), error (Workers' link, null for ok), started_at and ended_at, and its metadata operation, worker, backend, model, reasoning and context_identity with the grant, settings and brief digests, each null until made; it differs from the node's content in that tools is the tool set as the backend's comma-separated list, as passed to --tools, transcript the absolute path of the transcript in the run directory, and rounds not their number but the ordered list of every round that began. Each round carries what its node's content and usage hold: round, prompt, session, exit, duration (seconds) and usage (the tokens, cost and turns the agent program reported and duration_seconds); what the agent program reported under the key of its backend, claude or pi, as the round content's agent holds it; audit, the audit object of contract.workers.worker-round-trace, once the round was audited; evidence, the round validation's evidence as the caller returned it, with each artifact path absolute, only when the round validation ran; and validation, its outcome, only when it ran. A key absent from a round means that step did not happen in it. trace_failures is the node content's list completed with any failure of the final write itself, which only this value can carry; when the run did not end ok, each also appears in its error's evidence as trace-write evidence. worktree is the worker's worktree, run_directory the worker run's node folder, runtime_directory its runtime directory, removed by the time the record is returned, and stderr_tail the end of the last round's standard error. A behaviour or field change increments the version.",
+  "semantics": "The value the host returns to its caller, in Concorde an Operation's step, when a worker run ends, however it ends, so that the caller reads the audits and the round validation's evidence without reading a file; it is never written itself, and the record kept is the run's trace node and its rounds' nodes (contract.workers.worker-run-trace, contract.workers.worker-round-trace), from which runs.read_record rebuilds it but for worktree, stderr_tail and runtime_directory. It holds the run node's content and, as that node keeps them, its identity run_id, status (ok, blocked or failed), error (Workers' link, null for ok), started_at and ended_at, and its metadata operation, worker, backend, model, reasoning and context_identity with the grant, settings and brief digests, each null until made; it differs from the node's content in that tools is the tool set as the backend's comma-separated list, as passed to --tools, transcript the absolute path of the transcript in the run directory, and rounds not their number but the ordered list of every round that began. Each round carries what its node's content and usage hold: round, prompt, session, exit, duration (seconds) and usage (the tokens, cost and turns the agent program reported and duration_seconds); what the agent program reported under the key of its backend, claude or pi, as the round content's agent holds it; audit, the audit object of contract.workers.worker-round-trace, once the round was audited; evidence, the round validation's evidence as the caller returned it, with each artifact path absolute, only when the round validation ran; validation, its outcome, only when it ran; and transient, the round content's transient object, only when a transient model-service error ended the round. A key absent from a round means that step did not happen in it. trace_failures is the node content's list completed with any failure of the final write itself, which only this value can carry; when the run did not end ok, each also appears in its error's evidence as trace-write evidence. worktree is the worker's worktree, run_directory the worker run's node folder, runtime_directory its runtime directory, removed by the time the record is returned, and stderr_tail the end of the last round's standard error. A behaviour or field change increments the version.",
   "example": {
     "run_id": "w-20261002T101500-a1b2c3",
     "status": "failed",

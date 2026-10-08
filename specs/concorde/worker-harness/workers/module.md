@@ -372,6 +372,7 @@ audit: Write audit
 record: Write the run record
 validation: "Caller's round validation\n(in Concorde: configured checks,\nthe step's own validation)"
 grant -> generate -> launch -> audit
+audit -> launch: "transient model-service error,\nretries left: wait, then retry"
 audit -> record: "violation, timeout, limit, process failure,\ninvalid result, blocked or failed"
 audit -> validation: "valid ok result, clean audit"
 validation -> launch: "a repair, rounds left"
@@ -387,6 +388,8 @@ The host performs these steps:
   [configured checks](../../glossary.json#concept.configured-check).
 - Resume the same session with what the round validation reports to repair, up to three resume
   rounds by default.
+- Retry a round that a transient error of the model service ended, after a growing delay, up to
+  five retry rounds by default.
 - Then perform proposed deletions.
 - Write the run record.
 
@@ -558,6 +561,18 @@ On Claude Code, the host uses `claude -p --resume <session>`. The host tracks th
 returned. On pi, the host uses the run's fixed session id. A `blocked`/`failed` result or an audit
 violation is never resumed. Those go to the main agent.
 
+A model service shared by many workers may refuse calls for a while, such as at its concurrency
+limit, or lose a call on its way. The same call can succeed a little later. When such a
+**transient model-service error** ends a round, the host waits and starts a **retry round** that
+continues the same session with a short prompt. The worker goes on from where it stopped. The delay
+doubles with each retry of the run and is jittered, so that workers that failed together do not
+retry together. The retries are bounded by the worker configuration's `retries` limit, apart from
+the resume rounds. A retry never hides a write outside the grant. A round whose audit found a
+violation is never retried. The audit after the retry round compares with the run's one snapshot,
+so it judges the failed round's changes too. An error of any other kind, such as an exhausted quota
+or the round's own timeout, still ends the run at once. [The retries](launch.md#retries) give the
+exact errors, delays and conditions.
+
 When the rounds are used up and the round validation still reports a repair, the outcome depends
 on whether the validation asks for failure. If the validation asks for failure, the run ends
 `failed` with the code and causes the validation names. In Concorde, this is `checks_failed` with
@@ -595,6 +610,7 @@ below the record. The round's node holds these details:
 - its session
 - its prompt kind
 - its audit
+- the transient model-service error that ended it, whether it was retried and the delay waited
 - the round validation's evidence and outcome
 - its standard error
 - the tokens the agent program reported for it
@@ -736,7 +752,7 @@ limits and runtime paths with their defaults. The caller reads them for each lau
       }
     }
   },
-  "limits": {"timeout_seconds": 1800, "rounds": 3},
+  "limits": {"timeout_seconds": 1800, "rounds": 3, "retries": 5},
   "runtime": [".venv", "node_modules"]
 }
 ```

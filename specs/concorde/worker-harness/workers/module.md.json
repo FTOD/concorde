@@ -89,6 +89,7 @@
         "src/concorde/worker_harness/workers.py",
         "src/concorde/worker_harness/progress.py",
         "src/concorde/worker_harness/audit.py",
+        "src/concorde/worker_harness/transient.py",
         "src/concorde/worker_harness/runs.py",
         "src/concorde/worker_harness/placement.py",
         "tests/concorde/harness/workers/",

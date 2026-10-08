@@ -264,9 +264,15 @@ concorde run project_review [--modules <id>,…] [--full] [--parallel <1-8>] [--
 | --- | --- | --- |
 | `--modules` | the Modules whose checks, coverage, Spec panel and code review the run covers | every registered Module |
 | `--full` | review every part whatever the record says | off |
-| `--parallel` | how many Spec panels and code reviews run at the same time | 4 |
+| `--parallel` | how many Spec panels and code reviews run at the same time | 2 |
 | `--reviewers` | the reviewers of each Spec panel | 3 |
 | `--architects` | the architects of the architecture review; 0 leaves it out | 2 |
+
+Each Spec panel runs its reviewers at the same time, so one Module's review keeps several workers
+busy at once. Workers that share one model provider can meet its concurrency limit. The default
+`--parallel` of 2 keeps the run's workers fewer than that limit usually allows.
+[Workers](../../worker-harness/workers/launch.md#retries) retries a round that such a limit ended
+anyway.
 
 In the primary worktree, the run is an [unbound run](../../glossary.json#concept.unbound-run). It
 examines the worktree's `HEAD` in its [unbound checkout](../../glossary.json#concept.unbound-checkout).
