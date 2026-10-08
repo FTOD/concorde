@@ -163,6 +163,49 @@ class IssueStoreTests(unittest.TestCase):
         self.assertEqual(before, self.issue_files())
         self.assertEqual(report(), resolve_report(self.root, one)["report"])
 
+    @verifies("scenario.issues.store-key-conflict-across")
+    def test_a_key_reused_in_another_issue_is_refused(self):
+        a = record_report(self.root, report(), source(invocation_id="worker-a"))
+        b = record_report(self.root, report(), source(invocation_id="worker-b"))
+        # worker-c appends its key to Issue A.
+        appended = record_report(
+            self.root,
+            report(
+                report_key="seen",
+                issue_id=a["receipt"]["issue_id"],
+                expected_revision=a["revision"],
+            ),
+            source(invocation_id="worker-c"),
+        )
+        before = self.issue_files()
+        attempts = {
+            "append": report(
+                report_key="seen",
+                issue_id=b["receipt"]["issue_id"],
+                expected_revision=b["revision"],
+            ),
+            "create": report(report_key="seen", title="Another observation"),
+        }
+        for kind, attempt in attempts.items():
+            with self.subTest(kind=kind), self.assertRaises(IssueError) as raised:
+                record_report(self.root, attempt, source(invocation_id="worker-c"))
+            self.assertEqual("issue_key_conflict", raised.exception.code)
+            self.assertIn(a["receipt"]["issue_id"], str(raised.exception))
+        self.assertEqual(before, self.issue_files())
+        # The exact accepted append is still idempotent.
+        self.assertEqual(
+            appended["receipt"],
+            record_report(
+                self.root,
+                report(
+                    report_key="seen",
+                    issue_id=a["receipt"]["issue_id"],
+                    expected_revision=a["revision"],
+                ),
+                source(invocation_id="worker-c"),
+            )["receipt"],
+        )
+
     @verifies("scenario.issues.store-append")
     def test_append_binds_current_bytes_preserves_observations_and_can_reclassify(self):
         first = report_issue(self.root, report(), source())

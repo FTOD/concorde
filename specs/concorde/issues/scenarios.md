@@ -495,6 +495,13 @@ This illustrates [the Issue system never reporting itself](requirements.md#req.i
 - THEN the store refuses with `issue_key_conflict`
 - BUT the accepted report is unchanged
 
+### scenario.issues.store-key-conflict-across — A key reused in another Issue is refused
+
+- GIVEN an invocation's report accepted under one key in one Issue
+- WHEN the same invocation reports under the same key to another Issue, by an append or a creation
+- THEN the store refuses with `issue_key_conflict`, naming the Issue that holds the key
+- BUT neither Issue changes
+
 ### scenario.issues.store-append — Append a later observation
 
 - GIVEN an open Issue and its current revision

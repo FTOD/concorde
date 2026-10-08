@@ -1073,6 +1073,26 @@ def _allocated_id(report: dict, source: dict) -> str:
     )
 
 
+def _key_holder(root: Path, invocation_id: str, report_key: str) -> str | None:
+    """The committed Issue holding a report of ``invocation_id`` under ``report_key``, if any.
+
+    Only records whose bytes name the invocation are parsed, so a record unrelated to it never
+    refuses the write."""
+    records = _committed(root, _head(root), [f"{DIRECTORY}/", f"{CLOSED}/"])
+    needle = json_text(invocation_id).encode()
+    for path, raw in sorted(records.items()):
+        if needle not in raw:
+            continue
+        record, _ = _parsed(raw, Path(path).stem)
+        for previous in record["reports"]:
+            if (
+                previous["source"]["invocation_id"] == invocation_id
+                and previous["report"]["report_key"] == report_key
+            ):
+                return record["id"]
+    return None
+
+
 def report_issue(
     root: Path,
     report: dict,
@@ -1140,6 +1160,15 @@ def record_report(
                         "receipt": {**receipt, "path": committed},
                         "revision": revision,
                     }
+        # One invocation's key names one observation in the whole collection, not per Issue.
+        elsewhere = _key_holder(root, source["invocation_id"], report["report_key"])
+        if elsewhere not in (None, identifier):
+            raise IssueError(
+                f"report key {report['report_key']!r} of invocation "
+                f"{source['invocation_id']} already names an observation in Issue {elsewhere}",
+                "issue_key_conflict",
+            )
+        if record is not None:
             if "issue_id" not in report:
                 raise IssueError(
                     f"allocated Issue identity {identifier} is already occupied",
