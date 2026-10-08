@@ -100,6 +100,21 @@ def wait_blocked(path: Path, timeout: float = 30) -> None:
     raise AssertionError(f"nothing waited for the lock {path}")
 
 
+def wait_exited(pid: int, timeout: float = 60) -> None:
+    """Return once this process's child ``pid`` has exited, reaping it: a detached runner may
+    still write below ``.concorde`` after it released its run lock, and a test's directory is
+    removed only once it is gone."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            if os.waitpid(pid, os.WNOHANG)[0]:
+                return
+        except ChildProcessError:
+            return  # already reaped
+        time.sleep(0.05)
+    raise AssertionError(f"the detached runner {pid} did not exit within {timeout} s")
+
+
 def git(root, *arguments):
     return subprocess.run(
         ["git", *arguments], cwd=root, check=True, capture_output=True, text=True
@@ -658,6 +673,21 @@ class TaskStoreTests(unittest.TestCase):
             (1, "task_closed"), self.refusal("report", "t1", "--text", "late")
         )
 
+    def test_a_task_in_the_history_is_refused_for_its_state_not_as_unknown(self):
+        self.project.open_task("t1")
+        self.assertEqual(
+            0, self.command("close", "t1", "--completed", "--note", "d")[0]
+        )
+        self.assertFalse(self.folder().exists())
+        escalating = ("--code", "c", "--detail", "d", "--reason", "decision")
+        self.assertEqual(
+            (1, "task_closed"),
+            self.refusal("escalate", "t1", *escalating, "--explanation", "e"),
+        )
+        self.assertEqual((1, "invalid_transition"), self.refusal("merge", "t1"))
+        self.assertEqual((1, "not_merging"), self.refusal("merge", "t1", "--resume"))
+        self.assertEqual((1, "unknown_task"), self.refusal("merge", "t9"))
+
     @verifies("scenario.tasks.rebind")
     def test_the_main_agent_rebinds_its_tasks(self):
         self.project.open_task("t1")
@@ -1158,6 +1188,59 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual(["lost"], [run["status"] for run in shown["runs"]])
         self.assertIsNone(shown["busy"])
         self.assertEqual("active", shown["record"]["state"])
+
+    def test_a_run_whose_runner_still_holds_its_lock_is_running_with_its_result_saved(
+        self,
+    ):
+        self.project.open_task("t1")
+        run_id = "r-20260927T000000-implement-00000002"
+        write_run(self.root, run_id, "t1", name="implement", status="ok")
+        lock = layout.lock_file(self.root / ".concorde", "run", run_id)
+        with locks.hold(lock, "runner", remove=True):
+            shown = store.show_task(self.root, "t1")
+            self.assertEqual(["running"], [run["status"] for run in shown["runs"]])
+        shown = store.show_task(self.root, "t1")
+        self.assertEqual(["ok"], [run["status"] for run in shown["runs"]])
+
+    def test_a_record_update_applied_again_checks_again_that_the_task_has_not_ended(
+        self,
+    ):
+        self.project.open_task("t1")
+        store.report(self.root, "t1", "first", [])
+        path = self.folder() / "task.json"
+        upgraded = store.upgraded
+        writes = {
+            "report": lambda: store.report(self.root, "t1", "late", []),
+            "answer": lambda: store.answer(self.root, "t1", [1], "late"),
+            "rebind": lambda: store.rebind(self.root, "t1", "concorde-9f"),
+        }
+        for name, write in writes.items():
+            with self.subTest(name):
+                stored = path.read_bytes()
+                ended = []
+
+                def meddled(record, folder, ended=ended):
+                    # Another writer ends the task between the update's read and its
+                    # comparison of the bytes.
+                    if not ended:
+                        ended.append(True)
+                        value = json.loads(path.read_text())
+                        value["state"] = "closed"
+                        path.write_text(json.dumps(value))
+                    return upgraded(record, folder)
+
+                with (
+                    patch.object(store, "load_unended", return_value=self.record()),
+                    patch.object(store, "upgraded", side_effect=meddled),
+                    self.assertRaises(store.TaskError) as raised,
+                ):
+                    write()
+                self.assertEqual("task_closed", raised.exception.code)
+                record = json.loads(path.read_text())
+                self.assertEqual(1, len(record["reports"]))
+                self.assertIsNone(record["reports"][0]["answer"])
+                self.assertIsNone(record["main"])
+                path.write_bytes(stored)
 
     @verifies("scenario.tasks.concurrent-update")
     def test_a_concurrent_change_is_detected(self):
@@ -1784,6 +1867,10 @@ class TaskStoreTests(unittest.TestCase):
         original = store.unfinished_merge
 
         def meanwhile(primary):
+            # The close also asks before it stops anything, without the workspace lock; the run
+            # starts only once the close holds that lock.
+            if announced or not locks.held(self.lock("workspace", "t1")):
+                return original(primary)
             # The close holds the workspace lock now, and its stopping of the task's runs is
             # over: a run started in the worktree meanwhile waits for the lock, as one the
             # close cannot see would.
@@ -1791,6 +1878,9 @@ class TaskStoreTests(unittest.TestCase):
                 "command", "task-validation", ["--wait", "600"], cwd=worktree
             )
             self.assertEqual(0, status, value)
+            # Cleanups run last in first out: the runner has exited before the project's
+            # directory is removed, whatever the test found.
+            self.addCleanup(wait_exited, value["host_pid"])
             announced.update(value)
             progress = Path(value["lobby"]) / "status.json"
             deadline = time.monotonic() + 30

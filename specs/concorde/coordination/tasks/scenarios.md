@@ -40,8 +40,8 @@ records and error codes are defined in the [contracts](contracts.md).
 
 ### scenario.tasks.open-taken — Refuse a taken identity
 
-- GIVEN a task `severity` exists in any state, or the branch `concorde/severity` or the worktree
-  path exists
+- GIVEN a current task `severity` exists in any state, or the branch `concorde/severity` or the
+  worktree path exists
 - WHEN the main agent opens a task named `severity`
 - THEN the command fails with `task_exists`, `branch_exists` or `path_exists`
 - AND no record, branch or worktree is created or changed
@@ -507,6 +507,29 @@ This illustrates [a merge running the Concorde it started with](requirements.md#
   worktree
 - AND the refusal's options say to validate and deliver again
 
+### scenario.tasks.merge-check-moved — A check that moves the primary branch resets nothing
+
+- GIVEN a delivered task
+- WHEN the main agent merges it with a `--check` that commits on the primary branch, or one that
+  checks out another branch there, and exits with status 0
+- THEN the command fails with `merge_diverged`, naming where the check left the primary worktree,
+  the merge commit and the commit before the merge
+- AND the commit or branch the check made is as the check left it
+- AND the task stays `merging` and the unfinished-merge marker stays
+- AND once the branch is restored by hand to the merge commit, `--abort` returns the task to
+  delivered
+
+### scenario.tasks.merge-foreign-marker — Another part's unfinished merge refuses a merge and a close
+
+- GIVEN a delivered task `severity`, an open task `typo` and the unfinished-merge marker of another
+  part in the primary worktree
+- WHEN the main agent merges `severity` or closes `typo` as completed
+- THEN the command fails with `merge_incomplete`, carrying the marker's account and the commands
+  that finish that merge
+- AND the marker, the primary branch, the records and the worktrees are unchanged
+- AND with a marker that cannot be read, the merge fails with `unreadable_merge_marker` and changes
+  nothing
+
 ### scenario.tasks.merge-check-failed — A failed check undoes the merge
 
 - GIVEN a delivered task
@@ -648,6 +671,16 @@ This illustrates [a merge running the Concorde it started with](requirements.md#
 - AND the primary branch is reset to the commit before the merge
 - AND the primary branch is clean apart from the paths the checks created, which stay
 - AND the task is delivered again
+
+### scenario.tasks.merge-resume-detached — Refuse a resume from a detached primary HEAD
+
+- GIVEN a task left `merging` by an interrupted merge
+- AND a primary worktree whose `HEAD` is detached
+- WHEN the main agent runs `concorde task merge <task-id> --resume`
+- THEN the command fails with `merge_diverged`, naming the detached commit, the commit before the
+  merge and the merge commit, and not with `primary_dirty`
+- AND the task stays `merging`
+- AND once the branch is checked out again at the merge commit, the same resume closes the task
 
 ### scenario.tasks.merge-resume-refused — Refuse a resume that cannot check the merge
 
@@ -838,7 +871,7 @@ This illustrates [the parts Coordination does without](../module.md#optional-int
 - WHEN the main agent escalates
 - THEN the command fails with `decision_log_failed`, naming the escalation's number and carrying the
   rendered chain
-- AND the record holds the escalation once
+- AND the task's trace holds the escalation once
 - AND the refusal says that escalating again would record it twice
 
 ## Reports and the main agent's session

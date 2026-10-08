@@ -139,8 +139,18 @@ HANDLING = {
     ),
     "merge_diverged": (
         "decision",
-        "the primary branch moved in a way the interrupted merge did not, and Tasks never "
-        "resets commits it did not make",
+        "the primary branch moved in a way the merge did not, by hand or by a check, and "
+        "Tasks never resets commits it did not make",
+    ),
+    "marker_unwritable": (
+        "environment",
+        "the file system refused the unfinished-merge marker, and without it a merge would "
+        "leave nothing that stops other parts from committing on an unchecked merge",
+    ),
+    "unreadable_merge_marker": (
+        "environment",
+        "the unfinished-merge marker of the primary worktree cannot be read, so Tasks cannot "
+        "tell whether another part's merge into the primary branch is unfinished",
     ),
     "wait_timeout": (
         "environment",
@@ -241,6 +251,10 @@ OPTIONS = {
         "inspect the primary branch, restore it by hand to the commit before the merge or to "
         "the merge commit named, and run --abort or --resume again",
     ],
+    "unreadable_merge_marker": [
+        "inspect .concorde/unfinished-merge.json of the primary worktree; once the part that "
+        "wrote it finished its merge, that part removes it",
+    ],
     "worktree_not_ignored": [
         "add .claude/worktrees/ to .gitignore",
     ],
@@ -312,6 +326,7 @@ def parser() -> argparse.ArgumentParser:
     opening.add_argument("--modules", required=True)
     opening.add_argument("--base")
     opening.add_argument("--resolves", default="")
+    opening.add_argument("--wait", type=float, default=store.MERGE_WAIT)
     listing = commands.add_parser("list")
     listing.add_argument("--state")
     listing.add_argument("--main")
@@ -512,7 +527,11 @@ def start_session(here: Path, arguments) -> dict:
 
 def escalate(here: Path, arguments) -> dict:
     primary = store.primary_of(here)
-    task = store.load_task(primary, arguments.task_id)
+    task = store.load_unended(
+        primary,
+        arguments.task_id,
+        "a task that ended takes no escalation: its trace and decision log are final",
+    )
     store.guard_merges(primary, task["id"])
     causes = [_run_error(primary, task, run) for run in arguments.run]
     causes += [_file_error(path) for path in arguments.error_file]
@@ -724,6 +743,7 @@ def _answer(here: Path, command: str, arguments, held: ExitStack) -> tuple[int, 
                 arguments.goal,
                 [item.strip() for item in arguments.modules.split(",") if item.strip()],
                 base=arguments.base,
+                wait=arguments.wait,
                 resolves=[
                     item.strip()
                     for item in arguments.resolves.split(",")
