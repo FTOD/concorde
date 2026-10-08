@@ -28,6 +28,14 @@ shapes are in the [contracts](contracts.md).
 - AND every section the entry had before is unchanged, in its place
 - AND the result is `ok` and the worktree validates with no new error
 
+### scenario.scaffold.initialized-parts — The initialization paragraph of Parts is replaced
+
+- GIVEN a parent entry whose `Parts` section holds the paragraph Spec core's initialization wrote, saying the root contains, uses and includes nothing
+- WHEN the scaffold adds the child `module.checkout`
+- THEN that paragraph is replaced in `Parts` by one saying the parts below were proposed by a survey of the code
+- AND every other line of the entry is unchanged and the child's paragraph ends `Parts`
+- BUT the same paragraph quoted outside `Parts` stays as it is
+
 ### scenario.scaffold.distinct-anchors — Distinct identities get distinct anchors
 
 - GIVEN an `ok` survey of `module.shop` proposing `module.stock-hold` and `module.stock.hold`, and `module.checkout` using both

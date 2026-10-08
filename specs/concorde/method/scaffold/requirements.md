@@ -27,6 +27,16 @@ When the parent's entry has no `Parts` section, the scaffold host adds one at th
 for these paragraphs and leaves the existing prose unchanged, as
 [scenario.scaffold.no-parts-section](scenarios.md#scenario.scaffold.no-parts-section) shows.
 
+### req.scaffold.prose-kept — The parent's prose is kept but for the initialization paragraph
+
+The scaffold host SHALL leave every existing line of the parent's entry unchanged, except the
+paragraph Spec core's initialization writes into the `Parts` section.
+
+The scaffold host replaces that paragraph there with a fixed paragraph saying the parts below were
+proposed by a survey of the code. The same text outside the `Parts` section stays. Other prose that the new structure makes obsolete
+is left for a later `code_to_spec` or `specify` run of the parent, as
+[scenario.scaffold.initialized-parts](scenarios.md#scenario.scaffold.initialized-parts) shows.
+
 ### req.scaffold.registered — The registry records the new children
 
 The scaffold host SHALL add a registry record for every created child.

@@ -8,7 +8,12 @@ import os
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.method.scaffold.command import SCAFFOLD_RECORD_SCHEMA, parent_reading
+from concorde.method.scaffold.command import (
+    INIT_PARTS,
+    SCAFFOLD_RECORD_SCHEMA,
+    SCAFFOLDED_PARTS,
+    parent_reading,
+)
 from concorde.spec.registry import registry_command
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies
@@ -553,6 +558,31 @@ class ScaffoldTests(AdoptionCase):
         self.assertIn('<a id="contains-checkout"></a>', parts)
         self.assertIn('<a id="contains-inventory"></a>', parts)
         self.assertEqual([], errors(worktree))
+
+    @verifies("scenario.scaffold.initialized-parts")
+    def test_only_the_initialization_paragraph_of_parts_is_replaced(self):
+        child = [
+            {"id": "module.checkout", "title": "Checkout", "purpose": "It orders."}
+        ]
+        text = (
+            "# Shop\n\n## Purpose\n\nShop sells.\n\n"
+            "## Parts\n\n" + INIT_PARTS + "\nThe code realization binds src/.\n"
+        )
+        after = parent_reading(text, child)
+        self.assertNotIn(INIT_PARTS, after)
+        self.assertIn(SCAFFOLDED_PARTS, after)
+        self.assertTrue(
+            after.startswith("# Shop\n\n## Purpose\n\nShop sells.\n\n## Parts\n")
+        )
+        self.assertIn("The code realization binds src/.\n", after)
+        self.assertIn('<a id="contains-checkout"></a>', after)
+        # The same words anywhere outside Parts are prose the scaffold keeps.
+        quoted = (
+            "# Shop\n\n## Purpose\n\n" + INIT_PARTS + "\n## Parts\n\nShop has parts.\n"
+        )
+        after = parent_reading(quoted, child)
+        self.assertEqual(quoted.rstrip("\n"), after.split("\n\n<a id=")[0])
+        self.assertNotIn(SCAFFOLDED_PARTS, after)
 
     @verifies("scenario.scaffold.distinct-anchors")
     def test_distinct_identities_get_distinct_anchors(self):
