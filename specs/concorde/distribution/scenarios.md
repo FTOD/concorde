@@ -167,6 +167,15 @@ This illustrates [the precondition of `protocol-manifest`](requirements.md#req.d
 - THEN exactly one `failed` result envelope is printed
 - AND the exit status is nonzero
 
+### scenario.distribution.step-failed-envelope — A failure after the command still answers with one envelope
+
+- GIVEN a project marked Concorde unvalidated whose `.concorde/` refuses the removal of the mark
+- AND an envelope command whose code raises while it runs
+- WHEN the developer runs a `concorde spec-validation` that finds no error, and that command
+- THEN each prints exactly one `failed` result envelope and exits nonzero
+- AND the validation's envelope keeps its findings, with `distribution_step_failed` naming the mark
+- AND the other's envelope carries `unexpected_error`
+
 ### scenario.distribution.composed-from-installed-parts — The command offers the installed parts
 
 - GIVEN a project whose receipt names the parts installed, and one whose receipt names none, with no `parts` or an empty one

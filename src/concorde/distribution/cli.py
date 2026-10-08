@@ -209,6 +209,30 @@ def _failed(tool: str, error: BaseException) -> dict:
     )
 
 
+def _step_failed(payload: dict, error: BaseException) -> dict:
+    """The command's envelope, its result and findings kept, ``failed`` because Distribution's
+    own step after it failed."""
+    path = (
+        str(error.filename)
+        if isinstance(error, OSError) and error.filename is not None
+        else None
+    )
+    return {
+        **payload,
+        "status": "failed",
+        "error": formats.error_record(
+            "distribution_step_failed",
+            f"the command ended {payload.get('status')}, but Distribution's step after it "
+            f"failed: {type(error).__name__}: {error}",
+            reason="the command's own result is complete and kept; only the step that follows "
+            "it, such as removing the update mark after a validation that passed, failed",
+            remediation="repair what the cause names and run the command again",
+            path=path,
+            causes=[formats.system_cause(error, path)] if path is not None else [],
+        ),
+    }
+
+
 def build(words, root) -> dict:
     """``concorde build [--check]``: render or check the generated files."""
     from .build import BuildError, check_build, write_build
@@ -514,16 +538,26 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
         )
     registration, command = found
-    if registration.part != "distribution":
-        parts.load(installed)
-    entry = registration.entry(command["entry"])
     if command["output"] != "envelope":
-        return int(entry(rest, root) or 0)
-    payload = entry(rest, root)
-    if name == "spec-validation":
-        payload = with_update_state(root, payload)
-    elif name == "init" and "--apply" in rest:
-        payload = with_glossary_import(root, payload)
+        if registration.part != "distribution":
+            parts.load(installed)
+        return int(registration.entry(command["entry"])(rest, root) or 0)
+    # An envelope command prints exactly one envelope, whatever fails while it loads, runs or is
+    # followed by Distribution's own step.
+    try:
+        if registration.part != "distribution":
+            parts.load(installed)
+        payload = registration.entry(command["entry"])(rest, root)
+    except Exception as error:  # every failure still answers with its one envelope
+        payload = _failed(name, error)
+    else:
+        try:
+            if name == "spec-validation":
+                payload = with_update_state(root, payload)
+            elif name == "init" and "--apply" in rest:
+                payload = with_glossary_import(root, payload)
+        except Exception as error:  # the command's own result is kept
+            payload = _step_failed(payload, error)
     sys.stdout.write(formats.canonical_json(payload))
     return formats.exit_code(payload["status"])
 

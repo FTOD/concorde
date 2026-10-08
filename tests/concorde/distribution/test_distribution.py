@@ -625,6 +625,71 @@ class CommandLineTests(unittest.TestCase):
                 envelope = json.loads(result.stdout)
                 self.assertEqual("failed", envelope["status"])
 
+    @verifies("scenario.distribution.step-failed-envelope")
+    def test_a_failure_after_or_inside_the_command_answers_with_one_envelope(self):
+        from concorde.distribution import cli
+
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        root = Path(directory.name)
+        mark = root / ".concorde/update.json"
+        mark.parent.mkdir()
+        mark.write_text(json.dumps({"from": "1.0.0", "to": "2.0.0"}))
+        # The mark cannot be removed: its folder refuses every change.
+        mark.parent.chmod(0o555)
+        self.addCleanup(mark.parent.chmod, 0o755)
+        passed = cli.formats.envelope(
+            "spec-validation",
+            "success",
+            findings=[cli.formats.finding("X-1", "warning", "a.md", "kept", "none")],
+            result={"checked": 3},
+        )
+        entry = parts.Registration.entry
+
+        def patched(registration, name):
+            if name == "commands:spec_validation":
+                return lambda words, root: passed
+            if name == "commands:grant":
+
+                def broken(words, root):
+                    raise RuntimeError("the grant cannot be computed")
+
+                return broken
+            return entry(registration, name)
+
+        names = {
+            item["name"]: item["entry"]
+            for registration in parts.installed().values()
+            for item in registration.data["commands"]
+        }
+        self.assertEqual("commands:spec_validation", names["spec-validation"])
+        self.assertEqual("commands:grant", names["grant"])
+        for argv, code in (
+            (["spec-validation"], "distribution_step_failed"),
+            (["grant", "--type", "test"], "unexpected_error"),
+        ):
+            with self.subTest(argv=argv):
+                printed = io.StringIO()
+                with (
+                    patch.object(parts.Registration, "entry", patched),
+                    contextlib.redirect_stdout(printed),
+                ):
+                    status = cli.main(["--project-root", str(root), *argv])
+                self.assertNotEqual(0, status)
+                envelope = json.loads(printed.getvalue())
+                self.assertEqual("failed", envelope["status"])
+                self.assertEqual(code, envelope["error"]["code"])
+                if argv[0] == "spec-validation":
+                    self.assertEqual({"checked": 3}, envelope["result"])
+                    self.assertIn(
+                        "X-1", [item["rule_id"] for item in envelope["findings"]]
+                    )
+                    self.assertIn("update.json", envelope["error"]["location"]["path"])
+                    self.assertEqual(
+                        "system_error", envelope["error"]["causes"][0]["code"]
+                    )
+        self.assertTrue(mark.is_file())
+
 
 class RoutingTests(unittest.TestCase):
     def test_task_run_and_issues_are_routed_to_their_owners(self):

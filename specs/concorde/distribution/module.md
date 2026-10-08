@@ -455,6 +455,11 @@ When a command line names no command of the package, it receives one `failed` en
 
 A command registered with `output` `envelope` prints exactly one JSON envelope, even when refused
 ([requirements](requirements.md#req.distribution.one-envelope)). It exits with the envelope's status.
+An unexpected failure while its part loads or while the command runs still answers with one
+`failed` envelope with `unexpected_error`. When Distribution's own step after the command fails,
+such as removing the update mark after a validation that passed, the envelope keeps the command's
+result and findings. It is then `failed` with `distribution_step_failed`, the operating system's
+error as its cause.
 Today this applies to every distribution and Spec tooling command except:
 
 - `spec-mcp`.
