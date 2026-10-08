@@ -38,6 +38,16 @@
         "kind": "document",
         "target": "document.e2e.module",
         "reason": "the test project a case is worked in"
+      },
+      {
+        "kind": "external",
+        "target": "references/swe-bench/swebench/harness/",
+        "reason": "SWE-bench's evaluation harness, whose pytest log parser and grading rules define the statuses and the verdict that grading copies"
+      },
+      {
+        "kind": "external",
+        "target": "references/swe-bench/docs/guides/datasets.md",
+        "reason": "SWE-bench's dataset guide, which defines the fields of an instance"
       }
     ],
     "participates": []

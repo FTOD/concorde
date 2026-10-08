@@ -167,15 +167,36 @@ In a throwaway worktree of `--ref`, it follows these steps:
 - Report each one that did not.
 - Report whether the case is resolved.
 
-The test run puts `--pythonpath` directories of that worktree first on `PYTHONPATH`.
-Since pytest's summary lines supply the statuses, whatever the caller's environment asks for,
-colour is off. The test patch and the case's tests stay outside the project.
+The test run puts the `--pythonpath` directories of that worktree first on `PYTHONPATH`. The
+caller's own `PYTHONPATH` entries follow them. Colour is off, whatever the caller's environment
+asks for. The test patch and the case's tests stay outside the project.
 No worker sees them. The project is left as it was
-([requirements](requirements.md#req.swe-bench-cases.graded-apart)). The pytest output is kept
-under `.concorde/runs/e2e/`. When every FAIL_TO_PASS and every PASS_TO_PASS test passed, the case
-is resolved. Failing tests are a verdict, not an error. For each listed test that did not pass,
-grading names the test with its status. For a test pytest never reports, the status is `not run`.
-Pytest's exit code is kept. In the following cases, grading stops with an error instead:
+([requirements](requirements.md#req.swe-bench-cases.graded-apart)). The whole pytest output is
+kept under `.concorde/runs/e2e/`. It replaces the output of an earlier grading of the same case.
+
+**The statuses.** Grading reads each test's status under its complete pytest node identity.
+A small pytest plugin of grading records that identity from pytest's own reports. Pytest's short
+summary is not read: it cuts an identity at its first space, and a skipped test's line names no
+test. The statuses are the ones SWE-bench's pytest parser reads: `PASSED`, `FAILED`, `ERROR`,
+`SKIPPED`, `XFAIL` and `XPASS`. A setup or teardown failure, or a test file pytest cannot collect,
+is `ERROR`. A listed identity that pytest never reports is `not run`.
+
+**The verdict.** Grading counts the listed tests as SWE-bench's grading does
+([its harness](#external.swe-bench-harness),
+[requirement](requirements.md#req.swe-bench-cases.graded-like-swe-bench)):
+
+- A FAIL_TO_PASS test passed when its status is `PASSED` or `XFAIL`.
+- A PASS_TO_PASS test passed when its status is `PASSED`, `XFAIL` or `SKIPPED`. A skipped test is
+  no regression.
+- SWE-bench's datasets cut some parametrized identities at their first space, inside their
+  brackets. A listed identity with more `[` than `]` and no exact match stands for every reported
+  identity it begins. It takes their status when they agree on passing or not. Otherwise it is
+  `not run`.
+
+When every FAIL_TO_PASS and every PASS_TO_PASS test passed, the case is resolved. Failing tests
+are a verdict, not an error. For each listed test that did not pass, grading names the test with
+its status. Pytest's exit code is kept. In the following cases, grading stops with an error
+instead:
 
 - When the instance lacks any of the following, the error is `invalid_case`:
   - FAIL_TO_PASS tests.
@@ -191,7 +212,9 @@ Pytest's exit code is kept. In the following cases, grading stops with an error 
   - The ref.
   - The limit.
   - The command.
-  It includes the output the test run produced.
+  - The kept pytest output, when the caller names its place.
+  It includes the end of the output the test run produced. The whole output is kept as for a test
+  run that finished.
 
 However grading ends, the throwaway worktree is removed
 ([requirements](requirements.md#req.swe-bench-cases.grading-worktree-removed)).
@@ -275,9 +298,20 @@ This keeps the repair from changing code.
 The round reads its [verdict](../../glossary.json#concept.review-verdict) to decide whether to repair.
 The run ends `ok` for `accepted` and `changes_required` alike.
 
-SWE-bench is external material, included by [End-to-end testing](../module.md).
+<a id="external.swe-bench-harness"></a>
+
+**SWE-bench** is pinned external material under `references/swe-bench/`. This Module selects two
+parts of it:
+
+- Its evaluation harness, `swebench/harness/`. Its pytest log parser and its grading rules define
+  the statuses and the verdict that grading copies.
+- Its dataset guide, `docs/guides/datasets.md`. It defines an instance's fields.
+
 Its instances supply the following for grading a case:
 
 - The base commit.
 - The test patch.
 - The test lists.
+
+Grading supports the instances whose tests run with pytest. It takes SWE-bench's rules only for
+those.

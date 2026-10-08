@@ -22,6 +22,13 @@ Concrete situations that show the [requirements](requirements.md) of
 - THEN grading reports the case resolved, the test file graded as the case's test patch writes it
 - AND afterwards the project's files are as its `main` branch holds them, the change's own edit of the test file included, and the project has no extra worktree
 
+### scenario.swe-bench-cases.grade-statuses — Statuses follow complete identities and SWE-bench's rules
+
+- GIVEN a case whose FAIL_TO_PASS lists a passing parametrized test whose identity holds a space, the same test's identity cut at that space and an expected failure, and whose PASS_TO_PASS lists a skipped test
+- WHEN the developer grades the project
+- THEN grading reports the case resolved
+- BUT a skipped or never-reported FAIL_TO_PASS test is named with its status `SKIPPED` or `not run`, and the case is unresolved
+
 ### scenario.swe-bench-cases.repair-specs — An adopted case's Specs are repaired before its issue
 
 - GIVEN an adopted case whose Spec review requires changes
