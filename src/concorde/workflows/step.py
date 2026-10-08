@@ -623,7 +623,11 @@ def run_step(
         time.sleep(POLL if deadline is None else min(POLL, left()))
     if state in ("finished", "lost"):
         try:
-            _end_step_node(space, workflow, key, name, run_id, state)
+            _end_step_node(space, workflow, key, name, run_id, state, left())
+        except locks.LockBusy:
+            # Another step or report command held the workflow lock until the bound ended: the
+            # next step or report command that sees the run ended ends the step's node.
+            pass
         except WorkspaceRetired as refusal:
             return refused(
                 retired(space, workflow, key, name, refusal, run_id=run_id), run_id
@@ -667,10 +671,18 @@ __all__ = [
 
 
 def _end_step_node(
-    space: Workspace, workflow: str, key: str, name: str, run_id: str, state: str
+    space: Workspace,
+    workflow: str,
+    key: str,
+    name: str,
+    run_id: str,
+    state: str,
+    wait: float | None = None,
 ) -> None:
-    """End the step's trace node once its run finished or was lost."""
-    with store.step_lock(space):
+    """End the step's trace node once its run finished or was lost; ``locks.LockBusy`` when
+    another command still holds the workflow lock after ``wait`` seconds (None: as long as it
+    takes)."""
+    with store.step_lock(space, wait):
         record = store.load(space)
         for step in reversed((record or {}).get("steps", [])):
             if step["key"] == key and step["run_id"] == run_id:

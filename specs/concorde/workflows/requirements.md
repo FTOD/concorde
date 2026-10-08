@@ -127,6 +127,11 @@ following:
 - Records nothing.
 - Prints the outcome `running` with no run.
 
+The same bound holds when the call has seen its step's run end and takes the workflow lock to end
+the step's node. When another step or report command still holds the workflow lock as the bound
+ends, the call leaves the node as it is and prints the outcome it saw. The next step or report
+command that sees the run ended ends the node.
+
 The launch of a run is the one wait not cut short at the bound. This is because a launcher ended
 halfway could leave a run its step cannot name. Execution waits at most 60 seconds for a detached
 runner's announcement. Execution ends a runner that stayed silent. When a launcher gives no answer

@@ -192,6 +192,8 @@ The report judges pending points by the latest recorded step's mode.
 Each step's node records when the step started.
 Once a step or report command saw the step's run end, the step's node records when the step ended
 and how.
+A step command that cannot take the workflow lock within its bound leaves this to the next step or
+report command that sees the run ended.
 The run's own node lies inside the step's node.
 A workspace runs at most one workflow.
 Only the step and report commands write the record and the step nodes.

@@ -96,6 +96,15 @@ shapes are in the [contracts](contracts.md).
 - AND in that case, the command ends the step's node lost
 - AND the command then starts the run anew under the key `survey`, superseding the starting step
 
+### scenario.workflows.step-ends-later — A step's node ends later when the workflow lock stays busy
+
+- GIVEN a step command waiting for the run of step `survey` it started
+- AND a report command that takes the workflow lock while that run finishes and holds it past the step command's `--wait`
+- WHEN the step command sees the run finished
+- THEN it prints the finished outcome within its `--wait` and exits with status 0
+- BUT the step's node still says `running`
+- AND the next step or report command that sees the run finished ends the step's node
+
 ### scenario.workflows.step-cached — A finished step returns at once
 
 - GIVEN a workspace whose step `survey` finished `ok`

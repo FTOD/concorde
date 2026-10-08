@@ -858,6 +858,41 @@ class StepTests(unittest.TestCase):
         self.assertEqual([], self.started)
         self.assertIsNone(store.load(self.space))
 
+    @verifies("scenario.workflows.step-ends-later")
+    def test_ending_the_step_node_waits_for_the_workflow_lock_only_within_its_bound(
+        self,
+    ):
+        held = contextlib.ExitStack()
+        self.addCleanup(held.close)
+        observe = steps.run_state
+
+        def report_takes_the_lock(at, run_id):
+            # A report command takes the workflow lock while the run finishes.
+            if not held._exit_callbacks:
+                held.enter_context(
+                    locks.hold(self.space.lock, "a report command", wait=0)
+                )
+            return observe(at, run_id)
+
+        with (
+            self.starter(output=SURVEY_OUTPUT),
+            patch.object(steps, "run_state", side_effect=report_takes_the_lock),
+        ):
+            before = time.monotonic()
+            status, outcome = run_step(self.space, self.request(), wait=0.3)
+            self.assertLess(time.monotonic() - before, 5)
+        self.assertEqual((0, "finished"), (status, outcome["state"]))
+        node = self.space.directory / "steps/1-survey"
+        self.assertEqual("running", trace.read(node)["content"]["data"]["state"])
+        held.close()
+        # The next step command that sees the run ended ends the step's node.
+        self.assertEqual(0, run_step(self.space, self.request(), wait=0.3)[0])
+        ended = trace.read(node)
+        self.assertEqual(
+            ("finished", "ok", "finished"),
+            (ended["content"]["data"]["state"], ended["status"], ended["outcome"]),
+        )
+
     @verifies("scenario.workflows.refused-step")
     def test_a_launcher_that_cannot_run_makes_the_step_refused(self):
         with patch.object(
