@@ -108,6 +108,29 @@ A taker that waited for a workspace lock whose holder removed its file meanwhile
 to take a new file, is refused with `workspace_retired` instead. It is refused so that it never
 holds the lock of a workspace that was retired while it waited.
 
+## Unfinished-merge marker
+
+### req.kernel.marker-spans-merge — The marker spans the whole undecided merge
+
+A part that writes the [unfinished-merge marker](../glossary.json#concept.unfinished-merge-marker) SHALL keep it present from before it records a merge or changes the primary branch until after its own records say that the merge is decided, writing and removing it only while it holds the [merge lock](../glossary.json#concept.merge-lock).
+
+Thus, from the first change to the decision, a crash at any point leaves the marker. A writer that
+cannot write the marker changes nothing. Only the part the marker names replaces or removes it.
+
+### req.kernel.marker-refuses-commits — A commit under the merge lock refuses while the marker is present
+
+A part other than the marker's writer that commits on the primary branch while it holds the merge lock SHALL refuse, committing nothing, while the [unfinished-merge marker](../glossary.json#concept.unfinished-merge-marker) it reads first is present or cannot be read.
+
+The refusal carries the marker's account, or names the file that cannot be read. Thus, no commit
+lands between a merge commit and the checks that decide whether it stays.
+
+### req.kernel.marker-read-whole — A marker is read whole or refused
+
+The Kernel's library SHALL refuse a marker that cannot be read, is no JSON or breaks its contract, whether it reads or writes it, with `marker_unreadable` or `marker_invalid`, naming the file.
+
+The library writes a marker it accepts in one rename. A reader therefore finds no marker, the whole
+earlier marker or the whole new one.
+
 ## Refusals
 
 ### req.kernel.refusals-coded — Every refusal carries a stable code

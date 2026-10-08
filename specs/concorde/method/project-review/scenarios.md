@@ -95,6 +95,15 @@ record's shapes are in the [contracts](contracts.md).
 - THEN that Issue does not stand for the Module, while its revision is unchanged
 - BUT it stays open until a task closes it
 
+### scenario.project-review.record-unfinished-merge — The record waits for an unfinished merge
+
+- GIVEN a committed review record
+- AND the [unfinished-merge marker](../../glossary.json#concept.unfinished-merge-marker) of a task merge `t9` whose process ended
+- WHEN the record's write is asked to commit a changed record
+- THEN it is refused with `merge_incomplete` and the reason `environment`, naming the `--resume` and `--abort` of `t9`
+- AND when the marker cannot be read instead, it is refused with `unreadable_merge_marker`
+- BUT the committed record and the primary branch's head stay as they were
+
 ### scenario.project-review.record-leftover — An interrupted write's record is put back
 
 - GIVEN a primary worktree whose review record file holds a valid record no commit holds, as a write interrupted before its commit leaves it

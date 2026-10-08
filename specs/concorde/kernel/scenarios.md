@@ -218,3 +218,25 @@ The formats are the [contracts](contracts.md).
 - THEN it holds both
 - AND reading each lock's holder gives the holder line the process wrote
 - AND once the process releases them, reading either holder gives none
+
+## Unfinished-merge marker
+
+### scenario.kernel.marker-read-back — A written marker is read back whole and removed
+
+- GIVEN a primary worktree without an [unfinished-merge marker](../glossary.json#concept.unfinished-merge-marker)
+- WHEN a process reads the marker, writes a marker that satisfies its contract with `after` null and writes it again with the merge commit as `after`
+- THEN the first read gives none
+- AND reading the marker now gives the second marker exactly as written
+- AND the account of the merge names the command, the commit merged in, the branch, the commit before the merge, where the head is now and each command that finishes the merge
+- AND removing the marker tells that there was one
+- AND reading the marker afterwards gives none
+- AND removing it again tells that there was none
+
+### scenario.kernel.marker-refused — A broken marker is refused naming its file
+
+- GIVEN a primary worktree whose marker file is no JSON
+- AND another whose marker lacks `finish`
+- WHEN a process reads each marker
+- THEN the first is refused with `marker_unreadable`, naming the file
+- AND the second is refused with `marker_invalid`, naming the file and the field
+- AND writing a marker that lacks `finish` is refused with `marker_invalid` and leaves the file as it was

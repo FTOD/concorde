@@ -11,6 +11,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from concorde.issues.store import list_issues, read_issue
+from concorde.kernel.marker import write_marker
 from concorde.method import review_issues
 from concorde.method.project_review import record
 from concorde.method.project_review.operation import PAYLOAD_SCHEMA, code_digest
@@ -570,6 +571,61 @@ class ProjectReviewTests(unittest.TestCase):
                 text=True,
                 check=True,
             ).stdout,
+        )
+
+    @verifies("scenario.project-review.record-unfinished-merge")
+    def test_the_record_waits_for_an_unfinished_merge(self):
+        self.first()
+        committed = record.read(self.root)
+        head = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=self.root,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        marked = {
+            "schema_version": 1,
+            "part": "coordination",
+            "by": "`concorde task merge` of task t9",
+            "pid": 9,
+            "since": "2026-10-08T00:00:00+00:00",
+            "branch": "main",
+            "before": head,
+            "merging": head,
+            "after": None,
+            "finish": [
+                "concorde task merge t9 --resume",
+                "concorde task merge t9 --abort",
+            ],
+        }
+        write_marker(self.root / ".concorde", marked)
+
+        def changed(current):
+            current["architecture"] = None
+            return current
+
+        with self.assertRaises(record.RecordError) as raised:
+            record.publish(self.root, "a test", changed, "concorde: record a test")
+        self.assertEqual(
+            ("merge_incomplete", "environment"),
+            (raised.exception.code, raised.exception.reason),
+        )
+        self.assertIn("concorde task merge t9 --abort", str(raised.exception))
+        (self.root / ".concorde/unfinished-merge.json").write_text("{not json")
+        with self.assertRaises(record.RecordError) as raised:
+            record.publish(self.root, "a test", changed, "concorde: record a test")
+        self.assertEqual("unreadable_merge_marker", raised.exception.code)
+        self.assertEqual(committed, record.read(self.root))
+        self.assertEqual(
+            head,
+            subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=self.root,
+                capture_output=True,
+                text=True,
+                check=True,
+            ).stdout.strip(),
         )
 
     @verifies("scenario.project-review.skipped-resolutions")

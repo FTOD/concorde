@@ -153,6 +153,15 @@ Where the coordination part is installed, use `register_wait` for the merge lock
 once the lock is released. Without the coordination part, only another Issue write holds the lock,
 for moments. For that reason, write again shortly after.
 
+`merge_incomplete` means the Kernel's unfinished-merge marker says a merge into the primary branch
+is unfinished. Its message names the commands that finish the merge. Run one of them, then write
+again.
+
+`unreadable_merge_marker` means the file `.concorde/unfinished-merge.json` cannot be read. It may
+describe an unfinished merge. Where the coordination part is installed, `concorde task list --state
+merging` shows such a merge. Finish that merge first. When no merge is unfinished, remove the file
+by hand. Then write again.
+
 `recovery_failed` means a record an Issue write published could not be put back.
 The record stays uncommitted in the primary worktree. No read shows it.
 Fix the cause the refusal names, such as a stale `index.lock` or a refusing commit hook.

@@ -169,16 +169,16 @@ This illustrates [registered owners](requirements.md#req.issues.report-owner-reg
 
 ### scenario.issues.store-without-coordination — Without the coordination part no write waits for a merge
 
-- GIVEN a primary worktree with no `.concorde/tasks/`, with the coordination part not installed
+- GIVEN a primary worktree with no `.concorde/tasks/` and no unfinished-merge marker, with the coordination part not installed
 - WHEN a session records a report
 - THEN the store commits it without an unfinished merge refusing it
 
-### scenario.issues.command-unreadable-task-record — A task record that cannot be read refuses the write
+### scenario.issues.command-unreadable-merge-marker — A marker that cannot be read refuses the write
 
-- GIVEN a primary worktree whose `.concorde/tasks/` holds a [task record](../glossary.json#concept.task-record) that does not read as a JSON object
+- GIVEN a primary worktree whose [unfinished-merge marker](../glossary.json#concept.unfinished-merge-marker) file does not read as a JSON object
 - AND a valid report file exists
 - WHEN the main agent runs `report --file` with that file
-- THEN the command prints the error code `unreadable_task_record` with the reason `environment`, naming that record
+- THEN the command prints the error code `unreadable_merge_marker` with the reason `environment`, naming that file
 - AND the command's options say to carry the error chain in the decision log, escalation or run result
 - AND those options say never to report the error chain as an Issue
 - AND the command exits with status 1
@@ -552,11 +552,11 @@ This illustrates [Issue writes under the merge lock](requirements.md#req.issues.
 
 ### scenario.issues.store-merge-incomplete — No write while a merge is unfinished
 
-- GIVEN a task stored `merging` whose merge process ended
+- GIVEN the [unfinished-merge marker](../glossary.json#concept.unfinished-merge-marker) of a task merge whose process ended
 - WHEN the store is asked to save a report
 - AND a caller that holds the merge lock itself then asks the store to save the report
 - AND that caller asks the store to recover
-- THEN each request is refused with `merge_incomplete`, naming the task
+- THEN each request is refused with `merge_incomplete`, naming the task, the process, the merge commit, where the primary branch is now and the `--resume` and `--abort` that finish the merge
 - BUT no Issue is written
 
 This illustrates [no Issue write while a merge is unfinished](requirements.md#req.issues.no-write-during-merge).

@@ -803,6 +803,19 @@
       ]
     },
     {
+      "id": "concept.unfinished-merge-marker",
+      "title": "Unfinished-merge marker",
+      "owner": "module.kernel",
+      "definition": "The file `.concorde/unfinished-merge.json` of the primary worktree that says a merge into the primary branch is not decided yet, which outlives a crash of its writer and refuses every commit on the primary branch under the merge lock while it is present.",
+      "explanation": "specs/concorde/kernel/module.md#concept.unfinished-merge-marker",
+      "contrasts": [
+        {
+          "target": "concept.merge-lock",
+          "reason": "the merge lock says who changes the primary branch now and is released however its holder ends; the marker says that a change of the primary branch is not decided yet and outlives a holder that crashed"
+        }
+      ]
+    },
+    {
       "id": "concept.verification-declaration",
       "title": "Verification declaration",
       "owner": "module.spec",

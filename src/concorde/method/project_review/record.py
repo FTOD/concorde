@@ -11,7 +11,8 @@ a write that was interrupted is put back to its committed version first. It refu
 nothing, while the file holds any other change no commit holds and when the committed record is
 not a valid one. When anything fails after the file was published, it puts the file back to its
 committed version before it refuses. It reads no task record: an Operation never does
-(``req.concorde.halves-apart``).
+(``req.concorde.halves-apart``). It refuses instead, changing nothing, while the Kernel's
+unfinished-merge marker says that a merge into the primary branch is unfinished or cannot be read.
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ from pathlib import Path
 from typing import Callable
 
 from ...kernel import locking
+from ...kernel import marker as merge_marker
 from ...kernel.files import apply_files
 from ...kernel.refusal import KernelError
 from ...kernel.schema import digest
@@ -224,6 +226,7 @@ def publish(
     new commit, or None when the record did not change. Raises ``RecordError``."""
     try:
         with locking.merge_lock(layout.concorde_of(primary), holder, wait=wait):
+            _refuse_unfinished_merge(primary)
             return _publish(primary, update, message)
     except locking.LockRefused as busy:
         raise RecordError(
@@ -236,6 +239,26 @@ def publish(
             error.code,
             f"the merge lock of {primary} could not be taken: {error}",
         ) from None
+
+
+def _refuse_unfinished_merge(primary: Path) -> None:
+    """``merge_incomplete`` while the Kernel's unfinished-merge marker of the primary worktree is
+    present and ``unreadable_merge_marker`` while it cannot be read; the merge lock is held, so a
+    record never lands between a merge commit and the checks that decide whether it stays."""
+    concorde = layout.concorde_of(primary)
+    try:
+        unfinished = merge_marker.read_marker(concorde)
+    except KernelError as error:
+        raise RecordError(
+            "unreadable_merge_marker",
+            f"{error.code}: {error}, so the review record cannot tell whether a merge into the "
+            "primary branch is unfinished and wrote nothing",
+        ) from None
+    if unfinished is not None:
+        raise RecordError(
+            "merge_incomplete",
+            f"{merge_marker.describe(concorde, unfinished)}; the review record wrote nothing",
+        )
 
 
 def _leftover(primary: Path) -> bool:

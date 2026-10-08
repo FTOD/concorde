@@ -4,6 +4,7 @@ The [Kernel](module.md) defines the canonical formats that parts exchange and wr
 
 - The [workspace binding](../glossary.json#concept.workspace-binding).
 - The [delivery commit](../glossary.json#concept.delivery-commit).
+- The [unfinished-merge marker](../glossary.json#concept.unfinished-merge-marker).
 - The [typed values](../glossary.json#concept.typed-value).
 - The [file transactions](../glossary.json#concept.file-transaction).
 
@@ -143,6 +144,125 @@ command's own validation leaves out. In Concorde, Method's
 [`delivery`](../method/delivery/contracts.md#delivery-commit) states these rules.
 Where the method part is not installed, Coordination's
 [`task deliver`](../coordination/tasks/module.md) states these rules. Nothing here relies on either.
+
+## Unfinished-merge marker
+
+```concorde-contract
+{
+  "id": "contract.kernel.unfinished-merge",
+  "version": 1,
+  "schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema_version",
+      "part",
+      "by",
+      "pid",
+      "since",
+      "branch",
+      "before",
+      "merging",
+      "after",
+      "finish"
+    ],
+    "properties": {
+      "schema_version": {
+        "const": 1
+      },
+      "part": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_-]*$"
+      },
+      "by": {
+        "type": "string",
+        "minLength": 1
+      },
+      "pid": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "since": {
+        "type": "string",
+        "minLength": 1
+      },
+      "branch": {
+        "type": "string",
+        "minLength": 1
+      },
+      "before": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
+      },
+      "merging": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
+      },
+      "after": {
+        "anyOf": [
+          {
+            "type": "string",
+            "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "finish": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  },
+  "semantics": "The unfinished-merge marker .concorde/unfinished-merge.json of the primary worktree, which Git ignores. part names the part that wrote it, the only one that replaces or removes it. by names the command that merges, pid its process and since when it began. branch is the primary branch the merge changes, before its commit before the merge, merging the commit merged in and after the merge commit once it exists, else null. finish lists the commands that finish an unfinished merge, each of which decides it and removes the marker. The writer holds the merge lock while it writes, replaces or removes the marker; it writes the marker before it changes the primary branch or records the merge anywhere, and removes it only after the merge is decided and its own records say so. Every other part that commits on the primary branch reads the marker while it holds the merge lock and refuses, committing nothing, while the marker is present or cannot be read. A behaviour or field change increments the version.",
+  "example": {
+    "schema_version": 1,
+    "part": "coordination",
+    "by": "`concorde task merge` of task severity",
+    "pid": 41822,
+    "since": "2026-10-08T09:14:03+00:00",
+    "branch": "main",
+    "before": "3d15110b5361942cb600c30b7baaae2cf3dd5c9f",
+    "merging": "8c2e0a51f4b7d9e3a6c1b0f2e4d6a8c0b2e4f6a8",
+    "after": null,
+    "finish": [
+      "concorde task merge severity --resume",
+      "concorde task merge severity --abort"
+    ]
+  }
+}
+```
+
+The marker lies at `.concorde/unfinished-merge.json` of the primary worktree, beside `locks/` but
+not inside it. The Kernel's registration names it among the paths Git ignores. Thus, the marker
+never makes the primary worktree dirty. The marker is written in one rename. A reader therefore
+finds either no marker, the whole earlier marker or the whole new one.
+
+The writer keeps this order while it holds the merge lock:
+
+1. It writes the marker.
+2. It records the merge in its own records and changes the primary branch.
+3. It writes the marker again whenever a field changes, such as `after` once the merge commit
+   exists.
+4. Once the merge is decided, kept or undone, it records that in its own records.
+5. It removes the marker.
+
+A crash after step 1 and before step 5 leaves the marker. A marker whose writer's own records say
+that no merge is unfinished is one a crash left at step 1 or step 5. Only its writer can tell, so
+only the writer removes it. A writer that cannot write the marker at step 1 changes nothing.
+A writer that cannot replace or remove it leaves the earlier marker, which still refuses every
+commit. The writer removes it once it can.
+
+A reader holds the merge lock. A marker present then belongs to a writer that ended, or to one that
+handed the lock on after it removed the marker. The reader refuses its commit with its own error
+link. The link carries the marker's account: who was merging what into which branch, where the
+primary worktree's head is now and the commands that finish the merge. A marker that cannot be read
+or breaks its contract refuses the commit too. Its refusal names the file.
 
 ## Typed values
 
@@ -452,6 +572,10 @@ Tracing ([Tracing contracts](tracing/contracts.md)).
 | Take the [workspace lock](../glossary.json#concept.workspace-lock) | the `.concorde` a binding names, the workspace, the holder, how long to wait and whether to take a lock file its holder removed meanwhile | holds it until released | `workspace_busy` naming the holder, `workspace_retired` (its holder removed the file while the taker waited, as a close does), `system_error` |
 | Take the merge lock | the primary worktree's `.concorde`, the holder, the task when there is one and how long to wait, 300 seconds by default | holds it until released | `merge_busy` naming the holder, `system_error` |
 | Read a lock's holder | the workspace lock or the merge lock | its holder line, or none when nobody holds it | nothing |
+| Read the [unfinished-merge marker](#unfinished-merge-marker) | the primary worktree's `.concorde` | the marker, or none when there is none | `marker_unreadable` (the file cannot be read or is no JSON), `marker_invalid` (it breaks its contract) |
+| Write the unfinished-merge marker | the primary worktree's `.concorde` and a marker | the file's path, having checked the marker and replaced any marker there in one rename | `marker_invalid`, `system_error` |
+| Remove the unfinished-merge marker | the primary worktree's `.concorde` | whether there was a marker | `system_error` |
+| Describe an unfinished merge | the primary worktree's `.concorde` and its marker | the account a reader's refusal carries: the command, its process and start, the commit merged into which branch at which commit, where the primary worktree's head is now and the commands that finish the merge | nothing |
 
 A run of Execution, for example, reads the binding of the worktree it starts in. When the binding
 is copied from another workspace, the binding is refused with `binding_misplaced`. In that case,

@@ -312,16 +312,15 @@ As a result, writes never overlap any of these:
 
 ### req.issues.no-write-during-merge — No Issue write while a merge is unfinished
 
-Where the coordination part is installed, the Issue store SHALL refuse every write, whether it took the merge lock or its caller holds it, while a task's merge into the primary branch is unfinished.
+The Issue store SHALL refuse every write, whether it took the merge lock or its caller holds it, while the Kernel's [unfinished-merge marker](../glossary.json#concept.unfinished-merge-marker) of the primary worktree is present or cannot be read.
 
-As a result, a write
-never commits between a merge commit and the checks that decide whether it stays. The store
-learns of an unfinished merge from Tasks' [task records](../glossary.json#concept.task-record).
-These use the format the coordination part publishes. The store never learns of an unfinished
-merge from the coordination part's code. A task record the store cannot read may be the merging task's. For that
-reason, the store refuses the write then too, rather than pass over the record. The refusal uses
-`unreadable_task_record` and names the record. Without the coordination part there is no task
-merge. In that case, the merge lock alone orders the writes.
+As a result, a write never commits between a merge commit and the checks that decide whether it
+stays. The store learns of an unfinished merge from the marker alone. It reads no
+[task record](../glossary.json#concept.task-record) and no other part's code. A present marker
+refuses the write with `merge_incomplete`, carrying the Kernel's account of the merge. A marker the
+store cannot read may describe a merge. For that reason, the store refuses the write then too,
+with `unreadable_merge_marker`, naming the file. Where no part merges into the primary branch,
+there is no marker. In that case, the merge lock alone orders the writes.
 
 ### req.issues.tools-as-command — The Issue tools answer as the command
 

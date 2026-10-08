@@ -873,7 +873,9 @@
           "relies_on": [
             "concept.typed-value",
             "concept.file-transaction",
-            "concept.merge-lock"
+            "concept.merge-lock",
+            "concept.unfinished-merge-marker",
+            "req.kernel.marker-spans-merge"
           ]
         },
         {
@@ -888,15 +890,6 @@
           "meaning": "#uses-spec",
           "relies_on": [
             "concept.registry"
-          ]
-        },
-        {
-          "target": "module.tasks",
-          "meaning": "#uses-tasks",
-          "relies_on": [
-            "contract.tasks.record",
-            "req.tasks.merging-recorded",
-            "req.tasks.merge-incomplete-refused"
           ]
         },
         {
@@ -1543,7 +1536,9 @@
           "meaning": "#uses-kernel",
           "relies_on": [
             "concept.merge-lock",
-            "concept.file-transaction"
+            "concept.file-transaction",
+            "concept.unfinished-merge-marker",
+            "req.kernel.marker-spans-merge"
           ]
         },
         {
@@ -1825,7 +1820,11 @@
             "concept.workspace-lock",
             "concept.merge-lock",
             "concept.delivery-commit",
-            "concept.file-transaction"
+            "concept.file-transaction",
+            "concept.unfinished-merge-marker",
+            "contract.kernel.unfinished-merge",
+            "req.kernel.marker-spans-merge",
+            "req.kernel.marker-refuses-commits"
           ]
         },
         {

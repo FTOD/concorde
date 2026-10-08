@@ -940,16 +940,16 @@ class IssueCommandTests(unittest.TestCase):
             [recorded["receipt"]["path"]], [item["path"] for item in value["left"]]
         )
 
-    @verifies("scenario.issues.command-unreadable-task-record")
-    def test_a_task_record_that_cannot_be_read_refuses_the_write(self):
-        broken = self.root / ".concorde/tasks/broken/task.json"
-        broken.parent.mkdir(parents=True)
+    @verifies("scenario.issues.command-unreadable-merge-marker")
+    def test_a_marker_that_cannot_be_read_refuses_the_write(self):
+        broken = self.root / ".concorde/unfinished-merge.json"
+        broken.parent.mkdir(parents=True, exist_ok=True)
         for text in ("{not json", '"a string"'):
             with self.subTest(text=text):
                 broken.write_text(text)
                 value = self.assert_refused(
                     1,
-                    "unreadable_task_record",
+                    "unreadable_merge_marker",
                     [str(broken)],
                     "report",
                     "--file",

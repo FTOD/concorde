@@ -1003,6 +1003,7 @@ its holder. The reason is `environment` for these codes:
 - `decision_log_uncommitted`
 - `binding_failed`
 - `merge_busy`
+- `marker_unwritable`
 - `workspace_busy`
 - `rollback_failed`
 - `wait_timeout`
@@ -1384,6 +1385,7 @@ holding all three, the close that moves the task removes these locks:
 | `session_stop_failed` | `close --completed` or `--failed` could not confirm a Claude Code task session of the task stopped with `claude stop`, before it changed the task; the message names the session, Claude Code's answer and the command to stop it ([Task sessions](../task-session/contracts.md#at-the-end-of-a-task)). |
 | `workspace_busy` | `merge`, `close` or `deliver` found the task's workspace lock still held by a run after waiting `--wait` seconds; the message names the holder, the lock file and how long it waited. |
 | `merge_incomplete` | A task is stored `merging` and no live process holds the merge lock; the message names the task, the process and time that began its merge, the checked commit, the primary branch with the commit before the merge and where its head is now, whether that is the merge commit, and the `--resume` and `--abort` commands. |
+| `marker_unwritable` | `merge` could not write the Kernel's [unfinished-merge marker](../../glossary.json#concept.unfinished-merge-marker) before it stored the task `merging`; nothing was recorded or merged, and the message carries the Kernel's refusal. |
 | `not_merging` | `merge --resume` or `--abort` names a task that is not `merging`; the message names its state. |
 | `not_resumable` | `merge --resume` finds that the primary branch's head is not the merge commit; the message names the head and whether it is the commit before the merge, and that `--abort` is the way out. |
 | `merge_diverged` | `merge --resume` or `--abort` finds the primary worktree on another branch or detached, or (`--abort`) its head neither the commit before the merge nor the merge commit, or a Git merge in progress there that is not the task's, all checked before anything is aborted; the message names the commits and says to restore the branch by hand. |

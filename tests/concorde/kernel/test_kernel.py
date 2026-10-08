@@ -1,10 +1,11 @@
-"""The Kernel library: workspace bindings, delivery commits, typed values, file transactions and the
-workspace and merge locks, on the Kernel's scenarios."""
+"""The Kernel library: workspace bindings, delivery commits, typed values, file transactions, the
+workspace and merge locks and the unfinished-merge marker, on the Kernel's scenarios."""
 
 from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -13,7 +14,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.kernel import binding, delivery, files, locking, schema
+from concorde.kernel import binding, delivery, files, locking, marker, schema
 from concorde.kernel.refusal import KernelError
 from concorde.spec.verification import verifies
 
@@ -716,3 +717,101 @@ class LockTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def kernel_contract(identity: str) -> dict:
+    text = (
+        Path(__file__).resolve().parents[3] / "specs/concorde/kernel/contracts.md"
+    ).read_text()
+    for fence in re.findall(r"```concorde-contract\n(.*?)\n```", text, re.DOTALL):
+        value = json.loads(fence)
+        if value["id"] == identity:
+            return value
+    raise AssertionError(f"no contract {identity}")
+
+
+class MarkerTests(unittest.TestCase):
+    def marked(self) -> tuple[Path, dict]:
+        root = repository()
+        before = git(root, "rev-parse", "HEAD")
+        value = {
+            "schema_version": 1,
+            "part": "coordination",
+            "by": "`concorde task merge` of task t1",
+            "pid": 4242,
+            "since": "2026-10-08T09:14:03+00:00",
+            "branch": "main",
+            "before": before,
+            "merging": "8c2e0a51f4b7d9e3a6c1b0f2e4d6a8c0b2e4f6a8",
+            "after": None,
+            "finish": [
+                "concorde task merge t1 --resume",
+                "concorde task merge t1 --abort",
+            ],
+        }
+        return root, value
+
+    def test_the_marker_schema_is_the_contract(self):
+        contract = kernel_contract("contract.kernel.unfinished-merge")
+        self.assertEqual(marker.MARKER_SCHEMA, contract["schema"])
+        schema.validate(contract["example"], marker.MARKER_SCHEMA)
+
+    @verifies("scenario.kernel.marker-read-back")
+    def test_a_written_marker_is_read_back_whole_and_removed(self):
+        root, value = self.marked()
+        concorde = root / ".concorde"
+        self.assertIsNone(marker.read_marker(concorde))
+        marker.write_marker(concorde, value)
+        after = commit(root, "the merge")
+        value = {**value, "after": after}
+        path = marker.write_marker(concorde, value)
+        self.assertEqual(concorde / "unfinished-merge.json", path)
+        self.assertEqual(value, marker.read_marker(concorde))
+        account = marker.describe(concorde, value)
+        for named in (
+            "`concorde task merge` of task t1",
+            value["merging"],
+            "into main",
+            value["before"],
+            f"at {after}, the merge commit",
+            "`concorde task merge t1 --resume`",
+            "`concorde task merge t1 --abort`",
+        ):
+            self.assertIn(named, account)
+        git(root, "reset", "-q", "--hard", value["before"])
+        self.assertIn("back at", marker.describe(concorde, value))
+        self.assertTrue(marker.remove_marker(concorde))
+        self.assertIsNone(marker.read_marker(concorde))
+        self.assertFalse(marker.remove_marker(concorde))
+
+    @verifies("scenario.kernel.marker-refused")
+    def test_a_broken_marker_is_refused_naming_its_file(self):
+        root, value = self.marked()
+        concorde = root / ".concorde"
+        concorde.mkdir()
+        path = concorde / "unfinished-merge.json"
+        path.write_text("{not json")
+        with self.assertRaises(KernelError) as refused:
+            marker.read_marker(concorde)
+        self.assertEqual("marker_unreadable", refused.exception.code)
+        self.assertEqual(str(path), refused.exception.field)
+        broken = {key: item for key, item in value.items() if key != "finish"}
+        path.write_text(json.dumps(broken))
+        with self.assertRaises(KernelError) as refused:
+            marker.read_marker(concorde)
+        self.assertEqual("marker_invalid", refused.exception.code)
+        self.assertEqual(str(path), refused.exception.field)
+        self.assertIn("finish", str(refused.exception))
+        written = path.read_bytes()
+        with self.assertRaises(KernelError) as refused:
+            marker.write_marker(concorde, broken)
+        self.assertEqual("marker_invalid", refused.exception.code)
+        self.assertEqual(written, path.read_bytes())
+
+    def test_a_marker_the_system_cannot_write_is_refused_with_a_code(self):
+        _, value = self.marked()
+        blocked = Path(tempfile.mkdtemp()) / "file"
+        blocked.write_text("a file where the .concorde folder belongs\n")
+        with self.assertRaises(KernelError) as refused:
+            marker.write_marker(blocked, value)
+        self.assertEqual("system_error", refused.exception.code)

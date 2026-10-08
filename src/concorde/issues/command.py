@@ -55,7 +55,7 @@ ENVIRONMENT = frozenset(
         "io_error",
         "merge_busy",
         "merge_incomplete",
-        "unreadable_task_record",
+        "unreadable_merge_marker",
         "commit_failed",
         "recovery_failed",
         "uncommitted_change",

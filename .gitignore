@@ -50,6 +50,7 @@ Thumbs.db
 .concorde/unbound/
 .concorde/lobby/
 .concorde/locks/
+.concorde/unfinished-merge.json
 .concorde/workspace.json
 # pi-lens, a pi extension, writes its logs into the working directory.
 .pi-lens-probe-home/

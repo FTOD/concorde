@@ -134,10 +134,18 @@ When a completed part changes the review record, the Operation SHALL commit the 
 primary branch while it holds the [merge lock](../../glossary.json#concept.merge-lock), before it
 returns its result.
 
+### req.project-review.record-unfinished-merge — The record waits for an unfinished merge
+
+While the Kernel's [unfinished-merge marker](../../glossary.json#concept.unfinished-merge-marker) is present or cannot be read when the record's write reads it under the merge lock, the write SHALL refuse before it changes anything, with `merge_incomplete` or `unreadable_merge_marker`.
+
+The refusal carries the Kernel's account of the merge or names the file. As every refusal of the
+record does, it ends the run `failed` with `record_unpublished` and keeps the verdict.
+
 ### req.project-review.record-refused — A refused record fails the run, not the verdict
 
 When the committed record is not valid, the record file holds a change other than a valid record
-an interrupted write left, or the commit fails, the Operation SHALL leave the committed record as
+an interrupted write left, a merge into the primary branch is unfinished, or the commit fails, the
+Operation SHALL leave the committed record as
 it was and end the run `failed` with `record_unpublished` while keeping the verdict in its output.
 
 ### req.project-review.record-leftover — An interrupted write's record is put back
